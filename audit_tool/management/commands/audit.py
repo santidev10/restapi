@@ -16,16 +16,16 @@ class Command(BaseCommand):
             help='Set file path of csv keywords to read from.'
         )
         parser.add_argument(
-            '--title',
-            help='Export title'
-        )
-        parser.add_argument(
             '--export',
             help='Set file export result directory.'
         )
         parser.add_argument(
             '--type',
             help='Video or channel audit'
+        )
+        parser.add_argument(
+            '--title',
+            help='Export title'
         )
         parser.add_argument(
             '--whitelist',

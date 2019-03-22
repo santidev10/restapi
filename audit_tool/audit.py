@@ -1,12 +1,10 @@
-from audit_tool.segmented_audit import SegmentedAudit
+from .audit_mixin import AuditMixin
 from utils.youtube_api import YoutubeAPIConnector
 import csv
-import re
 from multiprocessing import Pool
-import langid
-from collections import Counter
+from . import audit_constants as constants
 
-class Audit(SegmentedAudit):
+class Audit(AuditMixin):
     max_process_count = 5
     video_chunk_size = 10000
     video_batch_size = 30000
@@ -14,17 +12,16 @@ class Audit(SegmentedAudit):
     channel_chunk_size = 10
     channel_row_data = {}
     max_csv_export_count = 50000
-    youtube_max_channel_list_limit = 50
     csv_pages = {
-        'is_brand_safety_videos': {'count': 0, 'page': 1},
-        'not_brand_safety_videos': {'count': 0, 'page': 1},
-        'blacklist_videos': {'count': 0, 'page': 1},
-        'whitelist_videos': {'count': 0, 'page': 1},
+        constants.BRAND_SAFETY_PASS_VIDEOS: {'count': 0, 'page': 1},
+        constants.BRAND_SAFETY_FAIL_VIDEOS: {'count': 0, 'page': 1},
+        constants.BLACKLIST_VIDEOS: {'count': 0, 'page': 1},
+        constants.WHITELIST_VIDEOS: {'count': 0, 'page': 1},
 
-        'is_brand_safety_channels': {'count': 0, 'page': 1},
-        'not_brand_safety_channels': {'count': 0, 'page': 1},
-        'blacklist_channels': {'count': 0, 'page': 1},
-        'whitelist_channels': {'count': 0, 'page': 1},
+        constants.BRAND_SAFETY_FAIL_CHANNELS: {'count': 0, 'page': 1},
+        constants.BRAND_SAFETY_PASS_CHANNELS: {'count': 0, 'page': 1},
+        constants.WHITELIST_CHANNELS: {'count': 0, 'page': 1},
+        constants.BLACKLIST_CHANNELS: {'count': 0, 'page': 1},
     }
 
     video_csv_headers = ['Channel Name', 'Channel URL', 'Video Name', 'Video URL', 'Emoji Y/N', 'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Country', 'Keyword Hits']
@@ -38,81 +35,15 @@ class Audit(SegmentedAudit):
         self.csv_source_file_path = kwargs.get('file')
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
-        self.csv_keyword_path = kwargs.get('keywords')
-        self.categories = {
-            '1': 'Film & Animation',
-            '2': 'Autos & Vehicles',
-            '10': 'Music',
-            '15': 'Pets & Animals',
-            '17': 'Sports',
-            '18': 'Short Movies',
-            '19': 'Travel & Events',
-            '20': 'Gaming',
-            '21': 'Videoblogging',
-            '22': 'People & Blogs',
-            '23': 'Comedy',
-            '24': 'Entertainment',
-            '25': 'News & Politics',
-            '26': 'Howto & Style',
-            '27': 'Education',
-            '28': 'Science & Technology',
-            '29': 'Nonprofits & Activism',
-            '30': 'Movies',
-            '31': 'Anime / Animation',
-            '32': 'Action / Adventure',
-            '33': 'Classics',
-            '34': 'Comedy',
-            '37': 'Family',
-            '42': 'Shorts',
-            '43': 'Shows',
-            '44': 'Trailers'
-        }
-        self.video_categories = {
-            '1': 'Film & Animation',
-            '10': 'Music',
-            '15': 'Pets & Animals',
-            '23': 'Comedy',
-            '24': 'Entertainment',
-            '26': 'Howto & Style',
-            '27': 'Education',
-            '34': 'Comedy',
-            '37': 'Family',
-        }
-
-        self.video_id_regexp = re.compile('(?<=video/).*')
-        self.channel_id_regexp = re.compile('(?<=channel/).*')
-        self.username_regexp = re.compile('(?<=user/).*')
-        self.whitelist_regexp = self.create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
-        self.brand_safety = kwargs.get('brand_safety')
-        self.emoji_regexp = re.compile(u"["
-                                   u"\U0001F600-\U0001F64F"  # emoticons
-                                   u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                                   u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                                   u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                                   "]", flags=re.UNICODE)
-
-    def create_keyword_regexp(self, csv_path):
-        with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            keywords = list(csv_reader)
-
-            keyword_regexp = re.compile(
-                '|'.join([word[0] for word in keywords]),
-                re.IGNORECASE
-            )
-
-        return keyword_regexp
+        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
+        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
+        self.brand_safety_tags_regexp = self.compile_audit_regexp(self.get_all_bad_words())
 
     def run(self):
         print('starting...')
         target, data_generator, result_processor, chunk_size = self.get_processor()
 
         self.run_processor(target, data_generator, result_processor, chunk_size=chunk_size)
-
-    def related_video_audit(self, related_videos):
-
-        pass
 
     def get_processor(self):
         if self.audit_type == 'video':
@@ -128,8 +59,6 @@ class Audit(SegmentedAudit):
         pool = Pool(processes=self.max_process_count)
         items_seen = 0
 
-        # Channel batches = 1k, so every 1k channels data will write
-        # Video batches = 10k, so every 10k videos will write
         for batch in generator():
             chunks = self.chunks(batch, chunk_size)
             all_results = pool.map(target, chunks)
@@ -148,74 +77,74 @@ class Audit(SegmentedAudit):
         :return:
         """
         all_results = {
-            'is_brand_safety_videos': {
+            constants.BRAND_SAFETY_PASS_VIDEOS: {
                 'results': [],
                 'options': {
                     'data_type': 'video',
-                    'audit_type': 'is_brand_safety',
+                    'audit_type': constants.BRAND_SAFETY_PASS,
                 }
             },
-            'not_brand_safety_videos': {
+            constants.BRAND_SAFETY_FAIL_VIDEOS: {
                 'results': [],
                 'options': {
                     'data_type': 'video',
-                    'audit_type': 'not_brand_safety'
+                    'audit_type': constants.BRAND_SAFETY_FAIL
                 }
             },
-            'blacklist_videos': {
+            constants.BLACKLIST_VIDEOS: {
                 'results': [],
                 'options': {
                     'data_type': 'video',
-                    'audit_type': 'blacklist'
+                    'audit_type': constants.BLACKLIST
                 }
             },
-            'whitelist_videos': {
+            constants.WHITELIST_VIDEOS: {
                 'results': [],
                 'options': {
                     'data_type': 'video',
-                    'audit_type': 'whitelist'
+                    'audit_type': constants.WHITELIST
                 }
             },
-            'is_brand_safety_channels': {
+            constants.BRAND_SAFETY_PASS_CHANNELS: {
                 'results': [],
                 'options': {
                     'data_type': 'channel',
-                    'audit_type': 'is_brand_safety'
+                    'audit_type': constants.BRAND_SAFETY_PASS,
                 }
             },
-            'not_brand_safety_channels': {
+            constants.BRAND_SAFETY_FAIL_CHANNELS: {
                 'results': [],
                 'options': {
                     'data_type': 'channel',
-                    'audit_type': 'not_brand_safety'
+                    'audit_type': constants.BRAND_SAFETY_FAIL
                 }
             },
-            'blacklist_channels': {
+            constants.BLACKLIST_CHANNELS: {
                 'results': [],
                 'options': {
                     'data_type': 'channel',
-                    'audit_type': 'blacklist'
+                    'audit_type': constants.BLACKLIST
                 }
             },
-            'whitelist_channels': {
+            constants.WHITELIST_CHANNELS: {
                 'results': [],
                 'options': {
                     'data_type': 'channel',
-                    'audit_type': 'whitelist'
+                    'audit_type': constants.WHITELIST
                 }
             },
         }
 
         for result in results:
-            all_results['is_brand_safety_videos']['results'] += result['is_brand_safety_videos']
-            all_results['not_brand_safety_videos']['results'] += result['not_brand_safety_videos']
-            all_results['blacklist_videos']['results'] += result['blacklist_videos']
-            all_results['whitelist_videos']['results'] += result['whitelist_videos']
+            all_results[constants.BRAND_SAFETY_PASS_VIDEOS]['results'] += result[constants.BRAND_SAFETY_PASS_VIDEOS]
+            all_results[constants.BRAND_SAFETY_FAIL_VIDEOS]['results'] += result[constants.BRAND_SAFETY_FAIL_VIDEOS]
+            all_results[constants.BLACKLIST_VIDEOS]['results'] += result[constants.BLACKLIST_VIDEOS]
+            all_results[constants.WHITELIST_VIDEOS]['results'] += result[constants.WHITELIST_VIDEOS]
 
-            all_results['is_brand_safety_channels']['results'] += result['is_brand_safety_channels']
-            all_results['not_brand_safety_channels']['results'] += result['not_brand_safety_channels']
-            all_results['blacklist_channels']['results'] += result['blacklist_channels']
-            all_results['whitelist_channels']['results'] += result['whitelist_channels']
+            all_results[constants.BRAND_SAFETY_PASS_CHANNELS]['results'] += result[constants.BRAND_SAFETY_PASS_CHANNELS]
+            all_results[constants.BRAND_SAFETY_FAIL_CHANNELS]['results'] += result[constants.BRAND_SAFETY_FAIL_CHANNELS]
+            all_results[constants.BLACKLIST_CHANNELS]['results'] += result[constants.BLACKLIST_CHANNELS]
+            all_results[constants.WHITELIST_CHANNELS]['results'] += result[constants.WHITELIST_CHANNELS]
 
         for result in all_results.values():
             self.write_data(result['results'], **result['options'])
@@ -238,7 +167,7 @@ class Audit(SegmentedAudit):
             response = connector.obtain_videos(batch_ids, part='snippet,statistics').get('items')
 
             if not video.get('channel_subscribers'):
-                channel_statistics_data = self.get_channel_statistics_with_video_id(response, connector)
+                channel_statistics_data = self.get_channel_statistics_with_video_data(response, connector)
                 video_channel_subscriber_ref = {
                     channel['id']: channel['statistics']['subscribers']
                     for channel in channel_statistics_data
@@ -257,7 +186,7 @@ class Audit(SegmentedAudit):
             all_videos += response
             csv_videos = csv_videos[50:]
 
-        video_audit_results = self.audit_videos(all_videos)
+        video_audit_results = self.audit_videos(all_videos, blacklist_regexp=self.blacklist_regexp, whitelist_regexp=self.whitelist_regexp)
         channel_audit_results = self.audit_channels(video_audit_results, connector)
 
         # sort channels based on their video keyword hits
@@ -267,46 +196,6 @@ class Audit(SegmentedAudit):
         final_results.update(video_audit_results)
 
         return final_results
-
-    def get_channel_statistics_with_video_id(self, videos, connector):
-        """
-        Gets channel statistics for videos
-        :param videos: (list) Youtube Video data
-        :return: (dict) Mapping of channels and their statistics
-        """
-        channel_data = []
-        cursor = 0
-
-        # Can't mutuate videos as it's being used after this function call
-        while True:
-            if cursor >= len(videos):
-                break
-
-            batch = channel_data[cursor:self.youtube_max_channel_list_limit]
-            cursor += len(batch)
-            response = connector.obtain_channels(batch, part='statistics')
-            channel_data += response['items']
-
-        return channel_data
-
-    @staticmethod
-    def get_channel_id_for_username(username, connector):
-        """
-        Retrieves channel id for the given youtube username
-        :param username: (str) youtube username
-        :param connector: YoutubeAPIConnector instance
-        :return: (str) channel id
-        """
-        response = connector.obtain_user_channels(username)
-
-        try:
-            channel_id = response.get('items')[0].get('id')
-
-        except IndexError:
-            print('Could not get channel id for: {}'.format(username))
-            channel_id = None
-
-        return channel_id
 
     def process_channels(self, csv_channels):
         """
@@ -354,29 +243,7 @@ class Audit(SegmentedAudit):
 
         return final_results
 
-    @staticmethod
-    def update_video_channel_subscribers(videos, channels):
-        # Create dictionary of channel to subscriber count
-        channel_subscribers = {
-            channel['channelId']: channel['statistics']['subscriberCount']
-            for channel in channels
-        }
-
-        for video in videos:
-            channel_id = video['snippet']['channelId']
-            video['statistics']['channelSubscriberCount'] = channel_subscribers[channel_id]
-
-    def get_all_channel_video_data(self, channel_ids):
-        all_results = []
-        connector = YoutubeAPIConnector()
-
-        for id in channel_ids:
-            results = self.get_channel_videos(id, connector)
-            all_results += results
-
-        return all_results
-
-    def write_data(self, data, data_type='video', audit_type='whitelist'):
+    def write_data(self, data, data_type='video', audit_type=constants.WHITELIST):
         """
         Writes data to csv
             Creates new page of csv if row count surpasses max csv export size
@@ -433,12 +300,6 @@ class Audit(SegmentedAudit):
         metadata = video['snippet']
         statistics = video['statistics']
 
-        audit_types = {
-            'not_brand_safety': 'brand_safety_hits',
-            'whitelist': 'whitelist_hits',
-            'blacklist': 'blacklist_hits',
-        }
-
         export_row = [
             metadata.get('channelTitle'),
             'http://www.youtube.com/channel/' + metadata['channelId'],
@@ -453,42 +314,12 @@ class Audit(SegmentedAudit):
             statistics.get('dislikeCount', 0),
             statistics.get('commentCount', 0),
             csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
-            self.get_keyword_count(video.get(audit_types.get(audit_type), []))
+            self.get_keyword_count(video.get(self.audit_keyword_hit_mapping.get(audit_type), []))
         ]
 
         return export_row
 
-    def sort_channels_by_keyword_hits(self, channels):
-        """
-        Separte channels into audit categories for easier processing
-        :param channels: (list) Audited Channel Youtube data
-        :return: (dict) Sorted Channels based on on audit results
-        """
-        sorted_channels = {
-            'is_brand_safety_channels': [],
-            'not_brand_safety_channels': [],
-            'blacklist_channels': [],
-            'whitelist_channels': [],
-        }
-
-        for channel in channels:
-            if not channel['aggregatedVideoData'].get('brand_safety_hits'):
-                sorted_channels['is_brand_safety_channels'].append(channel)
-
-            if channel['aggregatedVideoData'].get('brand_safety_hits'):
-                sorted_channels['not_brand_safety_channels'].append(channel)
-
-            if channel['aggregatedVideoData'].get('blacklist_hits'):
-                sorted_channels['blacklist_channels'].append(channel)
-
-            if not channel['aggregatedVideoData'].get('brand_safety_hits') \
-                    and not channel['aggregatedVideoData'].get('blacklist_hits') \
-                    and channel['aggregatedVideoData'].get('whitelist_hits'):
-                sorted_channels['whitelist_channels'].append(channel)
-
-        return sorted_channels
-
-    def get_channel_export_row(self, channel, audit_type='whitelist'):
+    def get_channel_export_row(self, channel, audit_type=constants.WHITELIST):
         """
         Get channel csv export row
         :param channel: Audited Channel
@@ -512,21 +343,9 @@ class Audit(SegmentedAudit):
             video_data['totalAuditedVideos'],
             video_data['totalLikes'],
             video_data['totalDislikes'],
-            metadata.get('country', 'Unknown')
+            metadata.get('country', 'Unknown'),
+            self.get_keyword_count(video_data.get(self.audit_keyword_hit_mapping.get(audit_type), []))
         ]
-
-        if audit_type == 'brand_safety':
-            export_row.append(self.get_keyword_count(video_data.get('brand_safety_hits', [])))
-
-        elif audit_type == 'whitelist':
-            export_row.append(self.get_keyword_count(video_data.get('whitelist_hits', [])))
-
-        elif audit_type == 'blacklist':
-            export_row.append(self.get_keyword_count(video_data.get('blacklist_hits', [])))
-
-        else:
-            # Add more export types
-            pass
 
         return export_row
 
@@ -537,10 +356,6 @@ class Audit(SegmentedAudit):
         """
         with open(self.csv_source_file_path, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file)
-
-            # Pass over headers
-            next(csv_reader, None)
-
             rows_batch = []
 
             for row in csv_reader:
@@ -564,9 +379,6 @@ class Audit(SegmentedAudit):
             batch = []
             csv_reader = csv.DictReader(csv_file)
 
-            # Pass over headers
-            next(csv_reader, None)
-
             for row in csv_reader:
                 batch.append(row)
 
@@ -576,186 +388,4 @@ class Audit(SegmentedAudit):
 
             yield batch
 
-    def get_channel_videos(self, channel_id, connector):
-        """
-        Retrieves all videos for given channel id from Youtube Data API
-        :param channel_id: (str)
-        :param connector: YoutubeAPIConnector instance
-        :return: (list) Channel videos
-        """
-        channel_videos_full_data = []
-        channel_videos = []
-        response = connector.obtain_channel_videos(channel_id, part='snippet', order='viewCount', safe_search='strict')
 
-        channel_videos += [video['id']['videoId'] for video in response.get('items')]
-        next_page_token = response.get('nextPageToken')
-
-        while next_page_token and response.get('items'):
-            response = connector\
-                .obtain_channel_videos(channel_id, part='snippet', page_token=next_page_token, order='viewCount', safe_search='strict')
-
-            channel_videos += [video['id']['videoId'] for video in response.get('items')]
-            next_page_token = response.get('nextPageToken')
-
-        while channel_videos:
-            video_full_data_batch = channel_videos[:50]
-
-            response = connector.obtain_videos(','.join(video_full_data_batch), part='snippet,statistics')
-
-            channel_videos_full_data += response.get('items')
-            channel_videos = channel_videos[50:]
-
-        return channel_videos_full_data
-
-    @staticmethod
-    def get_keyword_count(items):
-        """
-        Counts occurrences of items in list
-        :param items: (list)
-        :return: (str)
-        """
-        counted = Counter(items)
-        return ', '.join(['{}: {}'.format(key, value) for key, value in counted.items()])
-
-    def audit_videos(self, videos):
-        """
-        Audits videos and separates them depending on their audit result (brand safety, blacklist (optional), whitelist (optional)
-        :param videos: (list) Youtubve video daata
-        :return: (dict) Video audit results
-        """
-        results = {
-            'whitelist_videos': [],
-            'blacklist_videos': [],
-            'not_brand_safety_videos': [],
-            'is_brand_safety_videos': [],
-            'ignore_brand_safety_videos': []
-        }
-
-        for video in videos:
-            self.set_language(video)
-            self.set_has_emoji(video)
-
-            # Only add English videos and add if category matches mapping
-            if video['snippet']['defaultLanguage'] != 'en' and not self.video_categories.get(
-                    video['snippet']['categoryId']):
-                continue
-
-            brand_safety_hits = self._parse_item(video, self.bad_words_regexp)
-            if brand_safety_hits:
-                self.set_keyword_hits(video, brand_safety_hits, 'brand_safety_hits')
-                results['not_brand_safety_videos'].append(video)
-
-            else:
-                results['is_brand_safety_videos'].append(video)
-
-            # If provided, more bad keywords to filter against
-            blacklist_hits = []
-            if self.blacklist_regexp:
-                blacklist_hits = self._parse_item(video, self.blacklist_regexp)
-                if blacklist_hits:
-                    self.set_keyword_hits(video, blacklist_hits, 'blacklist_hits')
-                    results['blacklist_videos'].append(video)
-
-            # If whitelist keywords provided, keywords to filter for
-            if not brand_safety_hits and not self.blacklist_regexp and not blacklist_hits and self.whitelist_regexp:
-                whitelist_hits = set(self._parse_item(video, self.whitelist_regexp))
-
-                if whitelist_hits:
-                    self.set_keyword_hits(video, whitelist_hits, 'whitelist_hits')
-                    results['whitelist_videos'].append(video)
-
-        return results
-
-    def audit_channels(self, videos, connector):
-        """
-        Uses audited video data to extrapolate channel audit results
-        :param videos: (list) Audited Youtube Videos
-        :param connector: YoutubeAPIConnector instance
-        :return: (list) Channel Youtube data with aggregated video audit results
-        """
-        if not videos:
-            return []
-
-        channel_data = {}
-
-        for video in videos:
-            channel_id = video['snippet']['channelId']
-            channel_data[channel_id] = channel_data.get(channel_id, {})
-            channel_data[channel_id]['aggregatedVideoData'] = channel_data[channel_id].get('aggregatedVideoData', {
-                'totalLikes': 0,
-                'totalDislikes': 0,
-                'whitelist_hits': [],
-                'blacklist_hits': [],
-                'brand_safety_hits': []
-            })
-            channel_data[channel_id]['aggregatedVideoData']['totalAuditedVideos'] = channel_data[channel_id]['aggregatedVideoData'].get('totalAuditedVideos', 0) + 1
-            channel_data[channel_id]['aggregatedVideoData']['totalLikes'] += int(video['statistics'].get('likeCount', 0))
-            channel_data[channel_id]['aggregatedVideoData']['totalDislikes'] += int(video['statistics'].get('dislikeCount', 0))
-
-            channel_data[channel_id]['aggregatedVideoData']['brand_safety_hits'] += video.get('brand_safety_hits', [])
-            channel_data[channel_id]['aggregatedVideoData']['blacklist_hits'] += video.get('blacklist_hits', [])
-            channel_data[channel_id]['aggregatedVideoData']['whitelist_hits'] += video.get('whitelist_hits', [])
-
-            channel_data[channel_id]['categoryCount'] = channel_data[channel_id].get('categoryCount', [])
-            channel_data[channel_id]['categoryCount'].append(video['snippet'].get('categoryId'))
-
-            # if not channel_data[channel_id]['has_emoji']:
-            #     channel_data[channel_id]['has_emoji'] = False
-            #
-            # else:
-            #     if video['has_emoji']:
-            #         channel_data[channel_id]['has_emoji'] = True
-
-        channel_ids = list(channel_data.keys())
-
-        while channel_ids:
-            batch = ','.join(channel_ids[:50])
-            response = connector.obtain_channels(batch, part='snippet,statistics').get('items')
-
-            for item in response:
-                channel_id = item['id']
-                self.set_language(item)
-                channel_data[channel_id]['type'] = 'channel'
-                channel_data[channel_id]['channelId'] = channel_id
-                channel_data[channel_id]['statistics'] = item['statistics']
-                channel_data[channel_id]['snippet'] = item['snippet']
-
-            channel_ids = channel_ids[50:]
-
-        return list(channel_data.values())
-
-    def set_has_emoji(self, item):
-        item['has_emoji'] = bool(self._parse_item(item, self.emoji_regexp))
-
-    @staticmethod
-    def set_language(item):
-        lang = item['snippet'].get('defaultLanguage')
-
-        if lang is None:
-            text = item['snippet']['title'] + ' ' + item['snippet']['description']
-            item['snippet']['defaultLanguage'] = langid.classify(text)[0].lower()
-
-    @staticmethod
-    def chunks(l, n):
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
-    @staticmethod
-    def _parse_item(item, regexp):
-        item = item['snippet']
-
-        text = ''
-        text += item.get('title', '')
-        text += item.get('description', '')
-        text += item.get('channelTitle', '')
-        text += item.get('transcript', '')
-
-        if item.get('tags'):
-            text += ' '.join(item['tags'])
-
-        return re.findall(regexp, text)
-
-
-    @staticmethod
-    def set_keyword_hits(video, hits, keyword_type):
-        video[keyword_type] = hits
