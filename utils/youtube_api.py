@@ -47,38 +47,6 @@ class YoutubeAPIConnector(object):
             developerKey=self.developer_key
         )
 
-    def obtain_video_metadata(self,
-                              videos_ids,
-                              part="id,snippet",
-                              max_results=50,
-                              page_token=None):
-        """
-        Obtain Video metadata
-        """
-        options = {
-            "part": part,
-            "maxResults": max_results,
-            "id": videos_ids
-        }
-        if page_token:
-            options["pageToken"] = page_token
-        return self.__execute_call(self.youtube.videos().list(**options))
-
-    def get_related_videos(self, video_id, page_token = None, max_results=50):
-        """
-        Get related videos
-        """
-        options = {
-            'part': 'snippet',
-            'type': 'video',
-            'relatedToVideoId': video_id,
-            "maxResults": max_results,
-        }
-        if page_token is not None:
-            options['pageToken'] = page_token
-
-        return self.__execute_call(self.youtube.search().list(**options))
-
     def keyword_search(self, keyword, part="snippet", search_type="channel",
                        max_results=50, safe_search="none", page_token=None):
         """
@@ -197,7 +165,7 @@ class YoutubeAPIConnector(object):
                 tries_count += 1
                 if tries_count <= self.max_connect_retries:
                     sleep_seconds_count = self.max_connect_retries \
-                                            ** self.retry_sleep_coefficient
+                                          ** self.retry_sleep_coefficient
                     time.sleep(sleep_seconds_count)
             else:
                 return result
