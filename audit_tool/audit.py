@@ -1,6 +1,6 @@
 from brand_safety.models import BadWord
 from .auditor import AuditService
-from .youtube_data_provider import YoutubeDataProvider
+from singledb.connector import SingleDatabaseApiConnector as Connector
 import csv
 import re
 from multiprocessing import Pool
@@ -39,7 +39,8 @@ class AuditProvider(object):
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
 
-        self.brand_safety_regexp = self.compile_audit_regexp(self.get_all_bad_words())
+        # self.brand_safety_regexp = self.compile_audit_regexp(self.get_all_bad_words())
+        self.brand_safety_regexp = self.get_brand_safety_regexp()
         self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
         self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
 
@@ -178,8 +179,19 @@ class AuditProvider(object):
         return final_results
 
     def prepare_results(self, data, data_type, audit_type):
-        if data_type == 'video' and audit_type == constants.BLACKLIST:
-            csv_ref = self.csv_pages[constants.constants.BLACKLIST_VIDEOS]
+        if data_type == 'video':
+            if audit_type == constants.BLACKLIST:
+                csv_ref = self.csv_pages[constants.BLACKLIST_VIDEOS]
+
+            if audit_type == constants.WHITELIST:
+                csv_ref = self.csv_pages[constants.WHITELIST_VIDEOS]
+
+        if data_type == 'channel':
+            if audit_type == constants.BLACKLIST:
+                csv_ref = self.csv_pages[constants.BLACKLIST_CHANNELS]
+
+            if audit_type == constants.WHITELIST:
+                csv_ref = self.csv_pages[constants.WHITELIST_CHANNELS]
 
         csv_export_path = self.get_export_path(csv_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type)
         self.write_data(data, csv_export_path, csv_ref, data_type, audit_type)
@@ -236,6 +248,10 @@ class AuditProvider(object):
                         continue
 
                     row = audit.get_export_row(audit_type)
+
+                    if data_type == 'channel':
+                        print(row)
+
                     writer.writerow(row)
                     csv_ref['count'] += 1
 
@@ -300,8 +316,6 @@ class AuditProvider(object):
         bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
 
-        bad_words_names = ['fuck']
-
         return bad_words_names
 
     @staticmethod
@@ -328,3 +342,10 @@ class AuditProvider(object):
             )
 
         return keyword_regexp
+
+    def get_brand_safety_regexp(self):
+        connector = Connector()
+        keywords = [item['name'] for item in connector.get_bad_words_list({})]
+        compiled = self.compile_audit_regexp(keywords)
+
+        return compiled

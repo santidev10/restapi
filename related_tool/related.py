@@ -1,6 +1,7 @@
 from utils.youtube_api import YoutubeAPIConnector
 from audit_tool.audit import AuditProvider
 from audit_tool.auditor import AuditService
+from singledb.connector import SingleDatabaseApiConnector as Connector
 from .models import RelatedVideo
 import csv
 import re
@@ -10,12 +11,11 @@ from psycopg2 import IntegrityError as PostgresIntegrityError
 
 class Related(object):
     youtube_video_limit = 50
-    video_batch_size = 10
-    max_process_count = 12
-    max_batch_size = 50
-    video_processing_batch_size = 100
-    max_database_size = 2000
-    csv_export_limit = 50000
+    max_batch_size = 1000
+    video_processing_batch_size = 200
+    max_process_count = 10
+    max_database_size = 750000
+    csv_export_limit = 100000
     page_number = 1
     export_count = 0
     headers = ['Video Title', 'Video URL', 'Video ID', 'Video Description', 'Channel Title', 'Channel URL',
@@ -30,10 +30,9 @@ class Related(object):
         self.export_path = kwargs.get('export')
         self.export_title = kwargs.get('title')
         self.return_results = kwargs.get('return')
+        self.provider = AuditProvider()
         self.auditor = AuditService()
-
-        provider = AuditProvider()
-        self.brand_safety_regexp = provider.brand_safety_regexp
+        self.brand_safety_regexp = self.provider.get_brand_safety_regexp()
 
     def run(self):
         print('Starting related video retrieval process...')
@@ -86,7 +85,7 @@ class Related(object):
 
             self._bulk_create_seed_videos(audited_videos)
 
-            video_ids = video_ids[self.video_batch_size:]
+            video_ids = video_ids[self.youtube_video_limit:]
 
         print('Total seed videos added:', RelatedVideo.objects.all().count())
 

@@ -129,10 +129,6 @@ class Audit(object):
     def set_keyword_terms(self, keywords, attribute):
         setattr(self, attribute, keywords)
 
-    def get_keyword_count(self, items):
-        counted = Counter(items)
-        return ', '.join(['{}: {}'.format(key, value) for key, value in counted.items()])
-
     def get_language(self, data):
         language = data['snippet'].get('defaultLanguage', None)
 
@@ -163,6 +159,10 @@ class Audit(object):
         has_emoji = bool(re.search(self.emoji_regexp, text))
         return has_emoji
 
+    @staticmethod
+    def get_keyword_count(items):
+        counted = Counter(items)
+        return ', '.join(['{}: {}'.format(key, value) for key, value in counted.items()])
 
 class VideoAudit(Audit):
     def __init__(self, data, audits):
@@ -208,12 +208,12 @@ class VideoAudit(Audit):
 
 
 class ChannelAudit(Audit):
-    def __init__(self, video_audits: VideoAudit, audits, channel_data):
+    def __init__(self, video_audits, audits, channel_data):
+        self.results = {}
         self.video_audits = video_audits
         self.audits = audits
         self.metadata = self.get_metadata(channel_data)
         self.update_aggregate_video_audit_data()
-        self.results = {}
 
     def get_metadata(self, channel_data):
         metadata = {
@@ -261,6 +261,10 @@ class ChannelAudit(Audit):
                 pass
 
                 aggregated_data['category'].append(video.metadata['category'])
+
+            # Try to update the video's country with current channel's country
+            if video.metadata['country'] == 'Unknown':
+                video.metadata['country'] = self.metadata['country']
 
             for audit in self.audits:
                 audit_type = audit['type']
