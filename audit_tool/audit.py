@@ -1,10 +1,12 @@
-from .auditor import Auditor
-from utils.youtube_api import YoutubeAPIConnector
+from brand_safety.models import BadWord
+from .auditor import AuditService
+from .youtube_data_provider import YoutubeDataProvider
 import csv
+import re
 from multiprocessing import Pool
 from . import audit_constants as constants
 
-class Audit(object):
+class AuditProvider(object):
     max_process_count = 5
     video_chunk_size = 10000
     video_batch_size = 30000
@@ -12,6 +14,9 @@ class Audit(object):
     channel_chunk_size = 10
     channel_row_data = {}
     max_csv_export_count = 50000
+    video_id_regexp = re.compile('(?<=video/).*')
+    channel_id_regexp = re.compile('(?<=channel/).*')
+    username_regexp = re.compile('(?<=user/).*')
     csv_pages = {
         constants.BRAND_SAFETY_PASS_VIDEOS: {'count': 0, 'page': 1},
         constants.BRAND_SAFETY_FAIL_VIDEOS: {'count': 0, 'page': 1},
@@ -24,28 +29,46 @@ class Audit(object):
         constants.BLACKLIST_CHANNELS: {'count': 0, 'page': 1},
     }
 
-    video_csv_headers = ['Channel Name', 'Channel URL', 'Video Name', 'Video URL', 'Emoji Y/N', 'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Country', 'Keyword Hits']
+    video_csv_headers = ['Channel Name', 'Channel URL', 'Channel Subscribers', 'Video Name', 'Video URL', 'Emoji Y/N', 'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Keyword Hits']
     channel_csv_headers = ['Channel Title', 'Channel URL', 'Language', 'Category', 'Videos', 'Channel Subscribers', 'Total Views', 'Audited Videos', 'Total Likes', 'Total Dislikes', 'Country', 'Keyword Hits']
 
     def __init__(self, *args, **kwargs):
         super().__init__()
-
-        # self.youtube_connector = YoutubeAPIConnector()
-        self.auditor = Auditor()
         self.audit_type = kwargs.get('type')
         self.csv_source_file_path = kwargs.get('file')
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
-        self.whitelist_regexp = self.auditor.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.auditor.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
+
+        self.brand_safety_regexp = self.compile_audit_regexp(self.get_all_bad_words())
+        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
+        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
+
+        audits = [
+            {
+                'type': constants.BRAND_SAFETY,
+                'regexp': self.brand_safety_regexp,
+
+            },
+            {
+                'type': constants.BLACKLIST,
+                'regexp': self.blacklist_regexp,
+
+            },
+            {
+                'type': constants.WHITELIST,
+                'regexp':self.whitelist_regexp,
+
+            },
+        ]
+
+        self.audits = [audit for audit in audits if audit['regexp'] is not None]
 
     def run(self):
-        print('starting...')
-        target, data_generator, result_processor, chunk_size = self.get_processor()
+        print('Starting audit...')
+        target, data_generator, result_processor, chunk_size = self.get_audit_config()
+        self.process(target, data_generator, result_processor, chunk_size=chunk_size)
 
-        self.run_processor(target, data_generator, result_processor, chunk_size=chunk_size)
-
-    def get_processor(self):
+    def get_audit_config(self):
         if self.audit_type == 'video':
             return self.process_videos, self.video_data_generator, self.process_results, self.video_chunk_size
 
@@ -55,12 +78,12 @@ class Audit(object):
         else:
             print('Audit type not supported: {}'.format(self.audit_type))
 
-    def run_processor(self, target, generator, result_processor, chunk_size=5000):
+    def process(self, target, generator, result_processor, chunk_size=5000):
         pool = Pool(processes=self.max_process_count)
         items_seen = 0
 
         for batch in generator():
-            chunks = self.auditor.chunks(batch, chunk_size)
+            chunks = self.chunks(batch, chunk_size)
             all_results = pool.map(target, chunks)
 
             result_processor(all_results)
@@ -70,84 +93,46 @@ class Audit(object):
 
         print('Complete!')
 
-    def process_results(self, results: list):
-        """
-        Extracts results from results (nested lists from processes) and writes data
-        :param results:
-        :return:
-        """
-        all_results = {
-            constants.BRAND_SAFETY_PASS_VIDEOS: {
-                'results': [],
-                'options': {
-                    'data_type': 'video',
-                    'audit_type': constants.BRAND_SAFETY_PASS,
-                }
-            },
-            constants.BRAND_SAFETY_FAIL_VIDEOS: {
-                'results': [],
-                'options': {
-                    'data_type': 'video',
-                    'audit_type': constants.BRAND_SAFETY_FAIL
-                }
-            },
-            constants.BLACKLIST_VIDEOS: {
-                'results': [],
-                'options': {
-                    'data_type': 'video',
-                    'audit_type': constants.BLACKLIST
-                }
-            },
-            constants.WHITELIST_VIDEOS: {
-                'results': [],
-                'options': {
-                    'data_type': 'video',
-                    'audit_type': constants.WHITELIST
-                }
-            },
-            constants.BRAND_SAFETY_PASS_CHANNELS: {
-                'results': [],
-                'options': {
-                    'data_type': 'channel',
-                    'audit_type': constants.BRAND_SAFETY_PASS,
-                }
-            },
-            constants.BRAND_SAFETY_FAIL_CHANNELS: {
-                'results': [],
-                'options': {
-                    'data_type': 'channel',
-                    'audit_type': constants.BRAND_SAFETY_FAIL
-                }
-            },
-            constants.BLACKLIST_CHANNELS: {
-                'results': [],
-                'options': {
-                    'data_type': 'channel',
-                    'audit_type': constants.BLACKLIST
-                }
-            },
-            constants.WHITELIST_CHANNELS: {
-                'results': [],
-                'options': {
-                    'data_type': 'channel',
-                    'audit_type': constants.WHITELIST
-                }
-            },
-        }
+    def process_results(self, results):
+        video_results = {}
+        channel_results = {}
 
-        for result in results:
-            all_results[constants.BRAND_SAFETY_PASS_VIDEOS]['results'] += result[constants.BRAND_SAFETY_PASS_VIDEOS]
-            all_results[constants.BRAND_SAFETY_FAIL_VIDEOS]['results'] += result[constants.BRAND_SAFETY_FAIL_VIDEOS]
-            all_results[constants.BLACKLIST_VIDEOS]['results'] += result[constants.BLACKLIST_VIDEOS]
-            all_results[constants.WHITELIST_VIDEOS]['results'] += result[constants.WHITELIST_VIDEOS]
+        for batch_result in results:
+            video_audits = batch_result['video_audit_results']
+            channel_audits = batch_result['channel_audit_results']
 
-            all_results[constants.BRAND_SAFETY_PASS_CHANNELS]['results'] += result[constants.BRAND_SAFETY_PASS_CHANNELS]
-            all_results[constants.BRAND_SAFETY_FAIL_CHANNELS]['results'] += result[constants.BRAND_SAFETY_FAIL_CHANNELS]
-            all_results[constants.BLACKLIST_CHANNELS]['results'] += result[constants.BLACKLIST_CHANNELS]
-            all_results[constants.WHITELIST_CHANNELS]['results'] += result[constants.WHITELIST_CHANNELS]
+            for audit in self.audits:
+                audit_type = audit['type']
+                cursor = 0
 
-        for result in all_results.values():
-            self.write_data(result['results'], **result['options'])
+                while cursor <= len(video_audits) or cursor <= len(channel_audits):
+                    try:
+                        video_audit = video_audits[cursor]
+                        video_results[audit_type] = video_results.get(audit_type, [])
+                        video_results[audit_type].append(video_audit)
+
+                    except IndexError:
+                        pass
+
+                    try:
+                        channel_audit = channel_audits[cursor]
+                        channel_results[audit_type] = channel_results.get(audit_type, [])
+                        channel_results[audit_type].append(channel_audit)
+                    except IndexError:
+                        pass
+
+                    cursor += 1
+
+        for audit in self.audits:
+            audit_type = audit['type']
+
+            if audit_type == constants.BRAND_SAFETY:
+                self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
+                self.prepare_brand_safety_results(channel_results[audit_type], data_type='channel', audit_type=audit_type)
+
+            else:
+                self.prepare_results(video_results[audit_type], 'video', audit_type)
+                self.prepare_results(channel_results[audit_type], 'channel', audit_type)
 
     def process_videos(self, csv_videos):
         """
@@ -156,198 +141,113 @@ class Audit(object):
         :return:
         """
         final_results = {}
-        all_videos = []
-        connector = YoutubeAPIConnector()
 
-        while csv_videos:
-            # Needs to be 50 for youtube limit
-            batch = csv_videos[:50]
-            batch_ids = ','.join([video.get('video_id') for video in batch])
+        auditor = AuditService()
+        auditor.set_audits(self.audits)
 
-            response = connector.obtain_videos(batch_ids, part='snippet,statistics').get('items')
+        video_ids = [
+            video['video_id'] if video.get('video_id')
+            else re.search(self.video_id_regexp, video['video_url']).group()
+            for video in csv_videos
+        ]
 
-            if not video.get('channel_subscribers'):
-                channel_statistics_data = self.auditor.get_channel_statistics_with_video_data(response, connector)
-                video_channel_subscriber_ref = {
-                    channel['id']: channel['statistics']['subscribers']
-                    for channel in channel_statistics_data
-                }
+        video_audit_results = auditor.audit_videos(video_ids=video_ids)
+        channel_audit_results = auditor.audit_channels(video_audit_results)
 
-            else:
-                # Provided csv video data will have channel subscribers
-                video_channel_subscriber_ref = {
-                    video.get('video_id'): video.get('channel_subscribers')
-                    for video in batch
-                }
-
-            for video in response:
-                video['statistics']['channelSubscriberCount'] = video_channel_subscriber_ref[video['id']]
-
-            all_videos += response
-            csv_videos = csv_videos[50:]
-
-        video_audit_results = self.auditor.audit_videos(all_videos, blacklist_regexp=self.blacklist_regexp, whitelist_regexp=self.whitelist_regexp)
-        channel_audit_results = self.auditor.audit_channels(video_audit_results, connector)
-
-        # sort channels based on their video keyword hits
-        sorted_channels = self.auditor.sort_channels_by_keyword_hits(channel_audit_results)
-
-        final_results.update(sorted_channels)
-        final_results.update(video_audit_results)
+        final_results['video_audit_results'] = video_audit_results
+        final_results['channel_audit_results'] = channel_audit_results
 
         return final_results
 
     def process_channels(self, csv_channels):
-        """
-        Processes videos and aggregates video data to audit channels
-            final_results stores the results of both channel audit and video audit
-        :param csv_channels: (generator) Yields csv rows
-        :return:
-        """
         final_results = {}
-        all_videos = []
-        connector = YoutubeAPIConnector()
+        auditor = AuditService(self.audits)
 
-        for row in csv_channels:
-            channel_id = self.auditor.channel_id_regexp.search(row.get('channel_url'))
+        channel_ids = [
+            channel['channel_id'] if channel.get('channel_id')
+            else re.search(self.channel_id_regexp, channel['channel_url']).group()
+            for channel in csv_channels
+        ]
 
-            if channel_id:
-                channel_id = channel_id.group()
+        video_audit_results = auditor.audit_videos(channel_ids=channel_ids)
+        channel_audit_results = auditor.audit_channels(video_audit_results)
 
-            else:
-                # If no channel id, then get user name to retrieve channel id
-                username = self.auditor.username_regexp.search(row.get('channel_url')).group()
-                channel_id = self.auditor.get_channel_id_for_username(username, connector)
-
-                if not channel_id:
-                    continue
-
-            channel_videos = self.auditor.get_channel_videos(channel_id, connector)
-            all_videos += channel_videos
-
-        # audit_videos func sets keyword hits key on each video and returns sorted videos
-        video_audit_results = self.auditor.audit_videos(all_videos)
-
-        all_video_audit_results = sum(video_audit_results.values(), [])
-
-        # audit_channels aggregates all the videos for each channels
-        channel_audit_results = self.auditor.audit_channels(all_video_audit_results, connector)
-
-        self.auditor.update_video_channel_subscribers(all_video_audit_results, channel_audit_results)
-
-        # sort channels based on their video keyword hits
-        sorted_channels = self.auditor.sort_channels_by_keyword_hits(channel_audit_results)
-
-        final_results.update(sorted_channels)
-        final_results.update(video_audit_results)
+        final_results['video_audit_results'] = video_audit_results
+        final_results['channel_audit_results'] = channel_audit_results
 
         return final_results
 
-    def write_data(self, data, data_type='video', audit_type=constants.WHITELIST):
-        """
-        Writes data to csv
-            Creates new page of csv if row count surpasses max csv export size
-        :param data: (list) data to write
-        :param data_type: video or channel (to get export row)
-        :param audit_type: is_brand_safety, not_brand_safety, whitelist, blacklist
-        :return: None
-        """
+    def prepare_results(self, data, data_type, audit_type):
+        if data_type == 'video' and audit_type == constants.BLACKLIST:
+            csv_ref = self.csv_pages[constants.constants.BLACKLIST_VIDEOS]
+
+        csv_export_path = self.get_export_path(csv_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type)
+        self.write_data(data, csv_export_path, csv_ref, data_type, audit_type)
+
+    def prepare_brand_safety_results(self, data, data_type='video', audit_type=constants.BRAND_SAFETY):
+        csv_pass_ref = self.csv_pages[constants.BRAND_SAFETY_PASS_VIDEOS] if data_type == 'video' else self.csv_pages[constants.BRAND_SAFETY_PASS_CHANNELS]
+        csv_fail_ref = self.csv_pages[constants.BRAND_SAFETY_FAIL_VIDEOS] if data_type == 'video' else self.csv_pages[constants.BRAND_SAFETY_FAIL_CHANNELS]
+
+        brand_safety_pass_path = self.get_export_path(csv_pass_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type, identifier='PASS')
+        brand_safety_fail_path = self.get_export_path(csv_fail_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type, identifier='FAIL')
+
+        self.write_data(data, brand_safety_pass_path, csv_pass_ref, data_type, audit_type, brand_safety=constants.BRAND_SAFETY_PASS)
+        self.write_data(data, brand_safety_fail_path, csv_fail_ref, data_type, audit_type, brand_safety=constants.BRAND_SAFETY_FAIL)
+
+    def get_export_path(self, csv_page, export_dir, title, data_type, audit_type, identifier=''):
+        export_path = '{dir}Page{page}{title}{data_type}{audit_type}{identifier}.csv'.format(
+            page=csv_page,
+            dir=export_dir,
+            title=title,
+            data_type=data_type,
+            audit_type=audit_type.capitalize(),
+            identifier=identifier
+        )
+        return export_path
+
+    def write_data(self, data, export_path, csv_ref, data_type, audit_type, brand_safety=constants.BRAND_SAFETY_PASS):
         if not data:
             print('No data for: {} {}'.format(data_type, audit_type))
             return
 
         # Sort items by channel title
-        sort_key = 'channelId' if data_type == 'video' else 'title'
-        data.sort(key=lambda item: item['snippet'][sort_key])
+        data.sort(key=lambda audit: audit.metadata['channel_title'])
 
         while True:
             next_page = False
-            csv_pages_key = '{}_{}s'.format(audit_type, data_type)
-            export_path = '{dir}Page{page}{title}{data_type}{audit_type}.csv'.format(
-                page=self.csv_pages[csv_pages_key]['page'],
-                dir=self.csv_export_dir,
-                title=self.csv_export_title,
-                data_type=data_type,
-                audit_type=audit_type.capitalize(),
-            )
 
             with open(export_path, mode='a') as export_file:
                 writer = csv.writer(export_file, delimiter=',')
 
-                if self.csv_pages[csv_pages_key]['count'] == 0:
+                if csv_ref['count'] == 0:
                     if data_type == 'video':
                         writer.writerow(self.video_csv_headers)
 
                     else:
                         writer.writerow(self.channel_csv_headers)
 
-                for index, item in enumerate(data):
-                    row = self.get_video_export_row(item, audit_type) if data_type == 'video' else self.get_channel_export_row(item, audit_type)
+                for index, audit in enumerate(data):
+                    # If brand safety pass and results contains brand safety keyword hits, do not write
+                    if brand_safety == constants.BRAND_SAFETY_PASS and audit.results[constants.BRAND_SAFETY]:
+                        continue
+
+                    # If brand safety fail and results do not contain brand safety hits, do not write
+                    elif brand_safety == constants.BRAND_SAFETY_FAIL and not audit.results[constants.BRAND_SAFETY]:
+                        continue
+
+                    row = audit.get_export_row(audit_type)
                     writer.writerow(row)
-                    self.csv_pages[csv_pages_key]['count'] += 1
+                    csv_ref['count'] += 1
 
                     # Create a new page (csv file) to write results to if count exceeds csv export limit
-                    if self.csv_pages[csv_pages_key]['count'] >= self.max_csv_export_count:
-                        self.csv_pages[csv_pages_key]['page'] += 1
+                    if csv_ref['count'] >= self.max_csv_export_count:
+                        csv_ref['page'] += 1
                         data = data[index + 1:]
                         next_page = True
                         break
 
             if next_page is False:
                 break
-
-    def get_video_export_row(self, video, audit_type, csv_data={}):
-        metadata = video['snippet']
-        statistics = video['statistics']
-
-        export_row = [
-            metadata.get('channelTitle'),
-            'http://www.youtube.com/channel/' + metadata['channelId'],
-            metadata['title'],
-            'http://www.youtube.com/video/' + video['id'],
-            video['has_emoji'],
-            statistics.get('viewCount', 0),
-            metadata['description'],
-            self.auditor.categories.get(metadata['categoryId']),
-            metadata.get('defaultLanguage'),
-            statistics.get('likeCount', 0),
-            statistics.get('dislikeCount', 0),
-            statistics.get('commentCount', 0),
-            csv_data.get('channel_subscribers') or statistics['channelSubscriberCount'],
-            self.auditor.get_keyword_count(video.get(self.auditor.audit_keyword_hit_mapping.get(audit_type), []))
-        ]
-
-        return export_row
-
-    def get_channel_export_row(self, channel, audit_type=constants.WHITELIST):
-        """
-        Get channel csv export row
-        :param channel: Audited Channel
-        :param audit_type: is_brand_safety, not_brand_safety, whitelist, blacklist
-        :return: (list) Export row
-        """
-        channel_id = channel['channelId']
-        metadata = channel['snippet']
-        statistics = channel['statistics']
-        video_data = channel['aggregatedVideoData']
-        channel_category_id = max(channel['categoryCount'], key=channel['categoryCount'].count)
-
-        export_row = [
-            metadata['title'],
-            'http://www.youtube.com/channel/' + channel_id,
-            metadata['defaultLanguage'],
-            self.auditor.categories[channel_category_id],
-            statistics['videoCount'],
-            statistics['subscriberCount'],
-            statistics['viewCount'],
-            video_data['totalAuditedVideos'],
-            video_data['totalLikes'],
-            video_data['totalDislikes'],
-            metadata.get('country', 'Unknown'),
-            self.auditor.get_keyword_count(video_data.get(self.auditor.audit_keyword_hit_mapping.get(audit_type), []))
-        ]
-
-        return export_row
 
     def video_data_generator(self):
         """
@@ -359,8 +259,7 @@ class Audit(object):
             rows_batch = []
 
             for row in csv_reader:
-                video_id = self.auditor.video_id_regexp.search(row.pop('url')).group()
-                # rows_batch[video_id] = row
+                video_id = self.video_id_regexp.search(row.pop('video_url')).group()
                 row['video_id'] = video_id
                 rows_batch.append(row)
 
@@ -388,4 +287,44 @@ class Audit(object):
 
             yield batch
 
+    @staticmethod
+    def chunks(iterable, length):
+        """
+        Generator that yields equal sized lists
+        """
+        for i in range(0, len(iterable), length):
+            yield iterable[i:i + length]
 
+    @staticmethod
+    def get_all_bad_words():
+        bad_words_names = BadWord.objects.values_list("name", flat=True)
+        bad_words_names = list(set(bad_words_names))
+
+        bad_words_names = ['fuck']
+
+        return bad_words_names
+
+    @staticmethod
+    def compile_audit_regexp(keywords: list):
+        """
+        Compiles regular expression with given keywords
+        :param keywords: List of keyword strings
+        :return: Compiled Regular expression
+        """
+        regexp = re.compile(
+            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]))
+        )
+        return regexp
+
+    @staticmethod
+    def read_and_create_keyword_regexp(csv_path):
+        with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            keywords = list(csv_reader)
+
+            keyword_regexp = re.compile(
+                '|'.join([word[0] for word in keywords]),
+                re.IGNORECASE
+            )
+
+        return keyword_regexp

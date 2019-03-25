@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from audit_tool.audit import Audit
+from audit_tool.audit import AuditProvider
 import logging
 
 from pid.decorator import pidfile
@@ -37,5 +37,5 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        audit = Audit(*args, **kwargs)
+        audit = AuditProvider(*args, **kwargs)
         audit.run()

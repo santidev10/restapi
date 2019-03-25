@@ -1,8 +1,11 @@
 from utils.youtube_api import YoutubeAPIConnector
-from audit_tool.auditor import Auditor
+from audit_tool.audit import AuditProvider
+from audit_tool.auditor import AuditService
+from audit_tool.auditor import VideoAudit
 from .models import RelatedVideo
 import csv
 import re
+from audit_tool import audit_constants as constants
 from multiprocessing import Pool
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
@@ -31,6 +34,10 @@ class Related(object):
         self.export_path = kwargs.get('export')
         self.export_title = kwargs.get('title')
         self.return_results = kwargs.get('return')
+        self.auditor = AuditService()
+
+        provider = AuditProvider()
+        self.brand_safety_regexp = provider.brand_safety_regexp
 
     def run(self):
         print('Starting related video retrieval process...')
@@ -71,14 +78,19 @@ class Related(object):
         """
         while video_ids:
             video_batch = video_ids[:self.youtube_video_limit]
-            video_ids_term = ','.join(video_batch)
+            video_ids = ','.join(video_batch)
             # Get metadata for the videos
-            response = self.yt_connector.obtain_video_metadata(video_ids_term)
-
+            response = self.yt_connector.obtain_videos(video_ids)
             video_data = response['items']
-            print('Creating {} videos.'.format(len(video_data)))
 
-            self._bulk_create_seed_videos(video_data)
+            audited_videos = [
+                video for video in video_data
+                if self.auditor.parse_video(video, self.brand_safety_regexp)
+            ]
+
+            print('Creating {} videos.'.format(len(audited_videos)))
+
+            self._bulk_create_seed_videos(audited_videos)
 
             video_ids = video_ids[self.video_batch_size:]
 
@@ -200,17 +212,27 @@ class Related(object):
             response = yt_connector.get_related_videos(video.video_id)
             items = response['items']
 
+            audited_videos = [
+                video for video in items
+                if self.auditor.parse_video(video, self.brand_safety_regexp)
+            ]
+
             page_token = response.get('nextPageToken')
 
-            related_videos = self.prepare_related_items(video, items)
+            related_videos = self.prepare_related_items(video, audited_videos)
             all_related_videos += related_videos
 
             while page_token and items:
                 response = yt_connector.get_related_videos(video.video_id, page_token=page_token)
                 items = response['items']
 
+                audited_videos = [
+                    video for video in items
+                    if self.auditor.parse_video(video, self.brand_safety_regexp)
+                ]
+
                 page_token = response.get('nextPageToken')
-                related_videos = self.prepare_related_items(video, items)
+                related_videos = self.prepare_related_items(video, audited_videos)
 
                 all_related_videos += related_videos
 
@@ -368,4 +390,3 @@ class Related(object):
     def chunks(iterable, length):
         for i in range(0, len(iterable), length):
             yield iterable[i:i + length]
-

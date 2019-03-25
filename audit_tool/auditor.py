@@ -1,50 +1,14 @@
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from brand_safety.models import BadWord
+from .youtube_data_provider import YoutubeDataProvider
 from collections import Counter
-import csv
 import re
 import langid
 from . import audit_constants as constants
 
-class Auditor(object):
-    youtube_max_channel_list_limit = 50
+class AuditService(object):
     video_id_regexp = re.compile('(?<=video/).*')
     channel_id_regexp = re.compile('(?<=channel/).*')
     username_regexp = re.compile('(?<=user/).*')
-    emoji_regexp = re.compile(u"["
-                               u"\U0001F600-\U0001F64F"  # emoticons
-                               u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                               u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                               u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                               "]", flags=re.UNICODE)
-    categories = {
-        '1': 'Film & Animation',
-        '2': 'Autos & Vehicles',
-        '10': 'Music',
-        '15': 'Pets & Animals',
-        '17': 'Sports',
-        '18': 'Short Movies',
-        '19': 'Travel & Events',
-        '20': 'Gaming',
-        '21': 'Videoblogging',
-        '22': 'People & Blogs',
-        '23': 'Comedy',
-        '24': 'Entertainment',
-        '25': 'News & Politics',
-        '26': 'Howto & Style',
-        '27': 'Education',
-        '28': 'Science & Technology',
-        '29': 'Nonprofits & Activism',
-        '30': 'Movies',
-        '31': 'Anime / Animation',
-        '32': 'Action / Adventure',
-        '33': 'Classics',
-        '34': 'Comedy',
-        '37': 'Family',
-        '42': 'Shorts',
-        '43': 'Shows',
-        '44': 'Trailers'
-    }
     audit_keyword_hit_mapping = {
         constants.BRAND_SAFETY_FAIL: constants.BRAND_SAFETY_HITS,
         constants.WHITELIST: constants.WHITELIST_HITS,
@@ -52,62 +16,19 @@ class Auditor(object):
     }
 
     def __init__(self):
-        self.brand_safety_tags_regexp = self.compile_audit_regexp(self.get_all_bad_words())
+        self.youtube_data_provider = YoutubeDataProvider()
+        self.sdb_connector = Connector()
 
-    @staticmethod
-    def read_and_create_keyword_regexp(csv_path):
-        with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            keywords = list(csv_reader)
+    def set_audits(self, audits):
+        for audit in audits:
+            if audit:
+                setattr(self, audit['type'], audit['regexp'])
 
-            keyword_regexp = re.compile(
-                '|'.join([word[0] for word in keywords]),
-                re.IGNORECASE
-            )
+        self.audits = audits
 
-        return keyword_regexp
-
-    @staticmethod
-    def get_all_bad_words():
-        bad_words_names = BadWord.objects.values_list("name", flat=True)
-        bad_words_names = list(set(bad_words_names))
-
-        return bad_words_names
-
-    @staticmethod
-    def compile_audit_regexp(keywords: list):
-        """
-        Compiles regular expression with given keywords
-        :param keywords: List of keyword strings
-        :return: Compiled Regular expression
-        """
-        regexp = re.compile(
-            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]))
-        )
-        return regexp
-
-    @staticmethod
-    def update_video_channel_subscribers(videos, channels):
-        """
-        Uses channels data to update videos with their respective channel statistics
-        :param videos: Youtube Data API objects
-        :param channels: Youtube Data API objects with statistics data
-        :return:
-        """
-        channel_subscribers = {
-            channel['channelId']: channel['statistics']['subscriberCount']
-            for channel in channels
-        }
-
-        for video in videos:
-            channel_id = video['snippet']['channelId']
-            video['statistics']['channelSubscriberCount'] = channel_subscribers[channel_id]
-
-    @staticmethod
-    def connector_get_channel_videos(connector: Connector, channel_ids: list, fields: str) -> list:
+    def connector_get_channel_videos(self, channel_ids: list, fields: str) -> list:
         """
         Retrieves all videos associated with channel_ids from Singledb
-        :param connector: SingledbConnecctor instance
         :param channel_ids: Channel id strings
         :param fields: Video fields to retrieve
         :return: video objects from Singledb
@@ -118,303 +39,238 @@ class Auditor(object):
             size=10000,
             channel_id__terms=",".join(channel_ids),
         )
-        response = connector.execute_get_call("videos/", params)
+        response = self.sdb_connector.execute_get_call("videos/", params)
 
         return response.get('items')
 
-    def audit_videos(self, videos: list, blacklist_regexp: re = None, whitelist_regexp: re = None) -> dict:
-        """
-        Audits videos and separates them depending on their audit result (brand safety, blacklist (optional), whitelist (optional)
-            Sets keyword hits on each video object
-        :param videos: (list) Youtubve video data
-        :param blacklist_regexp: Compiled regular expression of blacklist keywords
-        :param whitelist_regexp: Compiled regular expression of whitelist keywords
-        :return: (dict) Video audit results
-        """
-        if not videos:
-            return []
+    def audit_videos(self, video_ids=None, channel_ids=None):
+        video_youtube_data = self.youtube_data_provider.get_video_data(video_ids) if video_ids else \
+            self.youtube_data_provider.get_channel_video_data(channel_ids)
 
-        results = {
-            constants.WHITELIST_VIDEOS: [],
-            constants.BLACKLIST_VIDEOS: [],
-            constants.BRAND_SAFETY_FAIL_VIDEOS: [],
-            constants.BRAND_SAFETY_PASS_VIDEOS: [],
-        }
+        all_video_audits = []
 
-        for video in videos:
-            self.set_language(video)
-            self.set_has_emoji(video)
+        for video in video_youtube_data:
+            video_audit = VideoAudit(video, self.audits)
 
-            # Only add English videos
-            if video['snippet']['defaultLanguage'] != 'en':
-                continue
+            video_audit.run_audit()
+            all_video_audits.append(video_audit)
 
-            brand_safety_hits = self._parse_youtube_snippet(video, self.brand_safety_tags_regexp)
-            if brand_safety_hits:
-                self.set_keyword_hits(video, brand_safety_hits, constants.BRAND_SAFETY_HITS)
-                results[constants.BRAND_SAFETY_FAIL_VIDEOS].append(video)
+        return all_video_audits
 
-            else:
-                results[constants.BRAND_SAFETY_PASS_VIDEOS].append(video)
+    def audit_channels(self, video_audits):
+        all_channel_audits = []
+        sorted_channel_data = self.sort_video_audits(video_audits)
+        channel_ids = list(sorted_channel_data.keys())
 
-            # If provided, more bad keywords to filter against
-            blacklist_hits = []
-            if blacklist_regexp:
-                blacklist_hits = self._parse_youtube_snippet(video, blacklist_regexp)
-                if blacklist_hits:
-                    self.set_keyword_hits(video, blacklist_hits, constants.BLACKLIST_HITS)
-                    results[constants.BLACKLIST_VIDEOS].append(video)
+        # sorted_channel_data is dict of channel ids with their video audits
+        channel_youtube_data = self.youtube_data_provider.get_channel_data(channel_ids)
 
-            # If whitelist keywords provided, keywords to filter for
-            if not brand_safety_hits and not blacklist_hits and whitelist_regexp:
-                whitelist_hits = set(self._parse_youtube_snippet(video, whitelist_regexp))
+        for channel in channel_youtube_data:
+            channel_video_audits = sorted_channel_data[channel['id']]
+            channel_audit = ChannelAudit(channel_video_audits, self.audits, channel)
+            channel_audit.run_audit()
+            all_channel_audits.append(channel_audit)
 
-                if whitelist_hits:
-                    self.set_keyword_hits(video, whitelist_hits, constants.WHITELIST_HITS)
-                    results[constants.constants.WHITELIST_VIDEOS].append(video)
-
-        return results
-
-    def audit_channels(self, videos, youtube_connector):
-        """
-        Uses audited video data to extrapolate channel audit results
-            Aggregates all video data and sets aggregated results on each channel object that exist in the videos
-        :param videos: (list) Audited Youtube Videos
-        :param youtube_connector: YoutubeAPIConnector instance
-        :return: (list) Channel Youtube data with aggregated video audit results
-        """
-        if not videos:
-            return []
-
-        channel_data = {}
-
-        for video in videos:
-            channel_id = video['snippet']['channelId']
-            channel_data[channel_id] = channel_data.get(channel_id, {})
-            channel_data[channel_id]['aggregatedVideoData'] = channel_data[channel_id].get('aggregatedVideoData', {
-                'totalLikes': 0,
-                'totalDislikes': 0,
-                constants.WHITELIST_HITS: [],
-                constants.BLACKLIST_HITS: [],
-                constants.BRAND_SAFETY_HITS: []
-            })
-            channel_data[channel_id]['aggregatedVideoData']['totalAuditedVideos'] = channel_data[channel_id][
-                                                                                        'aggregatedVideoData'].get(
-                'totalAuditedVideos', 0) + 1
-            channel_data[channel_id]['aggregatedVideoData']['totalLikes'] += int(
-                video['statistics'].get('likeCount', 0))
-            channel_data[channel_id]['aggregatedVideoData']['totalDislikes'] += int(
-                video['statistics'].get('dislikeCount', 0))
-
-            channel_data[channel_id]['aggregatedVideoData'][constants.BRAND_SAFETY_HITS] += video.get(constants.BRAND_SAFETY_HITS, [])
-            channel_data[channel_id]['aggregatedVideoData'][constants.BLACKLIST_HITS] += video.get(constants.BLACKLIST_HITS, [])
-            channel_data[channel_id]['aggregatedVideoData'][constants.WHITELIST_HITS] += video.get(constants.WHITELIST_HITS, [])
-
-            channel_data[channel_id]['categoryCount'] = channel_data[channel_id].get('categoryCount', [])
-            channel_data[channel_id]['categoryCount'].append(video['snippet'].get('categoryId'))
-
-        channel_ids = list(channel_data.keys())
-
-        while channel_ids:
-            batch = ','.join(channel_ids[:50])
-            response = youtube_connector.obtain_channels(batch, part='snippet,statistics').get('items')
-
-            for item in response:
-                channel_id = item['id']
-                self.set_language(item)
-                channel_data[channel_id]['type'] = 'channel'
-                channel_data[channel_id]['channelId'] = channel_id
-                channel_data[channel_id]['statistics'] = item['statistics']
-                channel_data[channel_id]['snippet'] = item['snippet']
-
-            channel_ids = channel_ids[50:]
-
-        return list(channel_data.values())
-
-    def get_channel_statistics_with_video_data(self, channel_ids, connector):
-        """
-        Gets channel statistics for videos
-        :param channel_ids: List of Youtube channel ids
-        :return: (dict) Mapping of channels and their statistics
-        """
-        channel_data = []
-        cursor = 0
-
-        while True:
-            if cursor >= len(channel_ids):
-                break
-
-            batch = channel_ids[cursor:self.youtube_max_channel_list_limit]
-            response = connector.obtain_channels(','.join(batch), part='statistics')
-            channel_data += response['items']
-            cursor += len(batch)
-
-        return channel_data
+        return all_channel_audits
 
     @staticmethod
-    def sort_channels_by_keyword_hits(channels: list):
-        """
-        Separate audited channels into audit categories for easier processing
-        :param channels: (list) Audited Channel Youtube data
-        :return: (dict) Sorted Channels based on on audit results
-        """
-        sorted_channels = {
-            constants.BRAND_SAFETY_PASS_CHANNELS: [],
-            constants.BRAND_SAFETY_FAIL_CHANNELS: [],
-            constants.BLACKLIST_CHANNELS: [],
-            constants.WHITELIST_CHANNELS: [],
-        }
+    def sort_video_audits(video_audits):
+        channel_videos = {}
 
-        for channel in channels:
-            if not channel['aggregatedVideoData'].get(constants.BRAND_SAFETY_HITS):
-                sorted_channels[constants.BRAND_SAFETY_PASS_CHANNELS].append(channel)
+        for video in video_audits:
+            channel_id = video.metadata['channel_id']
+            channel_videos[channel_id] = channel_videos.get(channel_id, [])
+            channel_videos[channel_id].append(video)
 
-            if channel['aggregatedVideoData'].get(constants.BRAND_SAFETY_HITS):
-                sorted_channels[constants.BRAND_SAFETY_FAIL_CHANNELS].append(channel)
-
-            if channel['aggregatedVideoData'].get(constants.BLACKLIST_HITS):
-                sorted_channels[constants.BLACKLIST_CHANNELS].append(channel)
-
-            if not channel['aggregatedVideoData'].get(constants.BRAND_SAFETY_HITS) \
-                    and not channel['aggregatedVideoData'].get(constants.BLACKLIST_HITS) \
-                    and channel['aggregatedVideoData'].get(constants.WHITELIST_HITS):
-                sorted_channels['whitelist_channels'].append(channel)
-
-        return sorted_channels
-
-    def set_has_emoji(self, item):
-        """
-        Sets boolean field for emoji existence
-        :param item: Youtube Data API object
-        :return: None
-        """
-        item['has_emoji'] = bool(self._parse_youtube_snippet(item, self.emoji_regexp))
+        return channel_videos
 
     @staticmethod
-    def set_language(item):
-        """
-        Sets defaultLanguage on Youtube object if none exists
-        :param item: Youtube Data API object
-        :return: None
-        """
-        lang = item['snippet'].get('defaultLanguage')
+    def parse_video(youtube_data, regexp):
+        text = ''
+        text += youtube_data['snippet'].get('title', '')
+        text += youtube_data['snippet'].get('description', '')
+        text += youtube_data['snippet'].get('channelTitle', '')
 
-        if lang is None:
-            text = item['snippet']['title'] + ' ' + item['snippet']['description']
-            item['snippet']['defaultLanguage'] = langid.classify(text)[0].lower()
+        found = re.search(regexp, text)
 
-    @staticmethod
-    def chunks(iterable, length):
-        """
-        Generator that yields equal sized lists
-        """
-        for i in range(0, len(iterable), length):
-            yield iterable[i:i + length]
+        return found
 
-    @staticmethod
-    def _parse_youtube_snippet(item, regexp):
+
+class Audit(object):
+    emoji_regexp = re.compile(u"["
+                              u"\U0001F600-\U0001F64F"  # emoticons
+                              u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                              u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                              u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                              "]", flags=re.UNICODE)
+
+    def audit(self, regexp):
         """
         Finds all matches of regexp in Youtube data object
-        :param item: Youtube data
         :param regexp: Compiled regular expression to match
         :return:
         """
-        item = item['snippet']
+
+        metadata = self.metadata
 
         text = ''
-        text += item.get('title', '')
-        text += item.get('description', '')
-        text += item.get('channelTitle', '')
-        text += item.get('transcript', '')
+        text += metadata.get('title', '')
+        text += metadata.get('description', '')
+        text += metadata.get('channelTitle', '')
+        text += metadata.get('channel_title', '')
+        text += metadata.get('transcript', '')
 
-        if item.get('tags'):
-            text += ' '.join(item['tags'])
+        if metadata.get('tags'):
+            text += ' '.join(metadata['tags'])
 
-        return re.findall(regexp, text)
+        hits = re.findall(regexp, text)
+        return hits
 
-    @staticmethod
-    def get_keyword_count(keywords):
-        """
-        Counts occurrences of items in list
-        :param keywords: List of keyword occurences
-        :return: String formatted count e.g. "bad: 1, word: 2"
-        """
-        counted = Counter(keywords)
+    def set_keyword_terms(self, keywords, attribute):
+        setattr(self, attribute, keywords)
+
+    def get_keyword_count(self, items):
+        counted = Counter(items)
         return ', '.join(['{}: {}'.format(key, value) for key, value in counted.items()])
 
-    @staticmethod
-    def set_keyword_hits(item, hits, keyword_type):
-        """
-        Sets keyword hits on item with keyword_type key
-        :param item: Dictionary instance
-        :param hits: List of keyword hits
-        :param keyword_type: Key for value hits
-        :return: None
-        """
-        item[keyword_type] = hits
+    def get_language(self, data):
+        language = data['snippet'].get('defaultLanguage', None)
 
-    @staticmethod
-    def get_channel_id_for_username(username, connector):
-        """
-        Retrieves channel id for the given youtube username
-        :param username: (str) youtube username
-        :param connector: YoutubeAPIConnector instance
-        :return: (str) channel id
-        """
-        response = connector.obtain_user_channels(username)
+        if language is None:
+            text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
+            language = langid.classify(text)[0].lower()
+
+        return language
+
+    def get_export_row(self, audit_type=constants.BRAND_SAFETY):
+        # Remove previously used metadata from export
+        row = dict(**self.metadata)
+        row.pop('channel_id', None)
+        row.pop('video_id', None)
+        row.pop('id', None)
+        row.pop('tags', None)
+
+        row = list(row.values())
+        audit_hits = self.get_keyword_count(self.results[audit_type])
+        row.append(audit_hits)
+
+        return row
+
+    def detect_emoji(self, youtube_data):
+        metadata = youtube_data['snippet']
+        text = metadata.get('title', '') + metadata.get('description', '')
+
+        has_emoji = bool(re.search(self.emoji_regexp, text))
+        return has_emoji
+
+
+class VideoAudit(Audit):
+    def __init__(self, data, audits):
+        self.audits = audits
+        self.metadata = self.get_metadata(data)
+        self.results = {}
+
+    def get_metadata(self, data):
+        metadata = {
+            'channel_title': data['snippet']['channelTitle'],
+            'channel_url': 'https://www.youtube.com/channel/' + data['snippet']['channelId'],
+            'channelSubscribers': data.get('statistics', {}).get('channelSubscriberCount'),
+            'title': data['snippet']['title'],
+            'video_url': 'https://www.youtube.com/video/' + data['id'],
+            'has_emoji': self.detect_emoji(data),
+            'views': data['statistics']['viewCount'],
+            'description': data['snippet'].get('description', ''),
+            'category': constants.VIDEO_CATEGORIES.get(data['snippet'].get('categoryId'), 'Unknown'),
+            'language': self.get_language(data),
+            'country': data['snippet'].get('country', 'Unknown'),
+            'likes': data['statistics'].get('likeCount', 'Disabled'),
+            'dislikes': data['statistics'].get('dislikeCount', 'Disabled'),
+            'channel_id': data['snippet']['channelId'],
+            'tags': data['snippet'].get('tags', []),
+            'video_id': data['id'],
+        }
+
+        return metadata
+
+    def run_audit(self):
+        for audit in self.audits:
+            hits = self.audit(audit['regexp'])
+            self.results[audit['type']] = hits
+
+    def get_language(self, data):
+        language = data['snippet'].get('defaultLanguage', None)
+
+        if language is None:
+            text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
+            language = langid.classify(text)[0].lower()
+
+        return language
+
+
+class ChannelAudit(Audit):
+    def __init__(self, video_audits: VideoAudit, audits, channel_data):
+        self.video_audits = video_audits
+        self.audits = audits
+        self.metadata = self.get_metadata(channel_data)
+        self.update_aggregate_video_audit_data()
+        self.results = {}
+
+    def get_metadata(self, channel_data):
+        metadata = {
+            'channel_title': channel_data['snippet']['title'],
+            'channel_url': 'https://www.youtube.com/channel/' + channel_data['id'],
+            'language': self.get_language(channel_data),
+            'category': channel_data['snippet'].get('category', 'Unknown'),
+            'videos': channel_data['statistics'].get('videoCount', 'Disabled'),
+            'subscribers': channel_data['statistics']['subscriberCount'],
+            'views': channel_data['statistics'].get('viewCount', 'Disabled'),
+            'audited_videos': len(self.video_audits),
+            'likes': channel_data['statistics'].get('likeCount', 'Disabled'),
+            'dislikes': channel_data['statistics'].get('dislikeCount', 'Disabled'),
+            'country': channel_data['snippet'].get('country', 'Unknown'),
+        }
+        return metadata
+
+    def run_audit(self):
+        for video in self.video_audits:
+            for audit in self.audits:
+                audit_type = audit['type']
+                self.results[audit_type] = self.results.get(audit_type, [])
+                self.results[audit_type].extend(video.results[audit_type])
+
+    def update_aggregate_video_audit_data(self):
+        video_audits = self.video_audits
+
+        # First get audit data
+        aggregated_data = {
+            'likes': 0,
+            'dislikes': 0,
+            'category': [],
+        }
+
+        for video in video_audits:
+            # Preserve "Disabled" value for videos if not initially given in api response
+            try:
+                aggregated_data['likes'] += int(video.metadata['likes'])
+            except ValueError:
+                pass
+
+            try:
+                aggregated_data['dislikes'] += int(video.metadata['dislikes'])
+            except ValueError:
+                pass
+
+                aggregated_data['category'].append(video.metadata['category'])
+
+            for audit in self.audits:
+                audit_type = audit['type']
+                aggregated_data[audit_type] = aggregated_data.get(audit_type, [])
+                aggregated_data[audit_type].extend(video.results[audit_type])
 
         try:
-            channel_id = response.get('items')[0].get('id')
+            aggregated_data['category'] = Counter(aggregated_data['category']).most_common()[0][0]
 
         except IndexError:
-            raise ValueError('Could not get channel id for: {}'.format(username))
+            aggregated_data['category'] = 'Unknown'
 
-        return channel_id
-
-    def get_all_channel_video_data(self, channel_ids: list, youtube_connector):
-        """
-        Gets all video metadata for each channel
-        :param channel_ids: Youtube channel id strings
-        :param youtube_connector: YoutubeAPIConnector instance
-        :return: Youtube Video data
-        """
-        all_results = []
-
-        for id in channel_ids:
-            results = self.get_channel_videos(id, youtube_connector)
-            all_results += results
-
-        return all_results
-
-    @staticmethod
-    def get_channel_videos(channel_id, connector):
-        """
-        Retrieves all videos for given channel id from Youtube Data API
-        :param channel_id: (str)
-        :param connector: YoutubeAPIConnector instance
-        :return: (list) Channel videos
-        """
-        channel_videos_full_data = []
-        channel_videos = []
-        response = connector.obtain_channel_videos(channel_id, part='snippet', order='viewCount', safe_search='strict')
-
-        channel_videos += [video['id']['videoId'] for video in response.get('items')]
-        next_page_token = response.get('nextPageToken')
-
-        while next_page_token and response.get('items'):
-            response = connector\
-                .obtain_channel_videos(channel_id, part='snippet', page_token=next_page_token, order='viewCount', safe_search='strict')
-
-            channel_videos += [video['id']['videoId'] for video in response.get('items')]
-            next_page_token = response.get('nextPageToken')
-
-        while channel_videos:
-            video_full_data_batch = channel_videos[:50]
-
-            response = connector.obtain_videos(','.join(video_full_data_batch), part='snippet,statistics')
-
-            channel_videos_full_data += response.get('items')
-            channel_videos = channel_videos[50:]
-
-        return channel_videos_full_data
-
+        self.metadata.update(aggregated_data)
