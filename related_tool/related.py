@@ -16,14 +16,12 @@ class Related(object):
     max_process_count = 12
     max_batch_size = 1200
     video_processing_batch_size = 100
-    max_database_size = 1000
-    csv_export_limit = 100000
+    max_database_size = 750000
+    csv_export_limit = 50000
     page_number = 1
     export_count = 0
     headers = ['Video Title', 'Video URL', 'Video ID', 'Video Description', 'Channel Title', 'Channel URL',
                'Channel ID']
-    channel_id_regexp = re.compile('(?<=channel/).*')
-    video_id_regexp = re.compile('(?<=video/).*')
 
     def __init__(self, *args, **kwargs):
         self.yt_connector = YoutubeAPIConnector()
@@ -49,14 +47,11 @@ class Related(object):
 
         if not self.ignore_seed:
             if self.seed_type == 'channel':
-                self.extract_channel_videos()
+                self.get_channel_videos()
             elif self.seed_type == 'video':
                 self.extract_video_id_seeds()
             else:
                 raise ValueError('Unsupported seed_type: {}'.format(self.seed_type))
-
-        self.export_csv()
-        return
 
         self.run_process()
 
@@ -78,14 +73,15 @@ class Related(object):
         """
         while video_ids:
             video_batch = video_ids[:self.youtube_video_limit]
-            video_ids = ','.join(video_batch)
+            video_id_batch = ','.join(video_batch)
+
             # Get metadata for the videos
-            response = self.yt_connector.obtain_videos(video_ids)
+            response = self.yt_connector.obtain_videos(video_id_batch, part='snippet')
             video_data = response['items']
 
             audited_videos = [
                 video for video in video_data
-                if self.auditor.parse_video(video, self.brand_safety_regexp)
+                if not self.auditor.parse_video(video, self.brand_safety_regexp)
             ]
 
             print('Creating {} videos.'.format(len(audited_videos)))
@@ -145,22 +141,6 @@ class Related(object):
                 )
 
         RelatedVideo.objects.bulk_create(to_create)
-
-    def extract_video_id_seeds(self):
-        """
-        Reads video url seeds csv and saves to database
-        :return:
-        """
-        video_id_seeds = []
-        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-
-            for row in csv_reader:
-                video_id = re.search(self.video_id_regexp, row['video_url']).group()
-                video_id_seeds.append(video_id)
-
-        print('Video seeds extracted: {}'.format(len(video_id_seeds)))
-        self.get_save_video_data(video_id_seeds)
 
     def run_process(self):
         # Need to pass video objects instead of ids to processes to set as foreign keys for found related items
@@ -259,7 +239,7 @@ class Related(object):
 
         return related_videos
 
-    def extract_channel_videos(self):
+    def get_channel_videos(self):
         """
         Retrieves all video ids for each of the channels in csv and saves to database
         :return:
@@ -271,6 +251,22 @@ class Related(object):
             self.get_save_video_data(video_ids)
 
         print('Got videos for {} channels'.format(len(all_channel_ids)))
+
+    def extract_video_id_seeds(self):
+        """
+        Reads video url seeds csv and saves to database
+        :return:
+        """
+        video_id_seeds = []
+        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            for row in csv_reader:
+                video_id = re.search(self.auditor.video_id_regexp, row['video_url']).group() if row.get('video_url') else row['video_id']
+                video_id_seeds.append(video_id)
+
+        print('Video seeds extracted: {}'.format(len(video_id_seeds)))
+        self.get_save_video_data(video_id_seeds)
 
     def extract_channel_ids(self):
         """
