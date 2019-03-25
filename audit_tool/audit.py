@@ -249,9 +249,6 @@ class AuditProvider(object):
 
                     row = audit.get_export_row(audit_type)
 
-                    if data_type == 'channel':
-                        print(row)
-
                     writer.writerow(row)
                     csv_ref['count'] += 1
 
