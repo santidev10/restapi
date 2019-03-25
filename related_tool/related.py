@@ -1,22 +1,20 @@
 from utils.youtube_api import YoutubeAPIConnector
 from audit_tool.audit import AuditProvider
 from audit_tool.auditor import AuditService
-from audit_tool.auditor import VideoAudit
 from .models import RelatedVideo
 import csv
 import re
-from audit_tool import audit_constants as constants
 from multiprocessing import Pool
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
 
 class Related(object):
     youtube_video_limit = 50
-    video_batch_size = 100
+    video_batch_size = 10
     max_process_count = 12
-    max_batch_size = 1200
+    max_batch_size = 50
     video_processing_batch_size = 100
-    max_database_size = 750000
+    max_database_size = 2000
     csv_export_limit = 50000
     page_number = 1
     export_count = 0
@@ -47,7 +45,7 @@ class Related(object):
 
         if not self.ignore_seed:
             if self.seed_type == 'channel':
-                self.get_channel_videos()
+                self.get_all_channel_videos()
             elif self.seed_type == 'video':
                 self.extract_video_id_seeds()
             else:
@@ -194,7 +192,7 @@ class Related(object):
 
             audited_videos = [
                 video for video in items
-                if self.auditor.parse_video(video, self.brand_safety_regexp)
+                if not self.auditor.parse_video(video, self.brand_safety_regexp)
             ]
 
             page_token = response.get('nextPageToken')
@@ -239,52 +237,51 @@ class Related(object):
 
         return related_videos
 
-    def get_channel_videos(self):
+    def extract_video_id_seeds(self):
+        """
+        Reads video url seeds csv and saves to database
+        :return:
+        """
+        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            all_video_id_seeds = [
+                re.search(self.auditor.video_id_regexp, row['video_url']).group()
+                if row.get('video_url') else row['video_id']
+                for row in csv_reader
+            ]
+
+        print('Video seeds extracted: {}'.format(len(all_video_id_seeds)))
+        self.get_save_video_data(all_video_id_seeds)
+
+    def extract_channel_id_seeds(self):
+        """
+        Extracts all channel ids from csv
+        :return:
+        """
+        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+
+            all_channel_ids = [
+                re.search(self.auditor.channel_id_regexp, row['channel_url']).group()
+                if row.get('channel_url') else row['channel_id']
+                for row in csv_reader
+            ]
+
+        return all_channel_ids
+
+    def get_all_channel_videos(self):
         """
         Retrieves all video ids for each of the channels in csv and saves to database
         :return:
         """
-        all_channel_ids = self.extract_channel_ids()
+        all_channel_ids = self.extract_channel_id_seeds()
 
         for id in all_channel_ids:
             video_ids = self.get_channel_videos(id)
             self.get_save_video_data(video_ids)
 
         print('Got videos for {} channels'.format(len(all_channel_ids)))
-
-    def extract_video_id_seeds(self):
-        """
-        Reads video url seeds csv and saves to database
-        :return:
-        """
-        video_id_seeds = []
-        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-
-            for row in csv_reader:
-                video_id = re.search(self.auditor.video_id_regexp, row['video_url']).group() if row.get('video_url') else row['video_id']
-                video_id_seeds.append(video_id)
-
-        print('Video seeds extracted: {}'.format(len(video_id_seeds)))
-        self.get_save_video_data(video_id_seeds)
-
-    def extract_channel_ids(self):
-        """
-        Extracts all channel ids from csv
-        :return:
-        """
-        all_channel_ids = []
-
-        with open(self.seed_file_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-
-            for row in csv_reader:
-                # Extract channel id and add to queue to get all videos for channel
-                channel_id = re.search(self.channel_id_regexp, row['channel_url']).group()
-
-                all_channel_ids.append(channel_id)
-
-        return all_channel_ids
 
     def get_channel_videos(self, channel_id):
         """
