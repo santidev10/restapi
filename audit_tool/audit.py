@@ -14,7 +14,7 @@ class AuditProvider(object):
     channel_chunk_size = 10
     channel_row_data = {}
     max_csv_export_count = 50000
-    video_id_regexp = re.compile('(?<=watch/).*')
+    video_id_regexp = re.compile('(?<=watch\?v=).*')
     channel_id_regexp = re.compile('(?<=channel/).*')
     username_regexp = re.compile('(?<=user/).*')
     csv_pages = {
@@ -267,7 +267,7 @@ class AuditProvider(object):
         Yields each row of csv
         :return: (dict)
         """
-        with open(self.csv_source_file_path, mode='r') as csv_file:
+        with open(self.csv_source_file_path, mode='r', encoding='utf-8-sig') as csv_file:
             csv_reader = csv.DictReader(csv_file)
             rows_batch = []
 

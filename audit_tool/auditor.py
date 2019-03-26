@@ -6,7 +6,7 @@ import langid
 from . import audit_constants as constants
 
 class AuditService(object):
-    video_id_regexp = re.compile('(?<=watch/).*')
+    video_id_regexp = re.compile('(?<=watch\?v=).*')
     channel_id_regexp = re.compile('(?<=channel/).*')
     username_regexp = re.compile('(?<=user/).*')
     audit_keyword_hit_mapping = {
