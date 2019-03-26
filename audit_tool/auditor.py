@@ -165,6 +165,7 @@ class Audit(object):
         counted = Counter(items)
         return ', '.join(['{}: {}'.format(key, value) for key, value in counted.items()])
 
+
 class VideoAudit(Audit):
     def __init__(self, data, audits):
         self.audits = audits
@@ -226,6 +227,7 @@ class ChannelAudit(Audit):
             'subscribers': channel_data['statistics'].get('subscriberCount', 'Disabled'),
             'views': channel_data['statistics'].get('viewCount', 'Disabled'),
             'audited_videos': len(self.video_audits),
+            'has_emoji': self.detect_emoji(channel_data),
             'likes': channel_data['statistics'].get('likeCount', 'Disabled'),
             'dislikes': channel_data['statistics'].get('dislikeCount', 'Disabled'),
             'country': channel_data['snippet'].get('country', 'Unknown'),
