@@ -88,14 +88,14 @@ class YoutubeDataProvider(object):
             video['statistics']['channelSubscriberCount'] = channel['statistics'].get('subscriberCount')
             video['snippet']['country'] = channel['snippet'].get('country', 'Unknown')
 
-    def get_channel_id_for_username(self, username, connector):
+    def get_channel_id_for_username(self, username):
         """
         Retrieves channel id for the given youtube username
         :param username: (str) youtube username
         :param connector: YoutubeAPIConnector instance
         :return: (str) channel id
         """
-        response = connector.obtain_user_channels(username)
+        response = self.connector.obtain_user_channels(username)
 
         try:
             channel_id = response.get('items')[0].get('id')
@@ -132,3 +132,4 @@ class YoutubeDataProvider(object):
             cursor += len(batch)
 
         return all_videos
+
