@@ -106,15 +106,14 @@ class AuditProvider(object):
                 audit_type = audit['type']
                 cursor = 0
 
-                while cursor <= len(channel_audits):
-                # while cursor <= len(video_audits) or cursor <= len(channel_audits):
-                #     try:
-                #         video_audit = video_audits[cursor]
-                #         video_results[audit_type] = video_results.get(audit_type, [])
-                #         video_results[audit_type].append(video_audit)
-                #
-                #     except IndexError:
-                #         pass
+                while cursor <= len(video_audits) or cursor <= len(channel_audits):
+                    try:
+                        video_audit = video_audits[cursor]
+                        video_results[audit_type] = video_results.get(audit_type, [])
+                        video_results[audit_type].append(video_audit)
+
+                    except IndexError:
+                        pass
 
                     try:
                         channel_audit = channel_audits[cursor]
@@ -255,6 +254,7 @@ class AuditProvider(object):
 
                     # Create a new page (csv file) to write results to if count exceeds csv export limit
                     if csv_ref['count'] >= self.max_csv_export_count:
+                        csv_ref['count'] = 0
                         csv_ref['page'] += 1
                         data = data[index + 1:]
                         next_page = True
