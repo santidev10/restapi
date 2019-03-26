@@ -126,7 +126,7 @@ class YoutubeDataProvider(object):
 
             for video in items:
                 channel_id = video['snippet']['channelId']
-                video['statistics']['channelSubscriberCount'] = video_channel_statistics_ref[channel_id]['subscriberCount']
+                video['statistics']['channelSubscriberCount'] = video_channel_statistics_ref.get(channel_id, {}).get('subscriberCount', 0)
                 all_videos.append(video)
 
             cursor += len(batch)
