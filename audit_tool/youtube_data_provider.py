@@ -8,24 +8,25 @@ class YoutubeDataProvider(object):
     def __init__(self):
         self.connector = YoutubeAPIConnector()
 
-    def get_channel_data(self, channel_ids):
+    def get_channel_data(self, channel_ids, part='statistics,snippet'):
         """
         Gets channel statistics for videos
         :param channel_ids: List of Youtube channel ids
+        :param part: Youtube part data to retrieve
         :return: (dict) Mapping of channels and their statistics
         """
         channel_data = []
         cursor = 0
 
         if type(channel_ids) is str:
-            channel_data = self.connector.obtain_channels(channel_ids, part='statistics,snippet')
+            channel_data = self.connector.obtain_channels(channel_ids, part=part)
 
         else:
             while cursor < len(channel_ids):
                 batch = channel_ids[cursor:cursor + self.youtube_max_channel_list_limit]
                 batch_ids = ','.join(batch)
 
-                response = self.connector.obtain_channels(batch_ids, part='statistics,snippet')
+                response = self.connector.obtain_channels(batch_ids, part=part)
                 channel_data += response['items']
 
                 cursor += len(batch)
