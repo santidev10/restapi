@@ -49,6 +49,7 @@ class DefaultRate:
 
 
 FLIGHT_FIELDS = (
+    "budget",
     "cost",
     "end",
     "id",
@@ -246,6 +247,7 @@ class PacingReport:
                 default=Max("placement__adwords_campaigns__account__update_time")
             ),
             timezone=Max("placement__adwords_campaigns__account__timezone"),
+
         ).values(
             *FLIGHT_FIELDS)
 
@@ -879,6 +881,7 @@ class PacingReport:
 
             self.add_calculated_fields(flight)
 
+            flight['budget'] = f['budget']
             flights.append(flight)
 
         return flights
@@ -930,6 +933,8 @@ class PacingReport:
             c.update(chart_data)
 
             self.add_calculated_fields(c)
+
+            c['flight_budget'] = flight.budget
 
         return campaigns
     # ## CAMPAIGNS ## #

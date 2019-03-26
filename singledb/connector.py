@@ -123,16 +123,58 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
-    def get_channel_list(self, query_params):
+    def get_channel_list(self, query_params, ignore_sources=False):
         """
         Obtain channel list
         :param query_params: dict
+        :param ignore_sources: bool
         """
         endpoint = "channels/"
         self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
-        self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
+        if not ignore_sources:
+            self.set_sources_query_param(query_params, DEFAULT_CHANNEL_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
+
+    def _get_items_list_full(self, endpoint, sort_filed, filters, fields, batch_size):
+        """
+        Obtain full list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for channels by sized batches
+        """
+        fields = (fields or []) + [sort_filed]
+        params = {
+            "sort": sort_filed,
+            "size": batch_size,
+            "fields": ",".join(fields),
+            **self._normalize_filters(filters)
+        }
+        last_id = None
+        has_more = True
+        count = 0
+        while has_more:
+            params[sort_filed + "__range"] = "{},".format(last_id or "")
+            start_from = 0 if last_id is None else 1
+            response_data = self.execute_get_call(endpoint, params)
+            items = response_data.get("items")[start_from:]
+            count += len(items)
+            if len(items) > 0:
+                yield items
+                last_id = items[-1][sort_filed]
+            else:
+                has_more = False
+
+    def get_channel_list_full(self, filters, fields=None, batch_size=5000):
+        """
+        Obtain full channel list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for channels by sized batches
+        """
+        return self._get_items_list_full("channels/", "channel_id", filters, fields, batch_size)
 
     def get_top_channel_keywords(self, query_params):
         """
@@ -183,18 +225,30 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
-    def get_video_list(self, query_params):
+    def get_video_list(self, query_params, ignore_sources=False):
         """
         Obtain video list
         :param query_params: dict
+        :param ignore_sources: bool
         """
         endpoint = "videos/"
         self.set_fields_query_param(
             query_params, DEFAULT_VIDEO_LIST_FIELDS)
-        self.set_sources_query_param(
-            query_params, DEFAULT_VIDEO_LIST_SOURCES)
+        if not ignore_sources:
+            self.set_sources_query_param(
+                query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
+
+    def get_video_list_full(self, filters, fields=None, batch_size=5000):
+        """
+        Obtain full video list by batches.
+        :param fields: list of fields to retrieve
+        :param filters: dict
+        :param batch_size:
+        :returns generator for videos by sized batches
+        """
+        return self._get_items_list_full("videos/", "video_id", filters, fields, batch_size)
 
     def delete_videos(self, query_params, data):
         """
@@ -343,37 +397,8 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
 
+    # todo: remove bad words
     def get_bad_words_list(self, query_params):
         endpoint = "bad_words/"
         response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def get_bad_words_categories_list(self, query_params):
-        endpoint = "bad_words_categories/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def get_bad_words_history_list(self, query_params):
-        endpoint = "bad_words_history/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def post_bad_word(self, query_params, data):
-        endpoint = "bad_words/"
-        response_data = self.execute_post_call(endpoint, {}, data)
-        return response_data
-
-    def put_bad_word(self, query_params, pk, data):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_put_call(endpoint, query_params, data)
-        return response_data
-
-    def get_bad_word(self, query_params, pk):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def delete_bad_word(self, query_params, pk, data):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data

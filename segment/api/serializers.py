@@ -1,7 +1,10 @@
 """
 Segment api serializers module
 """
+from django.db.models import F
 from rest_framework.serializers import CharField
+from rest_framework.serializers import DictField
+from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -9,6 +12,7 @@ from rest_framework.serializers import ValidationError
 
 from segment.models import PersistentSegmentChannel
 from segment.models import SegmentKeyword
+from segment.tasks import fill_segment_from_filters
 from singledb.connector import SingleDatabaseApiConnector
 
 
@@ -19,27 +23,33 @@ class SegmentSerializer(ModelSerializer):
     ids_to_add = ListField(required=False)
     ids_to_delete = ListField(required=False)
     ids_to_create = ListField(required=False)
+    filters = DictField(required=False)
+    pending_updates = IntegerField(read_only=True)
+
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False)
 
     class Meta:
         # fixme: replace SegmentKeyword with None. It's a workaround to fix documentation generation
         model = SegmentKeyword
-        fields = ('id',
-                  'title',
-                  'segment_type',
-                  'category',
-                  'statistics',
-                  'adw_data',
-                  # 'mini_dash_data',   #Disabled by issuse SAAS-1172
-                  'owner',
-                  'shared_with',
-                  'created_at',
-                  'is_editable',
-                  'ids_to_add',
-                  'ids_to_delete',
-                  "ids_to_create",
-                  "updated_at")
+        fields = (
+            "adw_data",
+            "category",
+            "created_at",
+            "filters",
+            "id",
+            "ids_to_add",
+            "ids_to_create",
+            "ids_to_delete",
+            "is_editable",
+            "owner",
+            "segment_type",
+            "shared_with",
+            "statistics",
+            "title",
+            "pending_updates",
+            "updated_at",
+        )
 
     def __init__(self, *args, **kwargs):
         """
@@ -81,6 +91,7 @@ class SegmentSerializer(ModelSerializer):
         self.ids_to_add = data.pop("ids_to_add", [])
         self.ids_to_delete = data.pop("ids_to_delete", [])
         self.ids_to_create = data.pop("ids_to_create", [])
+        self.filters = data.pop("filters", None)
         segment_category = data.get("category")
         user = self.context.get("request").user
         available_categories = dict(self.Meta.model.CATEGORIES).keys()
@@ -109,7 +120,11 @@ class SegmentSerializer(ModelSerializer):
             sdb_connector = SingleDatabaseApiConnector()
             sdb_connector.post_channels(self.ids_to_create)
             segment.add_related_ids(self.ids_to_create)
-        if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create)):
+        if self.filters is not None:
+            type(segment).objects.filter(pk=segment.pk).update(pending_updates=F("pending_updates") + 1)
+            fill_segment_from_filters.delay(segment.segment_type, segment.pk, self.filters)
+            segment.refresh_from_db()
+        if any((self.ids_to_add, self.ids_to_delete, self.ids_to_create, self.filters)):
             segment.update_statistics()
             segment.sync_recommend_channels(self.ids_to_add)
         return segment

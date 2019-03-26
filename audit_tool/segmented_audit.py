@@ -1,13 +1,19 @@
+import logging
 import re
+from typing import Type
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
-
+from audit_tool.models import ChannelAuditIgnore, AuditIgnoreModel
+from audit_tool.models import VideoAuditIgnore
+from brand_safety.models import BadWord
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
+from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
+from singledb.connector import SingleDatabaseApiConnector as Connector
+
+logger = logging.getLogger(__name__)
 
 
 class SegmentedAudit:
@@ -20,9 +26,12 @@ class SegmentedAudit:
     def __init__(self):
         self.connector = Connector()
 
-        bad_words = self.get_all_bad_words()
         self.bad_words_regexp = re.compile(
-            "({})".format("|".join([r"\b{}\b".format(re.escape(w)) for w in bad_words]))
+            "({})".format(
+                "|".join(
+                    [r"\b{}\b".format(re.escape(w)) for w in self.get_all_bad_words()]
+                )
+            )
         )
 
     def run(self):
@@ -71,7 +80,7 @@ class SegmentedAudit:
             channel_id__range="{},".format(last_id or ""),
         )
 
-        response = self.connector.execute_get_call("channels/", params)
+        response = self.connector.get_channel_list(params, True)
         channels = [item for item in response.get("items", []) if item["channel_id"] != last_id]
 
         for channel in channels:
@@ -96,7 +105,7 @@ class SegmentedAudit:
         )
         while True:
             params["video_id__range"] = "{},".format(last_id or "")
-            response = self.connector.execute_get_call("videos/", params)
+            response = self.connector.get_video_list(query_params=params)
             videos = [item for item in response.get("items", []) if item["video_id"] != last_id]
             if not videos:
                 break
@@ -111,8 +120,7 @@ class SegmentedAudit:
             last_id = videos[-1]["video_id"]
 
     def get_all_bad_words(self):
-        response = self.connector.execute_get_call("bad_words/", {})
-        bad_words = [item["name"] for item in response]
+        bad_words = BadWord.objects.values_list("name", flat=True)
         bad_words = list(set(bad_words))
         return bad_words
 
@@ -184,14 +192,14 @@ class SegmentedAudit:
             if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES
         ]
 
-        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS)\
-                                               .values_list("id", flat=True)
+        no_audit_segment_ids = segments_manager.filter(title__in=PersistentSegmentTitles.NO_AUDIT_SEGMENTS) \
+            .values_list("id", flat=True)
 
         # store to segments
         for segment, items in grouped_by_segment.values():
             all_ids = [item[id_field_name] for item in items]
-            old_ids = items_manager.filter(segment=segment, related_id__in=all_ids)\
-                                   .values_list("related_id", flat=True)
+            old_ids = items_manager.filter(segment=segment, related_id__in=all_ids) \
+                .values_list("related_id", flat=True)
             new_ids = set(all_ids) - set(old_ids)
             # save new items to relevant segment
             new_items = [
@@ -211,32 +219,42 @@ class SegmentedAudit:
             if segment in master_segments:
                 # remove from master segments
                 items_manager.filter(segment__in=master_segments) \
-                             .exclude(segment=segment) \
-                             .exclude(segment_id__in=no_audit_segment_ids) \
-                             .filter(related_id__in=new_ids) \
-                             .delete()
+                    .exclude(segment=segment) \
+                    .exclude(segment_id__in=no_audit_segment_ids) \
+                    .filter(related_id__in=new_ids) \
+                    .delete()
             else:
                 # remove from categorized segments
-                items_manager.exclude(segment__in=master_segments + [segment])\
-                             .exclude(segment_id__in=no_audit_segment_ids) \
-                             .filter(related_id__in=new_ids) \
-                             .delete()
+                items_manager.exclude(segment__in=master_segments + [segment]) \
+                    .exclude(segment_id__in=no_audit_segment_ids) \
+                    .filter(related_id__in=new_ids) \
+                    .delete()
+
+    def _filter_manual_items(self, model: Type[AuditIgnoreModel], items, id_field_name):
+        ids_to_ignore = model.objects.all() \
+            .values_list("id", flat=True)
+        return list(filter(lambda item: item[id_field_name] not in ids_to_ignore, items))
 
     def store_videos(self, videos):
+        logger.info("store videos")
+        id_field_name = "video_id"
+        videos = self._filter_manual_items(VideoAuditIgnore, videos, id_field_name)
         self._store(
             items=videos,
             segments_model=PersistentSegmentVideo,
             items_model=PersistentSegmentRelatedVideo,
-            id_field_name="video_id",
+            id_field_name=id_field_name,
             get_details=self._video_details,
         )
 
     def store_channels(self, channels):
+        logger.info("store channels")
+        id_field_name = "channel_id"
+        channels = self._filter_manual_items(ChannelAuditIgnore, channels, id_field_name)
         self._store(
             items=channels,
             segments_model=PersistentSegmentChannel,
             items_model=PersistentSegmentRelatedChannel,
-            id_field_name="channel_id",
+            id_field_name=id_field_name,
             get_details=self._channel_details,
         )
-

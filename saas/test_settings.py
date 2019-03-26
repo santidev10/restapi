@@ -7,10 +7,12 @@ IS_TEST = True
 
 MIGRATION_MODULES = {
     "administration": None,
+    "audit_tool": None,
     "auth": None,
     "authtoken": None,
     "aw_creation": None,
     "aw_reporting": None,
+    "brand_safety": None,
     "contenttypes": None,
     "django_celery_results": None,
     "email_reports": None,

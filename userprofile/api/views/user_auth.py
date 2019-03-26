@@ -2,6 +2,8 @@ import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -10,6 +12,15 @@ from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from userprofile.api.serializers import UserSerializer
 from drf_yasg import openapi
+
+LOGIN_REQUEST_SCHEMA = openapi.Schema(
+    title="Login request",
+    type=openapi.TYPE_OBJECT,
+    properties=dict(
+        username=openapi.Schema(type=openapi.TYPE_STRING),
+        password=openapi.Schema(type=openapi.TYPE_STRING),
+    ),
+)
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",
@@ -37,7 +48,7 @@ class UserAuthApiView(APIView):
         auth_token = request.data.get("auth_token")
         update_date_of_last_login = True
         if token:
-            user = self.get_google_plus_user(token)
+            user = self.get_google_user(token)
         elif auth_token:
             try:
                 user = Token.objects.get(key=auth_token).user
@@ -85,7 +96,7 @@ class UserAuthApiView(APIView):
         Token.objects.get(user=request.user).delete()
         return Response()
 
-    def get_google_plus_user(self, token):
+    def get_google_user(self, token):
         """
         Check token is valid and grab google user
         """

@@ -9,10 +9,37 @@ from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 
 
+def _generate_stat_instances(model, contains, report):
+    for row_obj in report:
+        display_name = row_obj.DisplayName
+
+        if contains not in display_name:
+            continue
+
+        criteria = row_obj.Criteria.strip()
+
+        # only youtube ids we need in criteria
+        if "youtube.com/" in criteria:
+            criteria = criteria.split("/")[-1]
+
+        stats = {
+            "yt_id": criteria,
+            "date": row_obj.Date,
+            "ad_group_id": row_obj.AdGroupId,
+            "device_id": get_device_id_by_name(row_obj.Device),
+            "video_views_25_quartile": quart_views(row_obj, 25),
+            "video_views_50_quartile": quart_views(row_obj, 50),
+            "video_views_75_quartile": quart_views(row_obj, 75),
+            "video_views_100_quartile": quart_views(row_obj, 100),
+        }
+        stats.update(get_base_stats(row_obj))
+
+        yield model(**stats)
+
+
 def get_placements(client, account, today):
-    from aw_reporting.models import YTVideoStatistic
     from aw_reporting.models import YTChannelStatistic
-    from aw_reporting.models import Devices
+    from aw_reporting.models import YTVideoStatistic
     from aw_reporting.adwords_reports import placement_performance_report
 
     min_acc_date, max_acc_date = get_account_border_dates(account)
@@ -45,53 +72,13 @@ def get_placements(client, account, today):
             if saved_max_date else min_acc_date
         max_date = max_acc_date
 
-        report = placement_performance_report(
-            client, dates=(min_date, max_date),
-        )
-        bulk_channel_data = []
-        bulk_video_data = []
+        # As Out-Of-Memory errors prevention we have to download this report twice
+        # and save to the DB only the necessary records at each load.
+        # Any accumulation of such a report in memory is unacceptable because it may cause Out-Of-Memory error.
+        report = placement_performance_report(client, dates=(min_date, max_date))
+        generator = _generate_stat_instances(YTChannelStatistic, "/channel/", report)
+        YTChannelStatistic.objects.safe_bulk_create(generator)
 
-        for row_obj in report:
-            # only channels
-            display_name = row_obj.DisplayName
-            criteria = row_obj.Criteria.strip()
-
-            if "/channel/" in display_name:
-                stats = {
-                    "yt_id": criteria,
-                    "date": row_obj.Date,
-                    "ad_group_id": row_obj.AdGroupId,
-                    "device_id": get_device_id_by_name(row_obj.Device),
-                    "video_views_25_quartile": quart_views(row_obj, 25),
-                    "video_views_50_quartile": quart_views(row_obj, 50),
-                    "video_views_75_quartile": quart_views(row_obj, 75),
-                    "video_views_100_quartile": quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_channel_data.append(YTChannelStatistic(**stats))
-
-            elif "/video/" in display_name:
-                # only youtube ids we need in criteria
-                if "youtube.com/video/" in criteria:
-                    criteria = criteria.split("/")[-1]
-
-                stats = {
-                    "yt_id": criteria,
-                    "date": row_obj.Date,
-                    "ad_group_id": row_obj.AdGroupId,
-                    "device_id": get_device_id_by_name(row_obj.Device),
-                    "video_views_25_quartile": quart_views(row_obj, 25),
-                    "video_views_50_quartile": quart_views(row_obj, 50),
-                    "video_views_75_quartile": quart_views(row_obj, 75),
-                    "video_views_100_quartile": quart_views(row_obj, 100),
-                }
-                stats.update(get_base_stats(row_obj))
-                bulk_video_data.append(YTVideoStatistic(**stats))
-
-        if bulk_channel_data:
-            YTChannelStatistic.objects.safe_bulk_create(
-                bulk_channel_data)
-
-        if bulk_video_data:
-            YTVideoStatistic.objects.safe_bulk_create(
-                bulk_video_data)
+        report = placement_performance_report(client, dates=(min_date, max_date))
+        generator = _generate_stat_instances(YTVideoStatistic, "/video/", report)
+        YTVideoStatistic.objects.safe_bulk_create(generator)

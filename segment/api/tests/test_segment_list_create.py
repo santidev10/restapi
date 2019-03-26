@@ -13,9 +13,10 @@ from aw_reporting.models import YTVideoStatistic, AWConnection, \
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import SegmentChannel
-from utils.utittests.test_case import ExtendedAPITestCase
+from segment.models import SegmentVideo
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
@@ -112,3 +113,114 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["items_count"], expected_segments_count)
         self.assertEqual(
             response.data["items"][0]["id"], owned_segment.id)
+
+    def test_create_channel_segment_from_filters(self):
+        self.create_test_user()
+        manager = Account.objects.create(id=load_web_app_settings()["cf_account_id"])
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        account.save()
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWAccountPermission.objects.get_or_create(
+            aw_connection=connection, account=manager,
+        )
+        campaign = Campaign.objects.create(account=account)
+        AdGroup.objects.create(campaign=campaign, video_views=1)
+
+        url = self._get_url("channel")
+        test_filters = dict(
+            verified__term=True,
+            gender=[
+                {
+                    "id": "_female__range",
+                    "value": 0
+                }
+            ],
+        )
+        payload = dict(
+            title="Test segment",
+            category="private",
+            filters=test_filters
+        )
+        batches = [
+            [dict(pk="1")],
+            [dict(pk="2")],
+        ]
+
+        sdb_generator = (batch for batch in batches)
+
+        with patch("segment.models.base.Connector", new=SingleDatabaseApiConnectorPatcher), \
+             patch("segment.models.channel.Connector", new=SingleDatabaseApiConnectorPatcher), \
+             patch.object(SingleDatabaseApiConnectorPatcher, "get_channel_list_full",
+                          return_value=sdb_generator) as mock:
+            response = self.client.post(url, json.dumps(payload),
+                                        content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock.assert_called_with(test_filters, fields=ListEqualInclude(["pk"]))
+        segment_id = response.data["id"]
+        segment = SegmentChannel.objects.get(pk=segment_id)
+        self.assertEqual(len(segment.related.all()), 2)
+
+    def test_create_video_segment_from_filters(self):
+        self.create_test_user()
+        manager = Account.objects.create(id=load_web_app_settings()["cf_account_id"])
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(manager)
+        account.save()
+        connection = AWConnection.objects.create(
+            email="email@mail.com", refresh_token="****",
+        )
+        AWAccountPermission.objects.get_or_create(
+            aw_connection=connection, account=manager,
+        )
+        campaign = Campaign.objects.create(account=account)
+        AdGroup.objects.create(campaign=campaign, video_views=1)
+
+        url = self._get_url("video")
+        test_filters = dict(
+            verified__term=True,
+            gender=[
+                {
+                    "id": "_female__range",
+                    "value": 0
+                }
+            ],
+        )
+        payload = dict(
+            title="Test segment",
+            category="private",
+            filters=test_filters
+        )
+        batches = [
+            [dict(pk="1")],
+            [dict(pk="2")],
+        ]
+        sdb_generator = (batch for batch in batches)
+
+        with patch("segment.models.base.Connector", new=SingleDatabaseApiConnectorPatcher), \
+             patch("segment.models.video.Connector", new=SingleDatabaseApiConnectorPatcher), \
+             patch.object(SingleDatabaseApiConnectorPatcher, "get_video_list_full",
+                          return_value=sdb_generator) as mock:
+            response = self.client.post(url, json.dumps(payload),
+                                        content_type="application/json")
+
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        mock.assert_called_with(test_filters, fields=ListEqualInclude(["pk"]))
+        segment_id = response.data["id"]
+        segment = SegmentVideo.objects.get(pk=segment_id)
+        self.assertEqual(len(segment.related.all()), 2)
+
+
+class ListEqualInclude(list):
+    def __eq__(self, other):
+        missed_values = set(self) - set(other)
+        return len(missed_values) == 0
+
+    def __ne__(self, other):
+        return False
+
+    def __repr__(self):
+        return "<ListEqualInclude {}>".format(list(self))

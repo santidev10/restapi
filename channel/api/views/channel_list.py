@@ -317,3 +317,6 @@ class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin,
                         item[field]
                     )
         return response_data
+
+    def _data_filtered_batch_generator(self, filters):
+        return Connector().get_channel_list_full(filters, fields=self.fields_to_export, batch_size=1000)

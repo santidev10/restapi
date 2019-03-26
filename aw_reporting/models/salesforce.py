@@ -455,6 +455,8 @@ class Flight(BaseModel):
     total_cost = models.FloatField(null=True)
     ordered_units = models.IntegerField(null=True)
 
+    budget = models.FloatField(null=True)
+
     class Meta:
         ordering = ('start',)
 

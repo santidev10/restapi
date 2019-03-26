@@ -18,7 +18,9 @@ class Name:
         PLACEMENTS = "pacing_report_placements"
         FLIGHTS = "pacing_report_flights"
         EXPORT = "pacing_report_export"
+        PACING_REPORT_STATUS = "pacing_report_status"
         FLIGHTS_CAMPAIGN_ALLOCATIONS = "flights_campaign_allocations"
+        FLIGHTS_CAMPAIGN_ALLOCATIONS_CHANGED = "pacing_report_flights_campaign_allocations_changed"
 
     class PricingTool:
         OPPORTUNITIES = "pricing_tool_opportunities"

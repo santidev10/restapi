@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.db import Error
+from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
 from django.test import override_settings
 from googleads.errors import AdWordsReportBadRequestError
@@ -106,6 +108,7 @@ class PullAWDataTestCase(TransactionTestCase):
             de_norm_fields_are_recalculated=True,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
             cost=1,
             budget=1,
             impressions=1,
@@ -818,7 +821,7 @@ class PullAWDataTestCase(TransactionTestCase):
         last_statistic_date = today - timedelta(weeks=54)
         request_start_date = last_statistic_date + timedelta(days=1)
         account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1, account=account)
+        campaign = Campaign.objects.create(id=1, account=account, update_time=now, sync_time=now)
         ad_group = AdGroup.objects.create(id=1,
                                           campaign=campaign,
                                           de_norm_fields_are_recalculated=True,
@@ -1043,6 +1046,7 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
@@ -1091,6 +1095,7 @@ class PullAWDataTestCase(TransactionTestCase):
             account=account,
             start_date=today - timedelta(days=5),
             end_date=today + timedelta(days=5),
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
         )
         test_budget = 23
         statistic_date = today - timedelta(days=2)
@@ -1167,6 +1172,56 @@ class PullAWDataTestCase(TransactionTestCase):
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(len(Account.objects.get(id=test_account_id).name), name_limit)
+
+    def test_db_error_retry_on_database_error(self):
+        mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            timezone="UTC",
+            can_manage_clients=True,
+            update_time=None
+        )
+        AWAccountPermission.objects.create(
+            account=mcc_account,
+            aw_connection=AWConnection.objects.create(),
+            can_read=True
+        )
+        test_account_id = next(int_iterator)
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="name",
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
+
+        origin_method = CursorWrapper.execute
+
+        def errors():
+            yield Error("test")
+            while True:
+                yield None
+        error_generator = errors()
+
+        def mock_db_execute(inst, query, params=None):
+            if query.startswith("INSERT INTO \"aw_reporting_account\""):
+                error = next(error_generator)
+                if error is not None:
+                    raise error
+
+            return origin_method(inst, query, params)
+
+        aw_client_mock = MagicMock()
+
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
+        with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
+             patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute):
+            self._call_command(end="get_campaigns")
+        self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
 
 class FakeExceptionWithArgs:
