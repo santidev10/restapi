@@ -7,9 +7,9 @@ from multiprocessing import Pool
 from . import audit_constants as constants
 
 class AuditProvider(object):
-    max_process_count = 8
+    max_process_count = 6
     video_chunk_size = 1000
-    video_batch_size = 8000
+    video_batch_size = 6000
     channel_batch_size = 1000
     channel_chunk_size = 100
     channel_row_data = {}
