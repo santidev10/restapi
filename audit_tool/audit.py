@@ -14,7 +14,7 @@ class AuditProvider(object):
     channel_chunk_size = 10
     channel_row_data = {}
     max_csv_export_count = 50000
-    video_id_regexp = re.compile('(?<=video/).*')
+    video_id_regexp = re.compile('(?<=watch/).*')
     channel_id_regexp = re.compile('(?<=channel/).*')
     username_regexp = re.compile('(?<=user/).*')
     csv_pages = {
