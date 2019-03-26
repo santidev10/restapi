@@ -408,8 +408,9 @@ class PacingReport:
 
         try:
             placement_id = flights[0]['placement_id']
-            cpm_buffer = OpPlacement.objects.get(id=placement_id).opportunity.cpm_buffer
-            cpv_buffer = OpPlacement.objects.get(id=placement_id).opportunity.cpv_buffer
+            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
+            cpm_buffer = opportunity.cpm_buffer
+            cpv_buffer = opportunity.cpv_buffer
 
         except IndexError:
             cpm_buffer = cpv_buffer = 0
