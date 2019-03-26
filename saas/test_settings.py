@@ -30,3 +30,5 @@ AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-test/logos/
 
 CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = True
+APEX_HOST = "http://localhost:8000"
+APEX_COMPANY_NAME = "APEX"

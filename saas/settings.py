@@ -320,6 +320,8 @@ SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATAB
 
 from .configs.celery import *
 
+APEX_COMPANY_NAME = "APEX"
+
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
@@ -378,6 +380,7 @@ CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
 HOST = "https://viewiq.channelfactory.com"
+APEX_HOST = "https://apex.viewiq.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),

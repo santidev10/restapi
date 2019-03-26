@@ -12,6 +12,8 @@ from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from userprofile.api.serializers import UserSerializer
 from drf_yasg import openapi
+import logging
+logger = logging.getLogger(__name__)
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",
@@ -66,6 +68,7 @@ class UserAuthApiView(APIView):
                 user_password = request.data.get("password")
                 if not user.check_password(user_password):
                     user = None
+
         if not user:
             return Response(
                 data={
@@ -73,6 +76,15 @@ class UserAuthApiView(APIView):
                               " with provided credentials"]
                 },
                 status=HTTP_400_BAD_REQUEST)
+
+        if user.is_apex_user:
+            if not request.META['HTTP_ORIGIN'] == settings.APEX_HOST:
+                return Response(
+                    data={
+                        "error": ["Unable to authenticate APEX user"
+                                  " on this site. Please go to {}".format(settings.APEX_HOST)]
+                    },
+                    status=HTTP_400_BAD_REQUEST)
 
         Token.objects.get_or_create(user=user)
         if update_date_of_last_login:

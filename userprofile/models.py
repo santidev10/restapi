@@ -24,6 +24,7 @@ from utils.models import Timestampable
 logger = logging.getLogger(__name__)
 
 
+
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
@@ -205,6 +206,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     @property
     def access(self):
         return self.groups.values('name')
+
+    @property
+    def is_apex_user(self):
+        """
+        Check if user is an APEX user
+        """
+        return self.company == settings.APEX_COMPANY_NAME
+
 
     @property
     def logo_url(self):

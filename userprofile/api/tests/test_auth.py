@@ -1,8 +1,9 @@
 import json
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.tests.base import AWAccountPermission
 from aw_reporting.api.tests.base import AWConnection
@@ -149,3 +150,20 @@ class AuthAPITestCase(AwReportingAPITestCase):
             pass
         else:
             self.fail()
+
+    def test_success_apex_user_auth(self):
+        user = self.create_test_user(company=settings.APEX_COMPANY_NAME)
+        response = self.client.post(
+            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_error_apex_user_auth(self):
+        with self.settings(APEX_HOST="http://apex:8000"):
+            user = self.create_test_user(company=settings.APEX_COMPANY_NAME)
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+                content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
