@@ -1412,6 +1412,6 @@ def apply_buffer(data: int = None, buffer: int = 0) -> float:
     :return: float
     """
     if data is None:
-        return 0
+        return None
 
     return data * (1 + (buffer / 100))
