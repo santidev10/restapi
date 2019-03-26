@@ -68,7 +68,7 @@ urlpatterns = [
         name='pacing_report_flights_campaign_allocations_changed'),
     url(r'^pacing_report/opportunities/buffer/(?P<pk>\w+)/$',
         views.PacingReportOpportunityBufferUpdateApiView.as_view(),
-        name=Name.PacingReport.OPPORTUNITIES),
+        name=Name.PacingReport.OPPORTUNITY_BUFFER),
 
     # AW WebHooks
     url(r'^webhook_aw/get_accounts_list/(?P<pk>\w+)/$',

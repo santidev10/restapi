@@ -17,7 +17,7 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
 
     def test_fail_access_update(self):
         self.user.delete()
-        url = reverse("aw_reporting_urls:pacing_report_update_opportunity",
+        url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=("0",))
         response = self.client.put(url)
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
@@ -29,10 +29,7 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_fail_update(self):
-        opportunity = Opportunity.objects.create(
-            id="1", name="", category=category1, territory="test 1", notes="Hi there",
-            account_manager_id="0", sales_manager_id="1", ad_ops_manager_id="2",
-        )
+        opportunity = Opportunity.objects.create(id="1", name="")
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
 
@@ -55,12 +52,7 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         get_user_model().objects.create(email="profile1@mail.kz",
                                         profile_image_url="my_image.jpg")
 
-        category1 = Category.objects.create(id='Automotive')
-
-        opportunity = Opportunity.objects.create(
-            id="1", name="", category=category1, territory="test 1", notes="Hi there",
-            account_manager_id="0", sales_manager_id="1", ad_ops_manager_id="2",
-        )
+        opportunity = Opportunity.objects.create(id="1", name="")
         update = dict(
             cpm_buffer=1,
             cpv_buffer=2

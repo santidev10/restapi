@@ -8,9 +8,10 @@ from aw_reporting.api.serializers.pacing_report_opportunity_update_serializer im
     PacingReportOpportunityUpdateSerializer
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
+from .pacing_report_helper import PacingReportHelper
 
 
-class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView):
+class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelper):
     serializer_class = PacingReportOpportunityUpdateSerializer
     permission_classes = ()
 
