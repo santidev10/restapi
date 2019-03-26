@@ -7,11 +7,11 @@ from multiprocessing import Pool
 from . import audit_constants as constants
 
 class AuditProvider(object):
-    max_process_count = 5
+    max_process_count = 10
     video_chunk_size = 10000
     video_batch_size = 30000
     channel_batch_size = 1000
-    channel_chunk_size = 10
+    channel_chunk_size = 100
     channel_row_data = {}
     max_csv_export_count = 50000
     video_id_regexp = re.compile('(?<=watch\?v=).*')
@@ -272,7 +272,7 @@ class AuditProvider(object):
             rows_batch = []
 
             for row in csv_reader:
-                video_id = self.video_id_regexp.search(row.pop('video_url')).group()
+                video_id = self.video_id_regexp.search(row.pop('video_url')).group() if row.get('video_url') else row['video_id']
                 row['video_id'] = video_id
                 rows_batch.append(row)
 

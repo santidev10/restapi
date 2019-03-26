@@ -11,8 +11,8 @@ from psycopg2 import IntegrityError as PostgresIntegrityError
 
 class Related(object):
     youtube_video_limit = 50
-    max_batch_size = 1000
-    video_processing_batch_size = 200
+    max_batch_size = 200
+    video_processing_batch_size = 20
     max_process_count = 10
     max_database_size = 750000
     csv_export_limit = 100000
@@ -137,7 +137,9 @@ class Related(object):
                     )
                 )
 
-        RelatedVideo.objects.bulk_create(to_create)
+        audited_videos = [video for video in to_create if not self.audit_video(video)]
+
+        RelatedVideo.objects.bulk_create(audited_videos)
 
     def run_process(self):
         # Need to pass video objects instead of ids to processes to set as foreign keys for found related items
@@ -189,31 +191,23 @@ class Related(object):
             response = yt_connector.get_related_videos(video.video_id)
             items = response['items']
 
-            audited_videos = [
-                video for video in items
-                if not self.auditor.parse_video(video, self.brand_safety_regexp)
-            ]
-
             page_token = response.get('nextPageToken')
 
-            related_videos = self.prepare_related_items(video, audited_videos)
+            related_videos = self.prepare_related_items(video, items)
             all_related_videos += related_videos
 
             while page_token and items:
                 response = yt_connector.get_related_videos(video.video_id, page_token=page_token)
                 items = response['items']
 
-                audited_videos = [
-                    video for video in items
-                    if self.auditor.parse_video(video, self.brand_safety_regexp)
-                ]
-
                 page_token = response.get('nextPageToken')
-                related_videos = self.prepare_related_items(video, audited_videos)
+                related_videos = self.prepare_related_items(video, items)
 
                 all_related_videos += related_videos
 
-        return all_related_videos
+        audited_videos = [video for video in all_related_videos if not self.audit_video(video)]
+
+        return audited_videos
 
     def prepare_related_items(self, source, items):
         """
@@ -382,3 +376,14 @@ class Related(object):
     def chunks(iterable, length):
         for i in range(0, len(iterable), length):
             yield iterable[i:i + length]
+
+    def audit_video(self, video_obj):
+        text = ''
+        text += video_obj.title
+        text += video_obj.description
+        text += video_obj.channel_title
+
+        match = re.match(self.brand_safety_regexp, text)
+
+        return match
+
