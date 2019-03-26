@@ -17,4 +17,5 @@ class PacingReportFlightsApiView(ListAPIView, PacingReportHelper):
         report = PacingReport()
         flights = report.get_flights(placement)
         self.multiply_percents(flights)
+
         return Response(flights)

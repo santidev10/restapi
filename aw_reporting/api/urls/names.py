@@ -14,6 +14,7 @@ class Name:
         CHART = "track_chart"
 
     class PacingReport:
+        OPPORTUNITY_BUFFER = "pacing_report_opportunity_buffer"
         OPPORTUNITIES = "pacing_report_opportunities"
         PLACEMENTS = "pacing_report_placements"
         FLIGHTS = "pacing_report_flights"

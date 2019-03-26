@@ -156,6 +156,10 @@ class Opportunity(models.Model):
     renewal_approved = models.BooleanField(default=False)
     reason_for_close = models.TextField(default="")
 
+    # Buffers for CPV and CPM goal types
+    cpv_buffer = models.IntegerField(default=0)
+    cpm_buffer = models.IntegerField(default=0)
+
     # sf managers
     account_manager = models.ForeignKey(
         User, null=True, related_name="managed_opportunities",

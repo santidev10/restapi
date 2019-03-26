@@ -406,6 +406,14 @@ class PacingReport:
         sum_total_cost = sum_delivery = sum_spent_cost = 0
         current_cost_limit = 0
 
+        try:
+            placement_id = flights[0]['placement_id']
+            cpm_buffer = OpPlacement.objects.get(id=placement_id).opportunity.cpm_buffer
+            cpv_buffer = OpPlacement.objects.get(id=placement_id).opportunity.cpv_buffer
+
+        except IndexError:
+            cpm_buffer = cpv_buffer = 0
+
         for f in flights:
             goal_type_id = f["placement__goal_type_id"]
             dynamic_placement = f["placement__dynamic_placement"]
@@ -450,8 +458,8 @@ class PacingReport:
             if f["start"] <= self.today:
                 current_cost_limit += total_cost
         result = dict(
-            plan_impressions=plan_impressions,
-            plan_video_views=plan_video_views,
+            plan_impressions=apply_buffer(plan_impressions, cpm_buffer),
+            plan_video_views=apply_buffer(plan_video_views, cpv_buffer),
             plan_cpv=cpv_cost / video_views if video_views else None,
             plan_cpm=cpm_cost / impressions * 1000 if impressions else None,
             cost=sum_spent_cost,
@@ -1394,3 +1402,16 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     can_consume = sum(f["plan_units"] for f in not_started_flights)
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
+
+
+def apply_buffer(data: int = None, buffer: int = 0) -> float:
+    """
+    Applies buffer percentage to item
+    :param data: data to apply with buffer
+    :param buffer: Buffer integer that is converted to percentage
+    :return: float
+    """
+    if data is None:
+        return None
+
+    return data * (1 + (buffer / 100))
