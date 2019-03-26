@@ -1,6 +1,7 @@
 from utils.youtube_api import YoutubeAPIConnector
 from audit_tool.audit import AuditProvider
 from audit_tool.auditor import AuditService
+from audit_tool.auditor import Audit
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .models import RelatedVideo
 import csv
@@ -8,6 +9,7 @@ import re
 from multiprocessing import Pool
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
+import langid
 
 class Related(object):
     youtube_video_limit = 50
@@ -15,7 +17,7 @@ class Related(object):
     video_processing_batch_size = 20
     max_process_count = 10
     max_database_size = 750000
-    csv_export_limit = 100000
+    csv_export_limit = 800000
     page_number = 1
     export_count = 0
     headers = ['Video Title', 'Video URL', 'Video ID', 'Video Description', 'Channel Title', 'Channel URL',
@@ -32,6 +34,7 @@ class Related(object):
         self.return_results = kwargs.get('return')
         self.provider = AuditProvider()
         self.auditor = AuditService()
+        self.audit = Audit()
         self.brand_safety_regexp = self.provider.get_brand_safety_regexp()
 
     def run(self):
@@ -205,7 +208,11 @@ class Related(object):
 
                 all_related_videos += related_videos
 
-        audited_videos = [video for video in all_related_videos if not self.audit_video(video)]
+        audited_videos = [
+            video for video in all_related_videos
+            if not self.audit_video(video)
+            and 'en' in self.get_language(video)
+        ]
 
         return audited_videos
 
@@ -387,3 +394,13 @@ class Related(object):
 
         return match
 
+    @staticmethod
+    def get_language(obj):
+        text = ''
+        text += obj.title
+        text += obj.description
+        text += obj.channel_title
+
+        language = langid.classify(text)[0].lower()
+
+        return language

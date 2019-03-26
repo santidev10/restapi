@@ -7,9 +7,9 @@ from multiprocessing import Pool
 from . import audit_constants as constants
 
 class AuditProvider(object):
-    max_process_count = 6
+    max_process_count = 8
     video_chunk_size = 1000
-    video_batch_size = 6000
+    video_batch_size = 8000
     channel_batch_size = 1000
     channel_chunk_size = 100
     channel_row_data = {}
@@ -106,14 +106,15 @@ class AuditProvider(object):
                 audit_type = audit['type']
                 cursor = 0
 
-                while cursor <= len(video_audits) or cursor <= len(channel_audits):
-                    try:
-                        video_audit = video_audits[cursor]
-                        video_results[audit_type] = video_results.get(audit_type, [])
-                        video_results[audit_type].append(video_audit)
-
-                    except IndexError:
-                        pass
+                while cursor <= len(channel_audits):
+                # while cursor <= len(video_audits) or cursor <= len(channel_audits):
+                #     try:
+                #         video_audit = video_audits[cursor]
+                #         video_results[audit_type] = video_results.get(audit_type, [])
+                #         video_results[audit_type].append(video_audit)
+                #
+                #     except IndexError:
+                #         pass
 
                     try:
                         channel_audit = channel_audits[cursor]
@@ -128,7 +129,7 @@ class AuditProvider(object):
             audit_type = audit['type']
 
             if audit_type == constants.BRAND_SAFETY:
-                self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
+                # self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
                 self.prepare_brand_safety_results(channel_results[audit_type], data_type='channel', audit_type=audit_type)
 
             else:

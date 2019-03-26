@@ -129,7 +129,8 @@ class Audit(object):
     def set_keyword_terms(self, keywords, attribute):
         setattr(self, attribute, keywords)
 
-    def get_language(self, data):
+    @staticmethod
+    def get_language(data):
         language = data['snippet'].get('defaultLanguage', None)
 
         if language is None:
