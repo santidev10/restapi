@@ -173,8 +173,8 @@ class VideoAudit(Audit):
 
     def get_metadata(self, data):
         metadata = {
-            'channel_title': data['snippet']['channelTitle'],
-            'channel_url': 'https://www.youtube.com/channel/' + data['snippet']['channelId'],
+            'channel_title': data['snippet'].get('channelTitle', ''),
+            'channel_url': 'https://www.youtube.com/channel/' + data['snippet'].get('channelId', ''),
             'channelSubscribers': data.get('statistics', {}).get('channelSubscriberCount'),
             'title': data['snippet']['title'],
             'video_url': 'https://www.youtube.com/video/' + data['id'],
@@ -186,7 +186,7 @@ class VideoAudit(Audit):
             'country': data['snippet'].get('country', 'Unknown'),
             'likes': data['statistics'].get('likeCount', 'Disabled'),
             'dislikes': data['statistics'].get('dislikeCount', 'Disabled'),
-            'channel_id': data['snippet']['channelId'],
+            'channel_id': data['snippet'].get('channelId', ''),
             'tags': data['snippet'].get('tags', []),
             'video_id': data['id'],
         }
@@ -218,7 +218,7 @@ class ChannelAudit(Audit):
 
     def get_metadata(self, channel_data):
         metadata = {
-            'channel_title': channel_data['snippet']['title'],
+            'channel_title': channel_data['snippet'].get('title', ''),
             'channel_url': 'https://www.youtube.com/channel/' + channel_data['id'],
             'language': self.get_language(channel_data),
             'category': channel_data['snippet'].get('category', 'Unknown'),
