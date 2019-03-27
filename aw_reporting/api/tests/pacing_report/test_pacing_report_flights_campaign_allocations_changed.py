@@ -1,9 +1,4 @@
-import json
-
 from utils.utittests.reverse import reverse
-from rest_framework.status import HTTP_401_UNAUTHORIZED, \
-    HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
-
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
 from saas.urls.namespaces import Namespace
