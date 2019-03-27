@@ -1181,7 +1181,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, cpm_buffer=None, cpv_buffer=None):
+def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     charts = []
     if not flights:
         return charts
@@ -1221,7 +1221,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, cpm_buf
     historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
-    total_goal = sum(f["actual_plan_units"] for f in flights)
+    total_goal = sum(f["actual_plan_units"] if f.get("actual_plan_units") else f["plan_units"] for f in flights)
     recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
