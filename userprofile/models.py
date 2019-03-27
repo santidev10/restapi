@@ -208,14 +208,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         return self.groups.values('name')
 
     @property
-    def is_apex_user(self):
-        """
-        Check if user is an APEX user
-        """
-        return self.company == settings.APEX_COMPANY_NAME
-
-
-    @property
     def logo_url(self):
         logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
         return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)

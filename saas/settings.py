@@ -74,6 +74,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
+    'userprofile.middleware.ApexUserCheck',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -319,8 +320,6 @@ SINGLE_DATABASE_API_HOST = os.getenv("SINGLE_DATABASE_API_HOST", "localhost")
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from .configs.celery import *
-
-APEX_COMPANY_NAME = "APEX"
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
