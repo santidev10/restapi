@@ -1,9 +1,8 @@
 import json
 
-from unittest import mock
-
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -16,6 +15,7 @@ from aw_reporting.api.tests.base import AdGroup
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
+from userprofile.api.tests.test_settings import CUSTOM_AUTH_FLAGS
 from userprofile.api.urls.names import UserprofilePathName
 from utils.utittests.reverse import reverse
 
@@ -153,47 +153,35 @@ class AuthAPITestCase(AwReportingAPITestCase):
         else:
             self.fail()
 
-    @mock.patch("userprofile.middleware.ApexUserCheck.process_request", mock.MagicMock(return_value=None))
+    @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
     def test_success_apex_user_auth(self):
-        test_email = "test.user2@testuser.com"
-        user = self.create_test_user(email=test_email)
+        email = "test.apex_user@testuser.com"
+        password = "password"
+        user = get_user_model().objects.create(
+            email=email
+        )
+        user.set_password(password)
+        user.save()
+
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(username=email, password=password)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    @mock.patch("userprofile.middleware.ApexUserCheck.process_request", mock.MagicMock(return_value=None))
+    @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
+    @override_settings(APEX_HOST="http://apex:8000")
     def test_error_apex_user_auth(self):
-        with self.settings(APEX_HOST="http://apex:8000"):
+        email = "test.apex_user@testuser.com"
+        password = "password"
+        user = get_user_model().objects.create(
+            email=email
+        )
+        user.set_password(password)
+        user.save()
 
-            test_email = "test.user3@testuser.com"
-            user = self.create_test_user(email=test_email)
-            response = self.client.post(
-                self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-                content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
-            )
-            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_success_apex_user_auth_handled_by_middleware(self):
-        test_email = "test.user2@testuser.com"
-        user = self.create_test_user(email=test_email)
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(username=email, password=password)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_error_apex_user_auth_handled_by_middleware(self):
-        with mock.patch('userprofile.api.views.user_auth.UserAuthApiView.post'
-                   ) as auth_view:
-            with self.settings(APEX_HOST="http://apex:8000"):
-
-                test_email = "test.user3@testuser.com"
-                user = self.create_test_user(email=test_email)
-                response = self.client.post(
-                    self._url, json.dumps(dict(auth_token=user.auth_token.key)),
-                    content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
-                )
-                self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-                self.assertEqual(auth_view.call_count, 0)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

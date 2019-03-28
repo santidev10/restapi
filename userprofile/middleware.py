@@ -13,19 +13,19 @@ from userprofile.utils import is_correct_apex_domain
 class ApexUserCheck:
 
     def process_request(self, request):
-        header_token = request.META.get('HTTP_AUTHORIZATION', None)
+        header_token = request.META.get("HTTP_AUTHORIZATION", None)
         if header_token is None:
             return
 
         try:
-            token = sub('Token', '', request.META.get('HTTP_AUTHORIZATION', None))
+            token = sub("Token", "", request.META.get("HTTP_AUTHORIZATION", None))
             token_obj = Token.objects.get(key=token.strip())
             user = token_obj.user
         except Token.DoesNotExist:
             return
 
         user_email = user.email
-        request_origin = request.META.get('HTTP_ORIGIN') or request.META.get('HTTP_REFERER')
+        request_origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER")
 
         if not request_origin:
             return

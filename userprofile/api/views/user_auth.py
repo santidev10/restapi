@@ -77,7 +77,7 @@ class UserAuthApiView(APIView):
                 },
                 status=HTTP_400_BAD_REQUEST)
 
-        request_origin = request.META.get('HTTP_ORIGIN') or request.META.get('HTTP_REFERER')
+        request_origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER")
 
         if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
             return Response(
