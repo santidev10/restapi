@@ -32,8 +32,17 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
             return Response(status=HTTP_400_BAD_REQUEST, data="You may only update cpm_buffer or cpv_buffer values.")
 
         Opportunity.objects.filter(pk=pk).update(**request.data)
+        query = {"search": opportunity.name}
         report = PacingReport()
-        placements = report.get_placements(opportunity)
-        self.multiply_percents(placements)
+        try:
+            opportunity_report = report.get_opportunities(query, self.request.user)[0]
+            data = {
+                'plan_impressions': opportunity_report['plan_impressions'],
+                'plan_video_views': opportunity_report['plan_video_views'],
+            }
+            status = HTTP_200_OK
+        except IndexError:
+            data = "Opportunity {} not found.".format(opportunity.name)
+            status = HTTP_404_NOT_FOUND
 
-        return Response(status=HTTP_200_OK, data=placements)
+        return Response(status=status, data=data)
