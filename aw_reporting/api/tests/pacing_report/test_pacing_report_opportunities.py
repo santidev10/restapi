@@ -100,6 +100,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "cost",
                 "cpm",
                 "cpv",
+                "cpm_buffer",
+                "cpv_buffer",
                 "ctr",
                 "ctr_quality",
                 "dynamic_placements_types",
