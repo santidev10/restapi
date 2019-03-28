@@ -6,9 +6,21 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from saas.urls.namespaces import Namespace
-from userprofile.api.tests.test_settings import CUSTOM_AUTH_FLAGS
 from userprofile.api.urls.names import UserprofilePathName
 from utils.utittests.test_case import ExtendedAPITestCase
+
+
+CUSTOM_AUTH_FLAGS = {
+    "test.user@testuser.com": {
+        "hide_brand_name": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/simon.png",
+    },
+    "test.apex_user@testuser.com": {
+        "hide_brand_name": True,
+        "is_apex": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/apex.png",
+    }
+}
 
 
 class ApexUserCheckTestCase(ExtendedAPITestCase):

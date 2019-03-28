@@ -15,9 +15,21 @@ from aw_reporting.api.tests.base import AdGroup
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
-from userprofile.api.tests.test_settings import CUSTOM_AUTH_FLAGS
 from userprofile.api.urls.names import UserprofilePathName
 from utils.utittests.reverse import reverse
+
+
+CUSTOM_AUTH_FLAGS = {
+    "test.user@testuser.com": {
+        "hide_brand_name": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/simon.png",
+    },
+    "test.apex_user@testuser.com": {
+        "hide_brand_name": True,
+        "is_apex": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/apex.png",
+    }
+}
 
 
 class AuthAPITestCase(AwReportingAPITestCase):
