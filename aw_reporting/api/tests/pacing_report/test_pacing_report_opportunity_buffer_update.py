@@ -115,6 +115,40 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         self.assertEqual(response.data['plan_impressions'], None)
         self.assertEqual(response.data['plan_video_views'], expected_video_views)
 
+    def test_success_response_cpv(self):
+        now = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="opportunity", start=now - timedelta(days=1),
+            end=now + timedelta(days=1), probability=100, )
+        placement_cpm = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        placement_cpv = OpPlacement.objects.create(
+            id="2", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight_cpm = Flight.objects.create(
+            id="1", placement=placement_cpm, name="F", total_cost=100,
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
+        )
+        flight_cpv = Flight.objects.create(
+            id="2", placement=placement_cpv, name="F", total_cost=200,
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
+        )
+        update = dict(
+            cpm_buffer=10,
+            cpv_buffer=10,
+        )
+        url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
+                      args=(opportunity.id,))
+        response = self.client.put(url, json.dumps(update), content_type='application/json')
+        expected_plan_impressions = self.pacing_report.goal_factor * flight_cpm.ordered_units * (1 + update['cpm_buffer'] / 100)
+        expected_video_views = self.pacing_report.goal_factor * flight_cpv.ordered_units * (1 + update['cpv_buffer'] / 100)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data['plan_impressions'], expected_plan_impressions)
+        self.assertEqual(response.data['plan_video_views'], expected_video_views)
+
     def test_pacing_report_flights_charts_with_opportunity_buffers(self):
         now = datetime(2017, 1, 1)
         start, end = now.date(), date(2017, 1, 31)
