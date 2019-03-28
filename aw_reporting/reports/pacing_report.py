@@ -1050,8 +1050,9 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         sum_today_units = None
         yesterday_units = None
     else:
+        buffers_applied = cpv_buffer > 0 or cpm_buffer > 0
         charts = get_flight_charts(flights, today, allocation_ko,
-                                   campaign_id=campaign_id)
+                                   campaign_id=campaign_id, buffers_applied=buffers_applied)
 
     data = dict(
         today_goal=sum_today_units,
@@ -1181,7 +1182,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
+def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, buffers_applied=False):
     charts = []
     if not flights:
         return charts
@@ -1240,7 +1241,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
         pacing_chart.append(
             dict(
                 label=date,
-                value=min(total_pacing, recalculated_total_goal),
+                value=total_pacing if buffers_applied else min(total_pacing, recalculated_total_goal),
             )
         )
 
