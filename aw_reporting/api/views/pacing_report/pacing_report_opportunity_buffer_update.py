@@ -42,7 +42,7 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
             }
             status = HTTP_200_OK
         except IndexError:
-            data = f"Opportunity {opportunity.name} not found."
+            data = "Opportunity {} not found.".format(opportunity.name)
             status = HTTP_404_NOT_FOUND
 
         return Response(status=status, data=data)
