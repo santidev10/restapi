@@ -990,7 +990,7 @@ def get_today_goal(goal_items, delivered_items, end, today):
 
 
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
-                   allocation_ko=1, campaign_id=None, cpm_buffer=None, cpv_buffer=None):
+                   allocation_ko=1, campaign_id=None, cpm_buffer=0, cpv_buffer=0):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
     sum_today_budget = yesterday_cost = 0
     targeting = dict(impressions=0, video_views=0, clicks=0,
