@@ -1172,7 +1172,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
             cpv = DefaultRate.CPV if yesterdays_stats[
                                          "cpv"] is None else \
                 yesterdays_stats["cpv"]
-            today_budget = cpv * today_units / 1000
+            today_budget = cpv * today_units
         else:
             cpm = DefaultRate.CPM \
                 if yesterdays_stats["cpm"] is None \
