@@ -74,6 +74,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
+    'userprofile.middleware.ApexUserCheck',
 ]
 
 ROOT_URLCONF = 'saas.urls'
@@ -378,6 +379,7 @@ CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
 HOST = "https://viewiq.channelfactory.com"
+APEX_HOST = "https://apex.viewiq.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),

@@ -11,6 +11,8 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from userprofile.api.serializers import UserSerializer
+from userprofile.utils import is_apex_user
+from userprofile.utils import is_correct_apex_domain
 from drf_yasg import openapi
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
@@ -66,11 +68,22 @@ class UserAuthApiView(APIView):
                 user_password = request.data.get("password")
                 if not user.check_password(user_password):
                     user = None
+
         if not user:
             return Response(
                 data={
                     "error": ["Unable to authenticate user"
                               " with provided credentials"]
+                },
+                status=HTTP_400_BAD_REQUEST)
+
+        request_origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER")
+
+        if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
+            return Response(
+                data={
+                    "error": ["Unable to authenticate APEX user"
+                              " on this site. Please go to {}".format(settings.APEX_HOST)]
                 },
                 status=HTTP_400_BAD_REQUEST)
 

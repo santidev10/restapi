@@ -24,6 +24,7 @@ from utils.models import Timestampable
 logger = logging.getLogger(__name__)
 
 
+
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,

@@ -406,6 +406,15 @@ class PacingReport:
         sum_total_cost = sum_delivery = sum_spent_cost = 0
         current_cost_limit = 0
 
+        try:
+            placement_id = flights[0]["placement_id"]
+            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
+            cpm_buffer = opportunity.cpm_buffer
+            cpv_buffer = opportunity.cpv_buffer
+
+        except IndexError:
+            cpm_buffer = cpv_buffer = 0
+
         for f in flights:
             goal_type_id = f["placement__goal_type_id"]
             dynamic_placement = f["placement__dynamic_placement"]
@@ -450,8 +459,8 @@ class PacingReport:
             if f["start"] <= self.today:
                 current_cost_limit += total_cost
         result = dict(
-            plan_impressions=plan_impressions,
-            plan_video_views=plan_video_views,
+            plan_impressions=apply_buffer(plan_impressions, cpm_buffer),
+            plan_video_views=apply_buffer(plan_video_views, cpv_buffer),
             plan_cpv=cpv_cost / video_views if video_views else None,
             plan_cpm=cpm_cost / impressions * 1000 if impressions else None,
             cost=sum_spent_cost,
@@ -808,7 +817,13 @@ class PacingReport:
             self.add_calculated_fields(p)
             del p["ordered_units"]
 
-            chart_data = get_chart_data(flights=flights, today=self.today)
+            chart_data = get_chart_data(
+                flights=flights,
+                today=self.today,
+                cpm_buffer=opportunity.cpm_buffer,
+                cpv_buffer=opportunity.cpv_buffer
+            )
+
             p.update(chart_data)
 
             if goal_type_id == SalesForceGoalType.HARD_COST:
@@ -866,9 +881,13 @@ class PacingReport:
             # chart data
             before_yesterday_stats = all_aw_before_yesterday_stats.get(f['id'],
                                                                        {})
-
-            chart_data = get_chart_data(flights=[f], today=self.today,
-                                        before_yesterday_stats=before_yesterday_stats)
+            chart_data = get_chart_data(
+                flights=[f],
+                today=self.today,
+                before_yesterday_stats=before_yesterday_stats,
+                cpm_buffer=placement.opportunity.cpm_buffer,
+                cpv_buffer=placement.opportunity.cpv_buffer
+            )
             flight.update(chart_data)
 
             self.add_calculated_fields(flight)
@@ -920,8 +939,14 @@ class PacingReport:
                                                        c["current_cost_limit"],
                                                        **kwargs)
 
-            chart_data = get_chart_data(flights=flights_data, today=self.today,
-                                        **kwargs)
+            chart_data = get_chart_data(
+                flights=flights_data,
+                today=self.today,
+                cpv_buffer=flight.placement.opportunity.cpv_buffer,
+                cpm_buffer=flight.placement.opportunity.cpm_buffer,
+                **kwargs
+            )
+
             c.update(chart_data)
 
             self.add_calculated_fields(c)
@@ -965,7 +990,7 @@ def get_today_goal(goal_items, delivered_items, end, today):
 
 
 def get_chart_data(*_, flights, today, before_yesterday_stats=None,
-                   allocation_ko=1, campaign_id=None):
+                   allocation_ko=1, campaign_id=None, cpm_buffer=0, cpv_buffer=0):
     flights = [f for f in flights if None not in (f["start"], f["end"])]
     sum_today_budget = yesterday_cost = 0
     targeting = dict(impressions=0, video_views=0, clicks=0,
@@ -979,6 +1004,15 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         goal += (f["sf_ordered_units"] or 0) * allocation_ko
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
+
+        # Save plan_units value for non buffer related chart calculations before applying buffer to plan_units
+        f["actual_plan_units"] = f["plan_units"]
+
+        # Apply opportunity buffers for following pacing calculations
+        if goal_type_id == SalesForceGoalType.CPV:
+            f["plan_units"] = apply_buffer(f["plan_units"], cpv_buffer)
+        elif goal_type_id == SalesForceGoalType.CPM:
+            f["plan_units"] = apply_buffer(f["plan_units"], cpm_buffer)
 
         if f["start"] <= today <= f["end"]:
             today_units, today_budget = get_pacing_goal_for_today(
@@ -1016,8 +1050,9 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         sum_today_units = None
         yesterday_units = None
     else:
+        buffers_applied = cpv_buffer > 0 or cpm_buffer > 0
         charts = get_flight_charts(flights, today, allocation_ko,
-                                   campaign_id=campaign_id)
+                                   campaign_id=campaign_id, buffers_applied=buffers_applied)
 
     data = dict(
         today_goal=sum_today_units,
@@ -1031,7 +1066,6 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         goal=goal,
         charts=charts,
         targeting=targeting,
-
     )
 
     if before_yesterday_stats is not None:
@@ -1148,7 +1182,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
+def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, buffers_applied=False):
     charts = []
     if not flights:
         return charts
@@ -1188,7 +1222,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
-    total_goal = sum(f["plan_units"] for f in flights)
+    total_goal = sum(f["actual_plan_units"] if f.get("actual_plan_units") else f["plan_units"] for f in flights)
     recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
@@ -1207,7 +1241,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
         pacing_chart.append(
             dict(
                 label=date,
-                value=min(total_pacing, recalculated_total_goal),
+                value=total_pacing if buffers_applied else min(total_pacing, recalculated_total_goal),
             )
         )
 
@@ -1382,7 +1416,7 @@ def get_ideal_delivery_for_date(flights, selected_date):
         total_duration_days = (flight["end"] - flight["start"]).days + 1
         if total_duration_days != 0:
             passed_duration_days = (end_date - flight["start"]).days + 1
-            ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
+            ideal_delivery += flight["actual_plan_units"] / total_duration_days * passed_duration_days
 
     return ideal_delivery
 
@@ -1394,3 +1428,16 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     can_consume = sum(f["plan_units"] for f in not_started_flights)
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
+
+
+def apply_buffer(data, buffer) -> float:
+    """
+    Applies buffer percentage to item
+    :param data: data to apply with buffer
+    :param buffer: Buffer integer that is converted to percentage
+    :return: float
+    """
+    if data is None or buffer is None:
+        return data
+
+    return data * (1 + (buffer / 100))

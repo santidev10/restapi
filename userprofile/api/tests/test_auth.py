@@ -2,7 +2,9 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.tests.base import AWAccountPermission
 from aw_reporting.api.tests.base import AWConnection
@@ -15,6 +17,19 @@ from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from utils.utittests.reverse import reverse
+
+
+CUSTOM_AUTH_FLAGS = {
+    "test.user@testuser.com": {
+        "hide_brand_name": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/simon.png",
+    },
+    "test.apex_user@testuser.com": {
+        "hide_brand_name": True,
+        "is_apex": True,
+        "logo_url": "https://s3.amazonaws.com/viewiq-rc/logos/apex.png",
+    }
+}
 
 
 class AuthAPITestCase(AwReportingAPITestCase):
@@ -149,3 +164,36 @@ class AuthAPITestCase(AwReportingAPITestCase):
             pass
         else:
             self.fail()
+
+    @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
+    def test_success_apex_user_auth(self):
+        email = "test.apex_user@testuser.com"
+        password = "password"
+        user = get_user_model().objects.create(
+            email=email
+        )
+        user.set_password(password)
+        user.save()
+
+        response = self.client.post(
+            self._url, json.dumps(dict(username=email, password=password)),
+            content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
+    @override_settings(APEX_HOST="http://apex:8000")
+    def test_error_apex_user_auth(self):
+        email = "test.apex_user@testuser.com"
+        password = "password"
+        user = get_user_model().objects.create(
+            email=email
+        )
+        user.set_password(password)
+        user.save()
+
+        response = self.client.post(
+            self._url, json.dumps(dict(username=email, password=password)),
+            content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
