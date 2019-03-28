@@ -1,10 +1,11 @@
 from brand_safety.models import BadWord
-from .auditor import AuditService
+from .audit_service import AuditService
 from singledb.connector import SingleDatabaseApiConnector as Connector
 import csv
 import re
 from multiprocessing import Pool
 from . import audit_constants as constants
+
 
 class AuditProvider(object):
     max_process_count = 8
@@ -42,8 +43,7 @@ class AuditProvider(object):
         # self.brand_safety_regexp = self.compile_audit_regexp(self.get_all_bad_words())
         self.brand_safety_regexp = self.get_brand_safety_regexp()
         self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else None
-
+        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else Non
         audits = [
             {
                 'type': constants.BRAND_SAFETY,
@@ -61,7 +61,6 @@ class AuditProvider(object):
 
             },
         ]
-
         self.audits = [audit for audit in audits if audit['regexp'] is not None]
 
     def run(self):

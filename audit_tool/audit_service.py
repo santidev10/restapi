@@ -1,14 +1,14 @@
+import re
+from collections import Counter
+
+import langid
+
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from .youtube_data_provider import YoutubeDataProvider
-from collections import Counter
-import re
-import langid
 from . import audit_constants as constants
 
+
 class AuditService(object):
-    video_id_regexp = re.compile('(?<=watch\?v=).*')
-    channel_id_regexp = re.compile('(?<=channel/).*')
-    username_regexp = re.compile('(?<=user/).*')
     audit_keyword_hit_mapping = {
         constants.BRAND_SAFETY_FAIL: constants.BRAND_SAFETY_HITS,
         constants.WHITELIST: constants.WHITELIST_HITS,
@@ -103,7 +103,7 @@ class Audit(object):
                               u"\U0001F680-\U0001F6FF"  # transport & map symbols
                               u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
                               "]", flags=re.UNICODE)
-
+    
     def audit(self, regexp):
         """
         Finds all matches of regexp in Youtube data object
@@ -223,6 +223,7 @@ class ChannelAudit(Audit):
             'channel_url': 'https://www.youtube.com/channel/' + channel_data['id'],
             'language': self.get_language(channel_data),
             'category': channel_data['snippet'].get('category', 'Unknown'),
+            'description': channel_data['snippet'].get('description', ''),
             'videos': channel_data['statistics'].get('videoCount', 'Disabled'),
             'subscribers': channel_data['statistics'].get('subscriberCount', 'Disabled'),
             'views': channel_data['statistics'].get('viewCount', 'Disabled'),

@@ -1,11 +1,7 @@
 from django.core.management.base import BaseCommand
-from audit_tool.audit import AuditProvider
-import logging
 
-from pid.decorator import pidfile
-from pid import PidFileAlreadyLockedError
+from audit_tool.audit_provider import AuditProvider
 
-logger = logging.getLogger('topic_audit')
 
 class Command(BaseCommand):
     help = 'Start Reaudit.'
