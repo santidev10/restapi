@@ -547,6 +547,7 @@ class PacingReport:
             "apex_deal",
             "billing_server",
             "territory", "margin_cap_required",
+            "cpm_buffer", "cpv_buffer"
         )
 
         # collect ids
