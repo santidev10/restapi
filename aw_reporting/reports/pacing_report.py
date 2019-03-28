@@ -407,7 +407,7 @@ class PacingReport:
         current_cost_limit = 0
 
         try:
-            placement_id = flights[0]['placement_id']
+            placement_id = flights[0]["placement_id"]
             opportunity = OpPlacement.objects.get(id=placement_id).opportunity
             cpm_buffer = opportunity.cpm_buffer
             cpv_buffer = opportunity.cpv_buffer
