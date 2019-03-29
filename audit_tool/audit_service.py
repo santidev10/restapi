@@ -3,8 +3,6 @@ from collections import Counter
 
 import langid
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
-from .youtube_data_provider import YoutubeDataProvider
 from . import audit_constants as constants
 
 
@@ -15,15 +13,14 @@ class AuditService(object):
         constants.BLACKLIST: constants.BLACKLIST_HITS
     }
 
-    def __init__(self):
-        self.youtube_data_provider = YoutubeDataProvider()
-        self.sdb_connector = Connector()
+    def __init__(self, youtube, sdb):
+        self.youtube_data_provider = youtube()
+        self.sdb_connector = sdb()
 
     def set_audits(self, audits):
         for audit in audits:
             if audit:
                 setattr(self, audit['type'], audit['regexp'])
-
         self.audits = audits
 
     def connector_get_channel_videos(self, channel_ids: list, fields: str) -> list:
@@ -40,21 +37,16 @@ class AuditService(object):
             channel_id__terms=",".join(channel_ids),
         )
         response = self.sdb_connector.execute_get_call("videos/", params)
-
         return response.get('items')
 
     def audit_videos(self, video_ids=None, channel_ids=None):
         video_youtube_data = self.youtube_data_provider.get_video_data(video_ids) if video_ids else \
             self.youtube_data_provider.get_channel_video_data(channel_ids)
-
         all_video_audits = []
-
         for video in video_youtube_data:
             video_audit = VideoAudit(video, self.audits)
-
             video_audit.run_audit()
             all_video_audits.append(video_audit)
-
         return all_video_audits
 
     def audit_channels(self, video_audits):
@@ -64,24 +56,20 @@ class AuditService(object):
 
         # sorted_channel_data is dict of channel ids with their video audits
         channel_youtube_data = self.youtube_data_provider.get_channel_data(channel_ids)
-
         for channel in channel_youtube_data:
             channel_video_audits = sorted_channel_data[channel['id']]
             channel_audit = ChannelAudit(channel_video_audits, self.audits, channel)
             channel_audit.run_audit()
             all_channel_audits.append(channel_audit)
-
         return all_channel_audits
 
     @staticmethod
     def sort_video_audits(video_audits):
         channel_videos = {}
-
         for video in video_audits:
             channel_id = video.metadata['channel_id']
             channel_videos[channel_id] = channel_videos.get(channel_id, [])
             channel_videos[channel_id].append(video)
-
         return channel_videos
 
     @staticmethod
@@ -92,7 +80,6 @@ class AuditService(object):
         text += youtube_data['snippet'].get('channelTitle', '')
 
         found = re.search(regexp, text)
-
         return found
 
 
@@ -110,9 +97,7 @@ class Audit(object):
         :param regexp: Compiled regular expression to match
         :return:
         """
-
         metadata = self.metadata
-
         text = ''
         text += metadata.get('title', '')
         text += metadata.get('description', '')
@@ -122,21 +107,27 @@ class Audit(object):
 
         if metadata.get('tags'):
             text += ' '.join(metadata['tags'])
-
         hits = re.findall(regexp, text)
         return hits
 
     def set_keyword_terms(self, keywords, attribute):
         setattr(self, attribute, keywords)
 
+    def get_metadata(self, data, source):
+        if source == constants.YOUTUBE:
+            metadata = self.get_youtube_metadata(data)
+        elif source == constants.SDB:
+            metadata = self.get_sdb_metadata(data)
+        else:
+            raise ValueError('Source type {} unsupported.'.format(source))
+        return metadata
+
     @staticmethod
     def get_language(data):
         language = data['snippet'].get('defaultLanguage', None)
-
         if language is None:
             text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
             language = langid.classify(text)[0].lower()
-
         return language
 
     def get_export_row(self, audit_type=constants.BRAND_SAFETY):
@@ -146,17 +137,13 @@ class Audit(object):
         row.pop('video_id', None)
         row.pop('id', None)
         row.pop('tags', None)
-
+        row.pop('transcript', None)
         row = list(row.values())
         audit_hits = self.get_keyword_count(self.results[audit_type])
         row.append(audit_hits)
-
         return row
 
-    def detect_emoji(self, youtube_data):
-        metadata = youtube_data['snippet']
-        text = metadata.get('title', '') + metadata.get('description', '')
-
+    def detect_emoji(self, text):
         has_emoji = bool(re.search(self.emoji_regexp, text))
         return has_emoji
 
@@ -167,31 +154,60 @@ class Audit(object):
 
 
 class VideoAudit(Audit):
-    def __init__(self, data, audits):
+    dislike_ratio_audit_threshold = 0.2
+    views_audit_threshold = 1000
+    brand_safety_unique_threshold = 2
+    brand_safety_hits_threshold = 3
+
+    def __init__(self, data, audits, source=constants.YOUTUBE):
         self.audits = audits
-        self.metadata = self.get_metadata(data)
+        self.metadata = self.get_metadata(data, source)
         self.results = {}
 
-    def get_metadata(self, data):
+    def get_youtube_metadata(self, data):
+        text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
         metadata = {
             'channel_title': data['snippet'].get('channelTitle', ''),
             'channel_url': 'https://www.youtube.com/channel/' + data['snippet'].get('channelId', ''),
             'channelSubscribers': data.get('statistics', {}).get('channelSubscriberCount'),
-            'title': data['snippet']['title'],
+            'video_title': data['snippet']['title'],
             'video_url': 'https://www.youtube.com/video/' + data['id'],
-            'has_emoji': self.detect_emoji(data),
-            'views': data['statistics'].get('viewCount', 'Disabled'),
+            'has_emoji': self.detect_emoji(text),
+            'views': data['statistics'].get('viewCount', constants.DISABLED),
             'description': data['snippet'].get('description', ''),
-            'category': constants.VIDEO_CATEGORIES.get(data['snippet'].get('categoryId'), 'Unknown'),
+            'category': constants.VIDEO_CATEGORIES.get(data['snippet'].get('categoryId'), constants.DISABLED),
             'language': self.get_language(data),
-            'country': data['snippet'].get('country', 'Unknown'),
-            'likes': data['statistics'].get('likeCount', 'Disabled'),
-            'dislikes': data['statistics'].get('dislikeCount', 'Disabled'),
+            'country': data['snippet'].get('country', constants.UNKNOWN),
+            'likes': data['statistics'].get('likeCount', constants.DISABLED),
+            'dislikes': data['statistics'].get('dislikeCount', constants.DISABLED),
             'channel_id': data['snippet'].get('channelId', ''),
             'tags': data['snippet'].get('tags', []),
             'video_id': data['id'],
+            'transcript': data['snippet'].get('transcript', ''),
         }
+        return metadata
 
+    def get_sdb_metadata(self, data):
+        text = (data['title'] or '') + (data['description'] or '')
+        metadata = {
+            'channel_title': data['snippet'].get('channelTitle', ''),
+            'channel_url': 'https://www.youtube.com/channel/' + data['channel']['id'],
+            'channelSubscribers': data.get('statistics', {}).get('channelSubscriberCount'),
+            'video_title': data['title'],
+            'video_url': 'https://www.youtube.com/video/' + data['id'],
+            'has_emoji': self.detect_emoji(text),
+            'views': data['views'],
+            'description': data['description'],
+            'category': data['category'],
+            'language': data['language'],
+            'country': data['snippet'].get('country', constants.UNKNOWN),
+            'likes': data['likes'],
+            'dislikes': data['dislikes'],
+            'channel_id': data['snippet'].get('channelId', ''),
+            'tags': data['snippet'].get('tags', []),
+            'video_id': data['id'],
+            'transcript': data['transcript'],
+        }
         return metadata
 
     def run_audit(self):
@@ -201,15 +217,40 @@ class VideoAudit(Audit):
 
     def get_language(self, data):
         language = data['snippet'].get('defaultLanguage', None)
-
         if language is None:
             text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
             language = langid.classify(text)[0].lower()
-
         return language
+
+    def get_dislike_ratio(self):
+        likes = self.metadata['likes'] if self.metadata['likes'] is not constants.DISABLED else 0
+        dislikes = self.metadata['dislikes'] if self.metadata['dislikes'] is not constants.DISABLED else 0
+        try:
+            ratio = dislikes / (likes + dislikes)
+        except ZeroDivisionError:
+            ratio = 0
+        return ratio
+
+    def run_standard_audit(self):
+        brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
+        brand_safety_failed = brand_safety_counts \
+            and (
+                    len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
+                    or any(brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in brand_safety_counts)
+                )
+        dislike_ratio = self.get_dislike_ratio()
+        views = self.metadata['views'] if self.metadata['views'] is not constants.DISABLED else 0
+        failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
+            and views > self.views_audit_threshold \
+            and brand_safety_failed
+        return failed_standard_audit
 
 
 class ChannelAudit(Audit):
+    video_fail_limit = 3
+    subscribers_threshold = 1000
+    brand_safety_hits_threshold = 1
+
     def __init__(self, video_audits, audits, channel_data):
         self.results = {}
         self.video_audits = video_audits
@@ -217,21 +258,50 @@ class ChannelAudit(Audit):
         self.metadata = self.get_metadata(channel_data)
         self.update_aggregate_video_audit_data()
 
-    def get_metadata(self, channel_data):
+    def get_channel_videos_failed(self):
+        videos_failed = 0
+        for video in self.video_audits:
+            if video['results'].get(constants.BRAND_SAFETY):
+                videos_failed += 1
+            if videos_failed >= self.video_fail_limit:
+                return True
+        return False
+
+    def get_youtube_metadata(self, channel_data):
+        text = channel_data['snippet'].get('title', '') + channel_data['snippet'].get('description', '')
         metadata = {
             'channel_title': channel_data['snippet'].get('title', ''),
             'channel_url': 'https://www.youtube.com/channel/' + channel_data['id'],
             'language': self.get_language(channel_data),
-            'category': channel_data['snippet'].get('category', 'Unknown'),
+            'category': channel_data['snippet'].get('category', constants.UNKNOWN),
             'description': channel_data['snippet'].get('description', ''),
-            'videos': channel_data['statistics'].get('videoCount', 'Disabled'),
-            'subscribers': channel_data['statistics'].get('subscriberCount', 'Disabled'),
-            'views': channel_data['statistics'].get('viewCount', 'Disabled'),
+            'videos': channel_data['statistics'].get('videoCount', constants.DISABLED),
+            'subscribers': channel_data['statistics'].get('subscriberCount', constants.DISABLED),
+            'views': channel_data['statistics'].get('viewCount', constants.DISABLED),
             'audited_videos': len(self.video_audits),
-            'has_emoji': self.detect_emoji(channel_data),
-            'likes': channel_data['statistics'].get('likeCount', 'Disabled'),
-            'dislikes': channel_data['statistics'].get('dislikeCount', 'Disabled'),
-            'country': channel_data['snippet'].get('country', 'Unknown'),
+            'has_emoji': self.detect_emoji(text),
+            'likes': channel_data['statistics'].get('likeCount', constants.DISABLED),
+            'dislikes': channel_data['statistics'].get('dislikeCount', constants.DISABLED),
+            'country': channel_data['snippet'].get('country', constants.UNKNOWN),
+        }
+        return metadata
+
+    def get_sdb_metadata(self, channel_data):
+        text = (channel_data['title'] or '') + (channel_data['description'] or '')
+        metadata = {
+            'channel_title': channel_data['snippet'].get('title', ''),
+            'channel_url': 'https://www.youtube.com/channel/' + channel_data['id'],
+            'language': self.get_language(channel_data),
+            'category': channel_data['snippet'].get('category', constants.UNKNOWN),
+            'description': channel_data['snippet'].get('description', ''),
+            'videos': channel_data['statistics'].get('videoCount', constants.DISABLED),
+            'subscribers': channel_data['statistics'].get('subscriberCount', constants.DISABLED),
+            'views': channel_data['statistics'].get('viewCount', constants.DISABLED),
+            'audited_videos': len(self.video_audits),
+            'has_emoji': self.detect_emoji(text),
+            'likes': channel_data['statistics'].get('likeCount', constants.DISABLED),
+            'dislikes': channel_data['statistics'].get('dislikeCount', constants.DISABLED),
+            'country': channel_data['snippet'].get('country', constants.UNKNOWN),
         }
         return metadata
 
@@ -244,14 +314,12 @@ class ChannelAudit(Audit):
 
     def update_aggregate_video_audit_data(self):
         video_audits = self.video_audits
-
         # First get audit data
         aggregated_data = {
             'likes': 0,
             'dislikes': 0,
             'category': [],
         }
-
         for video in video_audits:
             # Preserve "Disabled" value for videos if not initially given in api response
             try:
@@ -264,8 +332,7 @@ class ChannelAudit(Audit):
             except ValueError:
                 pass
 
-                aggregated_data['category'].append(video.metadata['category'])
-
+            aggregated_data['category'].append(video.metadata['category'])
             # Try to update the video's country with current channel's country
             if video.metadata['country'] == 'Unknown':
                 video.metadata['country'] = self.metadata['country']
@@ -274,7 +341,6 @@ class ChannelAudit(Audit):
                 audit_type = audit['type']
                 aggregated_data[audit_type] = aggregated_data.get(audit_type, [])
                 aggregated_data[audit_type].extend(video.results[audit_type])
-
         try:
             aggregated_data['category'] = Counter(aggregated_data['category']).most_common()[0][0]
 
@@ -282,3 +348,13 @@ class ChannelAudit(Audit):
             aggregated_data['category'] = 'Unknown'
 
         self.metadata.update(aggregated_data)
+
+    def run_standard_audit(self):
+        brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
+                              and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
+        channel_videos_failed = self.get_channel_videos_failed()
+        subscribers = self.metadata['subscribers'] if self.metadata['subscribers'] is not constants.DISABLED else 0
+        failed_standard_audit = brand_safety_failed \
+            and channel_videos_failed \
+            and subscribers > self.subscribers_threshold
+        return failed_standard_audit

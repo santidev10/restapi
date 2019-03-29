@@ -1,5 +1,5 @@
-from utils.youtube_api import YoutubeAPIConnector
-from utils.youtube_api import YoutubeAPIConnectorException
+from utils.youtube_api import YoutubeAPIConnector, YoutubeAPIConnectorException
+from singledb.connector import SingleDatabaseApiConnector, SingleDatabaseApiConnectorException
 
 class YoutubeDataProvider(object):
     youtube_max_channel_list_limit = 50
@@ -133,4 +133,25 @@ class YoutubeDataProvider(object):
             cursor += len(batch)
 
         return all_videos
+
+
+class SegmentDataProvider(object):
+    def __init__(self, segment_model, segment_name):
+        try:
+            self.segment = segment_model.objects.get(name=segment_name)
+        except segment_model.DoesNotExist:
+            raise ValueError('The segment {} was not found.'.format(segment_name))
+
+    def get_related_items(self, limit=None):
+        items = self.segment.related.all()
+        if limit:
+            items = items[:limit]
+        return items
+
+class SDBDataProvider(object):
+    def __init__(self):
+        self.sdb_connector = SingleDatabaseApiConnector()
+
+    def get_channel_video_data(self, fields=''):
+
 
