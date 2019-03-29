@@ -2,6 +2,8 @@ import logging
 import re
 from typing import Type
 
+from django.conf import settings
+
 from audit_tool.models import ChannelAuditIgnore, AuditIgnoreModel
 from audit_tool.models import VideoAuditIgnore
 from brand_safety.models import BadWord
@@ -120,9 +122,15 @@ class SegmentedAudit:
             last_id = videos[-1]["video_id"]
 
     def get_all_bad_words(self):
-        bad_words = BadWord.objects.values_list("name", flat=True)
-        bad_words = list(set(bad_words))
-        return bad_words
+        if settings.USE_LEGACY_BRAND_SAFETY:
+            connector = Connector()
+            bad_words = connector.get_bad_words_list({})
+            bad_words_names = [item["name"] for item in bad_words]
+        else:
+            bad_words_names = BadWord.objects.values_list("name", flat=True)
+
+        bad_words_names = list(set(bad_words_names))
+        return bad_words_names
 
     def _parse_video(self, video):
         items = [

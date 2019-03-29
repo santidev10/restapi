@@ -434,6 +434,8 @@ TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
 
+USE_LEGACY_BRAND_SAFETY = True
+
 try:
     from .local_settings import *
 except ImportError:

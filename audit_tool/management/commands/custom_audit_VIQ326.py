@@ -5,12 +5,15 @@ from typing import Dict
 from typing import List
 
 import xlsxwriter
+from django.conf import settings
 from django.core.management import BaseCommand
+from django.http import QueryDict
 
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
 from audit_tool.youtube import Youtube
 from brand_safety.models import BadWord
+from singledb.connector import SingleDatabaseApiConnector
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +91,13 @@ class Command(BaseCommand):
         # get KW_Category
         self.KW_CATEGORY = {}
         logger.error("start downloading categories")
-        bad_words = BadWord.objects.all().values()
+
+        if settings.USE_LEGACY_BRAND_SAFETY:
+            params = QueryDict()
+            bad_words = SingleDatabaseApiConnector().get_bad_words_list(params)
+        else:
+            bad_words = BadWord.objects.all().values()
+
         for row in bad_words:
             name = row.get("name")
             category = row.get("category")
