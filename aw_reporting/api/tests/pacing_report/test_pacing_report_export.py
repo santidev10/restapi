@@ -4,7 +4,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.xlsx import get_sheet_from_response
+from utils.utittests.csv import get_data_from_csv_response
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):
@@ -13,49 +13,50 @@ class PacingReportExportTestCase(ExtendedAPITestCase):
     def test_success(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv")
 
     def test_headers(self):
         response = self.client.get(self.url)
 
-        sheet = get_sheet_from_response(response)
+        csv_data = get_data_from_csv_response(response)
 
-        headers = tuple([cell.value for cell in list(sheet.rows)[1]])
+        headers = next(csv_data)
         self.assertEqual(headers, COLUMNS)
 
 
-COLUMNS = (
+COLUMNS = [
     # Name
-    "Opportunity",
-    "Placement",
-    "Flight",
-    "Campaign",
+    "Name.Opportunity",
+    "Name.Placement",
+    "Name.Flight",
+    "Name.Campaign",
 
     # KPIs
-    "Pacing",
-    "Margin",
+    "KPIs.Pacing",
+    "KPIs.Margin",
 
     # Dates
-    "IO",
-    "Start",
-    "End",
+    "Dates.IO",
+    "Dates.Start",
+    "Dates.End",
 
     # Goals
-    "Budget",
-    "Views",
-    "CPV",
-    "Impressions",
-    "CPM",
+    "Goals.Budget",
+    "Goals.Views",
+    "Goals.CPV",
+    "Goals.Impressions",
+    "Goals.CPM",
 
     # Delivered
-    "Cost",
-    "Views",
-    "CPV",
-    "Impressions",
-    "CPM",
+    "Delivered.Cost",
+    "Delivered.Views",
+    "Delivered.CPV",
+    "Delivered.Impressions",
+    "Delivered.CPM",
 
     "AdOps",
     "AM",
     "Sales",
     "Category",
     "Territory",
-)
+]

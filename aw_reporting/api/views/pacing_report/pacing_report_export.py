@@ -1,10 +1,9 @@
 from rest_framework.generics import ListAPIView
 
-from aw_reporting import xlsx_reports
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
+from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.reports.pacing_report import PacingReport
-from utils.views import xlsx_response
 
 
 class PacingReportExportView(ListAPIView, PacingReportHelper):
@@ -14,6 +13,5 @@ class PacingReportExportView(ListAPIView, PacingReportHelper):
         pacing_report = PacingReport()
         opportunities = pacing_report.get_opportunities(request.GET)
 
-        xlsx_report = xlsx_reports.pacing_report(pacing_report, opportunities)
-
-        return xlsx_response(pacing_report.name, xlsx_report)
+        csv_generator = PacingReportCSVExport(pacing_report, opportunities, pacing_report.name)
+        return csv_generator.prepare_csv_file_response()
