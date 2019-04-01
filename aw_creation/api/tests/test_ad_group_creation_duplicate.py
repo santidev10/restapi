@@ -1,13 +1,24 @@
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
-from aw_creation.models import *
+from aw_creation.api.urls.names import Name
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
+from saas.urls.namespaces import Namespace
+from utils.utittests.reverse import reverse
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
+
+    def _get_url(self, ad_group_id):
+        return reverse(Name.CreationSetup.AD_GROUP_DUPLICATE, [Namespace.AW_CREATION], args=(ad_group_id,))
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -40,32 +51,30 @@ class AccountAPITestCase(AwReportingAPITestCase):
     def test_success_fail_has_no_permission(self):
         self.user.remove_custom_user_permission("view_media_buying")
 
-        ac = self.create_ad_group_creation(self.user)
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ac.id,))
+        ad_group = self.create_ad_group_creation(self.user)
+        url = self._get_url(ad_group.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
-        ac = self.create_ad_group_creation(self.user)
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ac.id,))
+        ad_groups = self.create_ad_group_creation(self.user)
+        url = self._get_url(ad_groups.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertNotEqual(ac.id, data['id'])
+        self.assertNotEqual(ad_groups.id, data['id'])
 
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'name',  'updated_at', 'ad_creations',
+                'id', 'name', 'updated_at', 'ad_creations',
                 'genders', 'parents', 'age_ranges',
                 'targeting', 'max_rate', 'video_ad_format',
             }
         )
-        self.assertEqual(data['max_rate'], ac.max_rate)
+        self.assertEqual(data['max_rate'], ad_groups.max_rate)
         self.assertEqual(
             set(data['targeting']),
             {'channel', 'video', 'topic', 'interest', 'keyword'}
@@ -74,14 +83,13 @@ class AccountAPITestCase(AwReportingAPITestCase):
             set(data['targeting']['keyword']['negative'][0]),
             {'criteria', 'is_negative', 'type', 'name'}
         )
-        self.assertEqual(data['name'], "{} (1)".format(ac.name))
+        self.assertEqual(data['name'], "{} (1)".format(ad_groups.name))
 
     def test_success_post_increment_name(self):
-        ag = self.create_ad_group_creation(owner=self.user)
-        ag.name = "FF 1 (199)"
-        ag.save()
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ag.id,))
+        ad_group = self.create_ad_group_creation(owner=self.user)
+        ad_group.name = "FF 1 (199)"
+        ad_group.save()
+        url = self._get_url(ad_group.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -92,8 +100,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         ac = DemoAccount()
         campaign = ac.children[0]
         ad_group = campaign.children[0]
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ad_group.id,))
+        url = self._get_url(ad_group.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -112,8 +119,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             max_rate="666.666",
         )
 
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ad_group_creation.id,))
+        url = self._get_url(ad_group_creation.id)
         response = self.client.post("{}?to={}".format(url, campaign_creation_2.id))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -140,10 +146,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             max_rate="666.666",
         )
 
-        url = reverse("aw_creation_urls:ad_group_creation_duplicate",
-                      args=(ad_group_creation.id,))
+        url = self._get_url(ad_group_creation.id)
         response = self.client.post("{}?to={}".format(url, campaign_creation_2.id))
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
-
-
