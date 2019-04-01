@@ -1,5 +1,4 @@
 import time
-
 from utils.youtube_api import YoutubeAPIConnector, YoutubeAPIConnectorException
 from singledb.connector import SingleDatabaseApiConnector, SingleDatabaseApiConnectorException
 
@@ -143,8 +142,8 @@ class SDBDataProvider(object):
     retry_coeff = 1.5
     retry_sleep = 0.2
 
-    def __init__(self, sdb_connector, channel_batch_limit=100, video_batch_limit=10000):
-        self.sdb_connector = sdb_connector()
+    def __init__(self, channel_batch_limit=100, video_batch_limit=10000):
+        self.sdb_connector = SingleDatabaseApiConnector()
         self.channel_batch_limit = channel_batch_limit
         self.video_batch_limit = video_batch_limit
 
