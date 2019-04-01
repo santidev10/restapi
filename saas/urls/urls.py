@@ -58,7 +58,7 @@ urlpatterns = [
     url(r'^api/v1/', include(email_reports_api_urls,
                              namespace="email_reports_api_urls")),
 
-    url(r'^api/v1/', include(brand_safety_api_urls, namespace=Namespace.BRAND_SAFETY)),
+    url(r'^api/v2/', include(brand_safety_api_urls, namespace=Namespace.BRAND_SAFETY)),
 
     url(r'^docs/', include(documentation_api_urls))
 ]

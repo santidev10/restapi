@@ -397,8 +397,50 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
 
+    def _normalize_filters(self, filters):
+        def map_value(value):
+            return ",".join(value) if isinstance(value, (list, tuple)) else value
+
+        return {key: map_value(value) for key, value in filters.items()}
+
     # todo: remove bad words
     def get_bad_words_list(self, query_params):
         endpoint = "bad_words/"
         response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_words_categories_list(self, query_params):
+        endpoint = "bad_words_categories/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_words_history_list(self, query_params):
+        endpoint = "bad_words_history/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def post_bad_word(self, query_params, data):
+        endpoint = "bad_words/"
+        response_data = self.execute_post_call(endpoint, {}, data)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def put_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_put_call(endpoint, query_params, data)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_word(self, query_params, pk):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def delete_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_delete_call(endpoint, query_params, data)
         return response_data
