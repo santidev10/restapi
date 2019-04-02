@@ -1163,6 +1163,9 @@ class BaseCreationDuplicateApiView(APIView):
         "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
         "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
         "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+        "business_name",
+        "long_headline",
+        "short_headline",
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
