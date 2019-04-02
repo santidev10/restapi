@@ -7,9 +7,12 @@ class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80, required=True)
 
     def validate(self, data):
-        category_name = data['category']
-        category_ref = BadWordCategory.from_string(category_name)
-        data['category_ref'] = category_ref
+        try:
+            category_name = data['category']
+            category_ref = BadWordCategory.from_string(category_name)
+            data['category_ref'] = category_ref
+        except KeyError:
+            pass
         return data
 
     class Meta:
