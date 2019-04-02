@@ -42,10 +42,13 @@ class StandardAuditService(AuditService):
             video_audits.append(audit)
         return video_audits
 
-    def audit_channels(self, video_audits):
-        channel_audit = ChannelAudit(video_audits, self.audit_types, source=constants.SDB)
-        channel_audit.execute()
-        return channel_audit
+    def audit_channels(self, sorted_video_audits):
+        channel_audits = []
+        for video_audits in sorted_video_audits.values():
+            channel_audit = ChannelAudit(video_audits, self.audit_types, source=constants.SDB)
+            channel_audit.execute()
+            channel_audits.append(channel_audit)
+        return channel_audits
 
 
 class YoutubeAuditService(AuditService):

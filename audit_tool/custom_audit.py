@@ -1,7 +1,7 @@
 from django.conf import settings
 
 from brand_safety.models import BadWord
-from .audit_service import AuditService
+from .audit_services import AuditService
 from singledb.connector import SingleDatabaseApiConnector as Connector
 import csv
 import re
@@ -9,7 +9,7 @@ from multiprocessing import Pool
 from . import audit_constants as constants
 
 
-class AuditProvider(object):
+class CustomAuditProvider(object):
     max_process_count = 8
     video_chunk_size = 1000
     video_batch_size = 8000

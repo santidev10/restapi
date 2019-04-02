@@ -173,7 +173,7 @@ class VideoAudit(Audit):
 
     def run_custom_audit(self):
         """
-
+        Executes audit method on all existing audit types
         :return:
         """
         for audit in self.audit_types:
@@ -181,6 +181,11 @@ class VideoAudit(Audit):
             self.results[audit['type']] = hits
 
     def get_language(self, data):
+        """
+        Parses metadata to detect language using langid
+        :param data:
+        :return:
+        """
         language = data['snippet'].get('defaultLanguage', None)
         if language is None:
             text = data['snippet'].get('title', '') + data['snippet'].get('description', '')
@@ -188,6 +193,10 @@ class VideoAudit(Audit):
         return language
 
     def get_dislike_ratio(self):
+        """
+        Calculate Youtube dislike to like ratio
+        :return:
+        """
         likes = self.metadata['likes'] if self.metadata['likes'] is not constants.DISABLED else 0
         dislikes = self.metadata['dislikes'] if self.metadata['dislikes'] is not constants.DISABLED else 0
         try:
@@ -197,20 +206,42 @@ class VideoAudit(Audit):
         return ratio
 
     def run_standard_audit(self):
-        brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
-        brand_safety_failed = brand_safety_counts \
-                              and (
-                                      len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
-                                      or any(
-                                  brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
-                                  brand_safety_counts)
-                              )
-        dislike_ratio = self.get_dislike_ratio()
-        views = self.metadata['views'] if self.metadata['views'] is not constants.DISABLED else 0
-        failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
-                                and views > self.views_audit_threshold \
-                                and brand_safety_failed
-        return failed_standard_audit
+        pass
+
+    def calculate_brand_safety_score(self):
+        """
+        Calculate brand safety score total and across categories
+        :return: tuple -> (int) total score, (dict) scores by category
+        """
+        brand_safety_hits = self.results[constants.BRAND_SAFETY]
+        category_scores = {}
+        overall_score = 0
+        for keyword in brand_safety_hits:
+            keyword_category = self.brand_safety_category_mapping[keyword]['category']
+            keyword_score = self.brand_safety_category_mapping[keyword]['score']
+            category_scores[keyword_category] = category_scores.get(keyword_category, {})
+            category_scores[keyword_category][keyword] = category_scores[keyword_category].get(keyword, {})
+            category_scores[keyword_category][keyword]['hits'] += 1
+            category_scores[keyword_category][keyword]['score'] += keyword_score
+            overall_score += keyword_score
+        return overall_score, category_scores
+
+
+    # def run_standard_audit(self):
+    #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
+    #     brand_safety_failed = brand_safety_counts \
+    #                           and (
+    #                                   len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
+    #                                   or any(
+    #                               brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
+    #                               brand_safety_counts)
+    #                           )
+    #     dislike_ratio = self.get_dislike_ratio()
+    #     views = self.metadata['views'] if self.metadata['views'] is not constants.DISABLED else 0
+    #     failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
+    #                             and views > self.views_audit_threshold \
+    #                             and brand_safety_failed
+    #     return failed_standard_audit
 
 
 class ChannelAudit(Audit):
@@ -218,8 +249,9 @@ class ChannelAudit(Audit):
     subscribers_threshold = 1000
     brand_safety_hits_threshold = 1
 
-    def __init__(self, video_audits, audit_types, channel_data):
+    def __init__(self, video_audits, audit_types, channel_data, source=constants.YOUTUBE):
         self.results = {}
+        self.source = source
         self.video_audits = video_audits
         self.audit_types = audit_types
         self.metadata = self.get_metadata(channel_data)
@@ -325,3 +357,4 @@ class ChannelAudit(Audit):
                                 and channel_videos_failed \
                                 and subscribers > self.subscribers_threshold
         return failed_standard_audit
+
