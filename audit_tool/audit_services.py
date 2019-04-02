@@ -50,6 +50,12 @@ class StandardAuditService(AuditService):
             channel_audits.append(channel_audit)
         return channel_audits
 
+    def calculate_brand_safety_results(self, audits, brand_safety_score_mapping):
+        results = [
+            audit.calculate_brand_safety_score(brand_safety_score_mapping) for audit in audits
+        ]
+        return results
+
 
 class YoutubeAuditService(AuditService):
     def __init__(self, audit_types, youtube, sdb):

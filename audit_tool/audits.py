@@ -208,24 +208,6 @@ class VideoAudit(Audit):
     def run_standard_audit(self):
         pass
 
-    def calculate_brand_safety_score(self):
-        """
-        Calculate brand safety score total and across categories
-        :return: tuple -> (int) total score, (dict) scores by category
-        """
-        brand_safety_hits = self.results[constants.BRAND_SAFETY]
-        category_scores = {}
-        overall_score = 0
-        for keyword in brand_safety_hits:
-            keyword_category = self.brand_safety_category_mapping[keyword]['category']
-            keyword_score = self.brand_safety_category_mapping[keyword]['score']
-            category_scores[keyword_category] = category_scores.get(keyword_category, {})
-            category_scores[keyword_category][keyword] = category_scores[keyword_category].get(keyword, {})
-            category_scores[keyword_category][keyword]['hits'] += 1
-            category_scores[keyword_category][keyword]['score'] += keyword_score
-            overall_score += keyword_score
-        return overall_score, category_scores
-
 
     # def run_standard_audit(self):
     #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
@@ -242,6 +224,27 @@ class VideoAudit(Audit):
     #                             and views > self.views_audit_threshold \
     #                             and brand_safety_failed
     #     return failed_standard_audit
+
+    def calculate_brand_safety_score(self, score_mapping):
+        """
+        Calculate brand safety score total and across categories
+        :return: tuple -> (int) total score, (dict) scores by category
+        """
+        category_scores = {
+            "video_id": self.metadata['video_id'],
+            "categories": {},
+            "score": 0,
+        }
+        brand_safety_hits = self.results[constants.BRAND_SAFETY]
+        for keyword in brand_safety_hits:
+            keyword_score = score_mapping[keyword]['score']
+            keyword_category = score_mapping[keyword]['category']
+            category_scores[keyword_category] = category_scores.get(keyword_category, {})
+            category_scores[keyword_category][keyword] = category_scores[keyword_category].get(keyword, {})
+            category_scores[keyword_category][keyword]['hits'] += 1
+            category_scores[keyword_category][keyword]['score'] += keyword_score
+            category_scores["score"] += keyword_score
+        return category_scores
 
 
 class ChannelAudit(Audit):

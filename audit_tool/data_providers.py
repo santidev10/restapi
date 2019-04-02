@@ -135,17 +135,18 @@ class YoutubeDataProvider(object):
 
         return all_videos
 
+
 class SDBDataProvider(object):
     video_fields = "video_id,channel_id, channel_title,title,description,tags,category,likes,dislikes,views,language,transcript"
     channel_fields = "channel_id,title,description,category,subscribers,likes,dislikes,views,language"
     max_retries = 3
     retry_coeff = 1.5
     retry_sleep = 0.2
+    video_batch_limit = 10000
+    channel_batch_limit = 100
 
-    def __init__(self, channel_batch_limit=100, video_batch_limit=10000):
+    def __init__(self,):
         self.sdb_connector = SingleDatabaseApiConnector()
-        self.channel_batch_limit = channel_batch_limit
-        self.video_batch_limit = video_batch_limit
 
     def get_channels_videos_batch(self, channel_ids):
         """
@@ -156,7 +157,7 @@ class SDBDataProvider(object):
         params = dict(
             fields=self.video_fields,
             sort="video_id",
-            size=self.video_batch_size,
+            size=self.video_batch_limit,
             channel_id__terms=",".join(channel_ids),
         )
         response = self._execute(self.sdb_connector.execute_get_call, "videos/", params)
@@ -188,6 +189,10 @@ class SDBDataProvider(object):
                 break
             else:
                 yield channels
+
+    def es_index_brand_safety_results(self, results):
+        response = self._execute(self.sdb_connector.post_brand_safety_results, results)
+        return response
 
     def _execute(self, method, *args, **kwargs):
         retries = 0
