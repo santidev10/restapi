@@ -591,7 +591,7 @@ function createDisplayResponsive(adGroup, params) {
         Logger.log("Error->" + err);
     }
 
-    var marketingImageUrl = 'https://rc-viewiq.channelfactory.com/static/img/AD_IMAGE_PLACEHOLDER.png';
+    var marketingImageUrl = 'https://s3.amazonaws.com/viewiq-prod/adwords/AD_IMAGE_PLACEHOLDER.png';
     var marketingImage = getOrCreateImage(marketingImageUrl);
 
     builder = builder
