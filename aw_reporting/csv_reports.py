@@ -1,4 +1,9 @@
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.reports.pacing_report_generator import PacingReportGenerator
 from utils.csv_export import BaseCSVStreamResponseGenerator
+
 
 OPPORTUNITY_COLUMN_NAME = "opportunity_name"
 PLACEMENT_COLUMN_NAME = "placement_name"
@@ -115,12 +120,12 @@ FORMATTING = dict(
 
 
 class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
-    def __init__(self, report, opportunities, file_name):
+    def __init__(self, get):
         super(PacingReportCSVExport, self).__init__(CSV_COLUMN_ORDER,
-                                                    self.pacing_report_list(report, opportunities),
+                                                    self.pacing_report_list(get),
                                                     REPORT_HEADERS)
 
-        self.file_name = file_name
+        self.report = PacingReportGenerator()
 
     def _map_row(self, row):
         result_list = []
@@ -138,26 +143,17 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
         return result_list
 
-    def pacing_report_list(self, report, opportunities):
-        from aw_reporting.models import Flight
-        from aw_reporting.models import OpPlacement
-        from aw_reporting.models import Opportunity
+    def pacing_report_list(self, get):
 
-        for opportunity in opportunities:
+        for opportunity in self.report.get_opportunities(get):
             # opportunity
             opportunity[OPPORTUNITY_COLUMN_NAME] = opportunity.get("name")
-
-            for column in (OpportunityColumn.AD_OPS, OpportunityColumn.AM,
-                           OpportunityColumn.SALES, OpportunityColumn.CATEGORY, OpportunityColumn.REGION):
-                value = opportunity.get(column)
-                if value:
-                    opportunity[column] = value.get("name")
 
             yield opportunity
 
             # placements
             opportunity_object = Opportunity.objects.get(id=opportunity["id"])
-            for placement in report.get_placements(opportunity_object):
+            for placement in self.report.get_placements(opportunity_object):
 
                 placement[PLACEMENT_COLUMN_NAME] = placement.get("name")
 
@@ -165,7 +161,7 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
                 # flights
                 placement_obj = OpPlacement.objects.get(id=placement["id"])
-                for flight in report.get_flights(placement_obj):
+                for flight in self.report.get_flights(placement_obj):
 
                     flight[FLIGHT_COLUMN_NAME] = flight.get("name")
 
@@ -173,11 +169,11 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
                     # campaigns
                     flight_obj = Flight.objects.get(id=flight["id"])
-                    for campaign in report.get_campaigns(flight_obj):
+                    for campaign in self.report.get_campaigns(flight_obj):
 
                         campaign[CAMPAIGN_COLUMN_NAME] = campaign.get("name")
 
                         yield campaign
 
     def get_filename(self):
-        return self.file_name
+        return self.report.name
