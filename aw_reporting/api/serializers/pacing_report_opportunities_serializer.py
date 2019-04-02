@@ -28,6 +28,8 @@ class PacingReportOpportunitiesSerializer(Serializer):
     cost = FloatField()
     cpm = FloatField()
     cpv = FloatField()
+    cpm_buffer = IntegerField()
+    cpv_buffer = IntegerField()
     ctr = PercentField()
     ctr_quality = IntegerField()
     dynamic_placements_types = SimpleField()

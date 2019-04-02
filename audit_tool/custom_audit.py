@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from brand_safety.models import BadWord
 from .audit_service import AuditService
 from singledb.connector import SingleDatabaseApiConnector as Connector
@@ -310,7 +312,12 @@ class AuditProvider(object):
 
     @staticmethod
     def get_all_bad_words():
-        bad_words_names = BadWord.objects.values_list("name", flat=True)
+        if settings.USE_LEGACY_BRAND_SAFETY:
+            connector = Connector()
+            bad_words = connector.get_bad_words_list({})
+            bad_words_names = [item["name"] for item in bad_words]
+        else:
+            bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
 
         return bad_words_names

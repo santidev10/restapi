@@ -73,13 +73,13 @@ urlpatterns = [
 
     url(r'^campaign_creation_duplicate/(?P<pk>\w+)/$',
         views.CampaignCreationDuplicateApiView.as_view(),
-        name="campaign_creation_duplicate"),
+        name=Name.CreationSetup.CAMPAIGN_DUPLICATE),
     url(r'^ad_group_creation_duplicate/(?P<pk>\w+)/$',
         views.AdGroupCreationDuplicateApiView.as_view(),
-        name="ad_group_creation_duplicate"),
+        name=Name.CreationSetup.AD_GROUP_DUPLICATE),
     url(r'^ad_creation_duplicate/(?P<pk>\w+)/$',
         views.AdCreationDuplicateApiView.as_view(),
-        name="ad_creation_duplicate"),
+        name=Name.CreationSetup.AD_DUPLICATE),
     # >>> these endpoints are closed for users who don't have Media Buying add-on
     # >>> Setup
 

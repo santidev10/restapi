@@ -9,6 +9,9 @@ class Name:
     class CreationSetup:
         CAMPAIGN = "campaign_creation_setup"
         ACCOUNT = "account_creation_setup"
+        AD_DUPLICATE = "ad_creation_duplicate"
+        AD_GROUP_DUPLICATE = "ad_group_creation_duplicate"
+        CAMPAIGN_DUPLICATE = "campaign_creation_duplicate"
 
     class Dashboard:
         ACCOUNT_CREATION_BY_ACCOUNT = "account_creation_by_account"

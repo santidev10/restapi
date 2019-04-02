@@ -1,11 +1,12 @@
 from django.conf.urls import url
 
 from channel.api.country_view import CountryListApiView
+from singledb.api.views.audit import AuditKeyWordsExportApiView
 from singledb.api.views.augmentation import AugmentationChannelSegmentListApiView
+from singledb.api.views.bad_words import urls as bad_words_legacy_urls
 from singledb.api.views.highlights import HighlightChannelsListApiView
 from singledb.api.views.highlights import HighlightKeywordsListApiView
 from singledb.api.views.highlights import HighlightVideosListApiView
-from singledb.api.views.audit import AuditKeyWordsExportApiView
 
 urlpatterns = [
     url(r'^countries/$', CountryListApiView.as_view(), name="countries_list"),
@@ -13,5 +14,6 @@ urlpatterns = [
     url(r'^highlights/channels/$', HighlightChannelsListApiView.as_view(), name="highlights_channels"),
     url(r'^highlights/videos/$', HighlightVideosListApiView.as_view(), name="highlights_videos"),
     url(r'^highlights/keywords/$', HighlightKeywordsListApiView.as_view(), name="highlights_keywords"),
-    url(r"^audit/keywords/export/$", AuditKeyWordsExportApiView.as_view(), name="audit_keywords_export")
+    url(r"^audit/keywords/export/$", AuditKeyWordsExportApiView.as_view(), name="audit_keywords_export"),
+    *bad_words_legacy_urls,  # fixme: old bad words. remove it
 ]
