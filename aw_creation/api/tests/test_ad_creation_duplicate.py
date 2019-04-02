@@ -171,3 +171,29 @@ class AccountAPITestCase(AwReportingAPITestCase):
         response = self.client.post("{}?to={}".format(url, ad_group_creation_2.id))
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_copy_properties(self):
+        account_creation = AccountCreation.objects.create(owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(campaign_creation=campaign_creation)
+        ad = AdCreation.objects.create(
+            name="Whiskey",
+            ad_group_creation=ad_group_creation,
+            short_headline="Short headline",
+            long_headline="Long headline",
+            business_name="Business name"
+        )
+
+        url = self._get_url(ad.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        new_ad = AdCreation.objects.get(id=response.data["id"])
+        fields = (
+            "short_headline",
+            "long_headline",
+            "business_name",
+        )
+        for field in fields:
+            with self.subTest(field):
+                self.assertEqual(getattr(ad, field), getattr(new_ad, field))

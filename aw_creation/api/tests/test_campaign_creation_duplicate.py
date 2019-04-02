@@ -218,3 +218,22 @@ class AccountAPITestCase(AwReportingAPITestCase):
         url = self._get_url(campaign.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_copy_properties(self):
+        account_creation = AccountCreation.objects.create(owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(
+            account_creation=account_creation,
+            target_cpa=12
+        )
+
+        url = self._get_url(campaign_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        new_campaign_creation = CampaignCreation.objects.get(id=response.data["id"])
+        fields = (
+            "target_cpa",
+        )
+        for field in fields:
+            with self.subTest(field):
+                self.assertEqual(getattr(campaign_creation, field), getattr(new_campaign_creation, field))
