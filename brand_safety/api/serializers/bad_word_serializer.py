@@ -4,7 +4,7 @@ from brand_safety.models import BadWord, BadWordCategory
 
 
 class BadWordSerializer(ModelSerializer):
-    category = CharField(max_length=80, required=True)
+    category = CharField(max_length=80)
 
     def validate(self, data):
         try:
