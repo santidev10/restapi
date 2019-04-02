@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
-from brand_safety.models import BadWord
+from brand_safety.models import BadWord, BadWordCategory
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -120,3 +120,17 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
         )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_update_changes_category_ref(self):
+        self.create_admin_user()
+        bad_word = self.bad_word
+        new_category = BadWordCategory.objects.create(name="new category")
+        response = self._request(
+            id=bad_word.id,
+            name=bad_word.name,
+            category=new_category.name
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        bad_word.refresh_from_db()
+        self.assertEqual(bad_word.category_ref.id, new_category.id)
+        self.assertEqual(bad_word.category_ref.name, new_category.name)
