@@ -591,7 +591,7 @@ function createDisplayResponsive(adGroup, params) {
         Logger.log("Error->" + err);
     }
 
-    var marketingImageUrl = 'https://drive.google.com/uc?export=view&id=1eeMgUUp6dg9GyezWTSDOTMevgPmUlvvE';
+    var marketingImageUrl = 'https://rc-viewiq.channelfactory.com/static/img/AD_IMAGE_PLACEHOLDER.png';
     var marketingImage = getOrCreateImage(marketingImageUrl);
 
     builder = builder
