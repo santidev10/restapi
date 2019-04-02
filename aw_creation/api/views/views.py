@@ -1134,6 +1134,7 @@ class BaseCreationDuplicateApiView(APIView):
         "name", "start", "end", "budget", "devices_raw", "delivery_method",
         "type", "bid_strategy_type",
         "video_networks_raw", "content_exclusions_raw",
+        "target_cpa",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units",
