@@ -1,7 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.utils import IntegrityError
 from rest_framework import filters
-from rest_framework.response import Response
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 
