@@ -1,9 +1,10 @@
+from django.core.management.base import BaseCommand
 import logging
 
-from django.core.management.base import BaseCommand
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class Command(BaseCommand):
         for chunk in chunks_generator(channel_ids, page_size):
             subscribers_info = self.get_subscribers(youtube, chunk)
             for channel_id, subscribers in subscribers_info:
-                self.update_channel_suubscribers(channel_id, subscribers)
+                self.update_channel_subscribers(channel_id, subscribers)
 
             processed_channels += page_size
             resolved_channels += len(subscribers_info)
@@ -32,13 +33,15 @@ class Command(BaseCommand):
             logging.info("processed_channels={}/{},  resolved={}"
                          .format(processed_channels, total_channels, resolved_channels))
 
-    def get_subscribers(self, youtube, channel_ids):
+    @staticmethod
+    def get_subscribers(youtube, channel_ids):
         response = youtube.obtain_channels(channels_ids=",".join(channel_ids), part="statistics")
         items = response.get("items", [])
         info = [(item.get("id", None), int(item.get("statistics", {}).get("subscriberCount", 0))) for item in items]
         return info
 
-    def update_channel_suubscribers(self, channel_id, subscribers):
+    @staticmethod
+    def update_channel_subscribers(channel_id, subscribers):
         queryset = PersistentSegmentRelatedChannel.objects\
             .filter(details__subscribers__isnull=True, related_id=channel_id)
         for channel in queryset:
