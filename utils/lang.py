@@ -1,3 +1,4 @@
+from collections import namedtuple
 from enum import Enum
 from functools import reduce
 from typing import Sequence
@@ -30,8 +31,17 @@ class ExtendedEnum(Enum):
         return (item.value for item in cls)
 
     @classmethod
+    def names(cls):
+        return (item.name for item in cls)
+
+    @classmethod
     def has_value(cls, value):
         return value in cls.values()
+
+    @classmethod
+    def map_object(cls):
+        map_cls = namedtuple("{}Map".format(cls.__name__), cls.names())
+        return map_cls(**{item.name: item.value for item in cls})
 
 
 def merge_dicts(*dicts):

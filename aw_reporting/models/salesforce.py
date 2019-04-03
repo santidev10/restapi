@@ -39,7 +39,7 @@ class SFAccount(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.SFAccount
+        Fields = SalesforceFields.SFAccount.map_object()
         return dict(
             id=data[Fields.ID],
             name=data[Fields.NAME],
@@ -56,7 +56,7 @@ class UserRole(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.UserRole
+        Fields = SalesforceFields.UserRole.map_object()
         return dict(
             id=data[Fields.ID],
             name=data[Fields.NAME],
@@ -82,7 +82,7 @@ class User(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.User
+        Fields = SalesforceFields.User.map_object()
         return dict(
             id=data[Fields.ID],
             name=data[Fields.NAME],
@@ -112,7 +112,7 @@ class Contact(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.Contact
+        Fields = SalesforceFields.Contact.map_object()
         return dict(
             id=data[Fields.ID],
             first_name=data[Fields.FIRST_NAME],
@@ -281,7 +281,7 @@ class Opportunity(models.Model):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.Opportunity
+        Fields = SalesforceFields.Opportunity.map_object()
         rate_type = data.get(Fields.RATE_TYPE) or data.get(Fields.COST_METHOD)
         if rate_type and 'CPM' in rate_type:
             if 'CPV' in rate_type:
@@ -408,7 +408,7 @@ class OpPlacement(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.Placement
+        Fields = SalesforceFields.Placement.map_object()
         goal_type_id = None
         cost_method = data[Fields.COST_METHOD]
         if cost_method:
@@ -521,7 +521,7 @@ class Flight(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.Flight
+        Fields = SalesforceFields.Flight.map_object()
         res = dict(
             id=data[Fields.ID],
             name=data[Fields.NAME],
@@ -558,7 +558,7 @@ class Activity(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        Fields = SalesforceFields.Activity
+        Fields = SalesforceFields.Activity.map_object()
         item_id = data[Fields.ITEM_ID]
         res = dict(
             id=data[Fields.ID],
