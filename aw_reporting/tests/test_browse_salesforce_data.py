@@ -826,7 +826,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Pacing__c=pacing))
 
-    def test_update_pacing_changed(self):
+    def test_update_pacing_not_changed(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         start = date(2017, 1, 1)
         end = today = start + timedelta(days=1)
