@@ -14,7 +14,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
-from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import DynamicPlacementType, SalesforceFields
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
@@ -826,7 +826,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Pacing__c=pacing))
 
-    def test_update_pacing_changed(self):
+    def test_update_pacing_not_changed(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         start = date(2017, 1, 1)
         end = today = start + timedelta(days=1)
