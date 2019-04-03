@@ -23,9 +23,12 @@ from aw_reporting.models.salesforce import User
 from aw_reporting.models.salesforce import UserRole
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz
+from utils.lang import almost_equal
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +182,12 @@ class Command(BaseCommand):
                             )
                         )
 
+        pacing_report = PacingReport()
         for flight in self.flights_to_update_qs:
 
             units, cost = flight.delivered_units, flight.delivered_cost
+            flight_data = pacing_report.get_flights_data(id=flight.id)
+            pacing = get_pacing_from_flights(flight_data)
 
             update = {}
             if units != flight.delivered:
@@ -190,6 +196,9 @@ class Command(BaseCommand):
                 update['Delivered_Ad_Ops__c'] = units
             if cost != flight.cost:
                 update['Total_Flight_Cost__c'] = cost
+
+            if not almost_equal(pacing, flight.pacing):
+                update['Pacing__c'] = pacing
 
             if update:
                 try:

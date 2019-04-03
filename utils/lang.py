@@ -49,3 +49,7 @@ def convert_sequence_items_to_sting(sequence):
     :return: set of str items
     """
     return {str(item) for item in sequence}
+
+
+def almost_equal(value_1, value_2, delta=1e-6):
+    return abs(value_1 - value_2) < delta
