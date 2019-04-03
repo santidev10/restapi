@@ -9,14 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Import segments"
-
     def handle(self, *args, **options):
         youtube = YoutubeAPIConnector()
 
         channel_ids = PersistentSegmentRelatedChannel.objects\
             .filter(details__subscribers__isnull=True)\
-            .values_list('related_id', flat=True)\
+            .values_list("related_id", flat=True)\
             .distinct()
 
         page_size = 50
