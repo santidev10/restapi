@@ -19,7 +19,7 @@ class Command(BaseCommand):
             .distinct()
 
         page_size = 50
-        total_channels = len(channel_ids)
+        total_channels = channel_ids.count()
         processed_channels = 0
         resolved_channels = 0
         for chunk in chunks_generator(channel_ids, page_size):
