@@ -457,6 +457,8 @@ class Flight(BaseModel):
 
     budget = models.FloatField(null=True)
 
+    pacing = models.FloatField(null=True)
+
     class Meta:
         ordering = ('start',)
 
@@ -519,6 +521,7 @@ class Flight(BaseModel):
 
             ordered_cost=data['Ordered_Amount__c'],
             ordered_units=data['Ordered_Units__c'],
+            pacing=data['Pacing__c']
         )
         return res
 

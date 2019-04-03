@@ -242,6 +242,7 @@ class Connection:
                 'Delivered_Ad_Ops__c', 'Total_Flight_Cost__c',
                 'Flight_Month__c',
                 'Flight_Value__c',
+                'Pacing__c',
             ],
             where=where
         )
