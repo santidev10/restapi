@@ -176,9 +176,9 @@ class VideoAudit(Audit):
         Executes audit method on all existing audit types
         :return:
         """
-        for audit in self.audit_types:
-            hits = self.audit(audit["regexp"])
-            self.results[audit["type"]] = hits
+        for key, audit in self.audit_types.items():
+            hits = self.audit(audit)
+            self.results[key] = hits
 
     def get_language(self, data):
         """
@@ -206,7 +206,10 @@ class VideoAudit(Audit):
         return ratio
 
     def run_standard_audit(self):
-        pass
+        brand_safey_audit = self.audit_types[constants.BRAND_SAFETY]
+        hits = self.audit(brand_safey_audit)
+        self.results[constants.BRAND_SAFETY] = hits
+        self.calculate_brand_safety_score(self.score_mapping)
 
     # def run_standard_audit(self):
     #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
@@ -309,10 +312,9 @@ class ChannelAudit(Audit):
 
     def run_custom_audit(self):
         for video in self.video_audits:
-            for audit in self.audit_types:
-                audit_type = audit["type"]
-                self.results[audit_type] = self.results.get(audit_type, [])
-                self.results[audit_type].extend(video.results[audit_type])
+            for key, audit in self.audit_types.items():
+                self.results[key] = self.results.get(key, [])
+                self.results[key].extend(video.results[key])
 
     def update_aggregate_video_audit_data(self):
         video_audits = self.video_audits
@@ -351,15 +353,21 @@ class ChannelAudit(Audit):
 
         self.metadata.update(aggregated_data)
 
+    # def run_standard_audit(self):
+    #     brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
+    #                           and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
+    #     channel_videos_failed = self.get_channel_videos_failed()
+    #     subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
+    #     failed_standard_audit = brand_safety_failed \
+    #                             and channel_videos_failed \
+    #                             and subscribers > self.subscribers_threshold
+    #     return failed_standard_audit
     def run_standard_audit(self):
-        brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
-                              and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
-        channel_videos_failed = self.get_channel_videos_failed()
-        subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-        failed_standard_audit = brand_safety_failed \
-                                and channel_videos_failed \
-                                and subscribers > self.subscribers_threshold
-        return failed_standard_audit
+        brand_safey_audit = self.audit_types[constants.BRAND_SAFETY]
+        for video in self.video_audits:
+            self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
+            self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
+        self.calculate_brand_safety_score(self.score_mapping)
 
     def calculate_brand_safety_score(self, score_mapping):
         channel_category_scores = {

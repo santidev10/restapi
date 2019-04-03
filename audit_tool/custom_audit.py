@@ -46,24 +46,15 @@ class CustomAuditProvider(object):
         self.brand_safety_regexp = self.get_brand_safety_regexp()
         self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
         self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else Non
-        audits = [
-            {
-                'type': constants.BRAND_SAFETY,
-                'regexp': self.brand_safety_regexp,
-
-            },
-            {
-                'type': constants.BLACKLIST,
-                'regexp': self.blacklist_regexp,
-
-            },
-            {
-                'type': constants.WHITELIST,
-                'regexp':self.whitelist_regexp,
-
-            },
-        ]
-        self.audits = [audit for audit in audits if audit['regexp'] is not None]
+        audits = {
+            constants.BRAND_SAFETY: self.brand_safety_regexp,
+            constants.WHITELIST: self.whitelist_regexp,
+            constants.BLACKLIST: self.blacklist_regexp,
+        }
+        self.audits = {
+            key: regexp
+            for key, regexp in audits.items() if regexp is not None
+        }
 
     def run(self):
         print('Starting audit...')
