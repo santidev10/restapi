@@ -951,6 +951,7 @@ def flight_data(**kwargs):
         Delivered_Ad_Ops__c=None,
         Ordered_Amount__c=0,
         Ordered_Units__c=0,
+        Pacing__c=None,
     )
     return {
         **default_values,
