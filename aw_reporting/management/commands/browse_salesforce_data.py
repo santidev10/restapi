@@ -197,7 +197,8 @@ class Command(BaseCommand):
             if cost != flight.cost:
                 update['Total_Flight_Cost__c'] = cost
 
-            if not almost_equal(pacing, flight.pacing):
+            if ((pacing is None) ^ (flight.pacing is None)) \
+                    or (pacing is not None and not almost_equal(pacing, flight.pacing)):
                 update['Pacing__c'] = pacing
 
             if update:
