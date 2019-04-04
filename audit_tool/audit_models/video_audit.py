@@ -29,7 +29,7 @@ class VideoAudit(Audit):
         metadata = {
             "channel_title": data["snippet"].get("channelTitle", ""),
             "channel_url": "https://www.youtube.com/channel/" + data["snippet"].get("channelId", ""),
-            "channelSubscribers": data.get("statistics", {}).get("channelSubscriberCount"),
+            "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
             "video_title": data["snippet"]["title"],
             "video_url": "https://www.youtube.com/video/" + data["id"],
             "has_emoji": self.detect_emoji(text),
@@ -57,7 +57,7 @@ class VideoAudit(Audit):
         metadata = {
             "channel_title": data.get("channelTitle", ""),
             "channel_url": "https://www.youtube.com/channel/" + data["channel_id"],
-            "channelSubscribers": data.get("statistics", {}).get("channelSubscriberCount"),
+            "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
             "video_title": data.get("title", ""),
             "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
             "has_emoji": self.detect_emoji(text),
@@ -155,4 +155,30 @@ class VideoAudit(Audit):
         video_category_scores["categories"] = counts
         setattr(self, constants.BRAND_SAFETY_SCORE, video_category_scores)
         return video_category_scores
+
+    def get_export_row(self, audit_type=constants.BRAND_SAFETY):
+        """
+        Formats exportable csv row using object metadata
+            Removes unused metadata before export
+        :param audit_type:
+        :return:
+        """
+        row = [
+            self.metadata["channel_title"],
+            self.metadata["channel_url"],
+            self.metadata["channel_subscribers"],
+            self.metadata["video_title"],
+            self.metadata["video_url"],
+            self.metadata["has_emoji"],
+            self.metadata["views"],
+            self.metadata["description"],
+            self.metadata["category"],
+            self.metadata["language"],
+            self.metadata["country"],
+            self.metadata["likes"],
+            self.metadata["dislikes"],
+            self.get_keyword_count(self.results[audit_type])
+        ]
+        return row
+
 

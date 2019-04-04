@@ -95,10 +95,8 @@ class CustomAuditProvider(AuditProvider):
             video_audits = batch_result['video_audit_results']
             channel_audits = batch_result['channel_audit_results']
 
-            for audit in self.audits:
-                audit_type = audit['type']
+            for audit_type in self.audits.keys():
                 cursor = 0
-
                 while cursor <= len(video_audits) or cursor <= len(channel_audits):
                     try:
                         video_audit = video_audits[cursor]
@@ -114,14 +112,12 @@ class CustomAuditProvider(AuditProvider):
                         channel_results[audit_type].append(channel_audit)
                     except IndexError:
                         pass
-
                     cursor += 1
 
         for audit_type in self.audits.keys():
             if audit_type == constants.BRAND_SAFETY:
                 self.prepare_brand_safety_results(video_results[audit_type], data_type=constants.VIDEO, audit_type=audit_type)
                 self.prepare_brand_safety_results(channel_results[audit_type], data_type=constants.CHANNEL, audit_type=audit_type)
-
             else:
                 self.prepare_results(video_results[audit_type], constants.VIDEO, audit_type)
                 self.prepare_results(channel_results[audit_type], constants.CHANNEL, audit_type)

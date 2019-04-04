@@ -117,6 +117,7 @@ class ChannelAudit(Audit):
     #                             and channel_videos_failed \
     #                             and subscribers > self.subscribers_threshold
     #     return failed_standard_audit
+
     def run_standard_audit(self):
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
@@ -137,3 +138,24 @@ class ChannelAudit(Audit):
             channel_category_scores["overall_score"] += audit_brand_safety_score["overall_score"]
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_category_scores)
 
+    def get_export_row(self, audit_type=constants.BRAND_SAFETY):
+        """
+        Formats exportable csv row using object metadata
+        :param audit_type:
+        :return:
+        """
+        row = [
+            self.metadata["channel_title"],
+            self.metadata["channel_url"],
+            self.metadata["language"],
+            self.metadata["category"],
+            self.metadata["videos"],
+            self.metadata["subscribers"],
+            self.metadata["views"],
+            self.metadata["audited_videos"],
+            self.metadata["likes"],
+            self.metadata["dislikes"],
+            self.metadata["country"],
+            self.get_keyword_count(self.results[audit_type])
+        ]
+        return row

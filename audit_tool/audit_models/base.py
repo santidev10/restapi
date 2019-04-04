@@ -40,7 +40,7 @@ class Audit(object):
 
     def audit(self, regexp):
         """
-        Finds all matches of regexp in Youtube data object
+        Finds all matches of regexp in audit metadata
         :param regexp: Compiled regular expression to match
         :return:
         """
@@ -92,24 +92,6 @@ class Audit(object):
             text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
             language = langid.classify(text)[0].lower()
         return language
-
-    def get_export_row(self, audit_type=constants.BRAND_SAFETY):
-        """
-        Formats exportable csv row using object metadata
-            Removes unused metadata before export
-        :param audit_type:
-        :return:
-        """
-        row = dict(**self.metadata)
-        row.pop("channel_id", None)
-        row.pop("video_id", None)
-        row.pop("id", None)
-        row.pop("tags", None)
-        row.pop("transcript", None)
-        row = list(row.values())
-        audit_hits = self.get_keyword_count(self.results[audit_type])
-        row.append(audit_hits)
-        return row
 
     def detect_emoji(self, text):
         has_emoji = bool(re.search(self.emoji_regexp, text))

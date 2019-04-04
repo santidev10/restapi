@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from audit_tool.audit_provider import AuditProvider
+from audit_tool.audit_providers.custom_audit import CustomAuditProvider
 
 
 class Command(BaseCommand):
@@ -33,5 +33,5 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        audit = AuditProvider(*args, **kwargs)
+        audit = CustomAuditProvider(*args, **kwargs)
         audit.run()

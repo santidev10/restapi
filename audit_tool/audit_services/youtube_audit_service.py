@@ -12,6 +12,7 @@ class YoutubeAuditService(AuditService):
     """
     def __init__(self, audit_types):
         super().__init__(audit_types)
+        self.audit_types = audit_types
         self.youtube_data_provider = YoutubeDataProvider()
 
     def audit_videos(self, video_ids=None, channel_ids=None):
@@ -45,7 +46,7 @@ class YoutubeAuditService(AuditService):
         channel_youtube_data = self.youtube_data_provider.get_channel_data(channel_ids)
         for channel in channel_youtube_data:
             channel_video_audits = sorted_channel_data[channel['id']]
-            channel_audit = ChannelAudit(channel_video_audits, self.audits, channel)
+            channel_audit = ChannelAudit(channel_video_audits, self.audit_types, channel)
             channel_audit.run_custom_audit()
             all_channel_audits.append(channel_audit)
         return all_channel_audits
