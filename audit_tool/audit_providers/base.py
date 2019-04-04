@@ -9,6 +9,10 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 
 class AuditProvider(object):
     def get_brand_safety_regexp(self):
+        """
+        Get and comple brand safety tags
+        :return:
+        """
         if settings.USE_LEGACY_BRAND_SAFETY:
             connector = Connector()
             bad_words = connector.get_bad_words_list({})
@@ -16,8 +20,9 @@ class AuditProvider(object):
         else:
             bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
+        brand_safety_regexp = self.compile_audit_regexp(bad_words_names)
 
-        return bad_words_names
+        return brand_safety_regexp
 
     @staticmethod
     def compile_audit_regexp(keywords: list):

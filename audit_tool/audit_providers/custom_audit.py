@@ -43,10 +43,10 @@ class CustomAuditProvider(AuditProvider):
         self.csv_export_title = kwargs.get('title')
 
         self.brand_safety_regexp = self.get_brand_safety_regexp()
-        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) \
-            if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) \
-            if kwargs.get('blacklist') else None
+        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs[constants.WHITELIST]) \
+            if kwargs.get(constants.WHITELIST) else None
+        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs[constants.BLACKLIST]) \
+            if kwargs.get(constants.BLACKLIST) else None
         audits = {
             constants.BRAND_SAFETY: self.brand_safety_regexp,
             constants.WHITELIST: self.whitelist_regexp,
@@ -63,10 +63,10 @@ class CustomAuditProvider(AuditProvider):
         self.process(target, data_generator, result_processor, chunk_size=chunk_size)
 
     def get_audit_config(self):
-        if self.audit_type == 'video':
+        if self.audit_type == constants.VIDEO:
             return self.process_videos, self.video_data_generator, self.process_results, self.video_chunk_size
 
-        elif self.audit_type == 'channel':
+        elif self.audit_type == constants.CHANNEL:
             return self.process_channels, self.channel_data_generator, self.process_results, self.channel_chunk_size
 
         else:
@@ -121,12 +121,12 @@ class CustomAuditProvider(AuditProvider):
             audit_type = audit['type']
 
             if audit_type == constants.BRAND_SAFETY:
-                self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
-                self.prepare_brand_safety_results(channel_results[audit_type], data_type='channel', audit_type=audit_type)
+                self.prepare_brand_safety_results(video_results[audit_type], data_type=constants.VIDEO, audit_type=audit_type)
+                self.prepare_brand_safety_results(channel_results[audit_type], data_type=constants.CHANNEL, audit_type=audit_type)
 
             else:
-                self.prepare_results(video_results[audit_type], 'video', audit_type)
-                self.prepare_results(channel_results[audit_type], 'channel', audit_type)
+                self.prepare_results(video_results[audit_type], constants.VIDEO, audit_type)
+                self.prepare_results(channel_results[audit_type], constants.CHANNEL, audit_type)
 
     def process_videos(self, csv_videos):
         """
@@ -151,15 +151,18 @@ class CustomAuditProvider(AuditProvider):
         return final_results
 
     def process_channels(self, csv_channels):
+        """
+        Drives main logic for auditing channels
+        :param csv_channels: Youtube channel ids from csv file
+        :return: Audit results
+        """
         final_results = {}
         auditor = YoutubeAuditService(self.audits)
-
         channel_ids = [
             channel['channel_id'] if channel.get('channel_id')
             else re.search(self.channel_id_regexp, channel['channel_url']).group()
             for channel in csv_channels
         ]
-
         video_audit_results = auditor.audit_videos(channel_ids=channel_ids)
         channel_audit_results = auditor.audit_channels(video_audit_results)
 
@@ -169,26 +172,29 @@ class CustomAuditProvider(AuditProvider):
         return final_results
 
     def prepare_results(self, data, data_type, audit_type):
-        if data_type == 'video':
+        if data_type == constants.VIDEO:
             if audit_type == constants.BLACKLIST:
                 csv_ref = self.csv_pages[constants.BLACKLIST_VIDEOS]
 
             if audit_type == constants.WHITELIST:
                 csv_ref = self.csv_pages[constants.WHITELIST_VIDEOS]
-
-        if data_type == 'channel':
+        if data_type == constants.CHANNEL:
             if audit_type == constants.BLACKLIST:
                 csv_ref = self.csv_pages[constants.BLACKLIST_CHANNELS]
 
             if audit_type == constants.WHITELIST:
                 csv_ref = self.csv_pages[constants.WHITELIST_CHANNELS]
+        else:
+            raise ValueError("Unsupported data type: {}".format(data_type))
 
         csv_export_path = self.get_export_path(csv_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type)
         self.write_data(data, csv_export_path, csv_ref, data_type, audit_type)
 
     def prepare_brand_safety_results(self, data, data_type='video', audit_type=constants.BRAND_SAFETY):
-        csv_pass_ref = self.csv_pages[constants.BRAND_SAFETY_PASS_VIDEOS] if data_type == 'video' else self.csv_pages[constants.BRAND_SAFETY_PASS_CHANNELS]
-        csv_fail_ref = self.csv_pages[constants.BRAND_SAFETY_FAIL_VIDEOS] if data_type == 'video' else self.csv_pages[constants.BRAND_SAFETY_FAIL_CHANNELS]
+        csv_pass_ref = self.csv_pages[constants.BRAND_SAFETY_PASS_VIDEOS] \
+            if data_type == constants.VIDEO else self.csv_pages[constants.BRAND_SAFETY_PASS_CHANNELS]
+        csv_fail_ref = self.csv_pages[constants.BRAND_SAFETY_FAIL_VIDEOS] \
+            if data_type == constants.VIDEO else self.csv_pages[constants.BRAND_SAFETY_FAIL_CHANNELS]
 
         brand_safety_pass_path = self.get_export_path(csv_pass_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type, identifier='PASS')
         brand_safety_fail_path = self.get_export_path(csv_fail_ref['page'], self.csv_export_dir, self.csv_export_title, data_type, audit_type, identifier='FAIL')
@@ -222,7 +228,7 @@ class CustomAuditProvider(AuditProvider):
                 writer = csv.writer(export_file, delimiter=',')
 
                 if csv_ref['count'] == 0:
-                    if data_type == 'video':
+                    if data_type == constants.VIDEO:
                         writer.writerow(self.video_csv_headers)
 
                     else:

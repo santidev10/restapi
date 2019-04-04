@@ -1,16 +1,16 @@
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from audit_tool import audit_constants as constants
 from audit_tool.audit_services.standard_audit_service import StandardAuditService
-from audit_tool.data_providers.base import DataProviderMixin
+from audit_tool.audit_providers.base import AuditProvider
 from audit_tool.data_providers.sdb_data_provider import SDBDataProvider
 
 
-class StandardAuditProvider(DataProviderMixin):
+class StandardAuditProvider(AuditProvider):
     channel_id_batch_limit = 40
     sdb_channel_batch_limit = 40
     sdb_video_batch_limit = 10000
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
         self.cursor = self.script_tracker.cursor
         self.sdb_data_provider = SDBDataProvider()

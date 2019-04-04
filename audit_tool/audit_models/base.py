@@ -12,6 +12,7 @@ class Audit(object):
     """
     source = None
     metadata = None
+    results = None
 
     emoji_regexp = re.compile(
         u"["
