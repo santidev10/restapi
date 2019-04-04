@@ -1,15 +1,13 @@
-from django.conf import settings
-
-from brand_safety.models import BadWord
-from .audit_services import AuditService
-from singledb.connector import SingleDatabaseApiConnector as Connector
-import csv
 import re
+import csv
 from multiprocessing import Pool
-from . import audit_constants as constants
+
+import audit_tool.audit_constants as constants
+from audit_tool.audit_providers.base import AuditProvider
+from audit_tool.audit_services.youtube_audit_service import YoutubeAuditService
 
 
-class CustomAuditProvider(object):
+class CustomAuditProvider(AuditProvider):
     max_process_count = 8
     video_chunk_size = 1000
     video_batch_size = 8000
@@ -32,8 +30,10 @@ class CustomAuditProvider(object):
         constants.BLACKLIST_CHANNELS: {'count': 0, 'page': 1},
     }
 
-    video_csv_headers = ['Channel Name', 'Channel URL', 'Channel Subscribers', 'Video Name', 'Video URL', 'Emoji Y/N', 'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Keyword Hits']
-    channel_csv_headers = ['Channel Title', 'Channel URL', 'Language', 'Category', 'Videos', 'Channel Subscribers', 'Total Views', 'Audited Videos', 'Total Likes', 'Total Dislikes', 'Country', 'Keyword Hits']
+    video_csv_headers = ['Channel Name', 'Channel URL', 'Channel Subscribers', 'Video Name', 'Video URL', 'Emoji Y/N',
+                         'Views', 'Description', 'Category', 'Language', 'Country', 'Likes', 'Dislikes', 'Keyword Hits']
+    channel_csv_headers = ['Channel Title', 'Channel URL', 'Language', 'Category', 'Videos', 'Channel Subscribers',
+                           'Total Views', 'Audited Videos', 'Total Likes', 'Total Dislikes', 'Country', 'Keyword Hits']
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -42,10 +42,11 @@ class CustomAuditProvider(object):
         self.csv_export_dir = kwargs.get('export')
         self.csv_export_title = kwargs.get('title')
 
-        # self.brand_safety_regexp = self.compile_audit_regexp(self.get_all_bad_words())
         self.brand_safety_regexp = self.get_brand_safety_regexp()
-        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) if kwargs.get('whitelist') else None
-        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) if kwargs.get('blacklist') else Non
+        self.whitelist_regexp = self.read_and_create_keyword_regexp(kwargs['whitelist']) \
+            if kwargs.get('whitelist') else None
+        self.blacklist_regexp = self.read_and_create_keyword_regexp(kwargs['blacklist']) \
+            if kwargs.get('blacklist') else None
         audits = {
             constants.BRAND_SAFETY: self.brand_safety_regexp,
             constants.WHITELIST: self.whitelist_regexp,
@@ -76,7 +77,7 @@ class CustomAuditProvider(object):
         items_seen = 0
 
         for batch in generator():
-            chunks = self.chunks(batch, chunk_size)
+            chunks = self.batch(batch, chunk_size)
             all_results = pool.map(target, chunks)
 
             result_processor(all_results)
@@ -120,7 +121,7 @@ class CustomAuditProvider(object):
             audit_type = audit['type']
 
             if audit_type == constants.BRAND_SAFETY:
-                # self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
+                self.prepare_brand_safety_results(video_results[audit_type], data_type='video', audit_type=audit_type)
                 self.prepare_brand_safety_results(channel_results[audit_type], data_type='channel', audit_type=audit_type)
 
             else:
@@ -134,16 +135,13 @@ class CustomAuditProvider(object):
         :return:
         """
         final_results = {}
-
-        auditor = AuditService()
+        auditor = YoutubeAuditService(self.audits)
         auditor.set_audits(self.audits)
-
         video_ids = [
             video['video_id'] if video.get('video_id')
             else re.search(self.video_id_regexp, video['video_url']).group()
             for video in csv_videos
         ]
-
         video_audit_results = auditor.audit_videos(video_ids=video_ids)
         channel_audit_results = auditor.audit_channels(video_audit_results)
 
@@ -154,7 +152,7 @@ class CustomAuditProvider(object):
 
     def process_channels(self, csv_channels):
         final_results = {}
-        auditor = AuditService(self.audits)
+        auditor = YoutubeAuditService(self.audits)
 
         channel_ids = [
             channel['channel_id'] if channel.get('channel_id')
@@ -292,55 +290,3 @@ class CustomAuditProvider(object):
                     batch.clear()
 
             yield batch
-
-    @staticmethod
-    def chunks(iterable, length):
-        """
-        Generator that yields equal sized lists
-        """
-        for i in range(0, len(iterable), length):
-            yield iterable[i:i + length]
-
-    @staticmethod
-    def get_all_bad_words():
-        if settings.USE_LEGACY_BRAND_SAFETY:
-            connector = Connector()
-            bad_words = connector.get_bad_words_list({})
-            bad_words_names = [item["name"] for item in bad_words]
-        else:
-            bad_words_names = BadWord.objects.values_list("name", flat=True)
-        bad_words_names = list(set(bad_words_names))
-
-        return bad_words_names
-
-    @staticmethod
-    def compile_audit_regexp(keywords: list):
-        """
-        Compiles regular expression with given keywords
-        :param keywords: List of keyword strings
-        :return: Compiled Regular expression
-        """
-        regexp = re.compile(
-            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]))
-        )
-        return regexp
-
-    @staticmethod
-    def read_and_create_keyword_regexp(csv_path):
-        with open(csv_path, mode='r', encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            keywords = list(csv_reader)
-
-            keyword_regexp = re.compile(
-                '|'.join([word[0] for word in keywords]),
-                re.IGNORECASE
-            )
-
-        return keyword_regexp
-
-    def get_brand_safety_regexp(self):
-        connector = Connector()
-        keywords = [item['name'] for item in connector.get_bad_words_list({})]
-        compiled = self.compile_audit_regexp(keywords)
-
-        return compiled

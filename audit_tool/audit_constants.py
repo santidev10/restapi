@@ -1,3 +1,6 @@
+VIDEO = "video"
+CHANNEL = "channel"
+
 BRAND_SAFETY_PASS = "brand_safety_pass"
 BRAND_SAFETY_FAIL = "brand_safety_fail"
 BRAND_SAFETY = "brand_safety"

@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from audit_tool.standard_audit import StandardAudit
+from audit_tool.standard_audit import StandardAuditProvider
 from audit_tool.models import APIScriptTracker
 from singledb.connector import SingleDatabaseApiConnector as SDBConnector
 import logging
@@ -12,5 +12,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         api_tracker = APIScriptTracker.objects.get(name="StandardAudit")
-        standard_audit = StandardAudit(SDBConnector, api_tracker)
+        standard_audit = StandardAuditProvider(api_tracker=api_tracker)
         standard_audit.run()

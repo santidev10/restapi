@@ -397,14 +397,14 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
 
-    def post_brand_safety_results(self, results):
+    def post_brand_safety_results(self, results, doc_type):
         """
         Send brand safety audit results for indexing in Elastic Search
         :param results: list
         :return: Indexing process results
         """
         endpoint = "brand_safety/"
-        response_data = self.execute_post_call(endpoint, {}, {"results": results})
+        response_data = self.execute_post_call(endpoint, {}, {"results": results, "doc_type": doc_type})
         return response_data
 
     def _normalize_filters(self, filters):
