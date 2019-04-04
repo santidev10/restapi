@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
-from audit_tool.standard_audit import StandardAuditProvider
+from audit_tool.audit_providers.standard_audit import StandardAuditProvider
 from audit_tool.models import APIScriptTracker
-from singledb.connector import SingleDatabaseApiConnector as SDBConnector
 import logging
 
 logger = logging.getLogger(__name__)
