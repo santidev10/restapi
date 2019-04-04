@@ -1,3 +1,5 @@
+import time
+
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 from audit_tool.data_providers.base import DataProviderMixin
@@ -6,6 +8,9 @@ from audit_tool.data_providers.base import DataProviderMixin
 class YoutubeDataProvider(DataProviderMixin):
     youtube_max_channel_list_limit = 50
     youtube_max_video_list_limit = 50
+    max_retries = 3
+    retry_coeff = 1.5
+    retry_sleep = 0.2
 
     def __init__(self):
         self.connector = YoutubeAPIConnector()
@@ -18,8 +23,15 @@ class YoutubeDataProvider(DataProviderMixin):
         :return: (dict) Mapping of channels and their statistics
         """
         channel_data = []
+        if not channel_ids:
+            return channel_data
         if type(channel_ids) is str:
-            channel_data = self.connector.obtain_channels(channel_ids, part=part)
+            response = self.connector.obtain_channels(channel_ids, part=part)
+            try:
+                channel_data = response["items"][0]
+            except IndexError:
+                print("Could not get data for {}".format(channel_ids))
+            return channel_data
         else:
             for batch in self.batch(channel_ids, self.youtube_max_channel_list_limit):
                 batch_ids = ",".join(batch)
@@ -43,13 +55,12 @@ class YoutubeDataProvider(DataProviderMixin):
         """
         Retrieves all videos for given channel id from Youtube Data API
         :param channel_id: (str)
-        :param connector: YoutubeAPIConnector instance
         :return: (list) Channel videos
         """
         channel_videos = []
         channel_videos_full_data = []
-        channel_metadata = self.get_channel_data(channel_id)["items"][0]
-        response = self.connector.obtain_channel_videos(channel_id, part="snippet", order="viewCount", safe_search="strict")
+        channel_metadata = self.get_channel_data(channel_id)
+        response = self._execute(self.connector.obtain_channel_videos, channel_id, part="snippet", order="viewCount", safe_search="strict")
         channel_videos += [video["id"]["videoId"] for video in response.get("items")]
         next_page_token = response.get("nextPageToken")
 
@@ -84,13 +95,11 @@ class YoutubeDataProvider(DataProviderMixin):
         :param username: (str) youtube username
         :return: (str) channel id
         """
-        response = self.connector.obtain_user_channels(username)
+        response = self._execute(self.connector.obtain_user_channels, username)
         try:
-            channel_id = response.get("items")[0].get("id")
-
+            channel_id = response.get("items")[0]["id"]
         except IndexError:
-            raise ValueError("Could not get channel id for: {}".format(username))
-
+            raise ValueError("Could not get channel data for: {}".format(username))
         return channel_id
 
     def get_video_data(self, video_ids):
@@ -100,9 +109,11 @@ class YoutubeDataProvider(DataProviderMixin):
         :return: Youtube Video data
         """
         all_videos = []
+        if video_ids is None:
+            return all_videos
         for batch in self.batch(video_ids, self.youtube_max_video_list_limit):
             batch_ids = ",".join(batch)
-            response = self.connector.obtain_videos(batch_ids, part="snippet,statistics")
+            response = self._execute(self.connector.obtain_videos, batch_ids, part="snippet,statistics")
             items = response["items"]
             channel_ids = [video["snippet"]["channelId"] for video in items]
             channel_statistics_data = self.get_channel_data(channel_ids)
@@ -116,3 +127,24 @@ class YoutubeDataProvider(DataProviderMixin):
                     "subscriberCount", 0)
                 all_videos.append(video)
         return all_videos
+
+    def _execute(self, method, *args, **kwargs):
+        """
+        Wrapper to retry api calls with faster retries
+        """
+        retries = 0
+        while retries <= self.max_retries:
+            try:
+                response = method(*args, **kwargs)
+                return response
+            except YoutubeAPIConnectorException as e:
+                print("SDB error", e)
+                print("Retrying {} of {}".format(retries, self.max_retries))
+                time.sleep(self.retry_coeff ** retries * self.retry_sleep)
+                retries += 1
+        raise YoutubeDataProviderException("Unable to retrieve Youtube data. args={}, kwargs={}".format(args, kwargs))
+
+
+class YoutubeDataProviderException(Exception):
+    pass
+

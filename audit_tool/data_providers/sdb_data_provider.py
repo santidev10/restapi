@@ -66,7 +66,7 @@ class SDBDataProvider(DataProviderMixin):
 
     def _execute(self, method, *args, **kwargs):
         """
-        Wrapper to retry api calls
+        Wrapper to retry api calls with faster retries
         """
         retries = 0
         while retries <= self.max_retries:
@@ -78,7 +78,7 @@ class SDBDataProvider(DataProviderMixin):
                 print("Retrying {} of {}".format(retries, self.max_retries))
                 time.sleep(self.retry_coeff ** retries * self.retry_sleep)
                 retries += 1
-        return None
+        raise SDBDataProviderException("Unable to retrieve SDB data. args={}, kwargs={}".format(args, kwargs))
 
     def get_all_channels_batch_generator(self, last_id=None,):
         size = self.get_channel_data_limit + 1 if last_id else self.get_channels_videos_limit
@@ -106,3 +106,7 @@ class SDBDataProvider(DataProviderMixin):
                 break
             else:
                 yield channels
+
+
+class SDBDataProviderException(Exception):
+    pass
