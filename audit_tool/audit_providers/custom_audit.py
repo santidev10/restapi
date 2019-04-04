@@ -117,9 +117,7 @@ class CustomAuditProvider(AuditProvider):
 
                     cursor += 1
 
-        for audit in self.audits:
-            audit_type = audit['type']
-
+        for audit_type in self.audits.keys():
             if audit_type == constants.BRAND_SAFETY:
                 self.prepare_brand_safety_results(video_results[audit_type], data_type=constants.VIDEO, audit_type=audit_type)
                 self.prepare_brand_safety_results(channel_results[audit_type], data_type=constants.CHANNEL, audit_type=audit_type)
@@ -136,7 +134,6 @@ class CustomAuditProvider(AuditProvider):
         """
         final_results = {}
         auditor = YoutubeAuditService(self.audits)
-        auditor.set_audits(self.audits)
         video_ids = [
             video['video_id'] if video.get('video_id')
             else re.search(self.video_id_regexp, video['video_url']).group()

@@ -25,6 +25,18 @@ class AuditProvider(object):
         return brand_safety_regexp
 
     @staticmethod
+    def update_cursor(script_tracker, value):
+        """
+        Update APIScriptTracker instance
+        :param script_tracker: APIScriptTracker instance
+        :param value: Updated cursor value
+        :return: APIScriptTracker instance
+        """
+        script_tracker.cursor = value
+        script_tracker.save()
+        return script_tracker
+
+    @staticmethod
     def compile_audit_regexp(keywords: list):
         """
         Compiles regular expression with given keywords
@@ -58,5 +70,4 @@ class AuditProvider(object):
                 '|'.join([word[0] for word in keywords]),
                 re.IGNORECASE
             )
-
         return keyword_regexp

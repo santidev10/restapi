@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections import Counter
 
 from audit_tool.audit_models.base import Audit
@@ -120,16 +121,19 @@ class ChannelAudit(Audit):
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
+        self.results[constants.BRAND_SAFETY].extend(self.audit(self.audit_types[constants.BRAND_SAFETY]))
         self.calculate_brand_safety_score()
 
     def calculate_brand_safety_score(self):
         channel_category_scores = {
             "channel_id": self.metadata["channel_id"],
-            "categories": Counter(),
+            "categories": defaultdict(Counter),
             "overall_score": 0,
         }
         for audit in self.video_audits:
             audit_brand_safety_score = getattr(audit, constants.BRAND_SAFETY_SCORE)
-            channel_category_scores["categories"] += Counter(audit_brand_safety_score["categories"])
+            for category, values in audit_brand_safety_score["categories"].items():
+                channel_category_scores["categories"][category] = channel_category_scores["categories"][category] + Counter(values)
             channel_category_scores["overall_score"] += audit_brand_safety_score["overall_score"]
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_category_scores)
+

@@ -6,9 +6,9 @@ from audit_tool.data_providers.sdb_data_provider import SDBDataProvider
 
 
 class StandardAuditProvider(AuditProvider):
-    channel_id_batch_limit = 40
-    sdb_channel_batch_limit = 40
-    sdb_video_batch_limit = 10000
+    # channel_id_batch_limit = 40
+    # TESTING
+    channel_id_batch_limit = 10
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -46,6 +46,8 @@ class StandardAuditProvider(AuditProvider):
                 self.audit_service.gather_brand_safety_results(channel_audits),
                 doc_type=constants.CHANNEL
             )
+            self.cursor += len(channel_batch)
+            self.script_tracker = self.update_cursor(self.script_tracker, self.cursor)
             print(video_index_result)
             print(channel_index_result)
 

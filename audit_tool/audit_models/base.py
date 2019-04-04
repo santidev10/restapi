@@ -48,7 +48,6 @@ class Audit(object):
         text = ""
         text += metadata.get("title", "")
         text += metadata.get("description", "")
-        text += metadata.get("channelTitle", "")
         text += metadata.get("channel_title", "")
         text += metadata.get("transcript", "")
 
