@@ -3,12 +3,12 @@ import re
 from audit_tool.audit_services.base import AuditService
 from audit_tool.audit_models.channel_audit import ChannelAudit
 from audit_tool.audit_models.video_audit import VideoAudit
-from audit_tool.data_providers.youtube_data_provider import YoutubeDataProvider
+from utils.data_providers.youtube_data_provider import YoutubeDataProvider
 
 
 class YoutubeAuditService(AuditService):
     """
-    Youtube Audit Service Class to audit Youtube Data API data
+    Interface for consuming source data from providers and driving brand safety logic
     """
     def __init__(self, audit_types):
         super().__init__(audit_types)

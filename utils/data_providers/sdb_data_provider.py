@@ -2,7 +2,7 @@ import time
 
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
-from audit_tool.data_providers.base import DataProviderMixin
+from .base import DataProviderMixin
 
 
 class SDBDataProvider(DataProviderMixin):

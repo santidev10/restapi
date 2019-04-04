@@ -2,7 +2,7 @@ import time
 
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
-from audit_tool.data_providers.base import DataProviderMixin
+from .base import DataProviderMixin
 
 
 class YoutubeDataProvider(DataProviderMixin):

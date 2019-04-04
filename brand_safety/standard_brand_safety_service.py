@@ -2,12 +2,12 @@ import audit_tool.audit_constants as constants
 from audit_tool.audit_services.base import AuditService
 from audit_tool.audit_models.channel_audit import ChannelAudit
 from audit_tool.audit_models.video_audit import VideoAudit
-from audit_tool.data_providers.sdb_data_provider import SDBDataProvider
+from utils.data_providers.sdb_data_provider import SDBDataProvider
 
 
-class StandardAuditService(AuditService):
+class StandardBrandSafetyService(AuditService):
     """
-    Standard Audit Class to audit existing database data
+    Interface for consuming source data from providers and driving brand safety logic
     """
     video_audits_sorted = False
 

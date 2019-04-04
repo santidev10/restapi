@@ -1,11 +1,14 @@
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from audit_tool import audit_constants as constants
-from audit_tool.audit_services.standard_audit_service import StandardAuditService
 from audit_tool.audit_providers.base import AuditProvider
-from audit_tool.data_providers.sdb_data_provider import SDBDataProvider
+from brand_safety.standard_brand_safety_service import StandardBrandSafetyService
+from utils.data_providers.sdb_data_provider import SDBDataProvider
 
 
-class StandardAuditProvider(AuditProvider):
+class StandardBrandSafetyProvider(AuditProvider):
+    """
+    Interface for reading source data and providing it to services
+    """
     # channel_id_batch_limit = 40
     # TESTING
     channel_id_batch_limit = 10
@@ -27,7 +30,7 @@ class StandardAuditProvider(AuditProvider):
             "gun & violence": 1,
             "pornographic": 1,
         }
-        self.audit_service = StandardAuditService(self.audits, self.score_mapping)
+        self.audit_service = StandardBrandSafetyService(self.audits, self.score_mapping)
 
     def run(self):
         """

@@ -2,12 +2,15 @@ import re
 import csv
 from multiprocessing import Pool
 
+from .base import AuditProvider
 import audit_tool.audit_constants as constants
-from audit_tool.audit_providers.base import AuditProvider
 from audit_tool.audit_services.youtube_audit_service import YoutubeAuditService
 
 
 class CustomAuditProvider(AuditProvider):
+    """
+    Interface for reading source data and providing it to services
+    """
     max_process_count = 8
     video_chunk_size = 1000
     video_batch_size = 8000

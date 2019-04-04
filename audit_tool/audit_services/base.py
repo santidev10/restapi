@@ -3,7 +3,8 @@ import audit_tool.audit_constants as constants
 
 class AuditService(object):
     """
-    Baseclass for various Audit Services types to inherit shared methods and attributes from
+    Base class for various Audit Services types to inherit shared methods and attributes from to consume source data
+        and drive audit logic
     """
     def __init__(self, audit_types):
         self.audit_keyword_hit_mapping = constants.AUDIT_KEYWORD_MAPPING
