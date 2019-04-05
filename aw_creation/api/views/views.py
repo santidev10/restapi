@@ -356,17 +356,10 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
 
 class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
-    related_object_count_limit = 10000
 
     def post(self, request, segment_type, **_):
         method = "get_{}_item_ids".format(segment_type)
         item_ids = getattr(self, method)(request.data)
-        if len(item_ids) > self.related_object_count_limit:
-            return Response(
-                data={"error": "Selected segment has more than {} related objects".format(
-                    self.related_object_count_limit)},
-                status=HTTP_400_BAD_REQUEST
-            )
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
         if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):

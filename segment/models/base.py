@@ -16,6 +16,7 @@ from django.db.models import SET_NULL
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +146,8 @@ class BaseSegment(Timestampable):
     def add_by_filters(self, filters):
         logger.debug("%s add_by_filters started", self)
         items_imported = 0
-        all_batches = self.load_list_batch_generator(filters)
-        for batch in all_batches:
+        all_items = self.load_list_batch_generator(filters)
+        for batch in chunks_generator(all_items, 5000):
             ids = [item["pk"] for item in batch]
             self.add_related_ids(ids)
             items_imported += len(ids)
