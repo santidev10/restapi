@@ -227,15 +227,6 @@ class PacingReport:
             placement__adwords_campaigns__statistics__date__lte=F("end"),
             **filters
         )
-
-        try:
-            placement_id = queryset.first().placement_id
-            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
-            cpm_buffer = opportunity.cpm_buffer / 100
-            cpv_buffer = opportunity.cpv_buffer / 100
-        except (IndexError, AttributeError):
-            cpm_buffer = cpv_buffer = 0
-
         campaign_id_key = "placement__adwords_campaigns__id"
         group_by = ("id", campaign_id_key)
 
@@ -255,10 +246,16 @@ class PacingReport:
                 default=Max("placement__adwords_campaigns__account__update_time")
             ),
             timezone=Max("placement__adwords_campaigns__account__timezone"),
-
         ).values(
             *FLIGHT_FIELDS)
 
+        try:
+            placement_id = relevant_flights[0]["placement_id"]
+            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
+            cpm_buffer = opportunity.cpm_buffer
+            cpv_buffer = opportunity.cpv_buffer
+        except (IndexError, AttributeError):
+            cpm_buffer = cpv_buffer = 0
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
         for row in raw_data:
@@ -282,19 +279,18 @@ class PacingReport:
             goal_type_id = fl["placement__goal_type_id"]
             if fl["placement__opportunity__budget"] > self.big_budget_border:
                 if SalesForceGoalType.CPV == goal_type_id:
-                    goal_factor = cpv_buffer + self.big_goal_factor
+                    goal_factor = self.big_goal_factor + (cpv_buffer / 100)
                 elif SalesForceGoalType.CPM == goal_type_id:
-                    goal_factor = cpm_buffer + self.big_goal_factor
+                    goal_factor = self.big_goal_factor + (cpm_buffer / 100)
                 else:
                     goal_factor = self.big_goal_factor
             else:
                 if SalesForceGoalType.CPV == goal_type_id:
-                    goal_factor = cpv_buffer + self.goal_factor
+                    goal_factor = self.goal_factor + (cpv_buffer / 100)
                 elif SalesForceGoalType.CPM == goal_type_id:
-                    goal_factor = cpm_buffer + self.goal_factor
+                    goal_factor = self.goal_factor + (cpm_buffer / 100)
                 else:
                     goal_factor = self.goal_factor
-
             fl["plan_units"] = 0
             fl["sf_ordered_units"] = 0
             if fl["placement__dynamic_placement"] \
@@ -368,7 +364,6 @@ class PacingReport:
                             # reassign items
                             fl["recalculated_plan_units"] -= assigned_over_delivery
                             over_delivery -= assigned_over_delivery
-
         return data
 
     @staticmethod
@@ -658,8 +653,6 @@ class PacingReport:
             else:
                 o["cpm_buffer"] = self.goal_factor + (o["cpm_buffer"] / 100)
                 o["cpv_buffer"] = self.goal_factor + (o["cpv_buffer"] / 100)
-            o["plan_impressions"] = apply_buffer(o["plan_impressions"], o["cpm_buffer"])
-            o["plan_video_views"] = apply_buffer(o["plan_video_views"], o["cpv_buffer"])
         return opportunities
 
     def get_opportunities_queryset(self, get, user):
@@ -1439,15 +1432,3 @@ def get_historical_goal(flights, selected_date, total_goal, delivered):
     over_delivered = max(delivered - current_max_goal, 0)
     return total_goal - min(over_delivered, can_consume)
 
-
-def apply_buffer(data, buffer) -> float:
-    """
-    Applies buffer percentage to item
-    :param data: data to apply with buffer
-    :param buffer: Buffer integer that is converted to percentage
-    :return: float
-    """
-    if data is None or buffer is None:
-        return data
-
-    return data * (1 + (buffer / 100))
