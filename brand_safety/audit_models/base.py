@@ -3,7 +3,7 @@ from collections import Counter
 
 import langid
 
-import audit_tool.audit_constants as constants
+from brand_safety import constants
 
 
 class Audit(object):
@@ -22,6 +22,9 @@ class Audit(object):
         u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
         "]", flags=re.UNICODE
     )
+
+    def __init__(self):
+        raise NotImplemented
 
     def execute(self):
         """

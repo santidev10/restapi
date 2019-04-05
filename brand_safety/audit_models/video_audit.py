@@ -2,8 +2,8 @@ from collections import Counter
 
 import langid
 
-from audit_tool.audit_models.base import Audit
-import audit_tool.audit_constants as constants
+from brand_safety import constants
+from brand_safety.audit_models.base import Audit
 
 
 class VideoAudit(Audit):
@@ -80,9 +80,9 @@ class VideoAudit(Audit):
         Executes audit method on all existing audit types
         :return:
         """
-        for key, audit in self.audit_types.items():
-            hits = self.audit(audit)
-            self.results[key] = hits
+        for audit_type, regexp in self.audit_types.items():
+            hits = self.audit(regexp)
+            self.results[audit_type] = hits
 
     def get_language(self, data):
         """

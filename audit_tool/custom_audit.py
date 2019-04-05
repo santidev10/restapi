@@ -2,9 +2,9 @@ import re
 import csv
 from multiprocessing import Pool
 
-from .base import AuditProvider
-import audit_tool.audit_constants as constants
-from audit_tool.audit_services.youtube_audit_service import YoutubeAuditService
+from brand_safety import constants
+from brand_safety.audit_providers.base import AuditProvider
+from brand_safety.audit_services.youtube_audit_service import YoutubeAuditService
 
 
 class CustomAuditProvider(AuditProvider):

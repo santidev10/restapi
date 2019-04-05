@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from audit_tool.audit_providers.custom_audit import CustomAuditProvider
+from audit_tool.custom_audit import CustomAuditProvider
 
 
 class Command(BaseCommand):
@@ -8,20 +8,20 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--file',
-            help='Set file path of csv keywords to read from.'
-        )
-        parser.add_argument(
-            '--export',
-            help='Set file export result directory.'
+            '--title',
+            help='Export title'
         )
         parser.add_argument(
             '--type',
             help='Video or channel audit'
         )
         parser.add_argument(
-            '--title',
-            help='Export title'
+            '--export',
+            help='Set file export result directory.'
+        )
+        parser.add_argument(
+            '--file',
+            help='Set file path of csv keywords to read from.'
         )
         parser.add_argument(
             '--whitelist',

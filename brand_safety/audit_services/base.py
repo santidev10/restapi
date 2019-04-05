@@ -1,4 +1,4 @@
-import audit_tool.audit_constants as constants
+from brand_safety import constants
 
 
 class AuditService(object):

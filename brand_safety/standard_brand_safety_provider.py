@@ -1,8 +1,8 @@
-from segment.models.persistent import PersistentSegmentRelatedChannel
-from audit_tool import audit_constants as constants
-from audit_tool.audit_providers.base import AuditProvider
-from brand_safety.standard_brand_safety_service import StandardBrandSafetyService
+from brand_safety import constants
+from brand_safety.audit_providers.base import AuditProvider
 from utils.data_providers.sdb_data_provider import SDBDataProvider
+from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
+from segment.models.persistent import PersistentSegmentRelatedChannel
 
 
 class StandardBrandSafetyProvider(AuditProvider):

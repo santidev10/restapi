@@ -1,7 +1,7 @@
-import audit_tool.audit_constants as constants
-from audit_tool.audit_services.base import AuditService
-from audit_tool.audit_models.channel_audit import ChannelAudit
-from audit_tool.audit_models.video_audit import VideoAudit
+from brand_safety import constants
+from brand_safety.audit_services.base import AuditService
+from brand_safety.audit_models.channel_audit import ChannelAudit
+from brand_safety.audit_models.video_audit import VideoAudit
 from utils.data_providers.sdb_data_provider import SDBDataProvider
 
 

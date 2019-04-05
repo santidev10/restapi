@@ -1,8 +1,8 @@
 from collections import defaultdict
 from collections import Counter
 
-from audit_tool.audit_models.base import Audit
-import audit_tool.audit_constants as constants
+from brand_safety.audit_models.base import Audit
+from brand_safety import constants
 
 
 class ChannelAudit(Audit):
