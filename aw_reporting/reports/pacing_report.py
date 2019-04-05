@@ -228,6 +228,14 @@ class PacingReport:
             **filters
         )
 
+        try:
+            placement_id = queryset.first().placement_id
+            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
+            cpm_buffer = opportunity.cpm_buffer
+            cpv_buffer = opportunity.cpv_buffer
+        except (IndexError, AttributeError):
+            cpm_buffer = cpv_buffer = 0
+
         campaign_id_key = "placement__adwords_campaigns__id"
         group_by = ("id", campaign_id_key)
 
@@ -271,10 +279,17 @@ class PacingReport:
             start, end = fl["start"], fl["end"]
             fl["days"] = (end - start).days + 1 if end and start else 0
 
+            goal_type_id = fl["placement__goal_type_id"]
             if fl["placement__opportunity__budget"] > self.big_budget_border:
-                goal_factor = self.big_goal_factor
+                if SalesForceGoalType.CPV == goal_type_id and cpv_buffer == 0:
+                        goal_factor = self.big_goal_factor
+                else:
+                    goal_factor = cpv_buffer
             else:
-                goal_factor = self.goal_factor
+                if SalesForceGoalType.CPM == goal_type_id and cpm_buffer == 0:
+                    goal_factor = cpm_buffer
+                else:
+                    goal_factor = self.goal_factor
 
             fl["plan_units"] = 0
             fl["sf_ordered_units"] = 0
@@ -459,8 +474,10 @@ class PacingReport:
             if f["start"] <= self.today:
                 current_cost_limit += total_cost
         result = dict(
-            plan_impressions=apply_buffer(plan_impressions, cpm_buffer),
-            plan_video_views=apply_buffer(plan_video_views, cpv_buffer),
+            # plan_impressions=apply_buffer(plan_impressions, cpm_buffer),
+            # plan_video_views=apply_buffer(plan_video_views, cpv_buffer),
+            plan_impressions=plan_impressions,
+            plan_video_views=plan_video_views,
             plan_cpv=cpv_cost / video_views if video_views else None,
             plan_cpm=cpm_cost / impressions * 1000 if impressions else None,
             cost=sum_spent_cost,
@@ -547,7 +564,8 @@ class PacingReport:
             "apex_deal",
             "billing_server",
             "territory", "margin_cap_required",
-            "cpm_buffer", "cpv_buffer"
+            "cpm_buffer", "cpv_buffer",
+            "budget"
         )
 
         # collect ids
@@ -640,6 +658,21 @@ class PacingReport:
 
             self.add_calculated_fields(o)
             o.update(_get_dynamic_placements_summary(placements))
+
+            if o["cpm_buffer"] == 0:
+                if o["budget"] > self.big_budget_border:
+                    o["cpm_buffer"] = self.big_goal_factor
+                else:
+                    o["cpm_buffer"] = self.goal_factor
+
+            if o["cpv_buffer"] == 0:
+                if o["budget"] > self.big_budget_border:
+                    o["cpv_buffer"] = self.big_goal_factor
+                else:
+                    o["cpv_buffer"] = self.goal_factor
+
+            o["plan_impressions"] = apply_buffer(o["plan_impressions"], o["cpm_buffer"])
+            o["plan_video_views"] = apply_buffer(o["plan_video_views"], o["cpv_buffer"])
 
         return opportunities
 
@@ -1007,13 +1040,13 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
             if campaign_id else f
 
         # Save plan_units value for non buffer related chart calculations before applying buffer to plan_units
-        f["actual_plan_units"] = f["plan_units"]
-
-        # Apply opportunity buffers for following pacing calculations
-        if goal_type_id == SalesForceGoalType.CPV:
-            f["plan_units"] = apply_buffer(f["plan_units"], cpv_buffer)
-        elif goal_type_id == SalesForceGoalType.CPM:
-            f["plan_units"] = apply_buffer(f["plan_units"], cpm_buffer)
+        # f["actual_plan_units"] = f["plan_units"]
+        #
+        # # Apply opportunity buffers for following pacing calculations
+        # if goal_type_id == SalesForceGoalType.CPV:
+        #     f["plan_units"] = apply_buffer(f["plan_units"], cpv_buffer)
+        # elif goal_type_id == SalesForceGoalType.CPM:
+        #     f["plan_units"] = apply_buffer(f["plan_units"], cpm_buffer)
 
         if f["start"] <= today <= f["end"]:
             today_units, today_budget = get_pacing_goal_for_today(
@@ -1051,9 +1084,8 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         sum_today_units = None
         yesterday_units = None
     else:
-        buffers_applied = cpv_buffer > 0 or cpm_buffer > 0
         charts = get_flight_charts(flights, today, allocation_ko,
-                                   campaign_id=campaign_id, buffers_applied=buffers_applied)
+                                   campaign_id=campaign_id)
 
     data = dict(
         today_goal=sum_today_units,
@@ -1183,7 +1215,7 @@ def get_pacing_goal_for_date(flight, date, today, allocation_ko=1,
     return today_units, today_budget
 
 
-def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, buffers_applied=False):
+def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None):
     charts = []
     if not flights:
         return charts
@@ -1223,7 +1255,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, buffers
     historical_goal_chart = []
     total_pacing = 0
     total_delivered = 0
-    total_goal = sum(f["actual_plan_units"] if f.get("actual_plan_units") else f["plan_units"] for f in flights)
+    total_goal = sum(f["plan_units"] for f in flights)
     recalculated_total_goal = sum(f["recalculated_plan_units"] for f in flights)
     for date in get_dates_range(min_start, max_end):
         # plan cumulative chart
@@ -1242,7 +1274,7 @@ def get_flight_charts(flights, today, allocation_ko=1, campaign_id=None, buffers
         pacing_chart.append(
             dict(
                 label=date,
-                value=total_pacing if buffers_applied else min(total_pacing, recalculated_total_goal),
+                value=min(total_pacing, recalculated_total_goal),
             )
         )
 
@@ -1417,7 +1449,7 @@ def get_ideal_delivery_for_date(flights, selected_date):
         total_duration_days = (flight["end"] - flight["start"]).days + 1
         if total_duration_days != 0:
             passed_duration_days = (end_date - flight["start"]).days + 1
-            ideal_delivery += flight["actual_plan_units"] / total_duration_days * passed_duration_days
+            ideal_delivery += flight["plan_units"] / total_duration_days * passed_duration_days
 
     return ideal_delivery
 
