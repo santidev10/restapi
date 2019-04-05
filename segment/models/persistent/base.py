@@ -118,7 +118,7 @@ class BasePersistentSegmentRelated(Timestampable):
 
 
 class PersistentSegmentExportContent(object):
-    CHNUK_SIZE = 100000
+    CHUNK_SIZE = 100000
 
     def __init__(self, segment):
         self.segment = segment
@@ -133,8 +133,8 @@ class PersistentSegmentExportContent(object):
             writer.writeheader()
             page = 0
             while True:
-                offset = page * self.CHNUK_SIZE
-                limit = (page + 1) * self.CHNUK_SIZE
+                offset = page * self.CHUNK_SIZE
+                limit = (page + 1) * self.CHUNK_SIZE
                 items = queryset[offset:limit]
                 page += 1
 

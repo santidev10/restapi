@@ -6,6 +6,7 @@ import requests
 import yaml
 from simple_salesforce import Salesforce
 
+from aw_reporting.models import SalesforceFields
 from aw_reporting.models.salesforce import Activity
 from utils.datetime import now_in_default_tz
 
@@ -76,38 +77,7 @@ class Connection:
     def get_opportunities(self, where=None):
         items = self.get_items(
             'Opportunity',
-            [
-                'Id', 'Name', 'Client_Vertical__c', 'Territory1__c',
-                'Grand_Total__c', 'Projected_Launch_Date__c',
-                'MIN_Placement_Start_Date__c', 'MAX_Placement_End_Date__c',
-                'Rate_Type__c', 'Cost_Method__c',
-
-                'CPV_Units_Purchased__c',
-                'CPM_Impression_Units_Purchased__c',
-                'CPV_Total_Client_Cost__c',
-                'CPM_Total_Client_Cost__c',
-                'Quoted_CPM_Price__c',  # CPM Price Per Unit
-                'Avg_Cost_Per_Unit__c',  # CPV Price Per Unit
-
-                'StageName',
-                'Ad_Ops_Campaign_Manager_UPDATE__c', 'Ad_Ops_QA_Manager__c',
-                'OwnerId',
-                'Account_Manager__c',
-                'OPP_ID_Number__c',
-                'AdWords_CID__c',
-                'Agency_Contact__c', 'AccountId', 'Brand_Test__c',
-                'DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c',
-                'Probability', 'CreatedDate', 'CloseDate',
-                'Renewal_Approved__c', 'Reason_for_Close_Lost__c',
-                'Date_Proposal_Submitted__c',
-
-                'Demo_TEST__c', 'Geo_Targeting_Country_State_City__c', 
-                'Targeting_Tactics__c', 'Tags__c',
-                'Types_of__c',
-                "APEX_Deal__c",
-                "Billing_Serer__c",
-                "CID_Google_Transparency_Required__c",
-            ],
+            SalesforceFields.Opportunity.values(),
             where=where
         )
         return items
@@ -115,7 +85,7 @@ class Connection:
     def get_user_roles(self, where=None):
         items = self.get_items(
             'UserRole',
-            ['Id', 'Name'],
+            SalesforceFields.UserRole.values(),
             where=where
         )
         return items
@@ -123,7 +93,7 @@ class Connection:
     def get_users(self, where=None, save_photo=False):
         items = self.get_items(
             'User',
-            ['Id', 'Name', 'SmallPhotoUrl', 'Email', 'UserRoleId', 'IsActive'],
+            SalesforceFields.User.values(),
             where=where
         )
         if save_photo:
@@ -166,7 +136,7 @@ class Connection:
     def get_accounts(self, where=None):
         items = self.get_items(
             'Account',
-            ['Id', 'Name', 'ParentId'],
+            SalesforceFields.SFAccount.values(),
             where=where
         )
         return items
@@ -174,7 +144,7 @@ class Connection:
     def get_contacts(self, where=None):
         items = self.get_items(
             'Contact',
-            ['Id', 'FirstName', 'LastName'],
+            SalesforceFields.Contact.values(),
             where=where
         )
         return items
@@ -216,18 +186,7 @@ class Connection:
     def get_placements(self, where=None):
         items = self.get_items(
             "Placement__c",
-            [
-                "Id", "Name", "Placement_Start_Date__c",
-                "Placement_End_Date__c", "Total_Ordered_Units__c",
-                "Net_Cost__c", "Cost_Method__c", "Total_Actual_Clicks__c",
-                "Views_Purchased__c", "Account_Manager__c", "Sales_Rep__c",
-                "Account_Name__c", "Opportunity_Name__c", "Insertion_Order__c",
-                "Ordered_Cost_Per_Unit__c", "PLACEMENT_ID_Number__c",
-                "Total_Client_Costs__c", "Adwords_Placement_IQ__c",
-                "Incremental__c", "Placement_Type__c", "Dynamic_Placement__c",
-                "Tech_Fee_if_applicable__c", "Tech_Fee_Cap_if_applicable__c",
-                "Tech_Fee_Type__c",
-            ],
+            SalesforceFields.Placement.values(),
             where=where
         )
         return items
@@ -235,14 +194,7 @@ class Connection:
     def get_flights(self, where=None):
         items = self.get_items(
             'Flight__c',
-            [
-                'Id', 'Name', 'Placement__c',
-                'Flight_Start_Date__c', 'Flight_End_Date__c',
-                'Ordered_Amount__c', 'Ordered_Units__c',
-                'Delivered_Ad_Ops__c', 'Total_Flight_Cost__c',
-                'Flight_Month__c',
-                'Flight_Value__c',
-            ],
+            SalesforceFields.Flight.values(),
             where=where
         )
         return items
@@ -259,10 +211,8 @@ class Connection:
             "WhoId != '' AND ActivityDate != NULL",
             " AND {}".format(where) if where else "",
         )
-        fields = [
-            'Id', 'Subject', 'WhatId', 'OwnerId', 'AccountId',
-            'ActivityDate',
-        ]
+        SalesforceFields.Activity.values()
+        fields = SalesforceFields.Activity.values()
         events = self.get_items('Event', fields, where=where)
         tasks = self.get_items('Task', fields, where=where)
 
