@@ -231,8 +231,8 @@ class PacingReport:
         try:
             placement_id = queryset.first().placement_id
             opportunity = OpPlacement.objects.get(id=placement_id).opportunity
-            cpm_buffer = opportunity.cpm_buffer
-            cpv_buffer = opportunity.cpv_buffer
+            cpm_buffer = opportunity.cpm_buffer / 100
+            cpv_buffer = opportunity.cpv_buffer / 100
         except (IndexError, AttributeError):
             cpm_buffer = cpv_buffer = 0
 
@@ -281,13 +281,17 @@ class PacingReport:
 
             goal_type_id = fl["placement__goal_type_id"]
             if fl["placement__opportunity__budget"] > self.big_budget_border:
-                if SalesForceGoalType.CPV == goal_type_id and cpv_buffer == 0:
-                        goal_factor = self.big_goal_factor
+                if SalesForceGoalType.CPV == goal_type_id:
+                    goal_factor = cpv_buffer + self.big_goal_factor
+                elif SalesForceGoalType.CPM == goal_type_id:
+                    goal_factor = cpm_buffer + self.big_goal_factor
                 else:
-                    goal_factor = cpv_buffer
+                    goal_factor = self.big_goal_factor
             else:
-                if SalesForceGoalType.CPM == goal_type_id and cpm_buffer == 0:
-                    goal_factor = cpm_buffer
+                if SalesForceGoalType.CPV == goal_type_id:
+                    goal_factor = cpv_buffer + self.goal_factor
+                elif SalesForceGoalType.CPM == goal_type_id:
+                    goal_factor = cpm_buffer + self.goal_factor
                 else:
                     goal_factor = self.goal_factor
 
@@ -421,15 +425,6 @@ class PacingReport:
         sum_total_cost = sum_delivery = sum_spent_cost = 0
         current_cost_limit = 0
 
-        try:
-            placement_id = flights[0]["placement_id"]
-            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
-            cpm_buffer = opportunity.cpm_buffer
-            cpv_buffer = opportunity.cpv_buffer
-
-        except IndexError:
-            cpm_buffer = cpv_buffer = 0
-
         for f in flights:
             goal_type_id = f["placement__goal_type_id"]
             dynamic_placement = f["placement__dynamic_placement"]
@@ -474,8 +469,6 @@ class PacingReport:
             if f["start"] <= self.today:
                 current_cost_limit += total_cost
         result = dict(
-            # plan_impressions=apply_buffer(plan_impressions, cpm_buffer),
-            # plan_video_views=apply_buffer(plan_video_views, cpv_buffer),
             plan_impressions=plan_impressions,
             plan_video_views=plan_video_views,
             plan_cpv=cpv_cost / video_views if video_views else None,
@@ -659,21 +652,14 @@ class PacingReport:
             self.add_calculated_fields(o)
             o.update(_get_dynamic_placements_summary(placements))
 
-            if o["cpm_buffer"] == 0:
-                if o["budget"] > self.big_budget_border:
-                    o["cpm_buffer"] = self.big_goal_factor
-                else:
-                    o["cpm_buffer"] = self.goal_factor
-
-            if o["cpv_buffer"] == 0:
-                if o["budget"] > self.big_budget_border:
-                    o["cpv_buffer"] = self.big_goal_factor
-                else:
-                    o["cpv_buffer"] = self.goal_factor
-
+            if o["budget"] > self.big_budget_border:
+                o["cpm_buffer"] = self.big_goal_factor + (o["cpm_buffer"] / 100)
+                o["cpv_buffer"] = self.big_goal_factor + (o["cpv_buffer"] / 100)
+            else:
+                o["cpm_buffer"] = self.goal_factor + (o["cpm_buffer"] / 100)
+                o["cpv_buffer"] = self.goal_factor + (o["cpv_buffer"] / 100)
             o["plan_impressions"] = apply_buffer(o["plan_impressions"], o["cpm_buffer"])
             o["plan_video_views"] = apply_buffer(o["plan_video_views"], o["cpv_buffer"])
-
         return opportunities
 
     def get_opportunities_queryset(self, get, user):
@@ -1038,15 +1024,6 @@ def get_chart_data(*_, flights, today, before_yesterday_stats=None,
         goal += (f["sf_ordered_units"] or 0) * allocation_ko
         stats = f["campaigns"].get(campaign_id, ZERO_STATS) \
             if campaign_id else f
-
-        # Save plan_units value for non buffer related chart calculations before applying buffer to plan_units
-        # f["actual_plan_units"] = f["plan_units"]
-        #
-        # # Apply opportunity buffers for following pacing calculations
-        # if goal_type_id == SalesForceGoalType.CPV:
-        #     f["plan_units"] = apply_buffer(f["plan_units"], cpv_buffer)
-        # elif goal_type_id == SalesForceGoalType.CPM:
-        #     f["plan_units"] = apply_buffer(f["plan_units"], cpm_buffer)
 
         if f["start"] <= today <= f["end"]:
             today_units, today_budget = get_pacing_goal_for_today(
