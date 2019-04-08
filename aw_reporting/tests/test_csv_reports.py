@@ -64,6 +64,4 @@ class PacingReportCSVExportTestCase(TestCase):
         self.assertEqual(len(s3_objects), 1)
         self.assertEqual(s3_objects[0]["Key"], expected_key)
 
-
-        report = csv_generator.get_s3_export_content(report_name)
-        print(report)
+        csv_generator.get_s3_export_content(report_name)
