@@ -82,8 +82,9 @@ class UserAuthApiView(APIView):
         if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
             return Response(
                 data={
-                    "error": ["Unable to authenticate APEX user"
-                              " on this site. Please go to {}".format(settings.APEX_HOST)]
+                    "error": "Unable to authenticate APEX user"
+                             " on this site. Please go to <a href='{apex_host}'>"
+                             "{apex_host}</a>".format(apex_host=settings.APEX_HOST)
                 },
                 status=HTTP_400_BAD_REQUEST)
 

@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
-from brand_safety.models import BadWord
+from brand_safety.models import BadWord, BadWordCategory
 from saas.urls.namespaces import Namespace
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -85,3 +85,33 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_category_create_category_ref(self):
+        self.create_admin_user()
+        test_category = "testing"
+        test_bad_word = "testing"
+        response = self._request(
+            name=test_bad_word,
+            category=test_category,
+        )
+
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+        test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
+        test_bad_word_category = BadWordCategory.objects.get(name=test_category)
+
+        self.assertEqual(test_bad_word_obj.category_ref_id, test_bad_word_category.id)
+
+    def test_category_create_existing_category_ref(self):
+        self.create_admin_user()
+        test_bad_word = "testing"
+        test_category = BadWordCategory.objects.create(name="testing")
+        response = self._request(
+            name=test_bad_word,
+            category=test_category.name,
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(response.data['category'], test_category.name)
+        test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
+        self.assertEqual(test_bad_word_obj.category_ref_id, test_category.id)
+        self.assertEqual(test_bad_word_obj.category_ref.name, test_category.name)

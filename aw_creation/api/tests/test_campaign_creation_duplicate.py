@@ -1,13 +1,27 @@
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import *
+from aw_creation.api.urls.names import Name
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import AdScheduleRule
+from aw_creation.models import CampaignCreation
+from aw_creation.models import FrequencyCap
+from aw_creation.models import Language
+from aw_creation.models import LocationRule
+from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
-from aw_reporting.models import *
+from aw_reporting.models import GeoTarget
+from saas.urls.namespaces import Namespace
+from utils.utittests.reverse import reverse
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
+
+    def _get_url(self, campaign_id):
+        return reverse(Name.CreationSetup.CAMPAIGN_DUPLICATE, [Namespace.AW_CREATION], args=(campaign_id,))
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -73,21 +87,19 @@ class AccountAPITestCase(AwReportingAPITestCase):
     def test_success_fail_has_no_permission(self):
         self.user.remove_custom_user_permission("view_media_buying")
 
-        c = self.create_campaign_creation(self.user)
-        url = reverse("aw_creation_urls:campaign_creation_duplicate",
-                      args=(c.id,))
+        campaign = self.create_campaign_creation(self.user)
+        url = self._get_url(campaign.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
-        c = self.create_campaign_creation(self.user)
-        url = reverse("aw_creation_urls:campaign_creation_duplicate",
-                      args=(c.id,))
+        campaign = self.create_campaign_creation(self.user)
+        url = self._get_url(campaign.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         campaign_data = response.data
-        self.assertNotEqual(c.id, campaign_data['id'])
+        self.assertNotEqual(campaign.id, campaign_data['id'])
 
         self.assertEqual(
             set(campaign_data.keys()),
@@ -114,7 +126,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "target_cpa"
             }
         )
-        self.assertEqual(campaign_data['name'], "{} (1)".format(c.name))
+        self.assertEqual(campaign_data['name'], "{} (1)".format(campaign.name))
         self.assertEqual(
             campaign_data['type'],
             dict(id=CampaignCreation.CAMPAIGN_TYPES[0][0],
@@ -191,11 +203,10 @@ class AccountAPITestCase(AwReportingAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="", owner=self.user,
         )
-        c = CampaignCreation.objects.create(
+        campaign = CampaignCreation.objects.create(
             name="FF 1 (665)", account_creation=account_creation,
         )
-        url = reverse("aw_creation_urls:campaign_creation_duplicate",
-                      args=(c.id,))
+        url = self._get_url(campaign.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
@@ -204,7 +215,25 @@ class AccountAPITestCase(AwReportingAPITestCase):
     def test_success_post_demo(self):
         ac = DemoAccount()
         campaign = ac.children[0]
-        url = reverse("aw_creation_urls:campaign_creation_duplicate",
-                      args=(campaign.id,))
+        url = self._get_url(campaign.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_copy_properties(self):
+        account_creation = AccountCreation.objects.create(owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(
+            account_creation=account_creation,
+            target_cpa=12
+        )
+
+        url = self._get_url(campaign_creation.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        new_campaign_creation = CampaignCreation.objects.get(id=response.data["id"])
+        fields = (
+            "target_cpa",
+        )
+        for field in fields:
+            with self.subTest(field):
+                self.assertEqual(getattr(campaign_creation, field), getattr(new_campaign_creation, field))

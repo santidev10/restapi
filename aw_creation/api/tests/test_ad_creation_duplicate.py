@@ -1,13 +1,24 @@
-from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
+import json
 
-from aw_creation.models import *
+from django.contrib.auth import get_user_model
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
+
+from aw_creation.api.urls.names import Name
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.demo.models import DemoAccount
+from saas.urls.namespaces import Namespace
+from utils.utittests.reverse import reverse
 
 
 class AccountAPITestCase(AwReportingAPITestCase):
+    def _get_url(self, ad_id):
+        return reverse(Name.CreationSetup.AD_DUPLICATE, [Namespace.AW_CREATION], args=(ad_id,))
 
     def setUp(self):
         self.user = self.create_test_user()
@@ -32,7 +43,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
             display_url="www.gg.com",
             final_url="http://www.gg.com",
             tracking_template="http://custom.com",
-            custom_params_raw='[{"name": "name 1", "value": "value 1"}]',
+            custom_params_raw=json.dumps([{"name": "name 1", "value": "value 1"}]),
             beacon_impression_1="http://wtf.com",
             beacon_vast_2="http://feed.me?no=1&yes=0",
         )
@@ -42,28 +53,26 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.user.remove_custom_user_permission("view_media_buying")
 
         ad = self.create_ad_creation(owner=self.user)
-        url = reverse("aw_creation_urls:ad_creation_duplicate",
-                      args=(ad.id,))
+        url = self._get_url(ad.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):
         ad = self.create_ad_creation(owner=self.user)
-        url = reverse("aw_creation_urls:ad_creation_duplicate",
-                      args=(ad.id,))
+        url = self._get_url(ad.id)
 
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertNotEqual(ad.id, data['id'])
+        self.assertNotEqual(ad.id, data["id"])
         self.assertEqual(
             set(data.keys()),
             {
-                'id', 'updated_at', 'custom_params', 'name', 'tracking_template',
-                'video_url', 'display_url', 'final_url', 'video_ad_format', 'companion_banner',
-                'video_id', 'video_title', 'video_description', 'video_thumbnail',
-                'video_channel_title', 'video_duration',
+                "id", "updated_at", "custom_params", "name", "tracking_template",
+                "video_url", "display_url", "final_url", "video_ad_format", "companion_banner",
+                "video_id", "video_title", "video_description", "video_thumbnail",
+                "video_channel_title", "video_duration",
 
                 "beacon_impression_1", "beacon_impression_2", "beacon_impression_3",
                 "beacon_view_1", "beacon_view_2", "beacon_view_3",
@@ -77,9 +86,9 @@ class AccountAPITestCase(AwReportingAPITestCase):
                 "headline", "description_1", "description_2", "long_headline", "short_headline", "business_name"
             }
         )
-        self.assertEqual(data['name'], "{} (1)".format(ad.name))
-        self.assertEqual(data['beacon_impression_1'], ad.beacon_impression_1)
-        self.assertEqual(data['beacon_vast_2'], ad.beacon_vast_2)
+        self.assertEqual(data["name"], "{} (1)".format(ad.name))
+        self.assertEqual(data["beacon_impression_1"], ad.beacon_impression_1)
+        self.assertEqual(data["beacon_vast_2"], ad.beacon_vast_2)
 
         ad_duplicate = AdCreation.objects.get(pk=data["id"])
         for f in AdCreation.tag_changes_field_names:
@@ -94,15 +103,14 @@ class AccountAPITestCase(AwReportingAPITestCase):
             display_url="www.gg.com",
             final_url="http://www.gg.com",
             tracking_template="http://custom.com",
-            custom_params_raw='[{"name": "name 1", "value": "value 1"}]',
+            custom_params_raw=json.dumps([{"name": "name 1", "value": "value 1"}]),
         )
 
-        url = reverse("aw_creation_urls:ad_creation_duplicate",
-                      args=(ad.id,))
+        url = self._get_url(ad.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.assertEqual(data['name'], "FF 1 (200)")
+        self.assertEqual(data["name"], "FF 1 (200)")
 
     def test_success_post_demo(self):
         ac = DemoAccount()
@@ -110,8 +118,7 @@ class AccountAPITestCase(AwReportingAPITestCase):
         ad_group = campaign.children[0]
         ad = ad_group.children[0]
 
-        url = reverse("aw_creation_urls:ad_creation_duplicate",
-                      args=(ad.id,))
+        url = self._get_url(ad.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -130,14 +137,14 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
         ad = AdCreation.objects.create(name="Whiskey", ad_group_creation=ad_group_creation_1)
 
-        url = reverse("aw_creation_urls:ad_creation_duplicate", args=(ad.id,))
+        url = self._get_url(ad.id)
         response = self.client.post("{}?to={}".format(url, ad_group_creation_2.id))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(ad_group_creation_1.ad_creations.count(), 1)
         self.assertEqual(ad_group_creation_2.ad_creations.count(), 1)
-        self.assertEqual(data['name'], ad.name)
+        self.assertEqual(data["name"], ad.name)
 
     def test_fail_duplicate_to_another_not_found_campaign(self):
         account_creation = AccountCreation.objects.create(
@@ -160,7 +167,33 @@ class AccountAPITestCase(AwReportingAPITestCase):
         )
         ad = AdCreation.objects.create(name="Whiskey", ad_group_creation=ad_group_creation_1)
 
-        url = reverse("aw_creation_urls:ad_creation_duplicate", args=(ad.id,))
+        url = self._get_url(ad.id)
         response = self.client.post("{}?to={}".format(url, ad_group_creation_2.id))
 
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_copy_properties(self):
+        account_creation = AccountCreation.objects.create(owner=self.user)
+        campaign_creation = CampaignCreation.objects.create(account_creation=account_creation)
+        ad_group_creation = AdGroupCreation.objects.create(campaign_creation=campaign_creation)
+        ad = AdCreation.objects.create(
+            name="Whiskey",
+            ad_group_creation=ad_group_creation,
+            short_headline="Short headline",
+            long_headline="Long headline",
+            business_name="Business name"
+        )
+
+        url = self._get_url(ad.id)
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        new_ad = AdCreation.objects.get(id=response.data["id"])
+        fields = (
+            "short_headline",
+            "long_headline",
+            "business_name",
+        )
+        for field in fields:
+            with self.subTest(field):
+                self.assertEqual(getattr(ad, field), getattr(new_ad, field))
