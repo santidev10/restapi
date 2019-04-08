@@ -145,6 +145,38 @@ class SlackAWUpdateLoggingHandler(Handler):
             headers=headers,
         )
 
+class SlackBrandSafetyLoggingHandler(Handler):
+    slack_color_map = {
+        "INFO": "good",
+        "WARNING": "warning",
+        "ERROR": "danger",
+        "CRITICAL": "danger",
+    }
+
+    def emit(self, record):
+        print('i am not working')
+        webhook_name = settings.AW_UPDATE_SLACK_WEBHOOK_NAME
+        level_name = record.levelname
+        slack_message_color = self.slack_color_map[level_name]
+        log_entry = self.format(record)
+        payload = {
+            "attachments": [
+                {
+                    "pretext": "Brand safety test on host: {}".format(settings.HOST),
+                    "text": log_entry,
+                    "color": slack_message_color,
+                }
+            ]
+        }
+        headers = {"Content-Type": "application/json"}
+        timeout = 60
+        requests.post(
+            settings.SLACK_WEBHOOKS.get(webhook_name),
+            data=json.dumps(payload),
+            timeout=timeout,
+            headers=headers,
+        )
+
 
 class Levels:
     WARNING = "WARNING"

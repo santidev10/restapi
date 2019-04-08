@@ -19,6 +19,30 @@ class VideoAudit(Audit):
         self.results = {}
         self.score_mapping = score_mapping
 
+    @property
+    def pk(self):
+        pk = self.metadata["video_id"]
+        return pk
+
+    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
+        details = {
+            "language": self.metadata["language"],
+            "thumbnail": self.metadata["thumbnail_image_url"],
+            "likes": self.metadata["likes"],
+            "dislikes": self.metadata["dislikes"],
+            "views": self.metadata["views"],
+        }
+        if segment_type == constants.BLACKLIST:
+            details["bad_words"] = self.results[constants.BRAND_SAFETY]
+        obj = model(
+            related_id=self.pk,
+            segment=related_segment,
+            title=self.metadata["video_title"],
+            category=self.metadata["category"],
+            details=details
+        )
+        return obj
+
     def get_youtube_metadata(self, data):
         """
         Extract Youtube video metadata

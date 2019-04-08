@@ -2,6 +2,7 @@ import re
 from collections import Counter
 
 import langid
+from emoji import UNICODE_EMOJI
 
 from brand_safety import constants
 
@@ -13,15 +14,6 @@ class Audit(object):
     source = None
     metadata = None
     results = None
-
-    emoji_regexp = re.compile(
-        u"["
-        u"\U0001F600-\U0001F64F"  # emoticons
-        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-        u"\U0001F680-\U0001F6FF"  # transport & map symbols
-        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "]", flags=re.UNICODE
-    )
 
     def __init__(self):
         raise NotImplemented
@@ -96,8 +88,16 @@ class Audit(object):
             language = langid.classify(text)[0].lower()
         return language
 
-    def detect_emoji(self, text):
-        has_emoji = bool(re.search(self.emoji_regexp, text))
+    @staticmethod
+    def compile_emoji_regexp(unicode):
+        regexp = re.compile(
+            "({})".format("|".join([r"{}".format(re.escape(word)) for word in unicode]))
+        )
+        return regexp
+
+    @staticmethod
+    def detect_emoji(text):
+        has_emoji = text in UNICODE_EMOJI
         return has_emoji
 
     @staticmethod

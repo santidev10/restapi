@@ -18,6 +18,11 @@ class ChannelAudit(Audit):
         self.metadata = self.get_metadata(channel_data, source)
         self.update_aggregate_video_audit_data()
 
+    @property
+    def pk(self):
+        pk = self.metadata["channel_id"]
+        return pk
+
     def get_channel_videos_failed(self):
         videos_failed = 0
         for video in self.video_audits:
