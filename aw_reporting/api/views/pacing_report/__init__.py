@@ -1,5 +1,6 @@
 from .pacing_report_status import PacingReportStatusApiView
 from .pacing_report_campaigns import PacingReportCampaignsApiView
+from .pacing_report_collect import PacingReportCollectView
 from .pacing_report_export import PacingReportExportView
 from .pacing_report_filters import PacingReportFiltersApiView
 from .pacing_report_flights import PacingReportFlightsApiView

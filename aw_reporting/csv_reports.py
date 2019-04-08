@@ -1,14 +1,21 @@
+import csv
+import os
+import tempfile
+
+import boto3
+from django.conf import settings
+
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
-from aw_reporting.reports.pacing_report_generator import PacingReportGenerator
-from utils.csv_export import BaseCSVStreamResponseGenerator
-
 
 OPPORTUNITY_COLUMN_NAME = "opportunity_name"
 PLACEMENT_COLUMN_NAME = "placement_name"
 FLIGHT_COLUMN_NAME = "flight_name"
 CAMPAIGN_COLUMN_NAME = "campaign_name"
+
+S3_PACING_REPORT_EXPORT_KEY_PATTERN = "pacing-reports/{report_name}.csv"
+REPORT_NAME = "PacingReport"
 
 
 class SharedColumn:
@@ -119,17 +126,20 @@ FORMATTING = dict(
 )
 
 
-class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
-    def __init__(self, get):
-        super(PacingReportCSVExport, self).__init__(CSV_COLUMN_ORDER,
-                                                    self.pacing_report_list(get),
-                                                    REPORT_HEADERS)
+class ReportNotFoundException(Exception):
+    pass
 
-        self.report = PacingReportGenerator()
+
+class PacingReportCSVExport:
+    export_content_type = "application/CSV"
+
+    def __init__(self, report, opportunities, report_name=None):
+        self.data_generator = self.pacing_report_list(report, opportunities)
+        self.report_name = report_name
 
     def _map_row(self, row):
         result_list = []
-        for column in self.columns:
+        for column in CSV_COLUMN_ORDER:
             value = row.get(column)
             if value:
                 column_format = FORMATTING.get(column, FORMATS["default"])
@@ -143,17 +153,31 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
         return result_list
 
-    def pacing_report_list(self, get):
+    def export_generator(self):
+        """
+        Export data generator
+        """
+        yield self._map_row(REPORT_HEADERS)
+        for row in self.data_generator:
+            yield self._map_row(row)
 
-        for opportunity in self.report.get_opportunities(get):
+    def pacing_report_list(self, report, opportunities):
+
+        for opportunity in opportunities:
             # opportunity
             opportunity[OPPORTUNITY_COLUMN_NAME] = opportunity.get("name")
+
+            for column in (OpportunityColumn.AD_OPS, OpportunityColumn.AM,
+                           OpportunityColumn.SALES, OpportunityColumn.CATEGORY, OpportunityColumn.REGION):
+                value = opportunity.get(column)
+                if value:
+                    opportunity[column] = value.get("name")
 
             yield opportunity
 
             # placements
             opportunity_object = Opportunity.objects.get(id=opportunity["id"])
-            for placement in self.report.get_placements(opportunity_object):
+            for placement in report.get_placements(opportunity_object):
 
                 placement[PLACEMENT_COLUMN_NAME] = placement.get("name")
 
@@ -161,7 +185,7 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
                 # flights
                 placement_obj = OpPlacement.objects.get(id=placement["id"])
-                for flight in self.report.get_flights(placement_obj):
+                for flight in report.get_flights(placement_obj):
 
                     flight[FLIGHT_COLUMN_NAME] = flight.get("name")
 
@@ -169,11 +193,61 @@ class PacingReportCSVExport(BaseCSVStreamResponseGenerator):
 
                     # campaigns
                     flight_obj = Flight.objects.get(id=flight["id"])
-                    for campaign in self.report.get_campaigns(flight_obj):
+                    for campaign in report.get_campaigns(flight_obj):
 
                         campaign[CAMPAIGN_COLUMN_NAME] = campaign.get("name")
 
                         yield campaign
 
-    def get_filename(self):
-        return self.report.name
+    @staticmethod
+    def get_s3_key(report_name):
+        key = S3_PACING_REPORT_EXPORT_KEY_PATTERN.format(report_name=report_name)
+        return key
+
+    @staticmethod
+    def _s3():
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY
+        )
+        return s3
+
+    def export_to_s3(self):
+        with PacingReportExportContent(self.export_generator) as exported_file_name:
+            self._s3().upload_file(
+                Bucket=settings.AMAZON_S3_REPORTS_BUCKET_NAME,
+                Key=self.get_s3_key(self.report_name),
+                Filename=exported_file_name,
+            )
+
+    @staticmethod
+    def get_s3_export_content(report_name):
+        s3 = PacingReportCSVExport._s3()
+        try:
+            s3_object = s3.get_object(
+                Bucket=settings.AMAZON_S3_REPORTS_BUCKET_NAME,
+                Key=PacingReportCSVExport.get_s3_key(report_name)
+            )
+        except s3.exceptions.NoSuchKey:
+            raise ReportNotFoundException()
+        body = s3_object.get("Body")
+        return body
+
+
+class PacingReportExportContent:
+
+    def __init__(self, export_generator):
+        self.export_generator = export_generator
+
+    def __enter__(self):
+        _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
+
+        with open(self.filename, mode="w+", newline="") as export_file:
+            writer = csv.writer(export_file)
+            for row in self.export_generator():
+                writer.writerow(row)
+        return self.filename
+
+    def __exit__(self, *args):
+        os.remove(self.filename)
