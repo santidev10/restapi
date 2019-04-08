@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
@@ -11,7 +10,6 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
 from aw_reporting.demo.models import DemoAccount
 from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
@@ -94,9 +92,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
@@ -141,11 +137,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 "video": {"positive": ["iTKJ_itifQg"], "negative": ["1112yt"]},
             }
         )
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.patch(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         account_creation.refresh_from_db()
@@ -212,11 +206,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             "genders": [AdGroupCreation.GENDER_FEMALE],
         }
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_fail_put_too_many_targeting_items(self):
@@ -250,22 +242,18 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             video["positive"].append("vp{}".format(i))
             video["negative"].append("vn{}".format(i))
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         # add one extra targeting item
         data["targeting"]["keyword"]["positive"].append("Rick&Morty")
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_delete_the_only(self):
@@ -315,9 +303,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             "genders": [AdGroupCreation.GENDER_FEMALE],
         }
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)

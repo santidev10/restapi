@@ -2,7 +2,6 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from itertools import product
-from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 
@@ -41,7 +40,6 @@ from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -161,9 +159,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self.create_stats(account)
         url = self._get_url(account_creation.id, Dimension.VIDEO)
 
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -255,9 +251,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.VIDEO)
 
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url)
+        response = self.client.post(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -338,14 +332,12 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self.create_stats(account)
 
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            for dimension in ALL_DIMENSIONS:
-                with self.subTest(dimension):
-                    url = self._get_url(account_creation.id, dimension)
-                    response = self.client.post(url)
-                    self.assertEqual(response.status_code, HTTP_200_OK)
-                    self.assertGreater(len(response.data), 1)
+        for dimension in ALL_DIMENSIONS:
+            with self.subTest(dimension):
+                url = self._get_url(account_creation.id, dimension)
+                response = self.client.post(url)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertGreater(len(response.data), 1)
 
     def test_success_get_view_rate_calculation(self):
         user = self.create_test_user()
@@ -396,9 +388,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_costs
         }
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             url = self._get_url(account_creation.id, dimension)
             response = self.client.post(url, dict())
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -446,9 +436,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
@@ -494,9 +482,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
         url = self._get_url(account_creation.id, Dimension.AGE)
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             for msg, start, end, expected_cost in test_cases:
                 with self.subTest(msg=msg):
                     response = self.client.post(url, dict(start_date=start,
@@ -543,9 +529,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         }
 
         url = self._get_url(account_creation.id, Dimension.DEVICE)
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings), \
+        with self.patch_user_settings(**user_settings), \
              patch_now(today):
             response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)
@@ -594,9 +578,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         }
 
         url = self._get_url(account_creation.id, Dimension.ADS)
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings), \
+        with self.patch_user_settings(**user_settings), \
              patch_now(today):
             response = self.client.post(url, dict(is_chf=1))
             self.assertEqual(response.status_code, HTTP_200_OK)

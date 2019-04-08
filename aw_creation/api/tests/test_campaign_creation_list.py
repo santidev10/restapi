@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
@@ -9,7 +8,6 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
 from aw_creation.models import AccountCreation, CampaignCreation, Language
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from utils.datetime import now_in_default_tz
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -80,9 +78,7 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
     def test_success_get_demo(self):
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 
