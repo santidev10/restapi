@@ -171,8 +171,8 @@ class Opportunity(models.Model):
     reason_for_close = models.TextField(default="")
 
     # Buffers for CPV and CPM goal types
-    cpv_buffer = models.IntegerField(default=0)
-    cpm_buffer = models.IntegerField(default=0)
+    cpv_buffer = models.IntegerField(null=True, blank=True, default=None)
+    cpm_buffer = models.IntegerField(null=True, blank=True, default=None)
 
     # sf managers
     account_manager = models.ForeignKey(
