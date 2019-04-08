@@ -1,4 +1,3 @@
-from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -7,7 +6,6 @@ from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.reverse import reverse
 
 
@@ -35,6 +33,5 @@ class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
 
     def test_simple_list_works(self):
         self.create_admin_user()
-        with patch("channel.api.views.channel_list.Connector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
