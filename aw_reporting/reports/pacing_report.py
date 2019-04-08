@@ -255,7 +255,7 @@ class PacingReport:
             cpm_buffer = opportunity.cpm_buffer
             cpv_buffer = opportunity.cpv_buffer
         except (IndexError, AttributeError):
-            cpm_buffer = cpv_buffer = 0
+            cpm_buffer = cpv_buffer = None
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
         for row in raw_data:
@@ -279,16 +279,16 @@ class PacingReport:
             goal_type_id = fl["placement__goal_type_id"]
             if fl["placement__opportunity__budget"] > self.big_budget_border:
                 if SalesForceGoalType.CPV == goal_type_id:
-                    goal_factor = self.big_goal_factor + (cpv_buffer / 100)
+                    goal_factor = self.big_goal_factor if cpv_buffer is None else (1 + cpv_buffer / 100)
                 elif SalesForceGoalType.CPM == goal_type_id:
-                    goal_factor = self.big_goal_factor + (cpm_buffer / 100)
+                    goal_factor = self.big_goal_factor if cpm_buffer is None else (1 + cpm_buffer / 100)
                 else:
                     goal_factor = self.big_goal_factor
             else:
                 if SalesForceGoalType.CPV == goal_type_id:
-                    goal_factor = self.goal_factor + (cpv_buffer / 100)
+                    goal_factor = self.goal_factor if cpv_buffer is None else (1 + cpv_buffer / 100)
                 elif SalesForceGoalType.CPM == goal_type_id:
-                    goal_factor = self.goal_factor + (cpm_buffer / 100)
+                    goal_factor = self.goal_factor if cpm_buffer is None else (1 + cpm_buffer / 100)
                 else:
                     goal_factor = self.goal_factor
             fl["plan_units"] = 0
@@ -648,11 +648,11 @@ class PacingReport:
             o.update(_get_dynamic_placements_summary(placements))
 
             if o["budget"] > self.big_budget_border:
-                o["cpm_buffer"] = self.big_goal_factor + (o["cpm_buffer"] / 100)
-                o["cpv_buffer"] = self.big_goal_factor + (o["cpv_buffer"] / 100)
+                o["cpm_buffer"] = (self.big_goal_factor - 1) * 100 if o["cpm_buffer"] is None else o["cpm_buffer"]
+                o["cpv_buffer"] = (self.big_goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
             else:
-                o["cpm_buffer"] = self.goal_factor + (o["cpm_buffer"] / 100)
-                o["cpv_buffer"] = self.goal_factor + (o["cpv_buffer"] / 100)
+                o["cpm_buffer"] = (self.goal_factor - 1) * 100 if o["cpm_buffer"] is None else o["cpm_buffer"]
+                o["cpv_buffer"] = (self.goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
         return opportunities
 
     def get_opportunities_queryset(self, get, user):
