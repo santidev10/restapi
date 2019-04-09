@@ -16,7 +16,6 @@ from brand_safety.models import BadWord
 from singledb.connector import SingleDatabaseApiConnector
 import re
 import requests
-from audit_tool.youtube import Youtube
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,6 @@ class AuditUK():
     channels = {}
     bad_channels = []
     keywords = []
-    yt = None
     _regexp = None
     channel_ids = []
     done_channels = []
@@ -49,8 +47,8 @@ class AuditUK():
                 self.channels[channel_id] = row
         channels_list.close()
 
-    def check_blacklist(self, text):
-        keywords = re.findall(self._regexp, text)
+    def check_blacklist(text):
+        keywords = re.findall(_regexp, text.lower())
         if len(keywords) > 0: # we found 1 or more bad words
             return True
         return False

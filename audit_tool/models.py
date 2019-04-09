@@ -6,6 +6,10 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
 from django.contrib.postgres.fields import JSONField
+import hashlib
+
+def get_hash_name(s):
+    return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10**8
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -104,7 +108,6 @@ class YoutubeUser(models.Model):
     name = models.CharField(max_length=30)
     thumbnail_image_url = models.TextField(null=True)
 
-
 class Comment(models.Model):
     comment_id = models.CharField(max_length=50, unique=True)
     user = ForeignKey(YoutubeUser, related_name='user_comments')
@@ -116,3 +119,88 @@ class Comment(models.Model):
     like_count = models.IntegerField(default=0, db_index=True)
     reply_count = models.IntegerField(default=0)
     found_items = JSONField(default={})
+
+class AuditProcessor(models.Model):
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
+    max_recommended = models.IntegerField(default=100000)
+    params = JSONField(default={})
+
+class AuditLanguage(models.Model):
+    language = models.CharField(max_length=64, unique=True)
+
+class AuditCategory(models.Model):
+    category = models.CharField(max_length=64, unique=True)
+
+class AuditCountry(models.Model):
+    country = models.CharField(max_length=64, unique=True)
+
+class AuditChannel(models.Model):
+    channel_id = models.CharField(max_length=50, unique=True)
+    channel_id_hash = models.BigIntegerField(default=0, db_index=True)
+    processed = models.BooleanField(default=False, db_index=True)
+
+    @staticmethod
+    def get_or_create(channel_id):
+        channel_id_hash = get_hash_name(channel_id)
+        res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
+        if len(res) > 0:
+            for r in res:
+                if r.channel_id == channel_id:
+                    return r
+        return AuditChannel.objects.create(
+                channel_id=channel_id,
+                channel_id_hash=channel_id_hash
+        )
+
+class AuditChannelMeta(models.Model):
+    channel = models.ForeignKey(AuditChannel, unique=True)
+    name = models.CharField(max_length=255, default=None, null=True)
+    description = models.TextField(default=None)
+    keywords = models.TextField(default=None)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
+    subscribers = models.BigIntegerField(default=0, db_index=True)
+    emoji = models.BooleanField(default=False, db_index=True)
+
+class AuditVideo(models.Model):
+    channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)
+    video_id = models.CharField(max_length=50, unique=True)
+    video_id_hash = models.BigIntegerField(default=0, db_index=True)
+
+    @staticmethod
+    def get_or_create(video_id):
+        video_id_hash = get_hash_name(video_id)
+        res = AuditVideo.objects.filter(video_id_hash=video_id_hash)
+        if len(res) > 0:
+            for r in res:
+                if r.video_id == video_id:
+                    return r
+        return AuditVideo.objects.create(
+                video_id=video_id,
+                video_id_hash=video_id_hash
+        )
+
+class AuditVideoMeta(models.Model):
+    video = models.ForeignKey(AuditVideo, unique=True)
+    name = models.CharField(max_length=255, null=True, default=None)
+    description = models.TextField(default=None, null=True)
+    keywords = models.TextField(default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
+    country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
+    views = models.BigIntegerField(default=0, db_index=True)
+    likes = models.BigIntegerField(default=0, db_index=True)
+    dislikes = models.BigIntegerField(default=0, db_index=True)
+    emoji = models.BooleanField(default=False, db_index=True)
+    publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+
+class AuditVideoProcessor(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    video = models.ForeignKey(AuditVideo, db_index=True)
+    video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True)
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+
+    class Meta:
+        unique_together = ("audit", "video")
