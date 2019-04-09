@@ -1,7 +1,6 @@
 import json
 from datetime import date
 from itertools import product
-from unittest.mock import patch
 
 from django.conf import settings
 from django.db.models import Sum
@@ -26,7 +25,6 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 
@@ -356,9 +354,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]
         }
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             response = self._request(managed_account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
 

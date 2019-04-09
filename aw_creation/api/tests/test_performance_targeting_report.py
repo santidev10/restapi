@@ -22,7 +22,6 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class PerformanceReportAPITestCase(ExtendedAPITestCase):
@@ -65,18 +64,16 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
 
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    start_date=str(start),
-                    end_date=str(start),
-                    campaigns=[campaign.id],
-                    ad_groups=[ad_group.id],
-                    targeting=["topic", "interest", "keyword", "channel", "video"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                start_date=str(start),
+                end_date=str(start),
+                campaigns=[campaign.id],
+                ad_groups=[ad_group.id],
+                targeting=["topic", "interest", "keyword", "channel", "video"],
+            )),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(set(data.keys()), {"reports"})
@@ -117,14 +114,12 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
 
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    targeting=["keyword", "channel", "video"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                targeting=["keyword", "channel", "video"],
+            )),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         report_data = response.data["reports"][0]
         self.assertEqual(len(report_data["items"]), 3)
@@ -160,14 +155,12 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
 
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    targeting=["interest"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                targeting=["interest"],
+            )),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         report_data = response.data["reports"][0]
         self.assertEqual(len(report_data["items"]), 1)
@@ -203,17 +196,15 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:performance_targeting_report", args=(account_creation.id,))
 
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    start_date=str(start),
-                    end_date=str(start),
-                    group_by="campaign",
-                    targeting=["topic", "interest", "keyword", "channel", "video"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                start_date=str(start),
+                end_date=str(start),
+                group_by="campaign",
+                targeting=["topic", "interest", "keyword", "channel", "video"],
+            )),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data["reports"]
         self.assertEqual(len(data), 2)
@@ -275,18 +266,16 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             "aw_creation_urls:performance_targeting_report",
             args=(account_creation.id,))
 
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    start_date=str(start),
-                    end_date=str(start),
-                    group_by="campaign",
-                    targeting=[
-                        "topic", "interest", "keyword", "channel", "video"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                start_date=str(start),
+                end_date=str(start),
+                group_by="campaign",
+                targeting=[
+                    "topic", "interest", "keyword", "channel", "video"],
+            )),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         kpi = response.data["reports"][0]["kpi"]
 
@@ -312,17 +301,15 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         campaign = account.children[0]
         ad_group = campaign.children[0]
 
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(dict(
-                    campaigns=[campaign.id],
-                    ad_groups=[ad_group.id],
-                    group_by="campaign",
-                    targeting=["channel"],
-                )),
-                content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(dict(
+                campaigns=[campaign.id],
+                ad_groups=[ad_group.id],
+                group_by="campaign",
+                targeting=["channel"],
+            )),
+            content_type='application/json',
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data

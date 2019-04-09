@@ -1,7 +1,5 @@
-from contextlib import contextmanager
 from datetime import date
 from datetime import datetime
-from unittest.mock import patch
 
 import pytz
 from django.core.management import call_command
@@ -21,18 +19,8 @@ from segment.models import SegmentRelatedKeyword
 from segment.models import SegmentRelatedVideo
 from segment.models import SegmentVideo
 from userprofile.models import UserProfile
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher as ConnectionPatch
 from utils.utittests.generic_test import generic_test
 from utils.utittests.patch_now import patch_now
-
-
-@contextmanager
-def patch_sdb():
-    with patch("segment.models.video.Connector", new=ConnectionPatch), \
-         patch("segment.models.keyword.Connector", new=ConnectionPatch), \
-         patch("segment.models.channel.Connector", new=ConnectionPatch), \
-         patch("segment.models.base.Connector", new=ConnectionPatch):
-        yield
 
 
 EMPTY_STATS = {key: None for key in
@@ -67,7 +55,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
     def test_update_segment_no_owner(self, segment_class):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
         segment = segment_class.objects.create()
-        with patch_sdb(), patch_now(test_now):
+        with patch_now(test_now):
             call_command("update_segments")
         segment.refresh_from_db()
         aw_data = segment.adw_data
@@ -83,7 +71,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         test_now = datetime(2018, 1, 1, tzinfo=timezone("Etc/GMT+5"))
         user = UserProfile.objects.create(id=1)
         segment = segment_class.objects.create(owner=user)
-        with patch_sdb(), patch_now(test_now):
+        with patch_now(test_now):
             call_command("update_segments")
         segment.refresh_from_db()
         aw_data = segment.adw_data
@@ -131,7 +119,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         )
 
         test_now = datetime(2018, 1, 1).replace(tzinfo=pytz.utc)
-        with patch_sdb(), patch_now(test_now):
+        with patch_now(test_now):
             call_command("update_segments")
         segment.refresh_from_db()
         aw_data = segment.adw_data
@@ -145,5 +133,5 @@ class UpdateSegmentsTestCase(TransactionTestCase):
 
     def test_success_on_force(self):
         test_now = datetime(2018, 1, 1).replace(tzinfo=pytz.utc)
-        with patch_sdb(), patch_now(test_now):
+        with patch_now(test_now):
             call_command("update_segments", force_creation=True)

@@ -8,13 +8,12 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
-from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.reverse import reverse
 from utils.utittests.response import MockResponse
+from utils.utittests.reverse import reverse
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
@@ -34,9 +33,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         UserChannel.objects.create(channel_id=channel_id, user=user)
 
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(url, dict())
+        response = self.client.put(url, dict())
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -49,9 +46,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
 
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(url, dict())
+        response = self.client.put(url, dict())
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -62,9 +57,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
 
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(url, dict())
+        response = self.client.put(url, dict())
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
@@ -77,9 +70,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
 
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -95,9 +86,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = data["items"][0]["id"]
 
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("aw_data", response.data)
@@ -116,22 +105,20 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(len(user.channels.all()), 0)
 
-    @patch.object(requests, "put")
-    @patch.object(SingleDatabaseApiConnector, "unauthorize_channel")
-    def test_unauths_channel_for_last_user(self, unauth_mock, put_mock):
+    def test_unauths_channel_for_last_user(self):
         user = self.create_test_user(True)
         with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
             data = json.load(data_file)
         channel_id = data["items"][0]["id"]
         UserChannel.objects.create(user=user, channel_id=channel_id)
         url = self._get_url(channel_id)
-        response = self.client.delete(url)
+        with patch.object(SingleDatabaseApiConnectorPatcher, "unauthorize_channel") as unauth_mock:
+            response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         unauth_mock.assert_called_once_with(channel_id)
 
-    @patch.object(SingleDatabaseApiConnector, "unauthorize_channel")
-    def test_unauths_channel_for_not_last_user(self, unauth_mock):
+    def test_unauths_channel_for_not_last_user(self):
         user_1 = self.create_test_user(True)
         user_2 = get_user_model().objects.create(email="test@email.com")
         with open('saas/fixtures/tests/singledb_channel_list.json') as data_file:
@@ -140,7 +127,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         UserChannel.objects.create(user=user_1, channel_id=channel_id)
         UserChannel.objects.create(user=user_2, channel_id=channel_id)
         url = self._get_url(channel_id)
-        response = self.client.delete(url)
+        with patch.object(SingleDatabaseApiConnectorPatcher, "unauthorize_channel") as unauth_mock:
+            response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         self.assertFalse(unauth_mock.called)

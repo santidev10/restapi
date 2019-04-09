@@ -41,7 +41,7 @@ class ExtendedEnum(Enum):
     @classmethod
     def map_object(cls):
         map_cls = namedtuple("{}Map".format(cls.__name__), cls.names())
-        return map_cls(**{item.name: item.value for item in cls})
+        return map_cls(**{key: value.value for key, value in cls.__members__.items()})
 
 
 def merge_dicts(*dicts):
