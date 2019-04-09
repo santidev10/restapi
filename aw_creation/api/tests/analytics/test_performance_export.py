@@ -4,7 +4,6 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import chain
 from itertools import product
-from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 
@@ -42,7 +41,6 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.xlsx import get_sheet_from_response
 
@@ -125,11 +123,9 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             start_date=str(today - timedelta(days=1)),
             end_date=str(today)
         )
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id, **filters)
-            sheet = get_sheet_from_response(response)
-            self.assertFalse(is_empty_report(sheet))
+        response = self._request(account_creation.id, **filters)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
 
     def test_success_demo(self):
         self.create_test_user()
@@ -153,14 +149,12 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            try:
-                get_sheet_from_response(response)
-            except:
-                self.fail("Report is not an xls")
+        response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        try:
+            get_sheet_from_response(response)
+        except:
+            self.fail("Report is not an xls")
 
     def test_report_percent_formatted(self):
         user = self.create_test_user()
@@ -173,27 +167,25 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
                                                           is_approved=True)
         self._create_stats(account)
 
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            sheet = get_sheet_from_response(response)
-            self.assertFalse(is_empty_report(sheet))
-            rows = range(2, sheet.max_row + 1)
-            ctr_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_I),
-                         ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_V) + 1)
-            view_rate_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE),
-                               ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE) + 1)
-            quartile_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_25),
-                              ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_100) + 1)
-            test_ranges = [range(start, end) for start, end
-                           in [ctr_range, view_rate_range, quartile_range]]
-            cols = chain(*test_ranges)
-            test_indexes = product(rows, cols)
-            for row, column in test_indexes:
-                cell = sheet[row][column]
-                self.assertEqual(cell.number_format, "0.00%",
-                                 "Cell[{}:{}]".format(row, column))
+        response = self._request(account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        self.assertFalse(is_empty_report(sheet))
+        rows = range(2, sheet.max_row + 1)
+        ctr_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_I),
+                     ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.CTR_V) + 1)
+        view_rate_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE),
+                           ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIEW_RATE) + 1)
+        quartile_range = (ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_25),
+                          ALL_COLUMNS.index(AnalyticsPerformanceReportColumn.VIDEO_QUARTILE_100) + 1)
+        test_ranges = [range(start, end) for start, end
+                       in [ctr_range, view_rate_range, quartile_range]]
+        cols = chain(*test_ranges)
+        test_indexes = product(rows, cols)
+        for row, column in test_indexes:
+            cell = sheet[row][column]
+            self.assertEqual(cell.number_format, "0.00%",
+                             "Cell[{}:{}]".format(row, column))
 
     def test_aw_data_in_summary_row(self):
         user = self.create_test_user()

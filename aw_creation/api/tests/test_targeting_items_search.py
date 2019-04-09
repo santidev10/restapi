@@ -1,10 +1,7 @@
-from unittest.mock import patch
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
@@ -23,9 +20,7 @@ class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
     def test_success_video(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "gangnam"))
-        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertGreater(len(response.data), 0)
         self.assertEqual(set(response.data[0].keys()), {"id", "name", "thumbnail", "criteria"})
@@ -33,9 +28,7 @@ class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
     def test_success_channel(self):
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("video", "smthing"))
-        with patch("aw_creation.api.views.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertGreater(len(response.data), 0)
         self.assertEqual(set(response.data[0].keys()), {"id", "name", "thumbnail", "criteria"})
@@ -47,9 +40,7 @@ class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:targeting_items_search",
                       args=("keyword", "am"))
-        with patch("aw_creation.api.views.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
         self.assertEqual(set(response.data[0].keys()), {"name", "criteria"})

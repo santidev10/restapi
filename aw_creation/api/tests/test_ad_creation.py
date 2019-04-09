@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
@@ -11,7 +10,6 @@ from aw_creation.models import AccountCreation, CampaignCreation, \
 from aw_reporting.demo.models import DemoAccount
 from utils.datetime import now_in_default_tz
 from utils.utittests.generic_test import generic_test
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -143,9 +141,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_creation_setup",
                       args=(ad.id,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 

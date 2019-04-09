@@ -1,4 +1,3 @@
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
@@ -7,7 +6,6 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TargetingListTestCase(ExtendedAPITestCase):
@@ -48,9 +46,7 @@ class TargetingListTestCase(ExtendedAPITestCase):
             str(url),
             urlencode({'auth_token': self.user.auth_token.key}),
         )
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         lines = list(response)
         self.assertEqual(len(lines), 6)

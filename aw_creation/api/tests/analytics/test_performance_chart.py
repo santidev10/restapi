@@ -3,7 +3,6 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from itertools import product
-from unittest.mock import patch
 
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -44,7 +43,6 @@ from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -178,9 +176,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
             'indicator': 'video_view_rate',
             'dimension': dimension,
         }
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id, **filters)
+        response = self._request(account_creation.id, **filters)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
         self.assertEqual(len(response.data[0]['data']), 1)

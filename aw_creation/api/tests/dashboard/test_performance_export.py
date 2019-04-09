@@ -4,7 +4,6 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import cycle
 from itertools import product
-from unittest.mock import patch
 
 from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
@@ -56,7 +55,6 @@ from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.xlsx import get_sheet_from_response
 
@@ -110,9 +108,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
-        with patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
             self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -126,8 +122,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [1],
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -178,8 +173,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -210,8 +204,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -241,8 +234,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id],
             UserSettingsKey.SHOW_CONVERSIONS: True
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -274,8 +266,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -316,8 +307,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -342,8 +332,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, metric=metric.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -389,8 +378,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -417,8 +405,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.WEEK.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -440,8 +427,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.MONTH.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -471,8 +457,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -506,8 +491,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.QUARTER.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -529,8 +513,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.YEAR.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -560,8 +543,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -581,8 +563,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id, date_segment=DateSegment.DAY.value)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -621,8 +602,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         filters_header = get_custom_header(sheet)
@@ -647,8 +627,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
@@ -670,8 +649,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
@@ -691,8 +669,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
@@ -732,8 +709,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings), \
-             patch_now(test_now), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+             patch_now(test_now):
             response = self._request(account.account_creation.id)
         self.assertEqual(response["content-disposition"], "attachment; filename=\"{}\"".format(expected_filename))
 
@@ -749,8 +725,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         header = get_custom_header(sheet)
@@ -765,8 +740,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.HIDE_REMARKETING: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         metrics = {row[0].value for row in sheet}
@@ -781,8 +755,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         sheet = get_sheet_from_response(response)
         metrics = {row[0].value for row in sheet}
@@ -841,11 +814,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(DEMO_ACCOUNT_ID)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -871,11 +840,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(DEMO_ACCOUNT_ID)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -948,8 +913,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -966,11 +930,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(DEMO_ACCOUNT_ID, metric=Metric.CAMPAIGN.value)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1010,8 +970,7 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
-        with self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.dashboard_charts.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
+        with self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)

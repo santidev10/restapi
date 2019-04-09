@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta, datetime
-from unittest.mock import patch
 
 import pytz
 from django.core.urlresolvers import reverse
@@ -17,7 +16,6 @@ from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -145,9 +143,7 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 

@@ -4,12 +4,12 @@ from django.core import mail
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+import singledb.connector
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.response import MockResponse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
@@ -29,9 +29,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         requests_mock.get.return_value = MockResponse(
             json=dict(email=user.email, image=dict(isDefault=False)))
 
-        with patch("channel.api.views.channel_authentication.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(self.url, dict())
+        response = self.client.post(self.url, dict())
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
@@ -53,7 +51,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
             status_code=HTTP_400_BAD_REQUEST, json=test_error
         )
 
-        response = self.client.post(self.url, dict(), )
+        with patch("channel.api.views.channel_authentication.Connector",
+                   new=singledb.connector.SingleDatabaseApiConnector_origin):
+            response = self.client.post(self.url, dict(), )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, test_error)
@@ -66,9 +66,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         }
         requests_mock.get.return_value = MockResponse(json=user_details)
 
-        with patch("channel.api.views.channel_authentication.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(self.url, dict(), )
+        response = self.client.post(self.url, dict(), )
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         welcome_emails = [m for m in mail.outbox

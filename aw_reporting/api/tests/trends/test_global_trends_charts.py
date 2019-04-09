@@ -2,7 +2,6 @@ import json
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.test import override_settings
@@ -28,7 +27,6 @@ from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import as_datetime
 from utils.lang import flatten
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -281,9 +279,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -315,9 +311,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         )
         url = "{}?{}".format(self.url, urlencode(filters))
         manager = self.campaign.account.managers.first()
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

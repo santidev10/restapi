@@ -1,6 +1,5 @@
 import json
 from datetime import datetime, timedelta, date
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
@@ -15,7 +14,6 @@ from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.generic_test import generic_test
 from utils.utittests.patch_now import patch_now
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TrackChartAPITestCase(AwReportingAPITestCase):
@@ -143,9 +141,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="channel",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)
@@ -176,9 +172,7 @@ class TrackChartAPITestCase(AwReportingAPITestCase):
             dimension="video",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch("aw_reporting.analytics_charts.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = get_trend(response.data, TrendId.HISTORICAL)

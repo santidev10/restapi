@@ -5,8 +5,9 @@ import requests
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
 
-from utils.utittests.test_case import ExtendedAPITestCase
+import singledb.connector
 from utils.utittests.response import MockResponse
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PathEndsWith(object):
@@ -24,8 +25,9 @@ class PathEndsWith(object):
 
 
 class KeywordRetrieveUpdateApiViewTestCase(ExtendedAPITestCase):
+    @patch("keywords.api.views.Connector", new=singledb.connector.SingleDatabaseApiConnector_origin)
     @patch.object(requests, "get")
-    def test_get_keyword_should_decode_pk_for_sdb_call(self, get_mock):
+    def test_get_keyword_should_decode_pk_for_sdb_call(self, get_mock, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1807
         Description: Opening keyword with special symbols leads to 408 error
