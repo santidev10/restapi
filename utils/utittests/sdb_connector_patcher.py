@@ -120,6 +120,7 @@ class SingleDatabaseApiConnectorPatcher:
         pass
 
     def get_video_list_full(self, *args, **kwargs):
+        print("get_video_list_full")
         pass
 
     def unauthorize_channel(self, *args):
