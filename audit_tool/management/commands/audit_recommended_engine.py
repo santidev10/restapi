@@ -10,6 +10,7 @@ from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
@@ -84,11 +85,13 @@ class AuditRecommendationEngine():
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            video = AuditVideo.get_or_create(seed.split("/")[-1])
+            v_id = seed.split("/")[-1]
+            if '?v=' in  v_id:
+                v_id = v_id.split("v=")[-1]
+            video = AuditVideo.get_or_create()
             avp, _ = AuditVideoProcessor.objects.get_or_create(
                 audit=self.audit,
                 video=video,
-                approved=True,
             )
             vids.append(avp)
         return vids
@@ -186,23 +189,22 @@ class AuditRecommendationEngine():
             db_video_meta.likes = int(i['statistics']['likeCount'])
             db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
-            db_video_meta.language = self.calc_language(
-                    [
-                        db_video_meta.description,
-                        db_video_meta.keywords,
-                        db_video_meta.name
-                    ]
-            )
+            str_long = db_video_meta.name
+            if db_video_meta.keywords:
+                str_long = "{} {}".format(str_long, db_video_meta.keywords)
+            if db_video_meta.description:
+                str_long = "{} {}".format(str_long, db_video_meta.description)
+            db_video_meta.language = self.calc_language(str_long)
         except Exception as e:
             logger.log("do_video_metadata_api_call: {}".format(e.message))
 
     def calc_language(self, data):
-        for i in data:
-            if i:
-                try:
-                    return langid.classify(i)[0].lower()
-                except Exception as e:
-                    pass
+        try:
+            l = langid.classify(data)[0].lower()
+            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
+            return db_lang
+        except Exception as e:
+            pass
 
     def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
         try:
