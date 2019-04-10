@@ -1,6 +1,5 @@
 from unittest import mock
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
@@ -10,6 +9,7 @@ from saas.urls.namespaces import Namespace
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.s3_mock import mock_s3
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.reverse import reverse
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):
@@ -24,7 +24,7 @@ class PacingReportExportTestCase(ExtendedAPITestCase):
         csv_generator = PacingReportCSVExport(pacing_report, opportunities, report_name)
         csv_generator.export_to_s3()
 
-        url = reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.EXPORT, args=(report_name,))
+        url = reverse(Name.PacingReport.EXPORT, [Namespace.AW_REPORTING], args=(report_name,))
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)

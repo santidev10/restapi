@@ -2,12 +2,13 @@ import csv
 import os
 import tempfile
 
-import boto3
+
 from django.conf import settings
 
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from utils.aws.s3_exporter import S3Exporter
 
 OPPORTUNITY_COLUMN_NAME = "opportunity_name"
 PLACEMENT_COLUMN_NAME = "placement_name"
@@ -126,12 +127,8 @@ FORMATTING = dict(
 )
 
 
-class ReportNotFoundException(Exception):
-    pass
-
 
 class PacingReportCSVExport:
-    export_content_type = "application/CSV"
 
     def __init__(self, report, opportunities, report_name=None):
         self.data_generator = self.pacing_report_list(report, opportunities)
@@ -199,40 +196,19 @@ class PacingReportCSVExport:
 
                         yield campaign
 
-    @staticmethod
-    def get_s3_key(report_name):
-        key = S3_PACING_REPORT_EXPORT_KEY_PATTERN.format(report_name=report_name)
-        return key
-
-    @staticmethod
-    def _s3():
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY
-        )
-        return s3
-
     def export_to_s3(self):
-        with PacingReportExportContent(self.export_generator) as exported_file_name:
-            self._s3().upload_file(
-                Bucket=settings.AMAZON_S3_REPORTS_BUCKET_NAME,
-                Key=self.get_s3_key(self.report_name),
-                Filename=exported_file_name,
-            )
+        content_exporter = PacingReportExportContent(self.export_generator)
+        PacingReportS3Exporter.export_to_s3(content_exporter, self.report_name)
+
+
+class PacingReportS3Exporter(S3Exporter):
+    bucket_name = settings.AMAZON_S3_REPORTS_BUCKET_NAME
+    export_content_type = "application/CSV"
 
     @staticmethod
-    def get_s3_export_content(report_name):
-        s3 = PacingReportCSVExport._s3()
-        try:
-            s3_object = s3.get_object(
-                Bucket=settings.AMAZON_S3_REPORTS_BUCKET_NAME,
-                Key=PacingReportCSVExport.get_s3_key(report_name)
-            )
-        except s3.exceptions.NoSuchKey:
-            raise ReportNotFoundException()
-        body = s3_object.get("Body")
-        return body
+    def get_s3_key(name):
+        key = S3_PACING_REPORT_EXPORT_KEY_PATTERN.format(report_name=name)
+        return key
 
 
 class PacingReportExportContent:

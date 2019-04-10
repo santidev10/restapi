@@ -16,8 +16,8 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
-from utils.utittests.s3_mock import mock_s3
 from utils.aws.s3 import get_s3_client
+from utils.utittests.s3_mock import mock_s3
 
 
 S3_BUCKET = settings.AMAZON_S3_REPORTS_BUCKET_NAME
@@ -63,5 +63,3 @@ class PacingReportCSVExportTestCase(TestCase):
         s3_objects = s3.list_objects(Bucket=S3_BUCKET)["Contents"]
         self.assertEqual(len(s3_objects), 1)
         self.assertEqual(s3_objects[0]["Key"], expected_key)
-
-        csv_generator.get_s3_export_content(report_name)
