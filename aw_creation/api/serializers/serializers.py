@@ -583,8 +583,7 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
 
         return instance
 
-    @staticmethod
-    def validate_targeting(value):
+    def validate_targeting(self, value):
         allowed_keys = set(t for t, _ in TargetingItem.TYPES)
         error_text = 'Targeting items must be sent in the following format: ' \
                      '{"keyword": {"positive": ["spam", "ham"], "negative": ["adult films"]}, ...}.\n' \
@@ -603,11 +602,30 @@ class AdGroupCreationUpdateSerializer(ModelSerializer):
         count = sum(len(item_ids) for item_lists in value.values()
                     for item_ids in item_lists.values())
 
-        limit = 20000
-        if count > limit:
+        total_limit = 20000
+        if count > total_limit:
             raise ValidationError(
                 "Too many targeting items in this ad group: {:,}. You are allowed to use up to {:,}"
-                " targeting items per ad group".format(count, limit))
+                " targeting items per ad group".format(count, total_limit))
+        negative_keyword_limit = 5000
+        negative_keyword_count = len(value.get("keyword", dict()).get("negative", []))
+        if negative_keyword_count > negative_keyword_limit:
+            raise ValidationError(
+                "Too many keyword negative targeting items in this ad group: {:,}. You are allowed to use up to {:,}"
+                " targeting items per ad group".format(negative_keyword_count, negative_keyword_limit))
+        campaign_negative_keyword_count = TargetingItem.objects.filter(
+            type=TargetingItem.KEYWORD_TYPE,
+            is_negative=True,
+            ad_group_creation__campaign_creation=self.instance.campaign_creation,
+        ) \
+            .exclude(ad_group_creation=self.instance) \
+            .count()
+        campaign_negative_keyword_limit = 10000
+        if campaign_negative_keyword_count + negative_keyword_count > campaign_negative_keyword_limit:
+            raise ValidationError(
+                "Too many keyword negative targeting items in this campaign: {:,}. You are allowed to use up to {:,}"
+                " targeting items per ad group".format(campaign_negative_keyword_count,
+                                                       campaign_negative_keyword_limit))
         return value
 
     def validate(self, data):
