@@ -1,9 +1,9 @@
-import csv
 import logging
 from django.conf import settings
 import re
 import requests
 from django.utils import timezone
+import langid
 from dateutil.parser import parse
 from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
@@ -186,8 +186,23 @@ class AuditRecommendationEngine():
             db_video_meta.likes = int(i['statistics']['likeCount'])
             db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            db_video_meta.language = self.calc_language(
+                    [
+                        db_video_meta.description,
+                        db_video_meta.keywords,
+                        db_video_meta.name
+                    ]
+            )
         except Exception as e:
             logger.log("do_video_metadata_api_call: {}".format(e.message))
+
+    def calc_language(self, data):
+        for i in data:
+            if i:
+                try:
+                    return langid.classify(i)[0].lower()
+                except Exception as e:
+                    pass
 
     def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
         try:
