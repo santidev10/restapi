@@ -14,42 +14,54 @@ class Audit(object):
     source = None
     metadata = None
     results = None
+    pk = None
 
     def __init__(self):
         raise NotImplemented
 
-    def execute(self):
-        """
-        Executes the required audit function defined by the original source data type
-        :return:
-        """
-        audit_sources = {
-            constants.SDB: self.run_standard_audit,
-            constants.YOUTUBE: self.run_custom_audit,
-        }
-        try:
-            audit_executor = audit_sources[self.source]
-            audit_executor()
-        except KeyError:
-            raise ValueError("Unsupported data {} type.".format(self.source))
+    # def audit(self, text, regexp):
+    #     """
+    #     Finds all matches of regexp in audit metadata
+    #     :param regexp: Compiled regular expression to match
+    #     :return:
+    #     """
+    #     # metadata = self.metadata
+    #     # text = ""
+    #     # text += metadata.get("title", "")
+    #     # text += metadata.get("description", "")
+    #     # text += metadata.get("channel_title", "")
+    #     # text += metadata.get("video_title", "")
+    #     # text += metadata.get("transcript", "")
+    #     #
+    #     # if metadata.get("tags"):
+    #     #     text += " ".join(metadata["tags"])
+    #     hits = re.findall(regexp, text)
+    #     return hits
+    def get_text(self):
+        raise NotImplemented
 
-    def audit(self, regexp):
+    def audit(self, keyword_processor):
         """
         Finds all matches of regexp in audit metadata
         :param regexp: Compiled regular expression to match
         :return:
         """
-        metadata = self.metadata
-        text = ""
-        text += metadata.get("title", "")
-        text += metadata.get("description", "")
-        text += metadata.get("channel_title", "")
-        text += metadata.get("transcript", "")
-
-        if metadata.get("tags"):
-            text += " ".join(metadata["tags"])
-        hits = re.findall(regexp, text)
+        text = self.get_text()
+        hits = keyword_processor.extract_keywords(text)
         return hits
+
+    def get_dislike_ratio(self):
+        """
+        Calculate Youtube dislike to like ratio
+        :return:
+        """
+        likes = self.metadata["likes"] if self.metadata["likes"] is not constants.DISABLED else 0
+        dislikes = self.metadata["dislikes"] if self.metadata["dislikes"] is not constants.DISABLED else 0
+        try:
+            ratio = dislikes / (likes + dislikes)
+        except ZeroDivisionError:
+            ratio = 0
+        return ratio
 
     def set_keyword_terms(self, keywords, attribute):
         setattr(self, attribute, keywords)
@@ -63,16 +75,10 @@ class Audit(object):
             raise ValueError("Source type {} unsupported.".format(source))
         return metadata
 
-    def run_standard_audit(self):
+    def run_audit(self):
         raise NotImplemented
 
-    def run_custom_audit(self):
-        raise NotImplemented
-
-    def get_youtube_metadata(self, data):
-        raise NotImplemented
-
-    def get_sdb_metadata(self, data):
+    def get_metadata(self, data):
         raise NotImplemented
 
     @staticmethod

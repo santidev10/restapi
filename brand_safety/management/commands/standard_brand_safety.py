@@ -1,14 +1,14 @@
 import logging
-import time
+from cProfile import Profile
 
 from pid.decorator import pidfile
 from pid import PidFileAlreadyLockedError
 
 from django.core.management.base import BaseCommand
-from brand_safety.standard_brand_safety_provider import StandardBrandSafetyProvider
+from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
 from audit_tool.models import APIScriptTracker
 
-logger = logging.getLogger("slack_update")
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -16,19 +16,18 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         try:
-            self.run()
+            profiler = Profile()
+            profiler.runcall(self.run)
+            profiler.print_stats()
+
         except PidFileAlreadyLockedError:
             print("I am already running")
 
     @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):
-        # api_tracker = APIScriptTracker.objects.get(name="StandardAudit")
-        # standard_audit = StandardBrandSafetyProvider(api_tracker=api_tracker)
-        # standard_audit.run()
         try:
-            print('running brand safety...')
-            time.sleep(120)
-            print('brand safety complete.')
-            logger.info('brand safety complete.')
+            api_tracker = APIScriptTracker.objects.get(name="StandardAudit")
+            standard_audit = StandardBrandSafetyProvider(api_tracker=api_tracker)
+            standard_audit.run()
         except Exception as e:
-            print(e)
+            logger.exception(e)

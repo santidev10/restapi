@@ -7,8 +7,8 @@ from .base import DataProviderMixin
 
 class SDBDataProvider(DataProviderMixin):
     video_fields = "video_id,title,channel_id,channel__title,channel__subscribers,description," \
-                   "tags,category,likes,dislikes,views,language,transcript,country"
-    channel_fields = "channel_id,title,description,category,subscribers,likes,dislikes,views,language,url,country"
+                   "tags,category,likes,dislikes,views,language,transcript,country,thumbnail_image_url"
+    channel_fields = "channel_id,title,description,category,subscribers,likes,dislikes,views,language,url,country,thumbnail_image_url"
     max_retries = 3
     retry_coeff = 1.5
     retry_sleep = 0.2

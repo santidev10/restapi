@@ -32,20 +32,19 @@ class AuditProvider(object):
         :param value: Updated cursor value
         :return: APIScriptTracker instance
         """
-        script_tracker.cursor = value
+        script_tracker.cursor += value
         script_tracker.save()
         return script_tracker
 
     @staticmethod
-    def compile_audit_regexp(keywords: list):
+    def compile_audit_regexp(keywords: list, case_insensitive=True):
         """
         Compiles regular expression with given keywords
         :param keywords: List of keyword strings
         :return: Compiled Regular expression
         """
-        regexp = re.compile(
-            "({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]))
-        )
+        regexp = re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords]), re.IGNORECASE)) \
+            if case_insensitive else re.compile("({})".format("|".join([r"\b{}\b".format(re.escape(word)) for word in keywords])))
         return regexp
 
     @staticmethod

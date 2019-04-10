@@ -1,7 +1,7 @@
 from brand_safety import constants
 from brand_safety.audit_services.base import AuditService
-from brand_safety.audit_models.channel_audit import ChannelAudit
-from brand_safety.audit_models.video_audit import VideoAudit
+from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
+from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from utils.data_providers.sdb_data_provider import SDBDataProvider
 
 
@@ -29,8 +29,8 @@ class StandardBrandSafetyService(AuditService):
             video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
         video_audits = []
         for video in video_data:
-            audit = VideoAudit(video, self.audit_types, source=constants.SDB, score_mapping=self.score_mapping)
-            audit.execute()
+            audit = BrandSafetyVideoAudit(video, self.audit_types, source=constants.SDB, score_mapping=self.score_mapping)
+            audit.run_audit()
             video_audits.append(audit)
         self.video_audits_sorted = True
         return video_audits
@@ -41,9 +41,6 @@ class StandardBrandSafetyService(AuditService):
         :param sorted_video_audits: list -> Video Audit objects
         :return: list -> Channel Audit objects
         """
-        # Ensure that video audits have been sorted by channel id for aggregation
-        if self.video_audits_sorted is False:
-            raise StandardAuditException("You must call sort_videos_method before calling audit_channels")
         channel_ids = list(sorted_video_audits.keys())
         sorted_channel_data = self.get_sorted_channel_data(channel_ids)
         channel_audits = []
@@ -51,20 +48,36 @@ class StandardBrandSafetyService(AuditService):
             channel_data = sorted_channel_data.get(channel_id, None)
             if not channel_data:
                 continue
-            channel_audit = ChannelAudit(video_audits, self.audit_types, channel_data, source=constants.SDB)
-            channel_audit.execute()
+            channel_audit = BrandSafetyChannelAudit(video_audits, self.audit_types, channel_data, source=constants.SDB)
+            channel_audit.run_audit()
             channel_audits.append(channel_audit)
         return channel_audits
 
     @staticmethod
-    def gather_brand_safety_results(audits):
+    def gather_video_brand_safety_results(video_audits):
         """
         Maps audits to their brand safety scores
-        :param audits: Audit objects
+        :param video_audits: Video Audit objects
         :return: list -> brand safety score dictionaries
         """
         results = []
-        for audit in audits:
+        for audit in video_audits:
+            # brand_safety_score = audit.brand_safety_score
+            # # Map categories field from collections.Counter instance to dictionary
+            # brand_safety_score["categories"] = dict(brand_safety_score["categories"])
+            brand_safety_score = audit.es_repr()
+            results.append(brand_safety_score)
+        return results
+
+    @staticmethod
+    def gather_channel_brand_safety_results(channel_audits):
+        """
+        Maps audits to their brand safety scores
+        :param channel_audits: Channel Audit objects
+        :return: list -> brand safety score dictionaries
+        """
+        results = []
+        for audit in channel_audits:
             brand_safety_score = audit.brand_safety_score
             # Map categories field from collections.Counter instance to dictionary
             brand_safety_score["categories"] = dict(brand_safety_score["categories"])
@@ -83,6 +96,10 @@ class StandardBrandSafetyService(AuditService):
             for channel in all_channel_data
         }
         return sorted_channel_data
+
+    def get_channel_video_data(self, channel_ids):
+        video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
+        return video_data
 
 
 class StandardAuditException(Exception):
