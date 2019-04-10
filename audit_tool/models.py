@@ -155,7 +155,7 @@ class AuditChannel(models.Model):
         )
 
 class AuditChannelMeta(models.Model):
-    channel = models.ForeignKey(AuditChannel, unique=True)
+    channel = models.OneToOneField(AuditChannel)
     name = models.CharField(max_length=255, default=None, null=True)
     description = models.TextField(default=None)
     keywords = models.TextField(default=None)
@@ -183,13 +183,12 @@ class AuditVideo(models.Model):
         )
 
 class AuditVideoMeta(models.Model):
-    video = models.ForeignKey(AuditVideo, unique=True)
+    video = models.OneToOneField(AuditVideo)
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
     language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
     category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
-    country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
@@ -198,8 +197,8 @@ class AuditVideoMeta(models.Model):
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
-    video = models.ForeignKey(AuditVideo, db_index=True)
-    video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True)
+    video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video')
+    video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source')
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
 
     class Meta:

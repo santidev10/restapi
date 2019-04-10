@@ -9,6 +9,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditCountry
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
@@ -38,7 +39,10 @@ class AuditRecommendationEngine():
                                "?key={key}&part=id,snippet&relatedToVideoId={id}&type=video"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
+    DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
+                         "?key={key}&part=id,statistics,brandingSettings&id={id}"
 
+    # this is the primary method to call to trigger the entire audit sequence
     def get_current_audit_to_process(self):
         try:
             self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
@@ -47,9 +51,9 @@ class AuditRecommendationEngine():
         self.process_audit()
 
     def process_audit(self):
-        if self.audit.params.get("inclusion"):
+        if not self.inclusion_list and self.audit.params.get("inclusion"):
             self.load_inclusion_list(self.audit.params.get("inclusion"))
-        if self.audit.params.get("exclusion"):
+        if not self.exclusion_list and self.audit.params.get("exclusion"):
             self.load_exclusion_list(self.audit.params.get("exclusion"))
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
@@ -59,11 +63,25 @@ class AuditRecommendationEngine():
             if pending_videos.count() == 0: # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save()
+                logger.log("Audit completed, all videos processed.")
+                raise Exception("Audit completed, all videos processed")
         for video in pending_videos:
             self.do_recommended_api_call(video)
+        self.audit.updated = timezone.now()
+        self.audit.save()
+        if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
+            self.audit.completed = timezone.now()
+            self.audit.save()
+            logger.log("Audit {} completed.".format(self.audit.id))
+        else:
+            logger.log("continuing audit.")
+            self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
+        if not seed_list:
+            logger.log("seed list is empty for this audit. {}".format(self.audit.id))
+            raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
             video = AuditVideo.get_or_create(seed_list.split("/")[-1])
@@ -86,8 +104,8 @@ class AuditRecommendationEngine():
             db_video_meta.name = i['snippet']['title']
             db_video_meta.description = i['snippet']['description']
             db_video.publish_date = parse(i['snippet']['publishedAt'])
-            if not db_video.keywords:
-                self.do_video_metadata_api_call(db_video_meta, db_video.id)
+            if not db_video_meta.keywords:
+                self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
             db_video.channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video_meta.save()
             db_video.save()
@@ -95,15 +113,34 @@ class AuditRecommendationEngine():
                     channel=db_video.channel,
             )
             db_channel_meta.name = i['snippet']['channelTitle']
+            if not db_channel_meta.keywords:
+                self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
             db_channel_meta.save()
-            # add to this audit IF it passes white/blacklist requirements
-            db_avp = AuditVideoProcessor.objects.get_or_create(
-                video=db_video,
-                audit=self.audit,
-                video_source=video,
-            )
+            if self.check_video_is_clean(db_video_meta):
+                AuditVideoProcessor.objects.get_or_create(
+                    video=db_video,
+                    audit=self.audit,
+                    video_source=video,
+                )
         avp.processed = timezone.now()
         avp.save(update_fields=['processed'])
+
+    def check_video_is_clean(self, db_video_meta):
+        if self.inclusion_list: # check if whitelist words exist
+            if db_video_meta.name and not self.check_exists(db_video_meta.name, self.inclusion_list):
+                return False
+            if not self.check_exists(db_video_meta.description, self.inclusion_list):
+                return False
+            if not self.check_exists(db_video_meta.keywords, self.inclusion_list):
+                return False
+        if self.exclusion_list: # check no blacklist words exist
+            if self.check_exists(db_video_meta.name, self.exclusion_list):
+                return False
+            if self.check_exists(db_video_meta.description, self.exclusion_list):
+                return False
+            if self.check_exists(db_video_meta.keywords, self.exclusion_list):
+                return False
+        return True
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
@@ -111,6 +148,15 @@ class AuditRecommendationEngine():
         if db_video_meta.description and self.contains_emoji(db_video_meta.description):
             return True
         if db_video_meta.keywords and self.contains_emoji(db_video_meta.keywords):
+            return True
+        return False
+
+    def audit_channel_meta_for_emoji(self, db_channel_meta):
+        if db_channel_meta.name and self.contains_emoji(db_channel_meta.name):
+            return True
+        if db_channel_meta.description and self.contains_emoji(db_channel_meta.description):
+            return True
+        if db_channel_meta.keywords and self.contains_emoji(db_channel_meta.keywords):
             return True
         return False
 
@@ -126,7 +172,7 @@ class AuditRecommendationEngine():
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                logger.log("error retrieving {}  from YT".format(video_id))
+                logger.log("error retrieving video {} from YT".format(video_id))
                 return
             i = data['items'][0]
             db_video_meta.description = i['snippet'].get('description')
@@ -142,6 +188,34 @@ class AuditRecommendationEngine():
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
         except Exception as e:
             logger.log("do_video_metadata_api_call: {}".format(e.message))
+
+    def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
+        try:
+            url = self.DATA_CHANNEL_API_URL.format(key=self.DATA_API_KEY, id=channel_id)
+            r = requests.get(url)
+            data = r.json()
+            if r.status_code != 200:
+                logger.log("error retrieving channel {} from YT".format(channel_id))
+                return
+            i = data['items'][0]
+            try:
+                db_channel_meta.description = i['brandingSettings']['channel']['description']
+            except Exception as e:
+                pass
+            try:
+                db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
+            except Exception as e:
+                pass
+            try:
+                country = i['brandingSettings']['channel']['country']
+                if country:
+                    db_channel_meta.country = AuditCountry.objects.get_or_create(country=country)
+            except Exception as e:
+                pass
+            db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
+            db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
+        except Exception as e:
+            logger.log("do_channel_metadata_api_call: {}".format(e.message))
 
     def load_inclusion_list(self, input_list):
         regexp = "({})".format(
