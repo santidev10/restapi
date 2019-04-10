@@ -21,10 +21,11 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 120
-    channel_id_pool_batch_limit = 30
+    channel_id_master_batch_limit = 30
+    channel_id_pool_batch_limit = 10
     max_process_count = 3
     brand_safety_fail_threshold = 3
+    cursor_logging_threshold = 50000
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -61,7 +62,7 @@ class StandardBrandSafetyProvider(object):
             # Update script tracker and cursors in case of failure
             self.script_tracker = self.audit_provider.update_cursor(self.script_tracker, len(channel_batch))
             self.cursor = self.script_tracker.cursor
-            if self.cursor % 1000000 == 0:
+            if self.cursor % self.cursor_logging_threshold == 0:
                 logger.info("Standard Brand Safety Cursor at: {}".format(self.cursor))
         logger.info("Standard Brand Safety Audit Complete.")
 
