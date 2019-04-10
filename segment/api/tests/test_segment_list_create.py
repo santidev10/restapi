@@ -140,12 +140,12 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             category="private",
             filters=test_filters
         )
-        batches = [
-            [dict(pk="1")],
-            [dict(pk="2")],
+        channels = [
+            dict(pk="1"),
+            dict(pk="2"),
         ]
 
-        sdb_generator = (batch for batch in batches)
+        sdb_generator = (channel for channel in channels)
         with patch.object(SingleDatabaseApiConnectorPatcher, "get_channel_list_full",
                           return_value=sdb_generator) as mock:
             response = self.client.post(url, json.dumps(payload),
@@ -187,11 +187,11 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             category="private",
             filters=test_filters
         )
-        batches = [
-            [dict(pk="1")],
-            [dict(pk="2")],
+        videos = [
+            dict(pk="1"),
+            dict(pk="2"),
         ]
-        sdb_generator = (batch for batch in batches)
+        sdb_generator = (video for video in videos)
 
         with patch.object(SingleDatabaseApiConnectorPatcher, "get_video_list_full",
                           return_value=sdb_generator) as mock:
