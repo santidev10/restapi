@@ -80,32 +80,6 @@ class SDBDataProvider(DataProviderMixin):
                 retries += 1
         raise SDBDataProviderException("Unable to retrieve SDB data. args={}, kwargs={}".format(args, kwargs))
 
-    def get_all_channels_batch_generator(self, last_id=None,):
-        size = self.get_channel_data_limit + 1 if last_id else self.get_channels_videos_limit
-        params = dict(
-            fields=self.channel_fields,
-            sort="channel_id",
-            size=size,
-            channel_id__range="{},".format(last_id or ""),
-        )
-        while True:
-            response = self._execute(self.sdb_connector.get_channel_list, params, True)
-            if last_id:
-                last_id = None
-                channels = [item for item in response.get("items", []) if item["channel_id"] != last_id]
-                params["channel_id__range"] = "{},"
-                params["size"] = self.get_channel_data_limit
-            else:
-                channels = response.get("items")
-            for channel in channels:
-                if not channel.get("category"):
-                    channel["category"] = "Unclassified"
-                if not channel.get("language"):
-                    channel["language"] = "Unknown"
-            if not channels:
-                break
-            else:
-                yield channels
 
 
 class SDBDataProviderException(Exception):

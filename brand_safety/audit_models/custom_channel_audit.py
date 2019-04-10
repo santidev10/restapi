@@ -101,16 +101,6 @@ class ChannelAudit(Audit):
 
         self.metadata.update(aggregated_data)
 
-    # def run_standard_audit(self):
-    #     brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
-    #                           and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
-    #     channel_videos_failed = self.get_channel_videos_failed()
-    #     subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-    #     failed_standard_audit = brand_safety_failed \
-    #                             and channel_videos_failed \
-    #                             and subscribers > self.subscribers_threshold
-    #     return failed_standard_audit
-
     def get_export_row(self, audit_type=constants.BRAND_SAFETY):
         """
         Formats exportable csv row using object metadata

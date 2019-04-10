@@ -54,6 +54,7 @@ DISABLED = "Disabled"
 UNKNOWN = "Unknown"
 YOUTUBE = "youtube"
 SDB = "sdb"
+EMOJI = "emoji"
 
 AUDIT_KEYWORD_MAPPING = {
     BRAND_SAFETY_FAIL: BRAND_SAFETY_HITS,

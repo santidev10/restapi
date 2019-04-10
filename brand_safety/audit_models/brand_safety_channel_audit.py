@@ -5,24 +5,32 @@ from brand_safety.audit_models.base import Audit
 from brand_safety import constants
 
 
-class BrandSafetyChannelAudit(Audit):
+class BrandSafetyChannelAudit(object):
     video_fail_limit = 3
     subscribers_threshold = 1000
     brand_safety_hits_threshold = 1
 
     def __init__(self, video_audits, audit_types, channel_data, source=constants.YOUTUBE):
+        self.auditor = Audit()
         self.results = {}
         self.source = source
         self.video_audits = video_audits
         self.audit_types = audit_types
         self.metadata = self.get_metadata(channel_data)
-        self.metadata = channel_data
-        self.update_aggregate_video_audit_data()
+        self.text = self.get_text()
 
     @property
     def pk(self):
         pk = self.metadata["channel_id"]
         return pk
+
+    def run_audit(self):
+        for video in self.video_audits:
+            self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
+            self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
+        channel_metadata_hits = self.auditor.audit(self.text, self.audit_types[constants.BRAND_SAFETY])
+        self.results[constants.BRAND_SAFETY].extend(channel_metadata_hits)
+        self.calculate_brand_safety_score()
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -65,7 +73,7 @@ class BrandSafetyChannelAudit(Audit):
             "subscribers": channel_data.get("subscribers", constants.DISABLED),
             "views": channel_data.get("video_views", 0),
             "audited_videos": len(self.video_audits),
-            "has_emoji": self.detect_emoji(text),
+            "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
             "likes": channel_data.get("likes", 0),
             "dislikes": channel_data.get("dislikes", 0),
             "country": channel_data.get("country", ""),
@@ -73,57 +81,14 @@ class BrandSafetyChannelAudit(Audit):
         }
         return metadata
 
-    def run_audit(self):
-        for video in self.video_audits:
-            self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
-            self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
-        self.results[constants.BRAND_SAFETY].extend(self.audit(self.audit_types[constants.BRAND_SAFETY]))
-        self.calculate_brand_safety_score()
-
     def get_text(self):
         metadata = self.metadata
         text = ""
-        text += metadata["title"]
+        text += metadata["channel_title"]
         text += metadata["description"]
         return text
 
-    def update_aggregate_video_audit_data(self):
-        video_audits = self.video_audits
-        # First get audit data
-        aggregated_data = {
-            "likes": 0,
-            "dislikes": 0,
-            "category": [],
-        }
-        for video in video_audits:
-            # Preserve "Disabled" value for videos if not initially given in api response
-            try:
-                aggregated_data["likes"] += int(video.metadata["likes"])
-            except ValueError:
-                pass
-
-            try:
-                aggregated_data["dislikes"] += int(video.metadata["dislikes"])
-            except ValueError:
-                pass
-
-            aggregated_data["category"].append(video.metadata["category"])
-            # Try to update the video"s country with current channel"s country
-            if video.metadata["country"] == "Unknown":
-                video.metadata["country"] = self.metadata["country"]
-
-            for audit, regexp in self.audit_types.items():
-                aggregated_data[audit] = aggregated_data.get(audit, [])
-                aggregated_data[audit].extend(video.results[audit])
-        try:
-            aggregated_data["category"] = Counter(aggregated_data["category"]).most_common()[0][0]
-
-        except IndexError:
-            aggregated_data["category"] = "Unknown"
-
-        self.metadata.update(aggregated_data)
-
-    # def run_standard_audit(self):
+    # def prune(self):
     #     brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
     #                           and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
     #     channel_videos_failed = self.get_channel_videos_failed()
@@ -156,25 +121,4 @@ class BrandSafetyChannelAudit(Audit):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_category_scores)
         return channel_category_scores
 
-    def get_export_row(self, audit_type=constants.BRAND_SAFETY):
-        """
-        Formats exportable csv row using object metadata
-        :param audit_type:
-        :return:
-        """
-        row = [
-            self.metadata["channel_title"],
-            self.metadata["channel_url"],
-            self.metadata["language"],
-            self.metadata["category"],
-            self.metadata["videos"],
-            self.metadata["subscribers"],
-            self.metadata["views"],
-            self.metadata["audited_videos"],
-            self.metadata["likes"],
-            self.metadata["dislikes"],
-            self.metadata["country"],
-            self.get_keyword_count(self.results[audit_type])
-        ]
-        return row
 

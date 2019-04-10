@@ -1,13 +1,18 @@
 import re
 import csv
 
+from flashtext import KeywordProcessor
 from django.conf import settings
+from emoji import UNICODE_EMOJI
 
 from brand_safety.models import BadWord
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
 class AuditProvider(object):
+    def __init__(self):
+        self.emoji_regexp = self.compile_emoji_regexp()
+
     def get_brand_safety_regexp(self):
         """
         Get and comple brand safety tags
@@ -20,9 +25,16 @@ class AuditProvider(object):
         else:
             bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
-        brand_safety_regexp = self.compile_audit_regexp(bad_words_names)
+        brand_safety_regexp = self.compile_regexp(bad_words_names)
 
         return brand_safety_regexp
+
+    @staticmethod
+    def get_trie_keyword_processor(words):
+        keyword_processor = KeywordProcessor()
+        for word in words:
+            keyword_processor.add_keyword(word)
+        return keyword_processor
 
     @staticmethod
     def update_cursor(script_tracker, value):
@@ -37,7 +49,7 @@ class AuditProvider(object):
         return script_tracker
 
     @staticmethod
-    def compile_audit_regexp(keywords: list, case_insensitive=True):
+    def compile_regexp(keywords: list, case_insensitive=True):
         """
         Compiles regular expression with given keywords
         :param keywords: List of keyword strings
@@ -70,3 +82,10 @@ class AuditProvider(object):
                 re.IGNORECASE
             )
         return keyword_regexp
+
+    @staticmethod
+    def compile_emoji_regexp():
+        regexp = re.compile(
+            "({})".format("|".join([r"{}".format(re.escape(unicode)) for unicode in UNICODE_EMOJI]))
+        )
+        return regexp

@@ -1,8 +1,3 @@
-import json
-from collections import defaultdict
-from collections import Counter
-import time
-
 import langid
 
 from brand_safety import constants
@@ -21,6 +16,7 @@ class CustomVideoAudit(Audit):
         self.metadata = self.get_metadata(data)
         self.results = {}
         self.score_mapping = score_mapping
+        self.emoji_regexp = self.compile_emoji_regexp()
 
     @property
     def pk(self):

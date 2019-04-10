@@ -1,5 +1,4 @@
 import logging
-from cProfile import Profile
 
 from pid.decorator import pidfile
 from pid import PidFileAlreadyLockedError
@@ -16,17 +15,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         try:
-            profiler = Profile()
-            profiler.runcall(self.run)
-            profiler.print_stats()
-
+            self.run()
         except PidFileAlreadyLockedError:
             print("I am already running")
 
     @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):
         try:
-            api_tracker = APIScriptTracker.objects.get(name="StandardAudit")
+            api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafety")[0]
             standard_audit = StandardBrandSafetyProvider(api_tracker=api_tracker)
             standard_audit.run()
         except Exception as e:

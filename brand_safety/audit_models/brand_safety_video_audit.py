@@ -1,21 +1,18 @@
-import json
 from collections import defaultdict
 from collections import Counter
-import time
-
-import langid
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
 
 
-class BrandSafetyVideoAudit(Audit):
+class BrandSafetyVideoAudit(object):
     dislike_ratio_audit_threshold = 0.2
     views_audit_threshold = 1000
     brand_safety_unique_threshold = 2
     brand_safety_hits_threshold = 3
 
     def __init__(self, data, audit_types, source=constants.YOUTUBE, score_mapping=None):
+        self.auditor = Audit()
         self.audit_types = audit_types
         self.source = source
         self.metadata = self.get_metadata(data)
@@ -26,6 +23,12 @@ class BrandSafetyVideoAudit(Audit):
     def pk(self):
         pk = self.metadata["video_id"]
         return pk
+
+    def run_audit(self):
+        brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
+        hits = self.auditor.audit(self.get_text(), brand_safety_audit)
+        self.results[constants.BRAND_SAFETY] = hits
+        self.calculate_brand_safety_score(self.score_mapping)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -59,7 +62,7 @@ class BrandSafetyVideoAudit(Audit):
             "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
             "video_title": data.get("title", ""),
             "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
-            "has_emoji": self.detect_emoji(text),
+            "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
             "views": data.get("views", 0),
             "description": data.get("description", ""),
             "category": data.get("category", ""),
@@ -74,12 +77,6 @@ class BrandSafetyVideoAudit(Audit):
             "thumbnail_image_url": data.get("thumbnail_image_url", "")
         }
         return metadata
-
-    def run_audit(self):
-        brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
-        hits = self.audit(brand_safety_audit)
-        self.results[constants.BRAND_SAFETY] = hits
-        self.calculate_brand_safety_score(self.score_mapping)
 
     def get_text(self):
         metadata = self.metadata
@@ -137,7 +134,7 @@ class BrandSafetyVideoAudit(Audit):
             brand_safety_es_repr["categories"][category][keyword_name] = data
         return brand_safety_es_repr
 
-    # def run_standard_audit(self):
+    # def prune(self):
     #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
     #     brand_safety_failed = brand_safety_counts \
     #                           and (
