@@ -437,6 +437,9 @@ MAX_SEGMENT_TO_AGGREGATE = 10000
 
 USE_LEGACY_BRAND_SAFETY = True
 
+RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", 15672)
+RABBITMQ_HOST = "{}:{}".format(CELERY_BROKER_HOST, RABBITMQ_PORT)
+
 try:
     from .local_settings import *
 except ImportError:

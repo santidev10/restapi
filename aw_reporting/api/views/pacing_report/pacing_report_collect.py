@@ -24,9 +24,9 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
         report_name = self.generate_report_hash(filters, user_pk)
         url_to_export = reverse("aw_reporting_urls:pacing_report_export", args=(report_name,))
 
-        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
+        task_position = get_queue_size("reports") + 1
 
-        task_position = get_queue_size("reports")
+        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
 
         return Response(
             data={
