@@ -161,8 +161,7 @@ class SingleDatabaseApiConnector(object):
             items = response_data.get("items")[start_from:]
             count += len(items)
             if len(items) > 0:
-                for item in items:
-                    yield item
+                yield from items
                 last_id = items[-1][sort_filed]
             else:
                 has_more = False
