@@ -57,6 +57,8 @@ FLIGHT_FIELDS = (
     "ordered_units",
     "placement__dynamic_placement",
     "placement__goal_type_id",
+    "placement__opportunity__cpm_buffer",
+    "placement__opportunity__cpv_buffer",
     "placement__opportunity__budget",
     "placement__opportunity__cannot_roll_over",
     "placement__opportunity_id",
@@ -249,13 +251,6 @@ class PacingReport:
         ).values(
             *FLIGHT_FIELDS)
 
-        try:
-            placement_id = relevant_flights[0]["placement_id"]
-            opportunity = OpPlacement.objects.get(id=placement_id).opportunity
-            cpm_buffer = opportunity.cpm_buffer
-            cpv_buffer = opportunity.cpv_buffer
-        except (IndexError, AttributeError):
-            cpm_buffer = cpv_buffer = None
         data = dict((f["id"], {**f, **ZERO_STATS, **{"campaigns": {}}})
                     for f in relevant_flights)
         for row in raw_data:
@@ -277,6 +272,8 @@ class PacingReport:
             fl["days"] = (end - start).days + 1 if end and start else 0
 
             goal_type_id = fl["placement__goal_type_id"]
+            cpm_buffer = fl["placement__opportunity__cpm_buffer"]
+            cpv_buffer = fl["placement__opportunity__cpv_buffer"]
             if fl["placement__opportunity__budget"] > self.big_budget_border:
                 if SalesForceGoalType.CPV == goal_type_id:
                     goal_factor = self.big_goal_factor if cpv_buffer is None else (1 + cpv_buffer / 100)
