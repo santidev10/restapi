@@ -84,7 +84,7 @@ class AuditRecommendationEngine():
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            video = AuditVideo.get_or_create(seed_list.split("/")[-1])
+            video = AuditVideo.get_or_create(seed.split("/")[-1])
             avp, _ = AuditVideoProcessor.objects.get_or_create(
                 audit=self.audit,
                 video=video,
