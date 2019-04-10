@@ -1167,6 +1167,8 @@ class BaseCreationDuplicateApiView(APIView):
         "business_name",
         "long_headline",
         "short_headline",
+        "description_1",
+        "description_2",
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
