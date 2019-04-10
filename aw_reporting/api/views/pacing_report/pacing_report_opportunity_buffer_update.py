@@ -37,8 +37,10 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
         try:
             opportunity_report = report.get_opportunities(query, self.request.user)[0]
             data = {
-                'plan_impressions': opportunity_report['plan_impressions'],
-                'plan_video_views': opportunity_report['plan_video_views'],
+                "plan_impressions": opportunity_report["plan_impressions"],
+                "plan_video_views": opportunity_report["plan_video_views"],
+                "pacing": opportunity_report["pacing"] * 100,
+                "margin": opportunity_report["margin"] * 100
             }
             status = HTTP_200_OK
         except IndexError:
