@@ -3,8 +3,11 @@ import os
 from celery.schedules import crontab
 
 CELERY_BROKER_HOST = os.getenv("CELERY_BROKER_HOST", "localhost")
-CELERY_BROKER_PORT = os.getenv("CELERY_BROKER_PORT", "15672")
-CELERY_BROKER_URL = "amqp://{host}".format(host=CELERY_BROKER_HOST)
+CELERY_BROKER_PORT = os.getenv("CELERY_BROKER_PORT", "5672")
+CELERY_BROKER_URL = "amqp://{host}:{port}".format(
+    host=CELERY_BROKER_HOST,
+    port=CELERY_BROKER_PORT,
+)
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     "full-aw-update": {
