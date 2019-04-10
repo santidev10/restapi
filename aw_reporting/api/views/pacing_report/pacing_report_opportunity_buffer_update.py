@@ -25,6 +25,11 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
             opportunity = Opportunity.objects.get(pk=pk)
         except Opportunity.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND, data="Opportunity not found.")
+        try:
+            int(request.data.get("cpm_buffer", 0))
+            int(request.data.get("cpv_buffer", 0))
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Buffers must be integer values.")
 
         allowed_updates = ("cpm_buffer", "cpv_buffer")
 
