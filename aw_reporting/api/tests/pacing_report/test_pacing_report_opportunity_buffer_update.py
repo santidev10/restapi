@@ -55,14 +55,29 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         opportunity = Opportunity.objects.create(id="1", name="")
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
-        update = dict(
+        update1 = dict(
             cpm_buffer="13e",
             cpv_buffer=1,
         )
+        update2 = dict(
+            cpm_buffer="@",
+        )
+        update3 = dict(
+            cpv_buffer="!1",
+        )
         with self.patch_user_settings(global_account_visibility=False):
-            response = self.client.put(url, json.dumps(update),
+            response = self.client.put(url, json.dumps(update1),
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update2),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update3),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
 
     def test_success_update(self):
         now = timezone.now()
