@@ -2,8 +2,6 @@ import json
 from datetime import datetime
 from datetime import timedelta
 from itertools import product
-from unittest import skip
-from unittest.mock import patch
 
 import pytz
 from django.utils import timezone
@@ -27,7 +25,6 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -124,11 +121,9 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             id=1, defaults=dict(name=""))
         CityStatistic.objects.create(
             ad_group=ad_group, date=date, city=target, **stats)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id,
-                                     start_date=str(date - timedelta(days=1)),
-                                     end_date=str(date))
+        response = self._request(account_creation.id,
+                                 start_date=str(date - timedelta(days=1)),
+                                 end_date=str(date))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -150,9 +145,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=datetime.now(), ad_group=ad_group,
             average_position=1, impressions=100)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -163,11 +156,9 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_dates_demo(self):
         today = datetime.now().date()
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(DEMO_ACCOUNT_ID,
-                                     start_date=str(today - timedelta(days=2)),
-                                     end_date=str(today - timedelta(days=1)))
+        response = self._request(DEMO_ACCOUNT_ID,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -186,9 +177,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Name 123", account=account,
             is_approved=True, owner=self.user)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertIn("updated_at", data)

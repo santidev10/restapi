@@ -86,7 +86,7 @@ class User(BaseModel):
         return dict(
             id=data[Fields.ID],
             name=data[Fields.NAME],
-            photo_id=data.get(Fields.PHOTO_ID),
+            photo_id=data.get("photo_id"),
             email=data[Fields.EMAIL],
             is_active=data[Fields.IS_ACTIVE],
             role_id=data[Fields.ROLE_ID],
@@ -171,8 +171,8 @@ class Opportunity(models.Model):
     reason_for_close = models.TextField(default="")
 
     # Buffers for CPV and CPM goal types
-    cpv_buffer = models.IntegerField(default=0)
-    cpm_buffer = models.IntegerField(default=0)
+    cpv_buffer = models.IntegerField(null=True, blank=True, default=None)
+    cpm_buffer = models.IntegerField(null=True, blank=True, default=None)
 
     # sf managers
     account_manager = models.ForeignKey(
@@ -564,7 +564,7 @@ class Activity(BaseModel):
             id=data[Fields.ID],
             name=data[Fields.NAME] or "",
             owner_id=data[Fields.OWNER_ID],
-            type=data[Fields.TYPE],
+            type=data["type"],
             date=data[Fields.DATE],
             opportunity_id=item_id
             if item_id and item_id.startswith('006') else None,

@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
@@ -13,7 +11,6 @@ from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from userprofile.constants import UserSettingsKey
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AccountListAPITestCase(AwReportingAPITestCase):
@@ -80,15 +77,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
-        with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -122,15 +111,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
 
         # --
         url = reverse("aw_creation_urls:performance_targeting_list")
-        with patch(
-                "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            with patch(
-                    "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher
-            ):
-                response = self.client.get("{}?max_campaigns_count=2".format(url))
+        response = self.client.get("{}?max_campaigns_count=2".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data['items']), 2)
@@ -142,9 +123,7 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
