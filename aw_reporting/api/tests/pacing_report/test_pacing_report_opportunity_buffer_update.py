@@ -85,6 +85,14 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", number="1", probability=100, name="opportunity",
             start=now - timedelta(days=1), end=now + timedelta(days=1),
         )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
         update = dict(
             cpm_buffer=1,
             cpv_buffer=2
