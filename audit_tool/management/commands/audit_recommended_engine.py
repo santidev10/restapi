@@ -63,6 +63,7 @@ class AuditRecommendationEngine():
                 self.audit.completed = timezone.now()
                 self.audit.save()
                 logger.info("Audit completed, all videos processed")
+                print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos:
             self.do_recommended_api_call(video)
@@ -71,9 +72,11 @@ class AuditRecommendationEngine():
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save()
+            print("Audit completed {}".format(self.audit.id))
             logger.info("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
+            print("Done one step, continuing audit {}.".format(self.audit.id))
             logger.info("Done one step, continuing audit {}.".format(self.audit.id))
             self.process_audit()
 
