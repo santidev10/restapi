@@ -62,7 +62,6 @@ class AuditRecommendationEngine():
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save()
-                logger.info("Audit completed, all videos processed")
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos:
@@ -73,17 +72,14 @@ class AuditRecommendationEngine():
             self.audit.completed = timezone.now()
             self.audit.save()
             print("Audit completed {}".format(self.audit.id))
-            logger.info("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
             print("Done one step, continuing audit {}.".format(self.audit.id))
-            logger.info("Done one step, continuing audit {}.".format(self.audit.id))
             self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
-            logger.info("seed list is empty for this audit. {}".format(self.audit.id))
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
