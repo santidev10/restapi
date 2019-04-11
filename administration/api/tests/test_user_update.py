@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
@@ -95,3 +96,24 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         response = self.client.put(update_url, data=payload)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_status_change_is_staff_success(self):
+        self.create_admin_user()
+        test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
+        test_user.is_staff = False
+        test_user.save()
+        payload = {"staff_status": True}
+        update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
+        response = self.client.put(update_url, data=payload)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["is_staff"], True)
+
+    def test_status_change_is_staff_fail(self):
+        self.create_test_user()
+        test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
+        test_user.is_staff = False
+        test_user.save()
+        payload = {"staff_status": True}
+        update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
+        response = self.client.put(update_url, data=payload)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

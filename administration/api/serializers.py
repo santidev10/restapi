@@ -3,8 +3,12 @@ Administration api serializers module
 """
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
-from rest_framework.serializers import ModelSerializer, URLField, CharField, \
-    SerializerMethodField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import URLField
+from rest_framework.serializers import CharField
+from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import BooleanField
+from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
 from userprofile.api.serializers.validators.extended_enum import extended_enum
@@ -112,17 +116,30 @@ class UserSerializer(ModelSerializer):
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
+    staff_status = BooleanField(required=False)
+
+    def validate(self, data):
+        """
+        Check if user is superuser before allowing to change staff status
+        :param data: request data
+        :return: data
+        """
+        user = self.context["request"].user
+        if data.get("staff_status") and user.is_superuser is False:
+            raise ValidationError("You do not have permission to change staff status.")
+        return data
 
     class Meta:
         model = get_user_model()
         fields = (
-            "status",
+            "status", "staff_status",
         )
 
     def save(self, **kwargs):
         old_status = self.instance.status
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
+        staff_status = request.data.get("staff_status", None)
         access = request.data.get("access", None)
         status = request.data.get("status", None)
         if access:
@@ -134,5 +151,7 @@ class UserUpdateSerializer(ModelSerializer):
                 user.is_active = True
             if old_status != user.status and user.status == UserStatuses.ACTIVE.value:
                 user.email_user_active(request)
+        if staff_status:
+            user.is_staff = staff_status
         user.save()
         return user
