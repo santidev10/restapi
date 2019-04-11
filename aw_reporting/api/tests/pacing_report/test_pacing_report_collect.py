@@ -1,3 +1,5 @@
+from unittest import mock
+
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
@@ -15,13 +17,15 @@ class PacingReportCollectTestCase(ExtendedAPITestCase):
     url = reverse(Name.PacingReport.COLLECT, [Namespace.AW_REPORTING])
 
     @mock_s3
-    def test_success(self):
+    @mock.patch("utils.celery.utils.get_queue_size", return_value=0)
+    def test_success(self, *args, **kwargs):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(EXPECT_MESSSAGE, response.data.get("message"))
 
     @mock_s3
-    def test_success_with_filters(self):
+    @mock.patch("utils.celery.utils.get_queue_size", return_value=0)
+    def test_success_with_filters(self, *args, **kwargs):
         response = self.client.get("{}?period=this_month&status=active".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(EXPECT_MESSSAGE, response.data.get("message"))

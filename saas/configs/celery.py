@@ -3,6 +3,10 @@ import os
 from celery.schedules import crontab
 
 CELERY_BROKER_HOST = os.getenv("CELERY_BROKER_HOST", "localhost")
+RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", 15672)
+
+RABBITMQ_HOST = "{}:{}".format(CELERY_BROKER_HOST, RABBITMQ_PORT)
+
 CELERY_BROKER_URL = "amqp://{host}".format(host=CELERY_BROKER_HOST)
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {

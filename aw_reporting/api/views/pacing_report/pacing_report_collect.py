@@ -11,7 +11,7 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
 from aw_reporting.reports.tasks import export_pacing_report
 from utils.datetime import now_in_default_tz
-from utils.celery.utils import get_queue_size
+from utils.celery import utils
 
 
 class PacingReportCollectView(ListAPIView, PacingReportHelper):
@@ -24,9 +24,9 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
         report_name = self.generate_report_hash(filters, user_pk)
         url_to_export = reverse("aw_reporting_urls:pacing_report_export", args=(report_name,))
 
-        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
+        task_position = utils.get_queue_size("reports") + 1
 
-        task_position = get_queue_size("reports") + 1
+        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
 
         return Response(
             data={
