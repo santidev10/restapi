@@ -105,7 +105,7 @@ class AuditRecommendationEngine():
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i['snippet']['title']
             db_video_meta.description = i['snippet']['description']
-            db_video.publish_date = parse(i['snippet']['publishedAt'])
+            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
             if not db_video_meta.keywords:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
             db_video.channel = AuditChannel.get_or_create(i['snippet']['channelId'])
