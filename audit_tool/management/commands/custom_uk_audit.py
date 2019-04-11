@@ -20,7 +20,6 @@ import langid
 
 logger = logging.getLogger(__name__)
 
-
 class AuditUK():
     channels = {}
     bad_channels = []
@@ -34,7 +33,6 @@ class AuditUK():
             reader = csv.reader(blacklist)
             for row in reader:
                 self.keywords.append(row[0].lower())
-        blacklist.close()
         regexp = "({})".format(
                 "|".join([r"\b{}\b".format(re.escape(w)) for w in self.keywords])
         )
@@ -46,7 +44,6 @@ class AuditUK():
             for row in reader:
                 channel_id = row[1].split("/")[-1]
                 self.channels[channel_id] = row
-        channels_list.close()
 
     def calc_language(self, data):
         try:
@@ -56,7 +53,7 @@ class AuditUK():
 
     def check_blacklist(self, text):
         keywords = re.findall(self._regexp, text.lower())
-        if len(keywords) > 0: # we found 1 or more bad words
+        if len(keywords) > 0:  # we found 1 or more bad words
             return True
         return False
 
@@ -86,7 +83,7 @@ class AuditUK():
     def process_yt_requests(self, channel_ids):
         DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
         DATA_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
-                       "?key={key}&part=id,brandingSettings&id={ids}"
+                       "?key={key}&part=id,brandingSettings,statistics&id={ids}"
         ids_str = ",".join(channel_ids)
         url = DATA_API_URL.format(key=DATA_API_KEY, ids=ids_str)
         r = requests.get(url)
@@ -94,19 +91,23 @@ class AuditUK():
         for i in data['items']:
             description = i['brandingSettings']['channel'].get('description')
             tags = i['brandingSettings']['channel'].get('keywords')
+            country = i['brandingSettings']['channel'].get('country')
             self.done_channels.append(i['id'])
             if tags and self.check_blacklist(tags):
                 self.bad_channels.append(i['id'])
             elif description and self.check_blacklist(description):
                 self.bad_channels.append(i['id'])
-            else: # channel is NOT a bad channel
+            else:  # channel is NOT a bad channel
                 lang = self.calc_language(description)
                 self.channels[i['id']].append(lang)
+            self.channels[i['id']].append(country)
+            self.channels[i['id']].append(i['statistics'].get('subscriberCount'))
+            self.channels[i['id']].append(i['statistics'].get('viewCount'))
+            self.channels[i['id']].append(i['statistics'].get('videoCount'))
 
     def create_output_file(self):
         with open('clean_export.csv', 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for channel_id, channel_data in self.channels:
+            for channel_id, channel_data in self.channels.items():
                 if channel_id not in self.bad_channels:
                     wr.writerow(channel_data)
-            myfile.close()
