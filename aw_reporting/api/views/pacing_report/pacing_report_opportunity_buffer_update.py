@@ -25,6 +25,11 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
             opportunity = Opportunity.objects.get(pk=pk)
         except Opportunity.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND, data="Opportunity not found.")
+        try:
+            int(request.data.get("cpm_buffer", 0))
+            int(request.data.get("cpv_buffer", 0))
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Buffers must be integer values.")
 
         allowed_updates = ("cpm_buffer", "cpv_buffer")
 
@@ -37,8 +42,10 @@ class PacingReportOpportunityBufferUpdateApiView(UpdateAPIView, PacingReportHelp
         try:
             opportunity_report = report.get_opportunities(query, self.request.user)[0]
             data = {
-                'plan_impressions': opportunity_report['plan_impressions'],
-                'plan_video_views': opportunity_report['plan_video_views'],
+                "plan_impressions": opportunity_report["plan_impressions"],
+                "plan_video_views": opportunity_report["plan_video_views"],
+                "pacing": opportunity_report["pacing"] * 100,
+                "margin": opportunity_report["margin"] * 100
             }
             status = HTTP_200_OK
         except IndexError:
