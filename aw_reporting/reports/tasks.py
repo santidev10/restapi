@@ -12,7 +12,7 @@ def export_pacing_report(get, user_pk, report_name, url_to_export):
     user = UserProfile.objects.get(pk=user_pk)
 
     pacing_report = PacingReport()
-    opportunities = pacing_report.get_opportunities(get)
+    opportunities = pacing_report.get_opportunities(get, user)
 
     csv_generator = PacingReportCSVExport(pacing_report, opportunities, report_name)
     csv_generator.export_to_s3()
