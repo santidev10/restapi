@@ -1,7 +1,6 @@
 import re
 from datetime import date
 from datetime import timedelta
-from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 
@@ -215,7 +214,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
         self.create_test_user()
-        any_video = SingleDatabaseApiConnectorPatcher.get_video_list()["items"][0]
+        any_video = SingleDatabaseApiConnectorPatcher().get_video_list()["items"][0]
         video_title = any_video["title"]
         video_id = any_video["id"]
         account = Account.objects.create(id=next(int_iterator))
@@ -229,9 +228,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
-             self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.excel_reports.dashboard_performance_weekly_report.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+             self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
@@ -245,7 +242,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
         self.create_test_user()
-        any_video = SingleDatabaseApiConnectorPatcher.get_video_list()["items"][0]
+        any_video = SingleDatabaseApiConnectorPatcher().get_video_list()["items"][0]
         video_title = any_video["title"]
         video_id = any_video["id"]
         account = Account.objects.create(id=next(int_iterator))
@@ -264,9 +261,7 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with patch_now(today), \
-             self.patch_user_settings(**user_settings), \
-             patch("aw_reporting.excel_reports.dashboard_performance_weekly_report.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
+             self.patch_user_settings(**user_settings):
             response = self._request(account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)

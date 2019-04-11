@@ -1,7 +1,6 @@
 import json
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
-from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
@@ -9,14 +8,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
-from utils.utittests.patch_now import patch_now
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Flight
-from aw_reporting.models import User
-from aw_reporting.reports.pacing_report import PacingReport, apply_buffer
+from aw_reporting.reports.pacing_report import PacingReport
+from saas.urls.namespaces import Namespace
 
 
 class PacingReportOpportunityBufferTestCase(APITestCase):
@@ -45,12 +44,40 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         update = dict(
             cpm_buffer=1,
             cpv_buffer=2,
-            name='Not allowed'
+            name="Not allowed"
         )
         with self.patch_user_settings(global_account_visibility=False):
             response = self.client.put(url, json.dumps(update),
-                                       content_type='application/json')
+                                       content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_fail_update_non_integer_buffers(self):
+        opportunity = Opportunity.objects.create(id="1", name="")
+        url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
+                      args=(opportunity.id,))
+        update1 = dict(
+            cpm_buffer="13e",
+            cpv_buffer=1,
+        )
+        update2 = dict(
+            cpm_buffer="@",
+        )
+        update3 = dict(
+            cpv_buffer="!1",
+        )
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update1),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update2),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update3),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
 
     def test_success_update(self):
         now = timezone.now()
@@ -58,44 +85,150 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", number="1", probability=100, name="opportunity",
             start=now - timedelta(days=1), end=now + timedelta(days=1),
         )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
         update = dict(
             cpm_buffer=1,
             cpv_buffer=2
         )
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
-        response = self.client.put(url, json.dumps(update), content_type='application/json')
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_success_response_cpm(self):
+    def test_success_response_cpm_default_buffers_goal_factor(self):
         now = timezone.now()
         opportunity = Opportunity.objects.create(
             id="1", name="opportunity", start=now - timedelta(days=1),
-            end=now + timedelta(days=1), probability=100,)
+            end=now + timedelta(days=1), probability=100, budget=10)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             start=now - timedelta(days=1), end=now + timedelta(days=1),
         )
         flight = Flight.objects.create(
-            id="1", placement=placement, name="F", total_cost=100,
-            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        response = self.client.get(url)
+        cpm_buffer = self.pacing_report.goal_factor
+        expected_plan_impressions = flight.ordered_units * cpm_buffer
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        self.assertEqual(data["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(data["plan_video_views"], None)
+        self.assertAlmostEqual(data["cpm_buffer"], (self.pacing_report.goal_factor - 1) * 100)
+        self.assertAlmostEqual(data["cpv_buffer"], (self.pacing_report.goal_factor - 1) * 100)
+
+    def test_success_response_cpm_default_buffers_big_goal_factor(self):
+        now = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="opportunity", start=now - timedelta(days=1),
+            end=now + timedelta(days=1), probability=100, budget=1000000)
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        response = self.client.get(url)
+        cpm_buffer = self.pacing_report.big_goal_factor
+        expected_plan_impressions = flight.ordered_units * cpm_buffer
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        self.assertEqual(data["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(data["plan_video_views"], None)
+        self.assertAlmostEqual(data["cpm_buffer"], (self.pacing_report.big_goal_factor - 1) * 100)
+        self.assertAlmostEqual(data["cpv_buffer"], (self.pacing_report.big_goal_factor - 1) * 100)
+
+    def test_success_response_cpv_default_buffers_goal_factor(self):
+        now = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="opportunity", start=now - timedelta(days=1),
+            end=now + timedelta(days=1), probability=100, budget=10)
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        response = self.client.get(url)
+        cpv_buffer = self.pacing_report.goal_factor
+        expected_plan_views = flight.ordered_units * cpv_buffer
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        self.assertEqual(data["plan_impressions"], None)
+        self.assertEqual(data["plan_video_views"], expected_plan_views)
+        self.assertAlmostEqual(data["cpm_buffer"], (self.pacing_report.goal_factor - 1) * 100)
+        self.assertAlmostEqual(data["cpv_buffer"], (self.pacing_report.goal_factor - 1) * 100)
+
+    def test_success_response_cpv_default_buffers_big_goal_factor(self):
+        now = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="opportunity", start=now - timedelta(days=1),
+            end=now + timedelta(days=1), probability=100, budget=1000000)
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
+        response = self.client.get(url)
+        cpm_buffer = self.pacing_report.big_goal_factor
+        expected_plan_views = flight.ordered_units * cpm_buffer
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data["items"][0]
+        self.assertEqual(data["plan_impressions"], None)
+        self.assertEqual(data["plan_video_views"], expected_plan_views)
+        self.assertAlmostEqual(data["cpm_buffer"], (self.pacing_report.big_goal_factor - 1) * 100)
+        self.assertAlmostEqual(data["cpv_buffer"], (self.pacing_report.big_goal_factor - 1) * 100)
+
+    def test_success_response_cpm(self):
+        now = timezone.now()
+        opportunity = Opportunity.objects.create(
+            id="1", name="opportunity", start=now - timedelta(days=1),
+            end=now + timedelta(days=1), probability=100, budget=10)
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
         update = dict(
             cpm_buffer=10,
         )
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
-        response = self.client.put(url, json.dumps(update), content_type='application/json')
-        expected_plan_impressions = self.pacing_report.goal_factor * flight.ordered_units * (1 + update['cpm_buffer'] / 100)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['plan_impressions'], expected_plan_impressions)
-        self.assertEqual(response.data['plan_video_views'], None)
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
+        cpm_buffer = 1 + (update["cpm_buffer"] / 100)
+        expected_plan_impressions = flight.ordered_units * cpm_buffer
 
-    def test_success_response_cpv(self):
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(response.data["plan_video_views"], None)
+
+    def test_success_response_cpv_with_goal_factor(self):
         now = timezone.now()
         opportunity = Opportunity.objects.create(
             id="1", name="opportunity", start=now - timedelta(days=1),
-            end=now + timedelta(days=1), probability=100, )
+            end=now + timedelta(days=1), probability=100, budget=100)
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
             start=now - timedelta(days=1), end=now + timedelta(days=1),
@@ -109,17 +242,19 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         )
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
-        response = self.client.put(url, json.dumps(update), content_type='application/json')
-        expected_video_views = self.pacing_report.goal_factor * flight.ordered_units * (1 + update['cpv_buffer'] / 100)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['plan_impressions'], None)
-        self.assertEqual(response.data['plan_video_views'], expected_video_views)
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
+        cpv_buffer = 1 + (update["cpv_buffer"] / 100)
+        expected_video_views = flight.ordered_units * cpv_buffer
 
-    def test_success_response_cpv(self):
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["plan_impressions"], None)
+        self.assertEqual(response.data["plan_video_views"], expected_video_views)
+
+    def test_success_response_cpv_cpm_with_goal_factor(self):
         now = timezone.now()
         opportunity = Opportunity.objects.create(
             id="1", name="opportunity", start=now - timedelta(days=1),
-            end=now + timedelta(days=1), probability=100, )
+            end=now + timedelta(days=1), probability=100, budget=1000)
         placement_cpm = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
             start=now - timedelta(days=1), end=now + timedelta(days=1),
@@ -137,51 +272,18 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
         )
         update = dict(
-            cpm_buffer=10,
-            cpv_buffer=10,
+            cpm_buffer=20,
+            cpv_buffer=20,
         )
         url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
                       args=(opportunity.id,))
-        response = self.client.put(url, json.dumps(update), content_type='application/json')
-        expected_plan_impressions = self.pacing_report.goal_factor * flight_cpm.ordered_units * (1 + update['cpm_buffer'] / 100)
-        expected_video_views = self.pacing_report.goal_factor * flight_cpv.ordered_units * (1 + update['cpv_buffer'] / 100)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data['plan_impressions'], expected_plan_impressions)
-        self.assertEqual(response.data['plan_video_views'], expected_video_views)
+        response = self.client.put(url, json.dumps(update), content_type="application/json")
+        cpv_buffer = 1 + (update["cpv_buffer"] / 100)
+        cpm_buffer = 1 + (update["cpm_buffer"] / 100)
 
-    def test_pacing_report_flights_charts_with_opportunity_buffers(self):
-        now = datetime(2017, 1, 1)
-        start, end = now.date(), date(2017, 1, 31)
-        opportunity = Opportunity.objects.create(
-            id="1", name="1", start=start, end=end, cpm_buffer=10, cpv_buffer=10,
-        )
-        placement = OpPlacement.objects.create(
-            id="2", name="Where is my money", opportunity=opportunity,
-            start=start, end=end,
-            goal_type_id=SalesForceGoalType.CPV
-        )
-        ordered_unit = 1000
-        Flight.objects.create(
-            id="3", placement=placement, name="F name", total_cost=200,
-            start=start, end=end, ordered_units=ordered_unit,
-        )
-        url = reverse("aw_reporting_urls:pacing_report_flights", args=(placement.id,))
-        with patch_now(now):
-            response = self.client.get(url)
+        expected_video_views = flight_cpv.ordered_units * cpv_buffer
+        expected_plan_impressions = flight_cpm.ordered_units * cpm_buffer
+
         self.assertEqual(response.status_code, HTTP_200_OK)
-        data = response.data
-        self.assertEqual(len(data), 1)
-        charts = data[0]["charts"]
-        self.assertEqual(charts[0]["title"], "Ideal Pacing")
-        chart_data = charts[0]["data"]
-        chart_values = [i["value"] for i in chart_data]
-        plan_units = apply_buffer(ordered_unit * 1.02, opportunity.cpv_buffer)
-        days = (end - start).days + 1
-        step = plan_units / days
-        expected_chart = [step * (i + 1) for i in range(days)]
-        self.assertEqual(len(chart_values), len(expected_chart))
-        for index, pair in enumerate(zip(chart_values, expected_chart)):
-            actual, expected = pair
-            self.assertAlmostEqual(actual, expected,
-                                   msg="chart value for {index} day is wrong"
-                                       "".format(index=index))
+        self.assertEqual(response.data["plan_impressions"], expected_plan_impressions)
+        self.assertEqual(response.data["plan_video_views"], expected_video_views)

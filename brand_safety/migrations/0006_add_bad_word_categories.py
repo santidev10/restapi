@@ -4,11 +4,11 @@ from __future__ import unicode_literals
 
 from django.db import migrations
 
-from brand_safety.models import BadWord
-from brand_safety.models import BadWordCategory
-
 
 def add_brand_safety_categories(apps, schema_editor):
+    BadWord = apps.get_model("brand_safety", "BadWord")
+    BadWordCategory = apps.get_model("brand_safety", "BadWordCategory")
+
     for word in BadWord.objects.all():
         word.category_ref = BadWordCategory.from_string(word.category)
         word.save()

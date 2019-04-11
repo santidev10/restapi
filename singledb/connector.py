@@ -144,7 +144,7 @@ class SingleDatabaseApiConnector(object):
         :param batch_size:
         :returns generator for channels by sized batches
         """
-        fields = (fields or []) + [sort_filed]
+        fields = list(fields or []) + [sort_filed]
         params = {
             "sort": sort_filed,
             "size": batch_size,
@@ -161,7 +161,7 @@ class SingleDatabaseApiConnector(object):
             items = response_data.get("items")[start_from:]
             count += len(items)
             if len(items) > 0:
-                yield items
+                yield from items
                 last_id = items[-1][sort_filed]
             else:
                 has_more = False
@@ -323,26 +323,26 @@ class SingleDatabaseApiConnector(object):
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash, sources=DEFAULT_CHANNEL_LIST_SOURCES)
-        response_data = self.get_channel_list(query_params)
-        items = response_data["items"]
-        for i in items:
-            i["id"] = i["channel_id"]
-            del i["channel_id"]
-        return items
+        filters = dict(
+            ids_hash=ids_hash,
+            sources=DEFAULT_CHANNEL_LIST_SOURCES,
+        )
+        channels = self.get_channel_list_full(filters, fields)
+        for channel in channels:
+            channel["id"] = channel["channel_id"]
+            yield channel
 
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash, sources=DEFAULT_VIDEO_LIST_SOURCES)
-        response_data = self.get_video_list(query_params)
-        items = response_data["items"]
-        for i in items:
-            i["id"] = i["video_id"]
-            del i["video_id"]
-        return items
+        filters = dict(
+            ids_hash=ids_hash,
+            sources=DEFAULT_VIDEO_LIST_SOURCES,
+        )
+        videos = self.get_video_list_full(filters, fields)
+        for video in videos:
+            video["id"] = video["video_id"]
+            yield video
 
     def auth_channel(self, data):
         """
@@ -396,6 +396,16 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
+
+    def post_brand_safety_results(self, results, doc_type):
+        """
+        Send brand safety audit results for indexing in Elastic Search
+        :param results: list
+        :return: Indexing process results
+        """
+        endpoint = "brand_safety/"
+        response_data = self.execute_post_call(endpoint, {}, {"results": results, "doc_type": doc_type})
+        return response_data
 
     def _normalize_filters(self, filters):
         def map_value(value):

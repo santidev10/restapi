@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 
 from channel.actions import remove_auth_channel
 from userprofile.models import UserProfile, UserChannel
+from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import TestUserMixin
 from utils.utittests.response import MockResponse
 
@@ -18,12 +19,10 @@ class RemoveAuthChannelTestCase(testcases.TestCase, TestUserMixin):
             channels = json.load(data_file)
         channel_id = channels["items"][0]["id"]
         channel = UserChannel.objects.create(channel_id=channel_id, user=user)
-
-        with patch("channel.api.views.channel_set.Connector.delete_channel_test") \
-                as delete_mock:
+        with patch.object(SingleDatabaseApiConnectorPatcher, "delete_channel_test") as delete_mock:
             remove_auth_channel(user.email)
 
-            delete_mock.assert_called_once_with(channel_id)
+        delete_mock.assert_called_once_with(channel_id)
 
         self.assertFalse(UserProfile.objects.filter(pk=user.pk).exists())
         self.assertFalse(UserChannel.objects.filter(pk=channel.pk).exists())

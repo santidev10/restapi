@@ -99,7 +99,7 @@ class Connection:
         if save_photo:
             items = list(items)
             for u in items:
-                u['photo_id'] = self.save_img(u['SmallPhotoUrl'])
+                u['photo_id'] = self.save_img(u[SalesforceFields.User.SMALL_PHOTO_URL.value])
                 del u['SmallPhotoUrl']
         return items
 
@@ -212,7 +212,7 @@ class Connection:
             " AND {}".format(where) if where else "",
         )
         SalesforceFields.Activity.values()
-        fields = SalesforceFields.Activity.values()
+        fields = set(SalesforceFields.Activity.values())
         events = self.get_items('Event', fields, where=where)
         tasks = self.get_items('Task', fields, where=where)
 

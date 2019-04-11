@@ -181,7 +181,9 @@ class AccountAPITestCase(AwReportingAPITestCase):
             ad_group_creation=ad_group_creation,
             short_headline="Short headline",
             long_headline="Long headline",
-            business_name="Business name"
+            business_name="Business name",
+            description_1="Test description 1",
+            description_2="Test description 2",
         )
 
         url = self._get_url(ad.id)
@@ -193,6 +195,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
             "short_headline",
             "long_headline",
             "business_name",
+            "description_1",
+            "description_2",
         )
         for field in fields:
             with self.subTest(field):

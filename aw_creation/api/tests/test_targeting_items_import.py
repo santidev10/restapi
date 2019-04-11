@@ -1,12 +1,9 @@
-from unittest.mock import patch
-
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
 from aw_creation.models import *
 from aw_reporting.models import Topic
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class TargetingImportTestCase(ExtendedAPITestCase):
@@ -70,12 +67,10 @@ class TargetingImportTestCase(ExtendedAPITestCase):
             "aw_creation_urls:targeting_items_import",
             args=(TargetingItem.CHANNEL_TYPE,),
         )
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            with open('aw_creation/fixtures/tests/import_channels_list.csv',
-                      'rb') as fp:
-                response = self.client.post(url, {'file': fp},
-                                            format='multipart')
+        with open('aw_creation/fixtures/tests/import_channels_list.csv',
+                  'rb') as fp:
+            response = self.client.post(url, {'file': fp},
+                                        format='multipart')
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
         for i in response.data:
