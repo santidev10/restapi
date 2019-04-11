@@ -180,9 +180,18 @@ class AuditRecommendationEngine():
                 if not category_id in self.categories:
                     self.categories[category_id], _ = AuditCategory.objects.get_or_create(category=category_id)
             db_video_meta.category = self.categories[category_id]
-            db_video_meta.views = int(i['statistics']['viewCount'])
-            db_video_meta.likes = int(i['statistics']['likeCount'])
-            db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
+            try:
+                db_video_meta.views = int(i['statistics']['viewCount'])
+            except Exception as e:
+                pass
+            try:
+                db_video_meta.likes = int(i['statistics']['likeCount'])
+            except Exception as e:
+                pass
+            try:
+                db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
+            except Exception as e:
+                pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             str_long = db_video_meta.name
             if db_video_meta.keywords:
