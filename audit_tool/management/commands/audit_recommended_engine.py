@@ -88,7 +88,7 @@ class AuditRecommendationEngine():
             v_id = seed.split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
-            video = AuditVideo.get_or_create()
+            video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
                 audit=self.audit,
                 video=video,

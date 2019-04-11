@@ -156,8 +156,8 @@ class AuditChannel(models.Model):
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel)
     name = models.CharField(max_length=255, default=None, null=True)
-    description = models.TextField(default=None)
-    keywords = models.TextField(default=None)
+    description = models.TextField(default=None, null=True)
+    keywords = models.TextField(default=None, null=True)
     language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
