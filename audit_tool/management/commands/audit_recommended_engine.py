@@ -72,6 +72,7 @@ class AuditRecommendationEngine():
             self.audit.completed = timezone.now()
             self.audit.save()
             logger.info("Audit completed {}".format(self.audit.id))
+            raise Exception("Audit completed {}".format(self.audit.id))
         else:
             logger.info("Done one step, continuing audit {}.".format(self.audit.id))
             self.process_audit()
@@ -206,7 +207,7 @@ class AuditRecommendationEngine():
 
     def calc_language(self, data):
         try:
-            l = langid.classify(data)[0].lower()
+            l = langid.classify(data).lower()
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
         except Exception as e:
@@ -232,7 +233,7 @@ class AuditRecommendationEngine():
             try:
                 country = i['brandingSettings']['channel']['country']
                 if country:
-                    db_channel_meta.country = AuditCountry.objects.get_or_create(country=country)
+                    db_channel_meta.country. _ = AuditCountry.objects.get_or_create(country=country)
             except Exception as e:
                 pass
             db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
