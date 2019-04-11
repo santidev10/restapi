@@ -118,11 +118,14 @@ class AuditRecommendationEngine():
                 self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta):
-                AuditVideoProcessor.objects.get_or_create(
+                v, _  = AuditVideoProcessor.objects.get_or_create(
                     video=db_video,
                     audit=self.audit,
                     video_source=video,
                 )
+                if not v.video_source:
+                    v.video_source = video
+                    v.save()
         avp.processed = timezone.now()
         avp.save(update_fields=['processed'])
 
