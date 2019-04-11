@@ -45,9 +45,8 @@ class AuditRecommendationEngine():
 
     # this is the primary method to call to trigger the entire audit sequence
     def get_current_audit_to_process(self):
-        self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
         try:
-            pass
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
         except Exception as e:
             logger.exception(e)
         self.process_audit()
