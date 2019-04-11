@@ -172,7 +172,11 @@ class AuditRecommendationEngine():
             if r.status_code != 200:
                 logger.info("problem with api call for video {}".format(video_id))
                 return
-            i = data['items'][0]
+            try:
+                i = data['items'][0]
+            except Exception as e:
+                print("problem getting video {}".format(video_id))
+                return
             db_video_meta.description = i['snippet'].get('description')
             keywords = i['snippet'].get('tags')
             if keywords:
@@ -220,7 +224,11 @@ class AuditRecommendationEngine():
             if r.status_code != 200:
                 logger.info("problem with api call for channel {}".format(channel_id))
                 return
-            i = data['items'][0]
+            try:
+                i = data['items'][0]
+            except Exception as e:
+                print("problem getting channel {}".format(channel_id))
+                return
             try:
                 db_channel_meta.description = i['brandingSettings']['channel']['description']
             except Exception as e:
