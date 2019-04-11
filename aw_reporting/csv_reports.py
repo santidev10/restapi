@@ -2,7 +2,6 @@ import csv
 import os
 import tempfile
 
-
 from django.conf import settings
 
 from aw_reporting.models import Flight
@@ -125,7 +124,6 @@ FORMATTING = dict(
     plan_impressions=FORMATS["number"],
     impressions=FORMATS["number"]
 )
-
 
 
 class PacingReportCSVExport:

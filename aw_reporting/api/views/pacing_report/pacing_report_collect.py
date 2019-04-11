@@ -8,8 +8,10 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.urls.names import Name
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
 from aw_reporting.reports.tasks import export_pacing_report
+from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.celery import utils
 
@@ -22,7 +24,7 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
         user_pk = request.user.pk
 
         report_name = self.generate_report_hash(filters, user_pk)
-        url_to_export = reverse("aw_reporting_urls:pacing_report_export", args=(report_name,))
+        url_to_export = reverse("{}:{}".format(Namespace.AW_REPORTING, Name.PacingReport.EXPORT), args=(report_name,))
 
         task_position = utils.get_queue_size("reports") + 1
 
