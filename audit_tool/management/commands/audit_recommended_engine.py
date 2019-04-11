@@ -62,7 +62,7 @@ class AuditRecommendationEngine():
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save()
-                logger.log("Audit completed, all videos processed")
+                logger.info("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos:
             self.do_recommended_api_call(video)
@@ -71,15 +71,15 @@ class AuditRecommendationEngine():
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save()
-            logger.log("Audit completed {}".format(self.audit.id))
+            logger.info("Audit completed {}".format(self.audit.id))
         else:
-            logger.log("Done one step, continuing audit  {}.".format(self.audit.id))
+            logger.info("Done one step, continuing audit {}.".format(self.audit.id))
             self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
-            logger.log("seed list is empty for this audit. {}".format(self.audit.id))
+            logger.info("seed list is empty for this audit. {}".format(self.audit.id))
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
@@ -171,7 +171,7 @@ class AuditRecommendationEngine():
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                logger.log("problem with api call for video {}".format(video_id))
+                logger.info("problem with api call for video {}".format(video_id))
                 return
             i = data['items'][0]
             db_video_meta.description = i['snippet'].get('description')
@@ -219,7 +219,7 @@ class AuditRecommendationEngine():
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                logger.log("problem with api call for channel {}".format(channel_id))
+                logger.info("problem with api call for channel {}".format(channel_id))
                 return
             i = data['items'][0]
             try:
