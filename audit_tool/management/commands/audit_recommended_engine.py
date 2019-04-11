@@ -129,19 +129,14 @@ class AuditRecommendationEngine():
         avp.save(update_fields=['processed'])
 
     def check_video_is_clean(self, db_video_meta):
-        if self.inclusion_list:  # check if whitelist words exist
-            if db_video_meta.name and not self.check_exists(db_video_meta.name, self.inclusion_list):
+        full_string = "{} {} {}".format(
+            '' if not db_video_meta.name else db_video_meta.name,
+            '' if not db_video_meta.description else db_video_meta.description,
+            '' if not db_video_meta.keywords else db_video_meta.keywords,
+        )
+        if self.inclusion_list and not self.check_exists(full_string, self.inclusion_list):
                 return False
-            if not self.check_exists(db_video_meta.description, self.inclusion_list):
-                return False
-            if not self.check_exists(db_video_meta.keywords, self.inclusion_list):
-                return False
-        if self.exclusion_list:  # check no blacklist words exist
-            if self.check_exists(db_video_meta.name, self.exclusion_list):
-                return False
-            if self.check_exists(db_video_meta.description, self.exclusion_list):
-                return False
-            if self.check_exists(db_video_meta.keywords, self.exclusion_list):
+        if self.exclusion_list and self.check_exists(full_string, self.exclusion_list):
                 return False
         return True
 
@@ -179,7 +174,9 @@ class AuditRecommendationEngine():
                 return
             i = data['items'][0]
             db_video_meta.description = i['snippet'].get('description')
-            db_video_meta.keywords = i['snippet'].get('tags')
+            keywords = i['snippet'].get('tags')
+            if keywords:
+                db_video_meta.keywords = ','.join(keywords)
             category_id = i['snippet'].get('categoryId')
             if category_id:
                 if not category_id in self.categories:
