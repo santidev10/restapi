@@ -52,10 +52,8 @@ class AuditRecommendationEngine():
         self.process_audit()
 
     def process_audit(self):
-        if not self.inclusion_list and self.audit.params.get("inclusion"):
-            self.load_inclusion_list(self.audit.params.get("inclusion"))
-        if not self.exclusion_list and self.audit.params.get("exclusion"):
-            self.load_exclusion_list(self.audit.params.get("exclusion"))
+        self.load_inclusion_list()
+        self.load_exclusion_list()
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             pending_videos = self.process_seed_list()
@@ -231,13 +229,23 @@ class AuditRecommendationEngine():
         except Exception as e:
             logger.exception(e)
 
-    def load_inclusion_list(self, input_list):
+    def load_inclusion_list(self):
+        if self.inclusion_list:
+            return
+        input_list = self.audit.params.get("inclusion")
+        if not input_list:
+            return
         regexp = "({})".format(
                 "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
-    def load_exclusion_list(self, input_list):
+    def load_exclusion_list(self):
+        if self.exclusion_list:
+            return
+        input_list = self.audit.params.get("exclusion")
+        if not input_list:
+            return
         regexp = "({})".format(
                 "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
         )
