@@ -120,8 +120,7 @@ class AuditRecommendationEngine():
             if self.check_video_is_clean(db_video_meta):
                 v, _  = AuditVideoProcessor.objects.get_or_create(
                     video=db_video,
-                    audit=self.audit,
-                    video_source=video,
+                    audit=self.audit
                 )
                 if not v.video_source:
                     v.video_source = video
