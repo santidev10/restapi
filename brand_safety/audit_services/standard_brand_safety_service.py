@@ -2,6 +2,7 @@ from brand_safety import constants
 from brand_safety.audit_services.base import AuditService
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
+from singledb.connector import SingleDatabaseApiConnector
 from utils.data_providers.sdb_data_provider import SDBDataProvider
 
 
@@ -13,6 +14,7 @@ class StandardBrandSafetyService(AuditService):
 
     def __init__(self, audit_types, score_mapping):
         super().__init__(audit_types)
+        self.sdb_connector = SingleDatabaseApiConnector()
         self.sdb_data_provider = SDBDataProvider()
         self.score_mapping = score_mapping
 
@@ -26,7 +28,8 @@ class StandardBrandSafetyService(AuditService):
         if video_data and channel_ids:
             raise ValueError("You must either provide video data to audit or channel ids to retrieve video data for.")
         if channel_ids:
-            video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
+            video_data = self.sdb_connector.get_video_list({"channel_ids": channel_ids})
+            # video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
         video_audits = []
         for video in video_data:
             audit = BrandSafetyVideoAudit(video, self.audit_types, source=constants.SDB, score_mapping=self.score_mapping)
@@ -90,7 +93,8 @@ class StandardBrandSafetyService(AuditService):
         :param channel_ids: list -> Youtube channel ids
         :return: dict -> channel_id: channel_data
         """
-        all_channel_data = self.sdb_data_provider.get_channel_data(channel_ids)
+        # all_channel_data = self.sdb_data_provider.get_channel_data(channel_ids)
+        all_channel_data = self.sdb_connector.get_channel_list({"channel_ids": channel_ids})
         sorted_channel_data = {
             channel["channel_id"]: channel
             for channel in all_channel_data

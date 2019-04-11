@@ -7,12 +7,13 @@ from django.db.models import Q
 from brand_safety.models import BadWord
 from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
-from utils.data_providers.sdb_data_provider import SDBDataProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
+from utils.data_providers.sdb_data_provider import SDBDataProvider # Remove
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class StandardBrandSafetyProvider(object):
         self.score_mapping = self.get_brand_safety_score_mapping()
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self.channel_id_batch_generator(self.cursor):
-            results = pool.map(self.process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
+            results = pool.map(self.process_audits, chunks_generator(channel_batch, self.channel_id_pool_batch_limit))
             # Extract nested results from each process
             video_audits, channel_audits = self.extract_results(results)
             self.process_results(video_audits, channel_audits)
@@ -192,7 +193,7 @@ class StandardBrandSafetyProvider(object):
         :return: list -> Youtube channel ids
         """
         channel_ids = PersistentSegmentRelatedChannel.objects.all().distinct("related_id").values_list("related_id", flat=True)[cursor:]
-        for batch in self.audit_provider.batch(channel_ids, self.channel_id_master_batch_limit):
+        for batch in chunks_generator(channel_ids, self.channel_id_master_batch_limit):
             yield batch
 
     @staticmethod
