@@ -2,9 +2,10 @@ import logging
 import re
 from collections import OrderedDict
 
-from django.http import QueryDict
+from django.conf import settings
 
-from singledb.connector import SingleDatabaseApiConnector
+from brand_safety.models import BadWord
+from singledb.connector import SingleDatabaseApiConnector as Connector
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -68,9 +69,13 @@ class Keywords:
         return keywords
 
     def load_from_sdb(self):
-        params = QueryDict()
-        keywords = SingleDatabaseApiConnector().get_bad_words_list(params)
-        keywords = [kw.get("name") for kw in keywords]
+        if settings.USE_LEGACY_BRAND_SAFETY:
+            connector = Connector()
+            bad_words = connector.get_bad_words_list({})
+            bad_words_names = [item["name"] for item in bad_words]
+        else:
+            bad_words_names = BadWord.objects.values_list("name", flat=True)
+        keywords = list(bad_words_names)
         self._keywords = keywords
 
     def load_from_file(self, filename):

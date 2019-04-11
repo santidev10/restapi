@@ -53,12 +53,8 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             category="private",
             ids_to_add=[test_video_id]
         )
-        with patch("segment.models.base.Connector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("segment.models.video.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(url, json.dumps(payload),
-                                        content_type="application/json")
+        response = self.client.post(url, json.dumps(payload),
+                                    content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         aw_data = response.data["adw_data"]["stats"]
@@ -144,16 +140,13 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             category="private",
             filters=test_filters
         )
-        batches = [
-            [dict(pk="1")],
-            [dict(pk="2")],
+        channels = [
+            dict(pk="1"),
+            dict(pk="2"),
         ]
 
-        sdb_generator = (batch for batch in batches)
-
-        with patch("segment.models.base.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("segment.models.channel.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch.object(SingleDatabaseApiConnectorPatcher, "get_channel_list_full",
+        sdb_generator = (channel for channel in channels)
+        with patch.object(SingleDatabaseApiConnectorPatcher, "get_channel_list_full",
                           return_value=sdb_generator) as mock:
             response = self.client.post(url, json.dumps(payload),
                                         content_type="application/json")
@@ -194,19 +187,16 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
             category="private",
             filters=test_filters
         )
-        batches = [
-            [dict(pk="1")],
-            [dict(pk="2")],
+        videos = [
+            dict(pk="1"),
+            dict(pk="2"),
         ]
-        sdb_generator = (batch for batch in batches)
+        sdb_generator = (video for video in videos)
 
-        with patch("segment.models.base.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("segment.models.video.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch.object(SingleDatabaseApiConnectorPatcher, "get_video_list_full",
+        with patch.object(SingleDatabaseApiConnectorPatcher, "get_video_list_full",
                           return_value=sdb_generator) as mock:
             response = self.client.post(url, json.dumps(payload),
                                         content_type="application/json")
-
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         mock.assert_called_with(test_filters, fields=ListEqualInclude(["pk"]))
         segment_id = response.data["id"]

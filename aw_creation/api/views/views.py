@@ -1127,6 +1127,7 @@ class BaseCreationDuplicateApiView(APIView):
         "name", "start", "end", "budget", "devices_raw", "delivery_method",
         "type", "bid_strategy_type",
         "video_networks_raw", "content_exclusions_raw",
+        "target_cpa",
     )
     loc_rules_fields = (
         "geo_target", "latitude", "longitude", "radius", "radius_units",
@@ -1156,6 +1157,11 @@ class BaseCreationDuplicateApiView(APIView):
         "beacon_completed_1", "beacon_completed_2", "beacon_completed_3",
         "beacon_vast_1", "beacon_vast_2", "beacon_vast_3",
         "beacon_dcm_1", "beacon_dcm_2", "beacon_dcm_3",
+        "business_name",
+        "long_headline",
+        "short_headline",
+        "description_1",
+        "description_2",
     )
     targeting_fields = ("criteria", "type", "is_negative")
 

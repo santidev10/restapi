@@ -5,12 +5,14 @@ from typing import Dict
 from typing import List
 
 import xlsxwriter
+from django.conf import settings
 from django.core.management import BaseCommand
 from django.http import QueryDict
 
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
 from audit_tool.youtube import Youtube
+from brand_safety.models import BadWord
 from singledb.connector import SingleDatabaseApiConnector
 
 logger = logging.getLogger(__name__)
@@ -88,9 +90,15 @@ class Command(BaseCommand):
 
         # get KW_Category
         self.KW_CATEGORY = {}
-        params = QueryDict()
         logger.error("start downloading categories")
-        for row in SingleDatabaseApiConnector().get_bad_words_list(params):
+
+        if settings.USE_LEGACY_BRAND_SAFETY:
+            params = QueryDict()
+            bad_words = SingleDatabaseApiConnector().get_bad_words_list(params)
+        else:
+            bad_words = BadWord.objects.all().values()
+
+        for row in bad_words:
             name = row.get("name")
             category = row.get("category")
             if name not in self.KW_CATEGORY:
@@ -127,8 +135,8 @@ class Command(BaseCommand):
         logger.info("Parsed {} video(s)".format(len(videos)))
 
     def save_csv(self, videos: List[VideoDMO],
-                   channels: Dict[str, dict],
-                   reports: Dict[str, list]) -> None:
+                 channels: Dict[str, dict],
+                 reports: Dict[str, list]) -> None:
 
         logger.info("Storing CSV")
         sorted_videos = sorted(videos, key=lambda _: -len(_.found))
@@ -185,8 +193,8 @@ class Command(BaseCommand):
         logger.info("Done")
 
     def save_xlsx(self, videos: List[VideoDMO],
-                   channels: Dict[str, dict],
-                   reports: Dict[str, list]) -> None:
+                  channels: Dict[str, dict],
+                  reports: Dict[str, list]) -> None:
 
         logger.info("Storing Results")
 
@@ -243,17 +251,17 @@ class Command(BaseCommand):
             for kw in set(item.found):
                 words_category |= self.KW_CATEGORY.get(kw)
 
-            worksheet.write(y+1, 0, item.channel_title)
-            worksheet.write(y+1, 1, "'" + item.channel_url)
-            worksheet.write(y+1, 2, channels.get(item.channel_id, {}).get("subscribers"), numberic_format)
-            worksheet.write(y+1, 3, item.title)
-            worksheet.write(y+1, 4, "'" + item.url)
-            worksheet.write(y+1, 5, self.CATEGORIES.get(item.category_id))
-            worksheet.write(y+1, 6, item.sentiment, percentage_format)
-            worksheet.write(y+1, 7, impressions, numberic_format)
-            worksheet.write(y+1, 8, hits, numberic_format)
-            worksheet.write(y+1, 9, ",".join(words_category))
-            worksheet.write(y+1, 10, words)
+            worksheet.write(y + 1, 0, item.channel_title)
+            worksheet.write(y + 1, 1, "'" + item.channel_url)
+            worksheet.write(y + 1, 2, channels.get(item.channel_id, {}).get("subscribers"), numberic_format)
+            worksheet.write(y + 1, 3, item.title)
+            worksheet.write(y + 1, 4, "'" + item.url)
+            worksheet.write(y + 1, 5, self.CATEGORIES.get(item.category_id))
+            worksheet.write(y + 1, 6, item.sentiment, percentage_format)
+            worksheet.write(y + 1, 7, impressions, numberic_format)
+            worksheet.write(y + 1, 8, hits, numberic_format)
+            worksheet.write(y + 1, 9, ",".join(words_category))
+            worksheet.write(y + 1, 10, words)
 
         # add sheet: Positive Audit
         worksheet = workbook.add_worksheet("Positive Audit")
@@ -278,14 +286,14 @@ class Command(BaseCommand):
             for kw in set(item.found):
                 words_category |= self.KW_CATEGORY.get(kw)
 
-            worksheet.write(y+1, 0, item.channel_title)
-            worksheet.write(y+1, 1, "'" + item.channel_url)
-            worksheet.write(y+1, 2, channels.get(item.channel_id, {}).get("subscribers"), numberic_format)
-            worksheet.write(y+1, 3, item.title)
-            worksheet.write(y+1, 4, "'" + item.url)
-            worksheet.write(y+1, 5, self.CATEGORIES.get(item.category_id))
-            worksheet.write(y+1, 6, item.sentiment, percentage_format)
-            worksheet.write(y+1, 7, impressions, numberic_format)
+            worksheet.write(y + 1, 0, item.channel_title)
+            worksheet.write(y + 1, 1, "'" + item.channel_url)
+            worksheet.write(y + 1, 2, channels.get(item.channel_id, {}).get("subscribers"), numberic_format)
+            worksheet.write(y + 1, 3, item.title)
+            worksheet.write(y + 1, 4, "'" + item.url)
+            worksheet.write(y + 1, 5, self.CATEGORIES.get(item.category_id))
+            worksheet.write(y + 1, 6, item.sentiment, percentage_format)
+            worksheet.write(y + 1, 7, impressions, numberic_format)
 
         workbook.close()
         xlsx_data = output.getvalue()

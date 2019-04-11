@@ -100,6 +100,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "cost",
                 "cpm",
                 "cpv",
+                "cpm_buffer",
+                "cpv_buffer",
                 "ctr",
                 "ctr_quality",
                 "dynamic_placements_types",
@@ -143,6 +145,20 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(item['category']['name'], category.name)
         self.assertEqual(item['region']['id'], territory)
         self.assertEqual(item['region']['name'], territory)
+
+    def test_get_opportunities_buffers_default(self):
+        today = timezone.now()
+        first_day = today.replace(day=1)
+        month_ago, month_after = first_day - timedelta(
+            days=1), first_day + timedelta(days=32)
+
+        Opportunity.objects.create(id="1", name="1", start=today, end=today,
+                                   probability=100)
+        Opportunity.objects.create(id="2", name="2", start=month_ago,
+                                   end=month_ago, probability=100)
+        response = self.client.get((self.url))
+        print(response.data)
+
 
     def test_get_opportunities_filter_period(self):
         today = timezone.now()

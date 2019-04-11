@@ -6,3 +6,4 @@ class Namespace:
     USER_PROFILE = "userprofile_api_urls"
     VIDEO = "video_api_urls"
     CHANNEL = "channel_api_urls"
+    BRAND_SAFETY = "brand_safety_api_urls"

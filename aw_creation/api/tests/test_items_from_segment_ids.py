@@ -1,14 +1,13 @@
 import json
 import logging
-from unittest.mock import patch
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from segment.models import SegmentChannel, SegmentRelatedChannel
+from segment.models import SegmentChannel
+from segment.models import SegmentRelatedChannel
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 logger = logging.getLogger(__name__)
@@ -44,11 +43,9 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:items_from_segment_ids",
                       args=("video",))
-        with patch("aw_creation.api.serializers.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(ids), content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(ids), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), expected_videos_count)
         self.assertEqual(set(response.data[0].keys()),
@@ -79,11 +76,9 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:items_from_segment_ids",
                       args=("channel",))
-        with patch("aw_creation.api.serializers.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(ids), content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(ids), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), expected_channels_count)
         self.assertEqual(set(response.data[0].keys()),
@@ -111,11 +106,9 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:items_from_segment_ids",
                       args=("keyword",))
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.post(
-                url, json.dumps(ids), content_type='application/json',
-            )
+        response = self.client.post(
+            url, json.dumps(ids), content_type='application/json',
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 4)

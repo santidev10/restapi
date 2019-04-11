@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -35,7 +34,6 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -127,9 +125,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             override_settings(CHANNEL_FACTORY_ACCOUNT_ID=self.mcc_account.id), \
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=self.mcc_account.id), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -175,11 +171,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
         }
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts_ids = {a["account"] for a in response.data["items"]}
@@ -196,11 +188,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         self.__set_non_admin_user_with_account(managed_account.id)
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(accounts[managed_account.account_creation.id]["brand"], test_brand)
@@ -216,11 +204,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
         self.__set_non_admin_user_with_account(managed_account.id)
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(accounts[managed_account.account_creation.id]["sf_account"], sf_account.name)
@@ -252,11 +236,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         CampaignCreation.objects.create(
             account_creation=account_creation, campaign=None)
         self.__set_non_admin_user_with_account(managed_account.id)
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((a["id"], a) for a in response.data["items"])
         self.assertEqual(
