@@ -9,7 +9,7 @@ from django.contrib.postgres.fields import JSONField
 import hashlib
 
 def get_hash_name(s):
-    return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10**8
+    return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10 ** 8
 
 class BaseManager(models.Manager.from_queryset(models.QuerySet)):
     LIFE_TIME_DAYS = 30
@@ -145,10 +145,9 @@ class AuditChannel(models.Model):
     def get_or_create(channel_id):
         channel_id_hash = get_hash_name(channel_id)
         res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
-        if len(res) > 0:
-            for r in res:
-                if r.channel_id == channel_id:
-                    return r
+        for r in res:
+            if r.channel_id == channel_id:
+                return r
         return AuditChannel.objects.create(
                 channel_id=channel_id,
                 channel_id_hash=channel_id_hash
