@@ -207,7 +207,7 @@ class AuditRecommendationEngine():
 
     def calc_language(self, data):
         try:
-            l = langid.classify(data).lower()
+            l = langid.classify(data.lower())[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
         except Exception as e:
@@ -230,12 +230,9 @@ class AuditRecommendationEngine():
                 db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
             except Exception as e:
                 pass
-            try:
-                country = i['brandingSettings']['channel']['country']
-                if country:
-                    db_channel_meta.country. _ = AuditCountry.objects.get_or_create(country=country)
-            except Exception as e:
-                pass
+            country = i['brandingSettings']['channel'].get('country')
+            if country:
+                db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
             db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
             db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
         except Exception as e:
