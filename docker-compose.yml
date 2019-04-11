@@ -23,7 +23,7 @@ services:
       - pg
     environment:
       CELERY_BROKER_HOST: rabbitmq
-      CELERY_BROKER_PORT: 15672
+      RABBITMQ_PORT: 15672
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
