@@ -7,6 +7,9 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
 RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
 
+RABBITMQ_API_USER = os.getenv("RABBITMQ_API_USER", "guest")
+RABBITMQ_API_PASSWORD = os.getenv("RABBITMQ_API_PASSWORD", "guest")
+
 RABBITMQ_API_URL = "{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
 CELERY_BROKER_URL = "amqp://{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
 

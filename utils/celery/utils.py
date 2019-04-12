@@ -4,10 +4,7 @@ from django.conf import settings
 
 VHOST = "/"
 
-RABBITMQ_USERNAME = "guest"
-RABBITMQ_PASSWORD = "guest"
-
 
 def get_queue_size(queue_name):
-    cl = Client(settings.RABBITMQ_API_URL, RABBITMQ_USERNAME, RABBITMQ_PASSWORD)
+    cl = Client(settings.RABBITMQ_API_URL, settings.RABBITMQ_API_USER, settings.RABBITMQ_API_PASSWORD)
     return cl.get_queue_depth(VHOST, queue_name)
