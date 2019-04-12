@@ -132,6 +132,7 @@ class AuditLanguage(models.Model):
 
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
+    category_display = models.TextField(default=None, null=True)
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
