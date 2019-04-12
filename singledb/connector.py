@@ -86,7 +86,7 @@ class SingleDatabaseApiConnector(object):
                 raise Http404(self.response.text)
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(self.response.text),
+                    "Error during SDB api call: {}".format(self.response.text),
                     sdb_response=self.response
                 )
         try:
