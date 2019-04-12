@@ -1,3 +1,5 @@
+from django.core.management.base import BaseCommand
+import csv
 import logging
 from django.conf import settings
 import re
@@ -16,6 +18,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
+from pid.decorator import pidfile
 
 """
 requirements:
@@ -29,7 +32,7 @@ process:
     once the # of videos reaches the max_recommended value it stops.
 """
 
-class AuditRecommendationEngine():
+class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
@@ -42,9 +45,12 @@ class AuditRecommendationEngine():
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
+    CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
+                           "?key={key}&part=id,snippet&id={id}"
 
     # this is the primary method to call to trigger the entire audit sequence
-    def get_current_audit_to_process(self):
+    @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
+    def handle(self, *args, **options):
         try:
             self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
         except Exception as e:
@@ -64,7 +70,7 @@ class AuditRecommendationEngine():
                 self.audit.save()
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos:
+        for video in pending_videos[:100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save()
@@ -75,7 +81,8 @@ class AuditRecommendationEngine():
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
             print("Done one step, continuing audit {}.".format(self.audit.id))
-            self.process_audit()
+            raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+            #self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -272,3 +279,74 @@ class AuditRecommendationEngine():
         if len(keywords) > 0:
             return True
         return False
+
+    def get_categories(self):
+        categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
+        url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
+        r = requests.get(url)
+        data = r.json()
+        for i in data['items']:
+            AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
+
+    def export_videos(self, audit_id=None, num_out=None):
+        self.get_categories()
+        cols = [
+            "video ID",
+            "name",
+            "keywords",
+            "language",
+            "category",
+            "views",
+            "likes",
+            "dislikes",
+            "emoji",
+            "publish date",
+            "channel name",
+            "channel ID",
+            "country"
+        ]
+        if not audit_id and self.audit:
+            audit_id = self.audit.id
+        video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id).values_list('video_id', flat=True)
+        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
+                "video",
+                "video__channel",
+                "video__channel__auditchannelmeta",
+                "video__channel__auditchannelmeta__country",
+                "language",
+                "category"
+        )
+        if num_out:
+            video_meta = video_meta[:num_out]
+        with open('export_{}.csv'.format(audit_id), 'w', newline='') as myfile:
+            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+            wr.writerow(cols)
+            for v in video_meta:
+                try:
+                    language = v.language.language
+                except Exception as e:
+                    language = ""
+                try:
+                    category = v.category.category_display
+                except Exception as e:
+                    category = ""
+                try:
+                    country = v.video.channel.auditchannelmeta.country.country
+                except Exception as e:
+                    country = ""
+                data = [
+                    v.video.video_id,
+                    v.name,
+                    v.keywords,
+                    language,
+                    category,
+                    v.views,
+                    v.likes,
+                    v.dislikes,
+                    str(v.emoji),
+                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S"),
+                    v.video.channel.auditchannelmeta.name,
+                    v.video.channel.channel_id,
+                    country
+                ]
+                wr.writerow(data)
