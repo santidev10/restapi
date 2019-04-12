@@ -51,11 +51,47 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
                                        content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_fail_update_non_integer_buffers(self):
+        opportunity = Opportunity.objects.create(id="1", name="")
+        url = reverse("aw_reporting_urls:pacing_report_opportunity_buffer",
+                      args=(opportunity.id,))
+        update1 = dict(
+            cpm_buffer="13e",
+            cpv_buffer=1,
+        )
+        update2 = dict(
+            cpm_buffer="@",
+        )
+        update3 = dict(
+            cpv_buffer="!1",
+        )
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update1),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update2),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        with self.patch_user_settings(global_account_visibility=False):
+            response = self.client.put(url, json.dumps(update3),
+                                       content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+
     def test_success_update(self):
         now = timezone.now()
         opportunity = Opportunity.objects.create(
             id="1", number="1", probability=100, name="opportunity",
             start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        placement = OpPlacement.objects.create(
+            id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
+            start=now - timedelta(days=1), end=now + timedelta(days=1),
+        )
+        flight = Flight.objects.create(
+            id="1", placement=placement, name="F",
+            start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
         update = dict(
             cpm_buffer=1,
