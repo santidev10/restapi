@@ -1,3 +1,4 @@
+from django.core.management.base import BaseCommand
 import csv
 import logging
 from django.conf import settings
@@ -17,6 +18,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
+from pid.decorator import pidfile
 
 """
 requirements:
@@ -30,7 +32,7 @@ process:
     once the # of videos reaches the max_recommended value it stops.
 """
 
-class AuditRecommendationEngine():
+class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
@@ -47,7 +49,8 @@ class AuditRecommendationEngine():
                            "?key={key}&part=id,snippet&id={id}"
 
     # this is the primary method to call to trigger the entire audit sequence
-    def get_current_audit_to_process(self):
+    @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
+    def handle(self, *args, **options):
         try:
             self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
         except Exception as e:
