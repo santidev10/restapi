@@ -39,7 +39,7 @@ services:
       context: ../ui
       dockerfile: Dockerfile.dist
     volumes:
-      - ./.docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./.docker/conf.nginx:/etc/nginx/nginx.conf
     depends_on:
       - api
   sdb:
