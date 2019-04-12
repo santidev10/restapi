@@ -48,23 +48,21 @@ class AuditRecommendationEngine():
         try:
             self.audit = AuditProcessor.objects.filter(completed__isnull=True).order_by("id")[0]
         except Exception as e:
-            logger.log("No active audits found {}" .format(e.message))
+            logger.exception(e)
         self.process_audit()
 
     def process_audit(self):
-        if not self.inclusion_list and self.audit.params.get("inclusion"):
-            self.load_inclusion_list(self.audit.params.get("inclusion"))
-        if not self.exclusion_list and self.audit.params.get("exclusion"):
-            self.load_exclusion_list(self.audit.params.get("exclusion"))
+        self.load_inclusion_list()
+        self.load_exclusion_list()
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             pending_videos = self.process_seed_list()
         else:
             pending_videos = pending_videos.filter(processed__isnull=True).order_by("id")
-            if pending_videos.count() == 0: # we've processed ALL of the items so we close the audit
+            if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save()
-                logger.log("Audit completed, all videos processed.")
+                logger.info("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos:
             self.do_recommended_api_call(video)
@@ -73,22 +71,22 @@ class AuditRecommendationEngine():
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save()
-            logger.log("Audit {} completed.".format(self.audit.id))
+            logger.info("Audit completed {}".format(self.audit.id))
         else:
-            logger.log("continuing audit.")
+            logger.info("Done one step, continuing audit {}.".format(self.audit.id))
             self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
-            logger.log("seed list is empty for this audit. {}".format(self.audit.id))
+            logger.info("seed list is empty for this audit. {}".format(self.audit.id))
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
             v_id = seed.split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
-            video = AuditVideo.get_or_create()
+            video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
                 audit=self.audit,
                 video=video,
@@ -120,28 +118,25 @@ class AuditRecommendationEngine():
                 self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta):
-                AuditVideoProcessor.objects.get_or_create(
+                v, _  = AuditVideoProcessor.objects.get_or_create(
                     video=db_video,
-                    audit=self.audit,
-                    video_source=video,
+                    audit=self.audit
                 )
+                if not v.video_source:
+                    v.video_source = video
+                    v.save()
         avp.processed = timezone.now()
         avp.save(update_fields=['processed'])
 
     def check_video_is_clean(self, db_video_meta):
-        if self.inclusion_list: # check if whitelist words exist
-            if db_video_meta.name and not self.check_exists(db_video_meta.name, self.inclusion_list):
+        full_string = "{} {} {}".format(
+            '' if not db_video_meta.name else db_video_meta.name,
+            '' if not db_video_meta.description else db_video_meta.description,
+            '' if not db_video_meta.keywords else db_video_meta.keywords,
+        )
+        if self.inclusion_list and not self.check_exists(full_string, self.inclusion_list):
                 return False
-            if not self.check_exists(db_video_meta.description, self.inclusion_list):
-                return False
-            if not self.check_exists(db_video_meta.keywords, self.inclusion_list):
-                return False
-        if self.exclusion_list: # check no blacklist words exist
-            if self.check_exists(db_video_meta.name, self.exclusion_list):
-                return False
-            if self.check_exists(db_video_meta.description, self.exclusion_list):
-                return False
-            if self.check_exists(db_video_meta.keywords, self.exclusion_list):
+        if self.exclusion_list and self.check_exists(full_string, self.exclusion_list):
                 return False
         return True
 
@@ -175,19 +170,30 @@ class AuditRecommendationEngine():
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                logger.log("error retrieving video {} from YT".format(video_id))
+                logger.info("problem with api call for video {}".format(video_id))
                 return
             i = data['items'][0]
             db_video_meta.description = i['snippet'].get('description')
-            db_video_meta.keywords = i['snippet'].get('tags')
+            keywords = i['snippet'].get('tags')
+            if keywords:
+                db_video_meta.keywords = ','.join(keywords)
             category_id = i['snippet'].get('categoryId')
             if category_id:
                 if not category_id in self.categories:
                     self.categories[category_id], _ = AuditCategory.objects.get_or_create(category=category_id)
             db_video_meta.category = self.categories[category_id]
-            db_video_meta.views = int(i['statistics']['viewCount'])
-            db_video_meta.likes = int(i['statistics']['likeCount'])
-            db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
+            try:
+                db_video_meta.views = int(i['statistics']['viewCount'])
+            except Exception as e:
+                pass
+            try:
+                db_video_meta.likes = int(i['statistics']['likeCount'])
+            except Exception as e:
+                pass
+            try:
+                db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
+            except Exception as e:
+                pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             str_long = db_video_meta.name
             if db_video_meta.keywords:
@@ -196,7 +202,7 @@ class AuditRecommendationEngine():
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
         except Exception as e:
-            logger.log("do_video_metadata_api_call: {}".format(e.message))
+            logger.exception(e)
 
     def calc_language(self, data):
         try:
@@ -212,7 +218,7 @@ class AuditRecommendationEngine():
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
-                logger.log("error retrieving channel {} from YT".format(channel_id))
+                logger.info("problem with api call for channel {}".format(channel_id))
                 return
             i = data['items'][0]
             try:
@@ -232,15 +238,25 @@ class AuditRecommendationEngine():
             db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
             db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
         except Exception as e:
-            logger.log("do_channel_metadata_api_call: {}".format(e.message))
+            logger.exception(e)
 
-    def load_inclusion_list(self, input_list):
+    def load_inclusion_list(self):
+        if self.inclusion_list:
+            return
+        input_list = self.audit.params.get("inclusion")
+        if not input_list:
+            return
         regexp = "({})".format(
                 "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
-    def load_exclusion_list(self, input_list):
+    def load_exclusion_list(self):
+        if self.exclusion_list:
+            return
+        input_list = self.audit.params.get("exclusion")
+        if not input_list:
+            return
         regexp = "({})".format(
                 "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
         )
@@ -248,6 +264,6 @@ class AuditRecommendationEngine():
 
     def check_exists(self, text, exp):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0: # we found 1 or more matches
+        if len(keywords) > 0:
             return True
         return False
