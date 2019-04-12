@@ -70,7 +70,7 @@ class Command(BaseCommand):
                 self.audit.save()
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos:
+        for video in pending_videos[:100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save()
