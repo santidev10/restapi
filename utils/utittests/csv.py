@@ -12,3 +12,7 @@ def build_csv_byte_stream(headers, rows):
     text_csv = output.getvalue()
     stream = io.BytesIO(text_csv.encode())
     return stream
+
+
+def get_data_from_csv_response(response):
+    return csv.reader((row.decode("utf-8") for row in response.streaming_content))

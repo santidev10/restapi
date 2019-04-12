@@ -7,7 +7,7 @@ services:
     environment:
       SINGLE_DATABASE_API_HOST: sdb
       ALLOWED_HOSTS: api
-      CELERY_BROKER_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
@@ -21,7 +21,7 @@ services:
       - rabbitmq
       - pg
     environment:
-      CELERY_BROKER_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
@@ -31,7 +31,7 @@ services:
     depends_on:
       - rabbitmq
     environment:
-      CELERY_BROKER_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq
 
   web:
     image: viewiq-ui
@@ -63,3 +63,5 @@ services:
       - "9042"
   rabbitmq:
     image: rabbitmq:3.7.8-management
+    ports:
+    - "15672:15672"
