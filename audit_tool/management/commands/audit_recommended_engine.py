@@ -81,7 +81,8 @@ class Command(BaseCommand):
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
             print("Done one step, continuing audit {}.".format(self.audit.id))
-            self.process_audit()
+            raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+            #self.process_audit()
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
