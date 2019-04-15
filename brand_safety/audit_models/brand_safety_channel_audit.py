@@ -10,10 +10,12 @@ class BrandSafetyChannelAudit(object):
     subscribers_threshold = 1000
     brand_safety_hits_threshold = 1
 
-    def __init__(self, video_audits, audit_types, channel_data, source=constants.YOUTUBE):
+    def __init__(self, video_audits, audit_types, channel_data, **kwargs):
+        self.source = kwargs["source"]
+        self.score_mapping = kwargs["score_mapping"]
+        self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
         self.auditor = Audit()
         self.results = {}
-        self.source = source
         self.video_audits = video_audits
         self.audit_types = audit_types
         self.metadata = self.get_metadata(channel_data)
@@ -28,9 +30,9 @@ class BrandSafetyChannelAudit(object):
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
-        channel_metadata_hits = self.auditor.audit(self.text, self.audit_types[constants.BRAND_SAFETY])
-        self.results[constants.BRAND_SAFETY].extend(channel_metadata_hits)
-        self.calculate_brand_safety_score()
+        title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, self.audit_types[constants.BRAND_SAFETY])
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
+        self.calculate_brand_safety_score(*title_hits, *description_hits)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -98,16 +100,18 @@ class BrandSafetyChannelAudit(object):
     #                             and subscribers > self.subscribers_threshold
     #     return failed_standard_audit
 
-    def calculate_brand_safety_score(self):
+    def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
         """
         Aggregate video audit brand safety results
+        :param channel_metadata_hits: All channel metadata hits
         :return:
         """
         channel_category_scores = {
             "channel_id": self.metadata["channel_id"],
-            "categories": defaultdict(dict),
             "overall_score": 0,
+            "categories": defaultdict(dict),
         }
+        # Aggregate video audits scores for channel
         for audit in self.video_audits:
             audit_brand_safety_score = getattr(audit, constants.BRAND_SAFETY_SCORE)
             for keyword_name, data in audit_brand_safety_score["keywords"].items():
@@ -118,6 +122,16 @@ class BrandSafetyChannelAudit(object):
                 channel_category_scores["categories"][category][keyword_name] = channel_category_scores["categories"][category].get(keyword_name, Counter())
                 channel_category_scores["categories"][category][keyword_name] += Counter({"score": score, "hits:": data["hits"]})
             channel_category_scores["overall_score"] += audit_brand_safety_score["overall_score"]
+        # Add brand safety metadata hits to scores
+        for word in channel_metadata_hits:
+            try:
+                multiplier = self.brand_safety_score_multiplier[word.location]
+                keyword_category = self.score_mapping[word.name]["category"]
+                keyword_score = self.score_mapping[word.name]["score"]
+                channel_category_scores["categories"][keyword_category][word.name]["hits"] += 1
+                channel_category_scores["categories"][keyword_category][word.name]["score"] += keyword_score * multiplier
+            except KeyError:
+                pass
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_category_scores)
         return channel_category_scores
 

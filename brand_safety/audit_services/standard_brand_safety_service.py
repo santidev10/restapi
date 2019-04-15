@@ -10,13 +10,19 @@ class StandardBrandSafetyService(AuditService):
     """
     Interface for consuming source data from providers and driving brand safety logic
     """
+    sdb_batch_limit = 10000
     video_audits_sorted = False
+    video_fields = "video_id,title,channel_id,channel__title,channel__subscribers,description," \
+                   "tags,category,likes,dislikes,views,language,transcript,country,thumbnail_image_url"
+    channel_fields = "channel_id,title,description,category,subscribers,likes,dislikes,views,language,url,country,thumbnail_image_url"
 
-    def __init__(self, audit_types, score_mapping):
+    def __init__(self, audit_types, score_mapping, brand_safety_score_multiplier, logger=None):
         super().__init__(audit_types)
         self.sdb_connector = SingleDatabaseApiConnector()
         self.sdb_data_provider = SDBDataProvider()
         self.score_mapping = score_mapping
+        self.brand_safety_score_multiplier = brand_safety_score_multiplier
+        self.logger = logger
 
     def audit_videos(self, video_data=None, channel_ids=None):
         """
@@ -28,11 +34,16 @@ class StandardBrandSafetyService(AuditService):
         if video_data and channel_ids:
             raise ValueError("You must either provide video data to audit or channel ids to retrieve video data for.")
         if channel_ids:
-            video_data = self.sdb_connector.get_video_list({"channel_ids": channel_ids})
-            # video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
+            video_data = self.get_channel_video_data(channel_ids)
         video_audits = []
         for video in video_data:
-            audit = BrandSafetyVideoAudit(video, self.audit_types, source=constants.SDB, score_mapping=self.score_mapping)
+            audit = BrandSafetyVideoAudit(
+                video,
+                self.audit_types,
+                source=constants.SDB,
+                score_mapping=self.score_mapping,
+                brand_safety_score_multiplier=self.brand_safety_score_multiplier,
+            )
             audit.run_audit()
             video_audits.append(audit)
         self.video_audits_sorted = True
@@ -51,7 +62,14 @@ class StandardBrandSafetyService(AuditService):
             channel_data = sorted_channel_data.get(channel_id, None)
             if not channel_data:
                 continue
-            channel_audit = BrandSafetyChannelAudit(video_audits, self.audit_types, channel_data, source=constants.SDB)
+            channel_audit = BrandSafetyChannelAudit(
+                video_audits,
+                self.audit_types,
+                channel_data,
+                source=constants.SDB,
+                score_mapping=self.score_mapping,
+                brand_safety_score_multiplier=self.brand_safety_score_multiplier
+            )
             channel_audit.run_audit()
             channel_audits.append(channel_audit)
         return channel_audits
@@ -93,16 +111,28 @@ class StandardBrandSafetyService(AuditService):
         :param channel_ids: list -> Youtube channel ids
         :return: dict -> channel_id: channel_data
         """
-        # all_channel_data = self.sdb_data_provider.get_channel_data(channel_ids)
-        all_channel_data = self.sdb_connector.get_channel_list({"channel_ids": channel_ids})
+        params = dict(
+            fields=self.channel_fields,
+            sort="channel_id",
+            size=self.sdb_batch_limit,
+            channel_id__terms=",".join(channel_ids),
+        )
+        response = self.sdb_connector.get_video_list(params)
         sorted_channel_data = {
             channel["channel_id"]: channel
-            for channel in all_channel_data
+            for channel in response["items"]
         }
         return sorted_channel_data
 
     def get_channel_video_data(self, channel_ids):
-        video_data = self.sdb_data_provider.get_channels_videos(channel_ids)
+        params = dict(
+            fields=self.video_fields,
+            sort="video_id",
+            size=self.sdb_batch_limit,
+            channel_id__terms=",".join(channel_ids),
+        )
+        response = self.sdb_connector.get_video_list(params)
+        video_data = response.get("items", [])
         return video_data
 
 

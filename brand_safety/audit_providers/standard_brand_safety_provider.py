@@ -8,6 +8,7 @@ from brand_safety.models import BadWord
 from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
+from singledb.connector import SingleDatabaseApiConnector
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
@@ -22,24 +23,32 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 30
-    channel_id_pool_batch_limit = 10
+    channel_id_master_batch_limit = 3
+    channel_id_pool_batch_limit = 1
     max_process_count = 3
     brand_safety_fail_threshold = 3
     cursor_logging_threshold = 50000
+    # Multiplier to apply for brand safety hits
+    brand_safety_score_multiplier = {
+        "title": 4,
+        "description": 1,
+        "tags": 1,
+    }
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
         self.cursor = self.script_tracker.cursor
         self.audit_provider = AuditProvider()
         self.sdb_data_provider = SDBDataProvider()
+        self.sdb_connector = SingleDatabaseApiConnector()
         # Audit mapping for audit objects to use
         self.audits = {
             constants.BRAND_SAFETY: self.audit_provider.get_trie_keyword_processor(BadWord.objects.all().values_list("name", flat=True)),
             constants.EMOJI: self.audit_provider.compile_emoji_regexp()
         }
+        # Score mapping for brand safety keywords
         self.score_mapping = self.get_brand_safety_score_mapping()
-        self.audit_service = StandardBrandSafetyService(self.audits, self.score_mapping)
+        self.audit_service = StandardBrandSafetyService(self.audits, self.score_mapping, self.brand_safety_score_multiplier)
         # Set required persistent segments to save to
         self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(title="Brand Safety Whitelist Channels", category="whitelist")
         self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(title="Brand Safety Blacklist Channels", category="blacklist")
@@ -56,9 +65,11 @@ class StandardBrandSafetyProvider(object):
         self.score_mapping = self.get_brand_safety_score_mapping()
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self.channel_id_batch_generator(self.cursor):
-            results = pool.map(self.process_audits, chunks_generator(channel_batch, self.channel_id_pool_batch_limit))
+            print(channel_batch)
+            results = pool.map(self.process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
             # Extract nested results from each process
             video_audits, channel_audits = self.extract_results(results)
+            break
             self.process_results(video_audits, channel_audits)
             # Update script tracker and cursors in case of failure
             self.script_tracker = self.audit_provider.update_cursor(self.script_tracker, len(channel_batch))
@@ -183,7 +194,7 @@ class StandardBrandSafetyProvider(object):
         :param doc_type: Index document type
         :return: Singledb response
         """
-        response = self.sdb_data_provider.es_index_brand_safety_results(results, doc_type)
+        response = self.sdb_connector.post_brand_safety_results(results, doc_type)
         return response
 
     def channel_id_batch_generator(self, cursor):
@@ -193,7 +204,7 @@ class StandardBrandSafetyProvider(object):
         :return: list -> Youtube channel ids
         """
         channel_ids = PersistentSegmentRelatedChannel.objects.all().distinct("related_id").values_list("related_id", flat=True)[cursor:]
-        for batch in chunks_generator(channel_ids, self.channel_id_master_batch_limit):
+        for batch in self.audit_provider.batch(channel_ids, self.channel_id_master_batch_limit):
             yield batch
 
     @staticmethod

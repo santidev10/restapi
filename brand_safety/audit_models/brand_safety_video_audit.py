@@ -1,5 +1,4 @@
 from collections import defaultdict
-from collections import Counter
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
@@ -10,14 +9,16 @@ class BrandSafetyVideoAudit(object):
     views_audit_threshold = 1000
     brand_safety_unique_threshold = 2
     brand_safety_hits_threshold = 3
+    brand_safety_title_multiplier = 4
 
-    def __init__(self, data, audit_types, source=constants.YOUTUBE, score_mapping=None):
+    def __init__(self, data, audit_types, **kwargs):
+        self.source = kwargs["source"]
+        self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
+        self.score_mapping = kwargs["score_mapping"]
         self.auditor = Audit()
         self.audit_types = audit_types
-        self.source = source
         self.metadata = self.get_metadata(data)
-        self.results = {}
-        self.score_mapping = score_mapping
+        self.results = defaultdict(list)
 
     @property
     def pk(self):
@@ -26,9 +27,11 @@ class BrandSafetyVideoAudit(object):
 
     def run_audit(self):
         brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
-        hits = self.auditor.audit(self.get_text(), brand_safety_audit)
-        self.results[constants.BRAND_SAFETY] = hits
-        self.calculate_brand_safety_score(self.score_mapping)
+        tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, brand_safety_audit)
+        title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, brand_safety_audit)
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
+        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits
+        self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -71,7 +74,7 @@ class BrandSafetyVideoAudit(object):
             "likes": data.get("likes", 0),
             "dislikes": data.get("dislikes", 0),
             "channel_id": data.get("channel_id", ""),
-            "tags": data.get("tags", []),
+            "tags": data.get("tags", ""),
             "video_id": data["video_id"],
             "transcript": data.get("transcript") if data.get("transcript") is not None else "",
             "thumbnail_image_url": data.get("thumbnail_image_url", "")
@@ -89,7 +92,7 @@ class BrandSafetyVideoAudit(object):
         text += metadata["transcript"] if metadata["transcript"] is not None else ""
         return text
 
-    def calculate_brand_safety_score(self, score_mapping):
+    def calculate_brand_safety_score(self, score_mapping, multiplier_ref):
         """
         Calculate brand safety score total and across categories
         :return: tuple -> (int) total score, (dict) scores by category
@@ -97,23 +100,26 @@ class BrandSafetyVideoAudit(object):
         brand_safety_score = {
             "video_id": self.metadata["video_id"],
             "overall_score": 0,
-            "keywords": defaultdict(dict)
+            "keywords": {}
         }
         brand_safety_hits = self.results[constants.BRAND_SAFETY]
-        counts = Counter(brand_safety_hits)
-        for keyword_name, count in counts.items():
+        for word in brand_safety_hits:
+            multiplier = multiplier_ref.get(word.location, 1)
             try:
-                keyword_category = score_mapping[keyword_name]["category"]
-                keyword_score = score_mapping[keyword_name]["score"]
-                score = keyword_score * count
+                keyword_category = score_mapping[word.name]["category"]
+                keyword_score = score_mapping[word.name]["score"]
+                score = keyword_score * multiplier
                 brand_safety_score["overall_score"] += score
-                brand_safety_score["keywords"][keyword_name] = {
+                # Set up default value for brand safety hit
+                brand_safety_score["keywords"][word.name] = brand_safety_score["keywords"].get(word.name) or {
                     "category": keyword_category,
-                    "hits": count,
-                    "score": score
+                    "hits": 0,
+                    "score": 0
                 }
+                brand_safety_score["keywords"][word.name]["hits"] += 1
+                brand_safety_score["keywords"][word.name]["score"] += score
             except KeyError:
-                print(keyword_name)
+                pass
         setattr(self, constants.BRAND_SAFETY_SCORE, brand_safety_score)
         return brand_safety_score
 
