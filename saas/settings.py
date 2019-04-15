@@ -77,7 +77,7 @@ MIDDLEWARE_CLASSES = [
     'userprofile.middleware.ApexUserCheck',
 ]
 
-ROOT_URLCONF = 'saas.urls'
+ROOT_URLCONF = 'saas.urls.urls'
 
 WSGI_APPLICATION = 'saas.wsgi.application'
 
