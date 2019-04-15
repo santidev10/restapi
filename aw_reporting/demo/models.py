@@ -1047,6 +1047,8 @@ class DemoAccount(BaseDemo):
             plan_cpv=.3,
             sf_account=DEMO_SF_ACCOUNT,
             start=self.start_date,
+            statistic_min_date=self.start_date,
+            statistic_max_date=self.end_date,
             status="Running",
             thumbnail="https://i.ytimg.com/vi/XEngrJr79Jg/hqdefault.jpg",
             topic_count=8,

@@ -107,6 +107,9 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     brand = SerializerMethodField()
     sf_account = SerializerMethodField()
 
+    statistic_min_date = StatField()
+    statistic_max_date = StatField()
+
     average_cpv = StatField()
     average_cpm = StatField()
 
@@ -142,6 +145,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "plan_cpv",
             "sf_account",
             "start",
+            "statistic_max_date",
+            "statistic_min_date",
             "thumbnail",
             "topic_count",
             "updated_at",
@@ -215,6 +220,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
+                      statistic_min_date=Min("statistics__date"),
+                      statistic_max_date=Max("statistics__date"),
                       **base_stats_aggregator())
         flights = Flight.objects.filter(**flight_filter) \
             .distinct() \

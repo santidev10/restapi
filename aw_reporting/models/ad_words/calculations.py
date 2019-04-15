@@ -3,6 +3,8 @@ from functools import wraps
 from django.db.models import Case
 from django.db.models import F
 from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
 
