@@ -92,10 +92,15 @@ class Command(BaseCommand):
     def do_check_video(self, avp):
         db_video = avp.video
         db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-        if not db_video_meta.name and not db_video.channel:
+        if not db_video_meta.name or not db_video.channel:
             channel_id = self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
         else:
             channel_id = db_video.channel.channel_id
+        if not channel_id: # video does not exist or is private now
+            avp.clean = False
+            avp.processed = timezone.now()
+            avp.save(update_fields=['processed', 'clean'])
+            return
         db_video.channel = AuditChannel.get_or_create(channel_id)
         db_video_meta.save()
         db_video.save()
@@ -154,7 +159,11 @@ class Command(BaseCommand):
                 logger.info("problem with api call for video {}".format(video_id))
                 return
             try:
-                i = data['items'][0]
+                total = data['pageInfo']['totalResults']
+                if total == 0:
+                    return None
+                else:
+                    i = data['items'][0]
             except Exception as e:
                 print("problem getting video {}".format(video_id))
                 return
