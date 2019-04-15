@@ -188,6 +188,7 @@ class Command(BaseCommand):
             units, cost = flight.delivered_units, flight.delivered_cost
             flight_data = pacing_report.get_flights_data(id=flight.id)
             pacing = get_pacing_from_flights(flight_data)
+            pacing = pacing * 100 if pacing is not None else pacing
 
             update = {}
             if units != flight.delivered:
