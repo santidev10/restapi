@@ -8,6 +8,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from utils.aws.s3_exporter import S3Exporter
+from utils.serializers.fields import PercentField
 
 OPPORTUNITY_COLUMN_NAME = "opportunity_name"
 PLACEMENT_COLUMN_NAME = "placement_name"
@@ -137,6 +138,10 @@ class PacingReportCSVExport:
         for column in CSV_COLUMN_ORDER:
             value = row.get(column)
             if value:
+
+                if isinstance(value, float) and (column == SharedColumn.PACING or column == SharedColumn.MARGIN):
+                    value = PercentField().to_representation(value)
+
                 column_format = FORMATTING.get(column, FORMATS["default"])
                 try:
                     value = column_format.format(value)
