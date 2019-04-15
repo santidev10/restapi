@@ -110,19 +110,25 @@ class Command(BaseCommand):
         if not db_channel_meta.keywords:
             self.do_channel_metadata_api_call(db_channel_meta, channel_id)
         db_channel_meta.save()
-        avp.clean = self.check_video_is_clean(db_video_meta)
+        avp.clean = self.check_video_is_clean(db_video_meta, avp)
         avp.processed = timezone.now()
-        avp.save(update_fields=['processed', 'clean'])
+        avp.save()
 
-    def check_video_is_clean(self, db_video_meta):
+    def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
-        if self.inclusion_list and not self.check_exists(full_string, self.inclusion_list):
+        if self.inclusion_list:
+            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            avp.word_hits['inclusion'] = hits
+            if not is_there:
                 return False
-        if self.exclusion_list and self.check_exists(full_string, self.exclusion_list):
+        if self.exclusion_list:
+            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            avp.word_hits['exclusion'] = hits
+            if is_there:
                 return False
         return True
 
@@ -269,8 +275,8 @@ class Command(BaseCommand):
     def check_exists(self, text, exp):
         keywords = re.findall(exp, text.lower())
         if len(keywords) > 0:
-            return True
-        return False
+            return True, keywords
+        return False, None
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
