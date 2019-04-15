@@ -126,6 +126,7 @@ class AuditProcessor(models.Model):
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
     params = JSONField(default={})
+    audit_type = models.IntegerField(db_index=True, default=0)
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
@@ -200,6 +201,7 @@ class AuditVideoProcessor(models.Model):
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video')
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source')
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    clean = models.BooleanField(default=True, db_index=True)
 
     class Meta:
         unique_together = ("audit", "video")
