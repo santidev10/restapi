@@ -202,6 +202,7 @@ class AuditVideoProcessor(models.Model):
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source')
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
+    word_hits = JSONField(default={}, null=True)
 
     class Meta:
         unique_together = ("audit", "video")
