@@ -110,6 +110,9 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
     average_cpv = StatField()
     average_cpm = StatField()
 
+    statistic_min_date = StatField()
+    statistic_max_date = StatField()
+
     plan_cpv = ParentDictValueField("plan_rates")
     plan_cpm = ParentDictValueField("plan_rates")
 
@@ -159,6 +162,8 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
             .order_by(CAMPAIGN_ACCOUNT_ID_KEY) \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
+                      statistic_min_date=Min("statistics__date"),
+                      statistic_max_date=Max("statistics__date"),
                       **self.stats_aggregations)
         for account_data in data:
             account_id = account_data[CAMPAIGN_ACCOUNT_ID_KEY]

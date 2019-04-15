@@ -62,6 +62,8 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "plan_cpv",
         "sf_account",
         "start",
+        "statistic_min_date",
+        "statistic_max_date",
         "thumbnail",
         "topic_count",
         "updated_at",
