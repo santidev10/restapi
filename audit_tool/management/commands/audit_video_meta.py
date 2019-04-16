@@ -22,14 +22,11 @@ from pid.decorator import pidfile
 
 """
 requirements:
-    we receive a list of video URLs as a 'seed list'. 
-    we receive a list of blacklist keywords
-    we receive a list of inclusion keywords
+    we receive a list of video URLs. 
 process:
-    we use the seed list of video URL's to retrieve 'recommended videos' from YT.
-    for each video on the recommended list we check that it doesnt contain
-    blacklist keywords, and that it includes 'inclusion keywords' if present.
-    once the # of videos reaches the max_recommended value it stops.
+    we go through the videos, grab the meta video data and meta channel
+    data, check for blacklist (or whitelist if included) and end with a
+    clean list of videos.
 """
 
 class Command(BaseCommand):
@@ -39,8 +36,6 @@ class Command(BaseCommand):
     categories = {}
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
-    DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
-                               "?key={key}&part=id,snippet&relatedToVideoId={id}&type=video&maxResults=50&relevanceLanguage=en"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -52,7 +47,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
     def handle(self, *args, **options):
         try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("id")[0]
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("id")[0]
         except Exception as e:
             logger.exception(e)
         self.process_audit()
@@ -71,18 +66,11 @@ class Command(BaseCommand):
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos[:100]:
-            self.do_recommended_api_call(video)
+            self.do_check_video(video)
         self.audit.updated = timezone.now()
         self.audit.save()
-        if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
-            self.audit.completed = timezone.now()
-            self.audit.save()
-            print("Audit completed {}".format(self.audit.id))
-            raise Exception("Audit completed {}".format(self.audit.id))
-        else:
-            print("Done one step, continuing audit {}.".format(self.audit.id))
-            raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
-            #self.process_audit()
+        print("Done one step, continuing audit {}.".format(self.audit.id))
+        raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -101,49 +89,46 @@ class Command(BaseCommand):
             vids.append(avp)
         return vids
 
-    def do_recommended_api_call(self, avp):
-        video = avp.video
-        url = self.DATA_RECOMMENDED_API_URL.format(key=self.DATA_API_KEY, id=video.video_id)
-        r = requests.get(url)
-        data = r.json()
-        for i in data['items']:
-            db_video = AuditVideo.get_or_create(i['id']['videoId'])
-            db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            db_video_meta.name = i['snippet']['title']
-            db_video_meta.description = i['snippet']['description']
-            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
-            if not db_video_meta.keywords:
-                self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-            db_video.channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-            db_video_meta.save()
-            db_video.save()
-            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                    channel=db_video.channel,
-            )
-            db_channel_meta.name = i['snippet']['channelTitle']
-            if not db_channel_meta.keywords:
-                self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
-            db_channel_meta.save()
-            if self.check_video_is_clean(db_video_meta):
-                v, _  = AuditVideoProcessor.objects.get_or_create(
-                    video=db_video,
-                    audit=self.audit
-                )
-                if not v.video_source:
-                    v.video_source = video
-                    v.save()
+    def do_check_video(self, avp):
+        db_video = avp.video
+        db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
+        if not db_video_meta.name or not db_video.channel:
+            channel_id = self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
+        else:
+            channel_id = db_video.channel.channel_id
+        if not channel_id: # video does not exist or is private now
+            avp.clean = False
+            avp.processed = timezone.now()
+            avp.save(update_fields=['processed', 'clean'])
+            return
+        db_video.channel = AuditChannel.get_or_create(channel_id)
+        db_video_meta.save()
+        db_video.save()
+        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
+                channel=db_video.channel,
+        )
+        if not db_channel_meta.keywords:
+            self.do_channel_metadata_api_call(db_channel_meta, channel_id)
+        db_channel_meta.save()
+        avp.clean = self.check_video_is_clean(db_video_meta, avp)
         avp.processed = timezone.now()
-        avp.save(update_fields=['processed'])
+        avp.save()
 
-    def check_video_is_clean(self, db_video_meta):
+    def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
-        if self.inclusion_list and not self.check_exists(full_string, self.inclusion_list):
+        if self.inclusion_list:
+            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            avp.word_hits['inclusion'] = hits
+            if not is_there:
                 return False
-        if self.exclusion_list and self.check_exists(full_string, self.exclusion_list):
+        if self.exclusion_list:
+            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            avp.word_hits['exclusion'] = hits
+            if is_there:
                 return False
         return True
 
@@ -180,11 +165,19 @@ class Command(BaseCommand):
                 logger.info("problem with api call for video {}".format(video_id))
                 return
             try:
-                i = data['items'][0]
+                total = data['pageInfo']['totalResults']
+                if total == 0:
+                    return None
+                else:
+                    i = data['items'][0]
             except Exception as e:
                 print("problem getting video {}".format(video_id))
                 return
+            db_video_meta.name = i['snippet']['title']
+            db_video_meta.description = i['snippet']['description']
+            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
             db_video_meta.description = i['snippet'].get('description')
+            channel_id = i['snippet']['channelId']
             keywords = i['snippet'].get('tags')
             if keywords:
                 db_video_meta.keywords = ','.join(keywords)
@@ -212,6 +205,7 @@ class Command(BaseCommand):
             if db_video_meta.description:
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
+            return channel_id
         except Exception as e:
             logger.exception(e)
 
@@ -236,6 +230,10 @@ class Command(BaseCommand):
             except Exception as e:
                 print("problem getting channel {}".format(channel_id))
                 return
+            try:
+                db_channel_meta.name = i['brandingSettings']['channel']['title']
+            except Exception as e:
+                pass
             try:
                 db_channel_meta.description = i['brandingSettings']['channel']['description']
             except Exception as e:
@@ -277,8 +275,8 @@ class Command(BaseCommand):
     def check_exists(self, text, exp):
         keywords = re.findall(exp, text.lower())
         if len(keywords) > 0:
-            return True
-        return False
+            return True, keywords
+        return False, None
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
@@ -288,7 +286,7 @@ class Command(BaseCommand):
         for i in data['items']:
             AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
-    def export_videos(self, audit_id=None, num_out=None):
+    def export_videos(self, audit_id=None, num_out=None, clean=True):
         self.get_categories()
         cols = [
             "video ID",
@@ -307,7 +305,7 @@ class Command(BaseCommand):
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
-        video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id).values_list('video_id', flat=True)
+        video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).values_list('video_id', flat=True)
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
                 "video",
                 "video__channel",
