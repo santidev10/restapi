@@ -8,7 +8,6 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from utils.aws.s3_exporter import S3Exporter
-from utils.serializers.fields import PercentField
 
 OPPORTUNITY_COLUMN_NAME = "opportunity_name"
 PLACEMENT_COLUMN_NAME = "placement_name"
