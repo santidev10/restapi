@@ -23,12 +23,16 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
         filters = request.GET
         user_pk = request.user.pk
 
+        user_emails = request.GET.get('emails', [])
+        if user_emails:
+            user_emails = user_emails.strip().split(',')
+
         report_name = self.generate_report_hash(filters, user_pk)
         url_to_export = reverse("{}:{}".format(Namespace.AW_REPORTING, Name.PacingReport.EXPORT), args=(report_name,))
 
         task_position = utils.get_queue_size("reports") + 1
 
-        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
+        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export, user_emails)
 
         return Response(
             data={
