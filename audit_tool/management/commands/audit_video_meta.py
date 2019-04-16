@@ -373,7 +373,7 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     str(v.emoji),
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S"),
+                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name,
                     v.video.channel.channel_id,
                     country
