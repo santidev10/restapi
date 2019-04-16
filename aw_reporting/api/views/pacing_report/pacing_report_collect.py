@@ -7,6 +7,7 @@ from django.conf import settings
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
@@ -22,10 +23,13 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
     def get(self, request, *args, **kwargs):
         filters = request.GET
         user_pk = request.user.pk
+        user_emails = request.GET.getlist("emails")
 
-        user_emails = request.GET.get('emails', [])
-        if user_emails:
-            user_emails = user_emails.strip().split(',')
+        if not user_emails:
+            return Response(
+                data="User emails are not defined",
+                status=HTTP_400_BAD_REQUEST
+            )
 
         report_name = self.generate_report_hash(filters, user_pk)
         url_to_export = reverse("{}:{}".format(Namespace.AW_REPORTING, Name.PacingReport.EXPORT), args=(report_name,))
