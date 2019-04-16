@@ -10,7 +10,6 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.lang import flatten_generator
 
 
 # fixme: use utils.api.file_list_api_view.FileListApiView instead
@@ -106,7 +105,7 @@ class CassandraExportMixin(object):
         return response.data.get("items")
 
     def _data_filtered(self, filters):
-        return flatten_generator(self._data_filtered_batch_generator(filters))
+        return self._data_filtered_batch_generator(filters)
 
     def post(self, request):
         """

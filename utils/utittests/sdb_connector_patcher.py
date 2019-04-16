@@ -117,7 +117,7 @@ class SingleDatabaseApiConnectorPatcher:
         pass
 
     def get_channel_list_full(self, *args, **kwargs):
-        pass
+        yield from self.get_channel_list(*args, **kwargs)["items"]
 
     def get_video_list_full(self, *args, **kwargs):
         pass

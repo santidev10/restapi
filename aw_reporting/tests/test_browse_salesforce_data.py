@@ -824,7 +824,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             call_command("browse_salesforce_data", no_get="1")
 
         sf_mock().sf.Flight__c.update.assert_called_once_with(
-            flight.id, dict(Pacing__c=pacing))
+            flight.id, dict(Pacing__c=pacing * 100))
 
     def test_update_pacing_not_changed(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
@@ -855,7 +855,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         with patch_now(today):
             pacing_report = PacingReport()
             flights_data = pacing_report.get_flights_data(id=flight.id)
-            pacing = get_pacing_from_flights(flights_data)
+            pacing = get_pacing_from_flights(flights_data) * 100
             self.assertIsNotNone(pacing, flight.pacing)
         flight.pacing = pacing - 1e-08
         flight.save()

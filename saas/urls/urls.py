@@ -5,7 +5,7 @@ from django.conf.urls import url, include
 
 from administration.api import urls as admin_api_urls
 from aw_creation.api import urls as aw_creation_urls
-from aw_reporting.api import urls as aw_reporting_urls
+from aw_reporting.api.urls.urls import urlpatterns as aw_reporting_urls
 from brand_safety.api import urls as brand_safety_api_urls
 from channel.api import urls as channel_api_urls
 from email_reports import urls as email_reports_api_urls
