@@ -13,8 +13,6 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
-from utils.data_providers.sdb_data_provider import SDBDataProvider # Remove
-from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -23,23 +21,23 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 3
-    channel_id_pool_batch_limit = 1
-    max_process_count = 3
+    channel_id_master_batch_limit = 400
+    channel_id_pool_batch_limit = 40
+    max_process_count = 5
     brand_safety_fail_threshold = 3
-    cursor_logging_threshold = 50000
+    cursor_logging_threshold = 500
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
         "title": 4,
         "description": 1,
         "tags": 1,
+        "transcript": 1,
     }
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
         self.cursor = self.script_tracker.cursor
         self.audit_provider = AuditProvider()
-        self.sdb_data_provider = SDBDataProvider()
         self.sdb_connector = SingleDatabaseApiConnector()
         # Audit mapping for audit objects to use
         self.audits = {
@@ -65,11 +63,9 @@ class StandardBrandSafetyProvider(object):
         self.score_mapping = self.get_brand_safety_score_mapping()
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self.channel_id_batch_generator(self.cursor):
-            print(channel_batch)
             results = pool.map(self.process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
             # Extract nested results from each process
             video_audits, channel_audits = self.extract_results(results)
-            break
             self.process_results(video_audits, channel_audits)
             # Update script tracker and cursors in case of failure
             self.script_tracker = self.audit_provider.update_cursor(self.script_tracker, len(channel_batch))
@@ -114,11 +110,11 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         self.index_brand_safety_results(
-            self.audit_service.gather_video_brand_safety_results(video_audits),
+            self.audit_service.gather_brand_safety_results(video_audits),
             doc_type=constants.VIDEO
         )
         self.index_brand_safety_results(
-            self.audit_service.gather_channel_brand_safety_results(channel_audits),
+            self.audit_service.gather_brand_safety_results(channel_audits),
             doc_type=constants.CHANNEL
         )
         self._save_results(
@@ -203,7 +199,9 @@ class StandardBrandSafetyProvider(object):
         :param cursor: Cursor position to start audit
         :return: list -> Youtube channel ids
         """
-        channel_ids = PersistentSegmentRelatedChannel.objects.all().distinct("related_id").values_list("related_id", flat=True)[cursor:]
+        #TEST
+        channel_ids = PersistentSegmentRelatedChannel.objects.all().distinct("related_id").order_by("related_id").values_list("related_id", flat=True)[cursor:]
+        # channel_ids = ["UC-4OTZKFWT6_sqAaMBRnoxw", "UC-3OU7CFoaLLXUR3bWyq1Tg"]
         for batch in self.audit_provider.batch(channel_ids, self.channel_id_master_batch_limit):
             yield batch
 

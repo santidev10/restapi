@@ -90,15 +90,15 @@ class BrandSafetyChannelAudit(object):
         text += metadata["description"]
         return text
 
-    # def prune(self):
-    #     brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
-    #                           and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
-    #     channel_videos_failed = self.get_channel_videos_failed()
-    #     subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-    #     failed_standard_audit = brand_safety_failed \
-    #                             and channel_videos_failed \
-    #                             and subscribers > self.subscribers_threshold
-    #     return failed_standard_audit
+    def prune(self):
+        brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
+                              and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
+        channel_videos_failed = self.get_channel_videos_failed()
+        subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
+        failed_standard_audit = brand_safety_failed \
+                                and channel_videos_failed \
+                                and subscribers > self.subscribers_threshold
+        return failed_standard_audit
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
         """
@@ -109,7 +109,7 @@ class BrandSafetyChannelAudit(object):
         channel_category_scores = {
             "channel_id": self.metadata["channel_id"],
             "overall_score": 0,
-            "categories": defaultdict(dict),
+            "categories": {},
         }
         # Aggregate video audits scores for channel
         for audit in self.video_audits:
@@ -117,10 +117,16 @@ class BrandSafetyChannelAudit(object):
             for keyword_name, data in audit_brand_safety_score["keywords"].items():
                 # Default to Counter instance to add dictionary results
                 category = data["category"]
-                score = data["score"]
                 # Sort keyword hits by category and merge with same keyword hits from different video audits
-                channel_category_scores["categories"][category][keyword_name] = channel_category_scores["categories"][category].get(keyword_name, Counter())
-                channel_category_scores["categories"][category][keyword_name] += Counter({"score": score, "hits:": data["hits"]})
+                channel_category_scores["categories"][category] = channel_category_scores["categories"].get(category, {"category_score": 0})
+                channel_category_scores["categories"][category][keyword_name] = channel_category_scores["categories"][category].get(keyword_name, {
+                    "keyword": keyword_name,
+                    "hits": 0,
+                    "score": 0
+                })
+                channel_category_scores["categories"][category]["category_score"] += data["score"]
+                channel_category_scores["categories"][category][keyword_name]["hits"] += data["hits"]
+                channel_category_scores["categories"][category][keyword_name]["score"] += data["score"]
             channel_category_scores["overall_score"] += audit_brand_safety_score["overall_score"]
         # Add brand safety metadata hits to scores
         for word in channel_metadata_hits:
@@ -135,4 +141,25 @@ class BrandSafetyChannelAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_category_scores)
         return channel_category_scores
 
+    def es_repr(self):
+        """
+        ES Brand Safety Index expects documents formatted by category, keyword, and scores
+        :return: ES formatted document
+        """
+        brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
+        brand_safety_es_repr = {
+            "channel_id": brand_safety_results["channel_id"],
+            "overall_score": brand_safety_results["overall_score"],
+            "categories": {}
+        }
+        for category, data in brand_safety_results["categories"].items():
+            category_score = data.pop("category_score")
+            # Initialize value data structure
+            brand_safety_es_repr["categories"][category] = brand_safety_es_repr["categories"].get("category", {
+                "category_score": category_score,
+                "keywords": []
+            })
+            for keyword, keyword_data in data.items():
+                brand_safety_es_repr["categories"][category]["keywords"].append(keyword_data)
+        return brand_safety_es_repr
 

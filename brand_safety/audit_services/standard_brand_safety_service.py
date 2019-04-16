@@ -75,6 +75,19 @@ class StandardBrandSafetyService(AuditService):
         return channel_audits
 
     @staticmethod
+    def gather_brand_safety_results(video_audits):
+        """
+        Maps audits to their brand safety scores
+        :param video_audits: Video Audit objects
+        :return: list -> brand safety score dictionaries
+        """
+        results = []
+        for audit in video_audits:
+            brand_safety_score = audit.es_repr()
+            results.append(brand_safety_score)
+        return results
+
+    @staticmethod
     def gather_video_brand_safety_results(video_audits):
         """
         Maps audits to their brand safety scores

@@ -113,8 +113,9 @@ class BrandSafetyVideoAudit(object):
                 # Set up default value for brand safety hit
                 brand_safety_score["keywords"][word.name] = brand_safety_score["keywords"].get(word.name) or {
                     "category": keyword_category,
+                    "keyword": word.name,
                     "hits": 0,
-                    "score": 0
+                    "score": 0,
                 }
                 brand_safety_score["keywords"][word.name]["hits"] += 1
                 brand_safety_score["keywords"][word.name]["score"] += score
@@ -126,32 +127,37 @@ class BrandSafetyVideoAudit(object):
     def es_repr(self):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
-            Video brand safety results must be formatted since they are processed by keyword, not by category
         :return: ES formatted document
         """
         brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_es_repr = {
             "video_id": brand_safety_results["video_id"],
             "overall_score": brand_safety_results["overall_score"],
-            "categories": defaultdict(dict)
+            "categories": {}
         }
         for keyword_name, data in brand_safety_results["keywords"].items():
             category = data.pop("category")
-            brand_safety_es_repr["categories"][category][keyword_name] = data
+            # Initialize values for category
+            brand_safety_es_repr["categories"][category] = brand_safety_es_repr["categories"].get(category, {
+                "category_score": 0,
+                "keywords": []
+            })
+            brand_safety_es_repr["categories"][category]["category_score"] += data["score"]
+            brand_safety_es_repr["categories"][category]["keywords"].append(data)
         return brand_safety_es_repr
 
-    # def prune(self):
-    #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
-    #     brand_safety_failed = brand_safety_counts \
-    #                           and (
-    #                                   len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
-    #                                   or any(
-    #                               brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
-    #                               brand_safety_counts)
-    #                           )
-    #     dislike_ratio = self.get_dislike_ratio()
-    #     views = self.metadata["views"] if self.metadata["views"] is not constants.DISABLED else 0
-    #     failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
-    #                             and views > self.views_audit_threshold \
-    #                             and brand_safety_failed
-    #     return failed_standard_audit
+    def prune(self):
+        brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
+        brand_safety_failed = brand_safety_counts \
+                              and (
+                                      len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
+                                      or any(
+                                  brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
+                                  brand_safety_counts)
+                              )
+        dislike_ratio = self.get_dislike_ratio()
+        views = self.metadata["views"] if self.metadata["views"] is not constants.DISABLED else 0
+        failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
+                                and views > self.views_audit_threshold \
+                                and brand_safety_failed
+        return failed_standard_audit
