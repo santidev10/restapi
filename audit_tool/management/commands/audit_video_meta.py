@@ -78,7 +78,8 @@ class Command(BaseCommand):
         with open(seed_file) as f:
             reader = csv.reader(f)
             vids = []
-            for seed in reader:
+            for row in reader:
+                seed = row[0]
                 if 'youtube.' in seed:
                     v_id = seed.split("/")[-1]
                     if '?v=' in v_id:
