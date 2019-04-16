@@ -8,7 +8,7 @@ from userprofile.models import UserProfile
 
 
 @celery_app.task(queue='reports')
-def export_pacing_report(get, user_pk, report_name, url_to_export):
+def export_pacing_report(get, user_pk, report_name, url_to_export, user_emails):
     user = UserProfile.objects.get(pk=user_pk)
 
     pacing_report = PacingReport()
@@ -25,14 +25,13 @@ def export_pacing_report(get, user_pk, report_name, url_to_export):
 
     # E-mail
     from_email = settings.SENDER_EMAIL_ADDRESS
-    to = [user.email, ]
     bcc = []
 
     email = EmailMessage(
         subject=subject,
         body=body,
         from_email=from_email,
-        to=to,
+        to=user_emails,
         bcc=bcc,
     )
     email.send(fail_silently=False)
