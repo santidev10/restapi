@@ -101,11 +101,11 @@ REPORT_HEADERS = {
 }
 
 FORMATS = {
-    "money": "${:0,.2f}",
-    "percent": "{0:.2f}%",
-    "number": "{:,.0f}",
-    "date": "{:%Y-%m-%d}",
-    "default": "{}"
+    "money": "${value:0,.2f}",
+    "percent": "{value:.2%}",
+    "number": "{value:,.0f}",
+    "date": "{value:%Y-%m-%d}",
+    "default": "{value}"
 }
 
 FORMATTING = dict(
@@ -139,12 +139,9 @@ class PacingReportCSVExport:
             value = row.get(column)
             if value:
 
-                if isinstance(value, float) and (column == SharedColumn.PACING or column == SharedColumn.MARGIN):
-                    value = PercentField().to_representation(value)
-
                 column_format = FORMATTING.get(column, FORMATS["default"])
                 try:
-                    value = column_format.format(value)
+                    value = column_format.format(value=value)
                 except:
                     # except error with formatting headers (Name.Opportunity, ...)
                     pass
