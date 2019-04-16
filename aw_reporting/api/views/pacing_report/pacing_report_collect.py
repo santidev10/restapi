@@ -41,8 +41,7 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
         return Response(
             data={
                 "message": "Report is in queue for preparing. Task position in queue is {}. After it "
-                           "is finished exporting, you will receive message via email and You might "
-                           "download it using following link".format(task_position),
+                           "is finished exporting, you will receive message via email.".format(task_position),
                 "link": url_to_export
             },
             status=HTTP_200_OK)
