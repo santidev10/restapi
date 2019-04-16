@@ -10,8 +10,7 @@ from utils.utittests.s3_mock import mock_s3
 from utils.utittests.reverse import reverse
 
 EXPECT_MESSSAGE = "Report is in queue for preparing. Task position in queue is 1. After it is finished exporting, " \
-                  "you will receive message via email and You might download it using " \
-                  "following link"
+                  "you will receive message via email."
 
 ERROR_MESSAGE = "User emails are not defined"
 
