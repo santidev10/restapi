@@ -40,13 +40,6 @@ class BrandSafetyChannelScore(object):
         :return:
         """
         self.category_scores[category] += score
-        # self.category_scores[category] = self.category_scores.get(category, {
-        #     "category_score": 0,
-        #     "count": 0
-        # })
-        # self.category_scores[category]["category_score"] += score
-        # # Keep track of how many times a category score has been added to accurately calculate average scores
-        # self.category_scores[category]["count"] += 1
 
     def add_overall_score(self, score):
         """

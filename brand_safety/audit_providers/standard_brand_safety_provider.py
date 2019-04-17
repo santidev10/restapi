@@ -23,7 +23,7 @@ class StandardBrandSafetyProvider(object):
     channel_id_pool_batch_limit = 1
     max_process_count = 5
     brand_safety_fail_threshold = 3
-    cursor_logging_threshold = 300
+    cursor_logging_threshold = 1
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
         "title": 4,
@@ -67,18 +67,20 @@ class StandardBrandSafetyProvider(object):
         self.score_mapping = self.get_brand_safety_score_mapping()
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self.channel_id_batch_generator(self.cursor):
-            results = pool.map(self.process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
+            results = pool.map(self._process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
             # Extract nested results from each process
-            video_audits, channel_audits = self.extract_results(results)
-            self.process_results(video_audits, channel_audits)
+            video_audits, channel_audits = self._extract_results(results)
+            self._process_results(video_audits, channel_audits)
             # Update script tracker and cursors in case of failure
+
+            break
             self.script_tracker = self.audit_provider.update_cursor(self.script_tracker, len(channel_batch))
             self.cursor = self.script_tracker.cursor
             if self.cursor % self.cursor_logging_threshold == 0:
                 logger.info("Standard Brand Safety Cursor at: {}".format(self.cursor))
         logger.info("Standard Brand Safety Audit Complete.")
 
-    def process_audits(self, channel_ids):
+    def _process_audits(self, channel_ids):
         """
         Drives main brand safety logic for each process
         :param channel_ids: Channel ids to retrieve video data for
@@ -93,7 +95,7 @@ class StandardBrandSafetyProvider(object):
         }
         return results
 
-    def extract_results(self, results):
+    def _extract_results(self, results):
         """
         Extracts nested results from each of the processes
         :param results: list -> Dict results from each process
@@ -106,7 +108,7 @@ class StandardBrandSafetyProvider(object):
             channel_audits.extend(batch["channel_audits"])
         return video_audits, channel_audits
 
-    def process_results(self, video_audits, channel_audits):
+    def _process_results(self, video_audits, channel_audits):
         """
         Sends request to index results in Elasticsearch and save to db segments
         :param video_audits:
@@ -121,43 +123,6 @@ class StandardBrandSafetyProvider(object):
             self.audit_service.gather_brand_safety_results(channel_audits),
             doc_type=constants.CHANNEL
         )
-
-    def _save_results(self, *_, **kwargs):
-        """
-        Save Video and Channel audits based on their brand safety results to their respective persistent segments
-        :param kwargs: Persistent segments to save to
-        :return: None
-        """
-        audits = kwargs["audits"]
-        # Persistent segments that store brand safety objects
-        whitelist_segment = kwargs["whitelist_segment"]
-        blacklist_segment = kwargs["blacklist_segment"]
-        # Related segment model used to instantiate database objects
-        related_segment_model = kwargs["related_segment_model"]
-        # Sort audits by brand safety results
-        brand_safety_pass, brand_safety_fail = self._sort_brand_safety(audits)
-        brand_safety_pass_pks = list(brand_safety_pass.keys())
-        brand_safety_fail_pks = list(brand_safety_fail.keys())
-        # Remove brand safety failed audits from whitelist as they are no longer belong in the whitelist
-        whitelist_segment.related.filter(related_id__in=brand_safety_fail_pks).delete()
-        blacklist_segment.related.filter(related_id__in=brand_safety_pass_pks).delete()
-        # Get existing ids to find results to create (that have been deleted from their segment based on their new result)
-        exists = related_segment_model.objects\
-            .filter(
-                Q(segment=whitelist_segment) | Q(segment=blacklist_segment),
-                related_id__in=brand_safety_pass_pks + brand_safety_fail_pks
-            ).values_list("related_id", flat=True)
-        # Set difference to get audits that need to be created
-        to_create = set(brand_safety_pass_pks + brand_safety_fail_pks) - set(exists)
-        # Instantiate related models with new appropriate segment and segment types
-        to_create = [
-            brand_safety_pass[pk].instantiate_related_model(related_segment_model, whitelist_segment, segment_type=constants.WHITELIST)
-            if brand_safety_pass.get(pk) is not None
-            else
-            brand_safety_fail[pk].instantiate_related_model(related_segment_model, blacklist_segment, segment_type=constants.BLACKLIST)
-            for pk in to_create
-        ]
-        related_segment_model.objects.bulk_create(to_create)
 
     def _sort_brand_safety(self, audits):
         """

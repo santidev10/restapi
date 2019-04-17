@@ -83,17 +83,6 @@ class BrandSafetyVideoAudit(object):
         }
         return metadata
 
-    def get_text(self):
-        metadata = self.metadata
-        text = ""
-        text += metadata["video_title"]
-        text += metadata["description"]
-        text += metadata["channel_title"]
-        text += ",".join(metadata["tags"]) if metadata.get("tags") else ""
-        # transcript value may actually be stored as None
-        text += metadata["transcript"] if metadata["transcript"] is not None else ""
-        return text
-
     def calculate_brand_safety_score(self, score_mapping, multiplier_ref):
         """
         Calculate brand safety score total and across categories
@@ -134,39 +123,3 @@ class BrandSafetyVideoAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
-
-        # brand_safety_es_repr = {
-        #     "video_id": brand_safety_results["video_id"],
-        #     "overall_score": brand_safety_results["overall_score"],
-        #     "categories": {}
-        # }
-        # for keyword_name, data in brand_safety_results["keywords"].items():
-        #     category = data.pop("category")
-        #     # Initialize values for category
-        #     brand_safety_es_repr["categories"][category] = brand_safety_es_repr["categories"].get(category, {
-        #         "category_score": 0,
-        #         "keywords": []
-        #     })
-        #     # brand_safety_es_repr["categories"][category]["category_score"] += data["score"]
-        #     brand_safety_es_repr["categories"][category]["keywords"].append(data)
-        #
-        # # Add category scores to brand_safety_es_repr categories
-        # for category, score in brand_safety_results["category_scores"].items():
-        #     brand_safety_es_repr["categories"][category]["category_score"] = score
-        # return brand_safety_es_repr
-
-    def prune(self):
-        brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
-        brand_safety_failed = brand_safety_counts \
-                              and (
-                                      len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
-                                      or any(
-                                  brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
-                                  brand_safety_counts)
-                              )
-        dislike_ratio = self.get_dislike_ratio()
-        views = self.metadata["views"] if self.metadata["views"] is not constants.DISABLED else 0
-        failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
-                                and views > self.views_audit_threshold \
-                                and brand_safety_failed
-        return failed_standard_audit

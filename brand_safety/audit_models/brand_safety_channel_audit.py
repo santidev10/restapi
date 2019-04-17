@@ -4,10 +4,9 @@ from brand_safety import constants
 
 
 class BrandSafetyChannelAudit(object):
-    video_fail_limit = 3
-    subscribers_threshold = 1000
-    brand_safety_hits_threshold = 1
-
+    """
+    Brand safety Audit for channels using SDB data
+    """
     def __init__(self, video_audits, audit_types, channel_data, **kwargs):
         self.source = kwargs["source"]
         self.score_mapping = kwargs["score_mapping"]
@@ -25,6 +24,10 @@ class BrandSafetyChannelAudit(object):
         return pk
 
     def run_audit(self):
+        """
+        Drives main audit logic
+        :return:
+        """
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
@@ -32,35 +35,12 @@ class BrandSafetyChannelAudit(object):
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
         self.calculate_brand_safety_score(*title_hits, *description_hits)
 
-    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
-        details = {
-            "language": self.metadata["language"],
-            "thumbnail": self.metadata["thumbnail_image_url"],
-            "likes": self.metadata["likes"],
-            "dislikes": self.metadata["dislikes"],
-            "views": self.metadata["views"],
-        }
-        if segment_type == constants.BLACKLIST:
-            details["bad_words"] = self.results[constants.BRAND_SAFETY]
-        obj = model(
-            related_id=self.pk,
-            segment=related_segment,
-            title=self.metadata["channel_title"],
-            category=self.metadata["category"],
-            details=details
-        )
-        return obj
-
-    def get_channel_videos_failed(self):
-        videos_failed = 0
-        for video in self.video_audits:
-            if video["results"].get(constants.BRAND_SAFETY):
-                videos_failed += 1
-            if videos_failed >= self.video_fail_limit:
-                return True
-        return False
-
     def get_metadata(self, channel_data):
+        """
+        Set SDB metadata on audit for access of expected keys throughout runtime
+        :param channel_data:
+        :return: dict
+        """
         text = channel_data.get("title", "") + channel_data.get("description", "")
         metadata = {
             "channel_id": channel_data.get("channel_id", ""),
@@ -122,10 +102,10 @@ class BrandSafetyChannelAudit(object):
         brand_safety_es = {
             "channel_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score,
+            "videos_scored": brand_safety_results.videos_scored,
             "categories": {
                 category: {
                     "category_score": score,
-                    "videos_scored": brand_safety_results.videos_scored,
                     "keywords": []
                 }
                 for category, score in brand_safety_results.category_scores.items()
@@ -135,13 +115,3 @@ class BrandSafetyChannelAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
-
-    def prune(self):
-        brand_safety_failed = self.results.get(constants.BRAND_SAFETY) \
-                              and len(self.results[constants.BRAND_SAFETY]) > self.brand_safety_hits_threshold
-        channel_videos_failed = self.get_channel_videos_failed()
-        subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-        failed_standard_audit = brand_safety_failed \
-                                and channel_videos_failed \
-                                and subscribers > self.subscribers_threshold
-        return failed_standard_audit

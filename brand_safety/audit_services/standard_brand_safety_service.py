@@ -39,13 +39,16 @@ class StandardBrandSafetyService(AuditService):
             video_data = self.get_channel_video_data(channel_ids)
         video_audits = []
         for video in video_data:
+            # Create a copy of default scores for each audit
+            default_category_score_copy = {}
+            default_category_score_copy.update(self.default_video_category_scores)
             audit = BrandSafetyVideoAudit(
                 video,
                 self.audit_types,
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
-                default_category_scores=self.default_video_category_scores
+                default_category_scores=default_category_score_copy
             )
             audit.run_audit()
             video_audits.append(audit)
@@ -65,6 +68,9 @@ class StandardBrandSafetyService(AuditService):
             channel_data = sorted_channel_data.get(channel_id, None)
             if not channel_data:
                 continue
+            # Create a copy of default scores for each audit
+            default_category_score_copy = {}
+            default_category_score_copy.update(self.default_channel_category_scores)
             channel_audit = BrandSafetyChannelAudit(
                 video_audits,
                 self.audit_types,
@@ -72,54 +78,23 @@ class StandardBrandSafetyService(AuditService):
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
-                default_category_scores=self.default_channel_category_scores
+                default_category_scores=default_category_score_copy
             )
             channel_audit.run_audit()
             channel_audits.append(channel_audit)
         return channel_audits
 
     @staticmethod
-    def gather_brand_safety_results(video_audits):
+    def gather_brand_safety_results(audits):
         """
         Maps audits to their brand safety scores
         :param video_audits: Video Audit objects
         :return: list -> brand safety score dictionaries
         """
         results = []
-        for audit in video_audits:
+        for audit in audits:
             es_repr = audit.es_repr()
             results.append(es_repr)
-        return results
-
-    @staticmethod
-    def gather_video_brand_safety_results(video_audits):
-        """
-        Maps audits to their brand safety scores
-        :param video_audits: Video Audit objects
-        :return: list -> brand safety score dictionaries
-        """
-        results = []
-        for audit in video_audits:
-            # brand_safety_score = audit.brand_safety_score
-            # # Map categories field from collections.Counter instance to dictionary
-            # brand_safety_score["categories"] = dict(brand_safety_score["categories"])
-            brand_safety_score = audit.es_repr()
-            results.append(brand_safety_score)
-        return results
-
-    @staticmethod
-    def gather_channel_brand_safety_results(channel_audits):
-        """
-        Maps audits to their brand safety scores
-        :param channel_audits: Channel Audit objects
-        :return: list -> brand safety score dictionaries
-        """
-        results = []
-        for audit in channel_audits:
-            brand_safety_score = audit.brand_safety_score
-            # Map categories field from collections.Counter instance to dictionary
-            brand_safety_score["categories"] = dict(brand_safety_score["categories"])
-            results.append(brand_safety_score)
         return results
 
     def get_sorted_channel_data(self, channel_ids):
@@ -142,6 +117,11 @@ class StandardBrandSafetyService(AuditService):
         return sorted_channel_data
 
     def get_channel_video_data(self, channel_ids):
+        """
+        Retrieve channel metadata from SDB
+        :param channel_ids:
+        :return:
+        """
         params = dict(
             fields=self.video_fields,
             sort="video_id",
