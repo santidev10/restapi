@@ -231,7 +231,6 @@ class Command(BaseCommand):
             db_video_meta.language = self.calc_language(str_long)
             return channel_id
         except Exception as e:
-            print(e.message)
             logger.exception(e)
 
     def calc_language(self, data):
