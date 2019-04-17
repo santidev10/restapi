@@ -327,7 +327,8 @@ class Command(BaseCommand):
             "channel name",
             "channel ID",
             "country",
-            "hit words",
+            "all hit words",
+            "unique hit words",
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
@@ -363,6 +364,7 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, vid.video_id)
                 data = [
                     v.video.video_id,
                     v.name,
@@ -376,6 +378,20 @@ class Command(BaseCommand):
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name,
                     v.video.channel.channel_id,
-                    country
+                    country,
+                    all_hit_words,
+                    unique_hit_words,
                 ]
                 wr.writerow(data)
+
+    def get_hit_words(self, hit_words, v_id):
+        hits = hit_words.get(v_id)
+        uniques = []
+        if hits:
+            if hits.get('exclusion'):
+                for word in hits['exclusion']:
+                    if word not in uniques:
+                        uniques.add(word)
+                return ','.join(hits['exclusion']), ','.join(uniques)
+        return '', ''
+    
