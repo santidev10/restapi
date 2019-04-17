@@ -7,6 +7,7 @@ from django.conf import settings
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.api.views.pacing_report.pacing_report_helper import PacingReportHelper
@@ -22,19 +23,25 @@ class PacingReportCollectView(ListAPIView, PacingReportHelper):
     def get(self, request, *args, **kwargs):
         filters = request.GET
         user_pk = request.user.pk
+        user_emails = request.GET.getlist("emails")
+
+        if not user_emails:
+            return Response(
+                data="User emails are not defined",
+                status=HTTP_400_BAD_REQUEST
+            )
 
         report_name = self.generate_report_hash(filters, user_pk)
         url_to_export = reverse("{}:{}".format(Namespace.AW_REPORTING, Name.PacingReport.EXPORT), args=(report_name,))
 
         task_position = utils.get_queue_size("reports") + 1
 
-        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export)
+        export_pacing_report.delay(filters, user_pk, report_name, settings.HOST + url_to_export, user_emails)
 
         return Response(
             data={
                 "message": "Report is in queue for preparing. Task position in queue is {}. After it "
-                           "is finished exporting, you will receive message via email and You might "
-                           "download it using following link".format(task_position),
+                           "is finished exporting, you will receive message via email.".format(task_position),
                 "link": url_to_export
             },
             status=HTTP_200_OK)
