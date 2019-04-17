@@ -44,7 +44,7 @@ class Command(BaseCommand):
                            "?key={key}&part=id,snippet&id={id}"
 
     # this is the primary method to call to trigger the entire audit sequence
-    @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
+    @pidfile(piddir=".", pidname="audit_video_meta.pid")
     def handle(self, *args, **options):
         try:
             self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("id")[0]
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             self.audit.save()
             print("Audit completed, all videos processed")
             raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[:1000]:
+        for video in pending_videos[:25000]:
             self.do_check_video(video)
         self.audit.updated = timezone.now()
         self.audit.save()
