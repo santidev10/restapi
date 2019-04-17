@@ -334,10 +334,10 @@ class Command(BaseCommand):
             audit_id = self.audit.id
         video_ids = []
         hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean)#.values_list('video_id', flat=True)
+        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
         for vid in videos:
             video_ids.append(vid.video_id)
-            hit_words[vid.video_id] = vid.word_hits
+            hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
                 "video",
                 "video__channel",
@@ -364,7 +364,7 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, vid.video_id)
+                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
                     v.video.video_id,
                     v.name,
