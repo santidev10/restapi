@@ -391,7 +391,6 @@ class Command(BaseCommand):
             if hits.get('exclusion'):
                 for word in hits['exclusion']:
                     if word not in uniques:
-                        uniques.add(word)
+                        uniques.append(word)
                 return ','.join(hits['exclusion']), ','.join(uniques)
         return '', ''
-    
