@@ -22,7 +22,7 @@ from pid.decorator import pidfile
 
 """
 requirements:
-    we receive a list of video URLs. 
+    we receive a list of video URLs.
 process:
     we go through the videos, grab the meta video data and meta channel
     data, check for blacklist (or whitelist if included) and end with a
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             self.audit.save()
             print("Audit completed, all videos processed")
             raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[:100]:
+        for video in pending_videos[:1000]:
             self.do_check_video(video)
         self.audit.updated = timezone.now()
         self.audit.save()
@@ -373,7 +373,7 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     str(v.emoji),
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S"),
+                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name,
                     v.video.channel.channel_id,
                     country
