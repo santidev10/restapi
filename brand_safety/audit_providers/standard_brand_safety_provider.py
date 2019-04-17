@@ -121,20 +121,6 @@ class StandardBrandSafetyProvider(object):
             self.audit_service.gather_brand_safety_results(channel_audits),
             doc_type=constants.CHANNEL
         )
-        # Saving data to segments is not currently a requirement for 3.15 brand safety
-        # self._save_results(
-        #     audits=video_audits,
-        #     whitelist_segment=self.whitelist_videos,
-        #     blacklist_segment=self.blacklist_videos,
-        #     related_segment_model=PersistentSegmentRelatedVideo
-        # )
-        # self._save_results(
-        #     audits=channel_audits,
-        #     whitelist_segment=self.whitelist_channels,
-        #     blacklist_segment=self.blacklist_channels,
-        #     related_segment_model=PersistentSegmentRelatedChannel,
-        #     type="channel"
-        # )
 
     def _save_results(self, *_, **kwargs):
         """
@@ -253,10 +239,3 @@ class StandardBrandSafetyProvider(object):
             for category_id in categories
         }
         return default_category_scores
-
-    def set_segments(self):
-        # Set required persistent segments to save to
-        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(title="Brand Safety Whitelist Channels", category="whitelist")
-        self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(title="Brand Safety Blacklist Channels", category="blacklist")
-        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Whitelist Videos", category="whitelist")
-        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Blacklist Videos", category="blacklist")
