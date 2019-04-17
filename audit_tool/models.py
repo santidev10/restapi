@@ -121,12 +121,16 @@ class Comment(models.Model):
     found_items = JSONField(default={})
 
 class AuditProcessor(models.Model):
+    # audit_types:
+    #   0 - recommendation engine
+    #   1 - video meta processor
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
     params = JSONField(default={})
     audit_type = models.IntegerField(db_index=True, default=0)
+
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)

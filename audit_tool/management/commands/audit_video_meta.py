@@ -231,7 +231,6 @@ class Command(BaseCommand):
             db_video_meta.language = self.calc_language(str_long)
             return channel_id
         except Exception as e:
-            print(e.message)
             logger.exception(e)
 
     def calc_language(self, data):
@@ -327,16 +326,17 @@ class Command(BaseCommand):
             "channel name",
             "channel ID",
             "country",
-            "hit words",
+            "all hit words",
+            "unique hit words",
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
         video_ids = []
         hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean)#.values_list('video_id', flat=True)
+        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
         for vid in videos:
             video_ids.append(vid.video_id)
-            hit_words[vid.video_id] = vid.word_hits
+            hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
                 "video",
                 "video__channel",
@@ -363,6 +363,7 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
                     v.video.video_id,
                     v.name,
@@ -374,8 +375,21 @@ class Command(BaseCommand):
                     v.dislikes,
                     str(v.emoji),
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name,
-                    v.video.channel.channel_id,
-                    country
+                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
+                    v.video.channel.channel_id if v.video.channel else  '',
+                    country,
+                    all_hit_words,
+                    unique_hit_words,
                 ]
                 wr.writerow(data)
+
+    def get_hit_words(self, hit_words, v_id):
+        hits = hit_words.get(v_id)
+        uniques = []
+        if hits:
+            if hits.get('exclusion'):
+                for word in hits['exclusion']:
+                    if word not in uniques:
+                        uniques.append(word)
+                return ','.join(hits['exclusion']), ','.join(uniques)
+        return '', ''
