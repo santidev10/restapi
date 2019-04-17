@@ -16,13 +16,15 @@ class StandardBrandSafetyService(AuditService):
                    "tags,category,likes,dislikes,views,language,transcript,country,thumbnail_image_url"
     channel_fields = "channel_id,title,description,category,subscribers,likes,dislikes,views,language,url,country,thumbnail_image_url"
 
-    def __init__(self, audit_types, score_mapping, brand_safety_score_multiplier, logger=None):
+    def __init__(self, *_, **kwargs):
+        audit_types = kwargs["audit_types"]
         super().__init__(audit_types)
         self.sdb_connector = SingleDatabaseApiConnector()
         self.sdb_data_provider = SDBDataProvider()
-        self.score_mapping = score_mapping
-        self.brand_safety_score_multiplier = brand_safety_score_multiplier
-        self.logger = logger
+        self.score_mapping = kwargs["score_mapping"]
+        self.brand_safety_score_multiplier = kwargs["score_multiplier"]
+        self.default_video_category_scores = kwargs["default_video_category_scores"]
+        self.default_channel_category_scores = kwargs["default_channel_category_scores"]
 
     def audit_videos(self, video_data=None, channel_ids=None):
         """
@@ -43,6 +45,7 @@ class StandardBrandSafetyService(AuditService):
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
+                default_category_scores=self.default_video_category_scores
             )
             audit.run_audit()
             video_audits.append(audit)
@@ -68,7 +71,8 @@ class StandardBrandSafetyService(AuditService):
                 channel_data,
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
-                brand_safety_score_multiplier=self.brand_safety_score_multiplier
+                brand_safety_score_multiplier=self.brand_safety_score_multiplier,
+                default_category_scores=self.default_channel_category_scores
             )
             channel_audit.run_audit()
             channel_audits.append(channel_audit)
@@ -83,8 +87,8 @@ class StandardBrandSafetyService(AuditService):
         """
         results = []
         for audit in video_audits:
-            brand_safety_score = audit.es_repr()
-            results.append(brand_safety_score)
+            es_repr = audit.es_repr()
+            results.append(es_repr)
         return results
 
     @staticmethod
