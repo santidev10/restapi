@@ -11,7 +11,6 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
@@ -131,9 +130,6 @@ class Command(BaseCommand):
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                 channel=db_video.channel,
         )
-        # if not db_channel_meta.keywords:
-        #     self.do_channel_metadata_api_call(db_channel_meta, channel_id)
-        # db_channel_meta.save()
         avp.clean = self.check_video_is_clean(db_video_meta, avp)
         avp.processed = timezone.now()
         avp.save()
@@ -244,39 +240,6 @@ class Command(BaseCommand):
             return db_lang
         except Exception as e:
             pass
-
-    def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
-        try:
-            url = self.DATA_CHANNEL_API_URL.format(key=self.DATA_API_KEY, id=channel_id)
-            r = requests.get(url)
-            data = r.json()
-            if r.status_code != 200:
-                logger.info("problem with api call for channel {}".format(channel_id))
-                return
-            try:
-                i = data['items'][0]
-            except Exception as e:
-                print("problem getting channel {}".format(channel_id))
-                return
-            try:
-                db_channel_meta.name = i['brandingSettings']['channel']['title']
-            except Exception as e:
-                pass
-            try:
-                db_channel_meta.description = i['brandingSettings']['channel']['description']
-            except Exception as e:
-                pass
-            try:
-                db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
-            except Exception as e:
-                pass
-            country = i['brandingSettings']['channel'].get('country')
-            if country:
-                db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
-            db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
-            db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-        except Exception as e:
-            logger.exception(e)
 
     def load_inclusion_list(self):
         if self.inclusion_list:
@@ -395,5 +358,5 @@ class Command(BaseCommand):
                 for word in hits['exclusion']:
                     if word not in uniques:
                         uniques.append(word)
-                return ','.join(hits['exclusion']), ','.join(uniques)
+                return len(hits['exclusion']), ','.join(uniques)
         return '', ''
