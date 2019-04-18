@@ -40,7 +40,7 @@ def get_default_settings():
     }
 
 
-def get_default_accesses(via_google=False):
+def get_default_accesses(via_google=False, is_chf_email=None):
     default_accesses_group_names = [
         PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,
@@ -49,6 +49,8 @@ def get_default_accesses(via_google=False):
     ]
     if not via_google:
         default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
+    if is_chf_email:
+        default_accesses_group_names.append(PermissionGroupNames.AUDIT_DOWNLOAD)
     return default_accesses_group_names
 
 
