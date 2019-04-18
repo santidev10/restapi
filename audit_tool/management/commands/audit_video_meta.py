@@ -131,9 +131,9 @@ class Command(BaseCommand):
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                 channel=db_video.channel,
         )
-        if not db_channel_meta.keywords:
-            self.do_channel_metadata_api_call(db_channel_meta, channel_id)
-        db_channel_meta.save()
+        # if not db_channel_meta.keywords:
+        #     self.do_channel_metadata_api_call(db_channel_meta, channel_id)
+        # db_channel_meta.save()
         avp.clean = self.check_video_is_clean(db_video_meta, avp)
         avp.processed = timezone.now()
         avp.save()
