@@ -52,15 +52,6 @@ def get_persistent_segment_model_by_type(segment_type):
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
 
-def get_persistent_segment_preview_data(page, method, params):
-    response = method(params)
-    result = {
-        'items': response["items"],
-        'current_page': page,
-    }
-    return result
-
-
 def get_persistent_segment_connector_config_by_type(segment_type, related_ids):
     """
     Helper method to retrieve SDB data based on segment type
