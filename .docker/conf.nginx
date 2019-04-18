@@ -1,0 +1,19 @@
+http {
+    include mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    server {
+        listen 80;
+
+        root /usr/share/nginx/html;
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api/ {
+            proxy_pass http://api:5000/api/;
+        }
+    }
+}
+events{
+}

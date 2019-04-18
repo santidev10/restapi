@@ -1,61 +1,74 @@
-from django.core.urlresolvers import reverse
+from unittest import mock
+
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
+from aw_reporting.csv_reports import PacingReportCSVExport
+from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
+from utils.utittests.csv import get_data_from_csv_response
+from utils.utittests.s3_mock import mock_s3
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.xlsx import get_sheet_from_response
+from utils.utittests.reverse import reverse
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):
-    url = reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.EXPORT)
 
-    def test_success(self):
-        response = self.client.get(self.url)
+    @mock_s3
+    @mock.patch("aw_reporting.reports.pacing_report.PacingReport.get_opportunities", return_value=[])
+    def test_success(self, *args, **kwargs):
+        report_name = "PacingReport-test"
+        pacing_report = PacingReport()
+        opportunities = pacing_report.get_opportunities()
+
+        csv_generator = PacingReportCSVExport(pacing_report, opportunities, report_name)
+        csv_generator.export_to_s3()
+
+        url = reverse(Name.PacingReport.EXPORT, [Namespace.AW_REPORTING], args=(report_name,))
+
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/CSV")
 
-    def test_headers(self):
-        response = self.client.get(self.url)
+        csv_data = get_data_from_csv_response(response)
+        headers = next(csv_data)
 
-        sheet = get_sheet_from_response(response)
-
-        headers = tuple([cell.value for cell in list(sheet.rows)[1]])
         self.assertEqual(headers, COLUMNS)
 
 
-COLUMNS = (
+COLUMNS = [
     # Name
-    "Opportunity",
-    "Placement",
-    "Flight",
-    "Campaign",
+    "Name.Opportunity",
+    "Name.Placement",
+    "Name.Flight",
+    "Name.Campaign",
 
     # KPIs
-    "Pacing",
-    "Margin",
+    "KPIs.Pacing",
+    "KPIs.Margin",
 
     # Dates
-    "IO",
-    "Start",
-    "End",
+    "Dates.IO",
+    "Dates.Start",
+    "Dates.End",
 
     # Goals
-    "Budget",
-    "Views",
-    "CPV",
-    "Impressions",
-    "CPM",
+    "Goals.Budget",
+    "Goals.Views",
+    "Goals.CPV",
+    "Goals.Impressions",
+    "Goals.CPM",
 
     # Delivered
-    "Cost",
-    "Views",
-    "CPV",
-    "Impressions",
-    "CPM",
+    "Delivered.Cost",
+    "Delivered.Views",
+    "Delivered.CPV",
+    "Delivered.Impressions",
+    "Delivered.CPM",
 
     "AdOps",
     "AM",
     "Sales",
     "Category",
     "Territory",
-)
+]

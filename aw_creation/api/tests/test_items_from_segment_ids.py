@@ -5,6 +5,9 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
+from segment.models import SegmentChannel
+from segment.models import SegmentRelatedChannel
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.test_case import ExtendedAPITestCase
 
 logger = logging.getLogger(__name__)
@@ -110,3 +113,15 @@ class ItemsFromIdsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 4)
         self.assertEqual(set(response.data[0].keys()), {"name", "criteria"})
+
+    def test_more_then_10k_items(self):
+        total_items = 10000 + 1
+        segment = SegmentChannel.objects.create()
+        related_items = [
+            SegmentRelatedChannel(segment=segment, related_id=str(next(int_iterator)))
+            for _ in range(total_items)
+        ]
+        SegmentRelatedChannel.objects.bulk_create(related_items)
+        url = reverse("aw_creation_urls:items_from_segment_ids", args=("channel",))
+        response = self.client.post(url, json.dumps([segment.id]), content_type="application/json", )
+        self.assertEqual(response.status_code, HTTP_200_OK)

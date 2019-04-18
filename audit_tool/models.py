@@ -131,7 +131,6 @@ class AuditProcessor(models.Model):
     params = JSONField(default={})
     audit_type = models.IntegerField(db_index=True, default=0)
 
-
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 

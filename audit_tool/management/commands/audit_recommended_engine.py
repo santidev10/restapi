@@ -121,8 +121,8 @@ class Command(BaseCommand):
                     channel=db_video.channel,
             )
             db_channel_meta.name = i['snippet']['channelTitle']
-            if not db_channel_meta.keywords:
-                self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
+            # if not db_channel_meta.keywords:
+            #     self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta):
                 v, _  = AuditVideoProcessor.objects.get_or_create(

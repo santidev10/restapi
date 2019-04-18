@@ -17,6 +17,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignAgeRangeTargeting
 from aw_reporting.models import CampaignGenderTargeting
 from aw_reporting.models import CampaignLocationTargeting
+from aw_reporting.models import CampaignStatus
 from aw_reporting.models import GenderOptions
 from utils.datetime import now_in_default_tz
 
@@ -88,6 +89,16 @@ class WebHookAWSaveSettingsApiView(APIView):
         for data in request.data["campaigns"]:
             cid = data["id"]
             setup_settings = {k: data[k] for k in setup_settings_fields}
+
+            status = None
+            if data["is_paused"]:
+                status = CampaignStatus.PAUSED
+            elif data["is_removed"]:
+                status = CampaignStatus.REMOVED
+            elif data["is_enabled"]:
+                status = CampaignStatus.ELIGIBLE
+            if status is not None:
+                setup_settings["status"] = status.value
 
             try:
                 campaign = queryset.get(pk=cid)

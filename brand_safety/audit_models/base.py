@@ -1,22 +1,28 @@
 import re
 from collections import Counter
+from collections import namedtuple
 
 import langid
+
+KeywordHit = namedtuple("KeywordHit", "name location")
 
 
 class Audit(object):
     """
     Class for various Audit types to compose common methods with
     """
-
-    @staticmethod
-    def audit(text, keyword_processor):
+    def audit(self, text, location, keyword_processor):
         """
         Finds all matches of regexp in audit metadata
+        :param text: text to parse
+        :param location: text location e.g. title, description, etc.
         :param keyword_processor: flashtext module KeywordProcessor instance
         :return:
         """
-        hits = keyword_processor.extract_keywords(text)
+        hits = [
+            KeywordHit(name=hit, location=location)
+            for hit in keyword_processor.extract_keywords(text)
+        ]
         return hits
 
     @staticmethod

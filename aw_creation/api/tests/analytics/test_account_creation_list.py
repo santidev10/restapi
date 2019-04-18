@@ -60,6 +60,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "plan_cpm",
         "plan_cpv",
         "start",
+        "statistic_max_date",
+        "statistic_min_date",
         "status",
         "thumbnail",
         "topic_count",
