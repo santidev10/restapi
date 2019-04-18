@@ -13,7 +13,7 @@ class SDBDataProvider(DataProviderMixin):
     retry_coeff = 1.5
     retry_sleep = 0.2
     video_batch_limit = 10000
-    get_channel_data_limit = 10000
+    get_channel_data_limit = 5000
     get_channels_videos_limit = 50
 
     def __init__(self,):
@@ -47,21 +47,23 @@ class SDBDataProvider(DataProviderMixin):
         response = self._execute(self.sdb_connector.post_brand_safety_results, results, doc_type)
         return response
 
-    def get_channel_data(self, channel_ids):
+    def get_channel_data(self, channel_ids, fields=[]):
         """
         Retrieve channel data from singledb with channel ids
         :param channel_ids:
         :return:
         """
+        fields = ",".join(fields) or self.channel_fields
         channel_data = []
         for batch in self.batch(channel_ids, self.get_channel_data_limit):
             params = dict(
-                fields=self.channel_fields,
+                fields=fields,
                 size=self.get_channel_data_limit,
                 channel_id__terms=",".join(batch)
             )
             response = self._execute(self.sdb_connector.get_channel_list, params)
             channel_data.extend(response.get("items", []))
+            print("Got {} channels".format(len(channel_data)))
         return channel_data
 
     def _execute(self, method, *args, **kwargs):

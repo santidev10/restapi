@@ -1,8 +1,8 @@
 from collections import defaultdict
-from collections import Counter
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
+from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 
 
 class BrandSafetyVideoAudit(object):
@@ -10,14 +10,17 @@ class BrandSafetyVideoAudit(object):
     views_audit_threshold = 1000
     brand_safety_unique_threshold = 2
     brand_safety_hits_threshold = 3
+    brand_safety_title_multiplier = 4
 
-    def __init__(self, data, audit_types, source=constants.YOUTUBE, score_mapping=None):
+    def __init__(self, data, audit_types, **kwargs):
+        self.source = kwargs["source"]
+        self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
+        self.score_mapping = kwargs["score_mapping"]
+        self.default_category_scores = kwargs["default_category_scores"]
         self.auditor = Audit()
         self.audit_types = audit_types
-        self.source = source
         self.metadata = self.get_metadata(data)
-        self.results = {}
-        self.score_mapping = score_mapping
+        self.results = defaultdict(list)
 
     @property
     def pk(self):
@@ -26,9 +29,11 @@ class BrandSafetyVideoAudit(object):
 
     def run_audit(self):
         brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
-        hits = self.auditor.audit(self.get_text(), brand_safety_audit)
-        self.results[constants.BRAND_SAFETY] = hits
-        self.calculate_brand_safety_score(self.score_mapping)
+        tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, brand_safety_audit)
+        title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, brand_safety_audit)
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
+        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits
+        self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -71,81 +76,50 @@ class BrandSafetyVideoAudit(object):
             "likes": data.get("likes", 0),
             "dislikes": data.get("dislikes", 0),
             "channel_id": data.get("channel_id", ""),
-            "tags": data.get("tags", []),
+            "tags": data.get("tags", ""),
             "video_id": data["video_id"],
             "transcript": data.get("transcript") if data.get("transcript") is not None else "",
             "thumbnail_image_url": data.get("thumbnail_image_url", "")
         }
         return metadata
 
-    def get_text(self):
-        metadata = self.metadata
-        text = ""
-        text += metadata["video_title"]
-        text += metadata["description"]
-        text += metadata["channel_title"]
-        text += ",".join(metadata["tags"]) if metadata.get("tags") else ""
-        # transcript value may actually be stored as None
-        text += metadata["transcript"] if metadata["transcript"] is not None else ""
-        return text
-
-    def calculate_brand_safety_score(self, score_mapping):
+    def calculate_brand_safety_score(self, score_mapping, multiplier_ref):
         """
         Calculate brand safety score total and across categories
         :return: tuple -> (int) total score, (dict) scores by category
         """
-        brand_safety_score = {
-            "video_id": self.metadata["video_id"],
-            "overall_score": 0,
-            "keywords": defaultdict(dict)
-        }
+        brand_safety_score = BrandSafetyVideoScore(self.pk, self.default_category_scores)
         brand_safety_hits = self.results[constants.BRAND_SAFETY]
-        counts = Counter(brand_safety_hits)
-        for keyword_name, count in counts.items():
+        for word in brand_safety_hits:
+            multiplier = multiplier_ref.get(word.location, 1)
             try:
-                keyword_category = score_mapping[keyword_name]["category"]
-                keyword_score = score_mapping[keyword_name]["score"]
-                score = keyword_score * count
-                brand_safety_score["overall_score"] += score
-                brand_safety_score["keywords"][keyword_name] = {
-                    "category": keyword_category,
-                    "hits": count,
-                    "score": score
-                }
+                keyword_category = score_mapping[word.name]["category"]
+                keyword_score = score_mapping[word.name]["score"]
+                calculated_score = keyword_score * multiplier
+                brand_safety_score.add_keyword_score(word.name, keyword_category, calculated_score)
             except KeyError:
-                print(keyword_name)
+                pass
         setattr(self, constants.BRAND_SAFETY_SCORE, brand_safety_score)
         return brand_safety_score
 
     def es_repr(self):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
-            Video brand safety results must be formatted since they are processed by keyword, not by category
         :return: ES formatted document
         """
         brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
-        brand_safety_es_repr = {
-            "video_id": brand_safety_results["video_id"],
-            "overall_score": brand_safety_results["overall_score"],
-            "categories": defaultdict(dict)
+        brand_safety_es = {
+            "video_id": brand_safety_results.pk,
+            "overall_score": brand_safety_results.overall_score,
+            "categories": {
+                category: {
+                    "category_score": category_score,
+                    "keywords": []
+                }
+                for category, category_score in brand_safety_results.category_scores.items()
+            }
         }
-        for keyword_name, data in brand_safety_results["keywords"].items():
+        for keyword, data in brand_safety_results.keyword_scores.items():
             category = data.pop("category")
-            brand_safety_es_repr["categories"][category][keyword_name] = data
-        return brand_safety_es_repr
-
-    # def prune(self):
-    #     brand_safety_counts = self.results.get(constants.BRAND_SAFETY)
-    #     brand_safety_failed = brand_safety_counts \
-    #                           and (
-    #                                   len(brand_safety_counts.keys() >= self.brand_safety_hits_threshold)
-    #                                   or any(
-    #                               brand_safety_counts[keyword] > self.brand_safety_hits_threshold for keyword in
-    #                               brand_safety_counts)
-    #                           )
-    #     dislike_ratio = self.get_dislike_ratio()
-    #     views = self.metadata["views"] if self.metadata["views"] is not constants.DISABLED else 0
-    #     failed_standard_audit = dislike_ratio > self.dislike_ratio_audit_threshold \
-    #                             and views > self.views_audit_threshold \
-    #                             and brand_safety_failed
-    #     return failed_standard_audit
+            brand_safety_es["categories"][category]["keywords"].append(data)
+        return brand_safety_es
