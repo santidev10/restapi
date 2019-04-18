@@ -23,5 +23,9 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
         "schedule": crontab(day_of_month="1", hour="0", minute="0"),
     },
+    "recreate-demo-data": {
+        "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
+        "schedule": crontab(hour="0", minute="0"),
+    }
 }
 CELERY_RESULT_BACKEND = "django-db"
