@@ -1,7 +1,6 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from itertools import product
-from unittest.mock import patch
 
 from django.conf import settings
 from django.db.models import Sum
@@ -18,6 +17,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
@@ -26,7 +26,6 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 
@@ -62,6 +61,8 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "plan_cpv",
         "sf_account",
         "start",
+        "statistic_max_date",
+        "statistic_min_date",
         "thumbnail",
         "topic_count",
         "updated_at",
@@ -356,9 +357,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: [managed_account.id]
         }
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             self.patch_user_settings(**user_settings):
+        with self.patch_user_settings(**user_settings):
             response = self._request(managed_account.account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -625,3 +624,28 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.assertAlmostEqual(item["average_cpm"], expected_cpm)
         with self.subTest("CPV"):
             self.assertAlmostEqual(item["average_cpv"], expected_cpv)
+
+    def test_min_max_based_on_statistic(self):
+        account = Account.objects.create(
+            id=next(int_iterator),
+        )
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+        )
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(30)]
+        for dt in dates:
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                cost=1,
+                date=dt,
+            )
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["statistic_min_date"], dates[0])
+        self.assertEqual(data["statistic_max_date"], dates[-1])

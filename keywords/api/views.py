@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -7,7 +8,6 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
-from aw_reporting.adwords_api import load_web_app_settings
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from segment.models import SegmentKeyword
@@ -18,6 +18,8 @@ from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
 from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+
+logger = logging.getLogger(__name__)
 
 
 class KeywordListApiView(APIView,
@@ -205,8 +207,14 @@ class KeywordListApiView(APIView,
 class KeywordRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.keyword_details',)
-    connector_get = Connector().get_keyword
+    _connector_get = None
     default_request_fields = DEFAULT_KEYWORD_DETAILS_FIELDS
+
+    @property
+    def connector_get(self):
+        if self._connector_get is None:
+            self._connector_get = Connector().get_keyword
+        return self._connector_get
 
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)

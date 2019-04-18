@@ -21,9 +21,8 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         any_channel_id = any_channel["channel_id"]
         ChannelAuditIgnore.objects.create(id=any_channel_id)
 
-        with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher):
-            audit = SegmentedAudit()
-            audit.run()
+        audit = SegmentedAudit()
+        audit.run()
 
         self.assertFalse(PersistentSegmentChannel.objects.filter(related__related_id=any_channel_id).exists())
 
@@ -52,8 +51,7 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
                 return PersistentSegmentCategory.BLACKLIST
             return PersistentSegmentCategory.WHITELIST
 
-        with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch.object(SegmentedAudit, "_segment_category", side_effect=mark_as_blacklist):
+        with patch.object(SegmentedAudit, "_segment_category", side_effect=mark_as_blacklist):
             audit = SegmentedAudit()
             audit.run()
 
@@ -66,9 +64,8 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
         any_video_id = any_video["video_id"]
         VideoAuditIgnore.objects.create(id=any_video_id)
 
-        with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher):
-            audit = SegmentedAudit()
-            audit.run()
+        audit = SegmentedAudit()
+        audit.run()
 
         self.assertFalse(PersistentSegmentVideo.objects.filter(related__related_id=any_video_id).exists())
 
@@ -97,8 +94,7 @@ class SegmentedAuditTestCase(testcases.TransactionTestCase):
                 return PersistentSegmentCategory.BLACKLIST
             return PersistentSegmentCategory.WHITELIST
 
-        with patch("audit_tool.segmented_audit.Connector", new=SingleDatabaseApiConnectorPatcher), \
-             patch.object(SegmentedAudit, "_segment_category", side_effect=mark_as_blacklist):
+        with patch.object(SegmentedAudit, "_segment_category", side_effect=mark_as_blacklist):
             audit = SegmentedAudit()
             audit.run()
 

@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     model = get_user_model()
     lists = {
-        "agency": "49b091c5-99b8-4451-9c8a-8f2885695aee",
-        "brand": "ec1ad8b3-1b56-474a-b68b-b7a5021c8187",
-        "creator": "edc9864d-aa05-4dd9-970e-2a75d085a859",
+        "agency": "324bcfdb-5368-423c-99f0-50935683d5fb",
+        "brand": "ff1efb0-eabf-48a2-b1ed-145b28b9c3b3",
+        "creator": "ad715036-b107-4f98-9b9a-b60f5fb16fef",
     } # avp test lists
     headers = {
         'autopilotapikey': settings.AUTOPILOT_API_KEY,

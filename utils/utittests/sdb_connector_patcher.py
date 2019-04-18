@@ -1,6 +1,11 @@
 import json
 
+from django.http import Http404
 
+from utils.singleton import singleton
+
+
+# @singleton
 class SingleDatabaseApiConnectorPatcher:
     """
     We can use the class to patch SingleDatabaseApiConnector in tests
@@ -61,19 +66,67 @@ class SingleDatabaseApiConnectorPatcher:
     def get_video(self, query_params, pk):
         with open('saas/fixtures/tests/singledb_video_list.json') as data_file:
             videos = json.load(data_file)
-        video = next(filter(lambda c: c["id"] == pk, videos["items"]))
+        try:
+            video = next(filter(lambda c: c["id"] == pk, videos["items"]))
+        except StopIteration:
+            raise Http404("No video")
         return video
-
-    def store_ids(self, query_params):
-        pass
 
     def get_bad_words_list(self, *args):
         with open("saas/fixtures/tests/singledb_bad_words_list.json") as data_file:
             bad_words = json.load(data_file)
         return bad_words
 
-    def get_channel_list_full(self, *args, **kwargs):
+    def get_highlights_keywords(self, *args):
+        return self.get_keyword_list(*args)
+
+    def delete_channels(self, *args):
         pass
+
+    def get_keyword(self, *args, **kwargs):
+        return dict(keyword="123")
+
+    def post_bad_word(self, *args):
+        pass
+
+    def get_bad_word(self, *args):
+        pass
+
+    def put_bad_word(self, *args):
+        pass
+
+    def delete_bad_word(self, *args):
+        pass
+
+    def get_bad_words_history_list(self, *args):
+        pass
+
+    def get_bad_words_categories_list(self, *args):
+        pass
+
+    def put_video(self, *args):
+        pass
+
+    def delete_videos(self, *args):
+        pass
+
+    def store_ids(self, ids):
+        pass
+
+    def delete_channel_test(self, *args, **kwargs):
+        pass
+
+    def get_channel_list_full(self, *args, **kwargs):
+        yield from self.get_channel_list(*args, **kwargs)["items"]
 
     def get_video_list_full(self, *args, **kwargs):
         pass
+
+    def unauthorize_channel(self, *args):
+        pass
+
+
+def monkey_patch():
+    import singledb.connector
+    singledb.connector.SingleDatabaseApiConnector_origin = singledb.connector.SingleDatabaseApiConnector
+    singledb.connector.SingleDatabaseApiConnector = SingleDatabaseApiConnectorPatcher

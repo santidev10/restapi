@@ -5,9 +5,11 @@ from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
 from django.db.models import Count
 
-from aw_reporting.models.base import BaseModel, BaseQueryset
+from aw_reporting.models.base import BaseModel
+from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
+from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
@@ -37,8 +39,12 @@ class SFAccount(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        return dict(id=data['Id'], name=data['Name'],
-                    parent_id=data['ParentId'])
+        Fields = SalesforceFields.SFAccount.map_object()
+        return dict(
+            id=data[Fields.ID],
+            name=data[Fields.NAME],
+            parent_id=data[Fields.PARENT_ID],
+        )
 
 
 class UserRole(BaseModel):
@@ -50,7 +56,11 @@ class UserRole(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        return dict(id=data['Id'], name=data['Name'])
+        Fields = SalesforceFields.UserRole.map_object()
+        return dict(
+            id=data[Fields.ID],
+            name=data[Fields.NAME],
+        )
 
 
 class User(BaseModel):
@@ -72,12 +82,15 @@ class User(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        return dict(id=data['Id'],
-                    name=data['Name'],
-                    photo_id=data.get('photo_id'),
-                    email=data['Email'],
-                    is_active=data['IsActive'],
-                    role_id=data["UserRoleId"])
+        Fields = SalesforceFields.User.map_object()
+        return dict(
+            id=data[Fields.ID],
+            name=data[Fields.NAME],
+            photo_id=data.get("photo_id"),
+            email=data[Fields.EMAIL],
+            is_active=data[Fields.IS_ACTIVE],
+            role_id=data[Fields.ROLE_ID],
+        )
 
     def __str__(self):
         return self.name
@@ -99,10 +112,11 @@ class Contact(BaseModel):
 
     @classmethod
     def get_data(cls, data):
+        Fields = SalesforceFields.Contact.map_object()
         return dict(
-            id=data['Id'],
-            first_name=data['FirstName'],
-            last_name=data['LastName'],
+            id=data[Fields.ID],
+            first_name=data[Fields.FIRST_NAME],
+            last_name=data[Fields.LAST_NAME],
         )
 
 
@@ -155,6 +169,10 @@ class Opportunity(models.Model):
     close_date = models.DateField(null=True)
     renewal_approved = models.BooleanField(default=False)
     reason_for_close = models.TextField(default="")
+
+    # Buffers for CPV and CPM goal types
+    cpv_buffer = models.IntegerField(null=True, blank=True, default=None)
+    cpm_buffer = models.IntegerField(null=True, blank=True, default=None)
 
     # sf managers
     account_manager = models.ForeignKey(
@@ -263,7 +281,8 @@ class Opportunity(models.Model):
 
     @classmethod
     def get_data(cls, data):
-        rate_type = data.get('Rate_Type__c') or data.get('Cost_Method__c')
+        Fields = SalesforceFields.Opportunity.map_object()
+        rate_type = data.get(Fields.RATE_TYPE) or data.get(Fields.COST_METHOD)
         if rate_type and 'CPM' in rate_type:
             if 'CPV' in rate_type:
                 goal_type_id = SalesForceGoalType.CPM_AND_CPV
@@ -274,64 +293,64 @@ class Opportunity(models.Model):
 
         # matching sf and iq users
         sales_email = cls.email_from_sf_id(
-            data.get('OwnerId')
+            data.get(Fields.SALES_MANAGER_ID)
         )
         ad_ops_email = cls.email_from_sf_id(
-            data.get('Ad_Ops_Campaign_Manager_UPDATE__c')
+            data.get(Fields.AD_OPS_MANAGER_ID)
         )
         am_email = cls.email_from_sf_id(
-            data.get('Account_Manager__c')
+            data.get(Fields.ACCOUNT_MANAGER_ID)
         )
 
         units = 0
-        if data.get('CPM_Impression_Units_Purchased__c'):
-            units += data['CPM_Impression_Units_Purchased__c']
-        if data.get('CPV_Units_Purchased__c'):
-            units += data['CPV_Units_Purchased__c']
+        if data.get(Fields.IMPRESSIONS):
+            units += data[Fields.IMPRESSIONS]
+        if data.get(Fields.VIDEO_VIEWS):
+            units += data[Fields.VIDEO_VIEWS]
 
         res = dict(
-            id=data['Id'],
-            name=data.get('Name'),
-            category_id=data.get('Client_Vertical__c'),
-            territory=data.get('Territory1__c'),
-            budget=data.get('Grand_Total__c') or 0,
-            io_start=data.get('Projected_Launch_Date__c'),
-            start=data.get('MIN_Placement_Start_Date__c'),
-            end=data.get('MAX_Placement_End_Date__c'),
-            proposal_date=data.get('Date_Proposal_Submitted__c'),
+            id=data[Fields.ID],
+            name=data.get(Fields.NAME),
+            category_id=data.get(Fields.CATEGORY_ID),
+            territory=data.get(Fields.TERRITORY),
+            budget=data.get(Fields.BUDGET) or 0,
+            io_start=data.get(Fields.IO_START),
+            start=data.get(Fields.START),
+            end=data.get(Fields.END),
+            proposal_date=data.get(Fields.PROPOSAL_DATE),
             goal_type_id=goal_type_id,
             units=units,
-            video_views=data.get('CPV_Units_Purchased__c'),
-            impressions=data.get('CPM_Impression_Units_Purchased__c'),
-            cpv_cost=data.get('CPV_Total_Client_Cost__c'),
-            cpm_cost=data.get('CPM_Total_Client_Cost__c'),
-            stage=data.get('StageName'),
-            number=data.get('OPP_ID_Number__c'),
-            aw_cid=data.get('AdWords_CID__c'),
-            brand=data.get('Brand_Test__c'),
-            agency_id=data.get('Agency_Contact__c'),
-            account_id=data.get('AccountId'),
-            contracted_cpm=data.get('Quoted_CPM_Price__c'),
-            contracted_cpv=data.get('Avg_Cost_Per_Unit__c'),
-            account_manager_id=data.get('Account_Manager__c'),
-            sales_manager_id=data.get('OwnerId'),
-            ad_ops_manager_id=data.get('Ad_Ops_Campaign_Manager_UPDATE__c'),
-            ad_ops_qa_manager_id=data.get('Ad_Ops_QA_Manager__c'),
-            cannot_roll_over=data['DO_NOT_STRAY_FROM_DELIVERY_SCHEDULE__c'],
-            probability=data['Probability'],
-            create_date=data['CreatedDate'].split('T')[0]
-            if data['CreatedDate'] else None,
-            close_date=data['CloseDate'],
-            renewal_approved=data['Renewal_Approved__c'],
-            reason_for_close=data['Reason_for_Close_Lost__c'] or "",
+            video_views=data.get(Fields.VIDEO_VIEWS),
+            impressions=data.get(Fields.IMPRESSIONS),
+            cpv_cost=data.get(Fields.CPV_COST),
+            cpm_cost=data.get(Fields.CPM_COST),
+            stage=data.get(Fields.STAGE),
+            number=data.get(Fields.NUMBER),
+            aw_cid=data.get(Fields.AW_CID),
+            brand=data.get(Fields.BRAND),
+            agency_id=data.get(Fields.AGENCY_ID),
+            account_id=data.get(Fields.ACCOUNT_ID),
+            contracted_cpm=data.get(Fields.CONTRACTED_CPM),
+            contracted_cpv=data.get(Fields.CONTRACTED_CPV),
+            account_manager_id=data.get(Fields.ACCOUNT_MANAGER_ID),
+            sales_manager_id=data.get(Fields.SALES_MANAGER_ID),
+            ad_ops_manager_id=data.get(Fields.AD_OPS_MANAGER_ID),
+            ad_ops_qa_manager_id=data.get(Fields.AD_OPS_QA_MANAGER_ID),
+            cannot_roll_over=data[Fields.CANNOT_ROLL_OVER],
+            probability=data[Fields.PROBABILITY],
+            create_date=data[Fields.CREATE_DATE].split('T')[0]
+            if data[Fields.CREATE_DATE] else None,
+            close_date=data[Fields.CLOSE_DATE],
+            renewal_approved=data[Fields.RENEWAL_APPROVED],
+            reason_for_close=data[Fields.REASON_FOR_CLOSE] or "",
 
-            demographic=data["Demo_TEST__c"] or "",
-            geo_targeting=data["Geo_Targeting_Country_State_City__c"] or "",
-            targeting_tactics=data["Targeting_Tactics__c"] or "",
-            tags=data["Tags__c"] or "",
-            types_of_targeting=data["Types_of__c"] or "",
-            apex_deal=data.get("APEX_Deal__c"),
-            billing_server=data.get("Billing_Serer__c")
+            demographic=data[Fields.DEMOGRAPHIC] or "",
+            geo_targeting=data[Fields.GEO_TARGETING] or "",
+            targeting_tactics=data[Fields.TARGETING_TACTICS] or "",
+            tags=data[Fields.TAGS] or "",
+            types_of_targeting=data[Fields.TYPES_OF_TARGETING] or "",
+            apex_deal=data.get(Fields.APEX_DEAL),
+            billing_server=data.get(Fields.BILLING_SERVER)
         )
         if sales_email:
             res['sales_email'] = sales_email
@@ -389,9 +408,9 @@ class OpPlacement(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-
+        Fields = SalesforceFields.Placement.map_object()
         goal_type_id = None
-        cost_method = data['Cost_Method__c']
+        cost_method = data[Fields.COST_METHOD]
         if cost_method:
             if cost_method in SalesForceGoalTypes:
                 goal_type_id = SalesForceGoalTypes.index(cost_method)
@@ -401,23 +420,23 @@ class OpPlacement(BaseModel):
                 goal_type_id = SalesForceGoalType.CPM
 
         res = dict(
-            id=data['Id'],
-            name=data['Name'],
-            opportunity_id=data['Insertion_Order__c'],
+            id=data[Fields.ID],
+            name=data[Fields.NAME],
+            opportunity_id=data[Fields.OPPORTUNITY_ID],
             goal_type_id=goal_type_id,
-            ordered_units=data['Total_Ordered_Units__c'],
-            ordered_rate=data['Ordered_Cost_Per_Unit__c'],
-            total_cost=data['Total_Client_Costs__c'],
-            start=data['Placement_Start_Date__c'],
-            end=data['Placement_End_Date__c'],
-            number=data['PLACEMENT_ID_Number__c'],
-            ad_words_placement=data['Adwords_Placement_IQ__c'],
-            incremental=data['Incremental__c'],
-            placement_type=data['Placement_Type__c'],
-            dynamic_placement=data['Dynamic_Placement__c'],
-            tech_fee=data["Tech_Fee_if_applicable__c"],
-            tech_fee_cap=data["Tech_Fee_Cap_if_applicable__c"],
-            tech_fee_type=data["Tech_Fee_Type__c"],
+            ordered_units=data[Fields.ORDERED_UNITS],
+            ordered_rate=data[Fields.ORDERED_RATE],
+            total_cost=data[Fields.TOTAL_COST],
+            start=data[Fields.START],
+            end=data[Fields.END],
+            number=data[Fields.NUMBER],
+            ad_words_placement=data[Fields.AD_WORDS_PLACEMENT],
+            incremental=data[Fields.INCREMENTAL],
+            placement_type=data[Fields.PLACEMENT_TYPE],
+            dynamic_placement=data[Fields.DYNAMIC_PLACEMENT],
+            tech_fee=data[Fields.TECH_FEE],
+            tech_fee_cap=data[Fields.TECH_FEE_CAP],
+            tech_fee_type=data[Fields.TECH_FEE_TYPE],
         )
         return res
 
@@ -452,6 +471,8 @@ class Flight(BaseModel):
     ordered_units = models.IntegerField(null=True)
 
     budget = models.FloatField(null=True)
+
+    pacing = models.FloatField(null=True)
 
     class Meta:
         ordering = ('start',)
@@ -500,21 +521,22 @@ class Flight(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-
+        Fields = SalesforceFields.Flight.map_object()
         res = dict(
-            id=data['Id'],
-            name=data['Name'],
-            placement_id=data['Placement__c'],
-            start=data['Flight_Start_Date__c'],
-            end=data['Flight_End_Date__c'],
-            month=data['Flight_Month__c'],
+            id=data[Fields.ID],
+            name=data[Fields.NAME],
+            placement_id=data[Fields.PLACEMENT_ID],
+            start=data[Fields.START],
+            end=data[Fields.END],
+            month=data[Fields.MONTH],
 
-            cost=data['Total_Flight_Cost__c'],
-            total_cost=data['Flight_Value__c'],
-            delivered=data['Delivered_Ad_Ops__c'],
+            cost=data[Fields.COST],
+            total_cost=data[Fields.TOTAL_COST],
+            delivered=data[Fields.DELIVERED],
 
-            ordered_cost=data['Ordered_Amount__c'],
-            ordered_units=data['Ordered_Units__c'],
+            ordered_cost=data[Fields.ORDERED_COST],
+            ordered_units=data[Fields.ORDERED_UNITS],
+            pacing=data[Fields.PACING]
         )
         return res
 
@@ -536,16 +558,17 @@ class Activity(BaseModel):
 
     @classmethod
     def get_data(cls, data):
-        item_id = data['WhatId']
+        Fields = SalesforceFields.Activity.map_object()
+        item_id = data[Fields.ITEM_ID]
         res = dict(
-            id=data['Id'],
-            name=data['Subject'] or "",
-            owner_id=data['OwnerId'],
-            type=data['type'],
-            date=data['ActivityDate'],
+            id=data[Fields.ID],
+            name=data[Fields.NAME] or "",
+            owner_id=data[Fields.OWNER_ID],
+            type=data["type"],
+            date=data[Fields.DATE],
             opportunity_id=item_id
             if item_id and item_id.startswith('006') else None,
-            account_id=data['AccountId'],
+            account_id=data[Fields.ACCOUNT_ID],
         )
         return res
 

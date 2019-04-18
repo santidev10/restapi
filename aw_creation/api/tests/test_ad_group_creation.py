@@ -1,17 +1,17 @@
 import json
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
     HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation
+    AdGroupCreation, TargetingItem
 from aw_reporting.demo.models import DemoAccount
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.lang import flatten
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):
@@ -94,9 +94,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
@@ -141,11 +139,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                 "video": {"positive": ["iTKJ_itifQg"], "negative": ["1112yt"]},
             }
         )
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.patch(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.patch(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         account_creation.refresh_from_db()
@@ -212,11 +208,9 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             "genders": [AdGroupCreation.GENDER_FEMALE],
         }
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_fail_put_too_many_targeting_items(self):
@@ -250,22 +244,18 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             video["positive"].append("vp{}".format(i))
             video["negative"].append("vn{}".format(i))
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         # add one extra targeting item
         data["targeting"]["keyword"]["positive"].append("Rick&Morty")
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_delete_the_only(self):
@@ -315,9 +305,154 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             "genders": [AdGroupCreation.GENDER_FEMALE],
         }
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.put(
-                url, json.dumps(data), content_type='application/json',
-            )
+        response = self.client.put(
+            url, json.dumps(data), content_type='application/json',
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_total_limit(self):
+        user = self.user
+        self.fill_all_groups(user)
+        today = now_in_default_tz().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {
+                "keyword": {"positive": [_ for _ in range(5000)], "negative": []},
+                "topic": {"positive": [], "negative": [_ for _ in range(5000)]},
+                "interest": {"positive": [_ for _ in range(5000)], "negative": []},
+                "channel": {"positive": [_ for _ in range(5000)], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
+            "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
+                           AdGroupCreation.AGE_RANGE_25_34],
+            "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
+            "genders": [AdGroupCreation.GENDER_FEMALE],
+        }
+
+        with self.subTest("2000"):
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+        with self.subTest("2001"):
+            data["targeting"]["video"]["positive"] = ["123"]
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_keyword_negative_limit(self):
+        user = self.user
+        self.fill_all_groups(user)
+        today = now_in_default_tz().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group = self.create_ad_group(**defaults)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {
+                "keyword": {"positive": [], "negative": [_ for _ in range(5000)]},
+                "topic": {"positive": [], "negative": []},
+                "interest": {"positive": [], "negative": []},
+                "channel": {"positive": [], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
+            "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
+                           AdGroupCreation.AGE_RANGE_25_34],
+            "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
+            "genders": [AdGroupCreation.GENDER_FEMALE],
+        }
+
+        with self.subTest("5000"):
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+        with self.subTest("5001"):
+            data["targeting"]["keyword"]["negative"] += ["123"]
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_keyword_negative_per_campaign(self):
+        user = self.user
+        self.fill_all_groups(user)
+        today = now_in_default_tz().date()
+        defaults = dict(
+            owner=self.user,
+            start=today,
+            end=today + timedelta(days=10),
+        )
+        ad_group_1 = self.create_ad_group(**defaults)
+        ad_group_2 = AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=ad_group_1.campaign_creation,
+        )
+        ad_group_3 = AdGroupCreation.objects.create(
+            name="",
+            campaign_creation=ad_group_1.campaign_creation,
+        )
+
+        def get_pair(value):
+            shared = dict(
+                criteria=value,
+                is_negative=True,
+                type=TargetingItem.KEYWORD_TYPE,
+            )
+            return [
+                TargetingItem(ad_group_creation=ad_group_2, **shared),
+                TargetingItem(ad_group_creation=ad_group_3, **shared),
+            ]
+
+        targeting_items = flatten([get_pair(_) for _ in range(5000)])
+        targeting_items.append(
+            TargetingItem(
+                criteria="123",
+                is_negative=True,
+                ad_group_creation=ad_group_1,
+                type=TargetingItem.KEYWORD_TYPE,
+            ),
+        )
+        TargetingItem.objects.bulk_create(targeting_items)
+        url = reverse("aw_creation_urls:ad_group_creation_setup",
+                      args=(ad_group_1.id,))
+        data = {
+            "name": "AdGroup 1", "max_rate": 0,
+            "targeting": {
+                "keyword": {"positive": [], "negative": []},
+                "topic": {"positive": [], "negative": []},
+                "interest": {"positive": [], "negative": []},
+                "channel": {"positive": [], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
+            "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
+                           AdGroupCreation.AGE_RANGE_25_34],
+            "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
+            "genders": [AdGroupCreation.GENDER_FEMALE],
+        }
+
+        with self.subTest("10000"):
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_200_OK)
+        with self.subTest("10001"):
+            data["targeting"]["keyword"]["negative"] += ["123"]
+            response = self.client.put(
+                url, json.dumps(data), content_type="application/json",
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

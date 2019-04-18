@@ -9,7 +9,6 @@ from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.response import MockResponse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.reverse import reverse
 from video.api.urls.names import Name
 
@@ -40,9 +39,7 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
         video_id = data["items"][0]["id"]
 
         url = self._get_url(video_id)
-        with patch("video.api.views.Connector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIn("aw_data", response.data)

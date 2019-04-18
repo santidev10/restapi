@@ -50,6 +50,8 @@ class PacingReportTestCase(APITestCase):
             am="2",
             sales="0",
             notes="PenPineappleApplePen",
+            cpm_buffer=0,
+            cpv_buffer=0
         )
 
         url = reverse("aw_reporting_urls:pacing_report_update_opportunity",

@@ -1,9 +1,8 @@
 import json
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from itertools import product
-from unittest import skip
-from unittest.mock import patch
 
 import pytz
 from django.utils import timezone
@@ -17,6 +16,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import GeoTarget
@@ -27,7 +27,6 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -68,6 +67,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "plan_cpm",
         "plan_cpv",
         "start",
+        "statistic_max_date",
+        "statistic_min_date",
         "status",
         "thumbnail",
         "topic_count",
@@ -115,20 +116,18 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         campaign = Campaign.objects.create(
             id=1, name="", account=account, **stats)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
-        date = datetime.now().date() - timedelta(days=1)
+        yesterday = datetime.now().date() - timedelta(days=1)
         ad_network = "ad_network"
         AdGroupStatistic.objects.create(
-            ad_group=ad_group, date=date, average_position=1,
+            ad_group=ad_group, date=yesterday, average_position=1,
             ad_network=ad_network, **stats)
         target, _ = GeoTarget.objects.get_or_create(
             id=1, defaults=dict(name=""))
         CityStatistic.objects.create(
-            ad_group=ad_group, date=date, city=target, **stats)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id,
-                                     start_date=str(date - timedelta(days=1)),
-                                     end_date=str(date))
+            ad_group=ad_group, date=yesterday, city=target, **stats)
+        response = self._request(account_creation.id,
+                                 start_date=str(yesterday - timedelta(days=1)),
+                                 end_date=str(yesterday))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -150,9 +149,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             date=datetime.now(), ad_group=ad_group,
             average_position=1, impressions=100)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -163,11 +160,9 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
 
     def test_success_get_filter_dates_demo(self):
         today = datetime.now().date()
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(DEMO_ACCOUNT_ID,
-                                     start_date=str(today - timedelta(days=2)),
-                                     end_date=str(today - timedelta(days=1)))
+        response = self._request(DEMO_ACCOUNT_ID,
+                                 start_date=str(today - timedelta(days=2)),
+                                 end_date=str(today - timedelta(days=1)))
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(
@@ -186,9 +181,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         account_creation = AccountCreation.objects.create(
             name="Name 123", account=account,
             is_approved=True, owner=self.user)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self._request(account_creation.id)
+        response = self._request(account_creation.id)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertIn("updated_at", data)
@@ -365,3 +358,29 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.assertEqual(item[key], 0, key)
         for key in rates:
             self.assertIsNone(item[key])
+
+    def test_min_max_based_on_statistic(self):
+        account = Account.objects.create(
+            id=next(int_iterator),
+            skip_creating_account_creation=True,
+        )
+        AccountCreation.objects.create(
+            account=account,
+            owner=self.user,
+        )
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+        )
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(30)]
+        for dt in dates:
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                cost=1,
+                date=dt,
+            )
+        response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["statistic_min_date"], dates[0])
+        self.assertEqual(data["statistic_max_date"], dates[-1])

@@ -16,5 +16,4 @@ class Command(BaseCommand):
         connector = YoutubeAPIConnector()
 
         # response = connector.get_video_comments('4-k3R6BQjjU')
-        response = connector.get_video_comment_replies('UgwRdzPi9YZJ3uvQza14AaABAg')
-        print(response)
+        connector.get_video_comment_replies('UgwRdzPi9YZJ3uvQza14AaABAg')

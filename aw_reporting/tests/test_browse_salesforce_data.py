@@ -1,4 +1,5 @@
 from datetime import date
+from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -13,8 +14,10 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
-from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import DynamicPlacementType, SalesforceFields
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection
 from email_reports.reports.base import BaseEmailReport
 from utils.utittests.int_iterator import int_iterator
@@ -741,6 +744,134 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
 
+    def test_get_flight_pacing(self):
+        self.assertEqual(Opportunity.objects.all().count(), 0)
+        opportunity_id = next(int_iterator)
+        placement_id = next(int_iterator)
+        flight_id = next(int_iterator)
+        pacing = 0.234
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("Opportunity", [
+            opportunity_data(
+                Id=opportunity_id,
+                Name="",
+            )
+        ])
+        sf_mock.add_mocked_items("Placement__c", [
+            placement_data(
+                Id=placement_id,
+                Name="",
+                Insertion_Order__c=opportunity_id,
+            )
+        ])
+        sf_mock.add_mocked_items("Flight__c", [
+            flight_data(
+                Id=flight_id,
+                Name="",
+                Pacing__c=pacing,
+                Placement__c=placement_id,
+            )
+        ])
+        with patch(
+                "aw_reporting.management.commands.browse_salesforce_data.SConnection",
+                return_value=sf_mock):
+            call_command("browse_salesforce_data", no_update="1")
+
+        self.assertEqual(Flight.objects.all().count(), 1)
+        self.assertEqual(Flight.objects.all().first().pacing, pacing)
+
+    def test_update_pacing_changed(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator))
+        start = date(2017, 1, 1)
+        end = today = start + timedelta(days=1)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=start, end=end,
+            delivered=999,
+            ordered_units=123,
+            cost=999,
+        )
+
+        campaign = Campaign.objects.create(
+            salesforce_placement=placement
+        )
+        CampaignStatistic.objects.create(
+            date=start,
+            campaign=campaign,
+            cost=999,
+            impressions=999,
+        )
+        with patch_now(today):
+            pacing_report = PacingReport()
+            flights_data = pacing_report.get_flights_data(id=flight.id)
+            pacing = get_pacing_from_flights(flights_data)
+            self.assertNotEqual(pacing, flight.pacing)
+        flight.refresh_from_db()
+
+        sf_mock = MagicMock()
+        sf_mock().sf.Flight__c.update.return_value = 204
+        sf_mock().sf.Placement__c.update.return_value = 204
+
+        with patch("aw_reporting.management.commands"
+                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+             patch_now(today):
+            call_command("browse_salesforce_data", no_get="1")
+
+        sf_mock().sf.Flight__c.update.assert_called_once_with(
+            flight.id, dict(Pacing__c=pacing * 100))
+
+    def test_update_pacing_not_changed(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator))
+        start = date(2017, 1, 1)
+        end = today = start + timedelta(days=1)
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=start, end=end,
+            delivered=999,
+            ordered_units=123,
+            cost=999,
+        )
+
+        campaign = Campaign.objects.create(
+            salesforce_placement=placement
+        )
+        CampaignStatistic.objects.create(
+            date=start,
+            campaign=campaign,
+            cost=999,
+            impressions=999,
+        )
+        with patch_now(today):
+            pacing_report = PacingReport()
+            flights_data = pacing_report.get_flights_data(id=flight.id)
+            pacing = get_pacing_from_flights(flights_data) * 100
+            self.assertIsNotNone(pacing, flight.pacing)
+        flight.pacing = pacing - 1e-08
+        flight.save()
+        flight.refresh_from_db()
+
+        sf_mock = MagicMock()
+        sf_mock().sf.Flight__c.update.return_value = 204
+        sf_mock().sf.Placement__c.update.return_value = 204
+
+        with patch("aw_reporting.management.commands"
+                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+             patch_now(today):
+            call_command("browse_salesforce_data", no_get="1")
+
+        sf_mock().sf.Flight__c.update.assert_not_called()
+
 
 class MockSalesforceConnection(Connection):
     def __init__(self):
@@ -820,6 +951,7 @@ def flight_data(**kwargs):
         Delivered_Ad_Ops__c=None,
         Ordered_Amount__c=0,
         Ordered_Units__c=0,
+        Pacing__c=None,
     )
     return {
         **default_values,

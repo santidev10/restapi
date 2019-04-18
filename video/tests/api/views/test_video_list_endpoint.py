@@ -1,12 +1,10 @@
 from django.core.urlresolvers import reverse
-from mock import patch
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
@@ -34,6 +32,5 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
 
     def test_simple_list_works(self):
         self.create_admin_user()
-        with patch("video.api.views.Connector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)

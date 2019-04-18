@@ -44,16 +44,18 @@ INSTALLED_APPS = (
 )
 
 PROJECT_APPS = (
+    "administration",
+    "audit_tool",
     "aw_creation",
     "aw_reporting",
-    "userprofile",
-    "segment",
-    "keyword_tool",
-    "landing",
-    "administration",
+    "brand_safety",
     "channel",
     "email_reports",
-    "audit_tool",
+    "keyword_tool",
+    "landing",
+    "segment",
+    "userprofile",
+    "related_tool"
 )
 
 THIRD_PARTY_APPS = (
@@ -72,9 +74,10 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'utils.index_middleware.IndexMiddleware',
+    'userprofile.middleware.ApexUserCheck',
 ]
 
-ROOT_URLCONF = 'saas.urls'
+ROOT_URLCONF = 'saas.urls.urls'
 
 WSGI_APPLICATION = 'saas.wsgi.application'
 
@@ -376,6 +379,7 @@ CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
 HOST = "https://viewiq.channelfactory.com"
+APEX_HOST = "https://apex.viewiq.com"
 
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
@@ -399,8 +403,9 @@ if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
-AMAZON_S3_ACCESS_KEY_ID = "<put_aws_access_key_id_here>"
-AMAZON_S3_SECRET_ACCESS_KEY = "<put_aws_secret_access_key>"
+AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
+AMAZON_S3_ACCESS_KEY_ID = None
+AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 
 MAX_AVATAR_SIZE_MB = 10.
@@ -429,6 +434,8 @@ SWAGGER_SETTINGS = {
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
+
+USE_LEGACY_BRAND_SAFETY = True
 
 try:
     from .local_settings import *

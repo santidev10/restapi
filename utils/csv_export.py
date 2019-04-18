@@ -10,9 +10,9 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.lang import flatten_generator
 
 
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class BaseCSVStreamResponseGenerator(object):
     def __init__(self, columns, data_generator, headers_map):
         self.columns = columns
@@ -55,6 +55,7 @@ class BaseCSVStreamResponseGenerator(object):
             yield output.getvalue()
 
 
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class CSVExport(BaseCSVStreamResponseGenerator):
     """
     Class for csv export
@@ -73,7 +74,7 @@ class CSVExport(BaseCSVStreamResponseGenerator):
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
 
-
+# fixme: use utils.api.file_list_api_view.FileListApiView instead
 class CassandraExportMixin(object):
     """
     Export mixin for cassandra data
@@ -104,7 +105,7 @@ class CassandraExportMixin(object):
         return response.data.get("items")
 
     def _data_filtered(self, filters):
-        return flatten_generator(self._data_filtered_batch_generator(filters))
+        return self._data_filtered_batch_generator(filters)
 
     def post(self, request):
         """

@@ -13,7 +13,7 @@ from audit_tool.models import TopicAudit as TopicAuditModel
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
 
-logger = logging.getLogger('topic_audit')
+logger = logging.getLogger("topic_audit")
 
 
 class TopicAudit(object):
@@ -31,7 +31,7 @@ class TopicAudit(object):
 
     def __init__(self, *args, **kwargs):
         self.connector = Connector()
-        tracker, _ = APIScriptTracker.objects.get_or_create(name='TopicAudit')
+        tracker, _ = APIScriptTracker.objects.get_or_create(name="TopicAudit")
         self.script_tracker = tracker
 
         # Init the cursor with db value
@@ -45,12 +45,12 @@ class TopicAudit(object):
         """
 
         if not self.running_topics:
-            logger.info('No topics to run.')
+            logger.info("No topics to run.")
             return
 
-        logger.info('Starting topic audit with {} processes...'.format(self.max_process_count))
+        logger.info("Starting topic audit with {} processes...".format(self.max_process_count))
 
-        self.topic_logger('Starting audit for', ', '.join([topic.topic_manager.title for topic in self.running_topics]))
+        self.topic_logger("Starting audit for", ", ".join([topic.topic_manager.title for topic in self.running_topics]))
 
         # Start from persistent cursor
         start = time.time()
@@ -58,7 +58,7 @@ class TopicAudit(object):
             .objects\
             .order_by()\
             .values()\
-            .distinct('related_id')[self.script_cursor:]
+            .distinct("related_id")[self.script_cursor:]
 
         processes = []
 
@@ -68,8 +68,8 @@ class TopicAudit(object):
 
             # Items found by each of the processes. Will actually be created after joining the processes after each master batch
             found_items = Manager().dict()
-            found_items['channels'] = []
-            found_items['videos'] = []
+            found_items["channels"] = []
+            found_items["videos"] = []
 
             # batch_limit will split all_channels evenly for each process
             batch_limit = len(master_batch) // self.max_process_count
@@ -79,7 +79,7 @@ class TopicAudit(object):
                 process_task = master_batch[:batch_limit]
                 process = Process(
                     target=self.audit_channels,
-                    kwargs={'batch': process_task, 'found_items': found_items}
+                    kwargs={"batch": process_task, "found_items": found_items}
                 )
                 processes.append(process)
                 # Truncate master_batch for next process
@@ -95,18 +95,18 @@ class TopicAudit(object):
             psycopg2.OperationalError: SSL error: decryption failed or bad record mac
             """
             # If the event of existing objects (since topics may need to be run again), extract new objects
-            if found_items['channels']:
+            if found_items["channels"]:
                 try:
-                    PersistentSegmentRelatedChannel.objects.bulk_create(found_items['channels'])
+                    PersistentSegmentRelatedChannel.objects.bulk_create(found_items["channels"])
                 except DjangoIntegrityError or PostgresIntegrityError:
-                    unique_items = self.get_new_items(PersistentSegmentRelatedChannel, found_items['channels'])
+                    unique_items = self.get_new_items(PersistentSegmentRelatedChannel, found_items["channels"])
                     PersistentSegmentRelatedChannel.objects.bulk_create(unique_items)
 
-            if found_items['videos']:
+            if found_items["videos"]:
                 try:
-                    PersistentSegmentRelatedVideo.objects.bulk_create(found_items['videos'])
+                    PersistentSegmentRelatedVideo.objects.bulk_create(found_items["videos"])
                 except DjangoIntegrityError or PostgresIntegrityError:
-                    unique_items = self.get_new_items(PersistentSegmentRelatedVideo, found_items['videos'])
+                    unique_items = self.get_new_items(PersistentSegmentRelatedVideo, found_items["videos"])
                     PersistentSegmentRelatedVideo.objects.bulk_create(unique_items)
 
             # Update persistent script cursor in case of failure
@@ -114,14 +114,14 @@ class TopicAudit(object):
 
             all_channels = all_channels[self.master_process_batch_size:]
 
-            # Finalize topics with start cursors that have passed the running script's cursor
+            # Finalize topics with start cursors that have passed the running script"s cursor
             self.running_topics = self.check_topic_cursors(self.script_cursor)
 
             # Pick up new topics for next master batch
             new_topics = self.get_topics_to_run(self.script_cursor)
 
             if new_topics:
-                self.topic_logger('Picked up topics', ', '.join([topic.topic_manager.title for topic in new_topics]))
+                self.topic_logger("Picked up topics", ", ".join([topic.topic_manager.title for topic in new_topics]))
 
             # Remove topics that have completed
             already_running = [topic.topic_manager for topic in self.running_topics]
@@ -147,12 +147,12 @@ class TopicAudit(object):
             else:
                 topics_to_rerun.append(topic.topic_manager.title)
 
-        logger.info('Audit complete. Total execution time: {}'.format(end - start))
+        logger.info("Audit complete. Total execution time: {}".format(end - start))
 
         if completed_topics:
-            self.topic_logger('Completed topics', ', '.join(completed_topics))
+            self.topic_logger("Completed topics", ", ".join(completed_topics))
         if topics_to_rerun:
-            self.topic_logger('Topics to rerun', ', '.join(topics_to_rerun))
+            self.topic_logger("Topics to rerun", ", ".join(topics_to_rerun))
 
     def get_new_items(self, manager, items):
         """
@@ -174,7 +174,7 @@ class TopicAudit(object):
 
     def check_topic_cursors(self, script_cursor):
         """
-        Checks if the script_cursor has passed a topic's start cursor.
+        Checks if the script_cursor has passed a topic"s start cursor.
             If True, then topic has seen all items in database and can complete the topic for efficiency
         :param script_cursor: (int)
         :return: None
@@ -235,7 +235,7 @@ class TopicAudit(object):
                 topic_audit.start_cursor = cursor
                 topic_audit.save()
 
-                keywords = topic_audit.keywords.all().values_list('keyword', flat=True)
+                keywords = topic_audit.keywords.all().values_list("keyword", flat=True)
 
                 new_topic_audits.append(
                     Topic(topic=topic_audit, keywords=keywords)
@@ -258,7 +258,7 @@ class TopicAudit(object):
 
             # map list of channel data to dictionary for easier reference
             channel_batch_chunk = {
-                channel['related_id']: channel
+                channel["related_id"]: channel
                 for channel in channel_batch_chunk
             }
 
@@ -272,13 +272,13 @@ class TopicAudit(object):
             # Feed videos into each of the topics
             for topic in self.running_topics:
                 results = topic.audit_videos(videos, channel_batch_chunk)
-                related_channels_to_create += results['channels']
-                related_videos_to_create += results['videos']
+                related_channels_to_create += results["channels"]
+                related_videos_to_create += results["videos"]
 
             with self.lock:
                 # Add items to create to shared dictionary for all processes
-                found_items['channels'] += related_channels_to_create
-                found_items['videos'] += related_videos_to_create
+                found_items["channels"] += related_channels_to_create
+                found_items["videos"] += related_videos_to_create
 
             channel_batch = channel_batch[self.channel_batch_size:]
 
@@ -296,7 +296,7 @@ class TopicAudit(object):
             channel_id__terms=",".join(channel_ids),
         )
         response = self.connector.execute_get_call("videos/", params)
-        return response.get('items')
+        return response.get("items")
 
     @staticmethod
     def finalize_topics(topics: list) -> None:
@@ -322,7 +322,7 @@ class TopicAudit(object):
                 topic.channel_segment_manager.save()
                 topic.video_segment_manager.save()
 
-                logger.info('Topic complete: {}'.format(topic.topic_manager.title))
+                logger.info("Topic complete: {}".format(topic.topic_manager.title))
 
     @staticmethod
     def topic_logger(log_message, topics):
@@ -332,7 +332,7 @@ class TopicAudit(object):
         :param topics: (list)
         :return: None
         """
-        logger.info('{}: {}'.format(log_message, topics))
+        logger.info("{}: {}".format(log_message, topics))
 
 
 
@@ -345,9 +345,9 @@ class Topic(object):
         :param args:
         :param kwargs: topic -> Topic object
         """
-        keywords = kwargs['keywords']
+        keywords = kwargs["keywords"]
 
-        self.topic_manager = kwargs['topic']
+        self.topic_manager = kwargs["topic"]
         self.channel_segment_manager = self.topic_manager.channel_segment
         self.video_segment_manager = self.topic_manager.video_segment
         self.audit_regex = self.create_regex(keywords)
@@ -364,7 +364,7 @@ class Topic(object):
         found_videos = []
 
         for video in videos:
-            channel_id = video.get('channel_id')
+            channel_id = video.get("channel_id")
 
             if not channel_id:
                 continue
@@ -376,10 +376,10 @@ class Topic(object):
                 found_videos.append(
                     PersistentSegmentRelatedVideo(
                         segment=self.video_segment_manager,
-                        related_id=video['video_id'],
-                        category=video['category'],
-                        title=video['title'],
-                        thumbnail_image_url=video['thumbnail_image_url'],
+                        related_id=video["video_id"],
+                        category=video["category"],
+                        title=video["title"],
+                        thumbnail_image_url=video["thumbnail_image_url"],
                         details=self.video_details(video, found_words)
                     )
                 )
@@ -387,29 +387,29 @@ class Topic(object):
                 # Aggregate the results of channels as they may have many videos to parse
                 if channel_found_words.get(channel_id) is None:
                     channel_found_words[channel_id] = channel_data[channel_id]
-                    channel_found_words[channel_id]['details']['bad_words'] = found_words
-                    channel_found_words[channel_id]['details']['category'] = channel_data[channel_id]['category']
-                    channel_found_words[channel_id]['details']['title'] = channel_data[channel_id]['title']
-                    channel_found_words[channel_id]['details']['thumbnail_image_url'] = channel_data[channel_id][
-                        'thumbnail_image_url']
+                    channel_found_words[channel_id]["details"]["bad_words"] = found_words
+                    channel_found_words[channel_id]["details"]["category"] = channel_data[channel_id]["category"]
+                    channel_found_words[channel_id]["details"]["title"] = channel_data[channel_id]["title"]
+                    channel_found_words[channel_id]["details"]["thumbnail_image_url"] = channel_data[channel_id][
+                        "thumbnail_image_url"]
 
                 else:
-                    channel_found_words[channel_id]['details']['bad_words'] += found_words
+                    channel_found_words[channel_id]["details"]["bad_words"] += found_words
 
         found_channels = [
             PersistentSegmentRelatedChannel(
                 segment=self.channel_segment_manager,
-                title=value['title'],
-                category=value['category'],
-                thumbnail_image_url=value['thumbnail_image_url'],
+                title=value["title"],
+                category=value["category"],
+                thumbnail_image_url=value["thumbnail_image_url"],
                 related_id=channel_id,
-                details=value['details']
+                details=value["details"]
             ) for channel_id, value in channel_found_words.items()
         ]
 
         results = {
-            'channels': found_channels,
-            'videos': found_videos
+            "channels": found_channels,
+            "videos": found_videos
         }
 
         return results
@@ -427,7 +427,7 @@ class Topic(object):
             video.get("tags") or "",
             video.get("transcript") or ""
         ]
-        metadata = ' '.join(metadata)
+        metadata = " ".join(metadata)
 
         found = re.findall(self.audit_regex, metadata)
 
@@ -441,10 +441,10 @@ class Topic(object):
         :return: Regex of keywordss
         """
         # Coerce into list if string
-        if type(keywords) == 'str':
-            keywords = keywords.split(',')
+        if type(keywords) == "str":
+            keywords = keywords.split(",")
 
-        audit_keywords = '|'.join([keyword for keyword in keywords])
+        audit_keywords = "|".join([keyword for keyword in keywords])
 
         return re.compile(audit_keywords)
 

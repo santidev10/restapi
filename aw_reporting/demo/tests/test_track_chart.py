@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.urlresolvers import reverse
@@ -9,7 +8,6 @@ from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -41,17 +39,15 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             end_date=today - timedelta(days=1),
             indicator="impressions",
         )
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            for dimension in ('device', 'gender', 'age', 'topic',
-                              'interest', 'creative', 'channel', 'video',
-                              'keyword', 'location', 'ad'):
-                filters['dimension'] = dimension
-                url = "{}?{}".format(self.url, urlencode(filters))
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, HTTP_200_OK)
-                self.assertEqual(len(response.data), 1)
-                self.assertGreater(len(response.data[0]['data']), 1)
+        for dimension in ('device', 'gender', 'age', 'topic',
+                          'interest', 'creative', 'channel', 'video',
+                          'keyword', 'location', 'ad'):
+            filters['dimension'] = dimension
+            url = "{}?{}".format(self.url, urlencode(filters))
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(len(response.data), 1)
+            self.assertGreater(len(response.data[0]['data']), 1)
 
     def test_success_hourly(self):
         today = now_in_default_tz().date()

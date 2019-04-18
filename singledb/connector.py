@@ -86,7 +86,7 @@ class SingleDatabaseApiConnector(object):
                 raise Http404(self.response.text)
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(self.response.text),
+                    "Error during SDB api call: {}".format(self.response.text),
                     sdb_response=self.response
                 )
         try:
@@ -144,24 +144,22 @@ class SingleDatabaseApiConnector(object):
         :param batch_size:
         :returns generator for channels by sized batches
         """
-        fields = (fields or []) + [sort_filed]
+        fields = list(fields or []) + [sort_filed]
         params = {
+            **self._normalize_filters(filters),
             "sort": sort_filed,
             "size": batch_size,
             "fields": ",".join(fields),
-            **self._normalize_filters(filters)
         }
         last_id = None
         has_more = True
-        count = 0
         while has_more:
             params[sort_filed + "__range"] = "{},".format(last_id or "")
             start_from = 0 if last_id is None else 1
             response_data = self.execute_get_call(endpoint, params)
             items = response_data.get("items")[start_from:]
-            count += len(items)
             if len(items) > 0:
-                yield items
+                yield from items
                 last_id = items[-1][sort_filed]
             else:
                 has_more = False
@@ -323,26 +321,26 @@ class SingleDatabaseApiConnector(object):
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash, sources=DEFAULT_CHANNEL_LIST_SOURCES)
-        response_data = self.get_channel_list(query_params)
-        items = response_data["items"]
-        for i in items:
-            i["id"] = i["channel_id"]
-            del i["channel_id"]
-        return items
+        filters = dict(
+            ids_hash=ids_hash,
+            sources=DEFAULT_CHANNEL_LIST_SOURCES,
+        )
+        channels = self.get_channel_list_full(filters, fields)
+        for channel in channels:
+            channel["id"] = channel["channel_id"]
+            yield channel
 
     def get_videos_base_info(self, ids):
         fields = ("video_id", "title", "thumbnail_image_url", "duration")
         ids_hash = self.store_ids(ids)
-        query_params = dict(fields=",".join(fields), size=len(ids),
-                            ids_hash=ids_hash, sources=DEFAULT_VIDEO_LIST_SOURCES)
-        response_data = self.get_video_list(query_params)
-        items = response_data["items"]
-        for i in items:
-            i["id"] = i["video_id"]
-            del i["video_id"]
-        return items
+        filters = dict(
+            ids_hash=ids_hash,
+            sources=DEFAULT_VIDEO_LIST_SOURCES,
+        )
+        videos = self.get_video_list_full(filters, fields)
+        for video in videos:
+            video["id"] = video["video_id"]
+            yield video
 
     def auth_channel(self, data):
         """
@@ -397,42 +395,60 @@ class SingleDatabaseApiConnector(object):
         endpoint = "channels/" + channel_id + "/unauthorize"
         return self.execute_put_call(endpoint, {})
 
-    def get_bad_words_list(self, query_params):
-        endpoint = "bad_words/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def get_bad_words_categories_list(self, query_params):
-        endpoint = "bad_words_categories/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def get_bad_words_history_list(self, query_params):
-        endpoint = "bad_words_history/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def post_bad_word(self, query_params, data):
-        endpoint = "bad_words/"
-        response_data = self.execute_post_call(endpoint, {}, data)
-        return response_data
-
-    def put_bad_word(self, query_params, pk, data):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_put_call(endpoint, query_params, data)
-        return response_data
-
-    def get_bad_word(self, query_params, pk):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def delete_bad_word(self, query_params, pk, data):
-        endpoint = "bad_words/" + pk + "/"
-        response_data = self.execute_delete_call(endpoint, query_params, data)
+    def post_brand_safety_results(self, results, doc_type):
+        """
+        Send brand safety audit results for indexing in Elastic Search
+        :param results: list
+        :return: Indexing process results
+        """
+        endpoint = "brand_safety/"
+        response_data = self.execute_post_call(endpoint, {}, {"results": results, "doc_type": doc_type})
         return response_data
 
     def _normalize_filters(self, filters):
         def map_value(value):
             return ",".join(value) if isinstance(value, (list, tuple)) else value
+
         return {key: map_value(value) for key, value in filters.items()}
+
+    # todo: remove bad words
+    def get_bad_words_list(self, query_params):
+        endpoint = "bad_words/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_words_categories_list(self, query_params):
+        endpoint = "bad_words_categories/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_words_history_list(self, query_params):
+        endpoint = "bad_words_history/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def post_bad_word(self, query_params, data):
+        endpoint = "bad_words/"
+        response_data = self.execute_post_call(endpoint, {}, data)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def put_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_put_call(endpoint, query_params, data)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def get_bad_word(self, query_params, pk):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_get_call(endpoint, query_params)
+        return response_data
+
+    # fixme: old bad words. remove it
+    def delete_bad_word(self, query_params, pk, data):
+        endpoint = "bad_words/" + pk + "/"
+        response_data = self.execute_delete_call(endpoint, query_params, data)
+        return response_data

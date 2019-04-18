@@ -47,6 +47,28 @@ class YoutubeAPIConnector(object):
             developerKey=self.developer_key
         )
 
+    def get_related_videos(self, video_id, page_token=None, max_results=50):
+        """
+        Get related videos
+        """
+        options = {
+            'part': 'snippet',
+            'type': 'video',
+            'relatedToVideoId': video_id,
+            "maxResults": max_results,
+        }
+        if page_token is not None:
+            options['pageToken'] = page_token
+
+        return self.youtube.search().list(**options).execute()
+
+    def obtain_video_categories(self, region_code='US'):
+        options = {
+            'part': 'snippet',
+            'regionCode': region_code
+        }
+        return self.__execute_call(self.youtube.videoCategories().list(**options))
+
     def keyword_search(self, keyword, part="snippet", search_type="channel",
                        max_results=50, safe_search="none", page_token=None):
         """
@@ -108,6 +130,7 @@ class YoutubeAPIConnector(object):
             'safeSearch': safe_search,
             'order': order
         }
+
         if page_token:
             options["pageToken"] = page_token
         if published_after:

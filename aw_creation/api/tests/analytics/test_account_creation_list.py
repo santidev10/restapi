@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -33,7 +32,6 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
@@ -62,6 +60,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "plan_cpm",
         "plan_cpv",
         "start",
+        "statistic_max_date",
+        "statistic_min_date",
         "status",
         "thumbnail",
         "topic_count",
@@ -144,9 +144,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         AccountCreation.objects.create(
             name="", owner=user,
         )
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -198,9 +196,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             name="", account_creation=ac_creation, campaign=None,
         )
         # --
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -246,13 +242,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         for sort_by in ("impressions", "video_views", "clicks", "cost",
                         "video_view_rate", "ctr_v"):
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher), \
-                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher):
-                response = self.client.get(
-                    "{}?sort_by={}".format(self.url, sort_by))
+            response = self.client.get(
+                "{}?sort_by={}".format(self.url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
             expected_top_account = items[1]
@@ -282,9 +273,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                                                     account=account3)
 
         # --
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get("{}?sort_by=name".format(self.url))
+        response = self.client.get("{}?sort_by=name".format(self.url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         items = response.data["items"]
@@ -334,12 +323,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
         }
         for metric, min1, max1, min2, max2 in test_filters:
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher), \
-                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
-                 self.patch_user_settings(**user_settings):
+            with self.patch_user_settings(**user_settings):
                 response = self.client.get(
                     "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
                         base_url=self.url, metric=metric, min=min1, max=max1)
@@ -350,12 +334,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertGreaterEqual(item[metric], min1)
                 self.assertLessEqual(item[metric], max1)
 
-            with patch(
-                    "aw_creation.api.serializers.SingleDatabaseApiConnector",
-                    new=SingleDatabaseApiConnectorPatcher), \
-                 patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                       new=SingleDatabaseApiConnectorPatcher), \
-                 self.patch_user_settings(**user_settings):
+            with self.patch_user_settings(**user_settings):
                 response = self.client.get(
                     "{base_url}?min_{metric}={min}&max_{metric}={max}".format(
                         base_url=self.url, metric=metric, min=min2, max=max2)
@@ -469,9 +448,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                                 end_date=max_end)
         AccountCreation.objects.create(name="Improted-", owner=self.user, account=account)
 
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get("{}?min_start={}&max_end={}".format(self.url, min_start, max_end))
+        response = self.client.get("{}?min_start={}&max_end={}".format(self.url, min_start, max_end))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
         for item in response.data["items"]:
@@ -508,9 +485,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             name="", account_creation=ac_creation,
         )
 
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -519,9 +494,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         )
 
     def test_success_get_demo(self):
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
             set(response.data.keys()),
@@ -547,11 +520,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             name="", owner=self.user, is_deleted=True
         )
         # --
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(len(response.data["items"]), 1)
@@ -565,10 +534,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                                             owner=self.user, is_managed=False)
         AccountCreation.objects.create(name="", owner=self.user)
         # --
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector", new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(
-                "{}?min_campaigns_count=1&max_campaigns_count=1".format(
-                    self.url))
+        response = self.client.get(
+            "{}?min_campaigns_count=1&max_campaigns_count=1".format(
+                self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], ac.id)
@@ -587,13 +555,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         expected_account_creation = add_account("2017-01-10")
         add_account("2017-02-10")
         # --
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get(
-                "{}?min_start=2017-01-01&max_start=2017-01-31".format(
-                    self.url))
+        response = self.client.get(
+            "{}?min_start=2017-01-01&max_start=2017-01-31".format(
+                self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], expected_account_creation.id)
@@ -612,12 +576,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         expected_account_creation = add_account("2017-01-10")
         add_account("2017-02-10")
         # --
-        with patch(
-                "aw_reporting.demo.models.SingleDatabaseApiConnector",
-                new=SingleDatabaseApiConnectorPatcher
-        ):
-            response = self.client.get(
-                "{}?min_end=2017-01-01&max_end=2017-01-31".format(self.url))
+        response = self.client.get(
+            "{}?min_end=2017-01-01&max_end=2017-01-31".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], expected_account_creation.id)
@@ -630,11 +590,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             name="1", owner=self.user,
             account=managed_account, is_managed=True)
         self.__set_non_admin_user_with_account(managed_account.id)
-        with patch("aw_creation.api.serializers.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher), \
-             patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = dict((account["id"], account) for account in response.data["items"])
         self.assertIsNotNone(accounts[account_creation.id]["is_managed"])

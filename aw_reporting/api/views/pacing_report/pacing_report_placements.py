@@ -17,4 +17,6 @@ class PacingReportPlacementsApiView(ListAPIView, PacingReportHelper):
         report = PacingReport()
         placements = report.get_placements(opportunity)
         self.multiply_percents(placements)
+
         return Response(placements)
+

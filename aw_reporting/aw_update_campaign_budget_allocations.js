@@ -7,6 +7,13 @@ function main() {
 
   var mcc_account_id = getAccountId();
   var updatedBudgets = getBudgetAllocations(mcc_account_id);
+
+  if (Object.keys(updatedBudgets) <= 0) {
+    Logger.log('No campaign budgets to update.')
+
+    return
+  }
+
   var accountIds = Object.keys(updatedBudgets);
 
   var accountIterator = AdsManagerApp
@@ -98,15 +105,12 @@ function processCampaigns(iterator, campaignBudgets) {
 }
 
 function updateSyncTimes(campaignIds) {
-  var data = {
-    'campaignIds': campaignIds
-  };
   var options = {
-    muteHttpExceptions : true,
-    method: 'PATCH',
-    payload: data
+    'muteHttpExceptions' : true,
+    'method': 'PATCH',
+    'payload': JSON.stringify({ campaignIds: campaignIds }),
+   	'contentType': 'application/json'
   };
-
   var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED + '/', options);
   var message;
 

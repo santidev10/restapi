@@ -37,7 +37,6 @@ from userprofile.permissions import Permissions
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
 class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
@@ -136,9 +135,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_success_get_demo(self):
         url = self._get_url(DEMO_ACCOUNT_ID)
-        with patch("aw_reporting.demo.models.SingleDatabaseApiConnector",
-                   new=SingleDatabaseApiConnectorPatcher):
-            response = self.client.get(url)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_details_check(response.data)
 

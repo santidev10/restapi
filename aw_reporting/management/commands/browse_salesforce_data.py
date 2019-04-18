@@ -23,9 +23,12 @@ from aw_reporting.models.salesforce import User
 from aw_reporting.models.salesforce import UserRole
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz
+from utils.lang import almost_equal
 
 logger = logging.getLogger(__name__)
 
@@ -59,15 +62,6 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
-            '--opp_coe',
-            dest='opp_coe',
-            default=2.,
-            type=float,
-            help='Similarity greater or equal'
-                 ' this number for auto-matching'
-        )
-
-        parser.add_argument(
             '--debug_update',
             dest='debug_update',
             default=False,
@@ -84,6 +78,13 @@ class Command(BaseCommand):
                  ' to the previous month flights'
         )
 
+        parser.add_argument("--force", "-f", dest="force", action="store_true", help="Update for whole period")
+        parser.add_argument("--no-fl", dest="no_flights", action="store_true", help="Update excluding flights")
+        parser.add_argument("--no-pl", dest="no_placements", action="store_true", help="Update excluding placements")
+        parser.add_argument("--no-opp", dest="no_opportunities", action="store_true",
+                            help="Update excluding opportunities")
+        parser.add_argument("--opp", dest="opportunities", action="append", help="Opportunity ids for updating")
+
     def handle(self, *args, **options):
         try:
             self.debug_update = options.get('debug_update')
@@ -97,7 +98,7 @@ class Command(BaseCommand):
 
             if not options.get('no_update'):
                 sc = sc or SConnection()
-                self.update(sc)
+                self.update(sc, options)
 
             self.match_using_placement_numbers()
             cache_reset()
@@ -116,36 +117,89 @@ class Command(BaseCommand):
         if not settings.IS_TEST:
             logger.info("Matched %d Campaigns" % count)
 
-    def update(self, sc):
+    def update(self, sc, options):
+        opportunity_ids = options.get("opportunities", None)
+        force = options.get("force")
+        if not options.get("no_placements"):
+            self._update_placements(sc, opportunity_ids)
 
-        for placement in OpPlacement.objects.filter(
-                adwords_campaigns__isnull=False).distinct():
+        if not options.get("no_opportunities"):
+            self._update_opportunities(sc, opportunity_ids)
 
-            aw_pl = placement.adwords_campaigns.order_by('id').first().name
-            if placement.ad_words_placement != aw_pl:
-                update = {'Adwords_Placement_IQ__c': aw_pl}
+        if not options.get("no_flights"):
+            self._update_flights(sc, force, opportunity_ids)
+
+    def _update_flights(self, sc, force, opportunity_ids):
+        opp_filter = Q(placement__opportunity__number__in=opportunity_ids) if opportunity_ids else Q()
+        pacing_report = PacingReport()
+        for flight in self.flights_to_update_qs(force).filter(opp_filter):
+
+            units, cost = flight.delivered_units, flight.delivered_cost
+            flight_data = pacing_report.get_flights_data(id=flight.id)
+            pacing = get_pacing_from_flights(flight_data)
+            pacing = pacing * 100 if pacing is not None else pacing
+
+            update = {}
+            if units != flight.delivered:
+                # 0 is not an acceptable value for this field
+                units = units or None
+                update['Delivered_Ad_Ops__c'] = units
+            if cost != flight.cost:
+                update['Total_Flight_Cost__c'] = cost
+
+            if ((pacing is None) ^ (flight.pacing is None)) \
+                    or (pacing is not None and not almost_equal(pacing, flight.pacing)):
+                update['Pacing__c'] = pacing
+
+            if update:
                 try:
-                    r = 204 if self.debug_update else sc.sf.Placement__c.update(
-                        placement.id,
-                        update,
-                    )
+                    r = 204 if self.debug_update else sc.sf.Flight__c.update(
+                        flight.id, update)
                 except Exception as e:
                     logger.critical("Unhandled exception: %s" % str(e))
                 else:
                     if r == 204:
-                        logger.info(
-                            'Placement %s %s was updated: %s' % (
-                                placement.id, placement.name, str(update)
+                        logger.debug(
+                            'Flight %s %s %s was updated: %s' % (
+                                flight.id, str(flight.start),
+                                str(flight.placement.goal_type_id), str(update)
                             )
                         )
                     else:
                         logger.critical(
-                            'Update Error: %s %s' % (
-                                placement.id, str(r)
-                            )
+                            'Update Error: %s %s' % (flight.id, str(r))
                         )
+        # Service Fee Dynamic Placement
+        # When the flight is created, IQ needs to put a 0 for costs and 1
+        # for delivered units on each of the flights
+        service_flights_to_update = Flight.objects.filter(
+            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE,
+        ) \
+            .filter(opp_filter) \
+            .exclude(delivered=1, cost=0,)
+        for flight in service_flights_to_update:
+            update = dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0)
+            try:
+                r = 204 if self.debug_update else sc.sf.Flight__c.update(
+                    flight.id, update)
+            except Exception as e:
+                logger.critical("Unhandled exception: %s" % str(e))
+            else:
+                if r == 204:
+                    logger.info(
+                        'Flight %s %s %s was updated: %s' % (
+                            flight.id, str(flight.start),
+                            str(flight.placement.goal_type_id), str(update)
+                        )
+                    )
+                else:
+                    logger.critical(
+                        'Update Error: %s %s' % (flight.id, str(r))
+                    )
 
-        for opportunity in Opportunity.objects.all():
+    def _update_opportunities(self, sc, opportunity_ids):
+        opp_filter = Q(number__in=opportunity_ids) if opportunity_ids else Q()
+        for opportunity in Opportunity.objects.filter(opp_filter):
             update = {}
             ids = Campaign.objects.filter(
                 salesforce_placement__opportunity=opportunity).values_list(
@@ -179,79 +233,52 @@ class Command(BaseCommand):
                             )
                         )
 
-        for flight in self.flights_to_update_qs:
+    def _update_placements(self, sc, opportunity_ids):
+        opp_filter = Q(opportunity__number__in=opportunity_ids) if opportunity_ids else Q()
+        for placement in OpPlacement.objects.filter(opp_filter) \
+                .filter(adwords_campaigns__isnull=False) \
+                .distinct():
 
-            units, cost = flight.delivered_units, flight.delivered_cost
-
-            update = {}
-            if units != flight.delivered:
-                # 0 is not an acceptable value for this field
-                units = units or None
-                update['Delivered_Ad_Ops__c'] = units
-            if cost != flight.cost:
-                update['Total_Flight_Cost__c'] = cost
-
-            if update:
+            aw_pl = placement.adwords_campaigns.order_by('id').first().name
+            if placement.ad_words_placement != aw_pl:
+                update = {'Adwords_Placement_IQ__c': aw_pl}
                 try:
-                    r = 204 if self.debug_update else sc.sf.Flight__c.update(
-                        flight.id, update)
+                    r = 204 if self.debug_update else sc.sf.Placement__c.update(
+                        placement.id,
+                        update,
+                    )
                 except Exception as e:
                     logger.critical("Unhandled exception: %s" % str(e))
                 else:
                     if r == 204:
                         logger.info(
-                            'Flight %s %s %s was updated: %s' % (
-                                flight.id, str(flight.start),
-                                str(flight.placement.goal_type_id), str(update)
+                            'Placement %s %s was updated: %s' % (
+                                placement.id, placement.name, str(update)
                             )
                         )
                     else:
                         logger.critical(
-                            'Update Error: %s %s' % (flight.id, str(r))
+                            'Update Error: %s %s' % (
+                                placement.id, str(r)
+                            )
                         )
 
-        # Service Fee Dynamic Placement
-        # When the flight is created, IQ needs to put a 0 for costs and 1
-        # for delivered units on each of the flights
-        service_flights_to_update = Flight.objects.filter(
-            placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE,
-        ).exclude(
-            delivered=1, cost=0,
-        )
-        for flight in service_flights_to_update:
-            update = dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0)
-            try:
-                r = 204 if self.debug_update else sc.sf.Flight__c.update(
-                    flight.id, update)
-            except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
-            else:
-                if r == 204:
-                    logger.info(
-                        'Flight %s %s %s was updated: %s' % (
-                            flight.id, str(flight.start),
-                            str(flight.placement.goal_type_id), str(update)
-                        )
-                    )
-                else:
-                    logger.critical(
-                        'Update Error: %s %s' % (flight.id, str(r))
-                    )
-
-    @property
-    def flights_to_update_qs(self):
+    def flights_to_update_qs(self, force):
         now = now_in_default_tz()
 
-        date_filters = Q(start__lte=now, end__gte=now)
+        if force:
+            date_filters = Q()
+        else:
+            date_filters = Q(start__lte=now, end__gte=now)
 
-        stop_updating_date = self.prev_month_flight_write_stop_day
-        if now.hour > 5:
-            stop_updating_date -= 1
+            stop_updating_date = self.prev_month_flight_write_stop_day
+            if now.hour > 5:
+                stop_updating_date -= 1
 
-        if now.day <= stop_updating_date:
-            prev_month_date = now.replace(day=1) - timedelta(days=1)
-            date_filters |= Q(end__month=prev_month_date.month,
-                              end__year=prev_month_date.year)
+            if now.day <= stop_updating_date:
+                prev_month_date = now.replace(day=1) - timedelta(days=1)
+                date_filters |= Q(end__month=prev_month_date.month,
+                                  end__year=prev_month_date.year)
 
         type_filters = Q(placement__goal_type_id__in=(
             SalesForceGoalType.CPM, SalesForceGoalType.CPV)) \

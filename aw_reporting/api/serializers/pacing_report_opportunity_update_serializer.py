@@ -17,5 +17,5 @@ class PacingReportOpportunityUpdateSerializer(ModelSerializer):
     class Meta:
         model = Opportunity
         fields = (
-            "region", "am", "sales", "ad_ops", "category", "notes",
+            "region", "am", "sales", "ad_ops", "category", "notes", "cpm_buffer", "cpv_buffer"
         )
