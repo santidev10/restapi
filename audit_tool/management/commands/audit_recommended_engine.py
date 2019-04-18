@@ -11,7 +11,6 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
@@ -125,10 +124,8 @@ class Command(BaseCommand):
                     channel=db_video.channel,
             )
             db_channel_meta.name = i['snippet']['channelTitle']
-            # if not db_channel_meta.keywords:
-            #     self.do_channel_metadata_api_call(db_channel_meta, i['snippet']['channelId'])
             db_channel_meta.save()
-            if self.check_video_is_clean(db_video_meta):
+            if self.check_video_is_clean(db_video_meta, avp):
                 v, _  = AuditVideoProcessor.objects.get_or_create(
                     video=db_video,
                     audit=self.audit
@@ -137,17 +134,23 @@ class Command(BaseCommand):
                     v.video_source = video
                     v.save()
         avp.processed = timezone.now()
-        avp.save(update_fields=['processed'])
+        avp.save()
 
-    def check_video_is_clean(self, db_video_meta):
+    def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
-        if self.inclusion_list and not self.check_exists(full_string, self.inclusion_list):
+        if self.inclusion_list:
+            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            avp.word_hits['inclusion'] = hits
+            if not is_there:
                 return False
-        if self.exclusion_list and self.check_exists(full_string, self.exclusion_list):
+        if self.exclusion_list:
+            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            avp.word_hits['exclusion'] = hits
+            if is_there:
                 return False
         return True
 
@@ -227,35 +230,6 @@ class Command(BaseCommand):
         except Exception as e:
             pass
 
-    def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
-        try:
-            url = self.DATA_CHANNEL_API_URL.format(key=self.DATA_API_KEY, id=channel_id)
-            r = requests.get(url)
-            data = r.json()
-            if r.status_code != 200:
-                logger.info("problem with api call for channel {}".format(channel_id))
-                return
-            try:
-                i = data['items'][0]
-            except Exception as e:
-                print("problem getting channel {}".format(channel_id))
-                return
-            try:
-                db_channel_meta.description = i['brandingSettings']['channel']['description']
-            except Exception as e:
-                pass
-            try:
-                db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
-            except Exception as e:
-                pass
-            country = i['brandingSettings']['channel'].get('country')
-            if country:
-                db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
-            db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
-            db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-        except Exception as e:
-            logger.exception(e)
-
     def load_inclusion_list(self):
         if self.inclusion_list:
             return
@@ -281,8 +255,8 @@ class Command(BaseCommand):
     def check_exists(self, text, exp):
         keywords = re.findall(exp, text.lower())
         if len(keywords) > 0:
-            return True
-        return False
+            return True, keywords
+        return False, None
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
@@ -297,7 +271,7 @@ class Command(BaseCommand):
         cols = [
             "video ID",
             "name",
-            "keywords",
+            #"keywords",
             "language",
             "category",
             "views",
@@ -341,7 +315,7 @@ class Command(BaseCommand):
                 data = [
                     v.video.video_id,
                     v.name,
-                    v.keywords,
+                    #v.keywords,
                     language,
                     category,
                     v.views,
