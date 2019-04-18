@@ -199,7 +199,11 @@ class Command(BaseCommand):
                 return
             db_video_meta.name = i['snippet']['title']
             db_video_meta.description = i['snippet']['description']
-            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
+            try:
+                db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
+            except Exception as e:
+                print("no video publish date")
+                pass
             db_video_meta.description = i['snippet'].get('description')
             channel_id = i['snippet']['channelId']
             keywords = i['snippet'].get('tags')
