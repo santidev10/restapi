@@ -133,16 +133,16 @@ class Command(BaseCommand):
                 avp.clean = False
                 avp.processed = timezone.now()
                 avp.save(update_fields=['processed', 'clean'])
-                return
-            db_video.channel = AuditChannel.get_or_create(channel_id)
-            db_video_meta.save()
-            db_video.save()
-            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                    channel=db_video.channel,
-            )
-            avp.clean = self.check_video_is_clean(db_video_meta, avp)
-            avp.processed = timezone.now()
-            avp.save()
+            else:
+                db_video.channel = AuditChannel.get_or_create(channel_id)
+                db_video_meta.save()
+                db_video.save()
+                db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
+                        channel=db_video.channel,
+                )
+                avp.clean = self.check_video_is_clean(db_video_meta, avp)
+                avp.processed = timezone.now()
+                avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
