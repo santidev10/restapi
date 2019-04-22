@@ -32,9 +32,12 @@ class Command(BaseCommand):
         channels = {}
         for channel in pending_channels[:20000]:
             channels[channel.channel.channel_id] = channel
+            count+=1
             if len(channels) == 50:
                 self.do_channel_metadata_api_call(channels)
                 channels = {}
+        if len(channels) > 0:
+            self.do_channel_metadata_api_call(channels)
         logger.info("Done {} channels".format(count))
         raise Exception("Done {} channels".format(count))
 
