@@ -33,6 +33,7 @@ from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import PersistentSegmentType
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
+from segment.utils import get_persistent_segment_connector_config_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -433,3 +434,44 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get_filename(segment):
         return "{}.csv".format(segment.title)
 
+
+class PersistentSegmentPreviewAPIView(APIView):
+    """
+    View to provide preview data for persistent segments
+    """
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+    page_size = 4
+    max_page = 5
+
+    def get(self, request, **kwargs):
+        page = request.query_params.get("page", 1)
+        segment_type = kwargs["segment_type"]
+        try:
+            page = int(page)
+            if page <= 0:
+                raise ValueError
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page number: {}".format(page))
+        page = page if page <= self.max_page else self.max_page
+        # Slicing Pagination to avoid querying for large datasets from singledb, e.g. Video segment with millions of videos
+        page_start = (page - 1) * self.page_size
+        page_end = page_start + self.page_size
+        segment = get_persistent_segment_model_by_type(segment_type)
+        try:
+            related_ids = segment.objects.get(pk=kwargs["pk"]).related.order_by("id").values_list(
+                "related_id", flat=True)[page_start:page_end]
+        except segment.DoesNotExist:
+            raise Http404
+        # Helper function to set SDB connector config since Channel and Video SDB querying is similar
+        config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
+        if config is None:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
+        connector_method = config.pop("method")
+        response = connector_method(config)
+        result = {
+            "items": response["items"],
+            "page": page
+        }
+        return Response(status=HTTP_200_OK, data=result)

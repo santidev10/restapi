@@ -51,7 +51,7 @@ class Command(BaseCommand):
             logger.exception(e)
         self.process_audit()
 
-    def process_audit(self):
+    def process_audit(self, num=50000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
@@ -61,13 +61,22 @@ class Command(BaseCommand):
                 audit=self.audit,
                 processed__isnull=True
             )
+        else:
+            pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
             self.audit.save()
             print("Audit completed, all videos processed")
             raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[:25000]:
-            self.do_check_video(video)
+        videos = {}
+        pending_videos = pending_videos.select_related("video")
+        for video in pending_videos[:num]:
+            videos[video.video.video_id] = video
+            if len(videos) == 50:
+                self.do_check_video(videos)
+                videos = {}
+        if len(videos) > 0:
+            self.do_check_video(videos)
         self.audit.updated = timezone.now()
         self.audit.save()
         print("Done one step, continuing audit {}.".format(self.audit.id))
@@ -112,27 +121,28 @@ class Command(BaseCommand):
                 vids.append(avp)
         return vids
 
-    def do_check_video(self, avp):
-        db_video = avp.video
-        db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-        if not db_video_meta.name or not db_video.channel:
-            channel_id = self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-        else:
-            channel_id = db_video.channel.channel_id
-        if not channel_id: # video does not exist or is private now
-            avp.clean = False
+    def do_check_video(self, videos):
+        for video_id, avp in videos.items():
+            db_video = avp.video
+            db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
+            if not db_video_meta.name or not db_video.channel:
+                channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
+            else:
+                channel_id = db_video.channel.channel_id
+            if not channel_id: # video does not exist or is private now
+                avp.clean = False
+                avp.processed = timezone.now()
+                avp.save(update_fields=['processed', 'clean'])
+                return
+            db_video.channel = AuditChannel.get_or_create(channel_id)
+            db_video_meta.save()
+            db_video.save()
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
+                    channel=db_video.channel,
+            )
+            avp.clean = self.check_video_is_clean(db_video_meta, avp)
             avp.processed = timezone.now()
-            avp.save(update_fields=['processed', 'clean'])
-            return
-        db_video.channel = AuditChannel.get_or_create(channel_id)
-        db_video_meta.save()
-        db_video.save()
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                channel=db_video.channel,
-        )
-        avp.clean = self.check_video_is_clean(db_video_meta, avp)
-        avp.processed = timezone.now()
-        avp.save()
+            avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
