@@ -51,7 +51,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
     def handle(self, *args, **options):
         try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("id")[0]
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
             self.language = self.audit.params.get('language')
             if not self.language:
                 self.language = "en"
