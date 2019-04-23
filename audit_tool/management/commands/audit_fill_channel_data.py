@@ -70,6 +70,10 @@ class Command(BaseCommand):
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
                 db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
+                try:
+                    db_channel_meta.view_count = int(i['statistics']['viewCount'])
+                except Exception as e:
+                    pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
                 db_channel_meta.save()
             AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)

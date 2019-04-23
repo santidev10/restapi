@@ -167,6 +167,7 @@ class AuditChannelMeta(models.Model):
     language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
+    view_count = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
 
 class AuditVideo(models.Model):
