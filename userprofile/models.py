@@ -49,8 +49,6 @@ def get_default_accesses(via_google=False):
     ]
     if not via_google:
         default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
-    if is_chf_email:
-        default_accesses_group_names.append(PermissionGroupNames.AUDIT_DOWNLOAD)
     return default_accesses_group_names
 
 
