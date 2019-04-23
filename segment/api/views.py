@@ -448,14 +448,25 @@ class PersistentSegmentPreviewAPIView(APIView):
     default_page_size = 5
 
     def get(self, request, **kwargs):
+        """
+        Provides paginated persistent segment preview data
+        :param request:
+            query_params: page (int), size (int)
+        :param kwargs:
+            segment_type (str) -> video / channel
+        :return:
+        """
         page = request.query_params.get("page", 1)
         size = request.query_params.get("size", self.default_page_size)
         segment_type = kwargs["segment_type"]
         try:
             page = int(page)
-            size = int(size)
         except ValueError:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page number: {}".format(page))
+        try:
+            size = int(size)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page size number: {}".format(page))
         if page <= 0:
             page = 1
         if size <= 0:
@@ -463,31 +474,57 @@ class PersistentSegmentPreviewAPIView(APIView):
         elif size >= self.max_per_page:
             size = self.max_per_page
         segment = get_persistent_segment_model_by_type(segment_type)
+        # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
         try:
-            related_ids = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values_list(
-                "related_id", flat=True)
+            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
+                "related_id", "title", "category", "details")
         except segment.DoesNotExist:
             raise Http404
-        paginator = Paginator(related_ids, size)
+        paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
         except EmptyPage:
-            max_page = paginator.num_pages
-            preview_page = paginator.page(max_page)
+            page = paginator.num_pages
+            preview_page = paginator.page(page)
+        related_ids = [item["related_id"] for item in preview_page.object_list]
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
-        config = get_persistent_segment_connector_config_by_type(segment_type, preview_page.object_list)
+        config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
         if config is None:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
         connector_method = config.pop("method")
         response = connector_method(config)
-
-        # Check which ids are missing from the respnose if any
-
+        response_items = {
+            item["channel_id"]: item for item in response.get("items")
+        }
+        # If singledb data for a channel is available in response, replace preview page item with response data
+        preview_data = [
+            self._map_segment_data(item) if response_items.get(item["related_id"]) is None
+            else response_items[item["related_id"]]
+            for item in preview_page.object_list
+        ]
         result = {
-            "items": response["items"],
-            "items_count": len(related_ids),
+            "items": preview_data,
+            "items_count": len(preview_data),
             "current_page": page,
             "max_page": paginator.num_pages,
         }
         return Response(status=HTTP_200_OK, data=result)
 
+    @staticmethod
+    def _map_segment_data(data):
+        """
+        Maps Postgres persistent segment data to Singledb formatted data for client
+        :param data:
+        :return:
+        """
+        mapped_data = {
+            "channel_id": data["related_id"],
+            "title": data["title"],
+            "category": data["category"],
+            "likes": data["details"]["likes"],
+            "dislikes": data["details"]["dislikes"],
+            "language": data["details"]["language"],
+            "subscribers": data["details"]["subscribers"],
+            "audited_videos": data["details"]["audited_videos"]
+        }
+        return mapped_data
