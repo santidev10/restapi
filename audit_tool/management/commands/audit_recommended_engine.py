@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 import csv
-import os
 import logging
 from django.conf import settings
 import re
@@ -57,7 +56,7 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
-        with PidFile('{}/get_current_audit_to_process_{}.pid'.format(os.getcwd(), self.thread_id)) as p:
+        with PidFile('/home/ken/restapi/get_current_audit_to_process_{}.pid'.format(self.thread_id)) as p:
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
                 self.language = self.audit.params.get('language')
