@@ -444,7 +444,7 @@ class PersistentSegmentPreviewAPIView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
-    max_per_page = 10
+    max_page_size = 10
     default_page_size = 5
 
     def get(self, request, **kwargs):
@@ -471,8 +471,8 @@ class PersistentSegmentPreviewAPIView(APIView):
             page = 1
         if size <= 0:
             size = self.default_page_size
-        elif size >= self.max_per_page:
-            size = self.max_per_page
+        elif size >= self.max_page_size:
+            size = self.max_page_size
         segment = get_persistent_segment_model_by_type(segment_type)
         # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
         try:
