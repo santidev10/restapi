@@ -69,16 +69,16 @@ class Command(BaseCommand):
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
-                self.audit.save()
+                self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
         for video in pending_videos[:100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
-        self.audit.save()
+        self.audit.save(update_fields=['updated'])
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
-            self.audit.save()
+            self.audit.save(update_fields=['completed'])
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:

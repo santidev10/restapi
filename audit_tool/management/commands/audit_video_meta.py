@@ -65,7 +65,7 @@ class Command(BaseCommand):
             pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
-            self.audit.save()
+            self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
             raise Exception("Audit completed, all videos processed")
         videos = {}
@@ -78,7 +78,7 @@ class Command(BaseCommand):
         if len(videos) > 0:
             self.do_check_video(videos)
         self.audit.updated = timezone.now()
-        self.audit.save()
+        self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
