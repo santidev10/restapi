@@ -40,7 +40,7 @@ def get_default_settings():
     }
 
 
-def get_default_accesses(via_google=False, is_chf_email=None):
+def get_default_accesses(via_google=False):
     default_accesses_group_names = [
         PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,

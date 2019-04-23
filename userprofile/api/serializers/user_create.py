@@ -83,9 +83,8 @@ class UserCreateSerializer(ModelSerializer):
         user.is_active = False
         user.save(update_fields=["password", "status", "is_active"])
 
-        is_chf_email = user.email.lower().endswith("@channelfactory.com")
         # new default access implementation
-        for group_name in get_default_accesses(is_chf_email=is_chf_email):
+        for group_name in get_default_accesses():
             user.add_custom_user_group(group_name)
 
         # set token
