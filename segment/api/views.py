@@ -2,6 +2,8 @@ import os
 from email.mime.image import MIMEImage
 
 import pytz
+from django.core.paginator import Paginator
+from django.core.paginator import EmptyPage
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import CharField
@@ -442,36 +444,87 @@ class PersistentSegmentPreviewAPIView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
-    page_size = 4
-    max_page = 5
+    max_page_size = 10
+    default_page_size = 5
 
     def get(self, request, **kwargs):
+        """
+        Provides paginated persistent segment preview data
+        :param request:
+            query_params: page (int), size (int)
+        :param kwargs:
+            segment_type (str) -> video / channel
+        :return:
+        """
         page = request.query_params.get("page", 1)
+        size = request.query_params.get("size", self.default_page_size)
         segment_type = kwargs["segment_type"]
         try:
             page = int(page)
-            if page <= 0:
-                raise ValueError
         except ValueError:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page number: {}".format(page))
-        page = page if page <= self.max_page else self.max_page
-        # Slicing Pagination to avoid querying for large datasets from singledb, e.g. Video segment with millions of videos
-        page_start = (page - 1) * self.page_size
-        page_end = page_start + self.page_size
-        segment = get_persistent_segment_model_by_type(segment_type)
         try:
-            related_ids = segment.objects.get(pk=kwargs["pk"]).related.order_by("id").values_list(
-                "related_id", flat=True)[page_start:page_end]
+            size = int(size)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page size number: {}".format(page))
+        if page <= 0:
+            page = 1
+        if size <= 0:
+            size = self.default_page_size
+        elif size >= self.max_page_size:
+            size = self.max_page_size
+        segment = get_persistent_segment_model_by_type(segment_type)
+        # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
+        try:
+            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
+                "related_id", "title", "category", "details")
         except segment.DoesNotExist:
             raise Http404
+        paginator = Paginator(related_items, size)
+        try:
+            preview_page = paginator.page(page)
+        except EmptyPage:
+            page = paginator.num_pages
+            preview_page = paginator.page(page)
+        related_ids = [item["related_id"] for item in preview_page.object_list]
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
         config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
         if config is None:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
         connector_method = config.pop("method")
         response = connector_method(config)
+        response_items = {
+            item["channel_id"]: item for item in response.get("items")
+        }
+        # If singledb data for a channel is available in response, replace preview page item with response data
+        preview_data = [
+            self._map_segment_data(item) if response_items.get(item["related_id"]) is None
+            else response_items[item["related_id"]]
+            for item in preview_page.object_list
+        ]
         result = {
-            "items": response["items"],
-            "page": page
+            "items": preview_data,
+            "items_count": len(preview_data),
+            "current_page": page,
+            "max_page": paginator.num_pages,
         }
         return Response(status=HTTP_200_OK, data=result)
+
+    @staticmethod
+    def _map_segment_data(data):
+        """
+        Maps Postgres persistent segment data to Singledb formatted data for client
+        :param data:
+        :return:
+        """
+        mapped_data = {
+            "channel_id": data["related_id"],
+            "title": data["title"],
+            "category": data["category"],
+            "likes": data["details"]["likes"],
+            "dislikes": data["details"]["dislikes"],
+            "language": data["details"]["language"],
+            "subscribers": data["details"]["subscribers"],
+            "audited_videos": data["details"]["audited_videos"]
+        }
+        return mapped_data
