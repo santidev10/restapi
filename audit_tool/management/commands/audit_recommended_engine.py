@@ -51,7 +51,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
     def handle(self, *args, **options):
         try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("id")[0]
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
             self.language = self.audit.params.get('language')
             if not self.language:
                 self.language = "en"
@@ -288,6 +288,10 @@ class Command(BaseCommand):
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
+        try:
+            name = self.audit.params['name']
+        except Exception as e:
+            name = audit_id
         video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id).values_list('video_id', flat=True)
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
                 "video",
@@ -299,7 +303,7 @@ class Command(BaseCommand):
         )
         if num_out:
             video_meta = video_meta[:num_out]
-        with open('export_{}.csv'.format(audit_id), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:

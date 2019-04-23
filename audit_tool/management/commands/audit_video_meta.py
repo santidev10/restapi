@@ -46,7 +46,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="audit_video_meta.pid")
     def handle(self, *args, **options):
         try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("id")[0]
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
         except Exception as e:
             logger.exception(e)
         self.process_audit()
