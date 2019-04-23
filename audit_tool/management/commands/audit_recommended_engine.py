@@ -17,7 +17,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
-from pid.decorator import pidfile
+from pid import PidFile
 
 """
 requirements:
@@ -47,17 +47,24 @@ class Command(BaseCommand):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                            "?key={key}&part=id,snippet&id={id}"
 
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     # this is the primary method to call to trigger the entire audit sequence
-    @pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
+    #@pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
     def handle(self, *args, **options):
-        try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
-            self.language = self.audit.params.get('language')
-            if not self.language:
-                self.language = "en"
-        except Exception as e:
-            logger.exception(e)
-        self.process_audit()
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile('get_current_audit_to_process_{}.pid'.format(self.thread_id)) as p:
+            try:
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
+                self.language = self.audit.params.get('language')
+                if not self.language:
+                    self.language = "en"
+            except Exception as e:
+                logger.exception(e)
+            self.process_audit()
 
     def process_audit(self):
         self.load_inclusion_list()
@@ -72,7 +79,7 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[:100]:
+        for video in pending_videos[self.thread_id:self.thread_id+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
