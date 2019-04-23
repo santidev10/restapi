@@ -2,6 +2,8 @@ import os
 from email.mime.image import MIMEImage
 
 import pytz
+from django.core.paginator import Paginator
+from django.core.paginator import EmptyPage
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import CharField
@@ -442,36 +444,50 @@ class PersistentSegmentPreviewAPIView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
-    page_size = 4
-    max_page = 5
+    max_per_page = 10
+    default_page_size = 5
 
     def get(self, request, **kwargs):
         page = request.query_params.get("page", 1)
+        size = request.query_params.get("size", self.default_page_size)
         segment_type = kwargs["segment_type"]
         try:
             page = int(page)
-            if page <= 0:
-                raise ValueError
+            size = int(size)
         except ValueError:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page number: {}".format(page))
-        page = page if page <= self.max_page else self.max_page
-        # Slicing Pagination to avoid querying for large datasets from singledb, e.g. Video segment with millions of videos
-        page_start = (page - 1) * self.page_size
-        page_end = page_start + self.page_size
+        if page <= 0:
+            page = 1
+        if size <= 0:
+            size = self.default_page_size
+        elif size >= self.max_per_page:
+            size = self.max_per_page
         segment = get_persistent_segment_model_by_type(segment_type)
         try:
-            related_ids = segment.objects.get(pk=kwargs["pk"]).related.order_by("id").values_list(
-                "related_id", flat=True)[page_start:page_end]
+            related_ids = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values_list(
+                "related_id", flat=True)
         except segment.DoesNotExist:
             raise Http404
+        paginator = Paginator(related_ids, size)
+        try:
+            preview_page = paginator.page(page)
+        except EmptyPage:
+            max_page = paginator.num_pages
+            preview_page = paginator.page(max_page)
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
-        config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
+        config = get_persistent_segment_connector_config_by_type(segment_type, preview_page.object_list)
         if config is None:
             return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
         connector_method = config.pop("method")
         response = connector_method(config)
+
+        # Check which ids are missing from the respnose if any
+
         result = {
             "items": response["items"],
-            "page": page
+            "items_count": len(related_ids),
+            "current_page": page,
+            "max_page": paginator.num_pages,
         }
         return Response(status=HTTP_200_OK, data=result)
+
