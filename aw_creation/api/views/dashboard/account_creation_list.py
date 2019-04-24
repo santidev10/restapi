@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
@@ -19,7 +19,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
     page_size = 20
 
 
-@demo_view_decorator
 class DashboardAccountCreationListApiView(ListAPIView):
     serializer_class = DashboardAccountCreationListSerializer
     pagination_class = OptimizationAccountListPaginator
@@ -85,8 +84,9 @@ class DashboardAccountCreationListApiView(ListAPIView):
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
         queryset = AccountCreation.objects.filter(
-            Q(**filters)
-            & Q(is_deleted=False, account__managers__id=chf_account_id)
+            (Q(account__managers__id=chf_account_id) | Q(account_id=DEMO_ACCOUNT_ID))
+            & Q(**filters)
+            & Q(is_deleted=False)
             & visibility_filter
         )
 

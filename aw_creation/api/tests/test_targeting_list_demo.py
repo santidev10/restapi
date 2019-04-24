@@ -4,19 +4,23 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import *
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import AdGroup
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class DemoTargetingListTestCase(ExtendedAPITestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+        recreate_demo_data()
+
     def setUp(self):
         self.user = self.create_test_user()
 
     def test_export_list(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
+        ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(
             "aw_creation_urls:ad_group_creation_targeting_export",

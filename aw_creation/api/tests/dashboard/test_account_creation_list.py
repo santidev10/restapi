@@ -17,6 +17,7 @@ from aw_reporting.demo.models import DEMO_ACCOUNT_ID
 from aw_reporting.demo.models import DEMO_BRAND
 from aw_reporting.demo.models import DEMO_COST_METHOD
 from aw_reporting.demo.models import DEMO_SF_ACCOUNT
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -140,17 +141,18 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 2)
-        self.assertEqual(len(response.data["items"]), 2)
-        item = response.data["items"][1]
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
+        item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
         )
 
     def test_properties_demo(self):
+        recreate_demo_data()
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -160,6 +162,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                          self.details_keys)
 
     def test_get_chf_account_creation_list_queryset(self):
+        recreate_demo_data()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
         expected_account_id = "1"
@@ -171,7 +174,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Account.objects.create(id="4", name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -342,8 +345,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertAlmostEqual(acc_data["cost"], expected_cost)
 
     def test_demo_brand(self):
+        recreate_demo_data()
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -353,8 +357,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["brand"], DEMO_BRAND)
 
     def test_demo_cost_type(self):
+        recreate_demo_data()
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -364,9 +369,9 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(accounts[DEMO_ACCOUNT_ID]["cost_method"], DEMO_COST_METHOD)
 
     def test_demo_agency(self):
-        # hide
+        recreate_demo_data()
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
@@ -389,8 +394,8 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts = response.data["items"]
-        self.assertEqual(len(accounts), 2)
-        self.assertEqual(accounts[1]["id"], visible_account.account_creation.id)
+        self.assertEqual(len(accounts), 1)
+        self.assertEqual(accounts[0]["id"], visible_account.account_creation.id)
 
     def test_no_demo_data(self):
         chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
@@ -400,7 +405,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Campaign.objects.create(id=next(int_iterator), account=account)
 
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 
@@ -440,7 +444,6 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         Campaign.objects.create(id=next(int_iterator), account=account)
 
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
 

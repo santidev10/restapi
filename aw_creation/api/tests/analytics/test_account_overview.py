@@ -6,6 +6,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -101,6 +102,7 @@ class AnalyticsAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(overview.keys()), self._keys)
 
     def test_success_demo(self):
+        recreate_demo_data()
         overview = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(set(overview.keys()), self._keys)
 

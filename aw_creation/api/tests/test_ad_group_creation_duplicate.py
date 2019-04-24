@@ -10,7 +10,9 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import AdGroup
 from saas.urls.namespaces import Namespace
 from utils.utittests.reverse import reverse
 
@@ -97,9 +99,8 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['name'], "FF 1 (200)")
 
     def test_success_post_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
+        recreate_demo_data()
+        ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = self._get_url(ad_group.id)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)

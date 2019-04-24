@@ -13,6 +13,7 @@ from aw_reporting.dashboard_charts import ALL_DIMENSIONS
 from aw_reporting.dashboard_charts import ALL_INDICATORS
 from aw_reporting.dashboard_charts import Indicator
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -71,6 +72,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_tabs(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.is_staff = True
         self._hide_demo_data(user)
@@ -102,6 +104,7 @@ class DashboardPerformanceChartTestCase(ExtendedAPITestCase):
                 self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cpm_cpv_is_visible(self):
+        recreate_demo_data()
         user = self.create_test_user()
         account_creation = AccountCreation.objects.create(name="", owner=user,
                                                           is_paused=True)

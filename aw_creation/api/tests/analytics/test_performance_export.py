@@ -11,6 +11,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.analytics_performance_report import AnalyticsPerformanceReportColumn, ALL_COLUMNS
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
@@ -102,9 +103,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(is_empty_report(sheet))
 
         self.assertEqual(sheet[2][0].value, "Summary")
-        for column in range(11, 11 + 4):
-            self.assertIsNotNone(sheet[2][column].value, column)
-
+        self.assertIsNotNone(sheet[2][2].value)
         self.assertIsNotNone(sheet[3][0].value)
 
     def test_success(self):
@@ -128,6 +127,7 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertFalse(is_empty_report(sheet))
 
     def test_success_demo(self):
+        recreate_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -135,7 +135,11 @@ class AnalyticsPerformanceExportAPITestCase(ExtendedAPITestCase):
             start_date=str(today - timedelta(days=1)),
             end_date=str(today)
         )
-        response = self._request(DEMO_ACCOUNT_ID, **filters)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID, **filters)
         self.assert_demo_data(response)
 
     def test_report_is_xlsx_formatted(self):

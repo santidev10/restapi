@@ -12,9 +12,12 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from utils.utittests.reverse import reverse
 
 
@@ -213,10 +216,14 @@ class AccountAPITestCase(AwReportingAPITestCase):
         self.assertEqual(data['name'], "FF 1 (666)")
 
     def test_success_post_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        url = self._get_url(campaign.id)
-        response = self.client.post(url)
+        recreate_demo_data()
+        campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
+        url = self._get_url(campaign.campaign_creation.first().id)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_copy_properties(self):

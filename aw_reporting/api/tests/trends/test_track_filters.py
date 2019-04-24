@@ -3,7 +3,8 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace
 
@@ -55,10 +56,11 @@ class TrackFiltersAPITestCase(AwReportingAPITestCase):
         )
 
     def test_demo_account(self):
+        recreate_demo_data()
         self.create_test_user()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         self.assertEqual(len(response.data['accounts']), 1)
         account_data = response.data['accounts'][0]
-        self.assertEqual(account_data["id"], DemoAccount().id)
+        self.assertEqual(account_data["id"], DEMO_ACCOUNT_ID)

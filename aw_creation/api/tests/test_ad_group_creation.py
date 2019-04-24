@@ -7,10 +7,11 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, TargetingItem
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -73,7 +74,7 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             {
                 'id', 'name', 'ad_creations', 'updated_at', 'max_rate',
                 'targeting', 'parents', 'genders', 'age_ranges',
-            'video_ad_format',
+                'video_ad_format',
             }
         )
         for f in ('age_ranges', 'genders', 'parents'):
@@ -88,20 +89,22 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
+        recreate_demo_data()
+        ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
+        recreate_demo_data()
+        ad_group = AdGroupCreation.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_group_creation_setup",
                       args=(ad_group.id,))
@@ -134,8 +137,10 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             age_ranges=[AdGroupCreation.AGE_RANGE_55_64,
                         AdGroupCreation.AGE_RANGE_65_UP],
             targeting={
-                "keyword": {"positive": ["spam", "ham"],
-                            "negative": ["ai", "neural nets"]},
+                "keyword": {
+                    "positive": ["spam", "ham"],
+                    "negative": ["ai", "neural nets"]
+                },
                 "video": {"positive": ["iTKJ_itifQg"], "negative": ["1112yt"]},
             }
         )
@@ -197,11 +202,13 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad_group.id,))
         data = {
             "name": "AdGroup 1", "max_rate": 0,
-            "targeting": {"keyword": {"positive": [], "negative": []},
-                          "topic": {"positive": [], "negative": []},
-                          "interest": {"positive": [], "negative": []},
-                          "channel": {"positive": [], "negative": []},
-                          "video": {"positive": [], "negative": []}},
+            "targeting": {
+                "keyword": {"positive": [], "negative": []},
+                "topic": {"positive": [], "negative": []},
+                "interest": {"positive": [], "negative": []},
+                "channel": {"positive": [], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
             "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
                            AdGroupCreation.AGE_RANGE_25_34],
             "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
@@ -225,11 +232,13 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad_group.id,))
         data = {
             "name": "AdGroup 1", "max_rate": 0,
-            "targeting": {"keyword": {"positive": [], "negative": []},
-                          "topic": {"positive": [], "negative": []},
-                          "interest": {"positive": [], "negative": []},
-                          "channel": {"positive": [], "negative": []},
-                          "video": {"positive": [], "negative": []}},
+            "targeting": {
+                "keyword": {"positive": [], "negative": []},
+                "topic": {"positive": [], "negative": []},
+                "interest": {"positive": [], "negative": []},
+                "channel": {"positive": [], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
             "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
                            AdGroupCreation.AGE_RANGE_25_34],
             "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],
@@ -294,11 +303,13 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
                       args=(ad_group.id,))
         data = {
             "name": "AdGroup 1", "max_rate": 0,
-            "targeting": {"keyword": {"positive": [], "negative": []},
-                          "topic": {"positive": [], "negative": []},
-                          "interest": {"positive": [], "negative": []},
-                          "channel": {"positive": [], "negative": []},
-                          "video": {"positive": [], "negative": []}},
+            "targeting": {
+                "keyword": {"positive": [], "negative": []},
+                "topic": {"positive": [], "negative": []},
+                "interest": {"positive": [], "negative": []},
+                "channel": {"positive": [], "negative": []},
+                "video": {"positive": [], "negative": []}
+            },
             "age_ranges": [AdGroupCreation.AGE_RANGE_18_24,
                            AdGroupCreation.AGE_RANGE_25_34],
             "parents": [AdGroupCreation.PARENT_NOT_A_PARENT],

@@ -7,6 +7,8 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, Language
 from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -73,19 +75,25 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_get_format_check(response.data, extra_data_keys=['sync_at', 'target_cpa'])
+        self.perform_get_format_check(response.data)
 
     def test_success_get_demo(self):
+        recreate_demo_data()
         url = reverse("aw_creation_urls:campaign_creation_list_setup",
                       args=(DEMO_ACCOUNT_ID,))
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 
-    def perform_get_format_check(self, data, extra_data_keys=None):
+    def perform_get_format_check(self, data):
         campaign_keys = {
             "ad_group_creations",
             "ad_schedule_rules",
+            "bid_strategy_type",
             "budget",
             "content_exclusions",
             "delivery_method",
@@ -98,13 +106,12 @@ class CampaignListAPITestCase(ExtendedAPITestCase):
             "location_rules",
             "name",
             "start",
+            "sync_at",
+            "target_cpa",
             "type",
             "updated_at",
             "video_networks",
-            "bid_strategy_type",
         }
-        if extra_data_keys is not None:
-            campaign_keys.update(extra_data_keys)
         self.assertEqual(len(data), 2)
         self.assertEqual(
             set(data[0].keys()),

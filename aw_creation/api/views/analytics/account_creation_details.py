@@ -8,12 +8,10 @@ from rest_framework.views import APIView
 from aw_creation.api.serializers.analytics.account_creation_details_serializer import \
     AnalyticsAccountCreationDetailsSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.decorators import demo_view_decorator
 
 logger = logging.getLogger(__name__)
 
 
-@demo_view_decorator
 class AnalyticsAccountCreationDetailsAPIView(APIView):
     serializer_class = AnalyticsAccountCreationDetailsSerializer
     permission_classes = (IsAuthenticated,)

@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_405_METHOD_NOT_ALLOWED
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.api.tests.base import AwReportingAPITestCase
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -88,9 +89,9 @@ class AccountListAPITestCase(AwReportingAPITestCase):
                 'current_page',
             }
         )
-        self.assertEqual(response.data['items_count'], 2)
-        self.assertEqual(len(response.data['items']), 2)
-        item = response.data['items'][1]
+        self.assertEqual(response.data['items_count'], 1)
+        self.assertEqual(len(response.data['items']), 1)
+        item = response.data['items'][0]
         self.assertEqual(
             set(item.keys()),
             self.details_keys,
@@ -114,14 +115,15 @@ class AccountListAPITestCase(AwReportingAPITestCase):
         response = self.client.get("{}?max_campaigns_count=2".format(url))
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data['items']), 2)
-        item = response.data['items'][1]
+        self.assertEqual(len(response.data['items']), 1)
+        item = response.data['items'][0]
         self.assertEqual(item["id"], ac_creation.id)
 
     def test_success_get_demo(self):
+        recreate_demo_data()
         url = reverse("aw_creation_urls:performance_targeting_list")
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
