@@ -335,7 +335,7 @@ def create_targeting(ad_group_creation):
     for index, targeting_tuple in enumerate(targeting):
         targeting_type, targeting_data = targeting_tuple
         TargetingItem.objects.create(
-            type=targeting_type,
+            type=targeting_type.value,
             is_negative=index % 2 == 0,
             ad_group_creation=ad_group_creation,
             criteria=targeting_data["criteria"],

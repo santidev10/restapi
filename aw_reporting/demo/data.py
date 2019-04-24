@@ -1,4 +1,4 @@
-from aw_creation.models import TargetingItem
+from aw_creation.constants import TargetingType
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_NAME = "Demo"
@@ -46,7 +46,7 @@ CITIES = (
     "Demo city 2",
 )
 TARGETING = {
-    TargetingItem.KEYWORD_TYPE: (
+    TargetingType.KEYWORD: (
         {"name": "Computer & Vcriteriaeo Games", "criteria": 41},
         {"name": "Arts & Entertainment", "criteria": 3},
         {"name": "Shooter Games", "criteria": 930},
@@ -56,7 +56,7 @@ TARGETING = {
         {"name": "Beauty & Fitness", "criteria": 44},
         {"name": "Food & Drink", "criteria": 71},
     ),
-    TargetingItem.INTEREST_TYPE: (
+    TargetingType.INTEREST: (
         {"name": "/Beauty Mavens", "criteria": 92505},
         {"name": "/Beauty Products & Services", "criteria": 80546},
         {"name": "/Family-Focused", "criteria": 91000},
@@ -68,7 +68,7 @@ TARGETING = {
         {"name": "/News Junkies & Avcriteria Readers", "criteria": 92000},
         {"name": "/Sports & Fitness/Fitness Products & Services/Exercise Equipment", "criteria": 80559},
     ),
-    TargetingItem.TOPIC_TYPE: (
+    TargetingType.TOPIC: (
         {"name": "Computer & Vcriteriaeo Games", "criteria": 41},
         {"name": "Arts & Entertainment", "criteria": 3},
         {"name": "Shooter Games", "criteria": 930},

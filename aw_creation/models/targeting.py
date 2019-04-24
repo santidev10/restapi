@@ -1,5 +1,6 @@
 from django.db import models
 
+from aw_creation.constants import TargetingType
 from .creation import AdGroupCreation
 
 
@@ -8,11 +9,11 @@ class TargetingItem(models.Model):
     ad_group_creation = models.ForeignKey(
         AdGroupCreation, related_name="targeting_items"
     )
-    CHANNEL_TYPE = "channel"
-    VIDEO_TYPE = "video"
-    TOPIC_TYPE = "topic"
-    INTEREST_TYPE = "interest"
-    KEYWORD_TYPE = "keyword"
+    CHANNEL_TYPE = TargetingType.CHANNEL.value
+    VIDEO_TYPE = TargetingType.VIDEO.value
+    TOPIC_TYPE = TargetingType.TOPIC.value
+    INTEREST_TYPE = TargetingType.INTEREST.value
+    KEYWORD_TYPE = TargetingType.KEYWORD.value
     TYPES = (
         (CHANNEL_TYPE, CHANNEL_TYPE),
         (VIDEO_TYPE, VIDEO_TYPE),
