@@ -51,7 +51,6 @@ class Command(BaseCommand):
         parser.add_argument('thread_id', type=int)
 
     # this is the primary method to call to trigger the entire audit sequence
-    #@pidfile(piddir=".", pidname="get_current_audit_to_process.pid")
     def handle(self, *args, **options):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
@@ -135,7 +134,7 @@ class Command(BaseCommand):
             )
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
-            if self.check_video_is_clean(db_video_meta, avp):
+            if self.check_video_is_clean(db_video_meta):
                 v, _  = AuditVideoProcessor.objects.get_or_create(
                     video=db_video,
                     audit=self.audit
