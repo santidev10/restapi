@@ -2,8 +2,6 @@ import logging
 from collections import defaultdict
 import multiprocessing as mp
 
-from django.conf import settings
-
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -20,8 +18,8 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 5
-    channel_id_pool_batch_limit = 1
+    channel_id_master_batch_limit = 250
+    channel_id_pool_batch_limit = 50
     max_process_count = 5
     brand_safety_fail_threshold = 3
     cursor_logging_threshold = 1
@@ -32,7 +30,6 @@ class StandardBrandSafetyProvider(object):
         "tags": 1,
         "transcript": 1,
     }
-    es_thread_count = 4
     # Bad words in these categories should be ignored while calculating brand safety scores
     bad_word_categories_ignore = [3]
 
@@ -57,8 +54,8 @@ class StandardBrandSafetyProvider(object):
             score_multiplier=self.brand_safety_score_multiplier,
             default_video_category_scores=self.default_video_category_scores,
             default_channel_category_scores=self.default_channel_category_scores,
-            es_video_index=settings.BRAND_SAFETY_VIDEO_INDEX,
-            es_channel_index=settings.BRAND_SAFETY_CHANNEL_INDEX
+            es_video_index=constants.BRAND_SAFETY_VIDEO_ES_INDEX,
+            es_channel_index=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
         self.es_connector = ElasticSearchConnector()
 
@@ -77,8 +74,6 @@ class StandardBrandSafetyProvider(object):
             video_audits, channel_audits = self._extract_results(results)
             self._process_results(video_audits, channel_audits)
             # Update script tracker and cursors in case of failure
-
-            break
             self.script_tracker = self.audit_provider.update_cursor(self.script_tracker, len(channel_batch))
             self.cursor = self.script_tracker.cursor
             if self.cursor % self.cursor_logging_threshold == 0:
@@ -123,12 +118,12 @@ class StandardBrandSafetyProvider(object):
         self.index_brand_safety_results(
             # self.audit_service.gather_brand_safety_results(video_audits),
             video_audits,
-            index_name=settings.BRAND_SAFETY_VIDEO_INDEX
+            index_name=constants.BRAND_SAFETY_VIDEO_ES_INDEX
         )
         self.index_brand_safety_results(
             # self.audit_service.gather_brand_safety_results(channel_audits),
             channel_audits,
-            index_name=settings.BRAND_SAFETY_CHANNEL_INDEX
+            index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
 
     def _sort_brand_safety(self, audits):
@@ -150,12 +145,7 @@ class StandardBrandSafetyProvider(object):
         index_type = "score"
         op_type = "index"
         es_bulk_generator = (audit.es_repr(index_name, index_type, op_type) for audit in results)
-        parallel_bulk(
-            self.es_connector.client,
-            actions=es_bulk_generator,
-            thread_count=self.
-        )
-        self.es_connector.push_to_index()
+        self.es_connector.push_to_index(es_bulk_generator)
 
     def channel_id_batch_generator(self, cursor):
         """

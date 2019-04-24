@@ -23,6 +23,7 @@ from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
+from utils.brand_safety_view_decorator import add_brand_safety_data
 
 
 class VideoListApiView(
@@ -51,6 +52,7 @@ class VideoListApiView(
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
+    @add_brand_safety_data
     def get(self, request):
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
