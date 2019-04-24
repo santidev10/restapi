@@ -1,6 +1,5 @@
 import re
 from collections import defaultdict
-from functools import partial
 from itertools import product
 
 from rest_framework.status import HTTP_200_OK
