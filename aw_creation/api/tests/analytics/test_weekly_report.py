@@ -133,7 +133,6 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
                 self.assertEqual(cell.number_format, expected_format)
 
     def test_demo_data(self):
-
         user = self.create_test_user()
         account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
