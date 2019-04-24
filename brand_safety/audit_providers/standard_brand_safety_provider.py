@@ -2,8 +2,9 @@ import logging
 from collections import defaultdict
 import multiprocessing as mp
 
-from django.db.models import Q
+from django.conf import settings
 
+from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety import constants
@@ -31,6 +32,7 @@ class StandardBrandSafetyProvider(object):
         "tags": 1,
         "transcript": 1,
     }
+    es_thread_count = 4
     # Bad words in these categories should be ignored while calculating brand safety scores
     bad_word_categories_ignore = [3]
 
@@ -54,8 +56,11 @@ class StandardBrandSafetyProvider(object):
             score_mapping=self.score_mapping,
             score_multiplier=self.brand_safety_score_multiplier,
             default_video_category_scores=self.default_video_category_scores,
-            default_channel_category_scores=self.default_channel_category_scores
+            default_channel_category_scores=self.default_channel_category_scores,
+            es_video_index=settings.BRAND_SAFETY_VIDEO_INDEX,
+            es_channel_index=settings.BRAND_SAFETY_CHANNEL_INDEX
         )
+        self.es_connector = ElasticSearchConnector()
 
     def run(self):
         """
@@ -116,12 +121,14 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         self.index_brand_safety_results(
-            self.audit_service.gather_brand_safety_results(video_audits),
-            doc_type=constants.VIDEO
+            # self.audit_service.gather_brand_safety_results(video_audits),
+            video_audits,
+            index_name=settings.BRAND_SAFETY_VIDEO_INDEX
         )
         self.index_brand_safety_results(
-            self.audit_service.gather_brand_safety_results(channel_audits),
-            doc_type=constants.CHANNEL
+            # self.audit_service.gather_brand_safety_results(channel_audits),
+            channel_audits,
+            index_name=settings.BRAND_SAFETY_CHANNEL_INDEX
         )
 
     def _sort_brand_safety(self, audits):
@@ -139,15 +146,16 @@ class StandardBrandSafetyProvider(object):
                 brand_safety_fail[audit.pk] = audit
         return brand_safety_pass, brand_safety_fail
 
-    def index_brand_safety_results(self, results, doc_type=constants.VIDEO):
-        """
-        Send audit results for Elastic search indexing
-        :param results: Audit brand safety results
-        :param doc_type: Index document type
-        :return: Singledb response
-        """
-        response = self.sdb_connector.post_brand_safety_results(results, doc_type)
-        return response
+    def index_brand_safety_results(self, results, index_name):
+        index_type = "score"
+        op_type = "index"
+        es_bulk_generator = (audit.es_repr(index_name, index_type, op_type) for audit in results)
+        parallel_bulk(
+            self.es_connector.client,
+            actions=es_bulk_generator,
+            thread_count=self.
+        )
+        self.es_connector.push_to_index()
 
     def channel_id_batch_generator(self, cursor):
         """
