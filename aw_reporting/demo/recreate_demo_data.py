@@ -14,7 +14,16 @@ from aw_creation.models import FrequencyCap
 from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
-from aw_reporting.models import ALL_AGE_RANGES, OpPlacement, Contact, SFAccount
+from aw_reporting.demo.data import AUIDIENCES
+from aw_reporting.demo.data import CHANNELS
+from aw_reporting.demo.data import CITIES
+from aw_reporting.demo.data import DEFAULT_STATS
+from aw_reporting.demo.data import KEYWORDS
+from aw_reporting.demo.data import TARGETING
+from aw_reporting.demo.data import TOPICS
+from aw_reporting.demo.data import VIDEOS
+from aw_reporting.demo.data import VIDEO_CREATIVES
+from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import Account
@@ -32,7 +41,9 @@ from aw_reporting.models import CityStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreative
@@ -43,14 +54,14 @@ from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_f
 from saas import celery_app
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
-from .models import DEMO_ACCOUNT_ID
-from .models import DEMO_AD_GROUPS
-from .models import DEMO_BRAND
-from .models import DEMO_CAMPAIGNS_COUNT
-from .models import DEMO_DATA_HOURLY_LIMIT
-from .models import DEMO_DATA_PERIOD_DAYS
-from .models import DEMO_NAME
-from .models import DEMO_SF_ACCOUNT
+from .data import DEMO_ACCOUNT_ID
+from .data import DEMO_AD_GROUPS
+from .data import DEMO_BRAND
+from .data import DEMO_CAMPAIGNS_COUNT
+from .data import DEMO_DATA_HOURLY_LIMIT
+from .data import DEMO_DATA_PERIOD_DAYS
+from .data import DEMO_NAME
+from .data import DEMO_SF_ACCOUNT
 
 __all__ = ["recreate_demo_data"]
 
@@ -355,77 +366,6 @@ def generate_dates():
     start = today - timedelta(days=days - 1)
     return [start + timedelta(days=i) for i in range(days)]
 
-
-DEFAULT_STATS = dict(
-    impressions=10000,
-    cost=1,
-    video_views=300,
-    clicks=20,
-)
-TOPICS = (
-    "Demo topic 1",
-    "Demo topic 2",
-)
-AUIDIENCES = (
-    "Demo audience 1",
-    "Demo audience 2",
-)
-VIDEO_CREATIVES = (
-    "demo creative 1",
-    "demo creative 2",
-)
-KEYWORDS = (
-    "demo keyword 1",
-    "demo keyword 2",
-)
-
-CHANNELS = (
-    "demoChannel1",
-    "demoChannel2",
-)
-
-VIDEOS = (
-    "demoVideo1",
-    "demoVideo2",
-)
-CITIES = (
-    "Demo city 1",
-    "Demo city 2",
-)
-TARGETING = {
-    TargetingItem.KEYWORD_TYPE: (
-        {"name": "Computer & Vcriteriaeo Games", "criteria": 41},
-        {"name": "Arts & Entertainment", "criteria": 3},
-        {"name": "Shooter Games", "criteria": 930},
-        {"name": "Movies", "criteria": 34},
-        {"name": "TV Family-Oriented Shows", "criteria": 1110},
-        {"name": "Business & Industrial", "criteria": 12},
-        {"name": "Beauty & Fitness", "criteria": 44},
-        {"name": "Food & Drink", "criteria": 71},
-    ),
-    TargetingItem.INTEREST_TYPE: (
-        {"name": "/Beauty Mavens", "criteria": 92505},
-        {"name": "/Beauty Products & Services", "criteria": 80546},
-        {"name": "/Family-Focused", "criteria": 91000},
-        {"name": "/News Junkies & Avcriteria Readers/Entertainment & Celebrity News Junkies", "criteria": 92006},
-        {"name": "/News Junkies & Avcriteria Readers/Women\"s Media Fans", "criteria": 92007},
-        {"name": "/Foodies", "criteria": 92300},
-        {"name": "/Sports & Fitness/Outdoor Recreational Equipment", "criteria": 80549},
-        {"name": "/Sports Fans", "criteria": 90200},
-        {"name": "/News Junkies & Avcriteria Readers", "criteria": 92000},
-        {"name": "/Sports & Fitness/Fitness Products & Services/Exercise Equipment", "criteria": 80559},
-    ),
-    TargetingItem.TOPIC_TYPE: (
-        {"name": "Computer & Vcriteriaeo Games", "criteria": 41},
-        {"name": "Arts & Entertainment", "criteria": 3},
-        {"name": "Shooter Games", "criteria": 930},
-        {"name": "Movies", "criteria": 34},
-        {"name": "TV Family-Oriented Shows", "criteria": 1110},
-        {"name": "Business & Industrial", "criteria": 12},
-        {"name": "Beauty & Fitness", "criteria": 44},
-        {"name": "Food & Drink", "criteria": 71},
-    ),
-}
 
 get_topics = partial(get_or_create_entities, Topic, "name", TOPICS)
 get_audiences = partial(get_or_create_entities, Audience, "name", AUIDIENCES)

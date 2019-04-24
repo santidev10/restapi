@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Min
 from django.db.models import Q
 
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
 
 

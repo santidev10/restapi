@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from administration.notifications import send_html_email
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames

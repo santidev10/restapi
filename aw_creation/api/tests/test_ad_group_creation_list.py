@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz

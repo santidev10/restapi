@@ -12,7 +12,7 @@ from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import ALL_DIMENSIONS
 from aw_reporting.dashboard_charts import ALL_INDICATORS
 from aw_reporting.dashboard_charts import Indicator
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation

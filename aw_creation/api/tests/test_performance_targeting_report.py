@@ -8,7 +8,7 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup

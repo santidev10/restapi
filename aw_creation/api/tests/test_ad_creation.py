@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Ad
 from userprofile.constants import UserSettingsKey

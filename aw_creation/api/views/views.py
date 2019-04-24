@@ -55,7 +55,7 @@ from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
 from aw_creation.models.creation import BUDGET_TYPE_CHOICES
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic

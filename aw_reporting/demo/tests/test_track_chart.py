@@ -5,7 +5,7 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
-from aw_reporting.demo.models import DEMO_DATA_HOURLY_LIMIT
+from aw_reporting.demo.data import DEMO_DATA_HOURLY_LIMIT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey

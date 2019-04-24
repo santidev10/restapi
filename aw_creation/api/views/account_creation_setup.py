@@ -10,7 +10,7 @@ from aw_creation.email_messages import send_tracking_tags_request
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
 from aw_reporting.models import Account, AWConnection
 from utils.permissions import MediaBuyingAddOnPermission, user_has_permission, \

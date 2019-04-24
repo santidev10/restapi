@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
