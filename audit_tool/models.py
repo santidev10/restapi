@@ -129,6 +129,7 @@ class AuditProcessor(models.Model):
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
     params = JSONField(default={})
+    cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
