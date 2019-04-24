@@ -125,6 +125,7 @@ class AuditProcessor(models.Model):
     #   0 - recommendation engine
     #   1 - video meta processor
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)

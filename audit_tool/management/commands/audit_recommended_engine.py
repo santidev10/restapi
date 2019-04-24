@@ -68,6 +68,9 @@ class Command(BaseCommand):
     def process_audit(self):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        if not self.audit.started:
+            self.audit.started = timezone.now()
+            self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             pending_videos = self.process_seed_list()
