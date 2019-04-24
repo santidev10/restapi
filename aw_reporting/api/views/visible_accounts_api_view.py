@@ -85,14 +85,10 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             for account in accounts:
                 # account visibility
                 uid = account['id']
-                if uid == "demo":
-                    settings_obj.update(
-                        demo_account_visible=account['visible'])
+                if account['visible']:
+                    visible_accounts |= {uid}
                 else:
-                    if account['visible']:
-                        visible_accounts |= {uid}
-                    else:
-                        visible_accounts -= {uid}
+                    visible_accounts -= {uid}
 
                 # campaign visibility
                 if 'campaign_types_visibility' in account:
