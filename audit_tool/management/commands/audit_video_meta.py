@@ -350,7 +350,7 @@ class Command(BaseCommand):
                     v.views,
                     v.likes,
                     v.dislikes,
-                    str(v.emoji),
+                    'T' if v.emoji else 'F',
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
@@ -359,6 +359,7 @@ class Command(BaseCommand):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
+            return 'export_{}.csv'.format(audit_id)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
