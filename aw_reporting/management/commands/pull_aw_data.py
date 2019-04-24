@@ -32,9 +32,27 @@ class Command(BaseCommand):
             default=None,
         )
 
+        parser.add_argument(
+            '--start_date',
+            dest='start_date',
+            help="Start date to pull data in format yyyy-mm-dd",
+            type=str,
+            default=None,
+        )
+
+        parser.add_argument(
+            '--end_date',
+            dest='end_date',
+            help="End date to pull data in format yyyy-mm-dd",
+            type=str,
+            default=None,
+        )
+
     def handle(self, *args, **options):
         start = options.get("start")
         end = options.get("end")
         account_ids_str = options.get("account_ids")
         account_ids = account_ids_str.split(",") if account_ids_str is not None else None
-        update_aw_accounts.delay(account_ids, start, end)
+        start_date = options.get("start_date")
+        end_date = options.get("end_date")
+        update_aw_accounts.delay(account_ids, start, end, start_date, end_date)

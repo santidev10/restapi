@@ -30,7 +30,7 @@ def _generate_stat_instances(model, report, click_type_data):
         yield model(**stats)
 
 
-def get_keywords(client, account, today):
+def get_keywords(client, account, today, **kwargs):
     from aw_reporting.models import KeywordStatistic
     from aw_reporting.adwords_reports import keywords_performance_report
 
