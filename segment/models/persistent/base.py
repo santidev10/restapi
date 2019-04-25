@@ -42,6 +42,8 @@ class BasePersistentSegment(Timestampable):
     export_content_type = "application/CSV"
     export_last_modified = None
 
+    thumbnail_image_url = TextField(default="")
+
     class Meta:
         abstract = True
         ordering = ["pk"]
