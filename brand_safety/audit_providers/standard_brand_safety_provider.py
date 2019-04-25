@@ -20,7 +20,6 @@ class StandardBrandSafetyProvider(object):
     channel_id_master_batch_limit = 500
     channel_id_pool_batch_limit = 50
     max_process_count = 10
-    cursor_id_logging_threshold = 50000
     brand_safety_fail_threshold = 3
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
@@ -36,7 +35,7 @@ class StandardBrandSafetyProvider(object):
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
-        self.cursor_id = self.script_tracker.cursor
+        self.cursor_id = self.script_tracker.cursor_id
         self.audit_provider = AuditProvider()
         self.sdb_connector = SingleDatabaseApiConnector()
         # Audit mapping for audit objects to use
@@ -72,12 +71,12 @@ class StandardBrandSafetyProvider(object):
             video_audits, channel_audits = self._extract_results(results)
             self._process_results(video_audits, channel_audits)
             # Update script tracker and cursors in case of failure
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1])
-            self.cursor_id = self.script_tracker.cursor
+            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
+            self.cursor_id = self.script_tracker.cursor_id
             # Update brand safety scores in case they have been modified
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
         logger.info("Standard Brand Safety Audit Complete.")
-        self.audit_provider.set_cursor(self.script_tracker, "0", integer=False)
+        self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
     def _process_audits(self, channel_ids):
         """
@@ -152,20 +151,19 @@ class StandardBrandSafetyProvider(object):
         :param cursor_id: Cursor position to start audit
         :return: list -> Youtube channel ids
         """
-        cursor_id = cursor_id if cursor_id is not "0" else None
         params = {
             "fields": "channel_id",
             "sort": "channel_id",
             "size": self.channel_id_master_batch_limit,
         }
         while self.channel_batch_counter <= self.channel_batch_counter_limit:
-            params["channel_id__range"] = "{},".format(cursor_id)
+            params["channel_id__range"] = "{},".format(cursor_id or "")
             response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
-            channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
+            channels = [item["channel_id"] for item in response.get("items", []) if item["channel_id"] != cursor_id]
             if not channels:
                 break
             yield channels
-            cursor_id = channels[-1]["channel_id"]
+            cursor_id = channels[-1]
             self.channel_batch_counter += 1
 
     @staticmethod
