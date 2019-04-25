@@ -115,13 +115,12 @@ class BaseSegment(Timestampable):
         ids = self.get_related_ids()
         ids_count = ids.count()
         if ids_count > settings.MAX_SEGMENT_TO_AGGREGATE:
-            self._set_total_for_huge_segment(ids_count)
+            data = self.get_data_by_ids(ids, end=settings.TOP_SEGMENT_ITEMS_COUNT)
+            self._set_total_for_huge_segment(ids_count, data)
             self.adw_data = dict()
             self.save()
             return
-        ids = list(ids)
-        ids_hash = Connector().store_ids(ids)
-        data = self.obtain_singledb_data(ids_hash)
+        data = self.get_data_by_ids(ids)
         # just return on any fail
         if data is None:
             return
@@ -131,7 +130,12 @@ class BaseSegment(Timestampable):
         self.save()
         return "Done"
 
-    def _set_total_for_huge_segment(self, items_count):
+    def get_data_by_ids(self, ids, start=None, end=None):
+        ids = list(ids)[start:end]
+        ids_hash = Connector().store_ids(ids)
+        return self.obtain_singledb_data(ids_hash)
+
+    def _set_total_for_huge_segment(self, items_count, data):
         raise NotImplementedError
 
     def obtain_singledb_data(self, ids_hash):
