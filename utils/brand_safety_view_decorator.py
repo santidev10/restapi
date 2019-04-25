@@ -1,6 +1,3 @@
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.response import Response
-
 from utils.elasticsearch import ElasticSearchConnector
 import brand_safety.constants as constants
 
@@ -15,25 +12,20 @@ def add_brand_safety_data(view):
         # Get result of view handling request first
         result = view(*args, **kwargs)
         try:
-            query_params = args[1].query_params
-            brand_safety_type = query_params.get("brand_safety")
-            if brand_safety_type is not None:
+            view_type = args[0].export_file_title
+            if result.data.get("items"):
                 indexes = {
                     "video": constants.BRAND_SAFETY_VIDEO_ES_INDEX,
                     "channel": constants.BRAND_SAFETY_CHANNEL_ES_INDEX
                 }
                 try:
-                    index_name = indexes[brand_safety_type]
+                    index_name = indexes[view_type]
                 except KeyError:
-                    response = Response(
-                        status=HTTP_400_BAD_REQUEST,
-                        data="Invalid brand_safety param: {}. Must either be video or channel.".format(brand_safety_type)
-                    )
-                    return response
+                    return result
                 try:
                     doc_ids = [item["id"] for item in result.data["items"]]
                 except KeyError:
-                    # Empty SDB response
+                    # Unexpected SDB response
                     return result
                 body = {
                     "query": {
@@ -43,7 +35,7 @@ def add_brand_safety_data(view):
                     }
                 }
                 es_result = ElasticSearchConnector(index_name=index_name)\
-                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body)
+                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
                 # Map to dictionary to merge to singledb data
                 es_data = {
                     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
@@ -53,7 +45,7 @@ def add_brand_safety_data(view):
                     item["brand_safety"] = es_data.get(item["id"], item.get("brand_safety", "Unavailable")) \
                         if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
                         else es_data.get(item["id"], "Unavailable")
-        except IndexError:
+        except (IndexError, AttributeError):
             pass
         return result
     return wrapper
