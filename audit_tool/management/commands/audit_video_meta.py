@@ -326,7 +326,15 @@ class Command(BaseCommand):
         )
         if num_out:
             video_meta = video_meta[:num_out]
-        with open('export_{}.csv'.format(audit_id), 'w', newline='') as myfile:
+        if self.audit:
+            audit_id = self.audit.id
+        else:
+            audit_id = audit_id
+        try:
+            name = self.audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
