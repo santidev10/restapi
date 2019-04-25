@@ -77,7 +77,7 @@ class StandardBrandSafetyProvider(object):
             # Update brand safety scores in case they have been modified
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
             if self.channel_batch_counter % self.channel_batch_counter_logging_threshold == 0:
-                logger.info("On channel batch: {}".format(self.channel_batch_counter))
+                logger.info("Channel batch size: {} - On channel batch number: {}".format(self.channel_id_master_batch_limit, self.channel_batch_counter))
         logger.info("Standard Brand Safety Audit Complete.")
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
