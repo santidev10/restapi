@@ -299,7 +299,7 @@ class Command(BaseCommand):
         if not audit_id and self.audit:
             audit_id = self.audit.id
         try:
-            name = self.audit.params['name']
+            name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
         video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id).values_list('video_id', flat=True)
