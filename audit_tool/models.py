@@ -97,6 +97,7 @@ class Keyword(models.Model):
 class APIScriptTracker(models.Model):
     name = models.CharField(max_length=255, unique=True, db_index=True)
     cursor = models.BigIntegerField(default=0)
+    cursor_id = models.CharField(max_length=50, blank=True, null=True)
 
 
 class CommentVideo(models.Model):

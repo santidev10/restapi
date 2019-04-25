@@ -113,6 +113,7 @@ class StandardBrandSafetyService(AuditService):
         sorted_channel_data = {
             channel["channel_id"]: channel
             for channel in response["items"]
+            if channel.get("channel_id") is not None
         }
         return sorted_channel_data
 

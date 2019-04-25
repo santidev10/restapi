@@ -30,7 +30,11 @@ def add_brand_safety_data(view):
                         data="Invalid brand_safety param: {}. Must either be video or channel.".format(brand_safety_type)
                     )
                     return response
-                doc_ids = [item["id"] for item in result.data["items"]]
+                try:
+                    doc_ids = [item["id"] for item in result.data["items"]]
+                except KeyError:
+                    # Empty SDB response
+                    return result
                 body = {
                     "query": {
                         "terms": {
@@ -42,10 +46,13 @@ def add_brand_safety_data(view):
                     .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body)
                 # Map to dictionary to merge to singledb data
                 es_data = {
-                    item["_source"]["_id"]: item for item in es_result["hits"]["hits"]
+                    item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
                 }
+                # Singledb channel data contains brand_safety fields while videos do not
                 for item in result.data["items"]:
-                    item["brand_safety_score"] = es_data.get(item["id"], "Unavailable")
+                    item["brand_safety"] = es_data.get(item["id"], item.get("brand_safety", "Unavailable")) \
+                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
+                        else es_data.get(item["id"], "Unavailable")
         except IndexError:
             pass
         return result
