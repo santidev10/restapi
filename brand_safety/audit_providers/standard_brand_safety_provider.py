@@ -31,6 +31,8 @@ class StandardBrandSafetyProvider(object):
     }
     # Bad words in these categories should be ignored while calculating brand safety scores
     bad_word_categories_ignore = [3]
+    channel_batch_counter = 0
+    channel_batch_counter_limit = 500
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -156,7 +158,7 @@ class StandardBrandSafetyProvider(object):
             "sort": "channel_id",
             "size": self.channel_id_master_batch_limit,
         }
-        while True:
+        while self.channel_batch_counter <= self.channel_batch_counter_limit:
             params["channel_id__range"] = "{},".format(cursor_id)
             response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
             channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
@@ -164,6 +166,7 @@ class StandardBrandSafetyProvider(object):
                 break
             yield channels
             cursor_id = channels[-1]["channel_id"]
+            self.channel_batch_counter += 1
 
     @staticmethod
     def get_brand_safety_score_mapping():
