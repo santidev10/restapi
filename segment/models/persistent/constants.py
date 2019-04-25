@@ -1,5 +1,5 @@
 S3_SEGMENT_EXPORT_KEY_PATTERN = "persistent-segments/{segment_type}/{segment_title}.csv"
-
+S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL = "https://s3.amazonaws.com/viewiq-prod/persistent-segments/thumbnails/cf-default.jpg"
 
 class PersistentSegmentType:
     CHANNEL = "channel"

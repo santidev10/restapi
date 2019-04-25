@@ -33,6 +33,7 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import PersistentSegmentType
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
 from segment.utils import get_persistent_segment_connector_config_by_type
@@ -355,32 +356,39 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset().exclude(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES) \
-                                         .filter(
+        queryset = super().get_queryset().filter(
                                             Q(title__in=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES)
+                                            | Q(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES)
                                             | Q(category=PersistentSegmentCategory.WHITELIST)
                                             | Q(category=PersistentSegmentCategory.TOPIC)
                                          )
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
-        items = []
-
+        formatted_response = {
+            "items": []
+        }
         for item in response.data.get("items", []):
-            if item.get("title") in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
-                items.append(item)
+            if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
+                formatted_response["master_blacklist"] = item
 
-        for item in response.data.get("items", []):
+            if item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
+                formatted_response["master_whitelist"] = item
+
             if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
-                items.append(item)
+                formatted_response["items"].append(item)
 
-        for item in items:
+            if not item.get("thumbnail_image_url"):
+                item["thumbnail_image_url"] = S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+
+        for item in formatted_response["items"]:
             # remove "Channels " or "Videos " prefix
             prefix = "{}s ".format(item.get("segment_type").capitalize())
             if item.get("title", prefix).startswith(prefix):
                 item["title"] = item.get("title", "")[len(prefix):]
 
-        response.data["items"] = items
+        # response.data["items"] = items
+        response.data = formatted_response
         return super().finalize_response(request, response, *args, **kwargs)
 
 
