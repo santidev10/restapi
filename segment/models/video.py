@@ -123,17 +123,20 @@ class SegmentVideo(BaseSegment):
         }
         return self.singledb_method(query_params=params)
 
-    def populate_statistics_fields(self, data):
-        """
-        Update segment statistics fields
-        """
-        self.videos = data.get("items_count")
+    def set_top_tree(self, data):
         self.top_three_videos = [
             {"id": obj.get("video_id"),
              "title": obj.get("title"),
              "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("items")
         ]
+
+    def populate_statistics_fields(self, data):
+        """
+        Update segment statistics fields
+        """
+        self.videos = data.get("items_count")
+        self.set_top_tree(data)
 
     @property
     def statistics(self):
@@ -146,9 +149,15 @@ class SegmentVideo(BaseSegment):
         }
         return statistics
 
-    def _set_total_for_huge_segment(self, items_count):
+    def _set_total_for_huge_segment(self, items_count, data):
+
         self.videos = items_count
-        self.top_three_videos = dict()
+
+        if data is None:
+            self.top_three_videos = dict()
+            return
+
+        self.set_top_tree(data)
 
 
 class SegmentRelatedVideo(BaseSegmentRelated):
