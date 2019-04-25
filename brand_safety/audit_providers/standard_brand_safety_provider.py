@@ -32,6 +32,7 @@ class StandardBrandSafetyProvider(object):
     bad_word_categories_ignore = [3]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
+    channel_batch_counter_logging_threshold = 50
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -75,6 +76,8 @@ class StandardBrandSafetyProvider(object):
             self.cursor_id = self.script_tracker.cursor_id
             # Update brand safety scores in case they have been modified
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
+            if self.channel_batch_counter % self.channel_batch_counter_logging_threshold == 0:
+                logger.info("On channel batch: {}".format(self.channel_batch_counter))
         logger.info("Standard Brand Safety Audit Complete.")
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
