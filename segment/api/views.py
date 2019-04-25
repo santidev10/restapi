@@ -372,10 +372,12 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
                 formatted_response["master_blacklist"] = item
 
-            if item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
+            if self.model.segment_type == PersistentSegmentType.CHANNEL and item.get("title") in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
+                formatted_response["master_whitelist"] = item
+            elif item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
                 formatted_response["master_whitelist"] = item
 
-            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
+            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES and item.get("title") not in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
                 formatted_response["items"].append(item)
 
             if not item.get("thumbnail_image_url"):
