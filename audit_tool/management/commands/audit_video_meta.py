@@ -295,7 +295,6 @@ class Command(BaseCommand):
         cols = [
             "video ID",
             "name",
-            "keywords",
             "language",
             "category",
             "views",
@@ -347,7 +346,6 @@ class Command(BaseCommand):
                 data = [
                     v.video.video_id,
                     v.name,
-                    v.keywords,
                     language,
                     category,
                     v.views,

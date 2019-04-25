@@ -283,7 +283,6 @@ class Command(BaseCommand):
         cols = [
             "video ID",
             "name",
-            #"keywords",
             "language",
             "category",
             "views",
@@ -332,13 +331,12 @@ class Command(BaseCommand):
                 data = [
                     v.video.video_id,
                     v.name,
-                    #v.keywords,
                     language,
                     category,
                     v.views,
                     v.likes,
                     v.dislikes,
-                    str(v.emoji),
+                    'T' if v.emoji else 'F',
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
