@@ -13,6 +13,7 @@ __all__ = ["mock_s3"]
 def with_default_bucket():
     s3 = get_s3_client()
     s3.create_bucket(Bucket=settings.AMAZON_S3_BUCKET_NAME)
+    s3.create_bucket(Bucket=settings.AMAZON_S3_REPORTS_BUCKET_NAME)
     yield
 
 

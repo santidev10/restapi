@@ -1,6 +1,10 @@
 VIDEO = "video"
 CHANNEL = "channel"
 
+BRAND_SAFETY_VIDEO_ES_INDEX = "brand_safety_video"
+BRAND_SAFETY_CHANNEL_ES_INDEX = "brand_safety_channel"
+BRAND_SAFETY_SCORE_TYPE = "score"
+
 BRAND_SAFETY_PASS = "brand_safety_pass"
 BRAND_SAFETY_FAIL = "brand_safety_fail"
 BRAND_SAFETY = "brand_safety"
@@ -63,3 +67,6 @@ AUDIT_KEYWORD_MAPPING = {
 }
 
 BRAND_SAFETY_SCORE = "brand_safety_score"
+TITLE = "title"
+DESCRIPTION = "description"
+TAGS = "tags"

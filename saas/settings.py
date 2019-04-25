@@ -77,7 +77,7 @@ MIDDLEWARE_CLASSES = [
     'userprofile.middleware.ApexUserCheck',
 ]
 
-ROOT_URLCONF = 'saas.urls'
+ROOT_URLCONF = 'saas.urls.urls'
 
 WSGI_APPLICATION = 'saas.wsgi.application'
 
@@ -357,6 +357,7 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
+SALESFORCE_UPDATE_DELAY_DAYS = 5
 
 DEBUG_EMAIL_NOTIFICATIONS = True
 
@@ -403,6 +404,7 @@ if is_running_under_teamcity():
     TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
+AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
@@ -433,8 +435,11 @@ SWAGGER_SETTINGS = {
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
+TOP_SEGMENT_ITEMS_COUNT = 3
 
 USE_LEGACY_BRAND_SAFETY = True
+
+CELERY_ENABLED = True
 
 try:
     from .local_settings import *

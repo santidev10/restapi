@@ -21,7 +21,7 @@ class AudienceAWType:
     CUSTOM_AFFINITY = "customaffinity"
 
 
-def get_interests(client, account, today):
+def get_interests(client, account, today, **kwargs):
     from aw_reporting.models import AudienceStatistic, RemarkStatistic, \
         RemarkList, Audience
     from aw_reporting.adwords_reports import audience_performance_report

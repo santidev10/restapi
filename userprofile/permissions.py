@@ -100,6 +100,9 @@ class PermissionGroupNames:
     SELF_SERVICE = "Self Service"
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
+    AUDIT_DOWNLOAD = "Audit Download"
+    BRAND_SAFETY_VIEW = "Brand Safety View"
+    BRAND_SAFETY_DOWNLOAD = "Brand Safety Download"
 
 
 class Permissions:
@@ -150,6 +153,15 @@ class Permissions:
         (PermissionGroupNames.FORECASTING, (
             "forecasting",
         )),
+        (PermissionGroupNames.BRAND_SAFETY_VIEW, (
+            "view_brand_safety"
+        )),
+        (PermissionGroupNames.BRAND_SAFETY_DOWNLOAD, (
+            "download_brand_safety"
+        )),
+        (PermissionGroupNames.AUDIT_DOWNLOAD, (
+            "download_audit"
+        )),
     )
 
     PERM_LIST = (
@@ -176,6 +188,11 @@ class Permissions:
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
+        # brand safety section
+        "view_brand_safety",
+        "download_brand_safety",
+        # audits
+        "download_audit",
     )
 
     @staticmethod

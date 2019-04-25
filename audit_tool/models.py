@@ -97,6 +97,7 @@ class Keyword(models.Model):
 class APIScriptTracker(models.Model):
     name = models.CharField(max_length=255, unique=True, db_index=True)
     cursor = models.BigIntegerField(default=0)
+    cursor_id = models.CharField(max_length=50, blank=True, null=True)
 
 
 class CommentVideo(models.Model):
@@ -121,17 +122,25 @@ class Comment(models.Model):
     found_items = JSONField(default={})
 
 class AuditProcessor(models.Model):
+    # audit_types:
+    #   0 - recommendation engine
+    #   1 - video meta processor
     created = models.DateTimeField(auto_now_add=True, db_index=True)
+    started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
     params = JSONField(default={})
+    cached_data = JSONField(default={})
+    pause = models.IntegerField(default=0, db_index=True)
+    audit_type = models.IntegerField(db_index=True, default=0)
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
+    category_display = models.TextField(default=None, null=True)
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
@@ -161,6 +170,7 @@ class AuditChannelMeta(models.Model):
     language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
+    view_count = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
 
 class AuditVideo(models.Model):
@@ -199,6 +209,8 @@ class AuditVideoProcessor(models.Model):
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video')
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source')
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    clean = models.BooleanField(default=True, db_index=True)
+    word_hits = JSONField(default={}, null=True)
 
     class Meta:
         unique_together = ("audit", "video")

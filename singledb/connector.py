@@ -86,7 +86,7 @@ class SingleDatabaseApiConnector(object):
                 raise Http404(self.response.text)
             if self.response.status_code > 300:
                 raise SingleDatabaseApiConnectorException(
-                    "Error during iq api call: {}".format(self.response.text),
+                    "Error during SDB api call: {}".format(self.response.text),
                     sdb_response=self.response
                 )
         try:
@@ -146,20 +146,18 @@ class SingleDatabaseApiConnector(object):
         """
         fields = list(fields or []) + [sort_filed]
         params = {
+            **self._normalize_filters(filters),
             "sort": sort_filed,
             "size": batch_size,
             "fields": ",".join(fields),
-            **self._normalize_filters(filters)
         }
         last_id = None
         has_more = True
-        count = 0
         while has_more:
             params[sort_filed + "__range"] = "{},".format(last_id or "")
             start_from = 0 if last_id is None else 1
             response_data = self.execute_get_call(endpoint, params)
             items = response_data.get("items")[start_from:]
-            count += len(items)
             if len(items) > 0:
                 yield from items
                 last_id = items[-1][sort_filed]
