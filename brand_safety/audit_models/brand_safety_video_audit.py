@@ -102,13 +102,17 @@ class BrandSafetyVideoAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, brand_safety_score)
         return brand_safety_score
 
-    def es_repr(self):
+    def es_repr(self, index_name, index_type, op_type):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
         :return: ES formatted document
         """
         brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
         brand_safety_es = {
+            "_index": index_name,
+            "_type": index_type,
+            "_op_type": op_type,
+            "_id": self.pk,
             "video_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score,
             "categories": {
