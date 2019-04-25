@@ -35,11 +35,15 @@ def get_segment_model_by_type(segment_type):
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
 
+def update_all_segments_statistics():
+    for model in SEGMENT_MODELS.fget():
+        model.objects.update_statistics()
+
+
 def total_update_segments(force_creation=False):
     SegmentVideo.objects.update_youtube_segments(force_creation=force_creation)
     SegmentKeyword.objects.update_youtube_segments(force_creation=force_creation)
-    for model in SEGMENT_MODELS.fget():
-        model.objects.update_statistics()
+    update_all_segments_statistics()
 
 
 def get_persistent_segment_model_by_type(segment_type):
