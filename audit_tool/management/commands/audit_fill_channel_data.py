@@ -6,6 +6,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
 logger = logging.getLogger(__name__)
 from pid.decorator import pidfile
 
@@ -64,6 +65,11 @@ class Command(BaseCommand):
                     pass
                 try:
                     db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
+                except Exception as e:
+                    pass
+                try:
+                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                    db_channel_meta.default_language = db_lang
                 except Exception as e:
                     pass
                 country = i['brandingSettings']['channel'].get('country')
