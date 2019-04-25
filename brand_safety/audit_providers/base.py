@@ -39,12 +39,32 @@ class AuditProvider(object):
     @staticmethod
     def update_cursor(script_tracker, value):
         """
-        Update APIScriptTracker instance
+        Update APIScriptTracker instance cursor value
         :param script_tracker: APIScriptTracker instance
         :param value: Updated cursor value
         :return: APIScriptTracker instance
         """
+        try:
+            int(value)
+        except ValueError:
+            raise ValueError("This method should only be used to update cursor with integer values.")
         script_tracker.cursor += value
+        script_tracker.save()
+        return script_tracker
+
+    @staticmethod
+    def set_cursor(script_tracker, value, integer=True):
+        """
+        Set APIScriptTracker instance cursor
+        :param script_tracker: APIScriptTracker instance
+        :param value: Cursor value to set
+        :param integer: Flag to set tracker integer field or char field
+        :return: script_tracker
+        """
+        if integer:
+            script_tracker.cursor = value
+        else:
+            script_tracker.cursor_id = value
         script_tracker.save()
         return script_tracker
 
