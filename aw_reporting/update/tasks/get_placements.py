@@ -37,7 +37,7 @@ def _generate_stat_instances(model, contains, report):
         yield model(**stats)
 
 
-def get_placements(client, account, today):
+def get_placements(client, account, today, **kwargs):
     from aw_reporting.models import YTChannelStatistic
     from aw_reporting.models import YTVideoStatistic
     from aw_reporting.adwords_reports import placement_performance_report

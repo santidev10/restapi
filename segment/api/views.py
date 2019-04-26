@@ -2,6 +2,8 @@ import os
 from email.mime.image import MIMEImage
 
 import pytz
+from django.core.paginator import Paginator
+from django.core.paginator import EmptyPage
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db.models import CharField
@@ -31,8 +33,10 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import PersistentSegmentType
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
+from segment.utils import get_persistent_segment_connector_config_by_type
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.models import UserProfile
@@ -352,32 +356,41 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset().exclude(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES) \
-                                         .filter(
+        queryset = super().get_queryset().filter(
                                             Q(title__in=PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES)
+                                            | Q(title__in=PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES)
                                             | Q(category=PersistentSegmentCategory.WHITELIST)
                                             | Q(category=PersistentSegmentCategory.TOPIC)
                                          )
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
-        items = []
-
+        formatted_response = {
+            "items": []
+        }
         for item in response.data.get("items", []):
-            if item.get("title") in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
-                items.append(item)
+            if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
+                formatted_response["master_blacklist"] = item
 
-        for item in response.data.get("items", []):
-            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
-                items.append(item)
+            if self.model.segment_type == PersistentSegmentType.CHANNEL and item.get("title") in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
+                formatted_response["master_whitelist"] = item
+            elif item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
+                formatted_response["master_whitelist"] = item
 
-        for item in items:
+            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES and item.get("title") not in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
+                formatted_response["items"].append(item)
+
+            if not item.get("thumbnail_image_url"):
+                item["thumbnail_image_url"] = S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+
+        for item in formatted_response["items"]:
             # remove "Channels " or "Videos " prefix
             prefix = "{}s ".format(item.get("segment_type").capitalize())
             if item.get("title", prefix).startswith(prefix):
                 item["title"] = item.get("title", "")[len(prefix):]
 
-        response.data["items"] = items
+        # response.data["items"] = items
+        response.data = formatted_response
         return super().finalize_response(request, response, *args, **kwargs)
 
 
@@ -433,3 +446,95 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get_filename(segment):
         return "{}.csv".format(segment.title)
 
+
+class PersistentSegmentPreviewAPIView(APIView):
+    """
+    View to provide preview data for persistent segments
+    """
+    permission_classes = (
+        user_has_permission("userprofile.view_audit_segments"),
+    )
+    max_page_size = 10
+    default_page_size = 5
+
+    def get(self, request, **kwargs):
+        """
+        Provides paginated persistent segment preview data
+        :param request:
+            query_params: page (int), size (int)
+        :param kwargs:
+            segment_type (str) -> video / channel
+        :return:
+        """
+        page = request.query_params.get("page", 1)
+        size = request.query_params.get("size", self.default_page_size)
+        segment_type = kwargs["segment_type"]
+        try:
+            page = int(page)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page number: {}".format(page))
+        try:
+            size = int(size)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid page size number: {}".format(page))
+        if page <= 0:
+            page = 1
+        if size <= 0:
+            size = self.default_page_size
+        elif size >= self.max_page_size:
+            size = self.max_page_size
+        segment = get_persistent_segment_model_by_type(segment_type)
+        # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
+        try:
+            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
+                "related_id", "title", "category", "details")
+        except segment.DoesNotExist:
+            raise Http404
+        paginator = Paginator(related_items, size)
+        try:
+            preview_page = paginator.page(page)
+        except EmptyPage:
+            page = paginator.num_pages
+            preview_page = paginator.page(page)
+        related_ids = [item["related_id"] for item in preview_page.object_list]
+        # Helper function to set SDB connector config since Channel and Video SDB querying is similar
+        config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
+        if config is None:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
+        connector_method = config.pop("method")
+        response = connector_method(config)
+        response_items = {
+            item["channel_id"]: item for item in response.get("items")
+        }
+        # If singledb data for a channel is available in response, replace preview page item with response data
+        preview_data = [
+            self._map_segment_data(item) if response_items.get(item["related_id"]) is None
+            else response_items[item["related_id"]]
+            for item in preview_page.object_list
+        ]
+        result = {
+            "items": preview_data,
+            "items_count": len(preview_data),
+            "current_page": page,
+            "max_page": paginator.num_pages,
+        }
+        return Response(status=HTTP_200_OK, data=result)
+
+    @staticmethod
+    def _map_segment_data(data):
+        """
+        Maps Postgres persistent segment data to Singledb formatted data for client
+        :param data:
+        :return:
+        """
+        mapped_data = {
+            "channel_id": data["related_id"],
+            "title": data["title"],
+            "category": data["category"],
+            "likes": data["details"]["likes"],
+            "dislikes": data["details"]["dislikes"],
+            "language": data["details"]["language"],
+            "subscribers": data["details"]["subscribers"],
+            "audited_videos": data["details"]["audited_videos"]
+        }
+        return mapped_data

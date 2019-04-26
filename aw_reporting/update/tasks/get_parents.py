@@ -26,7 +26,7 @@ def _generate_stat_instances(model, statuses, report):
         yield model(**stats)
 
 
-def get_parents(client, account, today):
+def get_parents(client, account, today, **kwargs):
     from aw_reporting.models import ParentStatistic
     from aw_reporting.models import ParentStatuses
 

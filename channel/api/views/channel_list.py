@@ -17,6 +17,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
+from utils.brand_safety_view_decorator import add_brand_safety_data
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
     title="Youtube channel",
@@ -101,6 +102,7 @@ class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, C
             HTTP_408_REQUEST_TIMEOUT: openapi.Response("Request timeout"),
         }
     )
+    @add_brand_safety_data
     def get(self, request):
         """
         Get procedure

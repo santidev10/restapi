@@ -29,7 +29,7 @@ def _generate_stat_instances(model, age_ranges, report, click_type_data):
         yield model(**stats)
 
 
-def get_age_ranges(client, account, today):
+def get_age_ranges(client, account, today, **kwargs):
     from aw_reporting.models import AgeRangeStatistic, AgeRanges
     from aw_reporting.adwords_reports import age_range_performance_report
 

@@ -27,14 +27,16 @@ LOCK_FILE_NAME = "update_aw_accounts"
 
 
 @celery_app.task
-def update_aw_accounts(account_ids=None, start=None, end=None):
+def update_aw_accounts(account_ids=None, start=None, end=None, start_date=None, end_date=None):
     now = now_in_default_tz(utc)
     today = now.date()
     kwargs = dict(
         today_str=today.isoformat(),
         start=start,
         end=end,
-        account_ids=account_ids
+        account_ids=account_ids,
+        start_date=start_date,
+        end_date=end_date
     )
     job = chain(
         lock.si(lock_name=LOCK_FILE_NAME, countdown=60, max_retries=60),
@@ -124,7 +126,7 @@ def create_cf_account_connection():
                 )
 
 
-def update_accounts_group(today_str: str, start, end, account_ids, is_mcc: bool):
+def update_accounts_group(today_str: str, start, end, account_ids, is_mcc: bool, start_date=None, end_date=None):
     from aw_reporting.models import Account
     accounts = Account.objects.filter(is_active=True, can_manage_clients=is_mcc)
     if account_ids is not None:
@@ -139,6 +141,8 @@ def update_accounts_group(today_str: str, start, end, account_ids, is_mcc: bool)
             end=end,
             index=index,
             count=count,
+            start_date_str=start_date,
+            end_date_str=end_date
         )
         for index, account in enumerate(accounts)
     ]
