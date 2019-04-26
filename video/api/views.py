@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
@@ -20,16 +20,24 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
+from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.api_views_mixins import SegmentFilterMixin
-from utils.csv_export import CassandraExportMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 
-class VideoListApiView(
-    APIView,
-    PermissionRequiredMixin,
-    CassandraExportMixin,
-    SegmentFilterMixin):
+class VideoListCSVRendered(CSVStreamingRenderer):
+    header = [
+        "title",
+        "url",
+        "views",
+        "likes",
+        "dislikes",
+        "comments",
+        "youtube_published_at"
+    ]
+
+
+class VideoListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -39,15 +47,7 @@ class VideoListApiView(
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
     )
-    fields_to_export = [
-        "title",
-        "url",
-        "views",
-        "likes",
-        "dislikes",
-        "comments",
-        "youtube_published_at"
-    ]
+    renderer_classes = (VideoListCSVRendered,)
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
@@ -298,7 +298,7 @@ class VideoListApiView(
         return response_data
 
     def _data_filtered_batch_generator(self, filters):
-        return Connector().get_video_list_full(filters, fields=self.fields_to_export, batch_size=1000)
+        return Connector().get_video_list_full(filters, fields=VideoListCSVRendered.header, batch_size=1000)
 
 
 class VideoRetrieveUpdateApiView(SingledbApiView):

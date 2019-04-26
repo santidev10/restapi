@@ -9,14 +9,14 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
 from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_views_mixins import SegmentFilterMixin
-from utils.csv_export import CassandraExportMixin
+from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
     title="Youtube channel",
@@ -47,16 +47,8 @@ CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
 )
 
 
-class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin, ChannelYoutubeSearchMixin,
-                         SegmentFilterMixin):
-    """
-    Proxy view for channel list
-    """
-    permission_required = (
-        "userprofile.channel_list",
-        "userprofile.settings_my_yt_channels"
-    )
-    fields_to_export = [
+class ChannelListCSVRendered(CSVStreamingRenderer):
+    header = [
         "title",
         "url",
         "country",
@@ -71,6 +63,18 @@ class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin,
         "engage_rate",
         "last_video_published_at"
     ]
+
+
+class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
+                         SegmentFilterMixin):
+    """
+    Proxy view for channel list
+    """
+    permission_required = (
+        "userprofile.channel_list",
+        "userprofile.settings_my_yt_channels"
+    )
+    renderer_classes = (ChannelListCSVRendered,)
     export_file_title = "channel"
 
     @swagger_auto_schema(
@@ -319,4 +323,4 @@ class ChannelListApiView(APIView, PermissionRequiredMixin, CassandraExportMixin,
         return response_data
 
     def _data_filtered_batch_generator(self, filters):
-        return Connector().get_channel_list_full(filters, fields=self.fields_to_export, batch_size=1000)
+        return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)
