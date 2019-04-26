@@ -4,12 +4,12 @@ from copy import deepcopy
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
+from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
@@ -67,7 +67,7 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
+class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
                          SegmentFilterMixin):
     """
     Proxy view for channel list
@@ -76,7 +76,7 @@ class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, C
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-    renderer_classes = (JSONRenderer, ChannelListCSVRendered,)
+    renderer = ChannelListCSVRendered
     export_file_title = "channel"
 
     @swagger_auto_schema(
