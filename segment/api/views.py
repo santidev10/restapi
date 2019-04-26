@@ -466,9 +466,16 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment_type (str) -> video / channel
         :return:
         """
+        preview_type_id_mapping = {
+            PersistentSegmentType.CHANNEL: "channel_id",
+            PersistentSegmentType.VIDEO: "video_id"
+        }
         page = request.query_params.get("page", 1)
         size = request.query_params.get("size", self.default_page_size)
         segment_type = kwargs["segment_type"]
+        item_id_key = preview_type_id_mapping.get(segment_type)
+        if item_id_key is None:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
         try:
             page = int(page)
         except ValueError:
@@ -487,7 +494,7 @@ class PersistentSegmentPreviewAPIView(APIView):
         # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
         try:
             related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
-                "related_id", "title", "category", "details")
+                "related_id", "title", "category", "details", "thumbnail_image_url")
         except segment.DoesNotExist:
             raise Http404
         paginator = Paginator(related_items, size)
@@ -504,11 +511,11 @@ class PersistentSegmentPreviewAPIView(APIView):
         connector_method = config.pop("method")
         response = connector_method(config)
         response_items = {
-            item["channel_id"]: item for item in response.get("items")
+            item[item_id_key]: item for item in response.get("items")
         }
-        # If singledb data for a channel is available in response, replace preview page item with response data
+        # If singledb data for an item is available in response, replace preview page item with response data
         preview_data = [
-            self._map_segment_data(item) if response_items.get(item["related_id"]) is None
+            self._map_segment_data(item, item_id_key, segment_type) if response_items.get(item["related_id"]) is None
             else response_items[item["related_id"]]
             for item in preview_page.object_list
         ]
@@ -521,20 +528,22 @@ class PersistentSegmentPreviewAPIView(APIView):
         return Response(status=HTTP_200_OK, data=result)
 
     @staticmethod
-    def _map_segment_data(data):
+    def _map_segment_data(data, item_id_key, segment_type):
         """
         Maps Postgres persistent segment data to Singledb formatted data for client
         :param data:
         :return:
         """
         mapped_data = {
-            "channel_id": data["related_id"],
+            item_id_key: data["related_id"],
             "title": data["title"],
             "category": data["category"],
             "likes": data["details"]["likes"],
             "dislikes": data["details"]["dislikes"],
             "language": data["details"]["language"],
-            "subscribers": data["details"]["subscribers"],
-            "audited_videos": data["details"]["audited_videos"]
+            "thumbnail_image_url": data["thumbnail_image_url"]
         }
+        if segment_type == PersistentSegmentType.CHANNEL:
+            mapped_data["subscribers"] = data["details"]["subscribers"]
+            mapped_data["audited_videos"] = data["details"]["audited_videos"]
         return mapped_data
