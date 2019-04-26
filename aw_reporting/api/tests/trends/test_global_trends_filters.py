@@ -7,7 +7,8 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.urls.names import Name
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
@@ -17,6 +18,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.int_iterator import int_iterator
 
@@ -101,8 +103,13 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         )
 
     def test_demo_account(self):
+        recreate_demo_data()
         self.create_test_user()
-        response = self.client.get(self.url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         self.assertEqual(set(response.data.keys()), self.expected_keys)
@@ -112,7 +119,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             set(account_data.keys()),
             self.account_keys
         )
-        self.assertEqual(account_data["id"], DemoAccount().id)
+        self.assertEqual(account_data["id"], DEMO_ACCOUNT_ID)
         self.assertEqual(len(account_data["campaigns"]), 2)
         self.assertEqual(
             set(account_data["campaigns"][0].keys()),

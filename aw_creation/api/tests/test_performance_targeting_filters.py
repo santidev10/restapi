@@ -4,7 +4,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account, Campaign, AdGroup, AdGroupStatistic, AWConnectionToUserRelation, AWConnection
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -79,6 +80,7 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data['campaigns']), 1)
 
     def test_success_get_demo(self):
+        recreate_demo_data()
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_targeting_filters",
                       args=(DEMO_ACCOUNT_ID,))
@@ -92,24 +94,4 @@ class AccountNamesAPITestCase(ExtendedAPITestCase):
             }
         )
         self.assertEqual(len(response.data['campaigns']), 2)
-        account = DemoAccount()
-        self.assertEqual(response.data['start_date'], account.start_date)
-        self.assertEqual(response.data['end_date'], account.end_date)
-
-    def test_success_get_demo_data(self):
-        user = self.create_test_user()
-        url = reverse("aw_creation_urls:performance_targeting_filters",
-                      args=("demo",))
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(
-            set(response.data.keys()),
-            {
-                'start_date', 'end_date', 'campaigns',
-                'targeting', 'group_by',
-            }
-        )
-        self.assertEqual(len(response.data['campaigns']), 2)
-        account = DemoAccount()
-        self.assertEqual(response.data['start_date'], account.start_date)
-        self.assertEqual(response.data['end_date'], account.end_date)
+        account = Account.objects.get(pk=DEMO_ACCOUNT_ID)

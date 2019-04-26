@@ -14,7 +14,6 @@ from aw_creation.models import AccountCreation
 from aw_reporting.calculations.cost import get_client_cost_aggregation
 from aw_reporting.dashboard_charts import DateSegment
 from aw_reporting.dashboard_charts import DeliveryChart
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.excel_reports import DashboardPerformanceReport
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.models import AdGroup
@@ -35,7 +34,6 @@ from utils.permissions import UserHasDashboardPermission
 from utils.views import xlsx_response
 
 
-@demo_view_decorator
 class DashboardPerformanceExportApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 
@@ -109,14 +107,14 @@ class DashboardPerformanceExportApiView(APIView):
 
     def _get_header_data_campaigns(self, account):
         campaign_ids = set(self._get_summary_queryset(account).values_list("ad_group__campaign_id", flat=True))
-        campaigns_names = Campaign.objects.filter(id__in=campaign_ids).values_list("name", flat=True)
+        campaigns_names = Campaign.objects.filter(id__in=campaign_ids).order_by("name").values_list("name", flat=True)
         return dict(
             campaigns=", ".join(campaigns_names),
         )
 
     def _get_header_data_ad_groups(self, account):
         ad_group_ids = set(self._get_summary_queryset(account).values_list("ad_group_id", flat=True))
-        ad_groups_names = AdGroup.objects.filter(id__in=ad_group_ids).values_list("name", flat=True)
+        ad_groups_names = AdGroup.objects.filter(id__in=ad_group_ids).order_by("name").values_list("name", flat=True)
         return dict(
             ad_groups=", ".join(ad_groups_names),
         )

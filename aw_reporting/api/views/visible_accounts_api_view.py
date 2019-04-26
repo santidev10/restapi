@@ -6,7 +6,6 @@ from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
-from aw_reporting.demo.models import DemoAccount
 from aw_reporting.models import Account, campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from userprofile.constants import UserSettingsKey
@@ -68,24 +67,6 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                 for ct in campaign_types
                 ]
 
-        demo = DemoAccount()
-        demo_hidden_types = types_settings.get(demo.id, [])
-        data.insert(
-            0,
-            dict(
-                id=demo.id,
-                name=demo.name,
-                visible=demo.is_visible_for_user(request.user),
-                campaign_types_visibility=[
-                    dict(
-                        id=ct,
-                        name=ct.capitalize().replace("_", "-"),
-                        visible=ct not in demo_hidden_types,
-                    )
-                    for ct in campaign_types
-                    ],
-            )
-        )
         return Response(data=data)
 
     @cached_view
@@ -104,14 +85,10 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             for account in accounts:
                 # account visibility
                 uid = account['id']
-                if uid == "demo":
-                    settings_obj.update(
-                        demo_account_visible=account['visible'])
+                if account['visible']:
+                    visible_accounts |= {uid}
                 else:
-                    if account['visible']:
-                        visible_accounts |= {uid}
-                    else:
-                        visible_accounts -= {uid}
+                    visible_accounts -= {uid}
 
                 # campaign visibility
                 if 'campaign_types_visibility' in account:

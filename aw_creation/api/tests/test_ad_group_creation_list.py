@@ -6,7 +6,9 @@ from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -79,20 +81,28 @@ class AdGroupListAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        account = DemoAccount()
-        campaign = account.children[0]
+        recreate_demo_data()
+        campaign_creation = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
-                      args=(campaign.id,))
-        response = self.client.get(url)
+                      args=(campaign_creation.id,))
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_get_format_check(response.data)
 
     def test_fail_post_demo(self):
-        account = DemoAccount()
-        campaign = account.children[0]
+        recreate_demo_data()
+        campaign_creation = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
         url = reverse("aw_creation_urls:ad_group_creation_list_setup",
-                      args=(campaign.id,))
-        response = self.client.post(url)
+                      args=(campaign_creation.id,))
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_post(self):

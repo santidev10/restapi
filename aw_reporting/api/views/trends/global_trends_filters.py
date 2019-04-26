@@ -3,12 +3,10 @@ from aw_reporting.api.views.trends.base_global_trends import \
 from aw_reporting.api.views.trends.base_track_filter_list import \
     BaseTrackFiltersListApiView
 from aw_reporting.calculations.territories import get_salesforce_territories
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import User, Opportunity, goal_type_str, \
     SalesForceGoalType
 
 
-@demo_view_decorator
 class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
     def _get_accounts(self, request):
         return get_account_queryset(request.user)

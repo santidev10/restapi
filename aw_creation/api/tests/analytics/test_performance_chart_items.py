@@ -10,7 +10,8 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.analytics_charts import Dimension
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
@@ -197,6 +198,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_demo(self):
+        recreate_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.ADS)
 
@@ -215,7 +217,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
             set(data.keys()),
             {'items', 'summary'}
         )
-        self.assertEqual(len(data['items']), 10)
+        self.assertEqual(len(data['items']), 20)
         self.assertEqual(
             set(data['items'][0].keys()),
             {
@@ -248,6 +250,7 @@ class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo_video(self):
+        recreate_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID, Dimension.VIDEO)
 

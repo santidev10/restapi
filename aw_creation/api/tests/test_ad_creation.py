@@ -7,7 +7,10 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 
 from aw_creation.models import AccountCreation, CampaignCreation, \
     AdGroupCreation, AdCreation
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import Ad
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.generic_test import generic_test
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -134,29 +137,32 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
             )
 
     def test_success_get_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
-        ad = ad_group.children[0]
+        recreate_demo_data()
+        ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
-                      args=(ad.id,))
-        response = self.client.get(url)
+                      args=(ad.ad_creation.first().id,))
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
-        ad_group = campaign.children[0]
-        ad = ad_group.children[0]
+        recreate_demo_data()
+        ad = Ad.objects.filter(ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse("aw_creation_urls:ad_creation_setup",
-                      args=(ad.id,))
-
-        response = self.client.patch(
-            url, json.dumps({}), content_type='application/json',
-        )
+                      args=(ad.ad_creation.first().id,))
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.patch(
+                url, json.dumps({}), content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_update(self):
@@ -266,6 +272,15 @@ class AdGroupAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         ad.refresh_from_db()
         self.assertIs(ad.is_deleted, True)
+
+    def test_failed_delete_demo(self):
+        recreate_demo_data()
+        ad = AdCreation.objects.filter(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).first()
+        url = reverse("aw_creation_urls:ad_creation_setup",
+                      args=(ad.id,))
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_enterprise_user_can_edit_any_ad(self):
         self.fill_all_groups(self.user)

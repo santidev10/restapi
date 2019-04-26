@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from administration.api.urls.names import AdministrationPathName
-from administration.api.views.user_list_export import CSV_COLUMN_ORDER
+from administration.api.views.user_list_export import UserListCSVRendered
 from administration.api.views.user_list_export import UserExportColumn
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
@@ -53,7 +53,8 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         with patch_now(test_now_in_the_tz):
             response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response["Content-Disposition"], "attachment; filename='{}'".format(expected_filename))
+        self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
+
 
     def test_headers(self):
         self.create_admin_user()
@@ -211,5 +212,5 @@ def get_data_rows(response):
 
 
 def get_value(row, key):
-    index = CSV_COLUMN_ORDER.index(key)
+    index = UserListCSVRendered.header.index(key)
     return row[index]
