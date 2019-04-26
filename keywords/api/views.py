@@ -6,7 +6,7 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
@@ -16,15 +16,24 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
 from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
-from utils.csv_export import CassandraExportMixin
+from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 logger = logging.getLogger(__name__)
 
 
-class KeywordListApiView(APIView,
-                         PermissionRequiredMixin,
-                         CassandraExportMixin):
+class KeywordListCSVRendered(CSVStreamingRenderer):
+    header = [
+        "keyword",
+        "search_volume",
+        "average_cpc",
+        "competition",
+        "video_count",
+        "views",
+    ]
+
+
+class KeywordListApiView(CassandraExportMixinApiView, PermissionRequiredMixin):
     """
     Proxy view for keywords list
     """
@@ -33,15 +42,7 @@ class KeywordListApiView(APIView,
         "userprofile.keyword_list",
     )
     export_file_title = "keyword"
-
-    fields_to_export = [
-        "keyword",
-        "search_volume",
-        "average_cpc",
-        "competition",
-        "video_count",
-        "views",
-    ]
+    renderer_classes = (KeywordListCSVRendered,)
 
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
