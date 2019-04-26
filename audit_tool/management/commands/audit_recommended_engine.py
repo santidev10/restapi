@@ -39,7 +39,8 @@ class Command(BaseCommand):
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
-                               "?key={key}&part=id,snippet&relatedToVideoId={id}&type=video&maxResults=50&relevanceLanguage={language}"
+                               "?key={key}&part=id,snippet&relatedToVideoId={id}" \
+                               "&type=video&maxResults=50&relevanceLanguage={language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -61,6 +62,8 @@ class Command(BaseCommand):
                 self.language = self.audit.params.get('language')
                 if not self.language:
                     self.language = "en"
+                self.location = self.audit.params.get('location')
+                self.location_radius = self.audit.params.get('location_radius')
             except Exception as e:
                 logger.exception(e)
             self.process_audit()
@@ -114,7 +117,13 @@ class Command(BaseCommand):
 
     def do_recommended_api_call(self, avp):
         video = avp.video
-        url = self.DATA_RECOMMENDED_API_URL.format(key=self.DATA_API_KEY, id=video.video_id, language=self.language)
+        url = self.DATA_RECOMMENDED_API_URL.format(
+            key=self.DATA_API_KEY,
+            id=video.video_id,
+            language=self.language,
+            location="&location={}".format(self.location) if self.location else '',
+            location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
+        )
         r = requests.get(url)
         data = r.json()
         for i in data['items']:
@@ -292,6 +301,7 @@ class Command(BaseCommand):
             #"publish date",
             "channel name",
             "channel ID",
+            "channel default lang.",
             "subscribers",
             "country"
         ]
@@ -328,6 +338,10 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                try:
+                    channel_lang = v.video.channel.auditchannelmeta.language.language
+                except Exception as e:
+                    channel_lang = ''
                 data = [
                     v.video.video_id,
                     v.name,
@@ -340,6 +354,7 @@ class Command(BaseCommand):
                     #v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
+                    channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
                     country
                 ]

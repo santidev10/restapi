@@ -304,6 +304,8 @@ class Command(BaseCommand):
             #"publish date",
             "channel name",
             "channel ID",
+            "channel default lang.",
+            "channel subscribers",
             "country",
             "all hit words",
             "unique hit words",
@@ -350,6 +352,10 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                try:
+                    channel_lang = v.video.channel.auditchannelmeta.language.language
+                except Exception as e:
+                    channel_lang = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
                     v.video.video_id,
@@ -363,6 +369,8 @@ class Command(BaseCommand):
                     #v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
+                    channel_lang,
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
                     country,
                     all_hit_words,
                     unique_hit_words,
