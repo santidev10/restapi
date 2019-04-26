@@ -4,6 +4,7 @@ from copy import deepcopy
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -75,7 +76,7 @@ class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, C
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-    renderer_classes = (ChannelListCSVRendered,)
+    renderer_classes = (JSONRenderer, ChannelListCSVRendered,)
     export_file_title = "channel"
 
     @swagger_auto_schema(

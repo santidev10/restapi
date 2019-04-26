@@ -8,6 +8,7 @@ from datetime import timezone
 
 from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -48,7 +49,7 @@ class VideoListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, Seg
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
     )
-    renderer_classes = (VideoListCSVRendered,)
+    renderer_classes = (JSONRenderer, VideoListCSVRendered)
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
