@@ -15,7 +15,8 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models import Language
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -46,6 +47,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "ctr",
         "ctr_v",
         "ctr_v",
+        "details",
         "end",
         "from_aw",
         "id",
@@ -155,9 +157,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 1,
-                         "Only Demo account")
-        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items_count"], 0)
+        self.assertEqual(len(response.data["items"]), 0)
 
     def test_success_get(self):
         account = Account.objects.create(id="123", name="",
@@ -207,8 +208,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "current_page",
             }
         )
-        self.assertEqual(response.data["items_count"], 2)
-        self.assertEqual(len(response.data["items"]), 2)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data["items"]), 1)
         item = response.data["items"][0]
         self.assertEqual(
             set(item.keys()),
@@ -246,7 +247,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 "{}?sort_by={}".format(self.url, sort_by))
             self.assertEqual(response.status_code, HTTP_200_OK)
             items = response.data["items"]
-            expected_top_account = items[1]
+            expected_top_account = items[0]
             self.assertEqual(top_account.name, expected_top_account["name"])
 
     def test_success_sort_by_name(self):
@@ -280,7 +281,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(
             (
-                "Demo", creation_1.name, creation_2.account.name,
+                creation_1.name, creation_2.account.name,
                 creation_3.name),
             tuple(a["name"] for a in items)
         )
@@ -397,8 +398,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         # Running
         response = self.client.get("{}?status={}".format(self.url, "Running"))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data.get("items_count"), 2)  # + demo
-        self.assertEqual(response.data.get("items")[1].get("id"), running_account_creation.id)
+        self.assertEqual(response.data.get("items_count"), 1)
+        self.assertEqual(response.data.get("items")[0].get("id"), running_account_creation.id)
         running_account_creation.refresh_from_db()
         self.assertEqual(running_account_creation.status, AccountCreation.STATUS_RUNNING)
         # Pending
@@ -489,11 +490,12 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
-            response.data["items_count"], 2,
+            response.data["items_count"], 1,
             "The account has no end date that's why it's shown"
         )
 
     def test_success_get_demo(self):
+        recreate_demo_data()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(
@@ -522,8 +524,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         # --
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["items_count"], 0)
+        self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_campaigns_count_from_ad_words(self):
         account = Account.objects.create(id=1, name="",
@@ -861,7 +863,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(response.data["items_count"], 1)
 
     def test_created_account_is_managed(self):
         user = self.user
@@ -886,8 +888,8 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 2)
-        self.assertEqual(response.data["items"][1]["id"], account_creation.id)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], account_creation.id)
 
     def test_is_editable(self):
         user = self.user
@@ -903,46 +905,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 3)
+        self.assertEqual(response.data["items_count"], 2)
         accounts_by_id = {acc["id"]: acc for acc in response.data["items"]}
         self.assertTrue(accounts_by_id.get(own_account_creation.id)["is_editable"])
         self.assertFalse(accounts_by_id.get(visible_account_creation.id)["is_editable"])
-
-    def test_no_demo_data_on_real_account(self):
-        account = Account.objects.create(id=next(int_iterator))
-        AccountCreation.objects.filter(account=account).update(owner=self.user)
-        Campaign.objects.create(id=next(int_iterator), account=account)
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-
-        with self.patch_user_settings(**user_settings):
-            response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 2)
-        items = {i["id"]: i for i in response.data["items"]}
-        item = items.get(account.account_creation.id)
-        stats = (
-            "clicks",
-            "cost",
-            "impressions",
-            "video_views",
-        )
-        rates = (
-            "average_cpm",
-            "average_cpv",
-            "ctr",
-            "ctr_v",
-            "plan_cpm",
-            "plan_cpv",
-            "video_view_rate",
-        )
-        for key in stats:
-            self.assertEqual(item[key], 0, key)
-        for key in rates:
-            self.assertIsNone(item[key])
 
     def test_visible_all_accounts_does_not_affect_values(self):
         """
@@ -978,7 +944,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(response.data["items_count"], 1)
         items = {i["id"]: i for i in response.data["items"]}
         item = items.get(account.account_creation.id)
         stats = (
@@ -1002,8 +968,9 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
                 self.assertGreater(item[key], 0)
 
     def test_demo_account_visibility_does_not_affect_result(self):
+        recreate_demo_data()
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         }
         with self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)

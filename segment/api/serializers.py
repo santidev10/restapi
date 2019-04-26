@@ -150,7 +150,9 @@ class PersistentSegmentSerializer(ModelSerializer):
             "title",
             "segment_type",
             "statistics",
-            "thumbnail_image_url"
+            "thumbnail_image_url",
+            "created_at",
+            "updated_at"
         )
 
     def get_statistics(self, obj):

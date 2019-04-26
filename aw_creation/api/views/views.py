@@ -13,7 +13,7 @@ from apiclient.discovery import build
 from django.conf import settings
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import transaction
-from django.db.models import Case
+from django.db.models import Case, Q
 from django.db.models import F
 from django.db.models import IntegerField as AggrIntegerField
 from django.db.models import Max
@@ -55,7 +55,8 @@ from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_creation.models import default_languages
 from aw_creation.models.creation import BUDGET_TYPE_CHOICES
-from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.views import forbidden_for_demo
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Audience
@@ -617,7 +618,6 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
-@demo_view_decorator
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
@@ -625,12 +625,15 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = CampaignCreation.objects.filter(
-            account_creation__owner=self.request.user,
+            Q(campaign__account_id=DEMO_ACCOUNT_ID)
+            | Q(account_creation__owner=self.request.user)) \
+            .filter(
             account_creation_id=pk,
             is_deleted=False,
         )
         return queryset
 
+    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
     def create(self, request, *args, **kwargs):
         try:
             account_creation = AccountCreation.objects.get(
@@ -669,7 +672,6 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
-@demo_view_decorator
 class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (or_permission_classes(
@@ -693,10 +695,9 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = CampaignCreation.objects.filter(
-            account_creation__owner=self.request.user,
-            is_deleted=False,
-        )
+        queryset = CampaignCreation.objects \
+            .filter(Q(account_creation__owner=self.request.user) | Q(campaign__account_id=DEMO_ACCOUNT_ID)) \
+            .filter(is_deleted=False)
         return queryset
 
     def delete(self, *args, **_):
@@ -832,7 +833,6 @@ class CampaignCreationSetupApiView(RetrieveUpdateAPIView):
                 serializer.save()
 
 
-@demo_view_decorator
 class AdGroupCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
@@ -840,17 +840,23 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation__owner=self.request.user,
+            Q(campaign_creation__account_creation__owner=self.request.user)
+            | Q(ad_group__campaign__account_id=DEMO_ACCOUNT_ID)) \
+            .filter(
             campaign_creation_id=pk,
             is_deleted=False,
         )
         return queryset
 
+    @forbidden_for_demo(lambda *args, **kwargs: CampaignCreation.objects.filter(pk=kwargs.get("pk"),
+                                                                                campaign__account_id=DEMO_ACCOUNT_ID).exists())
     def create(self, request, *args, **kwargs):
         try:
-            campaign_creation = CampaignCreation.objects.get(
-                pk=kwargs.get("pk"), account_creation__owner=request.user
-            )
+            campaign_creation = CampaignCreation.objects.filter(
+                Q(account_creation__owner=request.user)
+                | Q(campaign__account_id=DEMO_ACCOUNT_ID)
+            ) \
+                .get(pk=kwargs.get("pk"))
         except CampaignCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
@@ -871,7 +877,6 @@ class AdGroupCreationListSetupApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
-@demo_view_decorator
 class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdGroupCreationSetupSerializer
     permission_classes = (or_permission_classes(
@@ -895,11 +900,14 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation__owner=self.request.user,
-            is_deleted=False,
-        )
+            Q(campaign_creation__account_creation__owner=self.request.user)
+            | Q(ad_group__campaign__account_id=DEMO_ACCOUNT_ID)) \
+            .filter(is_deleted=False)
         return queryset
 
+    @forbidden_for_demo(lambda *args, **kwargs: AdGroupCreation.objects.filter(
+        ad_group__campaign__account_id=DEMO_ACCOUNT_ID,
+        pk=kwargs.get("pk")).exists())
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -921,7 +929,6 @@ class AdGroupCreationSetupApiView(RetrieveUpdateAPIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
 
-@demo_view_decorator
 class AdCreationListSetupApiView(ListCreateAPIView):
     serializer_class = AdCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
@@ -929,12 +936,17 @@ class AdCreationListSetupApiView(ListCreateAPIView):
     def get_queryset(self):
         pk = self.kwargs.get("pk")
         queryset = AdCreation.objects.filter(
-            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
+            Q(ad_group_creation__campaign_creation__account_creation__owner=self.request.user)
+            | Q(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID)
+        ) \
+            .filter(
             ad_group_creation_id=pk,
             is_deleted=False,
         )
         return queryset
 
+    @forbidden_for_demo(lambda *args, **kwargs: AdGroupCreation.objects.filter(pk=kwargs.get("pk"),
+                                                                               ad_group__campaign__account_id=DEMO_ACCOUNT_ID).exists())
     def create(self, request, *args, **kwargs):
         try:
             ad_group_creation = AdGroupCreation.objects.get(
@@ -957,7 +969,6 @@ class AdCreationListSetupApiView(ListCreateAPIView):
         return Response(data, status=HTTP_201_CREATED)
 
 
-@demo_view_decorator
 class AdCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AdCreationSetupSerializer
     permission_classes = (or_permission_classes(
@@ -977,14 +988,16 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
             ),
         ],
     )
+    @forbidden_for_demo(lambda *args, **kwargs: AdCreation.objects.filter(pk=kwargs.get("pk"),
+                                                                          ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).exists())
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
-            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
-            is_deleted=False,
-        )
+            Q(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID)
+            | Q(ad_group_creation__campaign_creation__account_creation__owner=self.request.user)) \
+            .filter(is_deleted=False, )
         return queryset
 
     def update(self, request, *args, **kwargs):
@@ -1027,7 +1040,6 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
                     return Response(dict(
                         error="Ad type cannot be changed for only one ad within an ad group"),
                         status=HTTP_400_BAD_REQUEST)
-
 
                 # Invalid if the campaign bid strategy type is Target CPA and the ad long headline and short headline have not been set
                 if campaign_creation.bid_strategy_type == CampaignCreation.TARGET_CPA_STRATEGY and \
@@ -1080,6 +1092,8 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         serializer.save()
         return self.retrieve(self, request, *args, **kwargs)
 
+    @forbidden_for_demo(lambda *args, **kwargs: AdCreation.objects.filter(pk=kwargs.get("pk"),
+                                                                          ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID).exists())
     def delete(self, *args, **_):
         instance = self.get_object()
 
@@ -1093,7 +1107,6 @@ class AdCreationSetupApiView(RetrieveUpdateAPIView):
         return Response(status=HTTP_204_NO_CONTENT)
 
 
-@demo_view_decorator
 class AdCreationAvailableAdFormatsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
@@ -1165,9 +1178,12 @@ class BaseCreationDuplicateApiView(APIView):
     )
     targeting_fields = ("criteria", "type", "is_negative")
 
+    is_demo = None
+
     def get_queryset(self):
         raise NotImplementedError
 
+    @forbidden_for_demo(lambda view, request, pk, **kwargs: view.get_queryset().filter(view.is_demo & Q(pk=pk)).exists())
     def post(self, request, pk, **kwargs):
         try:
             instance = self.get_queryset().get(pk=pk)
@@ -1354,43 +1370,45 @@ class BaseCreationDuplicateApiView(APIView):
             TargetingItem.objects.bulk_create(bulk_items['targeting_items'])
 
 
-@demo_view_decorator
 class CampaignCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
+    is_demo = Q(campaign__account_id=DEMO_ACCOUNT_ID)
 
     def get_queryset(self):
         queryset = CampaignCreation.objects.filter(
-            account_creation__owner=self.request.user,
+            Q(account_creation__owner=self.request.user)
+            | self.is_demo,
         )
         return queryset
 
 
-@demo_view_decorator
 class AdGroupCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdGroupCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
+    is_demo = Q(ad_group__campaign__account_id=DEMO_ACCOUNT_ID)
 
     def get_queryset(self):
         queryset = AdGroupCreation.objects.filter(
-            campaign_creation__account_creation__owner=self.request.user,
+            Q(campaign_creation__account_creation__owner=self.request.user)
+            | self.is_demo,
         )
         return queryset
 
 
-@demo_view_decorator
 class AdCreationDuplicateApiView(BaseCreationDuplicateApiView):
     serializer_class = AdCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
+    is_demo = Q(ad__ad_group__campaign__account_id=DEMO_ACCOUNT_ID)
 
     def get_queryset(self):
         queryset = AdCreation.objects.filter(
-            ad_group_creation__campaign_creation__account_creation__owner=self.request.user,
+            Q(ad_group_creation__campaign_creation__account_creation__owner=self.request.user)
+            | self.is_demo,
         )
         return queryset
 
 
-@demo_view_decorator
 class PerformanceTargetingFiltersAPIView(APIView):
     def get_queryset(self):
         user = self.request.user
@@ -1471,7 +1489,6 @@ class PerformanceTargetingFiltersAPIView(APIView):
         return Response(data=filters)
 
 
-@demo_view_decorator
 class PerformanceTargetingReportAPIView(APIView):
     def get_object(self):
         pk = self.kwargs["pk"]
@@ -1718,9 +1735,12 @@ class PerformanceTargetingReportAPIView(APIView):
         return items
 
 
-@demo_view_decorator
 class PerformanceTargetingItemAPIView(UpdateAPIView):
     serializer_class = UpdateTargetingDirectionSerializer
+
+    @forbidden_for_demo(lambda *args, **kwargs: AdGroup.objects.filter(pk=kwargs["ad_group_id"], campaign__account_id=DEMO_ACCOUNT_ID).exists())
+    def update(self, request, *args, **kwargs):
+        return super(PerformanceTargetingItemAPIView, self).update(request, *args, **kwargs)
 
     def get_object(self):
         targeting_type = self.kwargs["targeting"].lower()
@@ -1871,10 +1891,12 @@ class TargetingListBaseAPIClass(GenericAPIView):
         pk = self.kwargs.get('pk')
         list_type = self.kwargs.get('list_type')
         queryset = TargetingItem.objects.filter(
+            Q(ad_group_creation__campaign_creation__account_creation__owner=self.get_user())
+            | Q(ad_group_creation__ad_group__campaign__account_id=DEMO_ACCOUNT_ID)) \
+            .filter(
             ad_group_creation_id=pk,
             type=list_type,
-            ad_group_creation__campaign_creation__account_creation__owner
-            =self.get_user()
+
         )
         return queryset
 
@@ -1896,7 +1918,6 @@ class TargetingListBaseAPIClass(GenericAPIView):
         add_targeting_list_items_info(data, list_type)
 
 
-@demo_view_decorator
 class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
     permission_classes = (IsAuthQueryTokenPermission,)
 

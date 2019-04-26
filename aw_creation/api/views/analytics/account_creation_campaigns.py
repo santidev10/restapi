@@ -6,11 +6,9 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSerializer
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Campaign, Account
 
 
-@demo_view_decorator
 class AnalyticsAccountCreationCampaignsListApiView(APIView):
     permission_classes = (IsAuthenticated,)
 

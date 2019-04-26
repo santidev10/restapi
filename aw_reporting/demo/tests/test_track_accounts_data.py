@@ -5,13 +5,19 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.DATA)
+
+    @classmethod
+    def setUpTestData(cls):
+        recreate_demo_data()
 
     def setUp(self):
         self.create_test_user()
@@ -52,7 +58,11 @@ class TrackAccountsDataAPITestCase(ExtendedAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data), 1, "one account")
         account = response.data[0]
