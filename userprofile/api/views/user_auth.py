@@ -13,6 +13,7 @@ from drf_yasg.utils import swagger_auto_schema
 from userprofile.api.serializers import UserSerializer
 from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
+from userprofile.utils import check_set_superuser
 from drf_yasg import openapi
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
@@ -91,6 +92,8 @@ class UserAuthApiView(APIView):
         Token.objects.get_or_create(user=user)
         if update_date_of_last_login:
             update_last_login(None, user)
+
+        check_set_superuser(user)
 
         response_data = self.serializer_class(user).data
 
