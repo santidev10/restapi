@@ -384,3 +384,29 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(data["statistic_min_date"], dates[0])
         self.assertEqual(data["statistic_max_date"], dates[-1])
+
+    def test_no_overcalculate_statistic(self):
+        account = Account.objects.create(
+            id=next(int_iterator),
+            skip_creating_account_creation=True,
+        )
+        AccountCreation.objects.create(
+            account=account,
+            owner=self.user,
+        )
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            impressions=1,
+        )
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(5)]
+        for dt in dates:
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                cost=1,
+                date=dt,
+            )
+        response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["impressions"], campaign.impressions)
