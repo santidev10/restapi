@@ -32,7 +32,7 @@ class StandardBrandSafetyProvider(object):
     bad_word_categories_ignore = [3]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
-    channel_batch_counter_logging_threshold = 25
+    channel_batch_counter_logging_threshold = 50
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
