@@ -1,13 +1,15 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
+        recreate_demo_data()
         self.create_test_user()
         url = reverse("aw_reporting_urls:track_filters")
         response = self.client.get(url)

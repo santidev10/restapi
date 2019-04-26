@@ -22,6 +22,7 @@ MIGRATION_MODULES = {
     "sessions": None,
     "userprofile": None,
 }
+
 for logger_config in LOGGING["handlers"].values():
     logger_config["filters"] = ["hide_all"] \
                                + logger_config.get("filters", [])

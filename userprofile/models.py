@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from administration.notifications import send_html_email
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
@@ -24,16 +25,14 @@ from utils.models import Timestampable
 logger = logging.getLogger(__name__)
 
 
-
 def get_default_settings():
     return {
         UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: False,
         UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
         UserSettingsKey.SHOW_CONVERSIONS: False,
-        UserSettingsKey.VISIBLE_ACCOUNTS: [],
+        UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
         UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
         UserSettingsKey.HIDDEN_CAMPAIGN_TYPES: {},
         UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: False,

@@ -5,13 +5,11 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.api.serializers.campaign_list_serializer import CampaignListSerializer
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import campaign_type_str, Campaign
 from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
 
 
-@demo_view_decorator
 class DashboardAccountCreationCampaignsListApiView(APIView):
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
 

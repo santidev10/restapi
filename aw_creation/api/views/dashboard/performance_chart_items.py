@@ -7,13 +7,11 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.dashboard_charts import DeliveryChart
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 from userprofile.constants import UserSettingsKey
 from utils.permissions import UserHasDashboardPermission
 
 
-@demo_view_decorator
 class DashboardPerformanceChartItemsApiView(APIView):
     """
     Send filters to get a list of targeted items

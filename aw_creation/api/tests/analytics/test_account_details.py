@@ -11,7 +11,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -101,6 +102,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     }
 
     def setUp(self):
+
         self.user = self.create_test_user()
 
     def test_success_get(self):
@@ -159,6 +161,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertIs(data["impressions"], None)
 
     def test_success_get_filter_dates_demo(self):
+        recreate_demo_data()
         today = datetime.now().date()
         response = self._request(DEMO_ACCOUNT_ID,
                                  start_date=str(today - timedelta(days=2)),
@@ -170,9 +173,9 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
             self.account_list_header_fields)
         self.assertEqual(set(data["details"].keys()), self.detail_keys)
         self.assertEqual(
-            data["details"]["delivery_trend"][0]["label"], "Impressions")
+            data["details"]["delivery_trend"][0]["label"], "Views")
         self.assertEqual(
-            data["details"]["delivery_trend"][1]["label"], "Views")
+            data["details"]["delivery_trend"][1]["label"], "Impressions")
 
     def test_updated_at(self):
         test_time = datetime(2017, 1, 1, tzinfo=pytz.utc)
@@ -188,6 +191,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(data["updated_at"], test_time)
 
     def test_created_at_demo(self):
+        recreate_demo_data()
         response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import RetrieveUpdateAPIView
@@ -9,13 +10,13 @@ from aw_creation.email_messages import send_tracking_tags_request
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_api import create_customer_account, \
     update_customer_account, handle_aw_api_errors
-from aw_reporting.demo.decorators import demo_view_decorator
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.views import forbidden_for_demo
 from aw_reporting.models import Account, AWConnection
 from utils.permissions import MediaBuyingAddOnPermission, user_has_permission, \
     or_permission_classes
 
 
-@demo_view_decorator
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
     serializer_class = AccountCreationSetupSerializer
     permission_classes = (
@@ -56,7 +57,8 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         return super().put(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = AccountCreation.objects.filter(owner=self.request.user, is_managed=True)
+        queryset = AccountCreation.objects.filter(Q(owner=self.request.user) | Q(account_id=DEMO_ACCOUNT_ID)) \
+            .filter(is_managed=True)
         return queryset
 
     def account_creation(self, account_creation, mcc_account, connection):
@@ -78,6 +80,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         account_creation.save()
         return customer
 
+    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -137,6 +140,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
 
+    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.account is not None:

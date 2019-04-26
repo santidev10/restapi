@@ -14,7 +14,8 @@ from aw_reporting.analytics_charts import ALL_DIMENSIONS
 from aw_reporting.analytics_charts import Dimension
 from aw_reporting.analytics_charts import Indicator
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -200,6 +201,7 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(len(response.data), 0)
 
     def test_success_demo(self):
+        recreate_demo_data()
         self.create_test_user()
 
         today = datetime.now().date()
@@ -216,11 +218,11 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[2]['title'], "Campaign #demo2")
 
     def test_success_demo_data(self):
+        recreate_demo_data()
         user = self.create_test_user()
-        account_creation = AccountCreation.objects.create(name="", owner=user)
 
         today = datetime.now().date()
-        response = self._request("demo",
+        response = self._request(DEMO_ACCOUNT_ID,
                                  start_date=str(today - timedelta(days=2)),
                                  end_date=str(today - timedelta(days=1)),
                                  indicator=Indicator.IMPRESSIONS)
@@ -232,38 +234,38 @@ class AnalyticsPerformanceChartTestCase(ExtendedAPITestCase):
         self.assertEqual(data[1]['title'], "Campaign #demo1")
         self.assertEqual(data[2]['title'], "Campaign #demo2")
 
-    @generic_test([
-        ("AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, is_demo = {}, is_staff = {}".format(
-            *args), args, dict())
-        for args in product(
-            (True, False),
-            (True, False),
-            (Indicator.CPM, Indicator.CPV),
-            ALL_DIMENSIONS,
-            (True, False),
-            (True, False)
-        )
-    ])
-    def test_cpm_cpv_is_visible(self, dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo,
-                                is_staff):
+    def test_cpm_cpv_is_visible(self):
+        recreate_demo_data()
         user = self.create_test_user()
-        user.is_staff = is_staff
-        user.save()
 
         account_creation_id = DEMO_ACCOUNT_ID
-        if not is_demo:
-            account_creation_id = AccountCreation.objects.create(name="", owner=user,
-                                                                 is_paused=True).id
-        user_settings = {
-            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates,
-            UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost,
-        }
+        for args in product(
+                (True, False),
+                (True, False),
+                (Indicator.CPM, Indicator.CPV),
+                ALL_DIMENSIONS,
+                (True, False),
+                (True, False)
+        ):
+            msg = "AW cost = {}, hide dashboard cost = {}, indicator = {}, dimension = {}, " \
+                  "is_demo = {}, is_staff = {}".format(*args)
+            dashboard_ad_words_rates, hide_dashboard_cost, indicator, dimension, is_demo, is_staff = args
+            user.is_staff = is_staff
+            user.save()
+            if not is_demo:
+                account_creation_id = AccountCreation.objects.create(name="", owner=user,
+                                                                     is_paused=True).id
+            user_settings = {
+                UserSettingsKey.DASHBOARD_AD_WORDS_RATES: dashboard_ad_words_rates,
+                UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: hide_dashboard_cost,
+            }
 
-        with self.patch_user_settings(**user_settings):
-            response = self._request(account_creation_id,
-                                     indicator=indicator,
-                                     dimention=dimension)
-            self.assertEqual(response.status_code, HTTP_200_OK)
+            with self.patch_user_settings(**user_settings), \
+                 self.subTest(msg):
+                response = self._request(account_creation_id,
+                                         indicator=indicator,
+                                         dimention=dimension)
+                self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_cost_does_not_reflect_to_aw_rates_setting(self):
         user = self.create_test_user()
