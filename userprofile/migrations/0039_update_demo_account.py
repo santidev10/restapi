@@ -12,9 +12,10 @@ def update_demo_account_visibility(apps, schema_editor):
     userprofile_model = apps.get_model("userprofile", "UserProfile")
     for userprofile in userprofile_model.objects.all():
         settings = userprofile.aw_settings
-        if settings["demo_account_visible"]:
-            settings["visible_accounts"] = [DEMO_ACCOUNT_ID] + settings["visible_accounts"]
-        del settings["demo_account_visible"]
+        if settings.get("demo_account_visible", False):
+            settings["visible_accounts"] = [DEMO_ACCOUNT_ID] + settings.get("visible_accounts", [])
+        if "demo_account_visible" in settings:
+            del settings["demo_account_visible"]
         userprofile.save()
 
 
