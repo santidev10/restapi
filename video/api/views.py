@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
+from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from segment.models import SegmentChannel
@@ -38,7 +39,7 @@ class VideoListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class VideoListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
+class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -48,7 +49,7 @@ class VideoListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, Seg
         "userprofile.video_list",
         "userprofile.settings_my_yt_channels"
     )
-    renderer_classes = (VideoListCSVRendered,)
+    renderer = VideoListCSVRendered
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 

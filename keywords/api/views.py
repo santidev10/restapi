@@ -6,6 +6,7 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
+from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from keywords.api.utils import get_keywords_aw_stats
@@ -33,7 +34,7 @@ class KeywordListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class KeywordListApiView(CassandraExportMixinApiView, PermissionRequiredMixin):
+class KeywordListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin):
     """
     Proxy view for keywords list
     """
@@ -42,7 +43,7 @@ class KeywordListApiView(CassandraExportMixinApiView, PermissionRequiredMixin):
         "userprofile.keyword_list",
     )
     export_file_title = "keyword"
-    renderer_classes = (KeywordListCSVRendered,)
+    renderer = KeywordListCSVRendered
 
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 

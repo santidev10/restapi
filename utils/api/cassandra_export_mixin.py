@@ -3,13 +3,15 @@ CSV export mechanism module for objects list
 """
 from urllib.parse import unquote
 
+from django.http import StreamingHttpResponse
+from django.http import FileResponse
 from django.utils import timezone
 from utils.api.file_list_api_view import FileListApiView
 
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
-class CassandraExportMixinApiView(FileListApiView):
+class CassandraExportMixinApiView(object):
     """
     Export mixin for cassandra data
     """
@@ -21,21 +23,8 @@ class CassandraExportMixinApiView(FileListApiView):
             date=timezone.now().strftime("%d-%m-%Y.%H:%M%p")
         )
 
-    def get_queryset(self, *args, **kwargs):
-        filters = self.request.data.get("filters")
-        try:
-            if filters is not None:
-                export_data = self._data_filtered(filters)
-            else:
-                export_data = self._data_simple(self.request)
-        except SDBError as er:
-            return er.sdb_response
-
-        return export_data
-
-    def data_generator(self, *args, **kwargs):
-        queryset = self.get_queryset(*args, **kwargs)
-        for item in queryset:
+    def data_generator(self, data):
+        for item in data:
             yield item
 
     def _data_simple(self, request):
@@ -52,7 +41,7 @@ class CassandraExportMixinApiView(FileListApiView):
 
         request.query_params._mutable = True
         request.query_params["size"] = max_export_size
-        request.query_params["fields"] = ",".join(self.fields_to_export)
+        request.query_params["fields"] = ",".join(self.renderer.header)
         request.query_params.update(request.data)
         # prepare api call
         request.query_params._mutable = True
@@ -69,7 +58,19 @@ class CassandraExportMixinApiView(FileListApiView):
         """
         Export mechanism
         """
-        return self.list(request)
+        filters = self.request.data.get("filters")
+        try:
+            if filters is not None:
+                export_data = self._data_filtered(filters)
+            else:
+                export_data = self._data_simple(request)
+        except SDBError as er:
+            return er.sdb_response
+
+        data_generator = self.renderer().render(data=self.data_generator(export_data))
+        response = FileResponse(data_generator, content_type='text/csv')
+        response["Content-Disposition"] = "attachment; filename=\"{}\"".format(self.filename)
+        return response
 
 
 class SDBError(Exception):

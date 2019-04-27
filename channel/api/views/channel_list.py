@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
+from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
@@ -66,7 +67,7 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
+class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
                          SegmentFilterMixin):
     """
     Proxy view for channel list
@@ -75,7 +76,7 @@ class ChannelListApiView(CassandraExportMixinApiView, PermissionRequiredMixin, C
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-    renderer_classes = (ChannelListCSVRendered,)
+    renderer = ChannelListCSVRendered
     export_file_title = "channel"
 
     @swagger_auto_schema(
