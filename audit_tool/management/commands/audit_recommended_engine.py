@@ -78,7 +78,7 @@ class Command(BaseCommand):
         if pending_videos.count() == 0:
             pending_videos = self.process_seed_list()
         else:
-            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video")
+            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
