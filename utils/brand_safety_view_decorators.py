@@ -15,7 +15,7 @@ def get_es_brand_safety_data_helper(item_ids, index_name, full_response=False):
     try:
         es_result = ElasticSearchConnector(index_name=index_name) \
             .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-    except 
+    except
     if full_response:
         return es_result
     if len(item_ids) == 1:
