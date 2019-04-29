@@ -125,6 +125,7 @@ class AuditProcessor(models.Model):
     # audit_types:
     #   0 - recommendation engine
     #   1 - video meta processor
+    #   2 - channel meta processor
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
@@ -215,3 +216,14 @@ class AuditVideoProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "video")
+
+class AuditChannelProcessor(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel')
+    channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, related_name='avp_channel_source')
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    clean = models.BooleanField(default=True, db_index=True)
+    word_hits = JSONField(default={}, null=True)
+
+    class Meta:
+        unique_together = ("audit", "channel")
