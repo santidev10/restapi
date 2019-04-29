@@ -1,28 +1,42 @@
+from elasticsearch.exceptions import ConnectionTimeout
+
 from utils.elasticsearch import ElasticSearchConnector
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
 import brand_safety.constants as constants
 
+MAX_SIZE = 10000
+BRAND_SAFETY_FLAGGED_THRESHOLD = 70
 
-def get_es_brand_safety_data_helper(item_ids, index_name, full_response=False):
-    if type(item_ids) is str:
-        item_ids = [item_ids]
+def get_es_brand_safety_data_helper(doc_ids, index_name, full_response=False):
+    if type(doc_ids) is str:
+        doc_ids = [doc_ids]
     body = {
         "query": {
             "terms": {
-                "_id": item_ids
+                "_id": doc_ids
             }
         }
     }
     try:
         es_result = ElasticSearchConnector(index_name=index_name) \
-            .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-    except
+            .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=MAX_SIZE)
+    except ConnectionTimeout:
+        return None
+
     if full_response:
         return es_result
-    if len(item_ids) == 1:
+    if len(doc_ids) == 1:
         try:
-            es_result["hits"]["hits"][0]
-        except
-
+            es_data = es_result["hits"]["hits"][0]["_source"]
+            return es_data
+        except IndexError:
+            return None
+    else:
+        es_data = {
+            item["_id"]: item["_source"] for item in es_result["hits"]["hits"]
+        }
+        return es_data
 
 
 def add_list_brand_safety_data(view):
@@ -50,24 +64,11 @@ def add_list_brand_safety_data(view):
                 except KeyError:
                     # Unexpected SDB response
                     return result
-                body = {
-                    "query": {
-                        "terms": {
-                            "_id": doc_ids
-                        }
-                    }
-                }
-                es_result = ElasticSearchConnector(index_name=index_name)\
-                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-                # Map to dictionary to merge to singledb data
-                es_data = {
-                    item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
-                }
+                es_data = get_es_brand_safety_data_helper(doc_ids, index_name)
                 # Singledb channel data contains brand_safety fields while videos do not
                 for item in result.data["items"]:
-                    item["brand_safety"] = es_data.get(item["id"], item.get("brand_safety", "Unavailable")) \
-                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                        else es_data.get(item["id"], "Unavailable")
+                    if es_data.get(item["id"]):
+                        item["brand_safety"] = es_data[item["id"]]["overall_score"]
         except (IndexError, AttributeError):
             pass
         return result
@@ -85,24 +86,39 @@ def add_channel_brand_safety_data(view):
         result = view(*args, **kwargs)
         try:
             channel_id = args[0].kwargs["pk"]
-            body = {
-                "query": {
-                    "term": {
-                        "_id": channel_id
-                    }
-                }
-            }
-            es_result = ElasticSearchConnector(index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX)\
-                .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-            try:
-                es_channel_brand_safety_data = es_result["hits"]["hits"][0]
-            except IndexError:
+            channel_es_data = get_es_brand_safety_data_helper(channel_id, index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX)
+            # need to get all videos for this channel...
+            if not channel_es_data:
                 return result
-            # Singledb channel data contains brand_safety fields while videos do not
-            for item in result.data["items"]:
-                item["brand_safety"] = es_data.get(item["id"], item.get("brand_safety", "Unavailable")) \
-                    if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                    else es_data.get(item["id"], "Unavailable")
+            try:
+                params = {
+                    "fields": "video_id,title,transcript",
+                    "sort": "video_id",
+                    "size": MAX_SIZE,
+                    "channel_id__terms": channel_id
+                }
+                response = SingleDatabaseApiConnector().get_video_list(params)
+                sdb_video_data = {
+                    video["vide_id"]: video
+                    for video in response["items"]
+                }
+            except SingleDatabaseApiConnectorException:
+                return result
+            video_ids = list(sdb_video_data.keys())
+            video_es_data = get_es_brand_safety_data_helper(video_ids, constants.BRAND_SAFETY_VIDEO_ES_INDEX)
+            brand_safety_data = {
+                "total_videos": channel_es_data["videos_scored"],
+                "videos_flagged_count": 0,
+                "flagged_videos": [],
+            }
+            for id_, data in video_es_data.items():
+                # if flagged, then merge data and append flagged videos
+                if data["overall_score"] <= BRAND_SAFETY_FLAGGED_THRESHOLD:
+                    brand_safety_data["flagged_videos"].append(data)
+                    brand_safety_data["videos_flagged_count"] += 1
+            return
+
+
         except (IndexError, AttributeError):
             pass
         return result
@@ -142,7 +158,7 @@ def add_video_brand_safety_data(view):
                     }
                 }
                 es_result = ElasticSearchConnector(index_name=index_name)\
-                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
+                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=MAX_SIZE)
                 # Map to dictionary to merge to singledb data
                 es_data = {
                     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
