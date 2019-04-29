@@ -8,13 +8,3 @@ def is_apex_user(email):
 
 def is_correct_apex_domain(request_origin):
     return settings.APEX_HOST in request_origin
-
-
-def check_set_superuser(user):
-    try:
-        if user.is_superuser:
-            print('eh')
-
-
-
-

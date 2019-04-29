@@ -151,7 +151,7 @@ class UserUpdateSerializer(ModelSerializer):
                 user.is_active = True
             if old_status != user.status and user.status == UserStatuses.ACTIVE.value:
                 user.email_user_active(request)
-        if staff_status:
+        if staff_status is not None:
             user.is_staff = staff_status
         user.save()
         return user

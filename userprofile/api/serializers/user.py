@@ -40,6 +40,7 @@ class UserSerializer(ModelSerializer):
             "has_disapproved_ad",
             "id",
             "is_staff",
+            "is_superuser",
             "is_active",
             "last_login",
             "last_name",
@@ -50,7 +51,7 @@ class UserSerializer(ModelSerializer):
             "has_accepted_GDPR",
         )
         read_only_fields = (
-            "is_staff",
+            "is_superuser",
             "last_login",
             "date_joined",
             "token",
@@ -84,3 +85,10 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+    def get_is_superuser(self, obj):
+        try:
+            is_superuser = obj.is_superuser
+            return is_superuser
+        except AttributeError:
+            return False
