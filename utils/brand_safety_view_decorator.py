@@ -41,16 +41,14 @@ def add_brand_safety_data(view):
                         .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
                 except ConnectionTimeout:
                     return result
-                # Map to dictionary to merge to singledb data
+                # Map to dictionary to merge to sdb data
                 es_data = {
                     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
                 }
-                # Singledb channel data contains brand_safety fields while videos do not
+                # Set response data with new brand safety data
                 for item in result.data["items"]:
-                    score = es_data.get(item["id"], "Unavailable") \
-                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                        else es_data.get(item["id"], "Unavailable")
-                    item["brand_safety"] = {
+                    score = es_data.get(item["id"], None)
+                    item["brand_safety_data"] = {
                         "score": score,
                         "label": get_brand_safety_label(score)
                     }
@@ -61,13 +59,17 @@ def add_brand_safety_data(view):
 
 
 def get_brand_safety_label(score):
+    """
+    Helper method to return appropriate brand safety score label
+    :param score: Integer convertible value
+    :return: str or None
+    """
     try:
         score = int(score)
-    except ValueError:
-        label = "Unavailable"
-        return label
+    except (ValueError, TypeError):
+        return None
 
-    if 90 < score <= 100:
+    if 90 < score:
         label = "SAFE"
     elif 80 < score <= 90:
         label = "LOW RISK"
