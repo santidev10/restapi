@@ -156,17 +156,27 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
             CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
 
-        data = Campaign.objects \
+        queryset = Campaign.objects \
             .filter(**campaign_filter) \
             .values(CAMPAIGN_ACCOUNT_ID_KEY) \
-            .order_by(CAMPAIGN_ACCOUNT_ID_KEY) \
+            .order_by(CAMPAIGN_ACCOUNT_ID_KEY)
+
+        data = queryset \
+             \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      statistic_min_date=Min("statistics__date"),
-                      statistic_max_date=Max("statistics__date"),
                       **self.stats_aggregations)
+        dates = queryset.annotate(
+            statistic_min_date=Min("statistics__date"),
+            statistic_max_date=Max("statistics__date"),
+        )
+        dates_by_id = {
+            item[CAMPAIGN_ACCOUNT_ID_KEY]: pick_dict(item, ["statistic_min_date", "statistic_max_date"])
+            for item in dates
+        }
         for account_data in data:
             account_id = account_data[CAMPAIGN_ACCOUNT_ID_KEY]
+            account_data.update(dates_by_id[account_id])
             dict_norm_base_stats(account_data)
             dict_add_calculated_stats(account_data)
 

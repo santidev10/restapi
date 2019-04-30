@@ -215,14 +215,22 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             account_client_cost = self._get_client_cost_by_account(
                 campaign_filter)
 
-        data = Campaign.objects.filter(**campaign_filter) \
+        queryset = Campaign.objects \
+            .filter(**campaign_filter) \
             .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
-            .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY) \
+            .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY)
+        data = queryset \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      statistic_min_date=Min("statistics__date"),
-                      statistic_max_date=Max("statistics__date"),
                       **base_stats_aggregator())
+        dates = queryset.annotate(
+            statistic_min_date=Min("statistics__date"),
+            statistic_max_date=Max("statistics__date"),
+        )
+        dates_by_id = {
+            item[self.CAMPAIGN_ACCOUNT_ID_KEY]: pick_dict(item, ["statistic_min_date", "statistic_max_date"])
+            for item in dates
+        }
         flights = Flight.objects.filter(**flight_filter) \
             .distinct() \
             .annotate(account_creation_id=F("placement__adwords_campaigns__account__account_creation__id"),
@@ -242,6 +250,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         sf_data_by_acc = reduce(accumulate, flights, defaultdict(lambda: defaultdict(lambda: 0)))
         for account_data in data:
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
+            account_data.update(dates_by_id[account_id])
             dict_norm_base_stats(account_data)
             dict_add_calculated_stats(account_data)
 
