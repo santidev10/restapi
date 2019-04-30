@@ -70,3 +70,5 @@ BRAND_SAFETY_SCORE = "brand_safety_score"
 TITLE = "title"
 DESCRIPTION = "description"
 TAGS = "tags"
+
+UNAVAILABLE_MESSAGE = "Brand Safety data unavailable."

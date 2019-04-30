@@ -12,6 +12,10 @@ import brand_safety.constants as constants
 
 
 class BrandSafetyChannelAPIView(APIView):
+    permission_required = (
+        "userprofile.channel_list",
+        "userprofile.settings_my_yt_channels"
+    )
     es_connector = ElasticSearchConnector()
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 70
@@ -24,9 +28,9 @@ class BrandSafetyChannelAPIView(APIView):
                 channel_id,
                 constants.BRAND_SAFETY_SCORE_TYPE)
         except ElasticSearchConnectorException:
-            return Response(status=HTTP_500_INTERNAL_SERVER_ERROR, data="Brand Safety data unavailable.")
+            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
-            raise Http404
+            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
         channel_brand_safety_data = {
             "videos_scored": channel_es_data["videos_scored"],
             "flagged_videos": [],
@@ -45,7 +49,7 @@ class BrandSafetyChannelAPIView(APIView):
                 for video in response["items"]
             }
         except SingleDatabaseApiConnectorException:
-            return Response(status=HTTP_500_INTERNAL_SERVER_ERROR, data="Brand Safety data unavailable.")
+            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
         video_ids = list(sdb_video_data.keys())
         video_es_data = self.es_connector.search_by_id(
             constants.BRAND_SAFETY_VIDEO_ES_INDEX,

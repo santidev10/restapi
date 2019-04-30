@@ -13,6 +13,10 @@ from brand_safety.models import BadWordCategory
 
 
 class BrandSafetyVideoAPIView(APIView):
+    permission_required = (
+        "userprofile.channel_list",
+        "userprofile.settings_my_yt_channels"
+    )
     category_mapping = BadWordCategory.get_category_mapping()
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 70
