@@ -41,11 +41,11 @@ def add_brand_safety_data(view):
                         .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
                 except ConnectionTimeout:
                     return result
-                # Map to dictionary to merge to singledb data
+                # Map to dictionary to merge to sdb data
                 es_data = {
                     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
                 }
-                # Singledb channel data contains brand_safety fields while videos do not
+                # Set response data with new brand safety data
                 for item in result.data["items"]:
                     score = es_data.get(item["id"], None)
                     item["brand_safety_data"] = {
