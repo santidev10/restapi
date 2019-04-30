@@ -1,7 +1,7 @@
-from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_500_INTERNAL_SERVER_ERROR
+from rest_framework.status import HTTP_502_BAD_GATEWAY
+from django.http import Http404
 from rest_framework.response import Response
 
 from utils.elasticsearch import ElasticSearchConnector
@@ -9,6 +9,7 @@ from utils.elasticsearch import ElasticSearchConnectorException
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 import brand_safety.constants as constants
+from utils.brand_safety_view_decorator import get_brand_safety_label
 
 
 class BrandSafetyChannelAPIView(APIView):
@@ -21,6 +22,9 @@ class BrandSafetyChannelAPIView(APIView):
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 70
 
     def get(self, request, **kwargs):
+        """
+        View to retrieve individual channel brand safety data
+        """
         channel_id = kwargs["pk"]
         try:
             channel_es_data = self.es_connector.search_by_id(
@@ -28,14 +32,20 @@ class BrandSafetyChannelAPIView(APIView):
                 channel_id,
                 constants.BRAND_SAFETY_SCORE_TYPE)
         except ElasticSearchConnectorException:
-            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
+            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
-            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
+            raise Http404
+        channel_score = channel_es_data["overall_score"]
         channel_brand_safety_data = {
+            "brand_safety": {
+                "score": channel_score,
+                "label": get_brand_safety_label(channel_score)
+            },
             "videos_scored": channel_es_data["videos_scored"],
             "flagged_videos": [],
             "flagged_videos_count": 0
         }
+        # Get channel's video ids from sdb to get es video brand safety data
         try:
             params = {
                 "fields": "video_id,title,transcript",
@@ -49,7 +59,7 @@ class BrandSafetyChannelAPIView(APIView):
                 for video in response["items"]
             }
         except SingleDatabaseApiConnectorException:
-            return Response(status=HTTP_200_OK, data=constants.UNAVAILABLE_MESSAGE)
+            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         video_ids = list(sdb_video_data.keys())
         video_es_data = self.es_connector.search_by_id(
             constants.BRAND_SAFETY_VIDEO_ES_INDEX,

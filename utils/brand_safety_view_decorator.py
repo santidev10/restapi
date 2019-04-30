@@ -11,7 +11,6 @@ def add_brand_safety_data(view):
     :return: Response with merged ES and singledb data
     """
     def wrapper(*args, **kwargs):
-        # Get result of view handling request first
         result = view(*args, **kwargs)
         try:
             view_type = args[0].export_file_title
@@ -45,11 +44,9 @@ def add_brand_safety_data(view):
                 es_data = {
                     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
                 }
-                # Singledb channel data contains brand_safety fields while videos do not
+                # Mutate brand safety scores in response
                 for item in result.data["items"]:
-                    score = es_data.get(item["id"], "Unavailable") \
-                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                        else es_data.get(item["id"], "Unavailable")
+                    score = es_data.get(item["id"], None)
                     item["brand_safety"] = {
                         "score": score,
                         "label": get_brand_safety_label(score)
@@ -64,10 +61,9 @@ def get_brand_safety_label(score):
     try:
         score = int(score)
     except ValueError:
-        label = "Unavailable"
-        return label
+        return None
 
-    if 90 < score <= 100:
+    if 90 < score:
         label = "SAFE"
     elif 80 < score <= 90:
         label = "LOW RISK"

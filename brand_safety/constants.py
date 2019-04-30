@@ -72,3 +72,8 @@ DESCRIPTION = "description"
 TAGS = "tags"
 
 UNAVAILABLE_MESSAGE = "Brand Safety data unavailable."
+
+CHANNEL_LIST_API_VIEW = "ChannelListApiView"
+VIDEO_LIST_API_VIEW = "VideoListApiView"
+VIDEO_RETRIEVE_UPDATE_API_VIEW = "VideoRetrieveUpdateApiView"
+CHANNEL_RETRIEVE_UPDATE_DELETE_API_VIEW = "ChannelRetrieveUpdateDeleteApiView"
