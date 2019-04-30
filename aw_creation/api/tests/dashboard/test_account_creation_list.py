@@ -474,6 +474,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
                 date=dt,
             )
         user_settings = {
+            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: False,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
         with self.patch_user_settings(**user_settings):
