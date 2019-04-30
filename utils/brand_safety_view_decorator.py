@@ -47,10 +47,8 @@ def add_brand_safety_data(view):
                 }
                 # Singledb channel data contains brand_safety fields while videos do not
                 for item in result.data["items"]:
-                    score = es_data.get(item["id"], "Unavailable") \
-                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                        else es_data.get(item["id"], "Unavailable")
-                    item["brand_safety"] = {
+                    score = es_data.get(item["id"], None)
+                    item["brand_safety_data"] = {
                         "score": score,
                         "label": get_brand_safety_label(score)
                     }
@@ -63,9 +61,8 @@ def add_brand_safety_data(view):
 def get_brand_safety_label(score):
     try:
         score = int(score)
-    except ValueError:
-        label = "Unavailable"
-        return label
+    except (ValueError, TypeError):
+        return None
 
     if 90 < score <= 100:
         label = "SAFE"
