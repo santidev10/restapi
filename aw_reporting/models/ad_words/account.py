@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Min
+from django.db.models import Q
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
 
 
@@ -40,7 +42,8 @@ class Account(models.Model):
     @classmethod
     def user_objects(cls, user):
         return cls.objects.filter(
-            managers__id__in=cls.user_mcc_objects(user),
+            Q(managers__id__in=cls.user_mcc_objects(user))
+            | Q(id=DEMO_ACCOUNT_ID)
         )
 
     @property

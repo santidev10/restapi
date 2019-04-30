@@ -22,6 +22,7 @@ MIGRATION_MODULES = {
     "sessions": None,
     "userprofile": None,
 }
+
 for logger_config in LOGGING["handlers"].values():
     logger_config["filters"] = ["hide_all"] \
                                + logger_config.get("filters", [])
@@ -32,6 +33,20 @@ CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
 
+DATABASES = {
+    'default': {
+        # default values are for the TC only
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('DB_NAME', 'saas'),
+        'USER': os.getenv('DB_USER', 'admin_saas'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
+    }
+}
+SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
+
 from utils.utittests.sdb_connector_patcher import monkey_patch
+
 
 monkey_patch()

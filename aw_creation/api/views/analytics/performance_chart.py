@@ -7,11 +7,9 @@ from rest_framework.views import APIView
 
 from aw_creation.models import AccountCreation
 from aw_reporting.analytics_charts import DeliveryChart
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import DATE_FORMAT
 
 
-@demo_view_decorator
 class AnalyticsPerformanceChartApiView(APIView):
     """
     Send filters to get data for charts

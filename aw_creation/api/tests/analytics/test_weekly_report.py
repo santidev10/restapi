@@ -1,6 +1,5 @@
 import re
 from collections import defaultdict
-from functools import partial
 from itertools import product
 
 from rest_framework.status import HTTP_200_OK
@@ -8,7 +7,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID, DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace as RootNamespace
@@ -93,12 +93,14 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_success_demo(self):
+        recreate_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_placements_format(self):
+        recreate_demo_data()
         self.create_test_user()
         url = self._get_url(DEMO_ACCOUNT_ID)
         response = self.client.post(url)
@@ -107,7 +109,7 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         section = SectionName.PLACEMENT
         columns = get_section_columns(sheet, section)
         start_row = get_section_start_row(sheet, section) + 1
-        row_indexes = range(start_row, start_row + len(DemoAccount().children) + 1)
+        row_indexes = range(start_row, start_row + Campaign.objects.filter(pk=DEMO_ACCOUNT_ID).count() + 1)
 
         percent_columns = [
             Column.VIEW_RATE,
@@ -144,23 +146,6 @@ class AnalyticsWeeklyReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         sheet = get_sheet_from_response(response)
         is_demo_report(sheet)
-
-    def test_demo_total_contains_cta(self):
-        self.create_test_user()
-        demo_account = DemoAccount()
-
-        url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        sheet = get_sheet_from_response(response)
-        total_row = get_total_row(sheet)
-        columns = get_section_columns(sheet, SectionName.PLACEMENT)
-        total_value = partial(get_value_in_column, total_row, columns)
-        self.assertEqual(total_value(Column.CTA_CARDS), demo_account.clicks_cards)
-        self.assertEqual(total_value(Column.CTA_APP_STORE), demo_account.clicks_app_store)
-        self.assertEqual(total_value(Column.CTA_WEBSITE), demo_account.clicks_website)
-        self.assertEqual(total_value(Column.CTA_END_CAP), demo_account.clicks_end_cap)
-        self.assertEqual(total_value(Column.CTA_OVERLAY), demo_account.clicks_call_to_action_overlay)
 
 
 TITLE_COLUMN = 1

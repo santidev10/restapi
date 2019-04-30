@@ -13,6 +13,7 @@ from segment.api.views import PersistentMasterSegmentsListApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentListApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
+from segment.api.views import PersistentSegmentPreviewAPIView
 from segment.utils import SEGMENT_TYPES
 from segment.utils import PERSISTENT_SEGMENT_TYPES
 
@@ -49,4 +50,7 @@ urlpatterns = [
         name=Name.PERSISTENT_SEGMENT_EXPORT),
     url(r'^persistent_master_segments/$', PersistentMasterSegmentsListApiView.as_view(),
         name=Name.PERSISTENT_MASTER_SEGMENTS_LIST),
+    url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/preview$'.format(persistent_segment_types),
+        PersistentSegmentPreviewAPIView.as_view(),
+        name=Name.PERSISTENT_SEGMENT_PREVIEW),
 ]

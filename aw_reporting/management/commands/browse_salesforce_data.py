@@ -69,15 +69,6 @@ class Command(BaseCommand):
             help='Do not update any data on salesforce, just write to the log'
         )
 
-        parser.add_argument(
-            '--prev_month_flight_write_stop_day',
-            dest='prev_month_flight_write_stop_day',
-            default=3,
-            type=int,
-            help='Using this option we can debug writing'
-                 ' to the previous month flights'
-        )
-
         parser.add_argument("--force", "-f", dest="force", action="store_true", help="Update for whole period")
         parser.add_argument("--no-fl", dest="no_flights", action="store_true", help="Update excluding flights")
         parser.add_argument("--no-pl", dest="no_placements", action="store_true", help="Update excluding placements")
@@ -88,8 +79,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             self.debug_update = options.get('debug_update')
-            self.prev_month_flight_write_stop_day = options.get(
-                'prev_month_flight_write_stop_day')
 
             sc = None
             if not options.get('no_get'):
@@ -264,28 +253,18 @@ class Command(BaseCommand):
                         )
 
     def flights_to_update_qs(self, force):
-        now = now_in_default_tz()
+        today = now_in_default_tz().date()
 
         if force:
             date_filters = Q()
         else:
-            date_filters = Q(start__lte=now, end__gte=now)
-
-            stop_updating_date = self.prev_month_flight_write_stop_day
-            if now.hour > 5:
-                stop_updating_date -= 1
-
-            if now.day <= stop_updating_date:
-                prev_month_date = now.replace(day=1) - timedelta(days=1)
-                date_filters |= Q(end__month=prev_month_date.month,
-                                  end__year=prev_month_date.year)
+            date_filters = Q(start__lte=today, end__gte=today - timedelta(days=settings.SALESFORCE_UPDATE_DELAY_DAYS))
 
         type_filters = Q(placement__goal_type_id__in=(
             SalesForceGoalType.CPM, SalesForceGoalType.CPV)) \
                        | Q(placement__dynamic_placement__in=(
             DynamicPlacementType.BUDGET,
             DynamicPlacementType.RATE_AND_TECH_FEE))
-
         flights = Flight.objects.filter(
             start__gte=WRITE_START,
             placement__adwords_campaigns__isnull=False,
@@ -296,7 +275,6 @@ class Command(BaseCommand):
             .filter(date_filters) \
             .prefetch_related(
             "placement").distinct()
-
         return flights
 
     @staticmethod

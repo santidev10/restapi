@@ -90,17 +90,20 @@ class SegmentChannel(BaseSegment):
         }
         return data
 
-    def populate_statistics_fields(self, data):
-        """
-        Update segment statistics fields
-        """
-        self.channels = data.get("base_data").get("items_count")
+    def set_top_three_channels(self, data):
         self.top_three_channels = [
             {"id": obj.get("channel_id"),
              "title": obj.get("title"),
              "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("top_three_channels_data").get("items")
         ]
+
+    def populate_statistics_fields(self, data):
+        """
+        Update segment statistics fields
+        """
+        self.channels = data.get("base_data").get("items_count")
+        self.set_top_three_channels(data)
 
         self.videos = sum(
             value.get("videos") or 0
@@ -117,10 +120,15 @@ class SegmentChannel(BaseSegment):
         }
         return statistics
 
-    def _set_total_for_huge_segment(self, items_count):
+    def _set_total_for_huge_segment(self, items_count, data):
         self.channels = items_count
         self.videos = 0
-        self.top_three_channels = dict()
+
+        if data is None:
+            self.top_three_channels = dict()
+            return
+
+        self.set_top_three_channels(data)
 
 
 class SegmentRelatedChannel(BaseSegmentRelated):

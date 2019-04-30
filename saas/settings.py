@@ -357,6 +357,7 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
+SALESFORCE_UPDATE_DELAY_DAYS = 5
 
 DEBUG_EMAIL_NOTIFICATIONS = True
 
@@ -431,11 +432,15 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
+ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-rc-2dtu2y7suh2wgn57ykwasdcfem.us-east-1.es.amazonaws.com"]
+
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
 
 USE_LEGACY_BRAND_SAFETY = True
+
+CELERY_ENABLED = True
 
 try:
     from .local_settings import *

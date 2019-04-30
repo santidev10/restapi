@@ -98,6 +98,13 @@ def device_str(device_id: int) -> str:
     return _DEVICE_REPRESENTATION.get(device_id, "Undetermined")
 
 
+class CampaignStatus(ExtendedEnum):
+    PAUSED = "paused"
+    REMOVED = "removed"
+    ELIGIBLE = "eligible"
+    ENDED = "ended"
+
+
 DATE_FORMAT = "%Y-%m-%d"
 ACTION_STATUSES = ("paused", "removed")
 

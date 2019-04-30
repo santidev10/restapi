@@ -29,7 +29,7 @@ def _generate_stat_instances(model, top_cities, report, latest_dates):
         yield model(**stats)
 
 
-def get_cities(client, account, today):
+def get_cities(client, account, today, **kwargs):
     from aw_reporting.models import CityStatistic, GeoTarget
     from aw_reporting.adwords_reports import geo_performance_report, \
         MAIN_STATISTICS_FILEDS

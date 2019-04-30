@@ -1,5 +1,5 @@
 S3_SEGMENT_EXPORT_KEY_PATTERN = "persistent-segments/{segment_type}/{segment_title}.csv"
-
+S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL = "https://s3.amazonaws.com/viewiq-prod/persistent-segments/thumbnails/cf-default.jpg"
 
 class PersistentSegmentType:
     CHANNEL = "channel"
@@ -155,3 +155,53 @@ class PersistentSegmentExportColumn:
         (PersistentSegmentType.CHANNEL, CHANNEL_CSV_COLUMNS_MAP_BY_CATEGORY),
         (PersistentSegmentType.VIDEO, VIDEO_CSV_COLUMNS_MAP_BY_CATEGORY),
     )
+
+PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS = (
+    "channel_id",
+    "brand_safety",
+    "category",
+    "country",
+    "url",
+    "language",
+    "preferred",
+    "subscribers",
+    "thirty_days_subscribers",
+    "daily_subscribers",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+    "thumbnail_image_url",
+    "title",
+    "video_views",
+    "videos",
+    "views",
+    "views_per_video",
+    "verified",
+)
+
+PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS = (
+    "video_id",
+    "title",
+    "views",
+    "thirty_days_views",
+    "weekly_views",
+    "daily_views",
+    "comments",
+    "likes",
+    "thirty_days_likes",
+    "weekly_likes",
+    "daily_likes",
+    "dislikes",
+    "thumbnail_image_url",
+    "country",
+    "category",
+    "language",
+    "is_flagged",
+    "duration",
+    "verified",
+    "url",
+    "license",
+    "bad_statuses",
+    "title_bad_words",
+    "title_bad_statuses",
+)

@@ -6,7 +6,8 @@ from rest_framework.status import HTTP_200_OK
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -82,7 +83,13 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_success_demo(self):
-        overview = self._request(DEMO_ACCOUNT_ID)
+        recreate_demo_data()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+            UserSettingsKey.SHOW_CONVERSIONS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(set(overview.keys()), self._overview_keys)
 
     def test_hidden_costs(self):
@@ -635,7 +642,12 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
             self.assertEqual(overview["view_through"], view_through)
 
     def test_demo_account_performance_charts(self):
-        overview = self._request(DEMO_ACCOUNT_ID)
+        recreate_demo_data()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            overview = self._request(DEMO_ACCOUNT_ID)
         keys = (
             "delivered_cost",
             "delivered_impressions",
@@ -650,25 +662,3 @@ class DashboardAccountCreationOverviewAPITestCase(ExtendedAPITestCase):
         self.assertGreater(overview["plan_cost"], overview["delivered_cost"])
         self.assertGreater(overview["plan_impressions"], overview["delivered_impressions"])
         self.assertGreater(overview["plan_video_views"], overview["delivered_video_views"])
-
-    def test_demo_data_are_equal_to_header(self):
-        data = self._request(DEMO_ACCOUNT_ID)
-        self.assertEqual(data["delivered_impressions"], 150000)
-        self.assertEqual(data["delivered_video_views"], 53000)
-        self.assertEqual(data["delivered_cost"], 3700)
-
-    def test_demo_data_filtered_by_campaign(self):
-        base_data = self._request(DEMO_ACCOUNT_ID)
-
-        data = self._request(DEMO_ACCOUNT_ID, campaigns=["demo1"])
-        self.assertGreater(base_data["delivered_impressions"], data["delivered_impressions"])
-        self.assertGreater(base_data["delivered_video_views"], data["delivered_video_views"])
-        self.assertGreater(base_data["delivered_cost"], data["delivered_cost"])
-
-    def test_demo_data_filtered_by_ad_groups(self):
-        base_data = self._request(DEMO_ACCOUNT_ID)
-
-        data = self._request(DEMO_ACCOUNT_ID, ad_groups=["demo11"])
-        self.assertGreater(base_data["delivered_impressions"], data["delivered_impressions"])
-        self.assertGreater(base_data["delivered_video_views"], data["delivered_video_views"])
-        self.assertGreater(base_data["delivered_cost"], data["delivered_cost"])

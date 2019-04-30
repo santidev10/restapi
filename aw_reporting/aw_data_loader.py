@@ -36,10 +36,12 @@ class AWDataLoader:
         aw_tasks.get_geo_targeting
     )
 
-    def __init__(self, today, start=None, end=None):
+    def __init__(self, today, start=None, end=None, start_date=None, end_date=None):
         self.today = today
         self.aw_cached_clients = {}
         self.update_tasks = self._get_update_tasks(start, end)
+        self.start_date = start_date
+        self.end_date = end_date
 
     def _get_update_tasks(self, start, end):
         all_names = [m.__name__ for m in self.advertising_update_tasks]
@@ -136,7 +138,7 @@ class AWDataLoader:
         today = self.today
         for task in self.update_tasks:
             logger.debug("Task: %s, account: %s", task.__name__, account)
-            task(client, account, today)
+            task(client, account, today, start_date=self.start_date, end_date=self.end_date)
 
         account.update_time = timezone.now()
         account.save()

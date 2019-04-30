@@ -1,8 +1,9 @@
 from datetime import date
 from datetime import timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, ANY
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command as django_call_command
 from django.test import TransactionTestCase
@@ -14,7 +15,7 @@ from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
-from aw_reporting.models.salesforce_constants import DynamicPlacementType, SalesforceFields
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
@@ -871,6 +872,37 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             call_command("browse_salesforce_data", no_get="1")
 
         sf_mock().sf.Flight__c.update.assert_not_called()
+
+    def test_update_after_delay(self):
+        update_delay_days = settings.SALESFORCE_UPDATE_DELAY_DAYS
+        self.assertGreater(update_delay_days, 0)
+        start = end = date(2019, 1, 1)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV)
+        campaign = Campaign.objects.create(salesforce_placement=placement)
+        CampaignStatistic.objects.create(campaign=campaign, date=start, video_views=1)
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            start=start,
+            end=end,
+        )
+        update_until = end + timedelta(days=update_delay_days)
+        not_updated_since = end + timedelta(days=update_delay_days + 1)
+        flight.refresh_from_db()
+        sf_mock = MagicMock()
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", new=sf_mock), \
+             patch_now(update_until), \
+             self.subTest("Update"):
+            call_command("browse_salesforce_data", no_get="1")
+            sf_mock().sf.Flight__c.update.assert_called_once_with(flight.id, ANY)
+
+        sf_mock = MagicMock()
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", new=sf_mock), \
+             patch_now(not_updated_since), \
+             self.subTest("Not update"):
+            call_command("browse_salesforce_data", no_get="1")
+            sf_mock().sf.Flight__c.update.assert_not_called()
 
 
 class MockSalesforceConnection(Connection):

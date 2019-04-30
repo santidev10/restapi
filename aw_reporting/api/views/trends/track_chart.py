@@ -1,9 +1,7 @@
 from aw_reporting.api.views.trends.base_track_chart import BaseTrackChartApiView
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import Account
 
 
-@demo_view_decorator
 class TrackChartApiView(BaseTrackChartApiView):
     """
     Returns data we need to build charts

@@ -36,7 +36,7 @@ def _generate_stat_instances(model, topics, report, click_type_data):
         yield model(**stats)
 
 
-def get_topics(client, account, today):
+def get_topics(client, account, today, **kwargs):
     from aw_reporting.models import Topic
     from aw_reporting.models import TopicStatistic
     from aw_reporting.adwords_reports import topics_performance_report
