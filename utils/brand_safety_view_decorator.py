@@ -1,3 +1,5 @@
+import functools
+
 from elasticsearch.exceptions import ConnectionTimeout
 
 from utils.elasticsearch import ElasticSearchConnector
@@ -54,13 +56,12 @@ def get_brand_safety_label(score):
 
 
 class BrandSafetyDataDecorator(object):
-    def __init__(self, view):
-        self.view = view
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
 
     def __call__(self, *args, **kwargs):
-        response = self.view(*args, **kwargs)
-        test = 'ehe'
-
+        result = 'test'
 
     def add_brand_safety_data(self, view):
         """
@@ -69,7 +70,8 @@ class BrandSafetyDataDecorator(object):
         :return: Response with merged ES and singledb data
         """
 
-        def wrapper(self, *args, **kwargs):
+        @functools.wraps(view)
+        def wrapper(*args, **kwargs):
             # Get result of view handling request first
             result = view(*args, **kwargs)
             try:

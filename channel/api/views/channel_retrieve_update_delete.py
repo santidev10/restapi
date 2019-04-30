@@ -65,7 +65,8 @@ class ChannelRetrieveUpdateDeleteApiView(SingledbApiView, ChannelYoutubeStatisti
             {'items': [response.data]}, self.request.user)
         return response
 
-    @BrandSafetyDataDecorator
+    @BrandSafetyDataDecorator.add_brand_safety_data
+    # @add_brand_safety_data
     def get(self, *args, **kwargs):
         if self.request.user.is_staff and \
                 self.request.query_params.get("from_youtube") == "1":
