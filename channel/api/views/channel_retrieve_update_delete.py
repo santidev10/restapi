@@ -15,7 +15,6 @@ from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.brand_safety_view_decorator import BrandSafetyDataDecorator
 
 
 class OwnChannelPermissions(BasePermission):
@@ -65,8 +64,7 @@ class ChannelRetrieveUpdateDeleteApiView(SingledbApiView, ChannelYoutubeStatisti
             {'items': [response.data]}, self.request.user)
         return response
 
-    @BrandSafetyDataDecorator.add_brand_safety_data
-    # @add_brand_safety_data
+    @add_brand_safety_data
     def get(self, *args, **kwargs):
         if self.request.user.is_staff and \
                 self.request.query_params.get("from_youtube") == "1":

@@ -1,36 +1,34 @@
-import functools
-
-from elasticsearch.exceptions import ConnectionTimeout
-
 from utils.elasticsearch import ElasticSearchConnector
 import brand_safety.constants as constants
 
 
-def brand_safety_es_helper(doc_ids, index_name):
-    MAX_SIZE = 10000
-    body = {
-        "query": {
-            "terms": {
-                "_id": doc_ids
-            }
-        }
-    }
-    try:
-        es_result = ElasticSearchConnector(index_name=index_name) \
-            .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=MAX_SIZE)
-    except ConnectionTimeout:
-        es_result = None
-    return es_result
+def add_brand_safety_data(view):
+    """
+    Decorator to merge brand safety data for channels and video from Elasticsearch to Singledb data
+    :param view: View handling request for channel / video datas
+    :return: Response with merged ES and singledb data
+    """
+    def wrapper(*args, **kwargs):
+        # Get result of view handling request first
+        response = view(*args, **kwargs)
+        try:
+            view_name = args[0].__class__.__name__.lower()
+            if constants.CHANNEL in view_name:
+                index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            elif constants.VIDEO in view_name:
+                index_name = constants.BRAND_SAFETY_VIDEO_ES_INDEX
+            else:
+                return response
 
-# indexes = {
-#     constants.VIDEO_RETRIEVE_UPDATE_API_VIEW: constants.BRAND_SAFETY_VIDEO_ES_INDEX,
-#     constants.CHANNEL_RETRIEVE_UPDATE_DELETE_API_VIEW: constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-# }
-# try:
-#     index_name = indexes[view_type]
-# except KeyError:
-#     return result
-# item_id =
+            if len(response.data.get("items", [])) > 1:
+                _handle_list_view(response, index_name)
+            else:
+                _handle_single_view(response, index_name)
+        except (IndexError, AttributeError):
+            pass
+        return response
+
+    return wrapper
 
 
 def get_brand_safety_label(score):
@@ -55,139 +53,46 @@ def get_brand_safety_label(score):
     return label
 
 
-class BrandSafetyDataDecorator(object):
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+def get_brand_safety_data(score):
+    label = get_brand_safety_label(score)
+    data = {
+        "score": score,
+        "label": label
+    }
+    return data
 
-    def __call__(self, *args, **kwargs):
-        result = 'test'
 
-    def add_brand_safety_data(self, view):
-        """
-        Decorator to merge brand safety data for channels and video from Elasticsearch to Singledb data
-        :param view: View handling request for channel / video datas
-        :return: Response with merged ES and singledb data
-        """
+def _handle_list_view(response, index_name):
+    try:
+        doc_ids = [item["id"] for item in response.data["items"]]
+    except KeyError:
+        return
+    es_data = ElasticSearchConnector().search_by_id(
+        index_name,
+        doc_ids,
+        constants.BRAND_SAFETY_SCORE_TYPE
+    )
+    es_scores = {
+        _id: data["overall_score"] for _id, data in es_data.items()
+    }
+    for item in response.data["items"]:
+        score = es_scores.get(item["id"], None)
+        item["brand_safety_data"] = get_brand_safety_data(score)
 
-        @functools.wraps(view)
-        def wrapper(*args, **kwargs):
-            # Get result of view handling request first
-            result = view(*args, **kwargs)
-            try:
-                view_name = args[0].__class__.__name__.lower()
-                # if constants.CHANNEL in view_name:
-                #     index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-                # elif constants.VIDEO in view_name:
-                #     index_name = constants.BRAND_SAFETY_VIDEO_ES_INDEX
-                # else:
-                #     return result
-                #
-                # if result.data.get("items"):
-                #     try:
-                #         doc_ids = [item["id"] for item in result.data["items"]]
-                #     except KeyError:
-                #         # Unexpected SDB response
-                #         return result
-                # else:
-                #     doc_ids =
-                #
-                # if result.data.get("items"):
-                #     try:
-                #         doc_ids = [item["id"] for item in result.data["items"]]
-                #     except KeyError:
-                #         # Unexpected SDB response
-                #         return result
-                # else:
-                #     try:
-                #         doc_ids = result.data["id"]
-                #     except KeyError:
-                #         # Unexpected SDB response
-                #         return result
-                #
-                #     es_result = brand_safety_es_helper(doc_ids, index_name)
-                    # try:
-                    #     es_result = ElasticSearchConnector(index_name=index_name)\
-                    #         .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-                    # except ConnectionTimeout:
-                    #     return result
-                    # # Map to dictionary to merge to sdb data
-                    # es_data = {
-                    #     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
-                    # }
-                    # # Set response data with new brand safety data
-                    # for item in result.data["items"]:
-                    #     score = es_data.get(item["id"], None)
-                    #     item["brand_safety_data"] = {
-                    #         "score": score,
-                    #         "label": get_brand_safety_label(score)
-                    #     }
-            except (IndexError, AttributeError):
-                pass
-            return result
 
-        return wrapper
+def _handle_single_view(response, index_name):
+    try:
+        doc_id = response.data["id"]
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_id,
+            constants.BRAND_SAFETY_SCORE_TYPE
+        )
+        score = es_data["overall_score"]
+        response.data["brand_safety_data"] = get_brand_safety_data(score)
+    except KeyError:
+        return
 
-def add_brand_safety_data(view):
-    """
-    Decorator to merge brand safety data for channels and video from Elasticsearch to Singledb data
-    :param view: View handling request for channel / video datas
-    :return: Response with merged ES and singledb data
-    """
 
-    def wrapper(*args, **kwargs):
-        # Get result of view handling request first
-        result = view(*args, **kwargs)
-        try:
-            view_name = args[0].__class__.__name__.lower()
-            # if constants.CHANNEL in view_name:
-            #     index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-            # elif constants.VIDEO in view_name:
-            #     index_name = constants.BRAND_SAFETY_VIDEO_ES_INDEX
-            # else:
-            #     return result
-            #
-            # if result.data.get("items"):
-            #     try:
-            #         doc_ids = [item["id"] for item in result.data["items"]]
-            #     except KeyError:
-            #         # Unexpected SDB response
-            #         return result
-            # else:
-            #     doc_ids =
-            #
-            # if result.data.get("items"):
-            #     try:
-            #         doc_ids = [item["id"] for item in result.data["items"]]
-            #     except KeyError:
-            #         # Unexpected SDB response
-            #         return result
-            # else:
-            #     try:
-            #         doc_ids = result.data["id"]
-            #     except KeyError:
-            #         # Unexpected SDB response
-            #         return result
-            #
-            #     es_result = brand_safety_es_helper(doc_ids, index_name)
-                # try:
-                #     es_result = ElasticSearchConnector(index_name=index_name)\
-                #         .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-                # except ConnectionTimeout:
-                #     return result
-                # # Map to dictionary to merge to sdb data
-                # es_data = {
-                #     item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
-                # }
-                # # Set response data with new brand safety data
-                # for item in result.data["items"]:
-                #     score = es_data.get(item["id"], None)
-                #     item["brand_safety_data"] = {
-                #         "score": score,
-                #         "label": get_brand_safety_label(score)
-                #     }
-        except (IndexError, AttributeError):
-            pass
-        return result
 
-    return wrapper
+
