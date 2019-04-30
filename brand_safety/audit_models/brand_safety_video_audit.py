@@ -114,7 +114,7 @@ class BrandSafetyVideoAudit(object):
             "_op_type": op_type,
             "_id": self.pk,
             "video_id": brand_safety_results.pk,
-            "overall_score": brand_safety_results.overall_score,
+            "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "categories": {
                 category: {
                     "category_score": category_score,

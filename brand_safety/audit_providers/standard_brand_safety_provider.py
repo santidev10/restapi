@@ -29,7 +29,7 @@ class StandardBrandSafetyProvider(object):
         "transcript": 1,
     }
     # Bad words in these categories should be ignored while calculating brand safety scores
-    bad_word_categories_ignore = [3]
+    bad_word_categories_ignore = [9]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
     channel_batch_counter_logging_threshold = 25
