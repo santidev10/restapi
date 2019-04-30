@@ -538,6 +538,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             item_id_key: data["related_id"],
             "title": data["title"],
             "category": data["category"],
+            "views": data["details"]["views"],
             "likes": data["details"]["likes"],
             "dislikes": data["details"]["dislikes"],
             "language": data["details"]["language"],
