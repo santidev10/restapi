@@ -37,7 +37,8 @@ class BrandSafetyVideoAPIView(APIView):
         video_score = video_es_data["overall_score"]
         video_brand_safety_data = {
             "score": video_score,
-            "label": get_brand_safety_label(video_score)
+            "label": get_brand_safety_label(video_score),
+            "total_flagged_words": 0
         }
         flagged_words = {
             "all_words": []
@@ -46,6 +47,7 @@ class BrandSafetyVideoAPIView(APIView):
         for category_id, data in video_es_data["categories"].items():
             category_name = self.category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
+            video_brand_safety_data["total_flagged_words"] += len(keywords)
             flagged_words[category_name] = len(keywords)
             flagged_words["all_words"].extend(keywords)
         video_brand_safety_data["flagged_words"] = flagged_words
