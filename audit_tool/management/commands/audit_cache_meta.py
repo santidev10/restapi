@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 import logging
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
@@ -35,5 +36,8 @@ class Command(BaseCommand):
         elif audit.audit_type == 1:  # process videos
             meta['total'] = AuditVideoProcessor.objects.filter(audit=audit).count()
             meta['count'] = AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
+        elif audit.audit_type == 2:
+            meta['total'] = AuditChannelProcessor.objects.filter(audit=audit).count() + AuditVideoProcessor.objects.filter(audit=audit).count()
+            meta['count'] = AuditChannelProcessor.objects.filter(audit=audit, processed__isnull=False).count() + AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
         audit.cached_data = meta
         audit.save(update_fields=['cached_data'])
