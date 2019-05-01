@@ -64,6 +64,12 @@ class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
         data = [row for row in csv_data]
         self.assertGreaterEqual(len(data), 1)
 
+    def test_brand_safety_data_exists(self):
+        self.create_admin_user()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(True, all(item["brand_safety_data"] for item in response.data["items"]))
+
 
 def get_data_from_csv_response(response):
     return csv.reader((row.decode("utf-8") for row in response.streaming_content))

@@ -12,7 +12,11 @@ def add_brand_safety_data(view):
         # Get result of view handling request first
         response = view(*args, **kwargs)
         try:
-            view_name = args[0].__class__.__name__.lower()
+            view_name = args[0].__class__.__name__
+            # Ensure decorator is being used in appropriate views
+            if view_name not in constants.BRAND_SAFETY_DECORATED_VIEWS:
+                return response
+            view_name = view_name.lower()
             if constants.CHANNEL in view_name:
                 index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
             elif constants.VIDEO in view_name:
@@ -42,11 +46,11 @@ def get_brand_safety_label(score):
     except (ValueError, TypeError):
         return None
 
-    if 90 < score:
+    if 90 <= score:
         label = "SAFE"
-    elif 80 < score <= 90:
+    elif 80 <= score <= 89:
         label = "LOW RISK"
-    elif 70 < score <= 80:
+    elif 70 <= score <= 79:
         label = "RISKY"
     else:
         label = "HIGH RISK"
