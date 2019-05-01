@@ -32,7 +32,6 @@ class StandardBrandSafetyProvider(object):
     bad_word_categories_ignore = [9]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
-    channel_batch_counter_logging_threshold = 25
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -45,8 +44,8 @@ class StandardBrandSafetyProvider(object):
             constants.EMOJI: self.audit_provider.compile_emoji_regexp()
         }
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
-        self.default_video_category_scores = self.create_brand_safety_default_category_scores(data_type=constants.VIDEO)
-        self.default_channel_category_scores = self.create_brand_safety_default_category_scores(data_type=constants.CHANNEL)
+        self.default_video_category_scores = self._create_brand_safety_default_category_scores(data_type=constants.VIDEO)
+        self.default_channel_category_scores = self._create_brand_safety_default_category_scores(data_type=constants.CHANNEL)
         self.audit_service = StandardBrandSafetyService(
             audit_types=self.audits,
             score_mapping=self.get_brand_safety_score_mapping(),
@@ -65,7 +64,7 @@ class StandardBrandSafetyProvider(object):
         """
         logger.info("Starting standard audit...")
         pool = mp.Pool(processes=self.max_process_count)
-        for channel_batch in self.channel_id_batch_generator(self.cursor_id):
+        for channel_batch in self._channel_id_batch_generator(self.cursor_id):
             # Update score mapping so each batch uses updated brand safety scores
             results = pool.map(self._process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
             # Extract nested results from each process
@@ -76,8 +75,6 @@ class StandardBrandSafetyProvider(object):
             self.cursor_id = self.script_tracker.cursor_id
             # Update brand safety scores in case they have been modified
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
-            if self.channel_batch_counter % self.channel_batch_counter_logging_threshold == 0:
-                logger.info("Channel batch size: {} - On channel batch number: {}".format(self.channel_id_master_batch_limit, self.channel_batch_counter))
         logger.info("Standard Brand Safety Audit Complete.")
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
@@ -116,12 +113,12 @@ class StandardBrandSafetyProvider(object):
         :param channel_audits:
         :return:
         """
-        self.index_brand_safety_results(
+        self._index_brand_safety_results(
             # self.audit_service.gather_brand_safety_results(video_audits),
             video_audits,
             index_name=constants.BRAND_SAFETY_VIDEO_ES_INDEX
         )
-        self.index_brand_safety_results(
+        self._index_brand_safety_results(
             # self.audit_service.gather_brand_safety_results(channel_audits),
             channel_audits,
             index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
@@ -142,13 +139,13 @@ class StandardBrandSafetyProvider(object):
                 brand_safety_fail[audit.pk] = audit
         return brand_safety_pass, brand_safety_fail
 
-    def index_brand_safety_results(self, results, index_name):
+    def _index_brand_safety_results(self, results, index_name):
         index_type = "score"
         op_type = "index"
         es_bulk_generator = (audit.es_repr(index_name, index_type, op_type) for audit in results)
         self.es_connector.push_to_index(es_bulk_generator)
 
-    def channel_id_batch_generator(self, cursor_id):
+    def _channel_id_batch_generator(self, cursor_id):
         """
         Yields batch channel ids to audit
         :param cursor_id: Cursor position to start audit
@@ -194,7 +191,7 @@ class StandardBrandSafetyProvider(object):
             .values_list("name", flat=True)
         return bad_words
 
-    def create_brand_safety_default_category_scores(self, data_type=constants.VIDEO):
+    def _create_brand_safety_default_category_scores(self, data_type=constants.VIDEO):
         """
         Creates default brand safety category scores for video brand safety objects
             Default category brand safety scores not needed for channel brand safety objects since they are derived from videos

@@ -32,7 +32,10 @@ class BrandSafetyVideoAudit(object):
         tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, brand_safety_audit)
         title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, brand_safety_audit)
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
-        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits
+        transcript_hits = self.auditor.audit(self.metadata["transcript"], constants.TRANSCRIPT, brand_safety_audit)
+        # Keep track of transcript word hits for transcript highlighting in client
+        self.results[constants.TRANSCRIPT] = list(set([hit.name for hit in transcript_hits]))
+        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits + transcript_hits
         self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
@@ -115,6 +118,7 @@ class BrandSafetyVideoAudit(object):
             "_id": self.pk,
             "video_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
+            "transcript_hits": self.results[constants.TRANSCRIPT],
             "categories": {
                 category: {
                     "category_score": category_score,
