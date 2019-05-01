@@ -45,7 +45,7 @@ class BrandSafetyVideoAPIView(APIView):
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
             category_name = self.category_mapping[category_id]
-            keywords = data["keywords"]
+            keywords = [word["keyword"] for word in data["keywords"]]
             flagged_words[category_name] = len(keywords)
             flagged_words["all_words"].extend(keywords)
         video_brand_safety_data["flagged_words"] = flagged_words
