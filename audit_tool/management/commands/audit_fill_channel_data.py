@@ -81,7 +81,10 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-                db_channel_meta.save()
+                try:
+                    db_channel_meta.save()
+                except Exception as e:
+                    logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
         except Exception as e:
             logger.exception(e)
