@@ -491,9 +491,8 @@ class PersistentSegmentPreviewAPIView(APIView):
         elif size >= self.max_page_size:
             size = self.max_page_size
         segment = get_persistent_segment_model_by_type(segment_type)
-        # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
         try:
-            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
+            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("related_id").values(
                 "related_id", "title", "category", "details", "thumbnail_image_url")
         except segment.DoesNotExist:
             raise Http404
@@ -536,15 +535,15 @@ class PersistentSegmentPreviewAPIView(APIView):
         """
         mapped_data = {
             item_id_key: data["related_id"],
-            "title": data["title"],
-            "category": data["category"],
-            "views": data["details"]["views"],
-            "likes": data["details"]["likes"],
-            "dislikes": data["details"]["dislikes"],
-            "language": data["details"]["language"],
-            "thumbnail_image_url": data["thumbnail_image_url"]
+            "title": data.get("title"),
+            "category": data.get("category"),
+            "views": data["details"].get("views"),
+            "likes": data["details"].get("likes"),
+            "dislikes": data["details"].get("dislikes"),
+            "language": data["details"].get("language"),
+            "thumbnail_image_url": data.get("thumbnail_image_url")
         }
         if segment_type == PersistentSegmentType.CHANNEL:
-            mapped_data["subscribers"] = data["details"]["subscribers"]
-            mapped_data["audited_videos"] = data["details"]["audited_videos"]
+            mapped_data["subscribers"] = data["details"].get("subscribers")
+            mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data
