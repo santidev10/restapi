@@ -23,7 +23,7 @@ def _generate_stat_instances(model, report, campaign_ids, saved_targeting):
             yield model(campaign_id=row_obj.CampaignId, geo_target_id=row_obj.Id, **stats)
 
 
-def get_geo_targeting(ad_client, account, *_):
+def get_geo_targeting(ad_client, account, *_, **kwargs):
     from aw_reporting.models import Campaign
     from aw_reporting.models import GeoTargeting
     from aw_reporting.adwords_reports import geo_location_report

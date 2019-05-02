@@ -1,5 +1,6 @@
 from django.db import models
 
+from aw_reporting.models import Device
 from aw_reporting.models.ad_words import Ad
 from aw_reporting.models.ad_words import AdGroup
 from aw_reporting.models.ad_words import Audience
@@ -22,7 +23,7 @@ class DailyStatisticModel(BaseStatisticModel):
 
 
 class DeviceDailyStatisticModel(DailyStatisticModel):
-    device_id = models.SmallIntegerField(default=0, db_index=True)
+    device_id = models.SmallIntegerField(default=Device.COMPUTER, db_index=True)
 
     class Meta:
         abstract = True

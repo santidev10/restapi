@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
@@ -9,8 +8,8 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import TargetingItem
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Audience
@@ -294,12 +293,12 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(kpi["average_cpm"]["max"], 250)
 
     def test_success_post_demo(self):
+        recreate_demo_data()
         self.create_test_user()
         url = reverse("aw_creation_urls:performance_targeting_report",
                       args=(DEMO_ACCOUNT_ID,))
-        account = DemoAccount()
-        campaign = account.children[0]
-        ad_group = campaign.children[0]
+        campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
+        ad_group = campaign.ad_groups.all().first()
 
         response = self.client.post(
             url, json.dumps(dict(
@@ -322,7 +321,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
             self.data_keys
         )
         self.assertEqual(campaign_data['label'], campaign.name)
-        self.assertEqual(len(campaign_data['items']), 12)
+        self.assertEqual(len(campaign_data['items']), 2)
 
         item = campaign_data['items'][0]
         self.assertEqual(set(item.keys()), self.item_keys)

@@ -17,7 +17,7 @@ from aw_reporting.update.tasks.utils.quart_views import quart_views
 from utils.datetime import now_in_default_tz
 
 
-def get_campaigns(client, account, *_):
+def get_campaigns(client, account, *_, **kwargs):
     from aw_reporting.adwords_reports import campaign_performance_report
     from aw_reporting.models import ACTION_STATUSES
     from aw_reporting.models import Campaign

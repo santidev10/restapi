@@ -10,7 +10,7 @@ from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.quart_views import quart_views
 
 
-def get_ads(client, account, today):
+def get_ads(client, account, today, **kwargs):
     from aw_reporting.models import Ad
     from aw_reporting.models import AdStatistic
     from aw_reporting.adwords_reports import ad_performance_report

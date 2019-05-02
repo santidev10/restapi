@@ -1,5 +1,7 @@
 from django.conf import settings
+from django.db.models import Q
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account
 
 
@@ -7,9 +9,8 @@ def get_account_queryset(user):
     global_trends_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
     queryset = Account.objects.get_queryset_for_user(user)
 
-    queryset = queryset.filter(
-        managers__id=global_trends_account_id,
-        can_manage_clients=False) \
+    queryset = queryset.filter(Q(managers__id=global_trends_account_id) | Q(id=DEMO_ACCOUNT_ID)) \
+        .filter(can_manage_clients=False) \
         .order_by("name")
     return queryset
 

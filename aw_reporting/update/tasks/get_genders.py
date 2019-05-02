@@ -29,7 +29,7 @@ def _generate_stat_instances(stats_model, gender_model, report, click_type_data)
         yield stats_model(**stats)
 
 
-def get_genders(client, account, today):
+def get_genders(client, account, today, **kwargs):
     from aw_reporting.models import GenderStatistic
     from aw_reporting.models import Genders
     from aw_reporting.adwords_reports import gender_performance_report

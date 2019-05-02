@@ -17,8 +17,8 @@ from aw_creation.api.views.dashboard.performance_export import METRIC_REPRESENTA
 from aw_creation.api.views.dashboard.performance_export import Metric
 from aw_reporting.calculations.cost import get_client_cost
 from aw_reporting.dashboard_charts import DateSegment
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.excel_reports.dashboard_performance_report import COLUMN_NAME
 from aw_reporting.excel_reports.dashboard_performance_report import DashboardPerformanceReportColumn
 from aw_reporting.excel_reports.dashboard_performance_report import TOO_MUCH_DATA_MESSAGE
@@ -808,10 +808,11 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(sheet[SUMMARY_ROW_INDEX + 1][impressions_index].value, impressions)
 
     def test_success_for_demo_account(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
@@ -820,24 +821,28 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_header(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        account = DemoAccount()
-        campaigns = account.children
-        ad_groups = flatten(campaign.children for campaign in campaigns)
+        account = Account.objects.get(pk=DEMO_ACCOUNT_ID)
+        campaigns = account.campaigns.all().order_by("name")
+        statistic_dates = CampaignStatistic.objects.filter(campaign__in=campaigns).values_list("date", flat=True)
+        start = min(statistic_dates)
+        end = max(statistic_dates)
+        ad_groups = AdGroup.objects.filter(campaign__in=campaigns).order_by("name")
         expected_header = "\n".join([
             "Date: {start} - {end}",
             "Group By: None",
             "Campaigns: {campaigns}",
             "Ad Groups: {ad_groups}",
         ]).format(
-            start=account.start_date,
-            end=account.end_date,
+            start=start,
+            end=end,
             campaigns=", ".join([campaign.name for campaign in campaigns]),
             ad_groups=", ".join([ad_group.name for ad_group in ad_groups]),
         )
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):
@@ -923,11 +928,13 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
         self.assertGreater(view_rate, 0)
 
     def test_demo_account_campaigns(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        expected_campaigns_names = set([campaign.name for campaign in DemoAccount().children])
+        campaigns = Campaign.objects.filter()
+        expected_campaigns_names = set([campaign.name for campaign in campaigns])
         user_settings = {
-            UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.DASHBOARD_CAMPAIGNS_SEGMENTED: True,
         }
         with self.patch_user_settings(**user_settings):

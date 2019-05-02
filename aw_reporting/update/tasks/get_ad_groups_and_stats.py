@@ -7,6 +7,7 @@ from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.cta import format_click_types_report
 from aw_reporting.update.tasks.utils.cta import update_stats_with_click_type_data
 from aw_reporting.update.tasks.utils.drop_latest_stats import drop_latest_stats
+from aw_reporting.update.tasks.utils.drop_latest_stats import drop_custom_stats
 from aw_reporting.update.tasks.utils.get_account_border_dates import get_account_border_dates
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 from aw_reporting.update.tasks.utils.max_ready_date import max_ready_date
@@ -16,7 +17,7 @@ from utils.datetime import now_in_default_tz
 logger = logging.getLogger(__name__)
 
 
-def get_ad_groups_and_stats(client, account, *_):
+def get_ad_groups_and_stats(client, account, *_, start_date=None, end_date=None):
     from aw_reporting.models import AdGroup
     from aw_reporting.models import AdGroupStatistic
     from aw_reporting.adwords_reports import ad_group_performance_report
@@ -35,13 +36,18 @@ def get_ad_groups_and_stats(client, account, *_):
     stats_queryset = AdGroupStatistic.objects.filter(
         ad_group__campaign__account=account
     )
-    drop_latest_stats(stats_queryset, today)
-    min_date, max_date = get_account_border_dates(account)
+    if start_date and end_date and start_date < end_date:
+        drop_custom_stats(stats_queryset, start_date, end_date)
+        dates = (start_date, end_date)
 
-    # we update ad groups and daily stats only if there have been changes
-    dates = (max_date + timedelta(days=1), max_available_date) \
-        if max_date \
-        else (MIN_FETCH_DATE, max_available_date)
+    else:
+        drop_latest_stats(stats_queryset, today)
+        min_date, max_date = get_account_border_dates(account)
+
+        # we update ad groups and daily stats only if there have been changes
+        dates = (max_date + timedelta(days=1), max_available_date) \
+            if max_date \
+            else (MIN_FETCH_DATE, max_available_date)
 
     report = ad_group_performance_report(
         client, dates=dates)

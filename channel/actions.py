@@ -14,8 +14,6 @@ def remove_auth_channel(email):
     connector = SingleDatabaseApiConnector()
     for channel in user_channels:
         try:
-            print(connector)
-            print(connector.delete_channel_test)
             connector.delete_channel_test(channel.channel_id)
         except Http404:
             logger.warning(

@@ -11,7 +11,6 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
@@ -47,14 +46,17 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="audit_video_meta.pid")
     def handle(self, *args, **options):
         try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("id")[0]
+            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
         except Exception as e:
             logger.exception(e)
         self.process_audit()
 
-    def process_audit(self):
+    def process_audit(self, num=50000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        if not self.audit.started:
+            self.audit.started = timezone.now()
+            self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             self.process_seed_list()
@@ -62,15 +64,24 @@ class Command(BaseCommand):
                 audit=self.audit,
                 processed__isnull=True
             )
+        else:
+            pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
-            self.audit.save()
+            self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
             raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[:25000]:
-            self.do_check_video(video)
+        videos = {}
+        pending_videos = pending_videos.select_related("video")
+        for video in pending_videos[:num]:
+            videos[video.video.video_id] = video
+            if len(videos) == 50:
+                self.do_check_video(videos)
+                videos = {}
+        if len(videos) > 0:
+            self.do_check_video(videos)
         self.audit.updated = timezone.now()
-        self.audit.save()
+        self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
@@ -113,30 +124,28 @@ class Command(BaseCommand):
                 vids.append(avp)
         return vids
 
-    def do_check_video(self, avp):
-        db_video = avp.video
-        db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-        if not db_video_meta.name or not db_video.channel:
-            channel_id = self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-        else:
-            channel_id = db_video.channel.channel_id
-        if not channel_id: # video does not exist or is private now
-            avp.clean = False
-            avp.processed = timezone.now()
-            avp.save(update_fields=['processed', 'clean'])
-            return
-        db_video.channel = AuditChannel.get_or_create(channel_id)
-        db_video_meta.save()
-        db_video.save()
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                channel=db_video.channel,
-        )
-        if not db_channel_meta.keywords:
-            self.do_channel_metadata_api_call(db_channel_meta, channel_id)
-        db_channel_meta.save()
-        avp.clean = self.check_video_is_clean(db_video_meta, avp)
-        avp.processed = timezone.now()
-        avp.save()
+    def do_check_video(self, videos):
+        for video_id, avp in videos.items():
+            db_video = avp.video
+            db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
+            if not db_video_meta.name or not db_video.channel:
+                channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
+            else:
+                channel_id = db_video.channel.channel_id
+            if not channel_id: # video does not exist or is private now
+                avp.clean = False
+                avp.processed = timezone.now()
+                avp.save(update_fields=['processed', 'clean'])
+            else:
+                db_video.channel = AuditChannel.get_or_create(channel_id)
+                db_video_meta.save()
+                db_video.save()
+                db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
+                        channel=db_video.channel,
+                )
+                avp.clean = self.check_video_is_clean(db_video_meta, avp)
+                avp.processed = timezone.now()
+                avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
         full_string = "{} {} {}".format(
@@ -199,7 +208,11 @@ class Command(BaseCommand):
                 return
             db_video_meta.name = i['snippet']['title']
             db_video_meta.description = i['snippet']['description']
-            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
+            try:
+                db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
+            except Exception as e:
+                print("no video publish date")
+                pass
             db_video_meta.description = i['snippet'].get('description')
             channel_id = i['snippet']['channelId']
             keywords = i['snippet'].get('tags')
@@ -240,39 +253,6 @@ class Command(BaseCommand):
             return db_lang
         except Exception as e:
             pass
-
-    def do_channel_metadata_api_call(self, db_channel_meta, channel_id):
-        try:
-            url = self.DATA_CHANNEL_API_URL.format(key=self.DATA_API_KEY, id=channel_id)
-            r = requests.get(url)
-            data = r.json()
-            if r.status_code != 200:
-                logger.info("problem with api call for channel {}".format(channel_id))
-                return
-            try:
-                i = data['items'][0]
-            except Exception as e:
-                print("problem getting channel {}".format(channel_id))
-                return
-            try:
-                db_channel_meta.name = i['brandingSettings']['channel']['title']
-            except Exception as e:
-                pass
-            try:
-                db_channel_meta.description = i['brandingSettings']['channel']['description']
-            except Exception as e:
-                pass
-            try:
-                db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
-            except Exception as e:
-                pass
-            country = i['brandingSettings']['channel'].get('country')
-            if country:
-                db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
-            db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
-            db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-        except Exception as e:
-            logger.exception(e)
 
     def load_inclusion_list(self):
         if self.inclusion_list:
@@ -315,7 +295,6 @@ class Command(BaseCommand):
         cols = [
             "video ID",
             "name",
-            "keywords",
             "language",
             "category",
             "views",
@@ -367,13 +346,12 @@ class Command(BaseCommand):
                 data = [
                     v.video.video_id,
                     v.name,
-                    v.keywords,
                     language,
                     category,
                     v.views,
                     v.likes,
                     v.dislikes,
-                    str(v.emoji),
+                    'T' if v.emoji else 'F',
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
@@ -382,6 +360,7 @@ class Command(BaseCommand):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
+            return 'export_{}.csv'.format(audit_id)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
@@ -391,5 +370,5 @@ class Command(BaseCommand):
                 for word in hits['exclusion']:
                     if word not in uniques:
                         uniques.append(word)
-                return ','.join(hits['exclusion']), ','.join(uniques)
+                return len(hits['exclusion']), ','.join(uniques)
         return '', ''

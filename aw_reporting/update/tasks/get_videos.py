@@ -7,7 +7,7 @@ from aw_reporting.update.tasks.utils.get_account_border_dates import get_account
 from aw_reporting.update.tasks.utils.get_base_stats import get_base_stats
 
 
-def get_videos(client, account, today):
+def get_videos(client, account, today, **kwargs):
     from aw_reporting.models import VideoCreative
     from aw_reporting.models import VideoCreativeStatistic
     from aw_reporting.models import AdGroup

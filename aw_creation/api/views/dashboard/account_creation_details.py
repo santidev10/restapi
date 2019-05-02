@@ -15,7 +15,6 @@ from rest_framework.views import APIView
 from aw_creation.api.serializers.dashboard.account_creation_details_serializer import \
     DashboardAccountCreationDetailsSerializer
 from aw_creation.models import AccountCreation
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AgeRanges
@@ -35,7 +34,6 @@ from utils.permissions import UserHasDashboardPermission
 logger = logging.getLogger(__name__)
 
 
-@demo_view_decorator
 class DashboardAccountCreationDetailsAPIView(APIView):
     serializer_class = DashboardAccountCreationDetailsSerializer
     permission_classes = (IsAuthenticated, UserHasDashboardPermission)
