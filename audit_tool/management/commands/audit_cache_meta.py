@@ -30,13 +30,16 @@ class Command(BaseCommand):
 
     def do_audit_meta(self, audit):
         meta = {}
-        if audit.audit_type == 0:  # recommendation engine
+        audit_type = audit.params.get('audit_type_original')
+        if not audit_type:
+            audit_type = audit.audit_type
+        if audit_type == 0:  # recommendation engine
             meta['total'] = audit.max_recommended
             meta['count'] = AuditVideoProcessor.objects.filter(audit=audit).count()
-        elif audit.audit_type == 1:  # process videos
+        elif audit_type == 1:  # process videos
             meta['total'] = AuditVideoProcessor.objects.filter(audit=audit).count()
             meta['count'] = AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
-        elif audit.audit_type == 2:
+        elif audit_type == 2:
             meta['total'] = AuditChannelProcessor.objects.filter(audit=audit).count() + AuditVideoProcessor.objects.filter(audit=audit).count()
             meta['count'] = AuditChannelProcessor.objects.filter(audit=audit, processed__isnull=False).count() + AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
         audit.cached_data = meta
