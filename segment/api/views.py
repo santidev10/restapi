@@ -456,7 +456,7 @@ class PersistentSegmentPreviewAPIView(APIView):
     )
     MAX_PAGE_SIZE = 10
     DEFAULT_PAGE_SIZE = 5
-    MAX_ITEMS = 200
+    MAX_ITEMS = 100
 
     def get(self, request, **kwargs):
         """
