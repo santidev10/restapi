@@ -496,7 +496,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        related_items = segment.related.prefetch_related("segment").order_by("related_id")[:self.MAX_ITEMS]
+        related_items = segment.related.select_related("segment").order_by("related_id")[:self.MAX_ITEMS]
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
