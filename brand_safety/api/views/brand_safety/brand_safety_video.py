@@ -6,9 +6,9 @@ from rest_framework.response import Response
 
 from utils.elasticsearch import ElasticSearchConnector
 from utils.elasticsearch import ElasticSearchConnectorException
-import brand_safety.constants as constants
-from brand_safety.models import BadWordCategory
 from utils.brand_safety_view_decorator import get_brand_safety_label
+from brand_safety.models import BadWordCategory
+import brand_safety.constants as constants
 
 
 class BrandSafetyVideoAPIView(APIView):
@@ -38,8 +38,14 @@ class BrandSafetyVideoAPIView(APIView):
         video_brand_safety_data = {
             "score": video_score,
             "label": get_brand_safety_label(video_score),
-            "total_flagged_words": 0
+            "total_flagged_words": 0,
+            "transcript_hits": {
+                category: [] for category in self.category_mapping.keys()
+            },
         }
+        for keyword in video_es_data["transcript_hits"]:
+            category = self.category_mapping[keyword["category"]]
+            video_brand_safety_data[category].append(keyword["word"])
         flagged_words = {
             "all_words": []
         }
