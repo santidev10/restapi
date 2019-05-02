@@ -454,8 +454,9 @@ class PersistentSegmentPreviewAPIView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
-    max_page_size = 10
-    default_page_size = 5
+    MAX_PAGE_SIZE = 10
+    DEFAULT_PAGE_SIZE = 5
+    MAX_ITEMS = 200
 
     def get(self, request, **kwargs):
         """
@@ -471,7 +472,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             PersistentSegmentType.VIDEO: "video_id"
         }
         page = request.query_params.get("page", 1)
-        size = request.query_params.get("size", self.default_page_size)
+        size = request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
         segment_type = kwargs["segment_type"]
         item_id_key = preview_type_id_mapping.get(segment_type)
         if item_id_key is None:
@@ -487,22 +488,22 @@ class PersistentSegmentPreviewAPIView(APIView):
         if page <= 0:
             page = 1
         if size <= 0:
-            size = self.default_page_size
-        elif size >= self.max_page_size:
-            size = self.max_page_size
-        segment = get_persistent_segment_model_by_type(segment_type)
+            size = self.DEFAULT_PAGE_SIZE
+        elif size >= self.MAX_PAGE_SIZE:
+            size = self.MAX_PAGE_SIZE
+        segment_model = get_persistent_segment_model_by_type(segment_type)
         try:
-            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("related_id").values(
-                "related_id", "title", "category", "details", "thumbnail_image_url")
-        except segment.DoesNotExist:
+            segment = segment_model.objects.get(id=kwargs["pk"])
+        except segment_model.DoesNotExist:
             raise Http404
+        related_items = segment.related.prefetch_related("segment").order_by("related_id")[:self.MAX_ITEMS]
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
         except EmptyPage:
             page = paginator.num_pages
             preview_page = paginator.page(page)
-        related_ids = [item["related_id"] for item in preview_page.object_list]
+        related_ids = [item.related_id for item in preview_page.object_list]
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
         config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
         if config is None:
@@ -516,7 +517,7 @@ class PersistentSegmentPreviewAPIView(APIView):
         preview_data = [
             self._map_segment_data(item, item_id_key, segment_type) if response_items.get(item["related_id"]) is None
             else response_items[item["related_id"]]
-            for item in preview_page.object_list
+            for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url")
         ]
         result = {
             "items": preview_data,
