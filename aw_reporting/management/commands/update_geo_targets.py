@@ -1,90 +1,32 @@
-import csv
 import logging
-import os
 
-from django.conf import settings
 from django.core.management import BaseCommand
 
-from aw_reporting.models import GeoTarget
+from aw_reporting.update.tasks.update_geo_targeting import update_geo_targeting
 
-logging.basicConfig(format="%(asctime)s - %(message)s", level="INFO")
 logger = logging.getLogger(__name__)
+
+URL_PATTERN = "https://developers.google.com/adwords/api/docs/appendix/geo/geotargets-{date}.csv"
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--url",
+            "-u",
+            dest="url",
+        )
+        parser.add_argument(
+            "--date",
+            "-d",
+            dest="url_date",
+            default="2019-05-02",
+        )
+
     def handle(self, *args, **options):
         logger.info("Start updating google geo targets")
-        self.process_location_criteria_csv()
+        url_option = options.get("url")
+        url_date = options.get("url_date")
+        url = url_option if url_option else URL_PATTERN.format(date=url_date)
+        update_geo_targeting(url)
         logger.info("End updating google geo targets")
-
-    def process_location_criteria_csv(self):
-        update_errors_counter = 0
-        failed_to_update_objects_ids = []
-        with open(
-                os.path.join(
-                    settings.BASE_DIR,
-                    "aw_reporting/fixtures/geo_locations.csv")) as f:
-            reader = csv.reader(f, delimiter=",")
-            raw_keys = next(reader)
-            keys = ["id"] + [
-                key.lower().replace(" ", "_") for key in raw_keys[1:]]
-            not_created_objects = []
-            not_updated_objects = []
-            processed_counter = 0
-            for row in reader:
-                if not row:
-                    continue
-                obj_data = dict(zip(keys, row))
-                obj_as_queryset = GeoTarget.objects.filter(
-                    id=obj_data.get("id"))
-                if obj_as_queryset.exists():
-                    try:
-                        obj_as_queryset.update(**obj_data)
-                    except:
-                        logger.warning(
-                            "Unable to UPDATE object with the next data: {}"
-                            "Skipped".format(obj_data))
-                        not_updated_objects.append(obj_data)
-                else:
-                    try:
-                        GeoTarget.objects.create(**obj_data)
-                    except:
-                        logger.warning(
-                            "Unable to CREATE object with the next data: {} ."
-                            "Skipped".format(obj_data))
-                        not_created_objects.append(GeoTarget(**obj_data))
-                processed_counter += 1
-                if not processed_counter % 5000:
-                    logger.info(
-                        "Processed {} objects".format(processed_counter))
-            logger.info(
-                "Processed {} objects".format(processed_counter))
-            logger.info("Perform skipped objects create")
-            try:
-                GeoTarget.objects.bulk_create(not_created_objects)
-            except Exception as e:
-                logger.critical(
-                    "Bulk create failed. Something went completely wrong!"
-                    " Critical fail! Abort!. Original error: {}".format(e))
-                return
-            logger.info("Skipped objects create finished. Success.")
-            logger.info("Perform skipped objects update")
-            for obj_data in not_updated_objects:
-                obj_as_queryset = GeoTarget.objects.filter(
-                    id=obj_data.get("id"))
-                try:
-                    obj_as_queryset.update(**obj_data)
-                except:
-                    logger.critical(
-                        "Unable to UPDATE object with the next data: {}"
-                        .format(obj_data))
-                    failed_to_update_objects_ids.append(obj_data.get("id"))
-                    update_errors_counter += 1
-        if update_errors_counter:
-            logger.error(
-                "Process delivered {} update errors."
-                " Ids, failed to update: {}".format(
-                    update_errors_counter, ", ".join(
-                        failed_to_update_objects_ids)))
-        else:
-            logger.info("Skipped objects update finished. Success.")
