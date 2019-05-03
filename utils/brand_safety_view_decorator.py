@@ -47,13 +47,13 @@ def get_brand_safety_label(score):
         return None
 
     if 90 <= score:
-        label = "SAFE"
+        label = constants.SAFE
     elif 80 <= score <= 89:
-        label = "LOW RISK"
+        label = constants.LOW_RISK
     elif 70 <= score <= 79:
-        label = "RISKY"
+        label = constants.RISKY
     else:
-        label = "HIGH RISK"
+        label = constants.HIGH_RISK
     return label
 
 
