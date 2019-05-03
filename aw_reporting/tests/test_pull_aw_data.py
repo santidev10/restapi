@@ -59,11 +59,11 @@ from aw_reporting.update.tasks.get_interests import AudienceAWType
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.max_ready_date import max_ready_date
 from utils.exception import ExceptionWithArgs
-from utils.filelock import FileLock
 from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
+from utils.utittests.redis_mock import MockRedis
 
 
 class PullAWDataTestCase(TransactionTestCase):
@@ -89,14 +89,11 @@ class PullAWDataTestCase(TransactionTestCase):
         return account
 
     def setUp(self):
-        self.acquire_mock = patch.object(FileLock, "acquire", return_value=None)
-        self.release_mock = patch.object(FileLock, "release", return_value=None)
-        self.acquire_mock.start()
-        self.release_mock.start()
+        self.redis_mock = patch('utils.celery.tasks.REDIS_CLIENT', MockRedis())
+        self.redis_mock.start()
 
     def tearDown(self):
-        self.acquire_mock.stop()
-        self.release_mock.stop()
+        self.redis_mock.stop()
 
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -1012,11 +1009,8 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.side_effect = exception
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
-             patch.object(FileLock, "release") as release_mock, \
                 patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0):
             self._call_command()
-
-        release_mock.assert_called_with()
 
     def test_emails_error(self):
         test_account_id = "test_account_id"
