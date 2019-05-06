@@ -44,7 +44,7 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
     }
 }
-# SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
+SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from utils.utittests.sdb_connector_patcher import monkey_patch
 
