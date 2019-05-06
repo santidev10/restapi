@@ -69,19 +69,19 @@ def get_brand_safety_data(score):
 def _handle_list_view(response, index_name):
     try:
         doc_ids = [item["id"] for item in response.data["items"]]
-    except KeyError:
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            constants.BRAND_SAFETY_SCORE_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in response.data["items"]:
+            score = es_scores.get(item["id"], None)
+            item["brand_safety_data"] = get_brand_safety_data(score)
+    except (TypeError, KeyError):
         return
-    es_data = ElasticSearchConnector().search_by_id(
-        index_name,
-        doc_ids,
-        constants.BRAND_SAFETY_SCORE_TYPE
-    )
-    es_scores = {
-        _id: data["overall_score"] for _id, data in es_data.items()
-    }
-    for item in response.data["items"]:
-        score = es_scores.get(item["id"], None)
-        item["brand_safety_data"] = get_brand_safety_data(score)
 
 
 def _handle_single_view(response, index_name):
@@ -94,7 +94,7 @@ def _handle_single_view(response, index_name):
         )
         score = es_data["overall_score"]
         response.data["brand_safety_data"] = get_brand_safety_data(score)
-    except KeyError:
+    except (TypeError, KeyError):
         return
 
 
