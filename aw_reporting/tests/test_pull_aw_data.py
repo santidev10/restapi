@@ -1223,6 +1223,27 @@ class PullAWDataTestCase(TransactionTestCase):
             self._call_command(end="get_campaigns")
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
+    def test_update_account_struck_fields(self):
+        any_date = date(2019, 1, 1)
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
+        Ad.objects.create(id=next(int_iterator), ad_group=ad_group)
+        YTChannelStatistic.objects.create(ad_group=ad_group, yt_id=str(next(int_iterator)), date=any_date)
+        YTVideoStatistic.objects.create(ad_group=ad_group, yt_id=str(next(int_iterator)), date=any_date)
+        AudienceStatistic.objects.create(ad_group=ad_group, date=any_date, audience=Audience.objects.create())
+        TopicStatistic.objects.create(ad_group=ad_group, date=any_date, topic=Topic.objects.create())
+        KeywordStatistic.objects.create(ad_group=ad_group, date=any_date, keyword="keyword")
+
+        self._call_command(account_ids=str(account.id), start="get_ad_groups_and_stats", end="get_campaigns")
+        account.refresh_from_db()
+        self.assertGreater(account.ad_count, 0)
+        self.assertGreater(account.channel_count, 0)
+        self.assertGreater(account.video_count, 0)
+        self.assertGreater(account.interest_count, 0)
+        self.assertGreater(account.topic_count, 0)
+        self.assertGreater(account.keyword_count, 0)
+
 
 class FakeExceptionWithArgs:
     def __init__(self, search_string):
