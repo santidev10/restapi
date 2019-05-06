@@ -513,12 +513,17 @@ class PersistentSegmentPreviewAPIView(APIView):
         response_items = {
             item[item_id_key]: item for item in response.get("items")
         }
-        # If singledb data for an item is available in response, replace preview page item with response data
-        preview_data = [
-            self._map_segment_data(item, item_id_key, segment_type) if response_items.get(item["related_id"]) is None
-            else response_items[item["related_id"]]
-            for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url")
-        ]
+        preview_data = []
+        for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url"):
+            if response_items.get(item["related_id"]):
+                # Map Cassandra item video_id, channel_id fields to just id
+                data = response_items[item["related_id"]]
+                item_id = data.pop(item_id_key)
+                data["id"] = item_id
+            else:
+                # Map Postgres data to Cassandra structure
+                data = self._map_segment_data(item, segment_type)
+            preview_data.append(data)
         result = {
             "items": preview_data,
             "items_count": len(preview_data),
@@ -528,14 +533,15 @@ class PersistentSegmentPreviewAPIView(APIView):
         return Response(status=HTTP_200_OK, data=result)
 
     @staticmethod
-    def _map_segment_data(data, item_id_key, segment_type):
+    def _map_segment_data(data, segment_type):
         """
         Maps Postgres persistent segment data to Singledb formatted data for client
-        :param data:
+        :param data: dict
+        :param segment_type: str
         :return:
         """
         mapped_data = {
-            item_id_key: data["related_id"],
+            "id": data["related_id"],
             "title": data.get("title"),
             "category": data.get("category"),
             "views": data["details"].get("views"),
@@ -548,3 +554,4 @@ class PersistentSegmentPreviewAPIView(APIView):
             mapped_data["subscribers"] = data["details"].get("subscribers")
             mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data
+
