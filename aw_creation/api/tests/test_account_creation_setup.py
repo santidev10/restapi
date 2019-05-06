@@ -23,7 +23,8 @@ from aw_creation.models import Language
 from aw_creation.models import LocationRule
 from aw_creation.models import TargetingItem
 from aw_reporting.api.tests.base import AwReportingAPITestCase
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -33,6 +34,7 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from userprofile.permissions import Permissions
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
@@ -131,23 +133,36 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
-        self.perform_details_check(data, extra_account_keys=['sync_at'], extra_campaign_keys=['sync_at', 'target_cpa'])
+        self.perform_details_check(data)
 
     def test_success_get_demo(self):
+        recreate_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_details_check(response.data)
 
-    def perform_details_check(self, data, extra_account_keys=None, extra_campaign_keys=None):
+    def perform_details_check(self, data):
         account_keys = {
-            'id', 'name', 'account', 'updated_at', 'campaign_creations',
-            'updated_at',
-            'is_ended', 'is_approved', 'is_paused',
+            "account",
+            "campaign_creations",
+            "id",
+            "is_approved",
+            "is_ended",
+            "is_paused",
+            "name",
+            "sync_at",
+            "updated_at",
+            "updated_at",
         }
         campaign_keys = {
             "ad_group_creations",
             "ad_schedule_rules",
+            "bid_strategy_type",
             "budget",
             "content_exclusions",
             "delivery_method",
@@ -160,15 +175,12 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
             "location_rules",
             "name",
             "start",
+            "sync_at",
+            "target_cpa",
             "type",
             "updated_at",
             "video_networks",
-            "bid_strategy_type",
         }
-        if extra_account_keys is not None:
-            account_keys.update(extra_account_keys)
-        if extra_campaign_keys is not None:
-            campaign_keys.update(extra_campaign_keys)
 
         self.assertEqual(
             set(data.keys()),
@@ -608,11 +620,16 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_fail_update_demo(self):
+        recreate_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.patch(
-            url, json.dumps(dict(is_paused=True)),
-            content_type='application/json',
-        )
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.patch(
+                url, json.dumps(dict(is_paused=True)),
+                content_type='application/json',
+            )
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_success_name_validation(self):
@@ -650,8 +667,13 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
         self.assertIs(ac.is_deleted, True)
 
     def test_fail_delete_demo(self):
+        recreate_demo_data()
         url = self._get_url(DEMO_ACCOUNT_ID)
-        response = self.client.delete(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     def test_marked_is_disapproved_account(self):

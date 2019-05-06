@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Min
+from django.db.models import Q
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from userprofile.managers import UserRelatedManagerMixin
 
 
@@ -23,6 +25,13 @@ class Account(models.Model):
     settings_updated_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(null=False, default=True)
 
+    ad_count = models.BigIntegerField(default=0, null=False)
+    channel_count = models.BigIntegerField(default=0, null=False)
+    video_count = models.BigIntegerField(default=0, null=False)
+    interest_count = models.BigIntegerField(default=0, null=False)
+    topic_count = models.BigIntegerField(default=0, null=False)
+    keyword_count = models.BigIntegerField(default=0, null=False)
+
     def __init__(self, *args, **kwargs):
         skip_creating_account_creation = kwargs.pop("skip_creating_account_creation", False)
         super(Account, self).__init__(*args, **kwargs)
@@ -40,7 +49,8 @@ class Account(models.Model):
     @classmethod
     def user_objects(cls, user):
         return cls.objects.filter(
-            managers__id__in=cls.user_mcc_objects(user),
+            Q(managers__id__in=cls.user_mcc_objects(user))
+            | Q(id=DEMO_ACCOUNT_ID)
         )
 
     @property

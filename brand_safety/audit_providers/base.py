@@ -37,7 +37,7 @@ class AuditProvider(object):
         return keyword_processor
 
     @staticmethod
-    def update_cursor(script_tracker, value):
+    def increment_cursor(script_tracker, value):
         """
         Update APIScriptTracker instance cursor value
         :param script_tracker: APIScriptTracker instance

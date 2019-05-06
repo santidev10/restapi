@@ -432,10 +432,11 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
+ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-rc-2dtu2y7suh2wgn57ykwasdcfem.us-east-1.es.amazonaws.com"]
+
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
-TOP_SEGMENT_ITEMS_COUNT = 3
 
 USE_LEGACY_BRAND_SAFETY = True
 

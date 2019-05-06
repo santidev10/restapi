@@ -5,7 +5,10 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
+from aw_reporting.demo.data import DEMO_DATA_HOURLY_LIMIT
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -13,6 +16,10 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 class TrackFiltersAPITestCase(ExtendedAPITestCase):
     url = reverse(Namespace.AW_REPORTING + ":" + Name.Track.CHART)
+
+    @classmethod
+    def setUpTestData(cls):
+        recreate_demo_data()
 
     def setUp(self):
         self.create_test_user()
@@ -42,12 +49,13 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
         for dimension in ('device', 'gender', 'age', 'topic',
                           'interest', 'creative', 'channel', 'video',
                           'keyword', 'location', 'ad'):
-            filters['dimension'] = dimension
-            url = "{}?{}".format(self.url, urlencode(filters))
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-            self.assertEqual(len(response.data), 1)
-            self.assertGreater(len(response.data[0]['data']), 1)
+            with self.subTest(dimension):
+                filters['dimension'] = dimension
+                url = "{}?{}".format(self.url, urlencode(filters))
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, HTTP_200_OK)
+                self.assertEqual(len(response.data), 1)
+                self.assertGreater(len(response.data[0]['data']), 1)
 
     def test_success_hourly(self):
         today = now_in_default_tz().date()
@@ -72,14 +80,18 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
         self.assertEqual(len(trend), 48, "24 hours x 2 days")
         self.assertEqual(all(i['value'] for i in trend), True)
 
     def test_success_hourly_today(self):
-        now = datetime(2018, 1, 1, 14, 23)
+        now = now_in_default_tz()
         today = now.date()
         filters = dict(
             start_date=today,
@@ -88,12 +100,16 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             breakdown="hourly",
         )
         url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_now(now):
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with patch_now(now), \
+             self.patch_user_settings(**user_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         trend = response.data[0]['data'][0]['trend']
         self.assertEqual(
-            len(trend), now.hour,
+            len(trend), DEMO_DATA_HOURLY_LIMIT,
             "today's hourly chart "
             "contains only points for the passed hours"
         )
@@ -163,19 +179,3 @@ class TrackFiltersAPITestCase(ExtendedAPITestCase):
             5,
             "On real data max CTR is no more than 5%"
         )
-
-    def test_success_on_midnight(self):
-        now = datetime(2018, 1, 1, 0, 10)
-        today = now.date()
-        filters = dict(
-            start_date=today,
-            end_date=today,
-            indicator="impressions",
-            breakdown="hourly",
-        )
-        url = "{}?{}".format(self.url, urlencode(filters))
-        with patch_now(now):
-            response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        trend = response.data[0]['data'][0]['trend']
-        self.assertEqual(len(trend), 0)

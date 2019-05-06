@@ -26,7 +26,6 @@ from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
-from aw_reporting.demo.decorators import demo_view_decorator
 from aw_reporting.models import BASE_STATS
 from utils.api_paginator import CustomPageNumberPaginator
 
@@ -35,7 +34,6 @@ class OptimizationAccountListPaginator(CustomPageNumberPaginator):
     page_size = 20
 
 
-@demo_view_decorator
 class AnalyticsAccountCreationListApiView(ListAPIView):
     pagination_class = OptimizationAccountListPaginator
     permission_classes = (IsAuthenticated,)

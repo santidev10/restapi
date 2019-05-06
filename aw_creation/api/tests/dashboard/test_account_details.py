@@ -10,8 +10,9 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.demo.models import DEMO_ACCOUNT_ID
-from aw_reporting.models import AWConnection, SFAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
@@ -21,23 +22,22 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
+from aw_reporting.models import SFAccount
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     _keys = {
         "account",
-        "ad_count",
         "average_cpm",
         "average_cpv",
         "brand",
-        "channel_count",
         "clicks",
         "clicks_app_store",
         "clicks_call_to_action_overlay",
@@ -52,10 +52,8 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "end",
         "id",
         "impressions",
-        "interest_count",
         "is_changed",
         "is_disapproved",
-        "keyword_count",
         "name",
         "plan_cpm",
         "plan_cpv",
@@ -64,9 +62,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "statistic_max_date",
         "statistic_min_date",
         "thumbnail",
-        "topic_count",
         "updated_at",
-        "video_count",
         "video_view_rate",
         "video_views",
         "weekly_chart",
@@ -97,16 +93,26 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(set(response.data.keys()), self._keys)
 
     def test_properties_demo(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        response = self._request(DEMO_ACCOUNT_ID)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()), self._keys)
 
     def test_demo_details_for_chf_acc(self):
+        recreate_demo_data()
         user = self.create_test_user()
         user.add_custom_user_permission("view_dashboard")
-        response = self._request(DEMO_ACCOUNT_ID)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertIn("updated_at", data)
@@ -649,3 +655,28 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(data["statistic_min_date"], dates[0])
         self.assertEqual(data["statistic_max_date"], dates[-1])
+
+    def test_no_overcalculate_statistic(self):
+        account = Account.objects.create(
+            id=next(int_iterator),
+        )
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            impressions=1,
+        )
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(5)]
+        for dt in dates:
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                cost=1,
+                date=dt,
+            )
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["impressions"], campaign.impressions)

@@ -372,10 +372,12 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
                 formatted_response["master_blacklist"] = item
 
-            if item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
+            if self.model.segment_type == PersistentSegmentType.CHANNEL and item.get("title") in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
+                formatted_response["master_whitelist"] = item
+            elif item.get("title") in PersistentSegmentTitles.MASTER_WHITELIST_SEGMENT_TITLES:
                 formatted_response["master_whitelist"] = item
 
-            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
+            if item.get("title") not in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES and item.get("title") not in PersistentSegmentTitles.CURATED_CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE:
                 formatted_response["items"].append(item)
 
             if not item.get("thumbnail_image_url"):
@@ -452,8 +454,9 @@ class PersistentSegmentPreviewAPIView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
-    max_page_size = 10
-    default_page_size = 5
+    MAX_PAGE_SIZE = 10
+    DEFAULT_PAGE_SIZE = 5
+    MAX_ITEMS = 100
 
     def get(self, request, **kwargs):
         """
@@ -464,9 +467,16 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment_type (str) -> video / channel
         :return:
         """
+        preview_type_id_mapping = {
+            PersistentSegmentType.CHANNEL: "channel_id",
+            PersistentSegmentType.VIDEO: "video_id"
+        }
         page = request.query_params.get("page", 1)
-        size = request.query_params.get("size", self.default_page_size)
+        size = request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
         segment_type = kwargs["segment_type"]
+        item_id_key = preview_type_id_mapping.get(segment_type)
+        if item_id_key is None:
+            return Response(status=HTTP_400_BAD_REQUEST, data="Invalid segment type: {}".format(segment_type))
         try:
             page = int(page)
         except ValueError:
@@ -478,23 +488,22 @@ class PersistentSegmentPreviewAPIView(APIView):
         if page <= 0:
             page = 1
         if size <= 0:
-            size = self.default_page_size
-        elif size >= self.max_page_size:
-            size = self.max_page_size
-        segment = get_persistent_segment_model_by_type(segment_type)
-        # Get full objects to avoid having to make additional database queries if channel data from singledb is unavailable
+            size = self.DEFAULT_PAGE_SIZE
+        elif size >= self.MAX_PAGE_SIZE:
+            size = self.MAX_PAGE_SIZE
+        segment_model = get_persistent_segment_model_by_type(segment_type)
         try:
-            related_items = segment.objects.get(pk=kwargs["pk"]).related.all().order_by("id").values(
-                "related_id", "title", "category", "details")
-        except segment.DoesNotExist:
+            segment = segment_model.objects.get(id=kwargs["pk"])
+        except segment_model.DoesNotExist:
             raise Http404
+        related_items = segment.related.select_related("segment").order_by("related_id")[:self.MAX_ITEMS]
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
         except EmptyPage:
             page = paginator.num_pages
             preview_page = paginator.page(page)
-        related_ids = [item["related_id"] for item in preview_page.object_list]
+        related_ids = [item.related_id for item in preview_page.object_list]
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
         config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
         if config is None:
@@ -502,13 +511,13 @@ class PersistentSegmentPreviewAPIView(APIView):
         connector_method = config.pop("method")
         response = connector_method(config)
         response_items = {
-            item["channel_id"]: item for item in response.get("items")
+            item[item_id_key]: item for item in response.get("items")
         }
-        # If singledb data for a channel is available in response, replace preview page item with response data
+        # If singledb data for an item is available in response, replace preview page item with response data
         preview_data = [
-            self._map_segment_data(item) if response_items.get(item["related_id"]) is None
+            self._map_segment_data(item, item_id_key, segment_type) if response_items.get(item["related_id"]) is None
             else response_items[item["related_id"]]
-            for item in preview_page.object_list
+            for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url")
         ]
         result = {
             "items": preview_data,
@@ -519,20 +528,23 @@ class PersistentSegmentPreviewAPIView(APIView):
         return Response(status=HTTP_200_OK, data=result)
 
     @staticmethod
-    def _map_segment_data(data):
+    def _map_segment_data(data, item_id_key, segment_type):
         """
         Maps Postgres persistent segment data to Singledb formatted data for client
         :param data:
         :return:
         """
         mapped_data = {
-            "channel_id": data["related_id"],
-            "title": data["title"],
-            "category": data["category"],
-            "likes": data["details"]["likes"],
-            "dislikes": data["details"]["dislikes"],
-            "language": data["details"]["language"],
-            "subscribers": data["details"]["subscribers"],
-            "audited_videos": data["details"]["audited_videos"]
+            item_id_key: data["related_id"],
+            "title": data.get("title"),
+            "category": data.get("category"),
+            "views": data["details"].get("views"),
+            "likes": data["details"].get("likes"),
+            "dislikes": data["details"].get("dislikes"),
+            "language": data["details"].get("language"),
+            "thumbnail_image_url": data.get("thumbnail_image_url")
         }
+        if segment_type == PersistentSegmentType.CHANNEL:
+            mapped_data["subscribers"] = data["details"].get("subscribers")
+            mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data

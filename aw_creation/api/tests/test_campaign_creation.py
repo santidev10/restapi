@@ -10,10 +10,13 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
 from aw_creation.api.urls.names import Name
 from aw_creation.models import AccountCreation, CampaignCreation, Language, \
     LocationRule, FrequencyCap, AdScheduleRule, AdGroupCreation
-from aw_reporting.demo.models import DemoAccount
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import BudgetType
+from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
+from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -93,32 +96,32 @@ class CampaignAPITestCase(ExtendedAPITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.perform_format_check(response.data, extra_campaign_keys=['sync_at', 'target_cpa'])
+        self.perform_format_check(response.data)
 
-    def perform_format_check(self, data, extra_campaign_keys=None):
+    def perform_format_check(self, data):
         campaign_keys = {
-                "ad_group_creations",
-                "ad_schedule_rules",
-                "budget",
-                "content_exclusions",
-                "delivery_method",
-                "devices",
-                "end",
-                "frequency_capping",
-                "id",
-                "is_draft",
-                "languages",
-                "location_rules",
-                "name",
-                "start",
-                "type",
-                "updated_at",
-                "video_networks",
-                "bid_strategy_type",
-            }
+            "ad_group_creations",
+            "ad_schedule_rules",
+            "bid_strategy_type",
+            "budget",
+            "content_exclusions",
+            "delivery_method",
+            "devices",
+            "end",
+            "frequency_capping",
+            "id",
+            "is_draft",
+            "languages",
+            "location_rules",
+            "name",
+            "start",
+            "sync_at",
+            "target_cpa",
+            "type",
+            "updated_at",
+            "video_networks",
+        }
 
-        if extra_campaign_keys is not None:
-            campaign_keys.update(extra_campaign_keys)
         self.assertEqual(
             set(data.keys()),
             campaign_keys
@@ -138,18 +141,22 @@ class CampaignAPITestCase(ExtendedAPITestCase):
         )
 
     def test_success_get_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
+        recreate_demo_data()
+        campaign = CampaignCreation.objects.filter(campaign__account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
-        response = self.client.get(url)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.perform_format_check(response.data)
 
     def test_fail_update_demo(self):
-        ac = DemoAccount()
-        campaign = ac.children[0]
+        recreate_demo_data()
+        campaign = Campaign.objects.filter(account_id=DEMO_ACCOUNT_ID).first()
 
         url = reverse(self._url_path,
                       args=(campaign.id,))
