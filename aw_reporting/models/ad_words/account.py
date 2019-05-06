@@ -25,6 +25,13 @@ class Account(models.Model):
     settings_updated_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(null=False, default=True)
 
+    ad_count = models.BigIntegerField(default=0, null=False)
+    channel_count = models.BigIntegerField(default=0, null=False)
+    video_count = models.BigIntegerField(default=0, null=False)
+    interest_count = models.BigIntegerField(default=0, null=False)
+    topic_count = models.BigIntegerField(default=0, null=False)
+    keyword_count = models.BigIntegerField(default=0, null=False)
+
     def __init__(self, *args, **kwargs):
         skip_creating_account_creation = kwargs.pop("skip_creating_account_creation", False)
         super(Account, self).__init__(*args, **kwargs)
