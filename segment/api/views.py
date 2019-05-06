@@ -516,7 +516,7 @@ class PersistentSegmentPreviewAPIView(APIView):
         preview_data = []
         for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url"):
             if response_items.get(item["related_id"]):
-                # Map Cassandra data item id fields to just id
+                # Map Cassandra item video_id, channel_id fields to just id
                 data = response_items[item["related_id"]]
                 item_id = data.pop(item_id_key)
                 data["id"] = item_id
@@ -526,6 +526,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             preview_data.append(data)
         result = {
             "items": preview_data,
+            "items_count": len(preview_data),
             "current_page": page,
             "max_page": paginator.num_pages,
         }
@@ -535,7 +536,8 @@ class PersistentSegmentPreviewAPIView(APIView):
     def _map_segment_data(data, segment_type):
         """
         Maps Postgres persistent segment data to Singledb formatted data for client
-        :param data:
+        :param data: dict
+        :param segment_type: str
         :return:
         """
         mapped_data = {
