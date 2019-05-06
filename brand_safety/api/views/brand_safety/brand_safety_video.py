@@ -16,7 +16,6 @@ class BrandSafetyVideoAPIView(APIView):
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
-    category_mapping = BadWordCategory.get_category_mapping()
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 70
 
@@ -34,24 +33,25 @@ class BrandSafetyVideoAPIView(APIView):
             return Response(status=HTTP_502_BAD_GATEWAY, data="Brand Safety data unavailable.")
         if not video_es_data:
             raise Http404
+        category_mapping = BadWordCategory.get_category_mapping()
         video_score = video_es_data["overall_score"]
         video_brand_safety_data = {
             "score": video_score,
             "label": get_brand_safety_label(video_score),
             "total_flagged_words": 0,
             "transcript_hits": {
-                category: [] for category in self.category_mapping.keys()
+                category: [] for category in category_mapping.keys()
             },
         }
         for keyword in video_es_data["transcript_hits"]:
-            category = self.category_mapping[keyword["category"]]
+            category = category_mapping[keyword["category"]]
             video_brand_safety_data[category].append(keyword["word"])
         flagged_words = {
             "all_words": []
         }
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
-            category_name = self.category_mapping[category_id]
+            category_name = category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
             video_brand_safety_data["total_flagged_words"] += len(keywords)
             flagged_words[category_name] = len(keywords)
