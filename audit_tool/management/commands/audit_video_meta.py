@@ -301,9 +301,11 @@ class Command(BaseCommand):
             "likes",
             "dislikes",
             "emoji",
-            "publish date",
+            #"publish date",
             "channel name",
             "channel ID",
+            "channel default lang.",
+            "channel subscribers",
             "country",
             "all hit words",
             "unique hit words",
@@ -326,7 +328,15 @@ class Command(BaseCommand):
         )
         if num_out:
             video_meta = video_meta[:num_out]
-        with open('export_{}.csv'.format(audit_id), 'w', newline='') as myfile:
+        if self.audit:
+            audit_id = self.audit.id
+        else:
+            audit_id = audit_id
+        try:
+            name = self.audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -342,6 +352,10 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                try:
+                    channel_lang = v.video.channel.auditchannelmeta.language.language
+                except Exception as e:
+                    channel_lang = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
                     v.video.video_id,
@@ -352,9 +366,11 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
+                    #v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
+                    channel_lang,
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
                     country,
                     all_hit_words,
                     unique_hit_words,
