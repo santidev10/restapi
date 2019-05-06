@@ -91,40 +91,14 @@ class SegmentKeyword(BaseSegment):
     objects = SegmentKeywordManager()
 
     def _get_alive_singledb_data(self, ids_hash):
-        alive_ids = []
-        start = 0
-        end = 10000
-        step = 10000
-
-        while ids_hash:
-
-            _ids_hash = ids_hash[start:end]
-
-            if not _ids_hash:
-                break
-
-            params = {
-                "ids_hash": _ids_hash,
-                "fields": "channel_id",
-                "sources": DEFAULT_VIDEO_LIST_SOURCES,
-                "size": 10000
-            }
-            data = self.load_list(query_params=params)
-            alive_ids += [item.get('channel_id') for item in data.get('items')]
-
-            start += step
-            end += step
-
-        return alive_ids
-
-    def _get_alive_singledb_data(self, ids_hash):
         params = {
             "ids_hash": ids_hash,
+            "fields": "keyword",
             "sources": (),
             "size": 10000
         }
         data = self.singledb_method(query_params=params)
-        return [item.get('channel_id') for item in data.get('items')]
+        return [item.get('keyword') for item in data.get('items')]
 
     def obtain_singledb_data(self, ids_hash):
         """

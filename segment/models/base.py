@@ -177,9 +177,6 @@ class BaseSegment(Timestampable):
 
         return alive
 
-    def get_singledb_data(self, ids_hash):
-        raise NotImplementedError
-
     def _set_total_for_huge_segment(self, items_count, data):
         raise NotImplementedError
 

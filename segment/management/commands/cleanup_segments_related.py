@@ -12,13 +12,9 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     """
-    Update procedure
+    Clean up segments related records.
     """
     def handle(self, *args, **options):
-        """
-        Segments update depends on their updated_at time
-        """
-
-        logger.info("Start update segments statistics procedure")
+        logger.info("Start clean up segments related records procedure")
         cleanup_segments_related.delay()
-        logger.info("Segments update statistics procedure finished")
+        logger.info("Segments clean up segments related records finished")

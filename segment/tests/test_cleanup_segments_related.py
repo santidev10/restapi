@@ -1,13 +1,7 @@
 from datetime import date
-from datetime import datetime
-
-import requests
-
-import pytz
 from unittest import mock
-from django.core.management import call_command
+
 from django.test import TransactionTestCase
-from pytz import timezone
 
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import AWAccountPermission
@@ -21,10 +15,9 @@ from segment.models import SegmentRelatedChannel
 from segment.models import SegmentRelatedKeyword
 from segment.models import SegmentRelatedVideo
 from segment.models import SegmentVideo
+from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
-from utils.utittests.patch_now import patch_now
-from singledb.connector import SingleDatabaseApiConnector
 
 
 related_classes = {
