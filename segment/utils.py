@@ -44,10 +44,9 @@ def update_all_segments_statistics():
 
 
 def cleanup_segments_related_records():
-    # for model in SEGMENT_MODELS.fget():
-    #     model.objects.cleanup_related_records()
-    SegmentKeyword.objects.cleanup_related_records()
-
+    for model in SEGMENT_MODELS.fget():
+        model.objects.cleanup_related_records()
+        
 
 def total_update_segments(force_creation=False):
     SegmentVideo.objects.update_youtube_segments(force_creation=force_creation)
