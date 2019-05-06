@@ -136,6 +136,16 @@ class AuditProcessor(models.Model):
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
+    @staticmethod
+    def display(running=None, audit_type=None):
+        all = AuditProcessor.objects.all()
+        if audit_type:
+            all = all.filter(audit_type=audit_type)
+        if running:
+            all = all.filter(completed__isnull=running)
+        for a in all.order_by("id"):
+            print(a.id, a.pause, a.completed, a.cached_data, a.params.get('name'), a.audit_type)
+
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
