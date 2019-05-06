@@ -496,14 +496,15 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        related_items = segment.related.select_related("segment").order_by("related_id")[:self.MAX_ITEMS]
-        paginator = Paginator(related_items, size)
-        try:
-            preview_page = paginator.page(page)
-        except EmptyPage:
-            page = paginator.num_pages
-            preview_page = paginator.page(page)
-        related_ids = [item.related_id for item in preview_page.object_list]
+        # total_related_items = segment.related.count()
+        total_related_items = segment.related.select_related("segment").count()
+        max_page = total_related_items // size
+        page = page if page <= max_page else max_page
+        page_start = (page - 1) * size
+        # related_items_page = segment.related.select_related("segment").order_by("related_id")[page_start:page_start + size]
+        related_items_page = segment.related.order_by("related_id")[
+                             page_start:page_start + size]
+        related_ids = [item.related_id for item in related_items_page]
         # Helper function to set SDB connector config since Channel and Video SDB querying is similar
         config = get_persistent_segment_connector_config_by_type(segment_type, related_ids)
         if config is None:
@@ -513,29 +514,34 @@ class PersistentSegmentPreviewAPIView(APIView):
         response_items = {
             item[item_id_key]: item for item in response.get("items")
         }
-        # If singledb data for an item is available in response, replace preview page item with response data
-        preview_data = [
-            self._map_segment_data(item, item_id_key, segment_type) if response_items.get(item["related_id"]) is None
-            else response_items[item["related_id"]]
-            for item in preview_page.object_list.values("related_id", "title", "category", "details", "thumbnail_image_url")
-        ]
+        preview_data = []
+        for item in related_items_page.values("related_id", "title", "category", "details", "thumbnail_image_url"):
+            if response_items.get(item["related_id"]):
+                # Map Cassandra data item id fields to just id
+                data = response_items[item["related_id"]]
+                item_id = data.pop(item_id_key)
+                data["id"] = item_id
+            else:
+                # Map Postgres data to Cassandra structure
+                data = self._map_segment_data(item, segment_type)
+            preview_data.append(data)
         result = {
             "items": preview_data,
-            "items_count": len(preview_data),
+            "items_count": total_related_items,
             "current_page": page,
-            "max_page": paginator.num_pages,
+            "max_page": max_page,
         }
         return Response(status=HTTP_200_OK, data=result)
 
     @staticmethod
-    def _map_segment_data(data, item_id_key, segment_type):
+    def _map_segment_data(data, segment_type):
         """
         Maps Postgres persistent segment data to Singledb formatted data for client
         :param data:
         :return:
         """
         mapped_data = {
-            item_id_key: data["related_id"],
+            "id": data["related_id"],
             "title": data.get("title"),
             "category": data.get("category"),
             "views": data["details"].get("views"),
