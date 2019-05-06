@@ -1,29 +1,11 @@
-from rest_framework.test import APIRequestFactory
+from django.test import TestCase
 
-from video.api.views import VideoListApiView
 from utils.brand_safety_view_decorator import get_brand_safety_label
-from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.brand_safety_view_decorator import get_brand_safety_data
-from utils.brand_safety_view_decorator import _handle_list_view
-from utils.brand_safety_view_decorator import _handle_single_view
 import brand_safety.constants as constants
 
-from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_401_UNAUTHORIZED
-from rest_framework.status import HTTP_403_FORBIDDEN
 
-from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
-from brand_safety.models import BadWord
-from saas.urls.namespaces import Namespace
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
-
-
-class BrandSafetyDecoratorTestCase(ExtendedAPITestCase):
-    def setUp(self):
-        self.request = APIRequestFactory()
-
+class BrandSafetyDecoratorTestCase(TestCase):
     def test_get_brand_safety_label(self):
         test_1 = {
             "score": 90,
@@ -117,12 +99,6 @@ class BrandSafetyDecoratorTestCase(ExtendedAPITestCase):
         self.assertEqual(get_brand_safety_data(test_7["score"]), test_7)
         self.assertEqual(get_brand_safety_data(test_8["score"]), test_8)
         self.assertEqual(get_brand_safety_data(test_9["score"]), test_9)
-
-    def test_add_brand_safety_data_fail(self):
-        decorated_view = add_brand_safety_data(VideoListApiView)
-        response = decorated_view(VideoListApiView, self.request)
-        print(response)
-        print(response.__dict__)
 
 
 
