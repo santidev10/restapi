@@ -64,6 +64,16 @@ class SegmentChannel(BaseSegment):
 
     objects = SegmentManager()
 
+    def _get_alive_singledb_data(self, ids_hash):
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "channel_id",
+            "sources": DEFAULT_VIDEO_LIST_SOURCES,
+            "size": 10000
+        }
+        data = self.load_list(query_params=params)
+        return [item.get('channel_id') for item in data.get('items')]
+
     def obtain_singledb_data(self, ids_hash):
         """
         Execute call to SDB

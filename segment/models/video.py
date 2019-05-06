@@ -110,6 +110,16 @@ class SegmentVideo(BaseSegment):
     def load_list_batch_generator(self, filters):
         return Connector().get_video_list_full(filters, fields=["pk"])
 
+    def _get_alive_singledb_data(self, ids_hash):
+        params = {
+            "ids_hash": ids_hash,
+            "fields": "video_id",
+            "sources": (),
+            "size": 10000
+        }
+        data = self.singledb_method(query_params=params)
+        return [item.get('video_id') for item in data.get('items')]
+
     def obtain_singledb_data(self, ids_hash):
         """
         Execute call to SDB

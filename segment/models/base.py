@@ -38,6 +38,21 @@ class SegmentManager(Manager):
                     segment.title))
             segment.update_statistics()
 
+    def cleanup_related_records(self):
+        cleanuped_ids = set()
+        segments = self.all()
+
+        for segment in segments:
+            ids = set(segment.get_related_ids()) - cleanuped_ids
+
+            alive_ids = set(segment.get_alive_singledb_data(ids))
+
+            cleanup_ids = ids - alive_ids
+            cleanuped_ids.update(cleanup_ids)
+
+            segment.cleanup_related_records(alive_ids)
+            segment.update_statistics()
+
 
 class BaseSegment(Timestampable):
     """
@@ -104,9 +119,10 @@ class BaseSegment(Timestampable):
             .delete()
 
     def cleanup_related_records(self, alive_ids):
-        ids = set(self.get_related_ids()) - alive_ids
+        ids = set(self.get_related_ids()) - set(alive_ids)
         if ids:
             self.related.model.objects.filter(related_id__in=ids).delete()
+            self.save()
 
     def update_statistics(self):
         """
@@ -130,10 +146,39 @@ class BaseSegment(Timestampable):
         self.save()
         return "Done"
 
-    def get_data_by_ids(self, ids, start=None, end=None):
+    def get_ids_hash(self, ids, start=None, end=None):
         ids = list(ids)[start:end]
-        ids_hash = Connector().store_ids(ids)
+        return Connector().store_ids(ids)
+
+    def get_data_by_ids(self, ids, start=None, end=None):
+        ids_hash = self.get_ids_hash(ids, start, end)
         return self.obtain_singledb_data(ids_hash)
+
+    def get_alive_singledb_data(self, ids):
+        alive = []
+        start = 0
+        end = 10000
+        step = 10000
+
+        ids_count = len(ids)
+        ids = list(ids)
+
+        while ids_count > start:
+            _ids = ids[start:end]
+
+            if not _ids:
+                break
+
+            _ids_hash = self.get_ids_hash(_ids)
+            alive += self._get_alive_singledb_data(_ids_hash)
+
+            start += step
+            end += step
+
+        return alive
+
+    def get_singledb_data(self, ids_hash):
+        raise NotImplementedError
 
     def _set_total_for_huge_segment(self, items_count, data):
         raise NotImplementedError
