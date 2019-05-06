@@ -3,7 +3,7 @@ from collections import defaultdict
 from functools import reduce
 
 from django.conf import settings
-from django.db.models import Case, F
+from django.db.models import Case
 from django.db.models import Count
 from django.db.models import IntegerField
 from django.db.models import Max
@@ -143,7 +143,10 @@ def _recalculate_de_norm_fields_for_account_statisics(account_id):
         keyword_count=Count("campaigns__ad_groups__keywords__keyword", distinct=True),
     )
     queryset = Account.objects.filter(pk=account_id)
-    data = queryset.aggregate(**formulas)
+    data = dict()
+    for k, v in formulas.items():
+        data_item = queryset.aggregate(**{k: v})
+        data.update(data_item)
     queryset.update(**data)
 
 
