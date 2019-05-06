@@ -61,7 +61,7 @@ class Command(BaseCommand):
         else:
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
-            if self.audit.params['do_videos'] == True:
+            if self.audit.params.get('do_videos') == True:
                 self.audit.audit_type = 1
                 self.params['audit_type_original'] = 2
                 self.audit.save(update_fields=['audit_type'])
