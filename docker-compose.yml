@@ -20,6 +20,7 @@ services:
     depends_on:
       - rabbitmq
       - pg
+      - redis
     environment:
       RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
@@ -30,6 +31,7 @@ services:
     command: ["celery", "-A", "saas", "beat", "-l", "info"]
     depends_on:
       - rabbitmq
+      - redis
     environment:
       RABBITMQ_HOST: rabbitmq
 
@@ -65,3 +67,5 @@ services:
     image: rabbitmq:3.7.8-management
     ports:
     - "15672:15672"
+  redis:
+    image: redis:5.0.4
