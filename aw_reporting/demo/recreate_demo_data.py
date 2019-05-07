@@ -17,6 +17,7 @@ from aw_creation.models import TargetingItem
 from aw_reporting.demo.data import AUIDIENCES
 from aw_reporting.demo.data import CHANNELS
 from aw_reporting.demo.data import CITIES
+from aw_reporting.demo.data import DEFAULT_CTA_STATS
 from aw_reporting.demo.data import DEFAULT_STATS
 from aw_reporting.demo.data import KEYWORDS
 from aw_reporting.demo.data import TARGETING
@@ -76,6 +77,7 @@ def recreate_demo_data():
 
 
 def remove_data():
+    Opportunity.objects.filter(id=DEMO_ACCOUNT_ID).delete()
     Account.objects.filter(id=DEMO_ACCOUNT_ID).delete()
 
 
@@ -102,6 +104,7 @@ def create_account():
 
 def create_sf_opportunity():
     opportunity = Opportunity.objects.create(
+        id=DEMO_ACCOUNT_ID,
         account=SFAccount.objects.get_or_create(name=DEMO_SF_ACCOUNT)[0],
         brand=DEMO_BRAND,
     )
@@ -226,7 +229,7 @@ def generate_campaign_hourly_statistic(campaign, dates):
 
 def create_ad_groups_statistic(ad_groups, dates):
     stats = (
-        (AdGroupStatistic, "device_id", ALL_DEVICES, dict(average_position=1)),
+        (AdGroupStatistic, "device_id", ALL_DEVICES, dict(average_position=1, **DEFAULT_CTA_STATS)),
         (GenderStatistic, "gender_id", ALL_GENDERS, None),
         (AgeRangeStatistic, "age_range_id", ALL_AGE_RANGES, None),
         (TopicStatistic, "topic", get_topics(), None),
