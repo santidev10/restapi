@@ -17,7 +17,7 @@ class BrandSafetyVideoAPIView(APIView):
         "userprofile.settings_my_yt_channels"
     )
     MAX_SIZE = 10000
-    BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 70
+    category_mapping = BadWordCategory.get_category_mapping()
 
     def get(self, request, **kwargs):
         """
@@ -33,30 +33,36 @@ class BrandSafetyVideoAPIView(APIView):
             return Response(status=HTTP_502_BAD_GATEWAY, data="Brand Safety data unavailable.")
         if not video_es_data:
             raise Http404
-        category_mapping = BadWordCategory.get_category_mapping()
         video_score = video_es_data["overall_score"]
         video_brand_safety_data = {
             "score": video_score,
             "label": get_brand_safety_label(video_score),
-            "total_flagged_words": 0,
-            "transcript_hits": {
-                category: [] for category in category_mapping.keys()
+            "total_unique_flagged_words": 0,
+            "unique_flagged_words": [],
+            "category_flagged_words": {},
+            "transcript_flagged_words": {
+                category: [] for category in self.category_mapping.keys()
             },
         }
-        for keyword in video_es_data["transcript_hits"]:
-            category = category_mapping[keyword["category"]]
-            video_brand_safety_data[category].append(keyword["word"])
-        flagged_words = {
-            "all_words": []
+        try:
+            # Put transcript words in appropriate response category
+            for keyword in video_es_data["transcript_hits"]:
+                category = keyword["category"]
+                video_brand_safety_data[category].append(keyword["word"])
+        except KeyError:
+            pass
+        # Map category ids to category strings
+        video_brand_safety_data["transcript_flagged_words"] = {
+            self.category_mapping[category_id]: words
+            for category_id, words in video_brand_safety_data["transcript_flagged_words"].items()
         }
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
-            category_name = category_mapping[category_id]
+            category_name = self.category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
-            video_brand_safety_data["total_flagged_words"] += len(keywords)
-            flagged_words[category_name] = len(keywords)
-            flagged_words["all_words"].extend(keywords)
-        video_brand_safety_data["flagged_words"] = flagged_words
+            video_brand_safety_data["unique_flagged_words"].extend(keywords)
+            video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
+            video_brand_safety_data["category_flagged_words"][category_name] = len(keywords)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
 
 
