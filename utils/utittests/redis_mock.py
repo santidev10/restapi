@@ -12,13 +12,14 @@ class MockRedisLock:
         self.sleep = sleep
 
     def acquire(self, blocking=True):
+        MockRedis().set(self.name, self.name)
         return True
 
     def release(self):
         return
 
     def do_release(self, *args, **kwargs):
-        return
+        MockRedis().delete(self.key)
 
 
 class MockRedis:
@@ -33,8 +34,11 @@ class MockRedis:
         if key in MockRedis.redis:
             del MockRedis.redis[key]
 
+    def set(self, key, value):
+        MockRedis.redis[key] = value
+
     def get(self, key):
-        result = '' if key not in MockRedis.redis else MockRedis.redis[key]
+        result = None if key not in MockRedis.redis else MockRedis.redis[key]
         return result
 
     def lock(self, key, timeout=0, sleep=0):
