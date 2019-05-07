@@ -1,5 +1,7 @@
 import csv
 import json
+from unittest.mock import patch
+
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -63,6 +65,7 @@ class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
         ])
         data = [row for row in csv_data]
         self.assertGreaterEqual(len(data), 1)
+
 
 
 def get_data_from_csv_response(response):
