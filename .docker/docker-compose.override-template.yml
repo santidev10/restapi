@@ -43,4 +43,5 @@ services:
     environment:
       CELERY_BROKER_URL: amqp://rabbitmq
   redis:
-    - "6379:6379"
+    ports:
+      - "6379:6379"

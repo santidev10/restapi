@@ -31,7 +31,6 @@ services:
     command: ["celery", "-A", "saas", "beat", "-l", "info"]
     depends_on:
       - rabbitmq
-      - redis
     environment:
       RABBITMQ_HOST: rabbitmq
 
