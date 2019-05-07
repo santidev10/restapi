@@ -17,13 +17,13 @@ class BrandSafetyVideoAPIView(APIView):
         "userprofile.settings_my_yt_channels"
     )
     MAX_SIZE = 10000
-    category_mapping = BadWordCategory.get_category_mapping()
 
     def get(self, request, **kwargs):
         """
         View to retrieve individual video brand safety data
         """
         video_id = kwargs["pk"]
+        category_mapping = BadWordCategory.get_category_mapping()
         try:
             video_es_data = ElasticSearchConnector(index_name=constants.BRAND_SAFETY_VIDEO_ES_INDEX).search_by_id(
                 constants.BRAND_SAFETY_VIDEO_ES_INDEX,
@@ -41,7 +41,7 @@ class BrandSafetyVideoAPIView(APIView):
             "unique_flagged_words": [],
             "category_flagged_words": {},
             "transcript_flagged_words": {
-                category: [] for category in self.category_mapping.keys()
+                category: [] for category in category_mapping.keys()
             },
         }
         try:
@@ -53,18 +53,14 @@ class BrandSafetyVideoAPIView(APIView):
             pass
         # Map category ids to category strings
         video_brand_safety_data["transcript_flagged_words"] = {
-            self.category_mapping[category_id]: words
+            category_mapping[category_id]: words
             for category_id, words in video_brand_safety_data["transcript_flagged_words"].items()
         }
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
-            category_name = self.category_mapping[category_id]
+            category_name = category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
             video_brand_safety_data["unique_flagged_words"].extend(keywords)
             video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
             video_brand_safety_data["category_flagged_words"][category_name] = len(keywords)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
-
-
-
-
