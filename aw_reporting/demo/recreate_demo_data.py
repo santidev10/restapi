@@ -230,14 +230,14 @@ def generate_campaign_hourly_statistic(campaign, dates):
 def create_ad_groups_statistic(ad_groups, dates):
     stats = (
         (AdGroupStatistic, "device_id", ALL_DEVICES, dict(average_position=1, **DEFAULT_CTA_STATS)),
-        (GenderStatistic, "gender_id", ALL_GENDERS, None),
-        (AgeRangeStatistic, "age_range_id", ALL_AGE_RANGES, None),
-        (TopicStatistic, "topic", get_topics(), None),
-        (AudienceStatistic, "audience", get_audiences(), None),
+        (GenderStatistic, "gender_id", ALL_GENDERS, DEFAULT_CTA_STATS),
+        (AgeRangeStatistic, "age_range_id", ALL_AGE_RANGES, DEFAULT_CTA_STATS),
+        (TopicStatistic, "topic", get_topics(), DEFAULT_CTA_STATS),
+        (AudienceStatistic, "audience", get_audiences(), DEFAULT_CTA_STATS),
         (VideoCreativeStatistic, "creative", get_creatives(), None),
         (YTChannelStatistic, "yt_id", CHANNELS, None),
         (YTVideoStatistic, "yt_id", VIDEOS, None),
-        (KeywordStatistic, "keyword", KEYWORDS, None),
+        (KeywordStatistic, "keyword", KEYWORDS, DEFAULT_CTA_STATS),
         (CityStatistic, "city", get_cities(), None),
     )
 
@@ -259,6 +259,7 @@ def create_ad_statistic(ads, dates):
             date=dt,
             average_position=1,
             **DEFAULT_STATS,
+            **DEFAULT_CTA_STATS,
         )
         for ad, dt in product(ads, dates)
     ]
