@@ -118,7 +118,9 @@ class BrandSafetyVideoAudit(object):
             "_id": self.pk,
             "video_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
-            "transcript_hits": self.results[constants.TRANSCRIPT],
+            "transcript_hits": [{
+                self.score_mapping[word]["category"]: word
+            } for word in self.results[constants.TRANSCRIPT]],
             "categories": {
                 category: {
                     "category_score": category_score,
