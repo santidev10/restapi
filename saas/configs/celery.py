@@ -28,7 +28,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="0", minute="0"),
     },
     "cleanup-segments-related": {
-        "task": "segments.tasks.cleanup_segments_related",
+        "task": "segment.tasks.cleanup_segments_related",
         "schedule": crontab(minute=0, hour='*/8'),
     }
 }
