@@ -69,6 +69,8 @@ class BaseSegment(Timestampable):
     related = None
     related_aw_statistics_model = None
     segment_type = None
+    id_fields_name = None
+    sources = None
 
     class Meta:
         abstract = True
@@ -176,6 +178,16 @@ class BaseSegment(Timestampable):
             end += step
 
         return alive
+
+    def _get_alive_singledb_data(self, ids_hash):
+        params = {
+            "ids_hash": ids_hash,
+            "fields": self.id_fields_name,
+            "sources": self.sources,
+            "size": 10000
+        }
+        data = self.singledb_method(query_params=params)
+        return [item.get(self.id_fields_name) for item in data.get('items')]
 
     def _set_total_for_huge_segment(self, items_count, data):
         raise NotImplementedError

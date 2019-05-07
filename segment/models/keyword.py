@@ -86,19 +86,11 @@ class SegmentKeyword(BaseSegment):
     def singledb_method(self):
         return Connector().get_keyword_list
 
-    segment_type = 'keyword'
+    segment_type = "keyword"
+    id_fields_name = "keyword"
+    sources = ()
 
     objects = SegmentKeywordManager()
-
-    def _get_alive_singledb_data(self, ids_hash):
-        params = {
-            "ids_hash": ids_hash,
-            "fields": "keyword",
-            "sources": (),
-            "size": 10000
-        }
-        data = self.singledb_method(query_params=params)
-        return [item.get('keyword') for item in data.get('items')]
 
     def obtain_singledb_data(self, ids_hash):
         """

@@ -29,7 +29,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cleanup-segments-related": {
         "task": "segments.tasks.cleanup_segments_related",
-        "schedule": crontab(hour="2,9,18", minute="0"),
+        "schedule": crontab(minute=0, hour='*/8'),
     }
 }
 CELERY_RESULT_BACKEND = "django-db"
