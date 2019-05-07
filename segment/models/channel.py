@@ -68,7 +68,7 @@ class SegmentChannel(BaseSegment):
         params = {
             "ids_hash": ids_hash,
             "fields": "channel_id",
-            "sources": DEFAULT_VIDEO_LIST_SOURCES,
+            "sources": DEFAULT_CHANNEL_LIST_SOURCES,
             "size": 10000
         }
         data = self.load_list(query_params=params)

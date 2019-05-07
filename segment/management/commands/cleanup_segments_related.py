@@ -17,4 +17,3 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info("Start clean up segments related records procedure")
         cleanup_segments_related.delay()
-        logger.info("Segments clean up segments related records finished")

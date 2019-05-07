@@ -82,7 +82,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         with mock.patch.object(segment_class, '_get_alive_singledb_data', return_value=alive_related_ids):
             segment_class.objects.cleanup_related_records()
 
-        assert list(segment.get_related_ids()) == alive_related_ids
+        self.assertEqual(list(segment.get_related_ids()), alive_related_ids)
 
     @generic_test(generic_args_list)
     def test_cleanup_huge_segments(self, segment_class):
@@ -133,4 +133,4 @@ class UpdateSegmentsTestCase(TransactionTestCase):
             with mock.patch.object(segment_class, '_get_alive_singledb_data', side_effect=mocked_connector_get_data):
                 segment_class.objects.cleanup_related_records()
 
-        assert list(segment.get_related_ids()) == alive_related_ids
+        self.assertEqual(list(segment.get_related_ids()), alive_related_ids)
