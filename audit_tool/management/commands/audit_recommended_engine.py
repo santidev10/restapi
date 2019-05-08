@@ -359,3 +359,6 @@ class Command(BaseCommand):
                     country
                 ]
                 wr.writerow(data)
+            if self.audit:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()

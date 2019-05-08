@@ -376,7 +376,10 @@ class Command(BaseCommand):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
-            return 'export_{}.csv'.format(audit_id)
+            if self.audit:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()
+            return 'export_{}.csv'.format(name)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
