@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK
@@ -38,11 +40,7 @@ class BrandSafetyVideoAPIView(APIView):
             "score": video_score,
             "label": get_brand_safety_label(video_score),
             "total_unique_flagged_words": 0,
-            "unique_flagged_words": [],
-            "category_flagged_words": {},
-            "transcript_flagged_words": {
-                category: [] for category in category_mapping.keys()
-            },
+            "category_flagged_words": defaultdict(set),
         }
         try:
             # Put transcript words in appropriate response category
@@ -51,16 +49,10 @@ class BrandSafetyVideoAPIView(APIView):
                 video_brand_safety_data[category].append(keyword["word"])
         except KeyError:
             pass
-        # Map category ids to category strings
-        video_brand_safety_data["transcript_flagged_words"] = {
-            category_mapping[category_id]: words
-            for category_id, words in video_brand_safety_data["transcript_flagged_words"].items()
-        }
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
             category_name = category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
-            video_brand_safety_data["unique_flagged_words"].extend(keywords)
             video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
-            video_brand_safety_data["category_flagged_words"][category_name] = len(keywords)
+            video_brand_safety_data["category_flagged_words"][category_name].update(keywords)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
