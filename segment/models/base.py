@@ -14,6 +14,7 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
+from saas import celery_app
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 from utils.utils import chunks_generator
@@ -39,18 +40,25 @@ class SegmentManager(Manager):
             segment.update_statistics()
 
     def cleanup_related_records(self):
-        cleanuped_ids = set()
+        cached_cleanup_ids = set()
+        cached_alive_ids = set()
         segments = self.all()
 
         for segment in segments:
-            ids = set(segment.get_related_ids()) - cleanuped_ids
+            logger.info(
+                'Cleanup segments related for {}-segment [{} ids]: {}'.format(
+                    segment.segment_type, len(segment.related_ids_list),
+                    segment.title))
+
+            ids = set(segment.get_related_ids()) - cached_cleanup_ids - cached_alive_ids
 
             alive_ids = set(segment.get_alive_singledb_data(ids))
+            cached_alive_ids.update(alive_ids)
 
             cleanup_ids = ids - alive_ids
-            cleanuped_ids.update(cleanup_ids)
+            cached_cleanup_ids.update(cleanup_ids)
 
-            segment.cleanup_related_records(alive_ids)
+            segment.cleanup_related_records(cached_alive_ids)
             segment.update_statistics()
 
 

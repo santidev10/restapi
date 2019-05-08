@@ -5,7 +5,9 @@ from django.db.models import F
 from saas import celery_app
 from segment.utils import get_segment_model_by_type
 from segment.utils import update_all_segments_statistics
-from segment.utils import cleanup_segments_related_records
+from segment.models.keyword import SegmentKeyword
+from segment.models.video import SegmentVideo
+from segment.models.channel import SegmentChannel
 
 
 logger = logging.getLogger(__name__)
@@ -26,4 +28,21 @@ def update_segments_stats():
 
 @celery_app.task
 def cleanup_segments_related():
-    cleanup_segments_related_records()
+    cleanup_video_segments_related_records.delay()
+    cleanup_channel_segments_related_records.delay()
+    cleanup_keyword_segments_related_records.delay()
+
+
+@celery_app.task
+def cleanup_channel_segments_related_records():
+    SegmentChannel.objects.cleanup_related_records()
+
+
+@celery_app.task
+def cleanup_video_segments_related_records():
+    SegmentVideo.objects.cleanup_related_records()
+
+
+@celery_app.task
+def cleanup_keyword_segments_related_records():
+    SegmentKeyword.objects.cleanup_related_records()
