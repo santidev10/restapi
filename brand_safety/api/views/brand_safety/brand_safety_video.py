@@ -42,13 +42,6 @@ class BrandSafetyVideoAPIView(APIView):
             "total_unique_flagged_words": 0,
             "category_flagged_words": defaultdict(set),
         }
-        try:
-            # Put transcript words in appropriate response category
-            for keyword in video_es_data["transcript_hits"]:
-                category = keyword["category"]
-                video_brand_safety_data[category].append(keyword["word"])
-        except KeyError:
-            pass
         # Map category ids to category names and aggregate all keywords for each category
         for category_id, data in video_es_data["categories"].items():
             category_name = category_mapping[category_id]
