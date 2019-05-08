@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from django.db import IntegrityError
 
 from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
@@ -207,10 +208,13 @@ class AuditVideo(models.Model):
             for r in res:
                 if r.video_id == video_id:
                     return r
-        return AuditVideo.objects.create(
-                video_id=video_id,
-                video_id_hash=video_id_hash
-        )
+        try:
+            return AuditVideo.objects.create(
+                    video_id=video_id,
+                    video_id_hash=video_id_hash
+            )
+        except IntegrityError as e:
+            return AuditVideo.objects.get(video_id=video_id)
 
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo)
