@@ -6,6 +6,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
 logger = logging.getLogger(__name__)
 from pid.decorator import pidfile
 
@@ -66,6 +67,11 @@ class Command(BaseCommand):
                     db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
                 except Exception as e:
                     pass
+                try:
+                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                    db_channel_meta.default_language = db_lang
+                except Exception as e:
+                    pass
                 country = i['brandingSettings']['channel'].get('country')
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
@@ -75,7 +81,10 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-                db_channel_meta.save()
+                try:
+                    db_channel_meta.save()
+                except Exception as e:
+                    logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
         except Exception as e:
             logger.exception(e)

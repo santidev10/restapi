@@ -382,6 +382,9 @@ CACHE_AUTH_TOKEN = 'put_auth_token_here'
 HOST = "https://viewiq.channelfactory.com"
 APEX_HOST = "https://apex.viewiq.com"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", 6379)
+
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]

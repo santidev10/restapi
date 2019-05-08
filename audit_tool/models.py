@@ -125,6 +125,7 @@ class AuditProcessor(models.Model):
     # audit_types:
     #   0 - recommendation engine
     #   1 - video meta processor
+    #   2 - channel meta processor
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
@@ -134,6 +135,25 @@ class AuditProcessor(models.Model):
     cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
+
+    @staticmethod
+    def get(running=None, audit_type=None):
+        all = AuditProcessor.objects.all()
+        if audit_type:
+            all = all.filter(audit_type=audit_type)
+        if running:
+            all = all.filter(completed__isnull=running)
+        ret = []
+        for a in all.order_by("id"):
+            ret.append({
+                'id': a.id,
+                'pause': a.pause,
+                'completed': a.completed,
+                'cached_data': a.cached_data,
+                'name': a.params.get('name'),
+                'audit_type': a.audit_type
+            })
+        return ret
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
@@ -167,7 +187,8 @@ class AuditChannelMeta(models.Model):
     name = models.CharField(max_length=255, default=None, null=True)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_language')
+    default_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_default_language')
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
     view_count = models.BigIntegerField(default=0, db_index=True)
@@ -214,3 +235,14 @@ class AuditVideoProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "video")
+
+class AuditChannelProcessor(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel')
+    channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, related_name='avp_channel_source')
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    clean = models.BooleanField(default=True, db_index=True)
+    word_hits = JSONField(default={}, null=True)
+
+    class Meta:
+        unique_together = ("audit", "channel")

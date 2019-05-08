@@ -96,13 +96,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
-    # structural data
-    ad_count = StruckField()
-    channel_count = StruckField()
-    video_count = StruckField()
-    interest_count = StruckField()
-    topic_count = StruckField()
-    keyword_count = StruckField()
     # opportunity data
     brand = SerializerMethodField()
     sf_account = SerializerMethodField()
@@ -123,11 +116,9 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         model = AccountCreation
         fields = (
             "account",
-            "ad_count",
             "average_cpm",
             "average_cpv",
             "brand",
-            "channel_count",
             "clicks",
             "cost",
             "cost_method",
@@ -136,10 +127,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "end",
             "id",
             "impressions",
-            "interest_count",
             "is_changed",
             "is_disapproved",
-            "keyword_count",
             "name",
             "plan_cpm",
             "plan_cpv",
@@ -148,9 +137,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "statistic_max_date",
             "statistic_min_date",
             "thumbnail",
-            "topic_count",
             "updated_at",
-            "video_count",
             "video_view_rate",
             "video_views",
             "weekly_chart",
@@ -163,7 +150,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         self.settings = {}
         self.stats = {}
         self.plan_rates = {}
-        self.struck = {}
         self.daily_chart = defaultdict(list)
         if args:
             if isinstance(args[0], AccountCreation):
@@ -176,7 +162,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             self.settings = self._get_settings(ids)
             self.plan_rates = self._get_plan_rates(ids)
             self.stats = self._get_stats(ids)
-            self.struck = self._get_struck(ids)
             self.daily_chart = self._get_daily_chart(ids)
             self.video_ads_data = self._get_video_ads_data(ids)
 
@@ -294,37 +279,6 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
                 distinct=True)
         )
         return {s['account_creation_id']: s for s in settings}
-
-    def _get_struck(self, account_creation_ids):
-        annotates = dict(
-            ad_count=Count("account__campaigns__ad_groups__ads",
-                           distinct=True),
-            channel_count=Count(
-                "account__campaigns__ad_groups__channel_statistics__yt_id",
-                distinct=True),
-            video_count=Count(
-                "account__campaigns__ad_groups__managed_video_statistics__yt_id",
-                distinct=True),
-            interest_count=Count(
-                "account__campaigns__ad_groups__audiences__audience_id",
-                distinct=True),
-            topic_count=Count(
-                "account__campaigns__ad_groups__topics__topic_id",
-                distinct=True),
-            keyword_count=Count(
-                "account__campaigns__ad_groups__keywords__keyword",
-                distinct=True),
-        )
-        struck = defaultdict(dict)
-        for annotate, aggr in annotates.items():
-            struck_data = AccountCreation.objects \
-                .filter(id__in=account_creation_ids) \
-                .values("id") \
-                .order_by("id") \
-                .annotate(**{annotate: aggr})
-            for d in struck_data:
-                struck[d['id']][annotate] = d[annotate]
-        return struck
 
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids

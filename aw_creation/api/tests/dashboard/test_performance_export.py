@@ -50,7 +50,6 @@ from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import get_quarter
-from utils.lang import flatten
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
@@ -1015,6 +1014,33 @@ class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
 
         impressions_column_index = get_column_index(headers, DashboardPerformanceReportColumn.IMPRESSIONS)
         self.assertEqual(data_rows[0][impressions_column_index].value, sum(impressions))
+
+    def test_demo_cta(self):
+        recreate_demo_data()
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_dashboard")
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(DEMO_ACCOUNT_ID)
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        sheet = get_sheet_from_response(response)
+        headers = tuple(cell.value for cell in sheet[HEADER_ROW_INDEX])
+        cta_columns = (
+            DashboardPerformanceReportColumn.CLICKS_CTA_APP_STORE,
+            DashboardPerformanceReportColumn.CLICKS_CTA_CARDS,
+            DashboardPerformanceReportColumn.CLICKS_CTA_END_CAP,
+            DashboardPerformanceReportColumn.CLICKS_CTA_OVERLAY,
+            DashboardPerformanceReportColumn.CLICKS_CTA_WEBSITE,
+        )
+        for cta_column in cta_columns:
+            with self.subTest(cta_column):
+                cta_column_index = get_column_index(headers, cta_column)
+
+                summary_cta = sheet[SUMMARY_ROW_INDEX][cta_column_index].value
+                self.assertGreater(summary_cta, 0)
 
 
 def get_headers(sheet):
