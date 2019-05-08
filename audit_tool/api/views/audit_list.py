@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from audit_tool.models import AuditProcessor
 
 class AuditListApiView(APIView):
     def get(self, running=None, audit_type=None):
@@ -18,4 +19,4 @@ class AuditListApiView(APIView):
                 'name': a.params.get('name'),
                 'audit_type': a.audit_type
             })
-        return ret
+        return Response(ret)

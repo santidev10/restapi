@@ -56,7 +56,7 @@ urlpatterns = [
     url(r'^api/v1/', include(landing_api_urls, namespace="landing_api_urls")),
 
     # Audit api urls
-    url(r'^api/v1/', include(audit_tool_api_urls), namespace=Namespace.AUDIT_TOOL),
+    url(r'^api/v1/', include(audit_tool_api_urls, namespace=Namespace.AUDIT_TOOL)),
 
     # Email reports
     url(r'^api/v1/', include(email_reports_api_urls,
