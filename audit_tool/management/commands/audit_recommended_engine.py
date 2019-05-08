@@ -84,7 +84,8 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[self.thread_id:self.thread_id+100]:
+        start = self.thread_id * 100
+        for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
