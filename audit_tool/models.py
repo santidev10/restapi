@@ -178,10 +178,13 @@ class AuditChannel(models.Model):
         for r in res:
             if r.channel_id == channel_id:
                 return r
-        return AuditChannel.objects.create(
-                channel_id=channel_id,
-                channel_id_hash=channel_id_hash
-        )
+        try:
+            return AuditChannel.objects.create(
+                    channel_id=channel_id,
+                    channel_id_hash=channel_id_hash
+            )
+        except IntegrityError as e:
+            return AuditChannel.objects.get(channel_id=channel_id)
 
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel)
