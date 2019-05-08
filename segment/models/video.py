@@ -8,6 +8,7 @@ from django.db import models
 
 from aw_reporting.models import YTVideoStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.settings import DEFAULT_VIDEO_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
 from .base import SegmentManager
@@ -96,7 +97,9 @@ class SegmentVideo(BaseSegment):
     # ---> deprecated
 
     _singledb_method = None
-    segment_type = 'video'
+    segment_type = "video"
+    id_fields_name = "video_id"
+    sources = DEFAULT_VIDEO_LIST_SOURCES
 
     objects = SegmentVideoManager()
     related_aw_statistics_model = YTVideoStatistic

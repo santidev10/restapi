@@ -5,6 +5,8 @@ from django.db.models import F
 from saas import celery_app
 from segment.utils import get_segment_model_by_type
 from segment.utils import update_all_segments_statistics
+from segment.utils import cleanup_segments_related_records
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,3 +22,8 @@ def fill_segment_from_filters(segment_type, segment_id, filters):
 @celery_app.task
 def update_segments_stats():
     update_all_segments_statistics()
+
+
+@celery_app.task
+def cleanup_segments_related():
+    cleanup_segments_related_records()
