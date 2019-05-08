@@ -70,6 +70,7 @@ BRAND_SAFETY_SCORE = "brand_safety_score"
 TITLE = "title"
 DESCRIPTION = "description"
 TAGS = "tags"
+TRANSCRIPT = "transcript"
 
 UNAVAILABLE_MESSAGE = "Brand Safety data unavailable."
 CHANNEL_LIST_API_VIEW = "ChannelListApiView"
