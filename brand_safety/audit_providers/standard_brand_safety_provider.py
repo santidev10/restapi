@@ -211,3 +211,4 @@ class StandardBrandSafetyProvider(object):
             for category_id in categories
         }
         return default_category_scores
+
