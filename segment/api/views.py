@@ -555,3 +555,4 @@ class PersistentSegmentPreviewAPIView(APIView):
             mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data
 
+
