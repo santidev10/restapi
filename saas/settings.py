@@ -443,6 +443,8 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
+ELASTIC_SEARCH_URLS = [""]
+
 try:
     from .local_settings import *
 except ImportError:
