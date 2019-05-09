@@ -31,19 +31,24 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
 
         campaign_1_goal_allocation = 30
         campaign_2_goal_allocation = 70
+        campaign_3_goal_allocation = 100
 
         campaign_1_budget = flight.budget * campaign_1_goal_allocation / 100
         campaign_2_budget = flight.budget * campaign_2_goal_allocation / 100
+        campaign_3_budget = flight.budget * campaign_3_goal_allocation / 100
 
         campaign_1 = Campaign.objects.create(
             id=1, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_1_goal_allocation, budget=campaign_1_budget, update_time=future, sync_time=past)
         campaign_2 = Campaign.objects.create(
             id=2, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_2_goal_allocation, budget=campaign_2_budget, update_time=future, sync_time=past)
+        campaign_3 = Campaign.objects.create(
+            id=3, salesforce_placement=placement, account=managed_account, goal_allocation=campaign_3_goal_allocation, budget=campaign_3_budget, update_time=future, sync_time=None)
 
         response = self.client.get(self._get_url(1))
 
-        self.assertEqual(len(response.data['2'].values()), 2)
+        self.assertEqual(len(response.data['2'].values()), 3)
         self.assertEqual(response.data['2']['1'], campaign_1.budget)
         self.assertEqual(response.data['2']['2'], campaign_2.budget)
+        self.assertEqual(response.data['2']['3'], campaign_3.budget)
 
 
