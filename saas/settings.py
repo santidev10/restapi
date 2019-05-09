@@ -443,8 +443,6 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
-ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-rc-2dtu2y7suh2wgn57ykwasdcfem.us-east-1.es.amazonaws.com"]
-
 try:
     from .local_settings import *
 except ImportError:
