@@ -14,21 +14,21 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
     def get(self, request, *_, **kwargs):
         """
         Retrieves all updated account campaigns under request mcc_account for syncing on Adwords
-        :param request: request['pk'] -> (str) mcc_account_id
+        :param request: request["pk"] -> (str) mcc_account_id
         :param _: None
         :param kwargs: None
         :return: (dict) Updated campaign budgets
         """
-        mcc_account_id = kwargs.pop('pk')
+        mcc_account_id = kwargs.pop("pk")
         managed_accounts = Account \
             .objects \
             .filter(managers__id=mcc_account_id) \
             .distinct("pk") \
-            .values_list('id', flat=True)
+            .values_list("id", flat=True)
         now = timezone.now()
         running_campaigns = Campaign.objects \
             .filter(
-                Q(sync_time__lte=F('update_time')) | Q(sync_time=None),
+                Q(sync_time__lte=F("update_time")) | Q(sync_time=None),
                 salesforce_placement__start__lte=now,
                 salesforce_placement__end__gte=now,
             )
