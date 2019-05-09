@@ -423,6 +423,8 @@ SLACK_WEBHOOKS = {
     AW_UPDATE_SLACK_WEBHOOK_NAME: "https://hooks.slack.com/services/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",
 }
 
+ELASTIC_SEARCH_URLS = [""]
+
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
