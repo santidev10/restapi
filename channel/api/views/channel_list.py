@@ -104,7 +104,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             HTTP_408_REQUEST_TIMEOUT: openapi.Response("Request timeout"),
         }
     )
-    @add_brand_safety_data
+    # @add_brand_safety_data
     def get(self, request):
         """
         Get procedure

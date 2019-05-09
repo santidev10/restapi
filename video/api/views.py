@@ -53,7 +53,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
 
-    @add_brand_safety_data
+    # @add_brand_safety_data
     def get(self, request):
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
