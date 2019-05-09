@@ -31,7 +31,7 @@ class Command(BaseCommand):
             logger.info("No channels to fill.")
             raise Exception("No channels to fill.")
         channels = {}
-        for channel in pending_channels[:20000]:
+        for channel in pending_channels.order_by("-id")[:20000]:
             channels[channel.channel.channel_id] = channel
             count+=1
             if len(channels) == 50:
