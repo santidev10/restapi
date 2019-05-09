@@ -456,7 +456,6 @@ class PersistentSegmentPreviewAPIView(APIView):
     )
     MAX_PAGE_SIZE = 10
     DEFAULT_PAGE_SIZE = 5
-    MAX_ITEMS = 100
 
     def get(self, request, **kwargs):
         """
@@ -496,7 +495,8 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        related_items = segment.related.select_related("segment").order_by("related_id")[:self.MAX_ITEMS]
+        max_items = size * self.MAX_PAGE_SIZE
+        related_items = segment.related.all()[:max_items]
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
