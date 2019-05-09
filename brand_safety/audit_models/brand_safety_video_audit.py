@@ -32,7 +32,7 @@ class BrandSafetyVideoAudit(object):
         tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, brand_safety_audit)
         title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, brand_safety_audit)
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
-        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits + transcript_hits
+        self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits
         self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):

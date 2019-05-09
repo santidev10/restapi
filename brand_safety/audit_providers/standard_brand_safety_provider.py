@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
 
@@ -32,6 +33,7 @@ class StandardBrandSafetyProvider(object):
     bad_word_categories_ignore = [9]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
+    update_time_threshold = 7
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -162,6 +164,7 @@ class StandardBrandSafetyProvider(object):
             channels = [item["channel_id"] for item in response.get("items", []) if item["channel_id"] != cursor_id]
             if not channels:
                 break
+            channels = self._get_channels_to_update(channels)
             yield channels
             cursor_id = channels[-1]
             self.channel_batch_counter += 1
@@ -212,3 +215,28 @@ class StandardBrandSafetyProvider(object):
         }
         return default_category_scores
 
+    def _get_channels_to_update(self, channel_ids):
+        """
+        Get Elasticsearch channels to check when channels were last updated
+            and filter for channels to update
+        :param channel_ids: list
+        :return: list
+        """
+        channels_to_update = []
+        es_channels = self.es_connector.search_by_id(
+            constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
+            channel_ids,
+            constants.BRAND_SAFETY_SCORE
+        )
+        if not es_channels:
+            return channel_ids
+        for channel in channel_ids:
+            try:
+                es_channel = es_channels[channel]
+                time_elapsed = datetime.today() - datetime.strptime(es_channel["updated_at"], "%Y-%m-%d")
+                if time_elapsed.days > self.update_time_threshold:
+                    channels_to_update.append(channel)
+            except KeyError:
+                # If channel is not in index or has no updated_at, create / update it
+                channels_to_update.append(channel)
+        return channels_to_update

@@ -1,3 +1,5 @@
+from datetime import date
+
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety import constants
@@ -107,6 +109,7 @@ class BrandSafetyChannelAudit(object):
             "channel_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "videos_scored": brand_safety_results.videos_scored,
+            "updated_at": str(date.today()),
             "categories": {
                 category: {
                     "category_score": score,
