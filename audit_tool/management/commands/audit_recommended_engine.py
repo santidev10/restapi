@@ -148,13 +148,14 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
-                v, _  = AuditVideoProcessor.objects.get_or_create(
-                    video=db_video,
-                    audit=self.audit
-                )
-                if not v.video_source:
-                    v.video_source = video
-                    v.save()
+                if not self.language or self.language==db_video_meta.language.language:
+                    v, _  = AuditVideoProcessor.objects.get_or_create(
+                        video=db_video,
+                        audit=self.audit
+                    )
+                    if not v.video_source:
+                        v.video_source = video
+                        v.save()
         avp.processed = timezone.now()
         avp.save()
 
