@@ -17,6 +17,13 @@ DEFAULT_STATS = dict(
     video_views=300,
     clicks=20,
 )
+DEFAULT_CTA_STATS = dict(
+    clicks_website=1,
+    clicks_call_to_action_overlay=2,
+    clicks_app_store=3,
+    clicks_cards=4,
+    clicks_end_cap=5,
+)
 TOPICS = (
     "Demo topic 1",
     "Demo topic 2",
