@@ -83,6 +83,7 @@ class Command(BaseCommand):
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
+                self.export_videos()
                 raise Exception("Audit completed, all videos processed")
         start = self.thread_id * 100
         for video in pending_videos[start:start+100]:

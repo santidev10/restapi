@@ -76,6 +76,7 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
+            self.export_videos()
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
