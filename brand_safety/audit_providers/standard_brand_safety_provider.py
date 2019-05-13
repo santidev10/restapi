@@ -18,8 +18,10 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 500
-    channel_id_pool_batch_limit = 50
+    channel_id_master_batch_limit = 10
+    channel_id_pool_batch_limit = 1
+    # channel_id_master_batch_limit = 500
+    # channel_id_pool_batch_limit = 50
     max_process_count = 10
     brand_safety_fail_threshold = 3
     # Multiplier to apply for brand safety hits
@@ -69,9 +71,13 @@ class StandardBrandSafetyProvider(object):
         for channel_batch in self._channel_id_batch_generator(self.cursor_id):
             # Update score mapping so each batch uses updated brand safety scores
             results = pool.map(self._process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
+
             # Extract nested results from each process
             video_audits, channel_audits = self._extract_results(results)
             self._process_results(video_audits, channel_audits)
+
+            # Save audits to segments
+
             # Update script tracker and cursors in case of failure
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
             self.cursor_id = self.script_tracker.cursor_id
