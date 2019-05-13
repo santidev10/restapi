@@ -1,12 +1,16 @@
 from collections import defaultdict
+from collections import Counter
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
+from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyVideoAudit(object):
     dislike_ratio_audit_threshold = 0.2
+    brand_safety_keyword_unique_words_threshold = 2
+    brand_safety_keyword_count_threshold = 3
     views_audit_threshold = 1000
     brand_safety_unique_threshold = 2
     brand_safety_hits_threshold = 3
@@ -21,6 +25,7 @@ class BrandSafetyVideoAudit(object):
         self.audit_types = audit_types
         self.metadata = self.get_metadata(data)
         self.results = defaultdict(list)
+        self.target_segment = None
 
     @property
     def pk(self):
@@ -127,3 +132,23 @@ class BrandSafetyVideoAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
+
+    def set_brand_safety_segment(self):
+        """
+        Sets attribute determining if audit should be part of master whitelist or blacklist
+        :return:
+        """
+        brand_safety_hits = self.results[constants.BRAND_SAFETY]
+        if not brand_safety_hits:
+            dislike_ratio = self.auditor.get_dislike_ratio(self.metadata["likes"], self.metadata["dislikes"])
+            if dislike_ratio is not None and dislike_ratio <= self.dislike_ratio_audit_threshold and self.metadata["views"] >= 1000:
+                self.target_segment = PersistentSegmentCategory.WHITELIST
+            else:
+                self.target_segment = None
+        else:
+            brand_safety_hit_counts = Counter(brand_safety_hits)
+            if len(brand_safety_hit_counts.keys()) >= self.brand_safety_keyword_unique_words_threshold or \
+                    any(count >= self.brand_safety_keyword_count_threshold for count in brand_safety_hit_counts.values()):
+                self.target_segment = PersistentSegmentCategory.BLACKLIST
+            else:
+                self.target_segment = None

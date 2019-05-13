@@ -126,21 +126,6 @@ class StandardBrandSafetyProvider(object):
             index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
 
-    def _sort_brand_safety(self, audits):
-        """
-        Sort audits by fail or pass based on their overall brand safety score
-        :param audits: list
-        :return: tuple -> lists of sorted audits
-        """
-        brand_safety_pass = {}
-        brand_safety_fail = {}
-        for audit in audits:
-            if audit.brand_safety_score.overall_score < self.brand_safety_fail_threshold:
-                brand_safety_pass[audit.pk] = audit
-            else:
-                brand_safety_fail[audit.pk] = audit
-        return brand_safety_pass, brand_safety_fail
-
     def _index_brand_safety_results(self, results, index_name):
         index_type = "score"
         op_type = "index"
@@ -240,3 +225,57 @@ class StandardBrandSafetyProvider(object):
                 # If channel is not in index or has no updated_at, create / update it
                 channels_to_update.append(channel)
         return channels_to_update
+
+    def _sort_brand_safety(self, audits):
+        """
+        Sort audits by fail or pass based on their overall brand safety score
+        :param audits: list
+        :return: tuple -> lists of sorted audits
+        """
+        brand_safety_pass = {}
+        brand_safety_fail = {}
+        for audit in audits:
+            if audit.brand_safety_score.overall_score < self.brand_safety_fail_threshold:
+                brand_safety_pass[audit.pk] = audit
+            else:
+                brand_safety_fail[audit.pk] = audit
+        return brand_safety_pass, brand_safety_fail
+
+    def _save_results(self, *_, **kwargs):
+        """
+        Save Video and Channel audits based on their brand safety results to their respective persistent segments
+        :param kwargs: Persistent segments to save to
+        :return: None
+        """
+        audits = kwargs["audits"]
+        # Persistent segments that store brand safety objects
+        whitelist_segment = kwargs["whitelist_segment"]
+        blacklist_segment = kwargs["blacklist_segment"]
+        # Related segment model used to instantiate database objects
+        related_segment_model = kwargs["related_segment_model"]
+        # Sort audits by brand safety results
+        brand_safety_pass, brand_safety_fail = self._sort_brand_safety(audits)
+        brand_safety_pass_pks = list(brand_safety_pass.keys())
+        brand_safety_fail_pks = list(brand_safety_fail.keys())
+        # Remove brand safety failed audits from whitelist as they are no longer belong in the whitelist
+        whitelist_segment.related.filter(related_id__in=brand_safety_fail_pks).delete()
+        blacklist_segment.related.filter(related_id__in=brand_safety_pass_pks).delete()
+        # Get existing ids to find results to create (that have been deleted from their segment based on their new result)
+        exists = related_segment_model.objects \
+            .filter(
+            Q(segment=whitelist_segment) | Q(segment=blacklist_segment),
+            related_id__in=brand_safety_pass_pks + brand_safety_fail_pks
+        ).values_list("related_id", flat=True)
+        # Set difference to get audits that need to be created
+        to_create = set(brand_safety_pass_pks + brand_safety_fail_pks) - set(exists)
+        # Instantiate related models with new appropriate segment and segment types
+        to_create = [
+            brand_safety_pass[pk].instantiate_related_model(related_segment_model, whitelist_segment,
+                                                            segment_type=constants.WHITELIST)
+            if brand_safety_pass.get(pk) is not None
+            else
+            brand_safety_fail[pk].instantiate_related_model(related_segment_model, blacklist_segment,
+                                                            segment_type=constants.BLACKLIST)
+            for pk in to_create
+        ]
+        related_segment_model.objects.bulk_create(to_create)

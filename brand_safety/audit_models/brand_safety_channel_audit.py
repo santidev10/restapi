@@ -3,12 +3,16 @@ from datetime import date
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety import constants
+from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyChannelAudit(object):
     """
     Brand safety Audit for channels using SDB data
     """
+    failed_videos_count_threshold = 3
+    brand_safety_metadata_threshold = 1
+
     def __init__(self, video_audits, audit_types, channel_data, **kwargs):
         self.source = kwargs["source"]
         self.score_mapping = kwargs["score_mapping"]
@@ -19,6 +23,7 @@ class BrandSafetyChannelAudit(object):
         self.video_audits = video_audits
         self.audit_types = audit_types
         self.metadata = self.get_metadata(channel_data)
+        self.target_segment = None
 
     @property
     def pk(self):
@@ -35,6 +40,7 @@ class BrandSafetyChannelAudit(object):
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
         title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, self.audit_types[constants.BRAND_SAFETY])
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
+        self.results["metadata_hits"] = title_hits + description_hits
         self.calculate_brand_safety_score(*title_hits, *description_hits)
 
     def get_metadata(self, channel_data):
@@ -56,8 +62,8 @@ class BrandSafetyChannelAudit(object):
             "views": channel_data.get("video_views", 0),
             "audited_videos": len(self.video_audits),
             "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
-            "likes": channel_data.get("likes", 0),
-            "dislikes": channel_data.get("dislikes", 0),
+            "likes": channel_data.get("likes", constants.DISABLED),
+            "dislikes": channel_data.get("dislikes", constants.DISABLED),
             "country": channel_data.get("country", ""),
             "thumbnail_image_url": channel_data.get("thumbnail_image_url", "")
         }
@@ -122,3 +128,24 @@ class BrandSafetyChannelAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
+
+    def set_brand_safety_segment(self):
+        """
+        Sets attribute determining if audit should be part of master whitelist or blacklist
+        :return:
+        """
+        channel_subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
+        if len(self.results["metadata_hits"]) >= self.brand_safety_metadata_threshold:
+            self.target_segment = PersistentSegmentCategory.BLACKLIST
+            return
+
+        failed_video_audits = 0
+        for audit in self.video_audits:
+            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
+                failed_video_audits += 1
+            if failed_video_audits > self.failed_videos_count_threshold:
+                self.target_segment = PersistentSegmentCategory.BLACKLIST
+        if channel_subscribers > 1000:
+            self.target_segment = PersistentSegmentCategory.WHITELIST
+        else:
+            self.target_segment = None
