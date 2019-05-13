@@ -18,6 +18,7 @@ from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
+from utils.utittests.redis_mock import MockRedis
 
 
 related_classes = {
@@ -44,6 +45,12 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         chf_account_id = load_web_app_settings()["cf_account_id"]
         self.chf_mcc = Account.objects.create(id=chf_account_id, name="CHF MCC")
         self.chf_mcc.refresh_from_db()
+
+        self.redis_mock = mock.patch('utils.celery.tasks.REDIS_CLIENT', MockRedis())
+        self.redis_mock.start()
+
+    def tearDown(self):
+        self.redis_mock.stop()
 
     @generic_test(generic_args_list)
     def test_cleanup(self, segment_class):

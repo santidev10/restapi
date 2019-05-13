@@ -43,12 +43,12 @@ class SegmentManager(Manager):
         cached_cleanup_ids = set()
         cached_alive_ids = set()
         segments = self.all()
+        segments_count = segments.count()
 
-        for segment in segments:
+        for current_index, segment in enumerate(segments, 1):
             logger.info(
-                'Cleanup segments related for {}-segment [{} ids]: {}'.format(
-                    segment.segment_type, len(segment.related_ids_list),
-                    segment.title))
+                '{current_index}/{all} Cleanup segments related for {segment.segment_type}-segment {segment.title}'.format(
+                    current_index=current_index, all=segments_count, segment=segment))
 
             ids = set(segment.get_related_ids()) - cached_cleanup_ids - cached_alive_ids
 
