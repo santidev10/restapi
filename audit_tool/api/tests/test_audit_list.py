@@ -1,4 +1,3 @@
-import json
 import datetime
 
 from rest_framework.status import HTTP_200_OK
@@ -18,22 +17,10 @@ class AuditListAPITestCase(ExtendedAPITestCase):
     def test_success_get(self):
         self.create_admin_user()
         now = datetime.datetime.now()
-        new_audit_1 = AuditProcessor.objects.create(
-            created=now,
-            started=now,
-            updated=now + datetime.timedelta(days=5),
-            completed=now + datetime.timedelta(days=6),
-            pause=5,
-        )
-
-        new_audit_2 = AuditProcessor.objects.create(
-            created=now,
-            started=now,
-            updated=now + datetime.timedelta(days=1),
-            completed=now + datetime.timedelta(days=2),
-            pause=3,
-        )
+        audit_1 = AuditProcessor.objects.create()
+        audit_2 = AuditProcessor.objects.create()
+        audit_3 = AuditProcessor.objects.create()
 
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data), 3)
