@@ -35,14 +35,12 @@ def unlock(lock_name):
     REDIS_CLIENT.lock(lock_name).do_release(token)
 
 
-def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, timeout=None, countdown=60, max_retries=60):
+def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_retries=60):
     def _dec(func):
-        """Decorator."""
         def _caller(task, *args, **kwargs):
-            """Caller."""
             is_acquired = False
 
-            lock = REDIS_CLIENT.lock(lock_key, expire=expire, timeout=timeout)
+            lock = REDIS_CLIENT.lock(lock_key, expire)
             try:
                 is_acquired = lock.acquire(blocking=False)
 

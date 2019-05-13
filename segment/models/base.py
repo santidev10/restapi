@@ -40,7 +40,6 @@ class SegmentManager(Manager):
             segment.update_statistics()
 
     def cleanup_related_records(self):
-        cached_cleanup_ids = set()
         cached_alive_ids = set()
         segments = self.all()
         segments_count = segments.count()
@@ -50,15 +49,13 @@ class SegmentManager(Manager):
                 '{current_index}/{all} Cleanup segments related for {segment.segment_type}-segment {segment.title}'.format(
                     current_index=current_index, all=segments_count, segment=segment))
 
-            ids = set(segment.get_related_ids()) - cached_cleanup_ids - cached_alive_ids
+            ids = set(segment.get_related_ids()) - cached_alive_ids
 
-            alive_ids = set(segment.get_alive_singledb_data(ids))
-            cached_alive_ids.update(alive_ids)
+            for alive_ids, cleanup_ids in segment.get_cleanup_singledb_data(ids):
 
-            cleanup_ids = ids - alive_ids
-            cached_cleanup_ids.update(cleanup_ids)
+                segment.cleanup_related_records(cleanup_ids)
+                cached_alive_ids.update(alive_ids)
 
-            segment.cleanup_related_records(cached_alive_ids)
             segment.update_statistics()
 
 
@@ -128,11 +125,9 @@ class BaseSegment(Timestampable):
         related_manager.filter(segment_id=self.pk, related_id__in=ids) \
             .delete()
 
-    def cleanup_related_records(self, alive_ids):
-        ids = set(self.get_related_ids()) - set(alive_ids)
+    def cleanup_related_records(self, ids):
         if ids:
             self.related.model.objects.filter(related_id__in=ids).delete()
-            self.save()
 
     def update_statistics(self):
         """
@@ -164,8 +159,7 @@ class BaseSegment(Timestampable):
         ids_hash = self.get_ids_hash(ids, start, end)
         return self.obtain_singledb_data(ids_hash)
 
-    def get_alive_singledb_data(self, ids):
-        alive = []
+    def get_cleanup_singledb_data(self, ids):
         start = 0
         end = 10000
         step = 10000
@@ -180,12 +174,11 @@ class BaseSegment(Timestampable):
                 break
 
             _ids_hash = self.get_ids_hash(_ids)
-            alive += self._get_alive_singledb_data(_ids_hash)
+            alive = self._get_alive_singledb_data(_ids_hash)
+            yield alive, set(_ids) - set(alive)
 
             start += step
             end += step
-
-        return alive
 
     def _get_alive_singledb_data(self, ids_hash):
         params = {
