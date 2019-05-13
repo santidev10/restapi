@@ -46,7 +46,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.chf_mcc = Account.objects.create(id=chf_account_id, name="CHF MCC")
         self.chf_mcc.refresh_from_db()
 
-        self.redis_mock = mock.patch('utils.celery.tasks.REDIS_CLIENT', MockRedis())
+        self.redis_mock = mock.patch("utils.celery.tasks.REDIS_CLIENT", MockRedis())
         self.redis_mock.start()
 
     def tearDown(self):
@@ -86,7 +86,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                        clicks=clicks, cost=cost,
                                        **{related_field: related_id})
 
-        with mock.patch.object(segment_class, '_get_alive_singledb_data', return_value=alive_related_ids):
+        with mock.patch.object(segment_class, "_get_alive_singledb_data", return_value=alive_related_ids):
             segment_class.objects.cleanup_related_records()
 
         self.assertEqual(list(segment.get_related_ids()), alive_related_ids)
@@ -137,7 +137,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                        **{related_field: related_id})
 
         with mock.patch.object(SingleDatabaseApiConnector, "store_ids", side_effect=mocked_connector_store_ids):
-            with mock.patch.object(segment_class, '_get_alive_singledb_data', side_effect=mocked_connector_get_data):
+            with mock.patch.object(segment_class, "_get_alive_singledb_data", side_effect=mocked_connector_get_data):
                 segment_class.objects.cleanup_related_records()
 
         self.assertEqual(list(segment.get_related_ids()), alive_related_ids)
