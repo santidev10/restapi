@@ -18,9 +18,9 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 250
+    channel_id_master_batch_limit = 500
     channel_id_pool_batch_limit = 50
-    max_process_count = 5
+    max_process_count = 10
     brand_safety_fail_threshold = 3
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
