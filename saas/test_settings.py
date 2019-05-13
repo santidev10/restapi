@@ -47,6 +47,7 @@ DATABASES = {
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from utils.utittests.sdb_connector_patcher import monkey_patch
-
+from utils.utittests.es_connector_patcher import es_monkey_patch
 
 monkey_patch()
+es_monkey_patch()
