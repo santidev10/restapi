@@ -10,7 +10,6 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
-from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid.decorator import pidfile

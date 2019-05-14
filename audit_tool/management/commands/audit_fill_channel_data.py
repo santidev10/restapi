@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+import langid
 import logging
 from django.conf import settings
 import requests
@@ -49,6 +50,20 @@ class Command(BaseCommand):
             logger.info("Done {} channels".format(count))
             raise Exception("Done {} channels".format(count))
 
+    def calc_language(self, channel):
+        str_long = channel.name
+        if channel.keywords:
+            str_long = "{} {}".format(str_long, channel.keywords)
+        if channel.description:
+            str_long = "{} {}".format(str_long, channel.description)
+        try:
+            l = langid.classify(str_long.lower())[0]
+            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
+            channel.language = db_lang
+            channel.save(update_fields=['language'])
+        except Exception as e:
+            pass
+
     def do_channel_metadata_api_call(self, channels):
         ids = []
         for i, _ in channels.items():
@@ -90,6 +105,7 @@ class Command(BaseCommand):
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
                 try:
                     db_channel_meta.save()
+                    self.calc_language((db_channel_meta))
                 except Exception as e:
                     logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
