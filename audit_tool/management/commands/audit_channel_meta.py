@@ -265,8 +265,8 @@ class Command(BaseCommand):
                     video_count[v.channel.channel_id],
                     country,
                     language,
-                    len(hit_words[cid.channel.channel_id]),
-                    ','.join(hit_words[cid.channel.channel_id])
+                    len(hit_words[v.channel.channel_id]),
+                    ','.join(hit_words[v.channel.channel_id])
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
