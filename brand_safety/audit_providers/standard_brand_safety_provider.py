@@ -3,6 +3,8 @@ from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
 
+from django.db.models import Q
+
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -15,6 +17,7 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
+from segment.models.persistent.constants import PersistentSegmentTitles
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +89,10 @@ class StandardBrandSafetyProvider(object):
             self._save_results(
                 audits=video_audits, whitelist_segment=self.whitelist_videos,
                 blacklist_segment=self.blacklist_videos,
-                related_segment_model=PersistentSegmentRelatedVideo
-            )
+                related_segment_model=PersistentSegmentRelatedVideo)
             self._save_results(
                 audits=channel_audits, whitelist_segment=self.whitelist_channels,
-                blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel
-            )
+                blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel)
 
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
@@ -249,15 +250,18 @@ class StandardBrandSafetyProvider(object):
         return channels_to_update
 
     def _set_segments(self):
-        # Set required persistent segments to save to
-        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title="Brand Safety Whitelist Channels", category="whitelist")
+        """
+        Set required persistent segments to save to
+        :return:
+        """
         self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title="Brand Safety Blacklist Channels", category="blacklist")
-        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Whitelist Videos",
-                                                                                category="whitelist")
-        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Blacklist Videos",
-                                                                                category="blacklist")
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
+        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
+        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
+        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
 
     def _sort_brand_safety(self, audits):
         """
@@ -295,7 +299,7 @@ class StandardBrandSafetyProvider(object):
         # Remove brand safety failed audits from whitelist as they are no longer belong in the whitelist
         whitelist_segment.related.filter(related_id__in=brand_safety_fail_pks).delete()
         blacklist_segment.related.filter(related_id__in=brand_safety_pass_pks).delete()
-        # Get existing ids to find results to create (that have been deleted from their segment based on their new result)
+        # Get related ids that still exist to avoid creating duplicates with results
         exists = related_segment_model.objects \
             .filter(
             Q(segment=whitelist_segment) | Q(segment=blacklist_segment),
@@ -314,3 +318,4 @@ class StandardBrandSafetyProvider(object):
             for pk in to_create
         ]
         related_segment_model.objects.bulk_create(to_create)
+

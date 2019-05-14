@@ -103,6 +103,25 @@ class BrandSafetyChannelAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
         return channel_brand_safety_score
 
+    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
+        details = {
+            "language": self.metadata["language"],
+            "thumbnail": self.metadata["thumbnail_image_url"],
+            "likes": self.metadata["likes"],
+            "dislikes": self.metadata["dislikes"],
+            "views": self.metadata["views"],
+        }
+        if segment_type == constants.BLACKLIST:
+            details["bad_words"] = self.results["metadata_hits"]
+        obj = model(
+            related_id=self.pk,
+            segment=related_segment,
+            title=self.metadata["channel_title"],
+            category=self.metadata["category"],
+            details=details
+        )
+        return obj
+
     def es_repr(self, index_name, index_type, action):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
