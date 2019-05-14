@@ -26,6 +26,10 @@ class BrandSafetyVideoAudit(object):
         self.metadata = self.get_metadata(data)
         self.results = defaultdict(list)
         self.target_segment = None
+        self.whitelist_channels = None
+        self.blacklist_channels = None
+        self.whitelist_videos = None
+        self.blacklist_videos = None
 
     @property
     def pk(self):

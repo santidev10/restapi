@@ -10,6 +10,11 @@ from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from singledb.connector import SingleDatabaseApiConnector
+from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentVideo
+from segment.models.persistent import PersistentSegmentRelatedVideo
+from segment.models.persistent import PersistentSegmentRelatedChannel
+from segment.models.persistent.constants import PersistentSegmentCategory
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +65,7 @@ class StandardBrandSafetyProvider(object):
             es_channel_index=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
         self.es_connector = ElasticSearchConnector()
+        self._set_segments()
 
     def run(self):
         """
@@ -74,14 +80,24 @@ class StandardBrandSafetyProvider(object):
 
             # Extract nested results from each process
             video_audits, channel_audits = self._extract_results(results)
-            self._process_results(video_audits, channel_audits)
+            self._index_results(video_audits, channel_audits)
 
-            # Save audits to segments
+            # Process saving video and channel audits separately as they must be saved to different segments
+            self._save_results(
+                audits=video_audits, whitelist_segment=self.whitelist_videos,
+                blacklist_segment=self.blacklist_videos,
+                related_segment_model=PersistentSegmentRelatedVideo
+            )
+            self._save_results(
+                audits=channel_audits, whitelist_segment=self.whitelist_channels,
+                blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel
+            )
 
-            # Update script tracker and cursors in case of failure
+            # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
             self.cursor_id = self.script_tracker.cursor_id
-            # Update brand safety scores in case they have been modified
+
+            # Update brand safety scores in case they have been modified since last batch
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
         logger.info("Standard Brand Safety Audit Complete.")
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
@@ -114,7 +130,7 @@ class StandardBrandSafetyProvider(object):
             channel_audits.extend(batch["channel_audits"])
         return video_audits, channel_audits
 
-    def _process_results(self, video_audits, channel_audits):
+    def _index_results(self, video_audits, channel_audits):
         """
         Sends request to index results in Elasticsearch and save to db segments
         :param video_audits:
@@ -232,6 +248,17 @@ class StandardBrandSafetyProvider(object):
                 channels_to_update.append(channel)
         return channels_to_update
 
+    def _set_segments(self):
+        # Set required persistent segments to save to
+        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
+            title="Brand Safety Whitelist Channels", category="whitelist")
+        self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
+            title="Brand Safety Blacklist Channels", category="blacklist")
+        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Whitelist Videos",
+                                                                                category="whitelist")
+        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(title="Brand Safety Blacklist Videos",
+                                                                                category="blacklist")
+
     def _sort_brand_safety(self, audits):
         """
         Sort audits by fail or pass based on their overall brand safety score
@@ -241,10 +268,12 @@ class StandardBrandSafetyProvider(object):
         brand_safety_pass = {}
         brand_safety_fail = {}
         for audit in audits:
-            if audit.brand_safety_score.overall_score < self.brand_safety_fail_threshold:
+            if audit.target_segment == PersistentSegmentCategory.WHITELIST:
                 brand_safety_pass[audit.pk] = audit
-            else:
+            elif audit.target_segment == PersistentSegmentCategory.BLACKLIST:
                 brand_safety_fail[audit.pk] = audit
+            else:
+                pass
         return brand_safety_pass, brand_safety_fail
 
     def _save_results(self, *_, **kwargs):
