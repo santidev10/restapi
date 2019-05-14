@@ -14,12 +14,14 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
-from saas import celery_app
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
+
+MAX_ITEMS_GET_FROM_SINGLEDB = 10000
+MAX_ITEMS_DELETE_FROM_DB = 10
 
 
 class SegmentManager(Manager):
@@ -40,23 +42,31 @@ class SegmentManager(Manager):
             segment.update_statistics()
 
     def cleanup_related_records(self):
-        cached_alive_ids = set()
         segments = self.all()
-        segments_count = segments.count()
 
-        for current_index, segment in enumerate(segments, 1):
-            logger.info(
-                '{current_index}/{all} Cleanup segments related for {segment.segment_type}-segment {segment.title}'.format(
-                    current_index=current_index, all=segments_count, segment=segment))
+        if segments:
+            segment = segments[0]
 
-            ids = set(segment.get_related_ids()) - cached_alive_ids
+            related_model = segment.related.model
+            ids = related_model.objects.all().values_list('related_id', flat=True)
 
-            for alive_ids, cleanup_ids in segment.get_cleanup_singledb_data(ids):
+            for cleanup_ids in segment.get_cleanup_singledb_data(ids):
+                start = 0
+                end = MAX_ITEMS_DELETE_FROM_DB
+                step = MAX_ITEMS_DELETE_FROM_DB
 
-                segment.cleanup_related_records(cleanup_ids)
-                cached_alive_ids.update(alive_ids)
+                cleanup_ids = list(cleanup_ids)
 
-            segment.update_statistics()
+                _cleanup_ids = cleanup_ids[start:end]
+                while _cleanup_ids:
+                    related_model.objects.filter(related_id__in=_cleanup_ids).delete()
+
+                    start += step
+                    end += step
+
+                    _cleanup_ids = cleanup_ids[start:end]
+
+        self.update_statistics()
 
 
 class BaseSegment(Timestampable):
@@ -161,24 +171,22 @@ class BaseSegment(Timestampable):
 
     def get_cleanup_singledb_data(self, ids):
         start = 0
-        end = 10000
-        step = 10000
+        end = MAX_ITEMS_GET_FROM_SINGLEDB
+        step = MAX_ITEMS_GET_FROM_SINGLEDB
 
-        ids_count = len(ids)
-        ids = list(ids)
+        _ids = ids[start:end]
 
-        while ids_count > start:
-            _ids = ids[start:end]
-
-            if not _ids:
-                break
-
+        while _ids.exists():
             _ids_hash = self.get_ids_hash(_ids)
-            alive = self._get_alive_singledb_data(_ids_hash)
-            yield alive, set(_ids) - set(alive)
+            cleanup_ids = set(_ids) - set(self._get_alive_singledb_data(_ids_hash))
+
+            if cleanup_ids:
+                yield cleanup_ids
 
             start += step
             end += step
+
+            _ids = ids[start:end]
 
     def _get_alive_singledb_data(self, ids_hash):
         params = {
