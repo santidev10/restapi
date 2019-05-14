@@ -10,6 +10,7 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid.decorator import pidfile
@@ -206,48 +207,42 @@ class Command(BaseCommand):
             return True, keywords
         return False, None
 
-    def export_channels(self, audit_id=None, num_out=None, clean=True):
+    def export_channels(self, audit_id=None):
         self.get_categories()
         cols = [
-            "video ID",
-            "name",
-            "language",
-            "category",
+            "Channel Title",
+            "Channel ID",
             "views",
-            "likes",
-            "dislikes",
-            "emoji",
-            #"publish date",
-            "channel name",
-            "channel ID",
-            "channel default lang.",
-            "channel subscribers",
+            "subscribers",
+            "num_videos",
             "country",
-            "all hit words",
-            "unique hit words",
+            "language",
+            "unique bad words",
+            "bad words",
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
-        video_ids = []
+        channel_ids = []
         hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
-        for vid in videos:
-            video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
-        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
-                "video",
-                "video__channel",
-                "video__channel__auditchannelmeta",
-                "video__channel__auditchannelmeta__country",
+        video_count = {}
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related("channel")
+        for cid in channels:
+            channel_ids.append(cid.channel_id)
+            hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
+            if not hit_words[cid.channel.channel_id]:
+                hit_words[cid.channel.channel_id] = []
+            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
+            video_count[cid.channel.channel_id] = videos.count()
+            for video in videos:
+                if video.word_hits.get('exclusion'):
+                    for bad_word in video.word_hits.get('exclusion'):
+                        if bad_word not in hit_words[cid.channel.channel_id]:
+                            hit_words[cid.channel.channel_id].append(bad_word)
+        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids).select_related(
+                "channel",
                 "language",
-                "category"
+                "country"
         )
-        if num_out:
-            video_meta = video_meta[:num_out]
-        if self.audit:
-            audit_id = self.audit.id
-        else:
-            audit_id = audit_id
         try:
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
@@ -255,41 +250,25 @@ class Command(BaseCommand):
         with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
-            for v in video_meta:
+            for v in channel_meta:
                 try:
                     language = v.language.language
                 except Exception as e:
                     language = ""
                 try:
-                    category = v.category.category_display
-                except Exception as e:
-                    category = ""
-                try:
-                    country = v.video.channel.auditchannelmeta.country.country
+                    country = v.country.country
                 except Exception as e:
                     country = ""
-                try:
-                    channel_lang = v.video.channel.auditchannelmeta.language.language
-                except Exception as e:
-                    channel_lang = ''
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
-                    v.video.video_id,
                     v.name,
-                    language,
-                    category,
-                    v.views,
-                    v.likes,
-                    v.dislikes,
-                    'T' if v.emoji else 'F',
-                    #v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
-                    channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.channel.channel_id,
+                    v.view_count,
+                    v.subscribers,
+                    video_count[v.channel.channel_id],
                     country,
-                    all_hit_words,
-                    unique_hit_words,
+                    language,
+                    len(hit_words[cid.channel.channel_id]),
+                    ','.join(hit_words[cid.channel.channel_id])
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
