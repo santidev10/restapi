@@ -142,18 +142,31 @@ class AuditProcessor(models.Model):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
-        if running:
+        if running is not None:
             all = all.filter(completed__isnull=running)
-        ret = []
-        for a in all.order_by("id"):
-            ret.append({
+        ret = {
+            'running': [],
+            'completed': []
+        }
+        for a in all.order_by("priority", "-id"):
+            audit_type = a.params.get('audit_type_original')
+            if not audit_type:
+                audit_type = a.audit_type
+            d = {
                 'id': a.id,
-                'pause': a.pause,
+                'priority': a.pause,
                 'completed': a.completed,
-                'cached_data': a.cached_data,
+                'data': a.cached_data,
                 'name': a.params.get('name'),
-                'audit_type': a.audit_type
-            })
+                'audit_type': audit_type,
+                'percent_done': 0,
+            }
+            if d['data'].get('total') and d['data']['total'] > 0:
+                d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+            status = 'running'
+            if a.completed is not None:
+                status = 'completed'
+            ret[status].append(d)
         return ret
 
 class AuditLanguage(models.Model):

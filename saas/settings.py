@@ -382,6 +382,9 @@ CACHE_AUTH_TOKEN = 'put_auth_token_here'
 HOST = "https://viewiq.channelfactory.com"
 APEX_HOST = "https://apex.viewiq.com"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", 6379)
+
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]
@@ -432,8 +435,6 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
-ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-rc-2dtu2y7suh2wgn57ykwasdcfem.us-east-1.es.amazonaws.com"]
-
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
@@ -441,6 +442,8 @@ MAX_SEGMENT_TO_AGGREGATE = 10000
 USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
+
+ELASTIC_SEARCH_URLS = [""]
 
 try:
     from .local_settings import *
