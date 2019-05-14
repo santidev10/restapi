@@ -17,7 +17,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
-from pid.decorator import pidfile
+from pid import PidFile
 
 """
 requirements:
@@ -42,14 +42,20 @@ class Command(BaseCommand):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                            "?key={key}&part=id,snippet&id={id}"
 
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     # this is the primary method to call to trigger the entire audit sequence
-    @pidfile(piddir=".", pidname="audit_video_meta.pid")
     def handle(self, *args, **options):
-        try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
-        except Exception as e:
-            logger.exception(e)
-        self.process_audit()
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
+            try:
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
+            except Exception as e:
+                logger.exception(e)
+            self.process_audit()
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
@@ -70,10 +76,12 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
+            self.export_videos()
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
-        for video in pending_videos[:num]:
+        start = self.thread_id * num
+        for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
             if len(videos) == 50:
                 self.do_check_video(videos)
@@ -376,7 +384,10 @@ class Command(BaseCommand):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
-            return 'export_{}.csv'.format(audit_id)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()
+            return 'export_{}.csv'.format(name)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
