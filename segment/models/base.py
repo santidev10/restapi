@@ -48,9 +48,8 @@ class SegmentManager(Manager):
             segment = segments[0]
 
             related_model = segment.related.model
-            ids = related_model.objects.all().values_list('related_id', flat=True)
 
-            for cleanup_ids in segment.get_cleanup_singledb_data(ids):
+            for cleanup_ids in segment.get_cleanup_singledb_data():
                 start = 0
                 end = MAX_ITEMS_DELETE_FROM_DB
                 step = MAX_ITEMS_DELETE_FROM_DB
@@ -93,6 +92,9 @@ class BaseSegment(Timestampable):
 
     def get_related_ids(self):
         return self.related.values_list("related_id", flat=True)
+
+    def get_related_model_ids(self):
+        return self.related.model.objects.order_by("pk").values_list("related_id", flat=True).distinct()
 
     def add_related_ids(self, ids):
         assert isinstance(ids, list) or isinstance(ids,
@@ -169,24 +171,30 @@ class BaseSegment(Timestampable):
         ids_hash = self.get_ids_hash(ids, start, end)
         return self.obtain_singledb_data(ids_hash)
 
-    def get_cleanup_singledb_data(self, ids):
-        start = 0
+    def get_cleanup_singledb_data(self):
+        pk_gt_value = 0
         end = MAX_ITEMS_GET_FROM_SINGLEDB
-        step = MAX_ITEMS_GET_FROM_SINGLEDB
 
-        _ids = ids[start:end]
+        def _query(_pk_gt_value):
+            return self.get_related_model_ids().filter(pk__gt=_pk_gt_value)
 
-        while _ids.exists():
+        _ids = _query(pk_gt_value)[:end]
+
+        print("ids {}".format(_ids.count()))
+
+        while _ids:
+            last_ids = list(_ids)[-1]
+            pk_gt_value = self.related.model.objects.filter(related_id=last_ids).first().pk
+
+            print("last ids {}".format(pk_gt_value))
+
             _ids_hash = self.get_ids_hash(_ids)
             cleanup_ids = set(_ids) - set(self._get_alive_singledb_data(_ids_hash))
 
             if cleanup_ids:
                 yield cleanup_ids
 
-            start += step
-            end += step
-
-            _ids = ids[start:end]
+            _ids = _query(pk_gt_value)[:end]
 
     def _get_alive_singledb_data(self, ids_hash):
         params = {
