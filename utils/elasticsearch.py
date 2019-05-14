@@ -6,6 +6,7 @@ from elasticsearch.client import IndicesClient
 from elasticsearch.helpers import parallel_bulk
 from elasticsearch.exceptions import ConnectionTimeout
 from elasticsearch.exceptions import ImproperlyConfigured
+from elasticsearch.exceptions import ElasticsearchException
 
 
 class ElasticSearchConnector(object):
@@ -48,8 +49,8 @@ class ElasticSearchConnector(object):
         }
         try:
             es_result = self.search(doc_type=doc_type, body=body, size=size)
-        except (ImproperlyConfigured, ConnectionTimeout):
-            return None
+        except ElasticsearchException:
+            raise ElasticSearchConnectorException
 
         if full_response:
             return es_result
