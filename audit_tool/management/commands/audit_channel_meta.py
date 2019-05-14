@@ -30,7 +30,6 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    categories = {}
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -208,7 +207,6 @@ class Command(BaseCommand):
         return False, None
 
     def export_channels(self, audit_id=None):
-        self.get_categories()
         cols = [
             "Channel Title",
             "Channel ID",
