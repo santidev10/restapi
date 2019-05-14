@@ -21,7 +21,7 @@ from pid import PidFile
 
 """
 requirements:
-    we receive a list of video URLs as a 'seed list'. 
+    we receive a list of video URLs as a 'seed list'.
     we receive a list of blacklist keywords
     we receive a list of inclusion keywords
 process:
@@ -93,6 +93,7 @@ class Command(BaseCommand):
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
+            self.export_videos()
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
