@@ -18,6 +18,7 @@ from rest_framework.serializers import SerializerMethodField
 
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
@@ -275,7 +276,7 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         return obj.account.update_time if obj.account else None
 
     def get_is_editable(self, obj):
-        return obj.owner == self.user
+        return obj.owner == self.user or obj.id == DEMO_ACCOUNT_ID
 
     def get_details(self, account_creation):
         ads_and_placements_stats = {s: Sum(s) for s in
