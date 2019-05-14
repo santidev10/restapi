@@ -42,12 +42,9 @@ class SegmentManager(Manager):
             segment.update_statistics()
 
     def cleanup_related_records(self):
-        segments = self.all()
+        segment = self.first()
 
-        if segments:
-            segment = segments[0]
-
-            related_model = segment.related.model
+        if segment:
 
             for cleanup_ids in segment.get_cleanup_singledb_data():
                 start = 0
@@ -58,7 +55,7 @@ class SegmentManager(Manager):
 
                 _cleanup_ids = cleanup_ids[start:end]
                 while _cleanup_ids:
-                    related_model.objects.filter(related_id__in=_cleanup_ids).delete()
+                    segment.cleanup_related_records(_cleanup_ids)
 
                     start += step
                     end += step
@@ -180,13 +177,9 @@ class BaseSegment(Timestampable):
 
         _ids = _query(pk_gt_value)[:end]
 
-        print("ids {}".format(_ids.count()))
-
         while _ids:
             last_ids = list(_ids)[-1]
             pk_gt_value = self.related.model.objects.filter(related_id=last_ids).first().pk
-
-            print("last ids {}".format(pk_gt_value))
 
             _ids_hash = self.get_ids_hash(_ids)
             cleanup_ids = set(_ids) - set(self._get_alive_singledb_data(_ids_hash))

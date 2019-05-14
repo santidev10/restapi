@@ -42,4 +42,4 @@ class MockRedis:
         return result
 
     def lock(self, key, timeout=0, sleep=0):
-        return MockRedisLock(self, key)
+        return MockRedisLock(self, key, timeout)

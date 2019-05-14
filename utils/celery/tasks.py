@@ -23,8 +23,8 @@ def empty_callback(*args, **kwargs):
 
 
 @celery_app.task(bind=True)
-def lock(task, lock_name, **kwargs):
-    is_acquired = REDIS_CLIENT.lock(lock_name).acquire(blocking=False)
+def lock(task, lock_name, expire=DEFAULT_REDIS_LOCK_EXPIRE, **kwargs):
+    is_acquired = REDIS_CLIENT.lock(lock_name, expire).acquire(blocking=False)
     if not is_acquired:
         raise task.retry(**kwargs)
 
