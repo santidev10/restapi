@@ -11,6 +11,14 @@ class BadWordCategory(models.Model):
         db_result, _ = BadWordCategory.objects.get_or_create(name=in_var.lower())
         return db_result
 
+    @staticmethod
+    def get_category_mapping():
+        mapping = {
+            str(category.id): category.name
+            for category in BadWordCategory.objects.all()
+        }
+        return mapping
+
 
 class BadWord(models.Model):
     id = models.AutoField(primary_key=True)

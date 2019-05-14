@@ -1,8 +1,12 @@
+import redis
+
 from celery import chord
 from celery import group
 
+from django.conf import settings
 from saas import celery_app
-from utils.filelock import FileLock
+
+REDIS_CLIENT = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
 
 def group_chorded(*signatures):
@@ -19,12 +23,12 @@ def empty_callback(*args, **kwargs):
 
 @celery_app.task(bind=True)
 def lock(task, lock_name, **kwargs):
-    try:
-        FileLock(lock_name).acquire()
-    except FileExistsError:
+    is_acquired = REDIS_CLIENT.lock(lock_name).acquire(blocking=False)
+    if not is_acquired:
         raise task.retry(**kwargs)
 
 
 @celery_app.task
 def unlock(lock_name):
-    FileLock(lock_name).release()
+    token = REDIS_CLIENT.get(lock_name)
+    REDIS_CLIENT.lock(lock_name).do_release(token)

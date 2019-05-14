@@ -142,7 +142,7 @@ class AuditProcessor(models.Model):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
-        if running:
+        if running is not None:
             all = all.filter(completed__isnull=running)
         ret = []
         for a in all.order_by("id"):

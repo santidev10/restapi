@@ -321,6 +321,7 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
             self._connector_get = Connector().get_video
         return self._connector_get
 
+    @add_brand_safety_data
     def get(self, *args, **kwargs):
         response = super().get(*args, **kwargs)
         VideoListApiView.adapt_response_data(

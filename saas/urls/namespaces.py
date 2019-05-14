@@ -7,3 +7,4 @@ class Namespace:
     VIDEO = "video_api_urls"
     CHANNEL = "channel_api_urls"
     BRAND_SAFETY = "brand_safety_api_urls"
+    AUDIT_TOOL = "audit_tool_api_urls"
