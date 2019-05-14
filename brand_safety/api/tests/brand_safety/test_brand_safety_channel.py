@@ -18,6 +18,14 @@ class BrandSafetyChannelApiViewTestCase(ExtendedAPITestCase):
                 "thumbnail_image_url": "test"
             }]
         ))
+        self.response_keys = {
+            "brand_safety",
+            "items",
+            "current_page",
+            "items",
+            "items_count",
+            "max_page"
+        }
 
     @patch("singledb.connector.requests")
     @patch("utils.elasticsearch.ElasticSearchConnector.search_by_id")
@@ -45,14 +53,8 @@ class BrandSafetyChannelApiViewTestCase(ExtendedAPITestCase):
             kwargs={"pk": "test"}
         )
         response = self.client.get(url)
-        response_keys = {
-            "brand_safety",
-            "total_videos_scored",
-            "flagged_videos",
-            "total_flagged_videos",
-        }
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(set(response.data.keys()), response_keys)
+        self.assertEqual(set(response.data.keys()), self.response_keys)
 
     @patch("utils.elasticsearch.ElasticSearchConnector.search_by_id")
     def test_brand_safety_channel_not_found(self, es_mock):
@@ -116,19 +118,13 @@ class BrandSafetyChannelApiViewTestCase(ExtendedAPITestCase):
         url_2 = "{}?threshold=50".format(reverse("brand_safety_api_urls:brand_safety_channel", kwargs={"pk": "test"}))
         response_1 = self.client.get(url_1)
         response_2 = self.client.get(url_2)
-        response_keys = {
-            "brand_safety",
-            "total_videos_scored",
-            "flagged_videos",
-            "total_flagged_videos",
-        }
         self.assertEqual(response_1.status_code, HTTP_200_OK)
-        self.assertEqual(set(response_1.data.keys()), response_keys)
-        self.assertEqual(len(response_1.data["flagged_videos"]), 2)
-        self.assertEqual(response_1.data["total_flagged_videos"], 2)
+        self.assertEqual(set(response_1.data.keys()), self.response_keys)
+        self.assertEqual(len(response_1.data["items"]), 2)
+        self.assertEqual(response_1.data["brand_safety"]["total_flagged_videos"], 2)
 
         self.assertEqual(response_2.status_code, HTTP_200_OK)
-        self.assertEqual(set(response_2.data.keys()), response_keys)
-        self.assertEqual(len(response_2.data["flagged_videos"]), 1)
-        self.assertEqual(response_2.data["total_flagged_videos"], 1)
+        self.assertEqual(set(response_2.data.keys()), self.response_keys)
+        self.assertEqual(len(response_2.data["items"]), 1)
+        self.assertEqual(response_2.data["brand_safety"]["total_flagged_videos"], 1)
 
