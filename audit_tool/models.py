@@ -164,6 +164,8 @@ class AuditProcessor(models.Model):
             }
             if d['data'].get('total') and d['data']['total'] > 0:
                 d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+                if d['percent_done'] > 100:
+                    d['percent_done'] = 100
             status = 'running'
             if a.completed is not None:
                 status = 'completed'
