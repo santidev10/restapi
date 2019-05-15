@@ -20,6 +20,9 @@ from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
+MAX_ITEMS_GET_FROM_SINGLEDB = 10000
+MAX_ITEMS_DELETE_FROM_DB = 10
+
 
 class SegmentManager(Manager):
     """
@@ -38,21 +41,6 @@ class SegmentManager(Manager):
                     segment.title))
             segment.update_statistics()
 
-    def cleanup_related_records(self):
-        cleanuped_ids = set()
-        segments = self.all()
-
-        for segment in segments:
-            ids = set(segment.get_related_ids()) - cleanuped_ids
-
-            alive_ids = set(segment.get_alive_singledb_data(ids))
-
-            cleanup_ids = ids - alive_ids
-            cleanuped_ids.update(cleanup_ids)
-
-            segment.cleanup_related_records(alive_ids)
-            segment.update_statistics()
-
 
 class BaseSegment(Timestampable):
     """
@@ -69,7 +57,6 @@ class BaseSegment(Timestampable):
     related = None
     related_aw_statistics_model = None
     segment_type = None
-    id_fields_name = None
     sources = None
 
     class Meta:
@@ -120,12 +107,6 @@ class BaseSegment(Timestampable):
         related_manager.filter(segment_id=self.pk, related_id__in=ids) \
             .delete()
 
-    def cleanup_related_records(self, alive_ids):
-        ids = set(self.get_related_ids()) - set(alive_ids)
-        if ids:
-            self.related.model.objects.filter(related_id__in=ids).delete()
-            self.save()
-
     def update_statistics(self):
         """
         Process segment statistics fields
@@ -155,39 +136,6 @@ class BaseSegment(Timestampable):
     def get_data_by_ids(self, ids, start=None, end=None):
         ids_hash = self.get_ids_hash(ids, start, end)
         return self.obtain_singledb_data(ids_hash)
-
-    def get_alive_singledb_data(self, ids):
-        alive = []
-        start = 0
-        end = 10000
-        step = 10000
-
-        ids_count = len(ids)
-        ids = list(ids)
-
-        while ids_count > start:
-            _ids = ids[start:end]
-
-            if not _ids:
-                break
-
-            _ids_hash = self.get_ids_hash(_ids)
-            alive += self._get_alive_singledb_data(_ids_hash)
-
-            start += step
-            end += step
-
-        return alive
-
-    def _get_alive_singledb_data(self, ids_hash):
-        params = {
-            "ids_hash": ids_hash,
-            "fields": self.id_fields_name,
-            "sources": self.sources,
-            "size": 10000
-        }
-        data = self.singledb_method(query_params=params)
-        return [item.get(self.id_fields_name) for item in data.get('items')]
 
     def _set_total_for_huge_segment(self, items_count, data):
         raise NotImplementedError
@@ -263,10 +211,78 @@ class BaseSegment(Timestampable):
         return "<{}>{ id: {}, name: {}}".format(type(self).__name__, self.id, self.title)
 
 
+class SegmentRelatedManager(Manager):
+    id_fields_name = None
+    sources = None
+
+    @property
+    def singledb_method(self):
+        raise NotImplementedError
+
+    def cleanup_related_records(self):
+
+        for cleanup_ids in self.get_cleanup_singledb_data():
+            start = 0
+            end = MAX_ITEMS_DELETE_FROM_DB
+            step = MAX_ITEMS_DELETE_FROM_DB
+
+            cleanup_ids = list(cleanup_ids)
+
+            _cleanup_ids = cleanup_ids[start:end]
+            while _cleanup_ids:
+                self._cleanup_related_records(_cleanup_ids)
+
+                start += step
+                end += step
+
+                _cleanup_ids = cleanup_ids[start:end]
+
+    def get_cleanup_singledb_data(self):
+        step = MAX_ITEMS_GET_FROM_SINGLEDB
+        ids_checked = False
+
+        ids = self.values_list("related_id", flat=True).distinct()
+        offset = ids.count()
+
+        while not ids_checked:
+            offset = offset - step
+
+            if offset < 0:
+                offset = 0
+                ids_checked = True
+
+            _ids = ids[offset:step]
+
+            _ids_hash = self.get_ids_hash(_ids)
+            cleanup_ids = set(_ids) - set(self._get_alive_singledb_data(_ids_hash))
+
+            if cleanup_ids:
+                yield cleanup_ids
+
+    def _get_alive_singledb_data(self, ids_hash):
+        params = {
+            "ids_hash": ids_hash,
+            "fields": self.id_fields_name,
+            "sources": self.sources,
+            "size": 10000
+        }
+        data = self.singledb_method(query_params=params)
+        return [item.get(self.id_fields_name) for item in data.get('items')]
+
+    def get_ids_hash(self, ids, start=None, end=None):
+        ids = list(ids)[start:end]
+        return Connector().store_ids(ids)
+
+    def _cleanup_related_records(self, ids):
+        if ids:
+            self.filter(related_id__in=ids).delete()
+
+
 class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
     related_id = CharField(max_length=100)
+    objects = SegmentRelatedManager()
 
     class Meta:
         abstract = True
