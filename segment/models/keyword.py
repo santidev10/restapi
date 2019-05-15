@@ -14,7 +14,7 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.settings import DEFAULT_KEYWORD_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
-from .base import SegmentManagerRelated
+from .base import SegmentRelatedManager
 from .base import SegmentManager
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class SegmentKeyword(BaseSegment):
         return statistics
 
 
-class SegmentManagerRelatedKeyword(SegmentManagerRelated):
+class SegmentRelatedKeywordManager(SegmentRelatedManager):
     id_fields_name = "keyword"
     sources = DEFAULT_KEYWORD_LIST_SOURCES
 
@@ -161,4 +161,4 @@ class SegmentManagerRelatedKeyword(SegmentManagerRelated):
 
 class SegmentRelatedKeyword(BaseSegmentRelated):
     segment = ForeignKey(SegmentKeyword, related_name='related')
-    objects = SegmentManagerRelatedKeyword()
+    objects = SegmentRelatedKeywordManager()

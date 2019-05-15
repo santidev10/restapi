@@ -12,7 +12,7 @@ from singledb.settings import DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
-from .base import SegmentManagerRelated
+from .base import SegmentRelatedManager
 from .base import SegmentManager
 
 
@@ -134,7 +134,7 @@ class SegmentChannel(BaseSegment):
         self.set_top_three_channels(data)
 
 
-class SegmentManagerRelatedChannel(SegmentManagerRelated):
+class SegmentRelatedChannelManager(SegmentRelatedManager):
     id_fields_name = "channel_id"
     sources = DEFAULT_CHANNEL_LIST_SOURCES
 
@@ -145,4 +145,4 @@ class SegmentManagerRelatedChannel(SegmentManagerRelated):
 
 class SegmentRelatedChannel(BaseSegmentRelated):
     segment = models.ForeignKey(SegmentChannel, related_name='related')
-    objects = SegmentManagerRelatedChannel()
+    objects = SegmentRelatedChannelManager()

@@ -15,9 +15,9 @@ from segment.models import SegmentRelatedChannel
 from segment.models import SegmentRelatedKeyword
 from segment.models import SegmentRelatedVideo
 from segment.models import SegmentVideo
-from segment.models import SegmentManagerRelatedKeyword
-from segment.models import SegmentManagerRelatedVideo
-from segment.models import SegmentManagerRelatedChannel
+from segment.models import SegmentRelatedKeywordManager
+from segment.models import SegmentRelatedVideoManager
+from segment.models import SegmentRelatedChannelManager
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
@@ -39,9 +39,9 @@ def get_related_ref(segment_class):
 
 class UpdateSegmentsTestCase(TransactionTestCase):
     generic_args_list = [
-        ("Channel Segment", (SegmentChannel, SegmentManagerRelatedChannel), dict()),
-        ("Video Segment", (SegmentVideo, SegmentManagerRelatedVideo), dict()),
-        ("Keyword Segment", (SegmentKeyword, SegmentManagerRelatedKeyword), dict()),
+        ("Channel Segment", (SegmentChannel, SegmentRelatedChannelManager), dict()),
+        ("Video Segment", (SegmentVideo, SegmentRelatedVideoManager), dict()),
+        ("Keyword Segment", (SegmentKeyword, SegmentRelatedKeywordManager), dict()),
     ]
 
     def setUp(self):

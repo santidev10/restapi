@@ -211,7 +211,7 @@ class BaseSegment(Timestampable):
         return "<{}>{ id: {}, name: {}}".format(type(self).__name__, self.id, self.title)
 
 
-class SegmentManagerRelated(Manager):
+class SegmentRelatedManager(Manager):
     id_fields_name = None
     sources = None
 
@@ -282,7 +282,7 @@ class BaseSegmentRelated(Model):
     # the 'segment' field must be defined in a successor model like next:
     # segment = ForeignKey(Segment, related_name='related')
     related_id = CharField(max_length=100)
-    objects = SegmentManagerRelated()
+    objects = SegmentRelatedManager()
 
     class Meta:
         abstract = True
