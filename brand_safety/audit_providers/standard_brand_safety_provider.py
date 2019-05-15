@@ -68,7 +68,7 @@ class StandardBrandSafetyProvider(object):
             es_channel_index=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
         self.es_connector = ElasticSearchConnector()
-        self._set_segments()
+        self._set_master_segments()
 
     def run(self):
         """
@@ -85,14 +85,21 @@ class StandardBrandSafetyProvider(object):
             video_audits, channel_audits = self._extract_results(results)
             self._index_results(video_audits, channel_audits)
 
-            # Process saving video and channel audits separately as they must be saved to different segments
-            self._save_results(
+            # Process saving video and channel audits into segments separately as they must be saved to different segments
+            videos_brand_safety_pass, videos_brand_safety_fail = self._save_master_results(
                 audits=video_audits, whitelist_segment=self.whitelist_videos,
                 blacklist_segment=self.blacklist_videos,
                 related_segment_model=PersistentSegmentRelatedVideo)
-            self._save_results(
+
+            # After storing to master lists, now need to save to category lists
+            self._save_category_results(video_audits, PersistentSegmentVideo)
+
+            self._save_master_results(
                 audits=channel_audits, whitelist_segment=self.whitelist_channels,
                 blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel)
+
+
+
 
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
@@ -249,7 +256,7 @@ class StandardBrandSafetyProvider(object):
                 channels_to_update.append(channel)
         return channels_to_update
 
-    def _set_segments(self):
+    def _set_master_segments(self):
         """
         Set required persistent segments to save to
         :return:
@@ -280,7 +287,7 @@ class StandardBrandSafetyProvider(object):
                 pass
         return brand_safety_pass, brand_safety_fail
 
-    def _save_results(self, *_, **kwargs):
+    def _save_master_results(self, *_, **kwargs):
         """
         Save Video and Channel audits based on their brand safety results to their respective persistent segments
         :param kwargs: Persistent segments to save to
@@ -318,4 +325,34 @@ class StandardBrandSafetyProvider(object):
             for pk in to_create
         ]
         related_segment_model.objects.bulk_create(to_create)
+        return brand_safety_pass, brand_safety_fail
+
+    def _save_category_results(self, audits, segment_model, releated_segment_model):
+        """
+        Save audits into their respective category segments
+            Category segments only contain whitelists
+        :param audits: Channel or Video audit objects
+        :param whitelist_model: Whitelist segment to save into
+        :param segment_model: PersistentSegmentModel (e.g. segment_model)
+        :return:
+        """
+        # sort audits by their categories
+        audits_by_category = defaultdict(lambda: defaultdict(list))
+        for audit in audits:
+            category = audit.metadata["category"]
+            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
+                audits_by_category[category]["fail"].append(audit)
+            else:
+                audits_by_category[category]["pass"].append(audit)
+
+        # Remove existing ids to create
+        for category, audits in audits_passed_by_category.items():
+            try:
+                segment_manager = segment_model.objects.get(title__icontains=category)
+
+            except segment_model.DoesNotExist:
+                print("Unable to get category segment: {}".format(category))
+
+
+
 

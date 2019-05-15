@@ -13,6 +13,7 @@ class BrandSafetyChannelAudit(object):
     failed_videos_count_threshold = 3
     brand_safety_metadata_threshold = 1
     channel_minimum_subscribers_whitelist = 1000
+    brand_safety_score_fail = 69
 
     def __init__(self, video_audits, audit_types, channel_data, **kwargs):
         self.source = kwargs["source"]
@@ -156,21 +157,26 @@ class BrandSafetyChannelAudit(object):
             If audit does not meet requirements for either whitelist or blacklist, then it should not be added to any segment
         :return:
         """
-        # Immediately blacklist if any metadata hit
-        if len(self.results["metadata_hits"]) >= self.brand_safety_metadata_threshold:
+        brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
+        if brand_safety_results.overall_score <= self.brand_safety_score_fail:
             self.target_segment = PersistentSegmentCategory.BLACKLIST
-            return
-
-        channel_subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-        failed_video_audits = 0
-        # Blacklist channel if number of blacklist videos exceeds threshold
-        for audit in self.video_audits:
-            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-                failed_video_audits += 1
-            if failed_video_audits > self.failed_videos_count_threshold:
-                self.target_segment = PersistentSegmentCategory.BLACKLIST
-        # If channel has failed as this point, check subscribers
-        if channel_subscribers > self.channel_minimum_subscribers_whitelist:
-            self.target_segment = PersistentSegmentCategory.WHITELIST
         else:
-            self.target_segment = None
+            self.target_segment = PersistentSegmentCategory.WHITELIST
+        # Immediately blacklist if any metadata hit
+        # if len(self.results["metadata_hits"]) >= self.brand_safety_metadata_threshold:
+        #     self.target_segment = PersistentSegmentCategory.BLACKLIST
+        #     return
+        #
+        # channel_subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
+        # failed_video_audits = 0
+        # # Blacklist channel if number of blacklist videos exceeds threshold
+        # for audit in self.video_audits:
+        #     if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
+        #         failed_video_audits += 1
+        #     if failed_video_audits > self.failed_videos_count_threshold:
+        #         self.target_segment = PersistentSegmentCategory.BLACKLIST
+        # # If channel has failed as this point, check subscribers
+        # if channel_subscribers > self.channel_minimum_subscribers_whitelist:
+        #     self.target_segment = PersistentSegmentCategory.WHITELIST
+        # else:
+        #     self.target_segment = None

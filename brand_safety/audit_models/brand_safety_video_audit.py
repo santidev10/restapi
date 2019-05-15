@@ -12,6 +12,7 @@ class BrandSafetyVideoAudit(object):
     brand_safety_keyword_unique_words_threshold = 2
     brand_safety_keyword_count_threshold = 3
     minimum_views_whitelist = 1000
+    brand_safety_score_fail = 69
     brand_safety_unique_threshold = 2
     brand_safety_hits_threshold = 3
     brand_safety_title_multiplier = 4
@@ -144,18 +145,23 @@ class BrandSafetyVideoAudit(object):
             If audit does not meet requirements for either whitelist or blacklist, then it should not be added to any segment
         :return:
         """
-        brand_safety_hits = self.results[constants.BRAND_SAFETY]
-        if not brand_safety_hits:
-            dislike_ratio = self.auditor.get_dislike_ratio(self.metadata["likes"], self.metadata["dislikes"])
-            if dislike_ratio is not None and dislike_ratio <= self.dislike_ratio_audit_threshold and self.metadata["views"] > self.minimum_views_whitelist:
-                self.target_segment = PersistentSegmentCategory.WHITELIST
-            else:
-                self.target_segment = None
+        brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
+        if brand_safety_results.overall_score <= self.brand_safety_score_fail:
+            self.target_segment = PersistentSegmentCategory.BLACKLIST
         else:
-            brand_safety_hit_counts = Counter(brand_safety_hits)
-            # If number of unique keywords exceeds threshold or count of any keyword exceeds threshold
-            if len(brand_safety_hit_counts.keys()) >= self.brand_safety_keyword_unique_words_threshold or \
-                    any(count >= self.brand_safety_keyword_count_threshold for count in brand_safety_hit_counts.values()):
-                self.target_segment = PersistentSegmentCategory.BLACKLIST
-            else:
-                self.target_segment = None
+            self.target_segment = PersistentSegmentCategory.WHITELIST
+        # brand_safety_hits = self.results[constants.BRAND_SAFETY]
+        # if not brand_safety_hits:
+        #     dislike_ratio = self.auditor.get_dislike_ratio(self.metadata["likes"], self.metadata["dislikes"])
+        #     if dislike_ratio is not None and dislike_ratio <= self.dislike_ratio_audit_threshold and self.metadata["views"] > self.minimum_views_whitelist:
+        #         self.target_segment = PersistentSegmentCategory.WHITELIST
+        #     else:
+        #         self.target_segment = None
+        # else:
+        #     brand_safety_hit_counts = Counter(brand_safety_hits)
+        #     # If number of unique keywords exceeds threshold or count of any keyword exceeds threshold
+        #     if len(brand_safety_hit_counts.keys()) >= self.brand_safety_keyword_unique_words_threshold or \
+        #             any(count >= self.brand_safety_keyword_count_threshold for count in brand_safety_hit_counts.values()):
+        #         self.target_segment = PersistentSegmentCategory.BLACKLIST
+        #     else:
+        #         self.target_segment = None
