@@ -708,7 +708,7 @@ def _get_interests_filters():
         .order_by("name", "id") \
         .values("id", "name", "type")
 
-    return dict(interests=interests,
+    return dict(interests=list(interests),
                 interests_condition=CONDITIONS)
 
 
