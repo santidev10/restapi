@@ -12,6 +12,7 @@ from utils.brand_safety_view_decorator import get_brand_safety_data
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from brand_safety.api.views.brand_safety.utils.utils import get_es_data
+from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 
 
@@ -44,20 +45,20 @@ class BrandSafetyChannelAPIView(APIView):
             size = self.MAX_PAGE_SIZE
 
         channel_es_data = get_es_data(channel_id, constants.BRAND_SAFETY_CHANNEL_ES_INDEX)
-        if isinstance(channel_es_data, ElasticSearchConnectorException):
+        if channel_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
             raise Http404
 
         # Get channel's video ids from sdb to get es video brand safety data
         video_sdb_data = self._get_sdb_channel_video_data(channel_id)
-        if isinstance(video_sdb_data, SingleDatabaseApiConnectorException):
+        if video_sdb_data is SingleDatabaseApiConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
         # Get video brand safety data to merge with sdb video data
         video_ids = list(video_sdb_data.keys())
         video_es_data = get_es_data(video_ids, constants.BRAND_SAFETY_VIDEO_ES_INDEX)
-        if isinstance(video_es_data, ElasticSearchConnectorException):
+        if video_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
         channel_brand_safety_data = {
@@ -148,15 +149,16 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return response
 
-    @staticmethod
-    def _extract_key_words(categories):
+    def _extract_key_words(self, categories):
         """
         Extracts es brand safety category keywords
         :param categories: dict
         :return: list
         """
         keywords = []
-        for keyword_data in categories.values():
+        for category_id, keyword_data in categories.items():
+            if category_id in BadWordCategory.EXCLUDED:
+                continue
             keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
         return keywords
 
