@@ -6,8 +6,11 @@ from saas import celery_app
 from segment.utils import get_segment_model_by_type
 from segment.utils import update_all_segments_statistics
 from segment.models.keyword import SegmentKeyword
+from segment.models.keyword import SegmentRelatedKeyword
 from segment.models.video import SegmentVideo
+from segment.models.video import SegmentRelatedVideo
 from segment.models.channel import SegmentChannel
+from segment.models.channel import SegmentRelatedChannel
 from utils.celery.tasks import celery_lock
 
 
@@ -44,7 +47,8 @@ def cleanup_segments_related():
 @celery_lock(lock_key=LOCK_SEGMENTS_CHANNEL_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_channel_segments_related_records(*args):
     logger.info("Segments Channel cleanup_related_records start")
-    SegmentChannel.objects.cleanup_related_records()
+    SegmentRelatedChannel.objects.cleanup_related_records()
+    SegmentChannel.objects.update_statistics()
     logger.info("Segments Channel cleanup_related_records stop")
 
 
@@ -52,7 +56,8 @@ def cleanup_channel_segments_related_records(*args):
 @celery_lock(lock_key=LOCK_SEGMENTS_VIDEO_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_video_segments_related_records(*args):
     logger.info("Segments Video cleanup_related_records start")
-    SegmentVideo.objects.cleanup_related_records()
+    SegmentRelatedVideo.objects.cleanup_related_records()
+    SegmentVideo.objects.update_statistics()
     logger.info("Segments Video cleanup_related_records stop")
 
 
@@ -60,5 +65,6 @@ def cleanup_video_segments_related_records(*args):
 @celery_lock(lock_key=LOCK_SEGMENTS_KEYWORD_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_keyword_segments_related_records(*args):
     logger.info("Segments Keyword cleanup_related_records start")
-    SegmentKeyword.objects.cleanup_related_records()
+    SegmentRelatedKeyword.objects.cleanup_related_records()
+    SegmentKeyword.objects.update_statistics()
     logger.info("Segments Keyword cleanup_related_records stop")

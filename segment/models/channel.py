@@ -12,6 +12,7 @@ from singledb.settings import DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
+from .base import SegmentManagerRelated
 from .base import SegmentManager
 
 
@@ -62,7 +63,6 @@ class SegmentChannel(BaseSegment):
 
     segment_type = "channel"
     related_aw_statistics_model = YTChannelStatistic
-    id_fields_name = "channel_id"
     sources = DEFAULT_CHANNEL_LIST_SOURCES
 
     objects = SegmentManager()
@@ -134,5 +134,15 @@ class SegmentChannel(BaseSegment):
         self.set_top_three_channels(data)
 
 
+class SegmentManagerRelatedChannel(SegmentManagerRelated):
+    id_fields_name = "channel_id"
+    sources = DEFAULT_CHANNEL_LIST_SOURCES
+
+    @property
+    def singledb_method(self):
+        return Connector().get_channel_list
+
+
 class SegmentRelatedChannel(BaseSegmentRelated):
     segment = models.ForeignKey(SegmentChannel, related_name='related')
+    objects = SegmentManagerRelatedChannel()
