@@ -155,7 +155,8 @@ class AuditProcessor(models.Model):
             d = {
                 'id': a.id,
                 'priority': a.pause,
-                'completed': a.completed,
+                'completed_time': a.completed,
+                'start_time': a.started,
                 'data': a.cached_data,
                 'name': a.params.get('name'),
                 'audit_type': audit_type,
