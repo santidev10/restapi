@@ -64,7 +64,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
 
         self.assertEqual(data["items_count"], 1)
         item = data["items"][0]
-        self.assertEqual(set(item.keys()), {"id", "name", "category"})
+        self.assertEqual(set(item.keys()), {"id", "name", "category", "negative_score"})
         self.assertEqual(item["id"], bad_word.id)
         self.assertEqual(item["name"], bad_word.name)
         self.assertEqual(item["category"], bad_word.category)
