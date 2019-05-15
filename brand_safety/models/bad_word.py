@@ -5,6 +5,8 @@ from aw_reporting.models import BaseQueryset
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
+    # Categories to exclude from brand safety
+    EXCLUDED = [9]
 
     @staticmethod
     def from_string(in_var):
