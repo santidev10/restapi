@@ -34,24 +34,33 @@ class BaseTrackFiltersListApiView(TrackApiBase):
 
         return dict(
             accounts=[
-                dict(
-                    id=account.id,
-                    name=account.name,
-                    start_date=account.start_date,
-                    end_date=account.end_date,
-                    campaigns=[
-                        dict(
-                            id=c.id,
-                            name=c.name,
-                            start_date=c.start_date,
-                            end_date=c.end_date,
-                        )
-                        for c in account.campaigns.all()
-                    ]
-                )
+                self._map_account(account)
                 for account in accounts
             ],
             **self._get_static_filters()
+        )
+
+    def _map_account(self, account):
+        campaigns = list(account.campaigns.all())
+        starts = [c.start_date for c in campaigns]
+        ends = [c.end_date for c in campaigns]
+        return dict(
+            id=account.id,
+            name=account.name,
+            start_date=min(filter(lambda x: x is not None, starts)) if any(starts) else None,
+            end_date=max(filter(lambda x: x is not None, ends)) if any(ends) else None,
+            campaigns=[
+                self._map_campaigns(campaign)
+                for campaign in campaigns
+            ]
+        )
+
+    def _map_campaigns(self, campaign):
+        return dict(
+            id=campaign.id,
+            name=campaign.name,
+            start_date=campaign.start_date,
+            end_date=campaign.end_date,
         )
 
     def get(self, request, *args, **kwargs):
