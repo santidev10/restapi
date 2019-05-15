@@ -1,12 +1,13 @@
-from unittest import skip
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from utils.documentation import PathName
+from utils.documentation import schema_view
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+
+from django.test import RequestFactory
 
 
 class SchemaFormat:
@@ -15,45 +16,51 @@ class SchemaFormat:
 
 
 TEST_ARGS = [
-    (PathName.SWAGGER, ()),
-    (PathName.REDOC, ()),
-    (PathName.SCHEMA, (SchemaFormat.JSON,)),
-    (PathName.SCHEMA, (SchemaFormat.YAML,)),
+    (PathName.SWAGGER, (), schema_view.with_ui(PathName.SWAGGER, cache_timeout=0)),
+    (PathName.REDOC, (), schema_view.with_ui(PathName.SWAGGER, cache_timeout=0)),
+    (PathName.SCHEMA, (SchemaFormat.JSON,), schema_view.without_ui(cache_timeout=0)),
+    (PathName.SCHEMA, (SchemaFormat.YAML,), schema_view.without_ui(cache_timeout=0)),
 ]
 
 
 class DocumentationApiTestCase(ExtendedAPITestCase):
-    def _request(self, path_name, args):
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _request(self, path_name, args, view, user=None):
         url = reverse(path_name, [], args=args)
-        return self.client.get(url)
+        request = self.factory.get(url)
+        if user is not None:
+            request.user = user
+        return view(request)
 
     @generic_test([
         (None, args, dict())
         for args in TEST_ARGS
     ])
-    def test_unauthorized(self, path_name, args):
-        response = self._request(path_name, args)
+    def test_unauthorized(self, path_name, args, view):
+        response = self._request(path_name, args, view)
 
-        # todo: should be HTTP_401_UNAUTHORIZED, not HTTP_403_FORBIDDEN
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
     @generic_test([
         (None, args, dict())
         for args in TEST_ARGS
     ])
-    def test_forbidden(self, path_name, args):
-        self.create_test_user()
-        response = self._request(path_name, args)
+    def test_forbidden(self, path_name, args, view):
+        user = self.create_test_user()
+        response = self._request(path_name, args, view, user)
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    @skip("Can't login user")
     @generic_test([
         (None, args, dict())
         for args in TEST_ARGS
     ])
-    def test_success(self, path_name, args):
-        self.create_admin_user()
-        response = self._request(path_name, args)
+    def test_success(self, path_name, args, view):
+        user = self.create_admin_user()
+
+        response = self._request(path_name, args, view, user)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
