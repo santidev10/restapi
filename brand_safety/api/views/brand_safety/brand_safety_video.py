@@ -47,6 +47,7 @@ class BrandSafetyVideoAPIView(APIView):
             all_keywords.update(keywords)
             video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
             video_brand_safety_data["category_flagged_words"][category_name].update(keywords)
-        worst_words = BadWord.objects.filter(name__in=all_keywords).order_by("-negative_score")[:3]
+        # Exclude category_ref_id=9 (kids content category) as it should not be used in brand safety
+        worst_words = BadWord.objects.filter(name__in=all_keywords).exclude(category_ref_id=9).order_by("-negative_score")[:3]
         video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
