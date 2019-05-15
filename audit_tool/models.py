@@ -148,7 +148,7 @@ class AuditProcessor(models.Model):
             'running': [],
             'completed': []
         }
-        for a in all.order_by("priority", "-id"):
+        for a in all.order_by("pause", "-id"):
             audit_type = a.params.get('audit_type_original')
             if not audit_type:
                 audit_type = a.audit_type
