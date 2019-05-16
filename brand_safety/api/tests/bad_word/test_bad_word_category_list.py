@@ -41,13 +41,19 @@ class BadWordCategoriesListTestCase(ExtendedAPITestCase):
 
     def test_categories_list(self):
         self.create_admin_user()
-        test_category_1 = BadWordCategory.objects.create(name="Test category 1")
-        test_category_2 = BadWordCategory.objects.create(name="Test category 2")
-
-        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category_ref=test_category_1)
-        BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category_ref=test_category_2)
-        BadWord.objects.create(id=next(int_iterator), name="Bad Word 3", category_ref=test_category_1)
-
+        test_category_1 = BadWordCategory.objects.create(id=1, name="Test category 1")
+        test_category_2 = BadWordCategory.objects.create(id=2, name="Test category 2")
+        test_category_1_expected_item = {
+            "id": test_category_1.id,
+            "name": test_category_1.name
+        }
+        test_category_2_expected_item = {
+            "id": test_category_2.id,
+            "name": test_category_2.name
+        }
         response = self._request()
-
-        self.assertEqual(sorted(list(response.data)), sorted([test_category_1.name, test_category_2.name]))
+        self.assertEqual(
+            sorted(list(response.data), key=lambda x: x["name"]),
+            [test_category_1_expected_item, test_category_2_expected_item]
+        )
+        self.assertEqual(len(response.data), 2)
