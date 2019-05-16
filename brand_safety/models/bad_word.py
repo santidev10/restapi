@@ -25,8 +25,8 @@ class BadWordCategory(models.Model):
 class BadWord(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=80)
-    category = models.CharField(max_length=80) # tech debt: remove in 3.15
-    category_ref = models.ForeignKey(BadWordCategory, db_index=True, default=None, null=True)
+    # category = models.CharField(max_length=80) # tech debt: remove in 3.15
+    category = models.ForeignKey(BadWordCategory, db_index=True, default=None, null=True)
     negative_score = models.IntegerField(default=1, db_index=True)
 
     objects = BaseQueryset.as_manager()
