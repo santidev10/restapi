@@ -23,4 +23,4 @@ class BadWordSerializer(ModelSerializer):
 
     class Meta:
         model = BadWord
-        fields = ("id", "name", "category_ref")
+        fields = ("id", "name", "category_ref", "negative_score")
