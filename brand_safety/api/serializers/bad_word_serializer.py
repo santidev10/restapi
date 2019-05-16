@@ -6,21 +6,21 @@ from brand_safety.models import BadWord, BadWordCategory
 
 
 class BadWordSerializer(ModelSerializer):
-    category_ref = CharField(max_length=80)
+    category = CharField(max_length=80)
 
-    def validate_category_ref(self, value):
+    def validate_category(self, value):
         try:
             if type(value) is str:
-                category_ref = BadWordCategory.from_string(value)
+                category = BadWordCategory.from_string(value)
             else:
                 try:
-                    category_ref = BadWordCategory.objects.get(pk=value)
+                    category = BadWordCategory.objects.get(pk=value)
                 except BadWordCategory.DoesNotExist:
-                    raise ValidationError("Invalid category_ref value: {}".format(value))
-            return category_ref
+                    raise ValidationError("Invalid category value: {}".format(value))
+            return category
         except KeyError:
-            raise ValidationError("category_ref required.")
+            raise ValidationError("category required.")
 
     class Meta:
         model = BadWord
-        fields = ("id", "name", "category_ref", "negative_score")
+        fields = ("id", "name", "category", "negative_score")

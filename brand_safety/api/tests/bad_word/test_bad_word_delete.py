@@ -26,7 +26,7 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
         self.bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test bad word",
-            category_ref=self.category
+            category=self.category
         )
 
     def _request(self, pk=None):
