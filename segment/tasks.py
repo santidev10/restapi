@@ -43,7 +43,7 @@ def cleanup_segments_related():
     cleanup_keyword_segments_related_records.delay()
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, name='segment.tasks.cleanup_channel_segments_related_records')
 @celery_lock(lock_key=LOCK_SEGMENTS_CHANNEL_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_channel_segments_related_records(*args):
     logger.info("Segments Channel cleanup_related_records start")
@@ -52,7 +52,7 @@ def cleanup_channel_segments_related_records(*args):
     logger.info("Segments Channel cleanup_related_records stop")
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, name='segment.tasks.cleanup_video_segments_related_records')
 @celery_lock(lock_key=LOCK_SEGMENTS_VIDEO_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_video_segments_related_records(*args):
     logger.info("Segments Video cleanup_related_records start")
@@ -61,7 +61,7 @@ def cleanup_video_segments_related_records(*args):
     logger.info("Segments Video cleanup_related_records stop")
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, name='segment.tasks.cleanup_keyword_segments_related_records')
 @celery_lock(lock_key=LOCK_SEGMENTS_KEYWORD_CLEANUP, expire=CLEANUP_LOCK_EXPIRE_TIME)
 def cleanup_keyword_segments_related_records(*args):
     logger.info("Segments Keyword cleanup_related_records start")
