@@ -26,11 +26,11 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 10
-    channel_id_pool_batch_limit = 1
+    channel_id_master_batch_limit = 3
+    channel_id_pool_batch_limit = 3
     # channel_id_master_batch_limit = 500
     # channel_id_pool_batch_limit = 50
-    max_process_count = 10
+    max_process_count = 3
     brand_safety_fail_threshold = 3
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
@@ -86,20 +86,18 @@ class StandardBrandSafetyProvider(object):
             self._index_results(video_audits, channel_audits)
 
             # Process saving video and channel audits into segments separately as they must be saved to different segments
-            videos_brand_safety_pass, videos_brand_safety_fail = self._save_master_results(
+            self._save_master_results(
                 audits=video_audits, whitelist_segment=self.whitelist_videos,
                 blacklist_segment=self.blacklist_videos,
                 related_segment_model=PersistentSegmentRelatedVideo)
-
-            # After storing to master lists, now need to save to category lists
-            self._save_category_results(video_audits, PersistentSegmentVideo)
 
             self._save_master_results(
                 audits=channel_audits, whitelist_segment=self.whitelist_channels,
                 blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel)
 
-
-
+            # Save to category whitelists
+            self._save_category_results(video_audits, PersistentSegmentVideo, PersistentSegmentRelatedVideo)
+            self._save_category_results(channel_audits, PersistentSegmentChannel, PersistentSegmentRelatedChannel)
 
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
@@ -208,6 +206,46 @@ class StandardBrandSafetyProvider(object):
             .exclude(category_ref_id__in=self.bad_word_categories_ignore)\
             .values_list("name", flat=True)
         return bad_words
+
+    def _save_category_results(self, audits, segment_model, related_segment_model):
+        """
+        Save audits into their respective category segments
+            Category segments only contain whitelists
+        :param audits: Channel or Video audit objects
+        :param segment_model: PersistentSegmentModel
+        :param releated_segment_model: PersistentSegmentRelated Model
+        :return:
+        """
+        # sort audits by their categories
+        audits_by_category = defaultdict(lambda: defaultdict(list))
+        for audit in audits:
+            category = audit.metadata["category"]
+            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
+                audits_by_category[category]["fail"].append(audit)
+            else:
+                audits_by_category[category]["pass"].append(audit)
+
+        # Remove existing ids to create
+        for category, audits in audits_by_category.items():
+            try:
+                segment_title = self._get_segment_title(
+                    segment_model.segment_type,
+                    category,
+                    PersistentSegmentCategory.WHITELIST,
+                )
+                print(segment_title)
+                whitelist_segment_manager, _ = segment_model.objects.get_or_create(title=segment_title)
+                passed_related_ids = [audit.pk for audit in audits["pass"]]
+                failed_related_ids = [audit.pk for audit in audits["fail"]]
+                # Delete items that have failed from segment whitelist
+                whitelist_segment_manager.related.filter(related_id__in=failed_related_ids).delete()
+                # Set difference for existing and to create to prevent creating duplicates
+                existing_passed = whitelist_segment_manager.related.filter(related_id__in=passed_related_ids)
+                to_create = set(existing_passed) - set(passed_related_ids)
+                related_segment_model.objects.bulk_create(to_create)
+            except segment_model.DoesNotExist:
+                print("Unable to get category segment: {}".format(category))
+                raise
 
     def _create_brand_safety_default_category_scores(self, data_type=constants.VIDEO):
         """
@@ -327,32 +365,21 @@ class StandardBrandSafetyProvider(object):
         related_segment_model.objects.bulk_create(to_create)
         return brand_safety_pass, brand_safety_fail
 
-    def _save_category_results(self, audits, segment_model, releated_segment_model):
+    @staticmethod
+    def _get_segment_title(segment_type, category, segment_category):
         """
-        Save audits into their respective category segments
-            Category segments only contain whitelists
-        :param audits: Channel or Video audit objects
-        :param whitelist_model: Whitelist segment to save into
-        :param segment_model: PersistentSegmentModel (e.g. segment_model)
+        Return formatted Persistent segment title
+        :param segment_type: channel or video
+        :param category: Item category e.g. Politics
+        :param segment_category: whitelist or blacklist
         :return:
         """
-        # sort audits by their categories
-        audits_by_category = defaultdict(lambda: defaultdict(list))
-        for audit in audits:
-            category = audit.metadata["category"]
-            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-                audits_by_category[category]["fail"].append(audit)
-            else:
-                audits_by_category[category]["pass"].append(audit)
-
-        # Remove existing ids to create
-        for category, audits in audits_passed_by_category.items():
-            try:
-                segment_manager = segment_model.objects.get(title__icontains=category)
-
-            except segment_model.DoesNotExist:
-                print("Unable to get category segment: {}".format(category))
-
+        categorized_segment_title = "{}s {} {}".format(
+            segment_type.capitalize(),
+            category,
+            segment_category.capitalize(),
+        )
+        return categorized_segment_title
 
 
 
