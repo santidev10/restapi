@@ -97,7 +97,7 @@ class PermissionGroupNames:
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
     MANAGED_SERVICE = "Managed Service"
-    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Managed Service Performance Details"
+    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Hide Managed Service Performance Details"
     SELF_SERVICE = "Self Service"
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
