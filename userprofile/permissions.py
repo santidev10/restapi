@@ -92,6 +92,7 @@ class PermissionGroupNames:
     MEDIA_PLANNING = "Media Planning"
     MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
     MEDIA_PLANNING_AUDIT = "Media Planning - audit"
+    MEDIA_PLANNING_BRAND_SAFETY = "Media Planning - Brand Safety"
     MEDIA_PLANNING_WHITE_LISTS = "Media Planning - whitelists"
     MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
@@ -122,6 +123,8 @@ class Permissions:
             "keyword_details",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
+        )),
+        (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "view_pre_baked_segments",

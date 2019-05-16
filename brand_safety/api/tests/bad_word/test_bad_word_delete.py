@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -21,10 +22,11 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
         )
 
     def setUp(self):
+        self.category = BadWordCategory.objects.create(name="test category")
         self.bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test bad word",
-            category="test category"
+            category_ref=self.category
         )
 
     def _request(self, pk=None):
