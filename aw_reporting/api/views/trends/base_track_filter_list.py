@@ -1,6 +1,9 @@
+from itertools import groupby
+
 from rest_framework.response import Response
 
 from aw_reporting.api.views.trends.base_track import TrackApiBase
+from aw_reporting.models import Campaign
 
 
 class BaseTrackFiltersListApiView(TrackApiBase):
@@ -32,18 +35,19 @@ class BaseTrackFiltersListApiView(TrackApiBase):
         if accounts is None:
             accounts = self._get_accounts(request)
 
+        campaigns_map = self._get_campaigns_map()
+
         return dict(
             accounts=[
-                self._map_account(account)
+                self._map_account(account, campaigns_map.get(account.id, []))
                 for account in accounts
             ],
             **self._get_static_filters()
         )
 
-    def _map_account(self, account):
-        campaigns = list(account.campaigns.all())
-        starts = [c.start_date for c in campaigns]
-        ends = [c.end_date for c in campaigns]
+    def _map_account(self, account, campaigns):
+        starts = [c["start_date"] for c in campaigns]
+        ends = [c["end_date"] for c in campaigns]
         return dict(
             id=account.id,
             name=account.name,
@@ -55,12 +59,21 @@ class BaseTrackFiltersListApiView(TrackApiBase):
             ]
         )
 
+    def _get_campaigns_map(self):
+        campaigns = Campaign.objects.all() \
+            .values("id", "name", "start_date", "end_date", "account_id") \
+            .order_by("account_id", "id")
+        return {
+            key: list(group)
+            for key, group in groupby(campaigns, lambda i: i["account_id"])
+        }
+
     def _map_campaigns(self, campaign):
         return dict(
-            id=campaign.id,
-            name=campaign.name,
-            start_date=campaign.start_date,
-            end_date=campaign.end_date,
+            id=campaign["id"],
+            name=campaign["name"],
+            start_date=campaign["start_date"],
+            end_date=campaign["end_date"],
         )
 
     def get(self, request, *args, **kwargs):
