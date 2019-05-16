@@ -15,9 +15,13 @@ from segment.models import SegmentRelatedChannel
 from segment.models import SegmentRelatedKeyword
 from segment.models import SegmentRelatedVideo
 from segment.models import SegmentVideo
+from segment.models import SegmentRelatedKeywordManager
+from segment.models import SegmentRelatedVideoManager
+from segment.models import SegmentRelatedChannelManager
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
+from utils.utittests.redis_mock import MockRedis
 
 
 related_classes = {
@@ -35,9 +39,9 @@ def get_related_ref(segment_class):
 
 class UpdateSegmentsTestCase(TransactionTestCase):
     generic_args_list = [
-        ("Channel Segment", (SegmentChannel,), dict()),
-        ("Video Segment", (SegmentVideo,), dict()),
-        ("Keyword Segment", (SegmentKeyword,), dict()),
+        ("Channel Segment", (SegmentChannel, SegmentRelatedChannelManager), dict()),
+        ("Video Segment", (SegmentVideo, SegmentRelatedVideoManager), dict()),
+        ("Keyword Segment", (SegmentKeyword, SegmentRelatedKeywordManager), dict()),
     ]
 
     def setUp(self):
@@ -45,8 +49,14 @@ class UpdateSegmentsTestCase(TransactionTestCase):
         self.chf_mcc = Account.objects.create(id=chf_account_id, name="CHF MCC")
         self.chf_mcc.refresh_from_db()
 
+        self.redis_mock = mock.patch("utils.celery.tasks.REDIS_CLIENT", MockRedis())
+        self.redis_mock.start()
+
+    def tearDown(self):
+        self.redis_mock.stop()
+
     @generic_test(generic_args_list)
-    def test_cleanup(self, segment_class):
+    def test_cleanup(self, segment_class, segment_related_manager):
         user = UserProfile.objects.create(id=1)
         segment = segment_class.objects.create(id=1, owner=user)
 
@@ -79,13 +89,13 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                        clicks=clicks, cost=cost,
                                        **{related_field: related_id})
 
-        with mock.patch.object(segment_class, '_get_alive_singledb_data', return_value=alive_related_ids):
-            segment_class.objects.cleanup_related_records()
+        with mock.patch.object(segment_related_manager, "_get_alive_singledb_data", return_value=alive_related_ids):
+            related_class.objects.cleanup_related_records()
 
         self.assertEqual(list(segment.get_related_ids()), alive_related_ids)
 
     @generic_test(generic_args_list)
-    def test_cleanup_huge_segments(self, segment_class):
+    def test_cleanup_huge_segments(self, segment_class, segment_related_manager):
 
         deleted_related_ids = [str(id) for id in range(10000)]
         alive_related_ids = [str(id) for id in range(10000, 10009)]
@@ -130,7 +140,7 @@ class UpdateSegmentsTestCase(TransactionTestCase):
                                        **{related_field: related_id})
 
         with mock.patch.object(SingleDatabaseApiConnector, "store_ids", side_effect=mocked_connector_store_ids):
-            with mock.patch.object(segment_class, '_get_alive_singledb_data', side_effect=mocked_connector_get_data):
-                segment_class.objects.cleanup_related_records()
+            with mock.patch.object(segment_related_manager, "_get_alive_singledb_data", side_effect=mocked_connector_get_data):
+                related_class.objects.cleanup_related_records()
 
         self.assertEqual(list(segment.get_related_ids()), alive_related_ids)

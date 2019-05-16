@@ -21,7 +21,7 @@ from pid import PidFile
 
 """
 requirements:
-    we receive a list of video URLs as a 'seed list'. 
+    we receive a list of video URLs as a 'seed list'.
     we receive a list of blacklist keywords
     we receive a list of inclusion keywords
 process:
@@ -83,14 +83,17 @@ class Command(BaseCommand):
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
+                self.export_videos()
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[self.thread_id:self.thread_id+100]:
+        start = self.thread_id * 100
+        for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
+            self.export_videos()
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
@@ -147,13 +150,14 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
-                v, _  = AuditVideoProcessor.objects.get_or_create(
-                    video=db_video,
-                    audit=self.audit
-                )
-                if not v.video_source:
-                    v.video_source = video
-                    v.save()
+                if not self.language or self.language==db_video_meta.language.language:
+                    v, _  = AuditVideoProcessor.objects.get_or_create(
+                        video=db_video,
+                        audit=self.audit
+                    )
+                    if not v.video_source:
+                        v.video_source = video
+                        v.save()
         avp.processed = timezone.now()
         avp.save()
 
@@ -359,3 +363,6 @@ class Command(BaseCommand):
                     country
                 ]
                 wr.writerow(data)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()

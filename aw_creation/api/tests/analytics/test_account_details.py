@@ -408,3 +408,10 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["impressions"], campaign.impressions)
+
+    def test_demo_is_editable(self):
+        recreate_demo_data()
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["is_editable"], True)

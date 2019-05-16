@@ -29,7 +29,6 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    categories = {}
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -205,3 +204,71 @@ class Command(BaseCommand):
         if len(keywords) > 0:
             return True, keywords
         return False, None
+
+    def export_channels(self, audit_id=None):
+        cols = [
+            "Channel Title",
+            "Channel ID",
+            "views",
+            "subscribers",
+            "num_videos",
+            "country",
+            "language",
+            "unique bad words",
+            "bad words",
+        ]
+        if not audit_id and self.audit:
+            audit_id = self.audit.id
+        channel_ids = []
+        hit_words = {}
+        video_count = {}
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related("channel")
+        for cid in channels:
+            channel_ids.append(cid.channel_id)
+            hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
+            if not hit_words[cid.channel.channel_id]:
+                hit_words[cid.channel.channel_id] = []
+            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
+            video_count[cid.channel.channel_id] = videos.count()
+            for video in videos:
+                if video.word_hits.get('exclusion'):
+                    for bad_word in video.word_hits.get('exclusion'):
+                        if bad_word not in hit_words[cid.channel.channel_id]:
+                            hit_words[cid.channel.channel_id].append(bad_word)
+        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids).select_related(
+                "channel",
+                "language",
+                "country"
+        )
+        try:
+            name = self.audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+            wr.writerow(cols)
+            for v in channel_meta:
+                try:
+                    language = v.language.language
+                except Exception as e:
+                    language = ""
+                try:
+                    country = v.country.country
+                except Exception as e:
+                    country = ""
+                data = [
+                    v.name,
+                    v.channel.channel_id,
+                    v.view_count,
+                    v.subscribers,
+                    video_count[v.channel.channel_id],
+                    country,
+                    language,
+                    len(hit_words[v.channel.channel_id]),
+                    ','.join(hit_words[v.channel.channel_id])
+                ]
+                wr.writerow(data)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()
+            return 'export_{}.csv'.format(name)
