@@ -2,7 +2,6 @@ from collections import defaultdict
 
 from django.db.models import Q
 
-from audit_tool.models import APIScriptTracker
 import brand_safety.constants as constants
 from brand_safety.audit_providers.base import AuditProvider
 from segment.models.persistent import PersistentSegmentChannel
@@ -17,60 +16,84 @@ from utils.elasticsearch import ElasticSearchConnector
 
 
 class BrandSafetyListGenerator(object):
-    CHANNEL_SCORE_FAIL_LIMIT = 0
-    VIDEO_SCORE_FAIL_LIMIT = 89
-    ES_SIZE = 10
+    CHANNEL_SCORE_FAIL_THRESHOLD = 0
+    VIDEO_SCORE_FAIL_THRESHOLD = 89
+    ES_SIZE = 50
     CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
     VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
+    CHANNEL_BATCH_LIMIT = 100
+    VIDEO_BATCH_LIMIT = 100
 
     def __init__(self, *_, **kwargs):
-        self.channel_script_tracker = kwargs["channel_api_tracker"]
-        self.video_script_tracker = kwargs["video_api_tracker"]
-        self.channel_cursor_id = self.channel_script_tracker.cursor_id
-        self.video_cursor_id = self.video_script_tracker.cursor_id
+        self.api_script_tracker = kwargs["api_script_tracker"]
+        self.list_generator_type = kwargs["list_generator_type"]
+        self.cursor_id = self.api_script_tracker.cursor_id
         self.sdb_connector = SingleDatabaseApiConnector()
-        # self._set_master_segments()
         self.es_connector = ElasticSearchConnector()
         self.audit_provider = AuditProvider()
         self.dups = {}
 
+        self.master_blacklist_segment = None
+        self.master_whitelist_segment = None
+        self.related_segment_model = None
+
+        self.SCORE_FAIL_THRESHOLD = None
+        self.batch_limit = None
+        self.batch_count = 0
+        self._set_config()
+
     def run(self):
-        count = 0
-        print('running')
-        channel_generator = self._es_generator(
-            "channel_id", self.CHANNEL_SCORE_FAIL_LIMIT, constants.BRAND_SAFETY_CHANNEL_ES_INDEX, last_id=self.channel_cursor_id
-        )
-        for channel_batch in channel_generator:
-            self.process(channel_batch, PersistentSegmentChannel, PersistentSegmentRelatedChannel)
-            count +=1
-            if count >= 20:
-                break
-
-        print("dups", self.dups)
-        # for video_batch in self._es_generator(last_id=self.video_script_tracker):
-        #     pass
-
-    def process(self, es_data, segment_model, related_segment_model):
-        item_type = segment_model.segment_type
-        item_ids = [item["_id"] for item in es_data]
-        # Get sdb data for related model object creation
-        sdb_data = self._get_sdb_data(item_ids, item_type)
-        # Update sdb data with es brand safety data
-        updated_data = self._merge_data(es_data, sdb_data)
-
-        sorted_by_category = self._sort_by_category(updated_data)
-        for category, items in sorted_by_category.items():
-            segment_title = self._get_segment_title(
-                item_type,
-                category,
-                PersistentSegmentCategory.WHITELIST
+        if self.list_generator_type == constants.CHANNEL:
+            data_generator = self._es_generator(
+                "channel_id", self.CHANNEL_SCORE_FAIL_THRESHOLD, constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
+                last_id=self.cursor_id
             )
-            try:
-                segment_manager = segment_model.objects.get(title=segment_title)
-                to_create = self._instantiate_related_items(items, segment_manager, related_segment_model)
-                related_segment_model.objects.bulk_create(to_create)
-            except segment_model.DoesNotExist:
-                print("Unable to get segment: {}".format(segment_title))
+            segment_model = PersistentSegmentChannel
+            related_segment_model = PersistentSegmentRelatedChannel
+        elif self.list_generator_type == constants.VIDEO:
+            data_generator = self._es_generator(
+                "video_id", self.VIDEO_SCORE_FAIL_THRESHOLD, constants.BRAND_SAFETY_VIDEO_ES_INDEX,
+                last_id=self.cursor_id
+            )
+            segment_model = PersistentSegmentVideo
+            related_segment_model = PersistentSegmentRelatedVideo
+        else:
+            raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
+        get_save_master_config = self.get_save_master_config[self.list_generator_type]
+        self.process_items(data_generator, segment_model, related_segment_model, get_save_master_config)
+
+    def process_items(self, es_data_generator, segment_model, related_segment_model, get_save_master_config):
+        for es_data in es_data_generator:
+            print("On: ", self.batch_count)
+
+            item_type = segment_model.segment_type
+            item_ids = [item["_id"] for item in es_data]
+            if self.batch_count == 0 and self.cursor_id is not None:
+                print("i am not from beginning and starting with 0")
+                self._clean(item_ids, related_segment_model)
+            # Get sdb data for related model object creation
+            sdb_data = self._get_sdb_data(item_ids, item_type)
+            # Update sdb data with es brand safety data
+            updated_data = self._merge_data(es_data, sdb_data)
+
+            sorted_by_category = self._sort_by_category(updated_data)
+            for category, items in sorted_by_category.items():
+                segment_title = self._get_segment_title(
+                    item_type,
+                    category,
+                    PersistentSegmentCategory.WHITELIST
+                )
+                try:
+                    segment_manager = segment_model.objects.get(title=segment_title)
+                    to_create = self._instantiate_related_items(items, segment_manager, related_segment_model)
+                    related_segment_model.objects.bulk_create(to_create)
+                except segment_model.DoesNotExist:
+                    print("Unable to get segment: {}".format(segment_title))
+
+            self._save_master_results(updated_data, **get_save_master_config)
+            self.batch_count += 1
+            if self.batch_count >= 5:
+                break
 
     def _merge_data(self, es_data, sdb_data):
         """
@@ -86,6 +109,7 @@ class BrandSafetyListGenerator(object):
             keywords = self._extract_keywords(doc["_source"])
             sdb_item[constants.BRAND_SAFETY_HITS] = keywords
             sdb_item["id"] = doc["_id"]
+            sdb_item["overall_score"] = doc["_source"]["overall_score"]
             # Try to add videos_scored for channel objects
             try:
                 sdb_item["audited_videos"] = doc["_source"]["videos_scored"]
@@ -99,13 +123,13 @@ class BrandSafetyListGenerator(object):
         :param items: sdb data
         :return: list
         """
-        audits_by_category = defaultdict(list)
+        items_by_category = defaultdict(list)
         for item in items.values():
             category = item.get("category")
-            audits_by_category[category].append(item)
-        return audits_by_category
+            items_by_category[category].append(item)
+        return items_by_category
 
-    def _sort_brand_safety(self, audits):
+    def _sort_brand_safety(self, items):
         """
         Sort audits by fail or pass based on their overall brand safety score
         :param audits: list
@@ -113,54 +137,34 @@ class BrandSafetyListGenerator(object):
         """
         brand_safety_pass = {}
         brand_safety_fail = {}
-        for audit in audits:
-            if audit.target_segment == PersistentSegmentCategory.WHITELIST:
-                brand_safety_pass[audit.pk] = audit
-            elif audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-                brand_safety_fail[audit.pk] = audit
-            else:
-                pass
+        # for item in items:
+        #     if audit.target_segment == PersistentSegmentCategory.WHITELIST:
+        #         brand_safety_pass[audit.pk] = audit
+        #     elif audit.target_segment == PersistentSegmentCategory.BLACKLIST:
+        #         brand_safety_fail[audit.pk] = audit
+        #     else:
+        #         pass
+        for item in items:
+            if item["overall_score"] >= self.
         return brand_safety_pass, brand_safety_fail
 
-    def _save_master_results(self, *_, **kwargs):
+    def _save_master_results(self, items, **kwargs):
         """
         Save Video and Channel audits based on their brand safety results to their respective persistent segments
         :param kwargs: Persistent segments to save to
         :return: None
         """
-        audits = kwargs["audits"]
         # Persistent segments that store brand safety objects
         whitelist_segment = kwargs["whitelist_segment"]
         blacklist_segment = kwargs["blacklist_segment"]
         # Related segment model used to instantiate database objects
         related_segment_model = kwargs["related_segment_model"]
         # Sort audits by brand safety results
-        brand_safety_pass, brand_safety_fail = self._sort_brand_safety(audits)
-        brand_safety_pass_pks = list(brand_safety_pass.keys())
-        brand_safety_fail_pks = list(brand_safety_fail.keys())
-        # Remove brand safety failed audits from whitelist as they are no longer belong in the whitelist
-        whitelist_segment.related.filter(related_id__in=brand_safety_fail_pks).delete()
-        blacklist_segment.related.filter(related_id__in=brand_safety_pass_pks).delete()
-        # Get related ids that still exist to avoid creating duplicates with results
-        exists = related_segment_model.objects \
-            .filter(
-            Q(segment=whitelist_segment) | Q(segment=blacklist_segment),
-            related_id__in=brand_safety_pass_pks + brand_safety_fail_pks
-        ).values_list("related_id", flat=True)
-        # Set difference to get audits that need to be created
-        to_create = set(brand_safety_pass_pks + brand_safety_fail_pks) - set(exists)
-        # Instantiate related models with new appropriate segment and segment types
-        to_create = [
-            brand_safety_pass[pk].instantiate_related_model(related_segment_model, whitelist_segment,
-                                                            segment_type=constants.WHITELIST)
-            if brand_safety_pass.get(pk) is not None
-            else
-            brand_safety_fail[pk].instantiate_related_model(related_segment_model, blacklist_segment,
-                                                            segment_type=constants.BLACKLIST)
-            for pk in to_create
-        ]
-        related_segment_model.objects.bulk_create(to_create)
-        return brand_safety_pass, brand_safety_fail
+        brand_safety_pass, brand_safety_fail = self._sort_brand_safety(items)
+
+        whitelist_to_create = self._instantiate_related_items(brand_safety_pass, whitelist_segment, related_segment_model)
+        blacklist_to_create = self._instantiate_related_items(brand_safety_fail, blacklist_segment, related_segment_model)
+        related_segment_model.objects.bulk_create(whitelist_to_create + blacklist_to_create)
 
     @staticmethod
     def _get_segment_title(segment_type, category, segment_category):
@@ -199,7 +203,8 @@ class BrandSafetyListGenerator(object):
                     "likes": item["likes"],
                     "dislikes": item["dislikes"],
                     "views": item["views"],
-                    "bad_words": item[constants.BRAND_SAFETY_HITS]
+                    "bad_words": item[constants.BRAND_SAFETY_HITS],
+                    "overall_scoore": item["overall_score"]
                 }
             )
             if segment_manager.segment_type == constants.CHANNEL:
@@ -211,11 +216,11 @@ class BrandSafetyListGenerator(object):
     def _es_generator(self, id_field, score_limit, index, last_id=None):
         """
         Generator for es data
-        :param id_field:
-        :param score_limit:
-        :param index:
-        :param last_id:
-        :return:
+        :param id_field: str -> channel_id or video_id
+        :param score_limit: int: lowest limit overall score
+        :param index: str
+        :param last_id: str
+        :return: list
         """
         last_id = last_id or ""
         while True:
@@ -223,23 +228,13 @@ class BrandSafetyListGenerator(object):
                 "query": {
                     "bool": {
                         "filter": [
-                            {"range": {"overall_score": {"gte": score_limit}}},
                             {"range": {id_field: {"gte": last_id}}}
                         ]
                     }
                 }
             }
             response = self.es_connector.search(index=index, sort=id_field, size=self.ES_SIZE, body=body)
-            for item in response["hits"]["hits"]:
-                if item["_id"] is last_id:
-                    print("FOUND", last_id)
             items = [item for item in response["hits"]["hits"] if item["_id"] != last_id]
-            print("Items retrieved: {}".format(len(items)))
-
-            for item in items:
-                _id = item["_id"]
-                if self.dups.get(_id) is None:
-                    self.dups[_id] = True
 
             yield items
             last_id = items[-1].get("_id")
@@ -275,17 +270,34 @@ class BrandSafetyListGenerator(object):
             all_keywords.update(keywords)
         return list(all_keywords)
 
-    def _set_master_segments(self):
+    def _set_config(self):
         """
-        Set required persistent segments to save to
+        Set configuration depending on list generation type
         :return:
         """
-        self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
-        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
+        if self.list_generator_type is constants.CHANNEL:
+            self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
+            self.batch_limit = self.CHANNEL_BATCH_LIMIT
+            self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                category="blacklist")
+            self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+                category="whitelist")
+        elif self.list_generator_type is constants.VIDEO:
+            self.batch_limit = self.VIDEO_BATCH_LIMIT
+            self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
+            self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
+        else:
+            raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
+
+    def _clean(self, item_ids, related_segment_model):
+        """
+        Clean related segment model in case of script failurer
+        :param item_ids:
+        :return:
+        """
+        related_segment_model.objects.filter(related_id__in=item_ids).delete()
 
