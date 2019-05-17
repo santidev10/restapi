@@ -3,8 +3,6 @@ from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
 
-from django.db.models import Q
-
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -12,12 +10,6 @@ from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from singledb.connector import SingleDatabaseApiConnector
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent import PersistentSegmentRelatedVideo
-from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.models.persistent.constants import PersistentSegmentTitles
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +31,6 @@ class StandardBrandSafetyProvider(object):
         "tags": 1,
         "transcript": 1,
     }
-    # Bad words in these categories should be ignored while calculating brand safety scores
-    bad_word_categories_ignore = [9]
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
     update_time_threshold = 7
@@ -68,7 +58,6 @@ class StandardBrandSafetyProvider(object):
             es_channel_index=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
         self.es_connector = ElasticSearchConnector()
-        self._set_master_segments()
 
     def run(self):
         """
@@ -84,20 +73,6 @@ class StandardBrandSafetyProvider(object):
             # Extract nested results from each process
             video_audits, channel_audits = self._extract_results(results)
             self._index_results(video_audits, channel_audits)
-
-            # Process saving video and channel audits into segments separately as they must be saved to different segments
-            self._save_master_results(
-                audits=video_audits, whitelist_segment=self.whitelist_videos,
-                blacklist_segment=self.blacklist_videos,
-                related_segment_model=PersistentSegmentRelatedVideo)
-
-            self._save_master_results(
-                audits=channel_audits, whitelist_segment=self.whitelist_channels,
-                blacklist_segment=self.blacklist_channels, related_segment_model=PersistentSegmentRelatedChannel)
-
-            # Save to category whitelists
-            self._save_category_results(video_audits, PersistentSegmentVideo, PersistentSegmentRelatedVideo)
-            self._save_category_results(channel_audits, PersistentSegmentChannel, PersistentSegmentRelatedChannel)
 
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
@@ -203,49 +178,8 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         bad_words = BadWord.objects\
-            .exclude(category_ref_id__in=self.bad_word_categories_ignore)\
             .values_list("name", flat=True)
         return bad_words
-
-    def _save_category_results(self, audits, segment_model, related_segment_model):
-        """
-        Save audits into their respective category segments
-            Category segments only contain whitelists
-        :param audits: Channel or Video audit objects
-        :param segment_model: PersistentSegmentModel
-        :param releated_segment_model: PersistentSegmentRelated Model
-        :return:
-        """
-        # sort audits by their categories
-        audits_by_category = defaultdict(lambda: defaultdict(list))
-        for audit in audits:
-            category = audit.metadata["category"]
-            if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-                audits_by_category[category]["fail"].append(audit)
-            else:
-                audits_by_category[category]["pass"].append(audit)
-
-        # Remove existing ids to create
-        for category, audits in audits_by_category.items():
-            try:
-                segment_title = self._get_segment_title(
-                    segment_model.segment_type,
-                    category,
-                    PersistentSegmentCategory.WHITELIST,
-                )
-                print(segment_title)
-                whitelist_segment_manager, _ = segment_model.objects.get_or_create(title=segment_title)
-                passed_related_ids = [audit.pk for audit in audits["pass"]]
-                failed_related_ids = [audit.pk for audit in audits["fail"]]
-                # Delete items that have failed from segment whitelist
-                whitelist_segment_manager.related.filter(related_id__in=failed_related_ids).delete()
-                # Set difference for existing and to create to prevent creating duplicates
-                existing_passed = whitelist_segment_manager.related.filter(related_id__in=passed_related_ids)
-                to_create = set(existing_passed) - set(passed_related_ids)
-                related_segment_model.objects.bulk_create(to_create)
-            except segment_model.DoesNotExist:
-                print("Unable to get category segment: {}".format(category))
-                raise
 
     def _create_brand_safety_default_category_scores(self, data_type=constants.VIDEO):
         """
@@ -261,7 +195,7 @@ class StandardBrandSafetyProvider(object):
             default_category_score = allowed_data_types[data_type]
         except KeyError:
             raise ValueError("Unsupported data type for category scores: {}".format(data_type))
-        categories = BadWordCategory.objects.exclude(id__in=self.bad_word_categories_ignore).values_list("id", flat=True)
+        categories = BadWordCategory.objects.values_list("id", flat=True)
         default_category_scores = {
             category_id: default_category_score
             for category_id in categories
@@ -293,93 +227,5 @@ class StandardBrandSafetyProvider(object):
                 # If channel is not in index or has no updated_at, create / update it
                 channels_to_update.append(channel)
         return channels_to_update
-
-    def _set_master_segments(self):
-        """
-        Set required persistent segments to save to
-        :return:
-        """
-        self.blacklist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-        self.whitelist_channels, _ = PersistentSegmentChannel.objects.get_or_create(
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
-        self.blacklist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-        self.whitelist_videos, _ = PersistentSegmentVideo.objects.get_or_create(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
-
-    def _sort_brand_safety(self, audits):
-        """
-        Sort audits by fail or pass based on their overall brand safety score
-        :param audits: list
-        :return: tuple -> lists of sorted audits
-        """
-        brand_safety_pass = {}
-        brand_safety_fail = {}
-        for audit in audits:
-            if audit.target_segment == PersistentSegmentCategory.WHITELIST:
-                brand_safety_pass[audit.pk] = audit
-            elif audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-                brand_safety_fail[audit.pk] = audit
-            else:
-                pass
-        return brand_safety_pass, brand_safety_fail
-
-    def _save_master_results(self, *_, **kwargs):
-        """
-        Save Video and Channel audits based on their brand safety results to their respective persistent segments
-        :param kwargs: Persistent segments to save to
-        :return: None
-        """
-        audits = kwargs["audits"]
-        # Persistent segments that store brand safety objects
-        whitelist_segment = kwargs["whitelist_segment"]
-        blacklist_segment = kwargs["blacklist_segment"]
-        # Related segment model used to instantiate database objects
-        related_segment_model = kwargs["related_segment_model"]
-        # Sort audits by brand safety results
-        brand_safety_pass, brand_safety_fail = self._sort_brand_safety(audits)
-        brand_safety_pass_pks = list(brand_safety_pass.keys())
-        brand_safety_fail_pks = list(brand_safety_fail.keys())
-        # Remove brand safety failed audits from whitelist as they are no longer belong in the whitelist
-        whitelist_segment.related.filter(related_id__in=brand_safety_fail_pks).delete()
-        blacklist_segment.related.filter(related_id__in=brand_safety_pass_pks).delete()
-        # Get related ids that still exist to avoid creating duplicates with results
-        exists = related_segment_model.objects \
-            .filter(
-            Q(segment=whitelist_segment) | Q(segment=blacklist_segment),
-            related_id__in=brand_safety_pass_pks + brand_safety_fail_pks
-        ).values_list("related_id", flat=True)
-        # Set difference to get audits that need to be created
-        to_create = set(brand_safety_pass_pks + brand_safety_fail_pks) - set(exists)
-        # Instantiate related models with new appropriate segment and segment types
-        to_create = [
-            brand_safety_pass[pk].instantiate_related_model(related_segment_model, whitelist_segment,
-                                                            segment_type=constants.WHITELIST)
-            if brand_safety_pass.get(pk) is not None
-            else
-            brand_safety_fail[pk].instantiate_related_model(related_segment_model, blacklist_segment,
-                                                            segment_type=constants.BLACKLIST)
-            for pk in to_create
-        ]
-        related_segment_model.objects.bulk_create(to_create)
-        return brand_safety_pass, brand_safety_fail
-
-    @staticmethod
-    def _get_segment_title(segment_type, category, segment_category):
-        """
-        Return formatted Persistent segment title
-        :param segment_type: channel or video
-        :param category: Item category e.g. Politics
-        :param segment_category: whitelist or blacklist
-        :return:
-        """
-        categorized_segment_title = "{}s {} {}".format(
-            segment_type.capitalize(),
-            category,
-            segment_category.capitalize(),
-        )
-        return categorized_segment_title
-
 
 

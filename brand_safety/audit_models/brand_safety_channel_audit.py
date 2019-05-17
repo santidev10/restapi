@@ -25,7 +25,6 @@ class BrandSafetyChannelAudit(object):
         self.video_audits = video_audits
         self.audit_types = audit_types
         self.metadata = self.get_metadata(channel_data)
-        self.target_segment = None
 
     @property
     def pk(self):
@@ -151,32 +150,3 @@ class BrandSafetyChannelAudit(object):
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
 
-    def set_brand_safety_segment(self):
-        """
-        Sets attribute determining if audit should be part of master whitelist or blacklist
-            If audit does not meet requirements for either whitelist or blacklist, then it should not be added to any segment
-        :return:
-        """
-        brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
-        if brand_safety_results.overall_score <= self.brand_safety_score_fail:
-            self.target_segment = PersistentSegmentCategory.BLACKLIST
-        else:
-            self.target_segment = PersistentSegmentCategory.WHITELIST
-        # Immediately blacklist if any metadata hit
-        # if len(self.results["metadata_hits"]) >= self.brand_safety_metadata_threshold:
-        #     self.target_segment = PersistentSegmentCategory.BLACKLIST
-        #     return
-        #
-        # channel_subscribers = self.metadata["subscribers"] if self.metadata["subscribers"] is not constants.DISABLED else 0
-        # failed_video_audits = 0
-        # # Blacklist channel if number of blacklist videos exceeds threshold
-        # for audit in self.video_audits:
-        #     if audit.target_segment == PersistentSegmentCategory.BLACKLIST:
-        #         failed_video_audits += 1
-        #     if failed_video_audits > self.failed_videos_count_threshold:
-        #         self.target_segment = PersistentSegmentCategory.BLACKLIST
-        # # If channel has failed as this point, check subscribers
-        # if channel_subscribers > self.channel_minimum_subscribers_whitelist:
-        #     self.target_segment = PersistentSegmentCategory.WHITELIST
-        # else:
-        #     self.target_segment = None

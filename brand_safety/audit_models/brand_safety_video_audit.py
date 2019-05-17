@@ -4,7 +4,6 @@ from collections import Counter
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
-from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyVideoAudit(object):
@@ -26,11 +25,6 @@ class BrandSafetyVideoAudit(object):
         self.audit_types = audit_types
         self.metadata = self.get_metadata(data)
         self.results = defaultdict(list)
-        self.target_segment = None
-        self.whitelist_channels = None
-        self.blacklist_channels = None
-        self.whitelist_videos = None
-        self.blacklist_videos = None
 
     @property
     def pk(self):
@@ -44,7 +38,6 @@ class BrandSafetyVideoAudit(object):
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
         self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits
         self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
-        self.set_brand_safety_segment()
 
     def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
         details = {
@@ -138,30 +131,3 @@ class BrandSafetyVideoAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
-
-    def set_brand_safety_segment(self):
-        """
-        Sets attribute determining if audit should be part of master whitelist or blacklist
-            If audit does not meet requirements for either whitelist or blacklist, then it should not be added to any segment
-        :return:
-        """
-        brand_safety_results = getattr(self, constants.BRAND_SAFETY_SCORE)
-        if brand_safety_results.overall_score <= self.brand_safety_score_fail:
-            self.target_segment = PersistentSegmentCategory.BLACKLIST
-        else:
-            self.target_segment = PersistentSegmentCategory.WHITELIST
-        # brand_safety_hits = self.results[constants.BRAND_SAFETY]
-        # if not brand_safety_hits:
-        #     dislike_ratio = self.auditor.get_dislike_ratio(self.metadata["likes"], self.metadata["dislikes"])
-        #     if dislike_ratio is not None and dislike_ratio <= self.dislike_ratio_audit_threshold and self.metadata["views"] > self.minimum_views_whitelist:
-        #         self.target_segment = PersistentSegmentCategory.WHITELIST
-        #     else:
-        #         self.target_segment = None
-        # else:
-        #     brand_safety_hit_counts = Counter(brand_safety_hits)
-        #     # If number of unique keywords exceeds threshold or count of any keyword exceeds threshold
-        #     if len(brand_safety_hit_counts.keys()) >= self.brand_safety_keyword_unique_words_threshold or \
-        #             any(count >= self.brand_safety_keyword_count_threshold for count in brand_safety_hit_counts.values()):
-        #         self.target_segment = PersistentSegmentCategory.BLACKLIST
-        #     else:
-        #         self.target_segment = None
