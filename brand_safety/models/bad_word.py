@@ -33,6 +33,12 @@ class BadWord(models.Model):
 
     objects = BaseQueryset.as_manager()
 
+    def save(self, *args, **kwargs):
+        pass
+
+    def delete(self, *args, **kwargs):
+        pass
+
     class Meta:
         unique_together = ("name", "category")
 
