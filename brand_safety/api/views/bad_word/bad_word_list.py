@@ -41,7 +41,11 @@ class BadWordListApiView(ListCreateAPIView):
         name = request.data.get("name")
         category = request.data.get("category")
         negative_score = request.data.get("negative_score")
-        BadWord.objects.get_or_create(name=name, category=BadWordCategory.from_string(category), negative_score=negative_score)
+        BadWord.objects.get_or_create(
+            name=name,
+            category=BadWordCategory.from_string(category),
+            negative_score=negative_score
+        )
 
         queryset = self.get_queryset()
         serializer = BadWordSerializer(queryset, many=True)
