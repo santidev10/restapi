@@ -42,7 +42,7 @@ class BrandSafetyVideoAPIView(APIView):
         # Map category ids to category names and aggregate all keywords for each category
         all_keywords = set()
         for category_id, data in video_es_data["categories"].items():
-            if category_id in BadWordCategory.EXCLUDED:
+            if str(category_id) in BadWordCategory.EXCLUDED:
                 continue
             category_name = category_mapping[category_id]
             keywords = [word["keyword"] for word in data["keywords"]]
