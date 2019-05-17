@@ -3,9 +3,11 @@ from rest_framework import filters
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
-from brand_safety.models import BadWord, BadWordCategory
+from brand_safety.models import BadWord
 
 
 class BadWordListApiView(ListCreateAPIView):
@@ -37,16 +39,9 @@ class BadWordListApiView(ListCreateAPIView):
         queryset = self.do_filters(queryset)
         return queryset
 
-    def create(self, request):
-        name = request.data.get("name")
-        category = request.data.get("category")
-        negative_score = request.data.get("negative_score")
-        BadWord.objects.get_or_create(
-            name=name,
-            category=BadWordCategory.from_string(category),
-            negative_score=negative_score
-        )
-
-        queryset = self.get_queryset()
-        serializer = BadWordSerializer(queryset, many=True)
-        return Response(serializer.data)
+    def post(self, request):
+        serializer = BadWordSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=HTTP_201_CREATED)
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
