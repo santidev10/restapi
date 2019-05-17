@@ -7,15 +7,6 @@ from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoS
 
 
 class BrandSafetyVideoAudit(object):
-    dislike_ratio_audit_threshold = 0.2
-    brand_safety_keyword_unique_words_threshold = 2
-    brand_safety_keyword_count_threshold = 3
-    minimum_views_whitelist = 1000
-    brand_safety_score_fail = 69
-    brand_safety_unique_threshold = 2
-    brand_safety_hits_threshold = 3
-    brand_safety_title_multiplier = 4
-
     def __init__(self, data, audit_types, **kwargs):
         self.source = kwargs["source"]
         self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]

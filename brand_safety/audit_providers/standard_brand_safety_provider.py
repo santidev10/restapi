@@ -18,12 +18,9 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 3
-    channel_id_pool_batch_limit = 3
-    # channel_id_master_batch_limit = 500
-    # channel_id_pool_batch_limit = 50
-    max_process_count = 3
-    brand_safety_fail_threshold = 3
+    channel_id_master_batch_limit = 30
+    channel_id_pool_batch_limit = 150
+    max_process_count = 5
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
         "title": 4,
@@ -67,10 +64,12 @@ class StandardBrandSafetyProvider(object):
         logger.info("Starting standard audit...")
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self._channel_id_batch_generator(self.cursor_id):
+            if not channel_batch:
+                continue
             # Update score mapping so each batch uses updated brand safety scores
             results = pool.map(self._process_audits, self.audit_provider.batch(channel_batch, self.channel_id_pool_batch_limit))
 
-            # Extract nested results from each process
+            # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
             self._index_results(video_audits, channel_audits)
 
@@ -119,12 +118,10 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         self._index_brand_safety_results(
-            # self.audit_service.gather_brand_safety_results(video_audits),
             video_audits,
             index_name=constants.BRAND_SAFETY_VIDEO_ES_INDEX
         )
         self._index_brand_safety_results(
-            # self.audit_service.gather_brand_safety_results(channel_audits),
             channel_audits,
             index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
         )
@@ -149,12 +146,12 @@ class StandardBrandSafetyProvider(object):
         while self.channel_batch_counter <= self.channel_batch_counter_limit:
             params["channel_id__range"] = "{},".format(cursor_id or "")
             response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
-            channels = [item["channel_id"] for item in response.get("items", []) if item["channel_id"] != cursor_id]
-            if not channels:
+            channel_ids = [item["channel_id"] for item in response.get("items", []) if item["channel_id"] != cursor_id]
+            if not channel_ids:
                 break
-            channels = self._get_channels_to_update(channels)
-            yield channels
-            cursor_id = channels[-1]
+            channels_to_update = self._get_channels_to_update(channel_ids)
+            yield channels_to_update
+            cursor_id = channel_ids[-1]
             self.channel_batch_counter += 1
 
     @staticmethod
@@ -178,7 +175,6 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         bad_words = BadWord.objects\
-            .exclude(category_id__in=self.bad_word_categories_ignore)\
             .values_list("name", flat=True)
         return bad_words
 
@@ -214,7 +210,7 @@ class StandardBrandSafetyProvider(object):
         es_channels = self.es_connector.search_by_id(
             constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
             channel_ids,
-            constants.BRAND_SAFETY_SCORE
+            constants.BRAND_SAFETY_SCORE_TYPE
         )
         if not es_channels:
             return channel_ids

@@ -10,11 +10,6 @@ class BrandSafetyChannelAudit(object):
     """
     Brand safety Audit for channels using SDB data
     """
-    failed_videos_count_threshold = 3
-    brand_safety_metadata_threshold = 1
-    channel_minimum_subscribers_whitelist = 1000
-    brand_safety_score_fail = 69
-
     def __init__(self, video_audits, audit_types, channel_data, **kwargs):
         self.source = kwargs["source"]
         self.score_mapping = kwargs["score_mapping"]
@@ -43,7 +38,6 @@ class BrandSafetyChannelAudit(object):
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
         self.results["metadata_hits"] = title_hits + description_hits
         self.calculate_brand_safety_score(*title_hits, *description_hits)
-        self.set_brand_safety_segment()
 
     def get_metadata(self, channel_data):
         """
