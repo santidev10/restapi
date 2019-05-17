@@ -4,6 +4,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -11,6 +12,9 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class BadWordListTestCase(ExtendedAPITestCase):
+    def setUp(self):
+        self.test_category = BadWordCategory.objects.create(name="testing")
+
     def _request(self, **query_params):
         url = reverse(
             PathNames.BadWord.LIST_AND_CREATE,
@@ -54,7 +58,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
     def test_serialization(self):
         bad_word = BadWord.objects.create(
             id=next(int_iterator),
-            category="Test category",
+            category_ref=self.test_category,
             name="Test Bad Word"
         )
         self.create_admin_user()
@@ -64,13 +68,12 @@ class BadWordListTestCase(ExtendedAPITestCase):
 
         self.assertEqual(data["items_count"], 1)
         item = data["items"][0]
-        self.assertEqual(set(item.keys()), {"id", "name", "category"})
+        self.assertEqual(set(item.keys()), {"id", "name", "category_ref"})
         self.assertEqual(item["id"], bad_word.id)
         self.assertEqual(item["name"], bad_word.name)
-        self.assertEqual(item["category"], bad_word.category)
+        self.assertEqual(item["category_ref"], bad_word.category_ref.name)
 
     def test_ordered_by_name(self):
-        test_category = "test_category"
         bad_words = [
             "bad_word_2",
             "bad_word_3",
@@ -81,7 +84,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
             BadWord.objects.create(
                 id=next(int_iterator),
                 name=bad_word,
-                category=test_category,
+                category_ref=self.test_category,
             )
         self.create_admin_user()
 
@@ -91,13 +94,13 @@ class BadWordListTestCase(ExtendedAPITestCase):
         self.assertEqual(response_bad_words, sorted(bad_words))
 
     def test_filter_by_category(self):
-        test_category = "Test category"
-        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category=test_category + " test suffix")
-        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category=test_category)
+        category_2 = BadWordCategory.objects.create(name="testing test suffix")
+        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category_ref=category_2)
+        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category_ref=self.test_category)
 
         self.create_admin_user()
 
-        response = self._request(category=test_category)
+        response = self._request(category_ref__name=self.test_category.name)
 
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], expected_bad_word.id)
@@ -105,7 +108,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
     def test_search_positive(self):
         test_bad_word = "test bad word"
         test_search_query = test_bad_word[3:-3].upper()
-        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category="")
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category_ref=self.test_category)
 
         self.create_admin_user()
 
@@ -116,7 +119,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
     def test_search_negative(self):
         test_bad_word = "bad word 1"
         test_search_query = "bad word 2"
-        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category="")
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category_ref=self.test_category)
 
         self.create_admin_user()
 

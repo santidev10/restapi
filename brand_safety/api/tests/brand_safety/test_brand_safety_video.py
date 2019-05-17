@@ -26,6 +26,7 @@ class BrandSafetyVideoApiViewTestCase(ExtendedAPITestCase):
             "label",
             "total_unique_flagged_words",
             "category_flagged_words",
+            "worst_words"
         }
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(set(response.data.keys()), response_keys)

@@ -92,12 +92,13 @@ class PermissionGroupNames:
     MEDIA_PLANNING = "Media Planning"
     MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
     MEDIA_PLANNING_AUDIT = "Media Planning - audit"
+    MEDIA_PLANNING_BRAND_SAFETY = "Media Planning - Brand Safety"
     MEDIA_PLANNING_WHITE_LISTS = "Media Planning - whitelists"
     MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
     MANAGED_SERVICE = "Managed Service"
-    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Managed Service Performance Details"
+    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Hide Managed Service Performance Details"
     SELF_SERVICE = "Self Service"
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
@@ -122,6 +123,9 @@ class Permissions:
             "keyword_details",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
+        )),
+        (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
+            "view_audit_segments"
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "view_pre_baked_segments",
