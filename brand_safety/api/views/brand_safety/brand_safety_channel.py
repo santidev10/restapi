@@ -23,7 +23,7 @@ class BrandSafetyChannelAPIView(APIView):
     )
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
-    MAX_PAGE_SIZE = 50
+    MAX_PAGE_SIZE = 24
 
     def get(self, request, **kwargs):
         """
