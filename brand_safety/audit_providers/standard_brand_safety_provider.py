@@ -166,7 +166,7 @@ class StandardBrandSafetyProvider(object):
         score_mapping = defaultdict(dict)
         for word in BadWord.objects.all():
             score_mapping[word.name] = {
-                "category": word.category_ref_id,
+                "category": word.category_id,
                 "score": word.negative_score
             }
         return score_mapping
@@ -178,6 +178,7 @@ class StandardBrandSafetyProvider(object):
         :return:
         """
         bad_words = BadWord.objects\
+            .exclude(category_id__in=self.bad_word_categories_ignore)\
             .values_list("name", flat=True)
         return bad_words
 
