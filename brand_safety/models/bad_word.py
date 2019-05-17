@@ -34,10 +34,13 @@ class BadWord(models.Model):
     objects = BaseQueryset.as_manager()
 
     def save(self, *args, **kwargs):
-        pass
+        if not self.pk:
+            BadWordHistory.objects.create(tag_name=self.name, action='ADDED')
+        super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        pass
+        BadWordHistory.objects.create(tag_name=self.name, action='DELETED')
+        super().delete(*args, **kwargs)
 
     class Meta:
         unique_together = ("name", "category")
