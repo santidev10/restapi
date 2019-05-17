@@ -435,8 +435,6 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
-ELASTIC_SEARCH_URLS = [""]
-
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
