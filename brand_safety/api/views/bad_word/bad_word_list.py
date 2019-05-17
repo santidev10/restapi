@@ -33,7 +33,7 @@ class BadWordListApiView(ListCreateAPIView):
         return queryset
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = BadWord.objects.all().order_by("name")
         queryset = self.do_filters(queryset)
         return queryset
 
