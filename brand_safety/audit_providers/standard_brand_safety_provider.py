@@ -30,7 +30,8 @@ class StandardBrandSafetyProvider(object):
     }
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
-    update_time_threshold = 7
+    # Hours in which a channel should be updated
+    update_time_threshold = 24 * 7
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -218,7 +219,8 @@ class StandardBrandSafetyProvider(object):
             try:
                 es_channel = es_channels[channel]
                 time_elapsed = datetime.today() - datetime.strptime(es_channel["updated_at"], "%Y-%m-%d")
-                if time_elapsed.days > self.update_time_threshold:
+                elapsed_hours = time_elapsed.seconds // 3600
+                if elapsed_hours > self.update_time_threshold:
                     channels_to_update.append(channel)
             except KeyError:
                 # If channel is not in index or has no updated_at, create / update it
