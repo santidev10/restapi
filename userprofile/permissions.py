@@ -125,6 +125,7 @@ class Permissions:
         (PermissionGroupNames.MEDIA_PLANNING, (
         )),
         (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
+            "view_audit_segments"
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "view_pre_baked_segments",
