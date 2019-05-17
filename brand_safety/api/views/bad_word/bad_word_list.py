@@ -16,4 +16,4 @@ class BadWordListApiView(ListCreateAPIView):
 
     filter_backends = (filters.SearchFilter, DjangoFilterBackend)
     search_fields = ("name",)
-    filter_fields = ("category_ref__name",)
+    filter_fields = ("category__name",)
