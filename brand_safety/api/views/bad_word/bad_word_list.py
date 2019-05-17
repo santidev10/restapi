@@ -17,6 +17,26 @@ class BadWordListApiView(ListCreateAPIView):
     search_fields = ("name",)
     filter_fields = ("category__name",)
 
+    def do_filters(self, queryset):
+        filters = {}
+
+        search = self.request.query_params.get("search")
+        if search:
+            filters["name__icontains"] = search
+
+        category = self.request.query_params.get("category")
+        if category:
+            filters["category__id"] = category
+
+        if filters:
+            queryset = queryset.filter(**filters)
+        return queryset
+
+    def get_queryset(self):
+        queryset = self.queryset
+        queryset = self.do_filters(queryset)
+        return queryset
+
     def create(self, request):
         name = request.data.get("name")
         category = request.data.get("category")
@@ -26,5 +46,3 @@ class BadWordListApiView(ListCreateAPIView):
         queryset = self.get_queryset()
         serializer = BadWordSerializer(queryset, many=True)
         return Response(serializer.data)
-
-
