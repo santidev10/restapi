@@ -35,3 +35,11 @@ class BadWord(models.Model):
 
     class Meta:
         unique_together = ("name", "category")
+
+
+class BadWordHistory(models.Model):
+    id = models.AutoField(primary_key=True)
+    tag_name = models.CharField(max_length=150)
+    action = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+
