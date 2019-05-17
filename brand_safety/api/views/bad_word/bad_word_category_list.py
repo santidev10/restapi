@@ -14,6 +14,5 @@ class BadWordCategoryListApiView(ListCreateAPIView):
     serializer_class = BadWordCategorySerializer
     queryset = BadWordCategory.objects.all()
 
-
     filter_backends = (filters.SearchFilter, DjangoFilterBackend)
     search_fields = ("name", "=id",)
