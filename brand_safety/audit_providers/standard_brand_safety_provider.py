@@ -74,13 +74,8 @@ class StandardBrandSafetyProvider(object):
             video_audits, channel_audits = self._extract_results(results)
             self._index_results(video_audits, channel_audits)
 
-            # Update script tracker and cursors
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, channel_batch[-1], integer=False)
-            self.cursor_id = self.script_tracker.cursor_id
-
             # Update brand safety scores in case they have been modified since last batch
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
-        logger.info("Standard Brand Safety Audit Complete.")
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
     def _process_audits(self, channel_ids):
@@ -153,6 +148,9 @@ class StandardBrandSafetyProvider(object):
             channels_to_update = self._get_channels_to_update(channel_ids)
             yield channels_to_update
             cursor_id = channel_ids[-1]
+            # Update script tracker and cursors
+            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
+            self.cursor_id = self.script_tracker.cursor_id
             self.channel_batch_counter += 1
 
     @staticmethod
