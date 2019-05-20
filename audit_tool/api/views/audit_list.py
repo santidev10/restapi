@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
 
 
-class AuditListApiView(APIView):
+class AuditSaveApiView(APIView):
     def get(self, request):
         query_params = request.query_params
         running = query_params["running"] if "running" in query_params else None
@@ -13,4 +13,7 @@ class AuditListApiView(APIView):
             running = strtobool(running.lower())
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
 
-        return Response(AuditProcessor.get(running=running, audit_type=audit_type))
+        return Response({
+            'audits': AuditProcessor.get(running=running, audit_type=audit_type),
+            'audit_types': AuditProcessor.AUDIT_TYPES
+        })
