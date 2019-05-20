@@ -123,10 +123,12 @@ class Comment(models.Model):
     found_items = JSONField(default={})
 
 class AuditProcessor(models.Model):
-    # audit_types:
-    #   0 - recommendation engine
-    #   1 - video meta processor
-    #   2 - channel meta processor
+    AUDIT_TYPES={
+      '0': 'Recommendation Engine',
+      '1': 'Video Meta Processor',
+      '2': 'Channel Meta Processor',
+    }
+
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
