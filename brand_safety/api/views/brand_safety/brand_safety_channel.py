@@ -100,6 +100,7 @@ class BrandSafetyChannelAPIView(APIView):
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
+        flagged_videos.sort(key=lambda video: video["score"])
         return channel_data, flagged_videos
 
     def _get_sdb_channel_video_data(self, channel_id):
