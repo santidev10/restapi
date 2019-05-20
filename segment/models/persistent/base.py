@@ -27,7 +27,6 @@ class PersistentSegmentManager(Manager):
     Extend default persistent segment manager
     """
 
-
 class BasePersistentSegment(Timestampable):
     """
     Base persistent segment model
@@ -52,8 +51,8 @@ class BasePersistentSegment(Timestampable):
     def calculate_details(self):
         raise NotImplementedError
 
-    def get_s3_key(self):
-        key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
+    def get_s3_key(self, datetime=None, from):
+        key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime)
         return key
 
     def get_export_columns(self):
@@ -91,6 +90,7 @@ class BasePersistentSegment(Timestampable):
 
     def get_s3_export_content(self):
         s3 = self._s3()
+        # Get latest entry from file upload manager
         try:
             s3_object = s3.get_object(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
@@ -156,3 +156,4 @@ class PersistentSegmentExportContent(object):
 
     def __exit__(self, *args):
         os.remove(self.filename)
+
