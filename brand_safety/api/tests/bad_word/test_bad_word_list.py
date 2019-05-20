@@ -42,23 +42,10 @@ class BadWordListTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_is_paged(self):
-        self.create_admin_user()
-
-        response = self._request()
-
-        empty_response = dict(
-            current_page=1,
-            items=[],
-            items_count=0,
-            max_page=1,
-        )
-        self.assertEqual(response.data, empty_response)
-
     def test_serialization(self):
         bad_word = BadWord.objects.create(
             id=next(int_iterator),
-            category_ref=self.test_category,
+            category=self.test_category,
             name="Test Bad Word"
         )
         self.create_admin_user()
@@ -66,12 +53,10 @@ class BadWordListTestCase(ExtendedAPITestCase):
         response = self._request()
         data = response.data
 
-        self.assertEqual(data["items_count"], 1)
-        item = data["items"][0]
-        self.assertEqual(set(item.keys()), {"id", "name", "category_ref"})
-        self.assertEqual(item["id"], bad_word.id)
-        self.assertEqual(item["name"], bad_word.name)
-        self.assertEqual(item["category_ref"], bad_word.category_ref.name)
+        self.assertEqual(set(data[0].keys()), {"id", "name", "category", "negative_score"})
+        self.assertEqual(data[0]["id"], bad_word.id)
+        self.assertEqual(data[0]["name"], bad_word.name)
+        self.assertEqual(data[0]["category"], bad_word.category.name)
 
     def test_ordered_by_name(self):
         bad_words = [
@@ -84,45 +69,44 @@ class BadWordListTestCase(ExtendedAPITestCase):
             BadWord.objects.create(
                 id=next(int_iterator),
                 name=bad_word,
-                category_ref=self.test_category,
+                category=self.test_category,
             )
         self.create_admin_user()
 
         response = self._request()
 
-        response_bad_words = [item["name"] for item in response.data["items"]]
+        response_bad_words = [item["name"] for item in response.data]
         self.assertEqual(response_bad_words, sorted(bad_words))
 
     def test_filter_by_category(self):
         category_2 = BadWordCategory.objects.create(name="testing test suffix")
-        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category_ref=category_2)
-        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category_ref=self.test_category)
+        BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category=category_2)
+        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category=self.test_category)
 
         self.create_admin_user()
 
-        response = self._request(category_ref__name=self.test_category.name)
+        response = self._request(category__name=self.test_category.name)
 
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(response.data["items"][0]["id"], expected_bad_word.id)
+        self.assertEqual(response.data[0]["id"], expected_bad_word.id)
 
     def test_search_positive(self):
         test_bad_word = "test bad word"
         test_search_query = test_bad_word[3:-3].upper()
-        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category_ref=self.test_category)
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category=self.test_category)
 
         self.create_admin_user()
 
         response = self._request(name=test_search_query)
 
-        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(len(response.data), 1)
 
     def test_search_negative(self):
         test_bad_word = "bad word 1"
         test_search_query = "bad word 2"
-        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category_ref=self.test_category)
+        BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category=self.test_category)
 
         self.create_admin_user()
 
         response = self._request(search=test_search_query)
 
-        self.assertEqual(response.data["items_count"], 0)
+        self.assertEqual(len(response.data), 0)

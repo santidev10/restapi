@@ -37,7 +37,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
 
         response = self._request(
             name="Test bad word",
-            category_ref="Test category",
+            category="Test category",
         )
 
         self.assertEqual(response.status_code, HTTP_201_CREATED)
@@ -57,7 +57,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
 
         response = self._request(
             name="Test bad word",
-            category_ref=None,
+            category=None,
         )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -66,11 +66,11 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         test_category_1 = BadWordCategory.objects.create(name="test category 1")
         test_category_2 = BadWordCategory.objects.create(name="test category 2")
-        test_bad_word = BadWord.objects.create(name="test bad word", category_ref=test_category_1)
+        test_bad_word = BadWord.objects.create(name="test bad word", category=test_category_1)
 
         response = self._request(
             name=test_bad_word.name,
-            category_ref=test_category_2.name,
+            category=test_category_2.name,
         )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -78,38 +78,38 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
     def test_reject_duplicates(self):
         self.create_admin_user()
         test_category = BadWordCategory.objects.create(name="test category")
-        test_bad_word = BadWord.objects.create(name="test bad word", category_ref=test_category)
+        test_bad_word = BadWord.objects.create(name="test bad word", category=test_category)
 
         response = self._request(
             name=test_bad_word.name,
-            category_ref=test_bad_word.name,
+            category=test_bad_word.name,
         )
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_category_create_category_ref(self):
+    def test_category_create_category(self):
         self.create_admin_user()
         test_category = BadWordCategory.objects.create(name="test category")
         test_bad_word = "testing"
         response = self._request(
             name=test_bad_word,
-            category_ref=test_category.name,
+            category=test_category.name,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
         test_bad_word_category = BadWordCategory.objects.get(name=test_category.name)
-        self.assertEqual(test_bad_word_obj.category_ref_id, test_bad_word_category.id)
+        self.assertEqual(test_bad_word_obj.category_id, test_bad_word_category.id)
 
-    def test_category_create_existing_category_ref(self):
+    def test_category_create_existing_category(self):
         self.create_admin_user()
         test_bad_word = "testing"
         test_category = BadWordCategory.objects.create(name="testing")
         response = self._request(
             name=test_bad_word,
-            category_ref=test_category.name,
+            category=test_category.name,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data['category_ref'], test_category.name)
+        self.assertEqual(response.data['category'], test_category.name)
         test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
-        self.assertEqual(test_bad_word_obj.category_ref_id, test_category.id)
-        self.assertEqual(test_bad_word_obj.category_ref.name, test_category.name)
+        self.assertEqual(test_bad_word_obj.category_id, test_category.id)
+        self.assertEqual(test_bad_word_obj.category.name, test_category.name)

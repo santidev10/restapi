@@ -25,5 +25,5 @@ urlpatterns = [
         r'^(?P<pk>.+)/$',
         views.BadWordUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
-    ),
+    )
 ]
