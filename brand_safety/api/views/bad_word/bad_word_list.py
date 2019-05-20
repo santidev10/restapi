@@ -28,7 +28,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         category = self.request.query_params.get("category")
         if category:
-            filters["category__id"] = category
+            filters["category_id"] = category
 
         if filters:
             queryset = queryset.filter(**filters)
