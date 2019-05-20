@@ -14,7 +14,8 @@ class BadWordSerializer(ModelSerializer):
             try:
                 category = BadWordCategory.objects.get(pk=category_id)
             except BadWordCategory.DoesNotExist:
-                raise ValidationError("Category with ID: {} does not exist. Please enter a valid category ID value.".format(value))
+                raise ValidationError("Category with ID: {} does not exist. Please enter a valid category ID."
+                                      .format(value))
             return category
         except ValueError:
             raise ValidationError("Expected Category ID value. Received: {}".format(value))
@@ -23,10 +24,10 @@ class BadWordSerializer(ModelSerializer):
         try:
             score_val = int(value)
             if score_val < 1 or score_val > 4:
-                raise ValidationError("Negative_score value: {} is out of range. Must be Integer value between 1-4.")
+                raise ValidationError("Negative_score value: {} is out of range. Must be between 1-4.".format(value))
             return score_val
         except ValueError:
-            raise ValidationError("Negative_score must be Integer type with value between 1-4. Received: {}".format(value))
+            raise ValidationError("Negative_score must be Integer with value between 1-4. Received: {}".format(value))
 
     class Meta:
         model = BadWord
