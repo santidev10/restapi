@@ -14,18 +14,19 @@ from utils.elasticsearch import ElasticSearchConnector
 
 
 class SegmentListGenerator(object):
-    CHANNEL_SCORE_FAIL_THRESHOLD = 0
+    CHANNEL_SCORE_FAIL_THRESHOLD = 89
     VIDEO_SCORE_FAIL_THRESHOLD = 89
     ES_SIZE = 50
     CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
     VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
+    CHANNEL_BATCH_LIMIT = 100
     # TEST
-    CHANNEL_BATCH_LIMIT = 2
-    # CHANNEL_BATCH_LIMIT = 100
-    VIDEO_BATCH_LIMIT = 100
+    VIDEO_BATCH_LIMIT = 10
+    # VIDEO_BATCH_LIMIT = 100
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
     CHANNEL_BATCH_COUNTER_LIMIT = 500
+    VIDEO_BATCH_COUNTER_LIMIT = 500
     MASTER_WHITELIST_CHANNEL_SIZE = 20000
     MASTER_BLACKLIST_CHANNEL_SIZE = 20000
     MASTER_WHITELIST_VIDEO_SIZE = 20000
@@ -35,9 +36,9 @@ class SegmentListGenerator(object):
     PK_NAME = None
 
     def __init__(self, *_, **kwargs):
-        self.api_script_tracker = kwargs["api_script_tracker"]
+        self.script_tracker = kwargs["script_tracker"]
         self.list_generator_type = kwargs["list_generator_type"]
-        self.cursor_id = self.api_script_tracker.cursor_id
+        self.cursor_id = self.script_tracker.cursor_id
         self.sdb_connector = SingleDatabaseApiConnector()
         self.es_connector = ElasticSearchConnector()
         self.audit_provider = AuditProvider()
@@ -53,6 +54,8 @@ class SegmentListGenerator(object):
         self.batch_count = 0
         self._set_config()
 
+        self.dups = defaultdict(int)
+
     def _set_config(self):
         """
         Set configuration depending on list generation type
@@ -64,12 +67,12 @@ class SegmentListGenerator(object):
             self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
             self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_CHANNEL_SIZE
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_CHANNEL_SIZE
+            self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
             self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
 
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
             self.related_segment_model = PersistentSegmentRelatedChannel
-            self.evaluator = self._evaluate_channel
 
             self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
                 title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
@@ -80,25 +83,27 @@ class SegmentListGenerator(object):
 
             # Config methods
             self.sdb_data_generator = self._channel_batch_generator
-
-
-            self.index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-
+            self.evaluator = self._evaluate_channel
 
         elif self.list_generator_type == constants.VIDEO:
+            self.PK_NAME = "video_id"
+            self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
             self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_VIDEO_SIZE
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_VIDEO_SIZE
+            self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
             self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
-            self.sdb_data_generator = self._video_batch_generator
+
+            # Config segments and models
             self.segment_model = PersistentSegmentVideo
             self.related_segment_model = PersistentSegmentRelatedVideo
-            self.PK_NAME = "video_id"
-            self.evaluator = self._evaluate_video
-            self.index_name = constants.BRAND_SAFETY_VIDEO_ES_INDEX
             self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
                 title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
             self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
                 title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
+
+            # Config methods
+            self.sdb_data_generator = self._video_batch_generator
+            self.evaluator = self._evaluate_video
         else:
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
@@ -109,10 +114,27 @@ class SegmentListGenerator(object):
             if self.cursor_id is not None and self.batch_count == 0:
                 print('cleaning')
                 self._clean(batch)
-            self._proocess(batch)
-            break
+            self._process(batch)
         # Done here
         print('done')
+
+    def _process(self, sdb_items):
+        item_ids = [item[self.PK_NAME] for item in sdb_items]
+        es_items = self._get_es_data(item_ids)
+        # Update sdb data with es brand safety data
+        merged_items = self._merge_data(es_items, sdb_items)
+        sorted_by_category_whitelist = self._sort_by_category(merged_items)
+        # Save items into their category segments
+        for category, items in sorted_by_category_whitelist.items():
+            # For categories, only need to save to whitelists
+            segment_title = self._get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
+            try:
+                whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
+                to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+                self.related_segment_model.objects.bulk_create(to_create)
+            except self.segment_model.DoesNotExist:
+                print("Unable to get segment: {}".format(segment_title))
+        self._save_master_results(merged_items)
 
     def _sort_whitelist_blacklist(self, items):
         whitelist = []
@@ -130,7 +152,7 @@ class SegmentListGenerator(object):
 
     def _evaluate_channel(self, channel):
         passed = None
-        if channel["overall_score"] <= self.CHANNEL_SCORE_FAIL_THRESHOLD:
+        if channel.get("overall_score", 0) <= self.CHANNEL_SCORE_FAIL_THRESHOLD:
             passed = False
         else:
             if channel.get("subscribers", 0) >= self.MINIMUM_CHANNEL_SUBSCRIBERS:
@@ -139,29 +161,12 @@ class SegmentListGenerator(object):
 
     def _evaluate_video(self, video):
         passed = None
-        if video["overall_score"] <= self.VIDEO_SCORE_FAIL_THRESHOLD:
+        if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD:
             passed = False
         else:
             if video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS:
                 passed = True
         return passed
-
-    def _proocess(self, sdb_items):
-        item_ids = [item[self.PK_NAME] for item in sdb_items]
-        es_items = self._get_es_data(item_ids)
-        merged_items = self._merge_data(es_items, sdb_items)
-        sorted_by_category_whitelist = self._sort_by_category(merged_items)
-        # Save items into their category segments
-        for category, items in sorted_by_category_whitelist.items():
-            segment_title = self._get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
-            try:
-                whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
-                to_create = self._instantiate_related_items(items, whitelist_segment_manager)
-                self.related_segment_model.objects.bulk_create(to_create)
-            except self.segment_model.DoesNotExist:
-                print("Unable to get segment: {}".format(segment_title))
-            break
-        self._save_master_results(merged_items)
 
     def _merge_data(self, es_data, sdb_items):
         """
@@ -221,7 +226,7 @@ class SegmentListGenerator(object):
         :param segment_category: whitelist or blacklist
         :return:
         """
-        categorized_segment_title = "{}s {} {}".format(
+        categorized_segment_title = "{}s {} Brand Safety {}".format(
             segment_type.capitalize(),
             category,
             segment_category.capitalize(),
@@ -237,6 +242,9 @@ class SegmentListGenerator(object):
         """
         to_create = []
         for item in items:
+            # Ignore items that do not have brand safety data
+            if item.get("overall_score") is None:
+                continue
             related_obj = self.related_segment_model(
                 related_id=item[self.PK_NAME],
                 segment=segment_manager,
@@ -248,18 +256,18 @@ class SegmentListGenerator(object):
                     "likes": item["likes"],
                     "dislikes": item["dislikes"],
                     "views": item["views"],
-                    "bad_words": item[constants.BRAND_SAFETY_HITS],
-                    "overall_score": item["overall_score"]
+                    "bad_words": item.get(constants.BRAND_SAFETY_HITS, []),
+                    "overall_score": item.get("overall_score", "Unavailable")
                 }
             )
             if segment_manager.segment_type == constants.CHANNEL:
                 related_obj.details["subscribers"] = item["subscribers"]
-                related_obj.details["audited_videos"] = item["audited_videos"]
+                related_obj.details["audited_videos"] = item.get("audited_videos")
             to_create.append(related_obj)
         return to_create
 
     def _get_es_data(self, item_ids):
-        response = self.es_connector.search_by_id(self.index_name, item_ids, constants.BRAND_SAFETY_SCORE_TYPE)
+        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, constants.BRAND_SAFETY_SCORE_TYPE)
         return response
 
     def _get_sdb_data(self, item_ids, item_type):
@@ -310,7 +318,8 @@ class SegmentListGenerator(object):
         """
         params = {
             "fields": "channel_id,subscribers,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            "sort": "subscribers:desc",
+            # "sort": "subscribers:desc",
+            "sort": "channel_id",
             "size": self.CHANNEL_BATCH_LIMIT,
         }
         while self.batch_count <= self.CHANNEL_BATCH_COUNTER_LIMIT:
@@ -318,9 +327,11 @@ class SegmentListGenerator(object):
             response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
             channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
             if not channels:
+                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
                 break
+            self._set_defaults(channels)
             yield channels
-            cursor_id = channels[-1]
+            cursor_id = channels[-1]["channel_id"]
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
@@ -333,19 +344,33 @@ class SegmentListGenerator(object):
         :return: list -> Youtube channel ids
         """
         params = {
-            "fields": "video_id,views,title",
-            "sort": "views:desc",
+            "fields": "video_id,title,category,thumbnail_image_url,language,likes,dislikes,views",
+            "sort": "video_id",
             "size": self.VIDEO_BATCH_LIMIT,
         }
-        while self.batch_count <= self.VIDEO_BATCH_LIMIT:
+        while self.batch_count <= self.VIDEO_BATCH_COUNTER_LIMIT:
             params["video_id__range"] = "{},".format(cursor_id or "")
             response = self.sdb_connector.get_video_list(params, ignore_sources=True)
             videos = [item for item in response.get("items", []) if item["video_id"] != cursor_id]
             if not videos:
+                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
                 break
+            self._set_defaults(videos)
             yield videos
-            cursor_id = videos[-1]
+            cursor_id = videos[-1]["video_id"]
             # Update script tracker and cursors
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.batch_count += 1
+
+    def _finalize_segments(self):
+        for segment in self.segment_model.objects.all():
+            segment.details = segment.calculate_details()
+            segment.save()
+
+    def _set_defaults(self, items):
+        for item in items:
+            if not item.get("category"):
+                item["category"] = "Unclassified"
+            if not item.get("language"):
+                item["language"] = "Unknown"

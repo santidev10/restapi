@@ -15,6 +15,7 @@ from django.db.models import TextField
 
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
+from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 
@@ -129,7 +130,10 @@ class PersistentSegmentExportContent(object):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
 
         with open(self.filename, mode="w+", newline="") as export_file:
-            queryset = self.segment.related.order_by("pk").all()
+            if self.segment.segment_type == PersistentSegmentType.CHANNEL:
+                queryset = self.segment.related.order_by("subscribers").all()
+            else:
+                queryset = self.segment.related.order_by("views").all()
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()

@@ -58,6 +58,7 @@ class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
             PersistentSegmentExportColumn.VIEWS: details.get("views"),
             PersistentSegmentExportColumn.AUDITED_VIDEOS: details.get("audited_videos"),
+            PersistentSegmentExportColumn.OVERALL_SCORE: details.get("overall_score"),
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
         return row

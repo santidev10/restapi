@@ -53,6 +53,7 @@ class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.LIKES: details.get("likes"),
             PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
             PersistentSegmentExportColumn.VIEWS: details.get("views"),
+            PersistentSegmentExportColumn.OVERALL_SCORE: details.get("overall_score"),
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
 

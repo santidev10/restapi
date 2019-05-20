@@ -29,14 +29,14 @@ class Command(BaseCommand):
         try:
             list_type = options["type"]
             if list_type == constants.CHANNEL:
-                api_script_tracker = APIScriptTracker.objects.get_or_create(name="ChannelListGenerator")[0]
+                script_tracker = APIScriptTracker.objects.get_or_create(name="ChannelListGenerator")[0]
             elif list_type == constants.VIDEO:
-                api_script_tracker = APIScriptTracker.objects.get_or_create(name="VideoListGenerator")[0]
+                script_tracker = APIScriptTracker.objects.get_or_create(name="VideoListGenerator")[0]
             else:
                 raise ValueError("Unsupported list generation type: {}".format(list_type))
             list_generator = SegmentListGenerator(
                 list_generator_type=list_type,
-                api_script_tracker=api_script_tracker,
+                script_tracker=script_tracker,
             )
             list_generator.run()
         except Exception as e:
