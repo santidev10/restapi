@@ -23,7 +23,7 @@ class BrandSafetyChannelAPIView(APIView):
     )
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
-    MAX_PAGE_SIZE = 50
+    MAX_PAGE_SIZE = 24
 
     def get(self, request, **kwargs):
         """
@@ -100,7 +100,7 @@ class BrandSafetyChannelAPIView(APIView):
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
-        flagged_videos = sorted(flagged_videos, key=lambda video: video["score"])
+        flagged_videos.sort(key=lambda video: video["score"])
         return channel_data, flagged_videos
 
     def _get_sdb_channel_video_data(self, channel_id):
