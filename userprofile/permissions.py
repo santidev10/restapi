@@ -103,6 +103,7 @@ class PermissionGroupNames:
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
     AUDIT_DOWNLOAD = "Audit Download"
+    AUDIT_VIEW = "Audit View"
     BRAND_SAFETY_VIEW = "Brand Safety View"
     BRAND_SAFETY_DOWNLOAD = "Brand Safety Download"
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
@@ -174,6 +175,9 @@ class Permissions:
         (PermissionGroupNames.AUDIT_DOWNLOAD, (
             "download_audit"
         )),
+        (PermissionGroupNames.AUDIT_VIEW, (
+            "view_audit"
+        )),
     )
 
     PERM_LIST = (
@@ -207,6 +211,7 @@ class Permissions:
         "scoring_brand_safety",
         # audits
         "download_audit",
+        "view_audit",
     )
 
     @staticmethod
