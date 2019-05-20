@@ -12,12 +12,17 @@ from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField
 from django.db.models import Manager
 from django.db.models import TextField
+from django.db.models import BigIntegerField
+from django.db.models import DateTimeField
+from django.db.models import Model
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
+from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,7 @@ class BasePersistentSegment(Timestampable):
 
     related = None  # abstract property
     segment_type = None  # abstract property
+    files = None # abstract property
 
     export_content_type = "application/CSV"
     export_last_modified = None
@@ -51,8 +57,17 @@ class BasePersistentSegment(Timestampable):
     def calculate_details(self):
         raise NotImplementedError
 
-    def get_s3_key(self, datetime=None, from):
-        key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime)
+    def get_s3_key(self, from_db=False, datetime=None):
+        try:
+            # Get latest filename from db to retrieve from s3
+            if from_db is True:
+                latest_filename = PersistentSegmentFileUpload.objects.filter(segment_id=self.id).order_by("-created_at")[0].filename
+                return latest_filename
+            else:
+                # Get new filename to upload using date string
+                key = S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime)
+        except IndexError:
+            key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
 
     def get_export_columns(self):
@@ -80,11 +95,12 @@ class BasePersistentSegment(Timestampable):
         )
         return s3
 
-    def export_to_s3(self):
+    def export_to_s3(self, s3_key):
         with PersistentSegmentExportContent(segment=self) as exported_file_name:
             self._s3().upload_file(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=self.get_s3_key(),
+                # Key=self.get_s3_key(),
+                Key=s3_key,
                 Filename=exported_file_name,
             )
 
@@ -94,7 +110,7 @@ class BasePersistentSegment(Timestampable):
         try:
             s3_object = s3.get_object(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=self.get_s3_key()
+                Key=self.get_s3_key(from_db=True)
             )
         except s3.exceptions.NoSuchKey:
             raise self.DoesNotExist
@@ -131,9 +147,9 @@ class PersistentSegmentExportContent(object):
 
         with open(self.filename, mode="w+", newline="") as export_file:
             if self.segment.segment_type == PersistentSegmentType.CHANNEL:
-                queryset = self.segment.related.order_by("subscribers").all()
+                queryset = self.segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")
             else:
-                queryset = self.segment.related.order_by("views").all()
+                queryset = self.segment.related.annotate(subscribers=KeyTextTransform("views", "details")).order_by("-views")
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()
@@ -157,3 +173,8 @@ class PersistentSegmentExportContent(object):
     def __exit__(self, *args):
         os.remove(self.filename)
 
+
+class PersistentSegmentFileUpload(Model):
+    segment_id = BigIntegerField()
+    created_at = DateTimeField(db_index=True)
+    filename = CharField(max_length=200, unique=True)

@@ -1,5 +1,8 @@
 from collections import defaultdict
 
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.utils import timezone
+
 import brand_safety.constants as constants
 from brand_safety.audit_providers.base import AuditProvider
 from segment.models.persistent import PersistentSegmentChannel
@@ -8,6 +11,7 @@ from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
+from segment.models.persistent import PersistentSegmentFileUpload
 from segment.utils import get_persistent_segment_connector_config_by_type
 from singledb.connector import SingleDatabaseApiConnector
 from utils.elasticsearch import ElasticSearchConnector
@@ -34,6 +38,7 @@ class SegmentListGenerator(object):
     MASTER_BLACKLIST_SIZE = None
     MASTER_WHITELIST_SIZE = None
     PK_NAME = None
+    BATCH_LIMIT = None
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["script_tracker"]
@@ -50,7 +55,6 @@ class SegmentListGenerator(object):
         self.related_segment_model = None
         self.evaluator = None
 
-        self.BATCH_LIMIT = None
         self.batch_count = 0
         self._set_config()
 
@@ -108,15 +112,15 @@ class SegmentListGenerator(object):
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
     def run(self):
-        for batch in self.sdb_data_generator(self.cursor_id):
-            # If this condition is True, then script was interrupted in the middle of this batch
-                # Remove any items from this batch from potentially raising a db Integrity error
-            if self.cursor_id is not None and self.batch_count == 0:
-                print('cleaning')
-                self._clean(batch)
-            self._process(batch)
-        # Done here
-        print('done')
+        self._finalize_segments()
+        # for batch in self.sdb_data_generator(self.cursor_id):
+        #     # If this condition is True, then script was interrupted in the middle of this batch
+        #         # Remove any items from this batch from potentially raising a db Integrity error
+        #     if self.cursor_id is not None and self.batch_count == 0:
+        #         print('cleaning')
+        #         self._clean(batch)
+        #     self._process(batch)
+        # self._finalize_segments()
 
     def _process(self, sdb_items):
         item_ids = [item[self.PK_NAME] for item in sdb_items]
@@ -364,9 +368,27 @@ class SegmentListGenerator(object):
             self.batch_count += 1
 
     def _finalize_segments(self):
+        """
+        Finalize all segments
+        Set segment details and upload files to s3
+        :return:
+        """
         for segment in self.segment_model.objects.all():
             segment.details = segment.calculate_details()
             segment.save()
+            # Truncate master segments
+            if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
+                if segment.category == PersistentSegmentCategory.WHITELIST:
+                    related_ids_to_truncate = segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")[self.MASTER_WHITELIST_SIZE:]
+                else:
+                    related_ids_to_truncate = segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")[self.MASTER_BLACKLIST_SIZE:]
+                self.related_segment_model.objects.filter(related_id__in=list(related_ids_to_truncate)).delete()
+                now = timezone.now()
+                s3_filename = segment.get_s3_key(datetime=now)
+                print(s3_filename)
+                print(segment.id)
+                segment.export_to_s3(s3_filename)
+                PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
 
     def _set_defaults(self, items):
         for item in items:
