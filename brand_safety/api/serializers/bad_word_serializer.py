@@ -1,4 +1,6 @@
-from rest_framework.serializers import ModelSerializer, CharField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ValidationError
+from rest_framework.serializers import CharField
 
 from brand_safety.models import BadWord, BadWordCategory
 
@@ -6,15 +8,19 @@ from brand_safety.models import BadWord, BadWordCategory
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
 
-    def validate(self, data):
+    def validate_category(self, value):
         try:
-            category_name = data['category']
-            category_ref = BadWordCategory.from_string(category_name)
-            data['category_ref'] = category_ref
+            if type(value) is str:
+                category = BadWordCategory.from_string(value)
+            else:
+                try:
+                    category = BadWordCategory.objects.get(pk=value)
+                except BadWordCategory.DoesNotExist:
+                    raise ValidationError("Invalid category value: {}".format(value))
+            return category
         except KeyError:
-            pass
-        return data
+            raise ValidationError("category required.")
 
     class Meta:
         model = BadWord
-        fields = ("id", "name", "category")
+        fields = ("id", "name", "category", "negative_score")

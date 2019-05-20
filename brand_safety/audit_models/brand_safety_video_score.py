@@ -1,3 +1,6 @@
+from brand_safety.models import BadWordCategory
+
+
 class BrandSafetyVideoScore(object):
     """
     Class to encapsulate brand safety score state for Video brand safety audits
@@ -7,6 +10,7 @@ class BrandSafetyVideoScore(object):
         self.overall_score = 100
         self.keyword_scores = {}
         self.category_scores = default_category_scores
+        self.excluded_categories = BadWordCategory.EXCLUDED
 
     @property
     def pk(self):
@@ -30,4 +34,6 @@ class BrandSafetyVideoScore(object):
         self.keyword_scores[keyword]["hits"] += 1
         self.keyword_scores[keyword]["negative_score"] += negative_score
         self.category_scores[category] -= negative_score
-        self.overall_score -= negative_score
+        # Exclude categories from overall scores
+        if str(category) not in self.excluded_categories:
+            self.overall_score -= negative_score
