@@ -13,11 +13,6 @@ from brand_safety.models import BadWord
 class BadWordListApiView(ListCreateAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = BadWordSerializer
-    queryset = BadWord.objects.all().order_by("name")
-
-    filter_backends = (filters.SearchFilter, DjangoFilterBackend)
-    search_fields = ("name",)
-    filter_fields = ("category__name",)
 
     def do_filters(self, queryset):
         filters = {}
@@ -27,6 +22,12 @@ class BadWordListApiView(ListCreateAPIView):
             filters["name__icontains"] = search
 
         category = self.request.query_params.get("category")
+        if category:
+            try:
+                category_id = int(category)
+            except ValueError:
+                raise ValueError("Category filter param must be Category ID value. Received: {}.".format(category))
+
         if category:
             filters["category_id"] = category
 

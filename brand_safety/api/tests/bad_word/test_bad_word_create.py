@@ -32,16 +32,6 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_has_permissions(self):
-        self.create_admin_user()
-
-        response = self._request(
-            name="Test bad word",
-            category="Test category",
-        )
-
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-
     def test_name_required(self):
         self.create_admin_user()
 
@@ -93,7 +83,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         test_bad_word = "testing"
         response = self._request(
             name=test_bad_word,
-            category=test_category.name,
+            category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
@@ -106,7 +96,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         test_category = BadWordCategory.objects.create(name="testing")
         response = self._request(
             name=test_bad_word,
-            category=test_category.name,
+            category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(response.data['category'], test_category.name)
