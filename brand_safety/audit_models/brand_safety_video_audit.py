@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections import Counter
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
@@ -6,12 +7,6 @@ from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoS
 
 
 class BrandSafetyVideoAudit(object):
-    dislike_ratio_audit_threshold = 0.2
-    views_audit_threshold = 1000
-    brand_safety_unique_threshold = 2
-    brand_safety_hits_threshold = 3
-    brand_safety_title_multiplier = 4
-
     def __init__(self, data, audit_types, **kwargs):
         self.source = kwargs["source"]
         self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
@@ -114,7 +109,7 @@ class BrandSafetyVideoAudit(object):
             "_op_type": op_type,
             "_id": self.pk,
             "video_id": brand_safety_results.pk,
-            "overall_score": brand_safety_results.overall_score,
+            "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "categories": {
                 category: {
                     "category_score": category_score,

@@ -31,7 +31,11 @@ class ElasticSearchConnector(object):
         list(result) # required for parallel_bulk
 
     def search(self, **kwargs):
-        return self.client.search(index=self.index_name, **kwargs)
+        try:
+            index = kwargs.pop("index")
+        except KeyError:
+            index = self.index_name
+        return self.client.search(index=index, **kwargs)
 
     def get(self, **kwargs):
         return self.client.get(index=self.index_name, **kwargs)
