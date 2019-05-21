@@ -1,4 +1,5 @@
 S3_SEGMENT_EXPORT_KEY_PATTERN = "persistent-segments/{segment_type}/{segment_title}.csv"
+S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN = "persistent-segments/brand_safety/{segment_type}/{segment_title} - {datetime}.csv"
 S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL = "https://s3.amazonaws.com/viewiq-prod/persistent-segments/thumbnails/cf-default.jpg"
 
 class PersistentSegmentType:
@@ -30,16 +31,24 @@ class PersistentSegmentTitles:
         CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
         VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE,
         VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE,
+        CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE
     )
 
     MASTER_BLACKLIST_SEGMENT_TITLES = (
         CHANNELS_MASTER_BLACKLIST_SEGMENT_TITLE,
         VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE,
+        CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE
     )
 
     MASTER_WHITELIST_SEGMENT_TITLES = (
         CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
         VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE,
+        CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE
     )
 
     TITLES_MAP = (
@@ -74,6 +83,7 @@ class PersistentSegmentExportColumn:
     BAD_WORDS = "Bad Words"
     CHANNEL_ID = "Channel ID"
     CHANNEL_TITLE = "Channel Title"
+    OVERALL_SCORE = "Overall Score"
 
     CHANNEL_BLACKLIST_CSV_COLUMNS = (
         URL,
@@ -87,6 +97,7 @@ class PersistentSegmentExportColumn:
         VIEWS,
         AUDITED_VIDEOS,
         BAD_WORDS,
+        OVERALL_SCORE
     )
 
     CHANNEL_WHITELIST_CSV_COLUMNS = (
@@ -98,6 +109,7 @@ class PersistentSegmentExportColumn:
         DISLIKES,
         VIEWS,
         AUDITED_VIDEOS,
+        OVERALL_SCORE
     )
 
     CHANNEL_TOPIC_CSV_COLUMNS = (
@@ -122,6 +134,7 @@ class PersistentSegmentExportColumn:
         DISLIKES,
         VIEWS,
         BAD_WORDS,
+        OVERALL_SCORE
     )
 
     VIDEO_WHITELIST_CSV_COLUMNS = (
@@ -131,6 +144,7 @@ class PersistentSegmentExportColumn:
         LIKES,
         DISLIKES,
         VIEWS,
+        OVERALL_SCORE
     )
 
     VIDEO_TOPIC_CSV_COLUMNS = (
