@@ -26,19 +26,25 @@ class AuditSaveApiView(APIView):
         # handle exclusion_file upload IF exclusion_file (put in s3)
         # handle inclusion_file upload IF inclusion_file (put in s3)
 
+        paramFile = source_file.read().decode('utf-8')
+        # portfolio = csv.DictReader(paramFile)
+
+        # file_reader = csv.DictReader
+        keywords = self.load_keywords(paramFile)
+
+        # Audit Name Validation
         if len(name) < 3:
             raise ValueError("Name {} must be at least 3 characters long.".format(name))
-
+        # Audit Type Validation
         if str(audit_type) not in AuditProcessor.AUDIT_TYPES:
             raise ValueError("Expected Audit Type to have one of the following values: {}. Received {}.".format(
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
-
+        # Source File Validation
         if source_file:
-            source_split = source_file_name.split(".")
+            source_split = source_file.name.split(".")
         else:
             raise ValueError("Source file required.")
-
         if len(source_split) < 2:
             raise ValueError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
         source_type = source_split[1]
@@ -50,7 +56,7 @@ class AuditSaveApiView(APIView):
             'audit_type': audit_type,
             'language': language
         }
-
+        # Put Source File on S3
         params['seed_file'] = self.put_source_file_on_s3(source_file)
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
@@ -70,14 +76,13 @@ class AuditSaveApiView(APIView):
         AuditFileS3Exporter.export_to_s3(file, random_file_name)
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
-    def load_keywords(self, file_name):
+    def load_keywords(self, file):
         keywords = []
-        with open(file_name) as f:
-            reader = csv.reader(f)
-            for row in reader:
-                word = row[0].lower().strip()
-                if word:
-                    keywords.append(word)
+        reader = csv.DictReader(file)
+        for row in reader:
+            word = "".join(row).lower().strip()
+            if word:
+                keywords.append(word)
         return keywords
 
     @staticmethod
