@@ -28,7 +28,7 @@ class BadWordCategory(models.Model):
 class BadWord(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=80, unique=True)
-    category = models.ForeignKey(BadWordCategory, db_index=True, default=None, null=True)
+    category = models.ForeignKey(BadWordCategory, db_index=True)
     negative_score = models.IntegerField(default=1, db_index=True)
 
     objects = BaseQueryset.as_manager()

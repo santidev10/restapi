@@ -129,7 +129,7 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
         response = self._request(
             id=bad_word.id,
             name=bad_word.name,
-            category=new_category.name
+            category=new_category.id
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         bad_word.refresh_from_db()
