@@ -18,7 +18,7 @@ class AuditSaveApiView(APIView):
         # handle inclusion_file upload IF inclusion_file (put in s3)
 
         if str(audit_type) not in AuditProcessor.AUDIT_TYPES:
-            raise PROBLEM
+            raise "PROBLEM"
         params = {
             'name': name,
             'audit_type': audit_type,
