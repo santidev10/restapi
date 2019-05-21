@@ -10,6 +10,9 @@ __pycache__/
 
 .DS_Store
 
+local_local_settings_backup.py
+rc_settings.py
+
 # Distribution / packaging
 .Python
 env/

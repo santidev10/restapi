@@ -13,4 +13,7 @@ class AuditListApiView(APIView):
             running = strtobool(running.lower())
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
 
-        return Response(AuditProcessor.get(running=running, audit_type=audit_type))
+        return Response({
+            'audits': AuditProcessor.get(running=running, audit_type=audit_type),
+            'audit_types': AuditProcessor.AUDIT_TYPES
+        })
