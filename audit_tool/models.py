@@ -123,10 +123,12 @@ class Comment(models.Model):
     found_items = JSONField(default={})
 
 class AuditProcessor(models.Model):
-    # audit_types:
-    #   0 - recommendation engine
-    #   1 - video meta processor
-    #   2 - channel meta processor
+    AUDIT_TYPES={
+      '0': 'Recommendation Engine',
+      '1': 'Video Meta Processor',
+      '2': 'Channel Meta Processor',
+    }
+
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
@@ -144,17 +146,37 @@ class AuditProcessor(models.Model):
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
-        ret = []
-        for a in all.order_by("id"):
-            ret.append({
-                'id': a.id,
-                'pause': a.pause,
-                'completed': a.completed,
-                'cached_data': a.cached_data,
-                'name': a.params.get('name'),
-                'audit_type': a.audit_type
-            })
+        ret = {
+            'running': [],
+            'completed': []
+        }
+        for a in all.order_by("pause", "-id"):
+            d = a.to_dict()
+            status = 'running'
+            if a.completed is not None:
+                status = 'completed'
+            ret[status].append(d)
         return ret
+
+    def to_dict(self):
+        audit_type = self.params.get('audit_type_original')
+        if not audit_type:
+            audit_type = self.audit_type
+        d = {
+            'id': self.id,
+            'priority': self.pause,
+            'completed_time': self.completed,
+            'start_time': self.started,
+            'data': self.cached_data,
+            'name': self.params.get('name'),
+            'audit_type': audit_type,
+            'percent_done': 0,
+        }
+        if d['data'].get('total') and d['data']['total'] > 0:
+            d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+            if d['percent_done'] > 100:
+                d['percent_done'] = 100
+        return d
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
