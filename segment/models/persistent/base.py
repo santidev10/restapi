@@ -15,7 +15,7 @@ from django.db.models import TextField
 from django.db.models import BigIntegerField
 from django.db.models import DateTimeField
 from django.db.models import Model
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.contrib.postgres.fields.jsonb import KeyTransform
 
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
@@ -147,9 +147,9 @@ class PersistentSegmentExportContent(object):
 
         with open(self.filename, mode="w+", newline="") as export_file:
             if self.segment.segment_type == PersistentSegmentType.CHANNEL:
-                queryset = self.segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")
+                queryset = self.segment.related.annotate(subscribers=KeyTransform("subscribers", "details")).order_by("-subscribers")
             else:
-                queryset = self.segment.related.annotate(subscribers=KeyTextTransform("views", "details")).order_by("-views")
+                queryset = self.segment.related.annotate(views=KeyTransform("views", "details")).order_by("-views")
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()

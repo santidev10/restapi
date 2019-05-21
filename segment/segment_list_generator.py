@@ -1,4 +1,5 @@
 from collections import defaultdict
+import logging
 
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.utils import timezone
@@ -16,17 +17,16 @@ from segment.utils import get_persistent_segment_connector_config_by_type
 from singledb.connector import SingleDatabaseApiConnector
 from utils.elasticsearch import ElasticSearchConnector
 
+logger = logging.getLogger(__name__)
+
 
 class SegmentListGenerator(object):
     CHANNEL_SCORE_FAIL_THRESHOLD = 89
     VIDEO_SCORE_FAIL_THRESHOLD = 89
-    ES_SIZE = 50
     CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
     VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
-    CHANNEL_BATCH_LIMIT = 100
-    # TEST
-    VIDEO_BATCH_LIMIT = 10
-    # VIDEO_BATCH_LIMIT = 100
+    CHANNEL_BATCH_LIMIT = 200
+    VIDEO_BATCH_LIMIT = 200
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
     CHANNEL_BATCH_COUNTER_LIMIT = 500
@@ -37,6 +37,7 @@ class SegmentListGenerator(object):
     MASTER_BLACKLIST_VIDEO_SIZE = 20000
     MASTER_BLACKLIST_SIZE = None
     MASTER_WHITELIST_SIZE = None
+    MASTER_SEGMENT_RELATED_SORT_KEY = None
     PK_NAME = None
     BATCH_LIMIT = None
 
@@ -58,11 +59,9 @@ class SegmentListGenerator(object):
         self.batch_count = 0
         self._set_config()
 
-        self.dups = defaultdict(int)
-
     def _set_config(self):
         """
-        Set configuration depending on list generation type
+        Set configuration for script depending on list generation type, either channel or video
         :return:
         """
         if self.list_generator_type == constants.CHANNEL:
@@ -73,6 +72,7 @@ class SegmentListGenerator(object):
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_CHANNEL_SIZE
             self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
             self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
+            self.MASTER_SEGMENT_RELATED_SORT_KEY = "subscribers"
 
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
@@ -90,12 +90,14 @@ class SegmentListGenerator(object):
             self.evaluator = self._evaluate_channel
 
         elif self.list_generator_type == constants.VIDEO:
+            # Config constants
             self.PK_NAME = "video_id"
             self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
             self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_VIDEO_SIZE
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_VIDEO_SIZE
             self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
             self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
+            self.MASTER_SEGMENT_RELATED_SORT_KEY = "views"
 
             # Config segments and models
             self.segment_model = PersistentSegmentVideo
@@ -112,17 +114,17 @@ class SegmentListGenerator(object):
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
     def run(self):
+        for batch in self.sdb_data_generator(self.cursor_id):
+            self._process(batch)
         self._finalize_segments()
-        # for batch in self.sdb_data_generator(self.cursor_id):
-        #     # If this condition is True, then script was interrupted in the middle of this batch
-        #         # Remove any items from this batch from potentially raising a db Integrity error
-        #     if self.cursor_id is not None and self.batch_count == 0:
-        #         print('cleaning')
-        #         self._clean(batch)
-        #     self._process(batch)
-        # self._finalize_segments()
 
     def _process(self, sdb_items):
+        """
+        Drives main list generation logic
+            Retrieves sdb data and es data, saves to category segments then master segments
+        :param sdb_items:
+        :return:
+        """
         item_ids = [item[self.PK_NAME] for item in sdb_items]
         es_items = self._get_es_data(item_ids)
         # Update sdb data with es brand safety data
@@ -135,9 +137,10 @@ class SegmentListGenerator(object):
             try:
                 whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
                 to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+                self._clean(to_create)
                 self.related_segment_model.objects.bulk_create(to_create)
             except self.segment_model.DoesNotExist:
-                print("Unable to get segment: {}".format(segment_title))
+                logger.log("Unable to get segment: {}".format(segment_title))
         self._save_master_results(merged_items)
 
     def _sort_whitelist_blacklist(self, items):
@@ -155,6 +158,11 @@ class SegmentListGenerator(object):
         return whitelist, blacklist
 
     def _evaluate_channel(self, channel):
+        """
+        Method to evaluate if a channel should be placed on a whitelist or blacklist
+        :param channel: dict
+        :return: bool
+        """
         passed = None
         if channel.get("overall_score", 0) <= self.CHANNEL_SCORE_FAIL_THRESHOLD:
             passed = False
@@ -164,6 +172,11 @@ class SegmentListGenerator(object):
         return passed
 
     def _evaluate_video(self, video):
+        """
+        Method to evaluate if a channel should be placed on a whitelist or blacklist
+        :param video: dict
+        :return: bool
+        """
         passed = None
         if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD:
             passed = False
@@ -211,15 +224,19 @@ class SegmentListGenerator(object):
         :param kwargs: Persistent segments to save to
         :return: None
         """
-        # Sort audits by brand safety results
+        # Sort audits by brand safety results and truncate master lists
         whitelist_items, blacklist_items = self._sort_whitelist_blacklist(items)
-        if self.master_blacklist_segment.related.count() <= self.MASTER_BLACKLIST_SIZE:
-            blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
-            self.related_segment_model.objects.bulk_create(blacklist_to_create)
+        blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
+        self._clean(blacklist_to_create)
+        self.related_segment_model.objects.bulk_create(blacklist_to_create)
+        if self.master_blacklist_segment.related.count() >= self.MASTER_BLACKLIST_SIZE:
+            self._truncate_master_lists(self.master_blacklist_segment)
 
-        if self.master_whitelist_segment.related.count() <= self.MASTER_WHITELIST_SIZE:
-            whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
-            self.related_segment_model.objects.bulk_create(whitelist_to_create)
+        whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
+        self._clean(whitelist_to_create)
+        self.related_segment_model.objects.bulk_create(whitelist_to_create)
+        if self.master_whitelist_segment.related.count() >= self.MASTER_WHITELIST_SIZE:
+            self._truncate_master_lists(self.master_whitelist_segment)
 
     @staticmethod
     def _get_segment_title(segment_type, category, segment_category):
@@ -271,6 +288,11 @@ class SegmentListGenerator(object):
         return to_create
 
     def _get_es_data(self, item_ids):
+        """
+        Wrapper to encapsulate es data retrieval
+        :param item_ids:
+        :return:
+        """
         response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, constants.BRAND_SAFETY_SCORE_TYPE)
         return response
 
@@ -304,14 +326,11 @@ class SegmentListGenerator(object):
 
     def _clean(self, items):
         """
-        Clean related segment model in case of script failurer
-        :param item_ids:
-        :return:
+        Clean related segment model for duplicate ids
+        :param items: list -> PersistentSegmentRelated items
+        :return: None
         """
-        try:
-            item_ids = [item[self.PK_NAME] for item in items]
-        except KeyError:
-            item_ids = items
+        item_ids = [item.related_id for item in items]
         self.related_segment_model.objects.filter(related_id__in=item_ids).delete()
 
     def _channel_batch_generator(self, cursor_id=None):
@@ -370,27 +389,43 @@ class SegmentListGenerator(object):
     def _finalize_segments(self):
         """
         Finalize all segments
-        Set segment details and upload files to s3
+            Set segment details and upload files to s3
         :return:
         """
         for segment in self.segment_model.objects.all():
             segment.details = segment.calculate_details()
             segment.save()
-            # Truncate master segments
-            if segment.title in PersistentSegmentTitles.ALL_MASTER_SEGMENT_TITLES:
-                if segment.category == PersistentSegmentCategory.WHITELIST:
-                    related_ids_to_truncate = segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")[self.MASTER_WHITELIST_SIZE:]
-                else:
-                    related_ids_to_truncate = segment.related.annotate(subscribers=KeyTextTransform("subscribers", "details")).order_by("-subscribers")[self.MASTER_BLACKLIST_SIZE:]
-                self.related_segment_model.objects.filter(related_id__in=list(related_ids_to_truncate)).delete()
-                now = timezone.now()
-                s3_filename = segment.get_s3_key(datetime=now)
-                print(s3_filename)
-                print(segment.id)
-                segment.export_to_s3(s3_filename)
-                PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+            now = timezone.now()
+            s3_filename = segment.get_s3_key(datetime=now)
+            segment.export_to_s3(s3_filename)
+            PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+
+    def _truncate_master_lists(self, segment):
+        """
+        Truncate master segments
+        :param segment: PersistentSegment model
+        :return: None
+        """
+        sort_key = self.MASTER_SEGMENT_RELATED_SORT_KEY
+        max_size = self.MASTER_WHITELIST_SIZE if segment.category == PersistentSegmentCategory.WHITELIST else self.MASTER_BLACKLIST_SIZE
+        annotate_config = {
+            constants.CHANNEL: {
+                "subscribers": KeyTextTransform(sort_key, "details")
+            },
+            constants.VIDEO: {
+                "views": KeyTextTransform(sort_key, "details")
+            }
+        }
+        annotation = annotate_config[segment.segment_type]
+        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key))[max_size:]
+        self.related_segment_model.objects.filter(related_id__in=list(related_ids_to_truncate)).delete()
 
     def _set_defaults(self, items):
+        """
+        Set default values for items
+        :param items: list
+        :return: None
+        """
         for item in items:
             if not item.get("category"):
                 item["category"] = "Unclassified"
