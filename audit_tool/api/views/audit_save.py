@@ -10,6 +10,7 @@ from utils.aws.s3_exporter import S3Exporter
 
 S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
 
+
 class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
@@ -45,7 +46,6 @@ class AuditSaveApiView(APIView):
 
         params = {
             'name': name,
-            'audit_type': audit_type,
             'language': language
         }
         # Put Source File on S3
@@ -61,13 +61,11 @@ class AuditSaveApiView(APIView):
             params=params,
             max_recommended=max_recommended
         )
-        # return Response(data=params)
         return Response(audit.to_dict())
 
     def put_source_file_on_s3(self, file):
         # take the file uploaded locally, put on S3 and return the s3 filename
-        file_name = file.name
-        random_file_name = self.generate_random_file_name(file_name)
+        random_file_name = uuid4().hex
         AuditFileS3Exporter.export_to_s3(file, random_file_name)
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
@@ -81,11 +79,6 @@ class AuditSaveApiView(APIView):
             if word:
                 keywords.append(word)
         return keywords
-
-    @staticmethod
-    def generate_random_file_name(file_name):
-        random_file_name = ''.join([str(uuid4().hex[:6]), file_name])
-        return random_file_name
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_BUCKET_NAME
