@@ -13,12 +13,9 @@ class AuditSaveApiView(APIView):
         inclusion_file = query_params["inclusion_file"] if "inclusion_file" in query_params else None
         max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
         language = query_params["language"] if "language" in query_params else 'en'
-        # handle source_file upload IF source_file (put in s3)
-        # handle exclusion_file upload IF exclusion_file (put in s3)
-        # handle inclusion_file upload IF inclusion_file (put in s3)
 
         if str(audit_type) not in AuditProcessor.AUDIT_TYPES:
-            raise "PROBLEM"
+            raise Exception("problem")
         params = {
             'name': name,
             'audit_type': audit_type,
