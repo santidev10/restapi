@@ -31,6 +31,7 @@ class SegmentListGenerator(object):
     # Whitelist / blacklist requirements
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
+    VIDEO_DISLIKE_RATIO_THRESHOLD = 0.2
     # Safe counter to break from video and channel generators
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     VIDEO_BATCH_COUNTER_LIMIT = 500
@@ -186,7 +187,13 @@ class SegmentListGenerator(object):
         if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD:
             passed = False
         else:
-            if video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS:
+            try:
+                likes = int(video.get("likes", 0))
+                dislikes = int(video.get("dislikes", 0))
+                dislike_ratio = dislikes / (likes + dislikes)
+            except (ValueError, ZeroDivisionError):
+                dislike_ratio = 1
+            if video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS and dislike_ratio < self.VIDEO_DISLIKE_RATIO_THRESHOLD:
                 passed = True
         return passed
 
