@@ -55,9 +55,10 @@ class AuditSaveApiView(APIView):
         return Response(audit.to_dict())
 
     def put_source_file_on_s3(self, file_name):
+        # take the file uploaded locally, put on S3 and return the s3 filename
         with open(file_name) as f:
             AuditFileS3Exporter.export_to_s3(f, file_name)
-        pass
+        return AuditFileS3Exporter.get_s3_key(file_name)
 
     def load_keywords(self, file_name):
         keywords = []
