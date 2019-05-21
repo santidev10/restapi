@@ -40,8 +40,7 @@ class Command(BaseCommand):
         updater = AWDataLoader(datetime.now().date())
         for account in accounts:
             updater.run_task_with_any_manager(load_hourly_stats, account)
-            account.hourly_updated_at = timezone.now()
-            account.save()
+            Account.objects.filter(id=account.id).update(hourly_updated_at=timezone.now())
             progress += 1
             logger.info("Processed {}/{} accounts".format(progress, total_accounts))
         logger.info('End')
