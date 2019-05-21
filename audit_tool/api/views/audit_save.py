@@ -3,11 +3,9 @@ from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
 import csv
 from uuid import uuid4
-import os
+from io import StringIO
 
 from django.conf import settings
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from utils.aws.s3_exporter import S3Exporter
 
 S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
@@ -25,12 +23,6 @@ class AuditSaveApiView(APIView):
         # handle source_file upload IF source_file (put in s3)
         # handle exclusion_file upload IF exclusion_file (put in s3)
         # handle inclusion_file upload IF inclusion_file (put in s3)
-
-        paramFile = source_file.read().decode('utf-8')
-        # portfolio = csv.DictReader(paramFile)
-
-        # file_reader = csv.DictReader
-        keywords = self.load_keywords(paramFile)
 
         # Audit Name Validation
         if len(name) < 3:
@@ -58,8 +50,10 @@ class AuditSaveApiView(APIView):
         }
         # Put Source File on S3
         params['seed_file'] = self.put_source_file_on_s3(source_file)
+        # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
+        # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'] = self.load_keywords(exclusion_file)
         audit = AuditProcessor.objects.create(
@@ -67,6 +61,7 @@ class AuditSaveApiView(APIView):
             params=params,
             max_recommended=max_recommended
         )
+        # return Response(data=params)
         return Response(audit.to_dict())
 
     def put_source_file_on_s3(self, file):
@@ -76,11 +71,13 @@ class AuditSaveApiView(APIView):
         AuditFileS3Exporter.export_to_s3(file, random_file_name)
         return AuditFileS3Exporter.get_s3_key(random_file_name)
 
-    def load_keywords(self, file):
+    def load_keywords(self, uploaded_file):
+        file = uploaded_file.read().decode('utf-8-sig')
         keywords = []
-        reader = csv.DictReader(file)
+        io_string = StringIO(file)
+        reader = csv.reader(io_string, delimiter=";", quotechar="|")
         for row in reader:
-            word = "".join(row).lower().strip()
+            word = row[0].lower().strip()
             if word:
                 keywords.append(word)
         return keywords
