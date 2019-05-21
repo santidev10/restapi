@@ -1,4 +1,5 @@
 import os
+import re
 from email.mime.image import MIMEImage
 
 import pytz
@@ -445,7 +446,15 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
 
     @staticmethod
     def get_filename(segment):
-        return "{}.csv".format(segment.title)
+        try:
+            date = re.search("([0-9]{4}\-[0-9]{2}\-[0-9]{2})", segment.s3_filename).group()
+            if date is None:
+                filename = "{}.csv".format(segment.title)
+            else:
+                filename = "{} - {}.csv".format(segment.title, date)
+        except AttributeError:
+            filename = "{}.csv".format(segment.title)
+        return filename
 
 
 class PersistentSegmentPreviewAPIView(APIView):

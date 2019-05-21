@@ -143,7 +143,7 @@ class SegmentListGenerator(object):
             try:
                 whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
                 to_create = self._instantiate_related_items(items, whitelist_segment_manager)
-                self._clean(to_create)
+                self._clean(whitelist_segment_manager, to_create)
                 self.related_segment_model.objects.bulk_create(to_create)
             except self.segment_model.DoesNotExist:
                 logger.info("Unable to get segment: {}".format(segment_title))
@@ -170,7 +170,7 @@ class SegmentListGenerator(object):
         :return: bool
         """
         passed = None
-        if channel.get("overall_score", 0) <= self.CHANNEL_SCORE_FAIL_THRESHOLD:
+        if channel.get("overall_score", 0) <= self.CHANNEL_SCORE_FAIL_THRESHOLD and channel.get("subscribers", 0) >= self.MINIMUM_CHANNEL_SUBSCRIBERS:
             passed = False
         else:
             if channel.get("subscribers", 0) >= self.MINIMUM_CHANNEL_SUBSCRIBERS:
@@ -184,7 +184,7 @@ class SegmentListGenerator(object):
         :return: bool
         """
         passed = None
-        if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD:
+        if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD and video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS:
             passed = False
         else:
             try:
@@ -227,7 +227,9 @@ class SegmentListGenerator(object):
         items_by_category = defaultdict(list)
         for item in items:
             category = item["category"]
-            items_by_category[category].append(item)
+            whitelist_pass = self.evaluator(item)
+            if whitelist_pass is True:
+                items_by_category[category].append(item)
         return items_by_category
 
     def _save_master_results(self, items):
@@ -239,13 +241,13 @@ class SegmentListGenerator(object):
         # Sort audits by brand safety results and truncate master lists
         whitelist_items, blacklist_items = self._sort_whitelist_blacklist(items)
         blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
-        self._clean(blacklist_to_create)
+        self._clean(self.master_blacklist_segment, blacklist_to_create)
         self.related_segment_model.objects.bulk_create(blacklist_to_create)
         if self.master_blacklist_segment.related.count() >= self.MASTER_BLACKLIST_SIZE:
             self._truncate_master_lists(self.master_blacklist_segment)
 
         whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
-        self._clean(whitelist_to_create)
+        self._clean(self.master_whitelist_segment, whitelist_to_create)
         self.related_segment_model.objects.bulk_create(whitelist_to_create)
         if self.master_whitelist_segment.related.count() >= self.MASTER_WHITELIST_SIZE:
             self._truncate_master_lists(self.master_whitelist_segment)
@@ -336,14 +338,14 @@ class SegmentListGenerator(object):
             all_keywords.update(keywords)
         return list(all_keywords)
 
-    def _clean(self, items):
+    def _clean(self, segment_manager, items):
         """
         Clean related segment model for duplicate ids
         :param items: list -> PersistentSegmentRelated items
         :return: None
         """
         item_ids = [item.related_id for item in items]
-        self.related_segment_model.objects.filter(related_id__in=item_ids).delete()
+        segment_manager.related.filter(related_id__in=item_ids).delete()
 
     def _channel_batch_generator(self, cursor_id=None):
         """
@@ -407,12 +409,13 @@ class SegmentListGenerator(object):
         :return:
         """
         for segment in self.segment_model.objects.all():
-            segment.details = segment.calculate_details()
-            segment.save()
-            now = timezone.now()
-            s3_filename = segment.get_s3_key(datetime=now)
-            segment.export_to_s3(s3_filename)
-            PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+            if "Brand Safety" in segment.title:
+                segment.details = segment.calculate_details()
+                segment.save()
+                now = timezone.now()
+                s3_filename = segment.get_s3_key(datetime=now)
+                segment.export_to_s3(s3_filename)
+                PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
 
     def _truncate_master_lists(self, segment):
         """
@@ -432,7 +435,7 @@ class SegmentListGenerator(object):
         }
         annotation = annotate_config[segment.segment_type]
         related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key)).values_list("related_id", flat=True)[max_size:]
-        self.related_segment_model.objects.filter(related_id__in=list(related_ids_to_truncate)).delete()
+        segment.related.filter(related_id__in=list(related_ids_to_truncate)).delete()
 
     def _set_defaults(self, items):
         """

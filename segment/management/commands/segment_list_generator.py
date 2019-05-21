@@ -2,7 +2,7 @@ import logging
 
 from pid.decorator import pidfile
 from pid import PidFile
-from pid import PidFileError
+from pid import PidFileAlreadyLockedError
 
 from django.core.management.base import BaseCommand
 from segment.segment_list_generator import SegmentListGenerator
@@ -17,6 +17,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--type",
             help="List generation type: channel or video"
+        ),
+        parser.add_argument(
+            "--finalize",
+            help="Finalize existing segments for s3."
         )
 
     def handle(self, *args, **kwargs):
@@ -25,12 +29,13 @@ class Command(BaseCommand):
         with PidFile(pid_file, piddir=".") as pid:
             try:
                 self.run(*args, **kwargs)
-            except PidFileError:
-                pass
+            except PidFileAlreadyLockedError:
+                logger.info("Already running")
 
     def run(self, *args, **options):
         try:
             list_type = options["type"]
+            finalize = options.get("finalize")
             if list_type == constants.CHANNEL:
                 script_tracker = APIScriptTracker.objects.get_or_create(name="ChannelListGenerator")[0]
             elif list_type == constants.VIDEO:
@@ -41,6 +46,10 @@ class Command(BaseCommand):
                 list_generator_type=list_type,
                 script_tracker=script_tracker,
             )
-            list_generator.run()
+            if finalize:
+                logger.info("Finalizing segments...")
+                list_generator._finalize_segments()
+            else:
+                list_generator.run()
         except Exception as e:
             logger.exception(e)
