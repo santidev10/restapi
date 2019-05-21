@@ -133,7 +133,7 @@ class SegmentListGenerator(object):
         # Save items into their category segments
         for category, items in sorted_by_category_whitelist.items():
             # For categories, only need to save to whitelists
-            segment_title = self._get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
+            segment_title = self.get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
             try:
                 whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
                 to_create = self._instantiate_related_items(items, whitelist_segment_manager)
@@ -239,7 +239,7 @@ class SegmentListGenerator(object):
             self._truncate_master_lists(self.master_whitelist_segment)
 
     @staticmethod
-    def _get_segment_title(segment_type, category, segment_category):
+    def get_segment_title(segment_type, category, segment_category):
         """
         Return formatted Persistent segment title
         :param segment_type: channel or video
