@@ -140,7 +140,7 @@ class SegmentListGenerator(object):
                 self._clean(to_create)
                 self.related_segment_model.objects.bulk_create(to_create)
             except self.segment_model.DoesNotExist:
-                logger.log("Unable to get segment: {}".format(segment_title))
+                logger.info("Unable to get segment: {}".format(segment_title))
         self._save_master_results(merged_items)
 
     def _sort_whitelist_blacklist(self, items):
