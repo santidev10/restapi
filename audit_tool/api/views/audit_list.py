@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
 
 
-class AuditSaveApiView(APIView):
+class AuditListApiView(APIView):
     def get(self, request):
         query_params = request.query_params
         running = query_params["running"] if "running" in query_params else None

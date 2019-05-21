@@ -81,11 +81,15 @@ class BadWordListTestCase(ExtendedAPITestCase):
     def test_filter_by_category(self):
         category_2 = BadWordCategory.objects.create(name="testing test suffix")
         BadWord.objects.create(id=next(int_iterator), name="Bad Word 1", category=category_2)
-        expected_bad_word = BadWord.objects.create(id=next(int_iterator), name="Bad Word 2", category=self.test_category)
+        expected_bad_word = BadWord.objects.create(
+            id=next(int_iterator),
+            name="Bad Word 2",
+            category=self.test_category
+        )
 
         self.create_admin_user()
 
-        response = self._request(category__name=self.test_category.name)
+        response = self._request(category=self.test_category.id)
 
         self.assertEqual(response.data[0]["id"], expected_bad_word.id)
 
