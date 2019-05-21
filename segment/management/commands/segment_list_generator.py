@@ -1,7 +1,8 @@
 import logging
 
 from pid.decorator import pidfile
-from pid import PidFileAlreadyLockedError
+from pid import PidFile
+from pid import PidFileError
 
 from django.core.management.base import BaseCommand
 from segment.segment_list_generator import SegmentListGenerator
@@ -19,12 +20,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        try:
-            self.run(*args, **kwargs)
-        except PidFileAlreadyLockedError:
-            pass
+        list_type = kwargs["type"]
+        pid_file = "{}_segment_list_generator.pid".format(list_type)
+        with PidFile(pid_file, piddir=".") as pid:
+            try:
+                self.run(*args, **kwargs)
+            except PidFileError:
+                pass
 
-    @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):
         try:
             list_type = options["type"]
