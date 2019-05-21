@@ -1,7 +1,7 @@
 from collections import defaultdict
 import logging
 
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.contrib.postgres.fields.jsonb import KeyTransform
 from django.utils import timezone
 
 import brand_safety.constants as constants
@@ -21,22 +21,27 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentListGenerator(object):
-    CHANNEL_SCORE_FAIL_THRESHOLD = 89
-    VIDEO_SCORE_FAIL_THRESHOLD = 89
     CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
     VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
+    CHANNEL_SCORE_FAIL_THRESHOLD = 89
+    VIDEO_SCORE_FAIL_THRESHOLD = 89
+    # Size of batch items retrieved from sdb
     CHANNEL_BATCH_LIMIT = 200
     VIDEO_BATCH_LIMIT = 200
+    # Whitelist / blacklist requirements
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
+    # Safe counter to break from video and channel generators
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     VIDEO_BATCH_COUNTER_LIMIT = 500
+    # Size of master lists
     MASTER_WHITELIST_CHANNEL_SIZE = 20000
     MASTER_BLACKLIST_CHANNEL_SIZE = 20000
     MASTER_WHITELIST_VIDEO_SIZE = 20000
     MASTER_BLACKLIST_VIDEO_SIZE = 20000
     MASTER_BLACKLIST_SIZE = None
     MASTER_WHITELIST_SIZE = None
+    # Whether to sort items by views or subscribers for master segment related items
     MASTER_SEGMENT_RELATED_SORT_KEY = None
     PK_NAME = None
     BATCH_LIMIT = None
@@ -351,6 +356,7 @@ class SegmentListGenerator(object):
             channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
             if not channels:
                 self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
+                self.cursor_id = self.script_tracker.cursor_id
                 break
             self._set_defaults(channels)
             yield channels
@@ -377,6 +383,7 @@ class SegmentListGenerator(object):
             videos = [item for item in response.get("items", []) if item["video_id"] != cursor_id]
             if not videos:
                 self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
+                self.cursor_id = self.script_tracker.cursor_id
                 break
             self._set_defaults(videos)
             yield videos
@@ -410,14 +417,14 @@ class SegmentListGenerator(object):
         max_size = self.MASTER_WHITELIST_SIZE if segment.category == PersistentSegmentCategory.WHITELIST else self.MASTER_BLACKLIST_SIZE
         annotate_config = {
             constants.CHANNEL: {
-                "subscribers": KeyTextTransform(sort_key, "details")
+                "subscribers": KeyTransform(sort_key, "details")
             },
             constants.VIDEO: {
-                "views": KeyTextTransform(sort_key, "details")
+                "views": KeyTransform(sort_key, "details")
             }
         }
         annotation = annotate_config[segment.segment_type]
-        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key))[max_size:]
+        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key)).values_list("related_id", flat=True)[max_size:]
         self.related_segment_model.objects.filter(related_id__in=list(related_ids_to_truncate)).delete()
 
     def _set_defaults(self, items):
