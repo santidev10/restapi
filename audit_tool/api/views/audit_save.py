@@ -26,14 +26,20 @@ class AuditSaveApiView(APIView):
         # handle inclusion_file upload IF inclusion_file (put in s3)
 
         # Audit Name Validation
+        if name is None:
+            raise ValueError("Name field is required.")
         if len(name) < 3:
             raise ValueError("Name {} must be at least 3 characters long.".format(name))
         # Audit Type Validation
+        if audit_type is None:
+            raise ValueError("Audit_type field is required.")
         if str(audit_type) not in AuditProcessor.AUDIT_TYPES:
             raise ValueError("Expected Audit Type to have one of the following values: {}. Received {}.".format(
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
         # Source File Validation
+        if source_file is None:
+            raise ValueError("Source file is required.")
         if source_file:
             source_split = source_file.name.split(".")
         else:
