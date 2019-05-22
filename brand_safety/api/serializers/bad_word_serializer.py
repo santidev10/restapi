@@ -12,7 +12,7 @@ class BadWordSerializer(ModelSerializer):
         try:
             name = str(value).strip()
             return name
-        except ValueError:
+        except (ValueError, TypeError):
             raise ValidationError("Unable to process name: {}".format(value))
 
     def validate_category(self, value):
