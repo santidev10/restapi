@@ -445,6 +445,7 @@ USE_LEGACY_BRAND_SAFETY = True
 CELERY_ENABLED = True
 
 ELASTIC_SEARCH_URLS = [""]
+ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
 try:
     from .local_settings import *
