@@ -26,9 +26,10 @@ class Command(BaseCommand):
         :return:
         """
         for segment in segment_model.objects.all():
-            now = timezone.now()
-            s3_filename = segment.get_s3_key(datetime=now)
-            logger.info("Collecting data for {}".format(segment.get_s3_key()))
-            segment.export_to_s3(s3_filename)
-            logger.info("Saved {}".format(segment.get_s3_key()))
-            PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+            if "Brand Safety" in segment.title:
+                now = timezone.now()
+                s3_filename = segment.get_s3_key(datetime=now)
+                logger.info("Collecting data for {}".format(s3_filename))
+                segment.export_to_s3(s3_filename)
+                logger.info("Saved {}".format(segment.get_s3_key()))
+                PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
