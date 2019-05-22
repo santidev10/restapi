@@ -44,7 +44,6 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
     serializer_class = AdWordsTopManagerSerializer
 
     def get(self, request):
-        print(list(self._get_accounts()))
         data = self.serializer_class(
             self._get_accounts(),
             many=True
