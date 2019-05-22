@@ -14,6 +14,7 @@ S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
 class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
+        audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         name = query_params["name"] if "name" in query_params else None
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
         source_file = request.data['source_file'] if "source_file" in request.data else None
@@ -21,19 +22,16 @@ class AuditSaveApiView(APIView):
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
         max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
         language = query_params["language"] if "language" in query_params else 'en'
-        # handle source_file upload IF source_file (put in s3)
-        # handle exclusion_file upload IF exclusion_file (put in s3)
-        # handle inclusion_file upload IF inclusion_file (put in s3)
 
         # Audit Name Validation
-        if name is None:
+        if not audit_id and name is None:
             raise ValueError("Name field is required.")
-        if len(name) < 3:
+        if name and len(name) < 3:
             raise ValueError("Name {} must be at least 3 characters long.".format(name))
         # Audit Type Validation
-        if audit_type is None:
+        if not audit_id and audit_type is None:
             raise ValueError("Audit_type field is required.")
-        if str(audit_type) not in AuditProcessor.AUDIT_TYPES:
+        if not audit_id and str(audit_type) not in AuditProcessor.AUDIT_TYPES:
             raise ValueError("Expected Audit Type to have one of the following values: {}. Received {}.".format(
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
@@ -49,24 +47,39 @@ class AuditSaveApiView(APIView):
         source_type = source_split[1]
         if source_type != "csv":
             raise ValueError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
-
         params = {
             'name': name,
             'language': language
         }
         # Put Source File on S3
-        params['seed_file'] = self.put_source_file_on_s3(source_file)
+        if source_file:
+            params['seed_file'] = self.put_source_file_on_s3(source_file)
         # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'] = self.load_keywords(exclusion_file)
-        audit = AuditProcessor.objects.create(
-            audit_type=audit_type,
-            params=params,
-            max_recommended=max_recommended
-        )
+        if audit_id:
+            audit = AuditProcessor.objects.get(id=audit_id)
+            if inclusion_file:
+                audit.params['inclusion'] = params['inclusion']
+            if exclusion_file:
+                audit.params['exclusion'] = params['exclusion']
+            if name:
+                audit.params['name'] = params['name']
+            if max_recommended:
+                audit.max_recommended = max_recommended
+                audit.completed = None
+            if language:
+                audit.params['language'] = language
+            audit.save()
+        else:
+            audit = AuditProcessor.objects.create(
+                audit_type=audit_type,
+                params=params,
+                max_recommended=max_recommended
+            )
         return Response(audit.to_dict())
 
     def put_source_file_on_s3(self, file):
