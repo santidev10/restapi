@@ -17,10 +17,6 @@ class Command(BaseCommand):
             "--type",
             help="List generation type: channel or video"
         ),
-        parser.add_argument(
-            "--finalize",
-            help="Finalize existing segments for s3."
-        )
 
     def handle(self, *args, **kwargs):
         list_type = kwargs["type"]
@@ -34,7 +30,6 @@ class Command(BaseCommand):
     def run(self, *args, **options):
         try:
             list_type = options["type"]
-            finalize = options.get("finalize")
             if list_type == constants.CHANNEL:
                 script_tracker = APIScriptTracker.objects.get_or_create(name="ChannelListGenerator")[0]
             elif list_type == constants.VIDEO:
@@ -45,10 +40,6 @@ class Command(BaseCommand):
                 list_generator_type=list_type,
                 script_tracker=script_tracker,
             )
-            if finalize:
-                logger.info("Finalizing segments...")
-                list_generator._finalize_segments()
-            else:
-                list_generator.run()
+            list_generator.run()
         except Exception as e:
             logger.exception(e)
