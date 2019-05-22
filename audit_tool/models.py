@@ -170,6 +170,7 @@ class AuditProcessor(models.Model):
             'created_time': self.created,
             'data': self.cached_data,
             'name': self.params.get('name'),
+            'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
         }
