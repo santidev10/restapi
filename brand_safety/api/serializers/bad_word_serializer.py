@@ -8,6 +8,13 @@ from brand_safety.models import BadWord, BadWordCategory
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
 
+    def validate_name(self, value):
+        try:
+            name = str(value).strip()
+            return name
+        except (ValueError, TypeError):
+            raise ValidationError("Unable to process name: {}".format(value))
+
     def validate_category(self, value):
         try:
             category_id = int(value)

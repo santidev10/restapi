@@ -1,4 +1,8 @@
 from django.conf import settings
+from django.db.models import BooleanField
+from django.db.models import Case
+from django.db.models import Value
+from django.db.models import When
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
@@ -6,6 +10,7 @@ from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Account, campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from userprofile.constants import UserSettingsKey
@@ -39,9 +44,8 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
     serializer_class = AdWordsTopManagerSerializer
 
     def get(self, request):
-        chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
         data = self.serializer_class(
-            self.queryset.filter(managers__id=chf_account_id).distinct(),
+            self._get_accounts(),
             many=True
         ).data
         user_id = self.request.query_params.get('user_id')
@@ -68,6 +72,16 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                 ]
 
         return Response(data=data)
+
+    def _get_accounts(self):
+        chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
+        return (Account.objects.filter(id=DEMO_ACCOUNT_ID).distinct()
+                | self.queryset.filter(managers__id=chf_account_id).distinct()) \
+            .annotate(is_demo=Case(When(id=DEMO_ACCOUNT_ID,
+                                        then=Value(True)),
+                                   default=Value(False),
+                                   output_field=BooleanField())) \
+            .order_by("-is_demo", "name")
 
     @cached_view
     def put(self, request):
