@@ -447,7 +447,7 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     @staticmethod
     def get_filename(segment):
         try:
-            date = re.search("([0-9]{4}\-[0-9]{2}\-[0-9]{2})", segment.s3_filename).group()
+            date = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", segment.s3_filename).group()
             if date is None:
                 filename = "{}.csv".format(segment.title)
             else:
