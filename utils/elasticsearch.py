@@ -30,12 +30,12 @@ class ElasticSearchConnector(object):
                                chunk_size=self.CHUNK_SIZE)
         list(result) # required for parallel_bulk
 
-    def search(self, **kwargs):
+    def search(self, request_timeout=settings.ELASTIC_SEARCH_REQUEST_TIMEOUT, **kwargs):
         try:
             index = kwargs.pop("index")
         except KeyError:
             index = self.index_name
-        return self.client.search(index=index, **kwargs)
+        return self.client.search(index=index, request_timeout=request_timeout, **kwargs)
 
     def get(self, **kwargs):
         return self.client.get(index=self.index_name, **kwargs)
