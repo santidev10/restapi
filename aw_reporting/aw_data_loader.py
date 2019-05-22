@@ -140,6 +140,5 @@ class AWDataLoader:
             logger.debug("Task: %s, account: %s", task.__name__, account)
             task(client, account, today, start_date=self.start_date, end_date=self.end_date)
 
-        account.update_time = timezone.now()
-        account.save()
+        Account.objects.filter(id=account.id).update(update_time=timezone.now())
         recalculate_de_norm_fields_for_account(account.id)

@@ -1,5 +1,3 @@
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
