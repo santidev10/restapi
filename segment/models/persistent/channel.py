@@ -6,7 +6,6 @@ from django.db.models import Count
 from django.db.models import ForeignKey
 from django.db.models import Sum
 from django.db.models.functions import Cast
-
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
 from .base import BasePersistentSegment
@@ -58,6 +57,9 @@ class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
             PersistentSegmentExportColumn.VIEWS: details.get("views"),
             PersistentSegmentExportColumn.AUDITED_VIDEOS: details.get("audited_videos"),
+            PersistentSegmentExportColumn.OVERALL_SCORE: details.get("overall_score"),
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
         return row
+
+
