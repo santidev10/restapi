@@ -28,7 +28,7 @@ def add_brand_safety_data(view):
             user = args[1].user
             if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
                 return response
-            if len(response.data.get("items", [])) > 1:
+            if response.data.get("items"):
                 _handle_list_view(response, index_name)
             else:
                 _handle_single_view(response, index_name)
