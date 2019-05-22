@@ -122,7 +122,6 @@ class SegmentListGenerator(object):
     def run(self):
         for batch in self.sdb_data_generator(self.cursor_id):
             self._process(batch)
-        self._finalize_segments()
 
     def _process(self, sdb_items):
         """
@@ -401,21 +400,6 @@ class SegmentListGenerator(object):
             self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.batch_count += 1
-
-    def _finalize_segments(self):
-        """
-        Finalize all segments
-            Set segment details and upload files to s3
-        :return:
-        """
-        for segment in self.segment_model.objects.all():
-            if "Brand Safety" in segment.title:
-                segment.details = segment.calculate_details()
-                segment.save()
-                now = timezone.now()
-                s3_filename = segment.get_s3_key(datetime=now)
-                segment.export_to_s3(s3_filename)
-                PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
 
     def _truncate_master_lists(self, segment):
         """
