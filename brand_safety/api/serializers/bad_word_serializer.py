@@ -10,7 +10,7 @@ class BadWordSerializer(ModelSerializer):
 
     def validate_name(self, value):
         try:
-            name = str(value).strip()
+            name = str(value).strip().lower()
             return name
         except (ValueError, TypeError):
             raise ValidationError("Unable to process name: {}".format(value))
