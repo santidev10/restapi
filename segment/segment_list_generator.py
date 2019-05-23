@@ -26,8 +26,8 @@ class SegmentListGenerator(object):
     CHANNEL_SCORE_FAIL_THRESHOLD = 89
     VIDEO_SCORE_FAIL_THRESHOLD = 89
     # Size of batch items retrieved from sdb
-    CHANNEL_BATCH_LIMIT = 200
-    VIDEO_BATCH_LIMIT = 200
+    CHANNEL_BATCH_LIMIT = 300
+    VIDEO_BATCH_LIMIT = 300
     # Whitelist / blacklist requirements
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
@@ -35,15 +35,16 @@ class SegmentListGenerator(object):
     # Safe counter to break from video and channel generators
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     VIDEO_BATCH_COUNTER_LIMIT = 500
-    # Size of master lists
-    MASTER_WHITELIST_CHANNEL_SIZE = 20000
-    MASTER_BLACKLIST_CHANNEL_SIZE = 20000
-    MASTER_WHITELIST_VIDEO_SIZE = 20000
-    MASTER_BLACKLIST_VIDEO_SIZE = 20000
-    MASTER_BLACKLIST_SIZE = None
-    MASTER_WHITELIST_SIZE = None
+    # Size of lists types
+    WHITELIST_CHANNEL_SIZE = 20000
+    BLACKLIST_CHANNEL_SIZE = 100000
+    WHITELIST_VIDEO_SIZE = 20000
+    BLACKLIST_VIDEO_SIZE = 100000
+    # Actual list sizes used during runtime set by _set_config method
+    BLACKLIST_SIZE = None
+    WHITELIST_SIZE = None
     # Whether to sort items by views or subscribers for master segment related items
-    MASTER_SEGMENT_RELATED_SORT_KEY = None
+    RELATED_SEGMENT_SORT_KEY = None
     PK_NAME = None
     BATCH_LIMIT = None
 
@@ -71,15 +72,6 @@ class SegmentListGenerator(object):
         :return:
         """
         if self.list_generator_type == constants.CHANNEL:
-            # Config constants
-            self.PK_NAME = "channel_id"
-            self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
-            self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_CHANNEL_SIZE
-            self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_CHANNEL_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-            self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
-            self.MASTER_SEGMENT_RELATED_SORT_KEY = "subscribers"
-
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
             self.related_segment_model = PersistentSegmentRelatedChannel
@@ -95,16 +87,16 @@ class SegmentListGenerator(object):
             self.sdb_data_generator = self._channel_batch_generator
             self.evaluator = self._evaluate_channel
 
-        elif self.list_generator_type == constants.VIDEO:
             # Config constants
-            self.PK_NAME = "video_id"
-            self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
-            self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_VIDEO_SIZE
-            self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_VIDEO_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
-            self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
-            self.MASTER_SEGMENT_RELATED_SORT_KEY = "views"
+            self.PK_NAME = "channel_id"
+            self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
+            self.BLACKLIST_SIZE = self.BLACKLIST_CHANNEL_SIZE
+            self.WHITELIST_SIZE = self.WHITELIST_CHANNEL_SIZE
+            self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
+            self.RELATED_SEGMENT_SORT_KEY = "subscribers"
 
+        elif self.list_generator_type == constants.VIDEO:
             # Config segments and models
             self.segment_model = PersistentSegmentVideo
             self.related_segment_model = PersistentSegmentRelatedVideo
@@ -116,6 +108,15 @@ class SegmentListGenerator(object):
             # Config methods
             self.sdb_data_generator = self._video_batch_generator
             self.evaluator = self._evaluate_video
+
+            # Config constants
+            self.PK_NAME = "video_id"
+            self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
+            self.BLACKLIST_SIZE = self.BLACKLIST_VIDEO_SIZE
+            self.WHITELIST_SIZE = self.WHITELIST_VIDEO_SIZE
+            self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
+            self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
+            self.RELATED_SEGMENT_SORT_KEY = "views"
         else:
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
@@ -144,6 +145,7 @@ class SegmentListGenerator(object):
                 to_create = self._instantiate_related_items(items, whitelist_segment_manager)
                 self._clean(whitelist_segment_manager, to_create)
                 self.related_segment_model.objects.bulk_create(to_create)
+                self._truncate_list(whitelist_segment_manager, self.WHITELIST_SIZE)
             except self.segment_model.DoesNotExist:
                 logger.info("Unable to get segment: {}".format(segment_title))
         self._save_master_results(merged_items)
@@ -242,14 +244,12 @@ class SegmentListGenerator(object):
         blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
         self._clean(self.master_blacklist_segment, blacklist_to_create)
         self.related_segment_model.objects.bulk_create(blacklist_to_create)
-        if self.master_blacklist_segment.related.count() >= self.MASTER_BLACKLIST_SIZE:
-            self._truncate_master_lists(self.master_blacklist_segment)
+        self._truncate_list(self.master_blacklist_segment, self.BLACKLIST_SIZE)
 
         whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
         self._clean(self.master_whitelist_segment, whitelist_to_create)
         self.related_segment_model.objects.bulk_create(whitelist_to_create)
-        if self.master_whitelist_segment.related.count() >= self.MASTER_WHITELIST_SIZE:
-            self._truncate_master_lists(self.master_whitelist_segment)
+        self._truncate_list(self.master_whitelist_segment, self.WHITELIST_SIZE)
 
     @staticmethod
     def get_segment_title(segment_type, category, segment_category):
@@ -401,14 +401,13 @@ class SegmentListGenerator(object):
             self.cursor_id = self.script_tracker.cursor_id
             self.batch_count += 1
 
-    def _truncate_master_lists(self, segment):
+    def _truncate_list(self, segment, size):
         """
         Truncate master segments
         :param segment: PersistentSegment model
         :return: None
         """
-        sort_key = self.MASTER_SEGMENT_RELATED_SORT_KEY
-        max_size = self.MASTER_WHITELIST_SIZE if segment.category == PersistentSegmentCategory.WHITELIST else self.MASTER_BLACKLIST_SIZE
+        sort_key = self.RELATED_SEGMENT_SORT_KEY
         annotate_config = {
             constants.CHANNEL: {
                 "subscribers": KeyTransform(sort_key, "details")
@@ -418,7 +417,7 @@ class SegmentListGenerator(object):
             }
         }
         annotation = annotate_config[segment.segment_type]
-        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key)).values_list("related_id", flat=True)[max_size:]
+        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key)).values_list("related_id", flat=True)[size:]
         segment.related.filter(related_id__in=list(related_ids_to_truncate)).delete()
 
     def _set_defaults(self, items):
