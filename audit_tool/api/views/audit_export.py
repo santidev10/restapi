@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
 
 from django.conf import settings
-from utils.aws.s3_exporter import S3Exporter
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 
 class AuditExportApiView(APIView):
     pass
