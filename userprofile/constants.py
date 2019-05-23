@@ -11,6 +11,7 @@ class UserSettingsKey:
     VISIBLE_ALL_ACCOUNTS = "visible_all_accounts"
     HIDDEN_CAMPAIGN_TYPES = "hidden_campaign_types"
     GLOBAL_ACCOUNT_VISIBILITY = "global_account_visibility"
+    DEMO_ACCOUNT_VISIBLE = "demo_account_visible"
 
 
 class UserTypeRegular(ExtendedEnum):
