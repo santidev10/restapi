@@ -173,6 +173,7 @@ class AuditProcessor(models.Model):
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
+            'language': self.params.get('language')
         }
         if d['data'].get('total') and d['data']['total'] > 0:
             d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
@@ -220,6 +221,7 @@ class AuditChannelMeta(models.Model):
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
     view_count = models.BigIntegerField(default=0, db_index=True)
+    video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
 
 class AuditVideo(models.Model):
