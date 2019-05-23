@@ -9,6 +9,7 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
+from rest_framework.response import Response
 
 from django.conf import settings
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
@@ -36,12 +37,12 @@ class AuditExportApiView(APIView):
 
         audit_type = audit.audit_type
 
-        if audit_type == 0:
-            pass
-        elif audit_type == 1 or audit_type == 2:
+        if audit_type == 0 or audit_type == 1:
             url = self.export_videos(audit_id=audit_id, clean=clean)
+        elif audit_type == 2:
+            pass
 
-        return url
+        return Response(data=url)
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
@@ -52,6 +53,7 @@ class AuditExportApiView(APIView):
             AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     def export_videos(self, audit_id=None, num_out=None, clean=None):
+        audit = AuditProcessor.objects.get(id=audit_id)
         self.get_categories()
         cols = [
             "video ID",
@@ -122,8 +124,8 @@ class AuditExportApiView(APIView):
                     v.dislikes,
                     'T' if v.emoji else 'F',
                     v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
+                    v.video.channel.auditchannelmeta.name if v.video.channel else '',
+                    v.video.channel.channel_id if v.video.channel else '',
                     channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
                     country,
@@ -131,8 +133,8 @@ class AuditExportApiView(APIView):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
-            if self.audit and self.audit.completed:
-                self.audit.params['export'] = 'export_{}.csv'.format(name)
-                self.audit.save()
-            return 'export_{}.csv'.format(clean)
+            if audit and audit.completed:
+                audit.params['export'] = 'export_clean_{}.csv'.format(clean)
+                audit.save()
+            return 'export_clean_{}.csv'.format(clean)
 
