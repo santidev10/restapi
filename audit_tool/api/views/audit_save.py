@@ -99,7 +99,7 @@ class AuditSaveApiView(APIView):
 
 class AuditFileS3Exporter(S3Exporter):
     S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
-    bucket_name = settings.AMAZON_S3_AUDITS_BUCKET_NAME
+    bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
     export_content_type = "application/CSV"
 
     @classmethod
