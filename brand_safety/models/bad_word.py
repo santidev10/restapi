@@ -51,6 +51,7 @@ class BadWordManager(models.Manager):
         super(BadWordManager, self).__init__(*args, **kwargs)
 
     def get_queryset(self):
+        # If manager was accessed with BadWord.objects, then return objects with deleted_at=None
         if self.active_only:
             return BadWordQuerySet(self.model).filter(deleted_at=None)
         return BadWordQuerySet(self.model)
@@ -63,9 +64,9 @@ def get_default_language():
 
 class BadWord(models.Model):
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=80, unique=True)
+    name = models.CharField(max_length=80, db_index=True)
     category = models.ForeignKey(BadWordCategory, db_index=True)
-    language = models.ForeignKey(BadWordLanguage, db_index=True, default=get_default_language)
+    language = models.ForeignKey(BadWordLanguage, db_index=True, default=get_default_language, related_name="bad_words")
     negative_score = models.IntegerField(default=1, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(blank=True, null=True, db_index=True)
