@@ -300,8 +300,14 @@ def create_ad_statistic(ads, dates):
 
 
 def create_ad_group_statistic_for_model(ad_groups, dates, model, key, items, special_data):
+    multiplier_per_item = {item: random.randint(1, 20) for item in items}
     statistic_subjects = tuple(product(ad_groups, dates, items))
-    stats = generate_stats(statistic_subjects, lambda i: i[0].campaign.salesforce_placement.goal_type_id)
+    multiplier_for_subjects = [multiplier_per_item[item] for (*_, item) in statistic_subjects]
+    stats = generate_stats(
+        statistic_subjects,
+        lambda i: i[0].campaign.salesforce_placement.goal_type_id,
+        multiplier_for_subjects,
+    )
     statistics = [
         model(
             ad_group=ad_group,
@@ -318,11 +324,11 @@ def create_ad_group_statistic_for_model(ad_groups, dates, model, key, items, spe
     model.objects.bulk_create(statistics)
 
 
-def generate_stats(statistic_subjects, goal_type_getter):
+def generate_stats(statistic_subjects, goal_type_getter, multipliers=None):
     count = len(statistic_subjects)
     return zip(
         statistic_subjects,
-        randomize_values(Stats.IMPRESSIONS, count),
+        randomize_values(Stats.IMPRESSIONS, count, custom_multipliers=multipliers),
         randomize_values(
             Stats.VIDEO_VIEWS,
             count,
@@ -331,8 +337,8 @@ def generate_stats(statistic_subjects, goal_type_getter):
                 for item in statistic_subjects
             ]
         ),
-        randomize_values(Stats.CLICKS, count),
-        randomize_values(Stats.COST, count),
+        randomize_values(Stats.CLICKS, count, custom_multipliers=multipliers),
+        randomize_values(Stats.COST, count, custom_multipliers=multipliers),
     )
 
 
