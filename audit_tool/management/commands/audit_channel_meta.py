@@ -106,6 +106,8 @@ class Command(BaseCommand):
         channels = []
         for seed in seed_list:
             if 'youtube.com/channel/' in seed:
+                if seed[-1] == '/':
+                    seed = seed[:-1]
                 v_id = seed.split("/")[-1]
                 channel = AuditChannel.get_or_create(v_id)
                 AuditChannelMeta.objects.get_or_create(channel=channel)
