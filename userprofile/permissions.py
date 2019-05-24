@@ -126,7 +126,7 @@ class Permissions:
         (PermissionGroupNames.MEDIA_PLANNING, (
         )),
         (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
-            "view_audit_segments"
+            "view_audit_segments",
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "view_pre_baked_segments",
@@ -164,19 +164,19 @@ class Permissions:
             "forecasting",
         )),
         (PermissionGroupNames.BRAND_SAFETY_VIEW, (
-            "view_brand_safety"
+            "view_brand_safety",
         )),
         (PermissionGroupNames.BRAND_SAFETY_DOWNLOAD, (
-            "download_brand_safety"
+            "download_brand_safety",
         )),
         (PermissionGroupNames.BRAND_SAFETY_SCORING, (
-            "scoring_brand_safety"
+            "scoring_brand_safety",
         )),
         (PermissionGroupNames.AUDIT_DOWNLOAD, (
-            "download_audit"
+            "download_audit",
         )),
         (PermissionGroupNames.AUDIT_VIEW, (
-            "view_audit"
+            "view_audit",
         )),
     )
 
