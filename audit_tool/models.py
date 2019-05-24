@@ -150,7 +150,7 @@ class AuditProcessor(models.Model):
             'running': [],
             'completed': []
         }
-        for a in all.order_by("pause", "-id"):
+        for a in all.order_by("pause", "-completed", "id"):
             d = a.to_dict()
             status = 'running'
             if a.completed is not None:
