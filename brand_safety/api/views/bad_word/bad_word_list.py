@@ -6,12 +6,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.serializers import ValidationError
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
+from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
 
 
 class BadWordListApiView(ListCreateAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = BadWordSerializer
+    pagination_class = BrandSafetyPaginator
     MIN_SEARCH_LENGTH = 3
 
     def do_filters(self, queryset):
