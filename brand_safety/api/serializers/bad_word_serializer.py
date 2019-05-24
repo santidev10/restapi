@@ -1,12 +1,16 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
 from rest_framework.serializers import CharField
+from rest_framework.serializers import StringRelatedField
 
-from brand_safety.models import BadWord, BadWordCategory
+from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
+from brand_safety.models import BadWordLanguage
 
 
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
+    language = StringRelatedField(required=False)
 
     def validate_name(self, value):
         try:
@@ -36,6 +40,13 @@ class BadWordSerializer(ModelSerializer):
         except ValueError:
             raise ValidationError("Negative_score must be Integer with value between 1-4. Received: {}".format(value))
 
+    def validate_language(self, value):
+        try:
+            language = BadWordLanguage.from_string(str(value).strip())
+        except (ValueError, TypeError):
+            raise ValidationError("Unable to process language: {}".format(value))
+        return language
+
     class Meta:
         model = BadWord
-        fields = ("id", "name", "category", "negative_score")
+        fields = ("id", "name", "category", "negative_score", "language")
