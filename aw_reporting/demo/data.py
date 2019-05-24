@@ -1,9 +1,10 @@
 from aw_creation.constants import TargetingType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 DEMO_ACCOUNT_ID = "demo"
 DEMO_NAME = "Demo"
-DEMO_CAMPAIGNS_COUNT = 2
-DEMO_DATA_PERIOD_DAYS = 20
+DEMO_DATA_PERIOD_DAYS = 19
+DAYS_LEFT = 11
 DEMO_AD_GROUPS = (
     "Topics", "Interests", "Keywords", "Channels", "Videos"
 )
@@ -11,12 +12,30 @@ DEMO_BRAND = "Demo Brand"
 DEMO_COST_METHOD = ["CPM", "CPV"]
 DEMO_SF_ACCOUNT = "Initiative LA"
 DEMO_DATA_HOURLY_LIMIT = 13
-DEFAULT_STATS = dict(
-    impressions=10000,
-    cost=1,
-    video_views=300,
-    clicks=20,
+
+
+class Stats:
+    IMPRESSIONS = 300000000
+    VIDEO_VIEWS = 10000000
+    CLICKS = 150000
+    COST = 37000
+
+
+CAMPAIGN_STATS = (
+    dict(salesforce=dict(
+        goal_type_id=SalesForceGoalType.CPV,
+        ordered_units=21600000,
+        ordered_rate=.23,
+        total_cost=4968000,
+    )),
+    dict(salesforce=dict(
+        goal_type_id=SalesForceGoalType.CPM,
+        ordered_units=242600000,
+        ordered_rate=11.,
+        total_cost=2668600,
+    )),
 )
+
 DEFAULT_CTA_STATS = dict(
     clicks_website=1,
     clicks_call_to_action_overlay=2,
@@ -33,20 +52,18 @@ AUIDIENCES = (
     "Demo audience 2",
 )
 VIDEO_CREATIVES = (
-    "demo creative 1",
-    "demo creative 2",
+    "XEngrJr79Jg",
 )
 KEYWORDS = (
     "demo keyword 1",
     "demo keyword 2",
 )
 CHANNELS = (
-    "demoChannel1",
-    "demoChannel2",
+    "UC-NAeWIiaJSX0lQ20IVEFIA",
 )
 VIDEOS = (
-    "demoVideo1",
-    "demoVideo2",
+    "XEngrJr79Jg",
+    "TvAGSnbK5kI",
 )
 CITIES = (
     "Demo city 1",
