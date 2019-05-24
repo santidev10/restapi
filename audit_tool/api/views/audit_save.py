@@ -9,9 +9,6 @@ from distutils.util import strtobool
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
-S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
-
-
 class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
@@ -111,18 +108,20 @@ class AuditSaveApiView(APIView):
                 keywords.append(word)
         return keywords
 
+
 class AuditFileS3Exporter(S3Exporter):
-    bucket_name = settings.AMAZON_S3_AUDITS_BUCKET_NAME
+    S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
+    bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
     export_content_type = "application/CSV"
 
-    @staticmethod
-    def get_s3_key(name):
-        key = S3_AUDIT_EXPORT_KEY_PATTERN.format(file_name=name)
+    @classmethod
+    def get_s3_key(cls, name):
+        key = cls.S3_AUDIT_EXPORT_KEY_PATTERN.format(file_name=name)
         return key
 
     @classmethod
     def export_to_s3(cls, exported_file, name):
-        S3Exporter._s3().put_object(
+        cls._s3().put_object(
             Bucket=cls.bucket_name,
             Key=cls.get_s3_key(name),
             Body=exported_file
