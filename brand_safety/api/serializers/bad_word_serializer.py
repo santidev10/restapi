@@ -3,7 +3,6 @@ from rest_framework.serializers import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import StringRelatedField
 from rest_framework.validators import UniqueTogetherValidator
-
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.models import BadWordLanguage
@@ -11,7 +10,7 @@ from brand_safety.models import BadWordLanguage
 
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
-    language = StringRelatedField(required=False)
+    language = StringRelatedField(default=BadWordLanguage.DEFAULT)
 
     def validate_name(self, value):
         try:
@@ -53,7 +52,7 @@ class BadWordSerializer(ModelSerializer):
         fields = ("id", "name", "category", "negative_score", "language")
         validators = [
             UniqueTogetherValidator(
-                queryset=BadWord.objects.all(),
+                queryset=BadWord.all_objects.all(),
                 fields=("name", "category", "language")
             )
         ]

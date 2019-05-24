@@ -52,19 +52,6 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_disallow_the_same_bad_word_in_different_categories(self):
-        self.create_admin_user()
-        test_category_1 = BadWordCategory.objects.create(name="test category 1")
-        test_category_2 = BadWordCategory.objects.create(name="test category 2")
-        test_bad_word = BadWord.objects.create(name="test bad word", category=test_category_1)
-
-        response = self._request(
-            name=test_bad_word.name,
-            category=test_category_2.name,
-        )
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
     def test_reject_duplicates(self):
         self.create_admin_user()
         test_category = BadWordCategory.objects.create(name="test category")
