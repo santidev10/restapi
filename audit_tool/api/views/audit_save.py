@@ -4,6 +4,7 @@ from audit_tool.models import AuditProcessor
 import csv
 from uuid import uuid4
 from io import StringIO
+from distutils.util import strtobool
 
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
@@ -15,6 +16,9 @@ class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
+        user_id = query_params["user_id"] if "user_id" in query_params else None
+        do_videos = strtobool(query_params["do_videos"]) if "do_videos" in query_params else None
+        move_to_top = strtobool(query_params["move_to_top"]) if "move_to_top" in query_params else None
         name = query_params["name"] if "name" in query_params else None
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
         source_file = request.data['source_file'] if "source_file" in request.data else None
@@ -49,7 +53,9 @@ class AuditSaveApiView(APIView):
             raise ValueError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
         params = {
             'name': name,
-            'language': language
+            'language': language,
+            'user_id': user_id,
+            'do_videos': do_videos
         }
         # Put Source File on S3
         if source_file:
@@ -73,6 +79,12 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
+            if move_to_top:
+                try:
+                    lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit.id).order_by("pause")[0]
+                    audit.pause = lowest_priority.pause - 1
+                except Exception as e:
+                    pass
             audit.save()
         else:
             audit = AuditProcessor.objects.create(

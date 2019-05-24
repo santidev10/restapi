@@ -1,5 +1,4 @@
 from distutils.util import strtobool
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
