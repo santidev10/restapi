@@ -36,6 +36,12 @@ CAMPAIGN_STATS = (
     )),
 )
 
+QUARTILE_STATS = dict(
+    video_views_25_quartile=.60,
+    video_views_50_quartile=.40,
+    video_views_75_quartile=.34,
+    video_views_100_quartile=.27,
+)
 DEFAULT_CTA_STATS = dict(
     clicks_website=1,
     clicks_call_to_action_overlay=2,

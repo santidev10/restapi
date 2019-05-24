@@ -64,6 +64,7 @@ from .data import DEMO_DATA_PERIOD_DAYS
 from .data import DEMO_NAME
 from .data import DEMO_SF_ACCOUNT
 from .data import KEYWORDS
+from .data import QUARTILE_STATS
 from .data import Stats
 from .data import TARGETING
 from .data import TOPICS
@@ -293,6 +294,7 @@ def create_ad_statistic(ads, dates):
             video_views=views,
             clicks=clicks,
             cost=cost,
+            **generate_quartile_data(impressions),
         )
         for (ad, dt), impressions, views, clicks, cost in stats
     ]
@@ -317,7 +319,8 @@ def create_ad_group_statistic_for_model(ad_groups, dates, model, key, items, spe
             clicks=clicks,
             cost=cost,
             **{key: item},
-            **(special_data or dict())
+            **(special_data or dict()),
+            **generate_quartile_data(impressions),
         )
         for (ad_group, dt, item), impressions, views, clicks, cost in stats
     ]
@@ -453,6 +456,13 @@ def get_cities():
         )[0]
         for name in CITIES
     ]
+
+
+def generate_quartile_data(impressions):
+    return {
+        key: percent * impressions
+        for key, percent in QUARTILE_STATS.items()
+    }
 
 
 def randomize_values(total_value, count, buffer=80, custom_multipliers=None):
