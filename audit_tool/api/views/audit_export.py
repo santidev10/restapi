@@ -30,7 +30,10 @@ class AuditExportApiView(APIView):
         if audit_id is None:
             raise ValueError("audit_id is required.")
         if clean is not None:
-            clean = strtobool(clean)
+            try:
+                clean = strtobool(clean)
+            except ValueError:
+                raise ValueError("Expected clean var to have boolean value or no value. Received {}.".format(clean))
 
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
@@ -55,9 +58,12 @@ class AuditExportApiView(APIView):
             AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     def export_videos(self, audit, audit_id=None, num_out=None, clean=None):
+        clean_string = 'none'
+        if clean is not None:
+            clean_string = 'true' if clean else 'false'
         # If audit already exported, simply generate and return temp link
-        if 'export' in audit.params:
-            return AuditS3Exporter.generate_temporary_url(audit.params['export'])
+        if 'export_{}'.format(clean_string) in audit.params:
+            return AuditS3Exporter.generate_temporary_url(audit.params['export_{}'.format(clean_string)])
         self.get_categories()
         cols = [
             "video ID",
@@ -97,9 +103,6 @@ class AuditExportApiView(APIView):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        clean_string = 'none'
-        if clean is not None:
-            clean_string = 'true' if clean else 'false'
         with open('export_{}_{}.csv'.format(name, clean_string), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -141,9 +144,9 @@ class AuditExportApiView(APIView):
                 ]
                 wr.writerow(data)
             if audit and audit.completed:
-                audit.params['export'] = 'export_{}_{}.csv'.format(name, clean_string)
+                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
                 audit.save()
-                file_name = audit.params['export']
+                file_name = audit.params['export_{}'.format(clean_string)]
                 myfile.buffer.seek(0)
                 url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
                 os.remove(myfile.name)
