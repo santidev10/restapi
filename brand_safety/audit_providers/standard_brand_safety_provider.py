@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
+from time import sleep
 
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
@@ -18,8 +19,8 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 240
-    channel_id_pool_batch_limit = 30
+    channel_id_master_batch_limit = 80
+    channel_id_pool_batch_limit = 10
     max_process_count = 8
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
@@ -32,6 +33,7 @@ class StandardBrandSafetyProvider(object):
     channel_batch_counter_limit = 500
     # Hours in which a channel should be updated
     update_time_threshold = 24 * 7
+    DEFAULT_SLEEP = 1.5
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -84,8 +86,10 @@ class StandardBrandSafetyProvider(object):
         :param channel_ids: Channel ids to retrieve video data for
         :return:
         """
+        sleep(self.DEFAULT_SLEEP)
         video_audits = self.audit_service.audit_videos(channel_ids=channel_ids)
         sorted_video_audits = self.audit_service.sort_video_audits(video_audits)
+        sleep(self.DEFAULT_SLEEP)
         channel_audits = self.audit_service.audit_channels(sorted_video_audits)
         results = {
             "video_audits": video_audits,
