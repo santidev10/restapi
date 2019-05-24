@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -48,6 +49,15 @@ class BadWordListTestCase(ExtendedAPITestCase):
             query_params=query_params,
         )
         return self.client.get(url)
+
+    def test_bad_word_manager_objects(self):
+        word1 = BadWord.objects.create(**self.words[0])
+        word2 = BadWord(**self.words[1])
+        word2.deleted_at = timezone.now()
+        word2.save()
+
+        self.assertEqual(1, BadWord.objects.all().count())
+        self.assertEqual(2, BadWord.all_objects.all().count())
 
     def test_not_auth(self):
         response = self._request()
