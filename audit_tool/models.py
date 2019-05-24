@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from django.db import IntegrityError
 
 from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
@@ -122,9 +123,12 @@ class Comment(models.Model):
     found_items = JSONField(default={})
 
 class AuditProcessor(models.Model):
-    # audit_types:
-    #   0 - recommendation engine
-    #   1 - video meta processor
+    AUDIT_TYPES={
+      '0': 'Recommendation Engine',
+      '1': 'Video Meta Processor',
+      '2': 'Channel Meta Processor',
+    }
+
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
@@ -134,6 +138,46 @@ class AuditProcessor(models.Model):
     cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
+
+    @staticmethod
+    def get(running=None, audit_type=None):
+        all = AuditProcessor.objects.all()
+        if audit_type:
+            all = all.filter(audit_type=audit_type)
+        if running is not None:
+            all = all.filter(completed__isnull=running)
+        ret = {
+            'running': [],
+            'completed': []
+        }
+        for a in all.order_by("pause", "-id"):
+            d = a.to_dict()
+            status = 'running'
+            if a.completed is not None:
+                status = 'completed'
+            ret[status].append(d)
+        return ret
+
+    def to_dict(self):
+        audit_type = self.params.get('audit_type_original')
+        if not audit_type:
+            audit_type = self.audit_type
+        d = {
+            'id': self.id,
+            'priority': self.pause,
+            'completed_time': self.completed,
+            'start_time': self.started,
+            'created_time': self.created,
+            'data': self.cached_data,
+            'name': self.params.get('name'),
+            'audit_type': audit_type,
+            'percent_done': 0,
+        }
+        if d['data'].get('total') and d['data']['total'] > 0:
+            d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+            if d['percent_done'] > 100:
+                d['percent_done'] = 100
+        return d
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
@@ -157,17 +201,21 @@ class AuditChannel(models.Model):
         for r in res:
             if r.channel_id == channel_id:
                 return r
-        return AuditChannel.objects.create(
-                channel_id=channel_id,
-                channel_id_hash=channel_id_hash
-        )
+        try:
+            return AuditChannel.objects.create(
+                    channel_id=channel_id,
+                    channel_id_hash=channel_id_hash
+            )
+        except IntegrityError as e:
+            return AuditChannel.objects.get(channel_id=channel_id)
 
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel)
     name = models.CharField(max_length=255, default=None, null=True)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_language')
+    default_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_default_language')
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
     view_count = models.BigIntegerField(default=0, db_index=True)
@@ -186,10 +234,13 @@ class AuditVideo(models.Model):
             for r in res:
                 if r.video_id == video_id:
                     return r
-        return AuditVideo.objects.create(
-                video_id=video_id,
-                video_id_hash=video_id_hash
-        )
+        try:
+            return AuditVideo.objects.create(
+                    video_id=video_id,
+                    video_id_hash=video_id_hash
+            )
+        except IntegrityError as e:
+            return AuditVideo.objects.get(video_id=video_id)
 
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo)
@@ -214,3 +265,14 @@ class AuditVideoProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "video")
+
+class AuditChannelProcessor(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel')
+    channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, related_name='avp_channel_source')
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    clean = models.BooleanField(default=True, db_index=True)
+    word_hits = JSONField(default={}, null=True)
+
+    class Meta:
+        unique_together = ("audit", "channel")

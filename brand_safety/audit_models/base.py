@@ -35,6 +35,8 @@ class Audit(object):
             ratio = dislikes / (likes + dislikes)
         except ZeroDivisionError:
             ratio = 0
+        except TypeError:
+            ratio = None
         return ratio
 
     @staticmethod

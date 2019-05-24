@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+import langid
 import logging
 from django.conf import settings
 import requests
@@ -6,8 +7,9 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
 logger = logging.getLogger(__name__)
-from pid.decorator import pidfile
+from pid import PidFile
 
 """
 requirements:
@@ -22,24 +24,45 @@ class Command(BaseCommand):
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
 
-    @pidfile(piddir=".", pidname="audit_fill_channels.pid")
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     def handle(self, *args, **options):
-        count = 0
-        pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
-        if pending_channels.count() == 0:
-            logger.info("No channels to fill.")
-            raise Exception("No channels to fill.")
-        channels = {}
-        for channel in pending_channels[:20000]:
-            channels[channel.channel.channel_id] = channel
-            count+=1
-            if len(channels) == 50:
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile(piddir='.', pidname='audit_fill_channels{}.pid'.format(self.thread_id)) as p:
+            count = 0
+            pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
+            if pending_channels.count() == 0:
+                logger.info("No channels to fill.")
+                raise Exception("No channels to fill.")
+            channels = {}
+            start = self.thread_id * 20000
+            for channel in pending_channels.order_by("-id")[start:start+20000]:
+                channels[channel.channel.channel_id] = channel
+                count+=1
+                if len(channels) == 50:
+                    self.do_channel_metadata_api_call(channels)
+                    channels = {}
+            if len(channels) > 0:
                 self.do_channel_metadata_api_call(channels)
-                channels = {}
-        if len(channels) > 0:
-            self.do_channel_metadata_api_call(channels)
-        logger.info("Done {} channels".format(count))
-        raise Exception("Done {} channels".format(count))
+            logger.info("Done {} channels".format(count))
+            raise Exception("Done {} channels".format(count))
+
+    def calc_language(self, channel):
+        str_long = channel.name
+        if channel.keywords:
+            str_long = "{} {}".format(str_long, channel.keywords)
+        if channel.description:
+            str_long = "{} {}".format(str_long, channel.description)
+        try:
+            l = langid.classify(str_long.lower())[0]
+            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
+            channel.language = db_lang
+            channel.save(update_fields=['language'])
+        except Exception as e:
+            pass
 
     def do_channel_metadata_api_call(self, channels):
         ids = []
@@ -66,6 +89,11 @@ class Command(BaseCommand):
                     db_channel_meta.keywords = i['brandingSettings']['channel']['keywords']
                 except Exception as e:
                     pass
+                try:
+                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                    db_channel_meta.default_language = db_lang
+                except Exception as e:
+                    pass
                 country = i['brandingSettings']['channel'].get('country')
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
@@ -75,7 +103,11 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
-                db_channel_meta.save()
+                try:
+                    db_channel_meta.save()
+                    self.calc_language((db_channel_meta))
+                except Exception as e:
+                    logger.info("problem saving channel")
             AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
         except Exception as e:
             logger.exception(e)

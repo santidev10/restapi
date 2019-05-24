@@ -92,17 +92,21 @@ class PermissionGroupNames:
     MEDIA_PLANNING = "Media Planning"
     MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
     MEDIA_PLANNING_AUDIT = "Media Planning - audit"
+    MEDIA_PLANNING_BRAND_SAFETY = "Media Planning - Brand Safety"
     MEDIA_PLANNING_WHITE_LISTS = "Media Planning - whitelists"
     MEDIA_BUYING = "Media Buying"
     AUTH_CHANNELS = "Auth channels and audience data"
     TOOLS = "Tools"
     MANAGED_SERVICE = "Managed Service"
+    MANAGED_SERVICE_PERFORMANCE_DETAILS = "Hide Managed Service Performance Details"
     SELF_SERVICE = "Self Service"
     SELF_SERVICE_TRENDS = "Self Service Trends"
     FORECASTING = "Forecasting"
     AUDIT_DOWNLOAD = "Audit Download"
+    AUDIT_VIEW = "Audit View"
     BRAND_SAFETY_VIEW = "Brand Safety View"
     BRAND_SAFETY_DOWNLOAD = "Brand Safety Download"
+    BRAND_SAFETY_SCORING = "Brand Safety Scoring"
 
 
 class Permissions:
@@ -120,6 +124,9 @@ class Permissions:
             "keyword_details",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
+        )),
+        (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
+            "view_audit_segments"
         )),
         (PermissionGroupNames.MEDIA_PLANNING_PRE_BAKES, (
             "view_pre_baked_segments",
@@ -144,6 +151,9 @@ class Permissions:
         (PermissionGroupNames.MANAGED_SERVICE, (
             "view_dashboard",
         )),
+        (PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS, (
+            "view_performance_details",
+        )),
         (PermissionGroupNames.SELF_SERVICE, (
             "view_media_buying",
             "settings_my_aw_accounts",
@@ -159,8 +169,14 @@ class Permissions:
         (PermissionGroupNames.BRAND_SAFETY_DOWNLOAD, (
             "download_brand_safety"
         )),
+        (PermissionGroupNames.BRAND_SAFETY_SCORING, (
+            "scoring_brand_safety"
+        )),
         (PermissionGroupNames.AUDIT_DOWNLOAD, (
             "download_audit"
+        )),
+        (PermissionGroupNames.AUDIT_VIEW, (
+            "view_audit"
         )),
     )
 
@@ -185,14 +201,17 @@ class Permissions:
         "view_pricing_tool",
         # dashboard section
         "view_dashboard",
+        "view_performance_details",
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
         # brand safety section
         "view_brand_safety",
         "download_brand_safety",
+        "scoring_brand_safety",
         # audits
         "download_audit",
+        "view_audit",
     )
 
     @staticmethod

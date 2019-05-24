@@ -347,6 +347,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             account = Account.objects.create(id=next(int_iterator), name="", skip_creating_account_creation=True)
             account.managers.add(mcc_account)
             return account
+
         # ended
         ended_account = create_account()
         Campaign.objects.create(name="ended 1", id="1", account=ended_account, status="ended")
@@ -973,3 +974,14 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items_count"], 1)
         item = response.data["items"][0]
         self.assertEqual(item["id"], DEMO_ACCOUNT_ID)
+
+    def test_demo_is_editable(self):
+        recreate_demo_data()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        item = response.data["items"][0]
+        self.assertEqual(item["is_editable"], True)

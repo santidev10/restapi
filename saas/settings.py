@@ -382,6 +382,9 @@ CACHE_AUTH_TOKEN = 'put_auth_token_here'
 HOST = "https://viewiq.channelfactory.com"
 APEX_HOST = "https://apex.viewiq.com"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", 6379)
+
 CF_AD_OPS_DIRECTORS = [
     ('Kim, John', "john.kim@channelfactory.com"),
 ]
@@ -405,6 +408,7 @@ if is_running_under_teamcity():
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
 AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
+AMAZON_S3_AUDITS_BUCKET_NAME = "viewiq-audit-files"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
@@ -432,8 +436,6 @@ SWAGGER_SETTINGS = {
     'LOGOUT_URL': "/docs/logout/",
 }
 
-ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-rc-2dtu2y7suh2wgn57ykwasdcfem.us-east-1.es.amazonaws.com"]
-
 TEMPDIR = "/tmp"
 
 MAX_SEGMENT_TO_AGGREGATE = 10000
@@ -441,6 +443,9 @@ MAX_SEGMENT_TO_AGGREGATE = 10000
 USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
+
+ELASTIC_SEARCH_URLS = [""]
+ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
 try:
     from .local_settings import *

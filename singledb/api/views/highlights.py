@@ -7,6 +7,7 @@ from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from video.api.views import VideoListApiView
+from utils.brand_safety_view_decorator import add_brand_safety_data
 
 
 class HighlightChannelsListApiView(SingledbApiView):
@@ -14,6 +15,7 @@ class HighlightChannelsListApiView(SingledbApiView):
         "userprofile.view_highlights",
     )
 
+    @add_brand_safety_data
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
         query_params = HighlightsQuery(request_query_params).prepare_query(mode='channel')
@@ -34,6 +36,7 @@ class HighlightVideosListApiView(SingledbApiView):
         "userprofile.view_highlights",
     )
 
+    @add_brand_safety_data
     def get(self, request, *args, **kwargs):
         request_query_params = request.query_params
         query_params = HighlightsQuery(request_query_params).prepare_query(mode='video')

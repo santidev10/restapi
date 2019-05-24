@@ -5,18 +5,30 @@ from aw_reporting.models import BaseQueryset
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
+    # Categories to exclude from brand safety
+    EXCLUDED = ["1", "2"]
 
     @staticmethod
     def from_string(in_var):
         db_result, _ = BadWordCategory.objects.get_or_create(name=in_var.lower())
         return db_result
 
+    @staticmethod
+    def get_category_mapping():
+        mapping = {
+            str(category.id): category.name
+            for category in BadWordCategory.objects.all()
+        }
+        return mapping
+
+    def __str__(self):
+        return self.name
+
 
 class BadWord(models.Model):
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=80)
-    category = models.CharField(max_length=80) # tech debt: remove in 3.15
-    category_ref = models.ForeignKey(BadWordCategory, db_index=True, default=None, null=True)
+    name = models.CharField(max_length=80, unique=True)
+    category = models.ForeignKey(BadWordCategory, db_index=True)
     negative_score = models.IntegerField(default=1, db_index=True)
 
     objects = BaseQueryset.as_manager()
