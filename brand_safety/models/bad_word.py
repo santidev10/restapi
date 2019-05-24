@@ -78,6 +78,7 @@ class BadWord(models.Model):
     def delete(self):
         self.deleted_at = timezone.now()
         self.save()
+        return self
 
     class Meta:
         unique_together = ("name", "category", "language")

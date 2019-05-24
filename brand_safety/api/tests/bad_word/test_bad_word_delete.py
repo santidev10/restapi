@@ -94,5 +94,6 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
         soft_delete_word = self.words[0]
         BadWord.objects.bulk_create([BadWord(**opts) for opts in self.words])
         response = self._request(soft_delete_word["id"])
-        self.assertEqual(len(self.words), BadWord.all_objects.all().count())
+        # self.bad_word created during setup + self.words created
+        self.assertEqual(len(self.words) + 1, BadWord.all_objects.all().count())
         self.assertTrue(BadWord.all_objects.filter(pk=soft_delete_word["id"]).exists())

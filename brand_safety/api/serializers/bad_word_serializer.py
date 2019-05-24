@@ -10,7 +10,7 @@ from brand_safety.models import BadWordLanguage
 
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
-    language = StringRelatedField(required=False)
+    language = StringRelatedField(required=False, many=True)
 
     def validate_name(self, value):
         try:

@@ -84,7 +84,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
             name="Test Bad Word"
         )
         response = self._request()
-        data = response.data
+        data = response.data["items"]
 
         self.assertEqual(set(data[0].keys()), {"id", "name", "category", "negative_score", "language"})
         self.assertEqual(data[0]["id"], bad_word.id)
@@ -106,7 +106,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
                 category=self.test_category,
             )
         response = self._request()
-        response_bad_words = [item["name"] for item in response.data]
+        response_bad_words = [item["name"] for item in response.data["items"]]
         self.assertEqual(response_bad_words, sorted(bad_words))
 
     def test_filter_by_category(self):
@@ -119,27 +119,29 @@ class BadWordListTestCase(ExtendedAPITestCase):
             category=self.test_category
         )
         response = self._request(category=self.test_category.id)
-
-        self.assertEqual(response.data[0]["id"], expected_bad_word.id)
+        self.assertEqual(response.data["items"][0]["id"], expected_bad_word.id)
 
     def test_filter_by_language(self):
         self.create_admin_user()
         BadWord.objects.bulk_create([BadWord(**opts) for opts in self.words])
         response = self._request(language="en")
+        data = response.data["items"]
 
-        self.assertEqual(len(self.words)-1, len(response.data))
-        self.assertEqual(True, all([word["language"] == "en" for word in response.data]))
+        self.assertEqual(len(self.words)-1, len(data))
+        self.assertEqual(True, all([word["language"] == "en" for word in data]))
 
     def test_filter_by_search(self):
         self.create_admin_user()
         BadWord.objects.bulk_create([BadWord(**opts) for opts in self.words])
 
         response1 = self._request(search="est")
-        self.assertEqual(len(self.words), len(response1.data))
+        data1 = response1.data["items"]
+        self.assertEqual(len(self.words), len(data1))
 
         response2 = self._request(search="test1")
-        self.assertEqual(1, len(response2.data))
-        self.assertEqual("test1", response2.data[0]["name"])
+        data2 = response2.data["items"]
+        self.assertEqual(1, len(data2))
+        self.assertEqual("test1", data2[0]["name"])
 
     def test_search_positive(self):
         self.create_admin_user()
@@ -148,7 +150,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
         BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category=self.test_category)
         response = self._request(name=test_search_query)
 
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data["items"]), 1)
 
     def test_search_negative(self):
         self.create_admin_user()
@@ -157,7 +159,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
         BadWord.objects.create(id=next(int_iterator), name=test_bad_word, category=self.test_category)
         response = self._request(search=test_search_query)
 
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(len(response.data["items"]), 0)
 
     def test_invalid_search_length(self):
         self.create_admin_user()
