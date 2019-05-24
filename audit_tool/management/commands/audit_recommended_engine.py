@@ -309,7 +309,8 @@ class Command(BaseCommand):
             "channel ID",
             "channel default lang.",
             "subscribers",
-            "country"
+            "country",
+            "video_count"
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
@@ -362,7 +363,8 @@ class Command(BaseCommand):
                     v.video.channel.channel_id if v.video.channel else  '',
                     channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
-                    country
+                    country,
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ''
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
