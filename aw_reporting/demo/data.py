@@ -43,11 +43,11 @@ QUARTILE_STATS = dict(
     video_views_100_quartile=.27,
 )
 DEFAULT_CTA_STATS = dict(
-    clicks_website=1,
-    clicks_call_to_action_overlay=2,
-    clicks_app_store=3,
-    clicks_cards=4,
-    clicks_end_cap=5,
+    clicks_call_to_action_overlay=10,
+    clicks_website=20,
+    clicks_app_store=30,
+    clicks_cards=40,
+    clicks_end_cap=50,
 )
 TOPICS = (
     "Demo topic 1",
