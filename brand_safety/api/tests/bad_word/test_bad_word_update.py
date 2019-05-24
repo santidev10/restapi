@@ -89,7 +89,6 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
 
     def test_reject_same_word_language_category(self):
         self.create_admin_user()
-        bad_word = self.bad_word
         another_bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test_word_reject",
@@ -98,10 +97,9 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
         )
         response = self._request(
             pk=another_bad_word.pk,
-            name=bad_word.name,
+            name=self.bad_word.name,
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        print(response.data, response.status_code)
 
     def test_reject_duplicates(self):
         self.create_admin_user()
