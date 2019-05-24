@@ -31,11 +31,17 @@ class BrandSafetyChannelAudit(object):
         Drives main audit logic
         :return:
         """
+        brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
-        title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, self.audit_types[constants.BRAND_SAFETY])
-        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
+        # Try to get channel language processor
+        try:
+            keyword_processor = brand_safety_audit[self.metadata["language"]]
+        except KeyError:
+            keyword_processor = brand_safety_audit["all"]
+        title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, keyword_processor)
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
         self.results["metadata_hits"] = title_hits + description_hits
         self.calculate_brand_safety_score(*title_hits, *description_hits)
 

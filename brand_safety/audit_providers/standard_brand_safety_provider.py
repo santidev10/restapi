@@ -3,9 +3,12 @@ from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
 
+from flashtext import KeywordProcessor
+
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
+# from brand_safety.models import BadWordLanguage
 from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
@@ -40,7 +43,7 @@ class StandardBrandSafetyProvider(object):
         self.sdb_connector = SingleDatabaseApiConnector()
         # Audit mapping for audit objects to use
         self.audits = {
-            constants.BRAND_SAFETY: self.audit_provider.get_trie_keyword_processor(self.get_bad_words()),
+            constants.BRAND_SAFETY: self.get_bad_word_processors_by_language(),
             constants.EMOJI: self.audit_provider.compile_emoji_regexp()
         }
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
@@ -76,6 +79,9 @@ class StandardBrandSafetyProvider(object):
 
             # Update brand safety scores in case they have been modified since last batch
             self.audit_service.score_mapping = self.get_brand_safety_score_mapping()
+            # Update brand safety processors
+            self.audits[constants.BRAND_SAFETY] = self.get_bad_word_processors_by_language()
+            self.audit_service.audits = self.audits
         self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
     def _process_audits(self, channel_ids):
@@ -159,6 +165,7 @@ class StandardBrandSafetyProvider(object):
         Map brand safety BadWord rows to their score
         :return: dict
         """
+        # TODO: Need to separate the words into their respective languages
         score_mapping = defaultdict(dict)
         for word in BadWord.objects.all():
             score_mapping[word.name] = {
@@ -224,5 +231,14 @@ class StandardBrandSafetyProvider(object):
                 # If channel is not in index or has no updated_at, create / update it
                 channels_to_update.append(channel)
         return channels_to_update
+
+    def get_bad_word_processors_by_language(self):
+        bad_words_by_language = defaultdict(KeywordProcessor)
+        for language in BadWordLanguage:
+            language_words = language.words.all().values_list("name", flat=True)
+            bad_words_by_language["all"].add_keywords_from_list(language_words)
+            bad_words_by_language[language.name].add_keywords_from_list(language_words)
+        return bad_words_by_language
+
 
 

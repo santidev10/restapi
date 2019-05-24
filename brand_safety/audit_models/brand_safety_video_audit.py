@@ -24,10 +24,15 @@ class BrandSafetyVideoAudit(object):
 
     def run_audit(self):
         brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
-        tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, brand_safety_audit)
-        title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, brand_safety_audit)
-        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, brand_safety_audit)
-        transcript_hits = self.auditor.audit(self.metadata["transcript"], constants.TRANSCRIPT, brand_safety_audit)
+        # Try to get video language processor
+        try:
+            keyword_processor = brand_safety_audit[self.metadata["language"]]
+        except KeyError:
+            keyword_processor = brand_safety_audit["all"]
+        tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, keyword_processor)
+        title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, keyword_processor)
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
+        transcript_hits = self.auditor.audit(self.metadata["transcript"], constants.TRANSCRIPT, keyword_processor)
         self.results[constants.BRAND_SAFETY] = tag_hits + title_hits + description_hits + transcript_hits
         self.calculate_brand_safety_score(self.score_mapping, self.brand_safety_score_multiplier)
 
