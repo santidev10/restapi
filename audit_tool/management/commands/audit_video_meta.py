@@ -374,7 +374,7 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
                     channel_lang,
