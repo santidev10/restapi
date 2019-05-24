@@ -142,12 +142,14 @@ class SegmentListGenerator(object):
             segment_title = self.get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
             try:
                 whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
-                to_create = self._instantiate_related_items(items, whitelist_segment_manager)
-                self._clean(whitelist_segment_manager, to_create)
-                self.related_segment_model.objects.bulk_create(to_create)
-                self._truncate_list(whitelist_segment_manager, self.WHITELIST_SIZE)
             except self.segment_model.DoesNotExist:
                 logger.info("Unable to get segment: {}".format(segment_title))
+                segment_title = self.get_segment_title(self.segment_model.segment_type, "Unclassified", PersistentSegmentCategory.WHITELIST)
+                whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
+            to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+            self._clean(whitelist_segment_manager, to_create)
+            self.related_segment_model.objects.bulk_create(to_create)
+            self._truncate_list(whitelist_segment_manager, self.WHITELIST_SIZE)
         self._save_master_results(merged_items)
 
     def _sort_whitelist_blacklist(self, items):
