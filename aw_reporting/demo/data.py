@@ -59,6 +59,7 @@ AUIDIENCES = (
 )
 VIDEO_CREATIVES = (
     "XEngrJr79Jg",
+    "TvAGSnbK5kI",
 )
 KEYWORDS = (
     "demo keyword 1",
@@ -66,6 +67,7 @@ KEYWORDS = (
 )
 CHANNELS = (
     "UC-NAeWIiaJSX0lQ20IVEFIA",
+    "UCW0ecgZ5CXuvRh059T6HDFQ",
 )
 VIDEOS = (
     "XEngrJr79Jg",
