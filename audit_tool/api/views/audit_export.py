@@ -97,7 +97,10 @@ class AuditExportApiView(APIView):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
+        clean_string = 'none'
+        if clean is not None:
+            clean_string = 'true' if clean else 'false'
+        with open('export_{}_{}.csv'.format(name, clean_string), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -137,9 +140,6 @@ class AuditExportApiView(APIView):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
-            clean_string = 'none'
-            if clean is not None:
-                clean_string = 'true' if clean else 'false'
             if audit and audit.completed:
                 audit.params['export'] = 'export_{}_{}.csv'.format(name, clean_string)
                 audit.save()
