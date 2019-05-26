@@ -63,7 +63,7 @@ class Command(BaseCommand):
             if self.audit.params.get('do_videos') == True:
                 self.audit.audit_type = 1
                 self.audit.params['audit_type_original'] = 2
-                self.audit.save(update_fields=['audit_type', 'audit_type_original'])
+                self.audit.save(update_fields=['audit_type', 'params'])
                 print("Audit of channels completed, turning to video processor.")
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
