@@ -31,6 +31,7 @@ from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import CampaignStatus
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import GenderStatistic
@@ -125,6 +126,7 @@ def create_campaigns(account, opportunity):
             id="demo{}".format(i + 1),
             name="Campaign #demo{}".format(i + 1),
             account=account,
+            status=CampaignStatus.ELIGIBLE.value,
             salesforce_placement=OpPlacement.objects.create(
                 id=next(int_iterator),
                 opportunity=opportunity,
