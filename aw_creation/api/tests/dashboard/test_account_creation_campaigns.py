@@ -2,6 +2,8 @@ from rest_framework.status import HTTP_200_OK
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
@@ -42,3 +44,14 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         campaign = response.data[0]
         self.assertEqual(campaign["id"], campaign_id)
         self.assertEqual(campaign["ad_groups"][0]["id"], ad_group_id)
+
+    def test_demo_account_campaigns_status_not_none(self):
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
+        recreate_demo_data()
+        account = Account.objects.get(id=DEMO_ACCOUNT_ID)
+        url = self._get_url(account.account_creation.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+        self.assertNotIn(None, [c["status"] for c in response.data])
