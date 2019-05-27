@@ -31,7 +31,6 @@ def get_default_settings():
         UserSettingsKey.DASHBOARD_AD_WORDS_RATES: False,
         UserSettingsKey.HIDE_REMARKETING: False,
         UserSettingsKey.DASHBOARD_COSTS_ARE_HIDDEN: False,
-        UserSettingsKey.DEMO_ACCOUNT_VISIBLE: True,
         UserSettingsKey.SHOW_CONVERSIONS: False,
         UserSettingsKey.VISIBLE_ACCOUNTS: [DEMO_ACCOUNT_ID],
         UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
