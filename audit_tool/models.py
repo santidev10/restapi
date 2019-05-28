@@ -1,11 +1,12 @@
 from datetime import datetime
 from datetime import timedelta
+from django.utils import timezone
 from django.db import IntegrityError
-
 from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
+from django.db.models import Q
 from django.contrib.postgres.fields import JSONField
 import hashlib
 
@@ -140,12 +141,14 @@ class AuditProcessor(models.Model):
     audit_type = models.IntegerField(db_index=True, default=0)
 
     @staticmethod
-    def get(running=None, audit_type=None):
+    def get(running=None, audit_type=None, num_days=60):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
+        if num_days:
+            all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
         ret = {
             'running': [],
             'completed': []
@@ -173,7 +176,8 @@ class AuditProcessor(models.Model):
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
-            'language': self.params.get('language')
+            'language': self.params.get('language'),
+            'max_recommended': self.max_recommended
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
