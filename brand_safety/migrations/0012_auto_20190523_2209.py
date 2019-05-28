@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='badword',
             name='language',
-            field=models.ForeignKey(default=brand_safety.models.bad_word.get_default_language, on_delete=django.db.models.deletion.CASCADE, to='brand_safety.BadWordLanguage'),
+            field=models.ForeignKey(default=None, on_delete=django.db.models.deletion.CASCADE, to='brand_safety.BadWordLanguage'),
         ),
         migrations.AlterUniqueTogether(
             name='badword',
