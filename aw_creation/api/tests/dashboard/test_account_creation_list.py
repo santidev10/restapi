@@ -1,4 +1,5 @@
-from datetime import datetime, date
+from datetime import date
+from datetime import datetime
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -18,12 +19,13 @@ from aw_reporting.demo.data import DEMO_BRAND
 from aw_reporting.demo.data import DEMO_COST_METHOD
 from aw_reporting.demo.data import DEMO_SF_ACCOUNT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import AWAccountPermission, CampaignStatistic
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SFAccount
@@ -479,3 +481,19 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items_count"], 1)
         data = response.data
         self.assertEqual(data["items"][0]["impressions"], campaign.impressions)
+
+    def test_demo_is_first(self):
+        recreate_demo_data()
+        chf_mcc_account = Account.objects.create(id=settings.CHANNEL_FACTORY_ACCOUNT_ID, can_manage_clients=True)
+        account = Account.objects.create(id=next(int_iterator))
+        account.managers.add(chf_mcc_account)
+        account.save()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        items = response.data["items"]
+        self.assertEqual([i["id"] for i in items], [DEMO_ACCOUNT_ID, account.account_creation.id])

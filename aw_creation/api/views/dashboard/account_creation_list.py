@@ -1,7 +1,16 @@
 from django.conf import settings
-from django.db.models import Case, When, Q, ExpressionWrapper, F, \
-    IntegerField as AggrIntegerField, FloatField as AggrFloatField, Sum, Count, \
-    Min, Max
+from django.db.models import BooleanField
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import ExpressionWrapper
+from django.db.models import F
+from django.db.models import FloatField as AggrFloatField
+from django.db.models import IntegerField as AggrIntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models import When
 from django.db.models.functions import Coalesce
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -83,8 +92,14 @@ class DashboardAccountCreationListApiView(ListAPIView):
             if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
         chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
-        queryset = AccountCreation.objects.filter(
-            (Q(account__managers__id=chf_account_id) | Q(account_id=DEMO_ACCOUNT_ID))
+        queryset = AccountCreation.objects.all() \
+            .annotate(
+            is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
+                         default=False,
+                         output_field=BooleanField(),),
+        ) \
+            .filter(
+            (Q(account__managers__id=chf_account_id) | Q(is_demo=True))
             & Q(**filters)
             & Q(is_deleted=False)
             & visibility_filter
@@ -104,7 +119,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-        return queryset.order_by("is_ended", sort_by)
+        return queryset.order_by("-is_demo", "is_ended", sort_by)
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params
