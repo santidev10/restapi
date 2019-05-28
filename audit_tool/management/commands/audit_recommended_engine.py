@@ -110,6 +110,8 @@ class Command(BaseCommand):
             v_id = seed.split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
+            if '?t=' in  v_id:
+                v_id = v_id.split("?t")[0]
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
                 audit=self.audit,
@@ -150,7 +152,7 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
-                if not self.language or self.language==db_video_meta.language.language:
+                if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     v, _  = AuditVideoProcessor.objects.get_or_create(
                         video=db_video,
                         audit=self.audit
