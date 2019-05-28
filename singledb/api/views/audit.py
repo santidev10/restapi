@@ -28,7 +28,6 @@ class AuditKeyWordsExportApiView(SingledbApiView, FileListApiView):
     renderer_classes = (AuditKeyWordsCSVRendered,)
 
     def get_queryset(self, *args, **kwargs):
-        print(self.request)
         audit_keyword_list = self._connect(self.request, self.connector_get, **kwargs).data
         return sorted(audit_keyword_list, key=lambda keyword: keyword.get('category', None))
 

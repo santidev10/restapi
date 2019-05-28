@@ -985,3 +985,18 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
 
         item = response.data["items"][0]
         self.assertEqual(item["is_editable"], True)
+
+    def test_demo_is_first(self):
+        recreate_demo_data()
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
+        AccountCreation.objects.create(account=account, owner=self.user)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        items = response.data["items"]
+        self.assertEqual([i["id"] for i in items], [DEMO_ACCOUNT_ID, account.account_creation.id])

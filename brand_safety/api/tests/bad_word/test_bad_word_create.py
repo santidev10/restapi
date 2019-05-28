@@ -99,7 +99,43 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data['category'], test_category.name)
+        self.assertEqual(response.data["category"], test_category.name)
         test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
         self.assertEqual(test_bad_word_obj.category_id, test_category.id)
         self.assertEqual(test_bad_word_obj.category.name, test_category.name)
+
+    def test_bad_word_name_strip(self):
+        self.create_admin_user()
+        test_bad_word = "testing"
+        test_bad_word_space = "testing "
+        test_category = BadWordCategory.objects.create(name="testing")
+        response = self._request(
+            name=test_bad_word_space,
+            category=test_category.id,
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], test_bad_word)
+
+    def test_bad_word_name_lower(self):
+        self.create_admin_user()
+        test_bad_word = "testing"
+        test_bad_word_upper = "TeStIng"
+        test_category = BadWordCategory.objects.create(name="testing")
+        response = self._request(
+            name=test_bad_word_upper,
+            category=test_category.id,
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], test_bad_word)
+
+    def test_bad_word_name_strip_lower(self):
+        self.create_admin_user()
+        test_bad_word = "test word"
+        test_bad_word_space_upper = " Test Word  "
+        test_category = BadWordCategory.objects.create(name="testing")
+        response = self._request(
+            name=test_bad_word_space_upper,
+            category=test_category.id,
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], test_bad_word)

@@ -44,6 +44,7 @@ def get_default_accesses(via_google=False):
         PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,
         PermissionGroupNames.MEDIA_PLANNING,
+        PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
         PermissionGroupNames.FORECASTING,
     ]
     if not via_google:
