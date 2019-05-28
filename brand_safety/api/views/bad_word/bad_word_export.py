@@ -7,11 +7,12 @@ from utils.api.file_list_api_view import FileListApiView
 
 
 class BadWordCSVRendered(CSVStreamingRenderer):
-    header = ["id", "name", "category"]
+    header = ["id", "name", "category", "language"]
     labels = {
         "id": "Id",
         "name": "Name",
         "category": "Category",
+        "language": "Language"
     }
 
 
