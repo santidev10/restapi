@@ -110,6 +110,10 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
             return vids
+        self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+        self.audit.completed = timezone.now()
+        self.audit.save(update_fields=['params', 'completed'])
+        raise Exception("can not open seed file {}".format(seed_file))
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -117,6 +121,9 @@ class Command(BaseCommand):
             seed_file = self.audit.params.get('seed_file')
             if seed_file:
                 return self.process_seed_file(seed_file)
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
@@ -374,7 +381,7 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
                     channel_lang,

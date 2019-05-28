@@ -104,6 +104,9 @@ class Command(BaseCommand):
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
@@ -309,7 +312,8 @@ class Command(BaseCommand):
             "channel ID",
             "channel default lang.",
             "subscribers",
-            "country"
+            "country",
+            "video_count"
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
@@ -357,12 +361,13 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
                     channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
-                    country
+                    country,
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ''
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
