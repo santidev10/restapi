@@ -22,7 +22,11 @@ class AuditSaveApiView(APIView):
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
-        max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+        try:
+            max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+        except ValueError:
+            raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
+                                  .format(query_params["max_recommended"], type(query_params["max_recommended"])))
         language = query_params["language"] if "language" in query_params else 'en'
 
         # Audit Name Validation
@@ -47,7 +51,7 @@ class AuditSaveApiView(APIView):
         if len(source_split) < 2:
             raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
         source_type = source_split[1]
-        if source_type != "csv":
+        if source_type.lower() != "csv":
             raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
 
         params = {
