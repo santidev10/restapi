@@ -44,6 +44,9 @@ class BadWordQuerySet(BaseQueryset):
     def delete(self):
         return super(BadWordQuerySet, self).update(deleted_at=timezone.now())
 
+    def hard_delete(self):
+        return super(BadWordQuerySet, self).delete()
+
 
 class BadWordManager(models.Manager):
     def __init__(self, *args, **kwargs):
@@ -79,6 +82,9 @@ class BadWord(models.Model):
         self.deleted_at = timezone.now()
         self.save()
         return self
+
+    def hard_delete(self):
+        return super(BadWord, self).delete()
 
     class Meta:
         unique_together = ("name", "category", "language")
