@@ -3,10 +3,10 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -34,25 +34,25 @@ class BadWordDeleteTestCase(ExtendedAPITestCase):
                 "id": 1,
                 "name": "test1",
                 "category": BadWordCategory.from_string("profanity"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "id": 2,
                 "name": "test2",
                 "category": BadWordCategory.from_string("terrorism"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "id": 3,
                 "name": "test3",
                 "category": BadWordCategory.from_string("terrorism"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "id": 4,
                 "name": "test4",
                 "category": BadWordCategory.from_string("drugs"),
-                "language": BadWordLanguage.from_string("sv")
+                "language": AuditLanguage.from_string("sv")
             }
         ]
 

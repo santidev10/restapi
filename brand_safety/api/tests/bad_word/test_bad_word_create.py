@@ -8,7 +8,6 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 from saas.urls.namespaces import Namespace
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -138,5 +137,4 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         from_db = BadWord.objects.get(name=test_bad_word)
-        self.assertEqual(from_db.language.name, BadWordLanguage.DEFAULT)
-
+        self.assertEqual(from_db.language.language, BadWord.DEFAULT_LANGUAGE)

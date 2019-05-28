@@ -4,10 +4,10 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 from brand_safety.api.views.bad_word import BadWordListApiView
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
@@ -18,27 +18,27 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class BadWordListTestCase(ExtendedAPITestCase):
     def setUp(self):
         self.test_category = BadWordCategory.objects.create(name="testing")
-        self.test_language = BadWordLanguage.objects.create(name="sv")
+        self.test_language = AuditLanguage.objects.create(language="sv")
         self.words = [
             {
                 "name": "test1",
                 "category": BadWordCategory.from_string("profanity"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "name": "test2",
                 "category": BadWordCategory.from_string("terrorism"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "name": "test3",
                 "category": BadWordCategory.from_string("terrorism"),
-                "language": BadWordLanguage.from_string("en")
+                "language": AuditLanguage.from_string("en")
             },
             {
                 "name": "test4",
                 "category": BadWordCategory.from_string("drugs"),
-                "language": BadWordLanguage.from_string("sv")
+                "language": AuditLanguage.from_string("sv")
             }
         ]
 

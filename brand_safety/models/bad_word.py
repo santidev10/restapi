@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from aw_reporting.models import BaseQueryset
-
+from audit_tool.models import AuditLanguage
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
@@ -21,19 +21,6 @@ class BadWordCategory(models.Model):
             for category in BadWordCategory.objects.all()
         }
         return mapping
-
-    def __str__(self):
-        return self.name
-
-
-class BadWordLanguage(models.Model):
-    DEFAULT = "en"
-    name = models.CharField(max_length=20, unique=True)
-
-    @staticmethod
-    def from_string(in_var):
-        db_result, _ = BadWordLanguage.objects.get_or_create(name=in_var.lower())
-        return db_result
 
     def __str__(self):
         return self.name
@@ -61,15 +48,16 @@ class BadWordManager(models.Manager):
 
 
 def get_default_language():
-    language = BadWordLanguage.from_string(BadWordLanguage.DEFAULT).id
+    language = AuditLanguage.from_string(BadWord.DEFAULT_LANGUAGE).id
     return language
 
 
 class BadWord(models.Model):
+    DEFAULT_LANGUAGE = "en"
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=80, db_index=True)
     category = models.ForeignKey(BadWordCategory, db_index=True)
-    language = models.ForeignKey(BadWordLanguage, db_index=True, default=get_default_language, related_name="bad_words")
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=get_default_language, related_name="bad_words")
     negative_score = models.IntegerField(default=1, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(blank=True, null=True, db_index=True)

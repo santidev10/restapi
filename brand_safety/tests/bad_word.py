@@ -1,14 +1,14 @@
 from django.test import TestCase
 
+from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 
 
 class BadWordTestCase(TestCase):
     def setUp(self):
         self.category = BadWordCategory.objects.create(name="profanity")
-        self.language = BadWordLanguage.objects.create(name="test")
+        self.language = AuditLanguage.objects.create(name="test")
 
     def test_bad_word_manager(self):
         manager_active_only = BadWord.objects

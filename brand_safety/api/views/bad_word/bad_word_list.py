@@ -35,7 +35,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         language = self.request.query_params.get("language")
         if language:
-            filters["language__name"] = language
+            filters["language__language"] = language
 
         if filters:
             queryset = queryset.filter(**filters)

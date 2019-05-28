@@ -5,10 +5,10 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -26,7 +26,7 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.category = BadWordCategory.objects.create(name="test_category")
-        self.language = BadWordLanguage.objects.create(name="sv")
+        self.language = AuditLanguage.objects.create(language="sv")
         self.bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test bad word",

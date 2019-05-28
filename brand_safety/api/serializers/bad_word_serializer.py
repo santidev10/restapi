@@ -3,14 +3,15 @@ from rest_framework.serializers import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import StringRelatedField
 from rest_framework.validators import UniqueTogetherValidator
+
+from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.models import BadWordLanguage
 
 
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
-    language = StringRelatedField(default=BadWordLanguage.DEFAULT)
+    language = StringRelatedField(default=BadWord.DEFAULT_LANGUAGE)
 
     def validate_name(self, value):
         try:
@@ -42,7 +43,7 @@ class BadWordSerializer(ModelSerializer):
 
     def validate_language(self, value):
         try:
-            language = BadWordLanguage.from_string(str(value).strip())
+            language = AuditLanguage.from_string(str(value).strip())
         except (ValueError, TypeError):
             raise ValidationError("Unable to process language: {}".format(value))
         return language
