@@ -11,6 +11,7 @@ from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
@@ -28,17 +29,17 @@ class AuditExportApiView(APIView):
 
         # Validate audit_id
         if audit_id is None:
-            raise ValueError("audit_id is required.")
+            raise ValidationError("audit_id is required.")
         if clean is not None:
             try:
                 clean = strtobool(clean)
-            except ValueError:
-                raise ValueError("Expected clean var to have boolean value or no value. Received {}.".format(clean))
+            except ValidationError:
+                raise ValidationError("Expected clean var to have boolean value or no value. Received {}.".format(clean))
 
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
         except Exception as e:
-            raise KeyError("Audit with id {} does not exist.".format(audit_id))
+            raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
         audit_type = audit.audit_type
 

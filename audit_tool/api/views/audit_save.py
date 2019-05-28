@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditProcessor
 import csv
 from uuid import uuid4
@@ -21,33 +22,38 @@ class AuditSaveApiView(APIView):
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
-        max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+        try:
+            max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+        except ValueError:
+            raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
+                                  .format(query_params["max_recommended"], type(query_params["max_recommended"])))
         language = query_params["language"] if "language" in query_params else 'en'
 
         # Audit Name Validation
         if not audit_id and name is None:
-            raise ValueError("Name field is required.")
+            raise ValidationError("Name field is required.")
         if name and len(name) < 3:
-            raise ValueError("Name {} must be at least 3 characters long.".format(name))
+            raise ValidationError("Name {} must be at least 3 characters long.".format(name))
         # Audit Type Validation
         if not audit_id and audit_type is None:
-            raise ValueError("Audit_type field is required.")
+            raise ValidationError("Audit_type field is required.")
         if not audit_id and str(audit_type) not in AuditProcessor.AUDIT_TYPES:
-            raise ValueError("Expected Audit Type to have one of the following values: {}. Received {}.".format(
+            raise ValidationError("Expected Audit Type to have one of the following values: {}. Received {}.".format(
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
         # Source File Validation
         if source_file is None:
-            raise ValueError("Source file is required.")
+            raise ValidationError("Source file is required.")
+
         if source_file:
             source_split = source_file.name.split(".")
-        else:
-            raise ValueError("Source file required.")
+
         if len(source_split) < 2:
-            raise ValueError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
+            raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
         source_type = source_split[1]
-        if source_type != "csv":
-            raise ValueError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
+        if source_type.lower() != "csv":
+            raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
+
         params = {
             'name': name,
             'language': language,
