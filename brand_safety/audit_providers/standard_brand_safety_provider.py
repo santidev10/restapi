@@ -229,4 +229,11 @@ class StandardBrandSafetyProvider(object):
                 channels_to_update.append(channel)
         return channels_to_update
 
+    def manual_update(self, channel_ids):
+        if type(channel_ids) is str:
+            channel_ids = channel_ids.split(",")
+        results = self._process_audits(channel_ids)
+        video_audits = results["video_audits"]
+        channel_audits = results["channel_audits"]
+        self._index_results(video_audits, channel_audits)
 
