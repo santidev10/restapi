@@ -63,7 +63,7 @@ class Command(BaseCommand):
             if self.audit.params.get('do_videos') == True:
                 self.audit.audit_type = 1
                 self.audit.params['audit_type_original'] = 2
-                self.audit.save(update_fields=['audit_type', 'audit_type_original'])
+                self.audit.save(update_fields=['audit_type', 'params'])
                 print("Audit of channels completed, turning to video processor.")
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
@@ -95,6 +95,10 @@ class Command(BaseCommand):
                     )
                     vids.append(acp)
             return vids
+        self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+        self.audit.completed = timezone.now()
+        self.audit.save(update_fields=['params', 'completed'])
+        raise Exception("can not open seed file {}".format(seed_file))
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -102,10 +106,15 @@ class Command(BaseCommand):
             seed_file = self.audit.params.get('seed_file')
             if seed_file:
                 return self.process_seed_file(seed_file)
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
         for seed in seed_list:
             if 'youtube.com/channel/' in seed:
+                if seed[-1] == '/':
+                    seed = seed[:-1]
                 v_id = seed.split("/")[-1]
                 channel = AuditChannel.get_or_create(v_id)
                 AuditChannelMeta.objects.get_or_create(channel=channel)
