@@ -190,6 +190,14 @@ class AuditProcessor(models.Model):
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditLanguage.objects.get_or_create(language=in_var.lower())
+        return db_result
+
+    def __str__(self):
+        return self.language
+
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
