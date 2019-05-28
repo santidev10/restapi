@@ -116,13 +116,12 @@ class AuditSaveApiView(APIView):
 
 
 class AuditFileS3Exporter(S3Exporter):
-    S3_AUDIT_EXPORT_KEY_PATTERN = "audits/{file_name}"
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
     export_content_type = "application/CSV"
 
     @classmethod
     def get_s3_key(cls, name):
-        key = cls.S3_AUDIT_EXPORT_KEY_PATTERN.format(file_name=name)
+        key = name
         return key
 
     @classmethod
@@ -132,3 +131,8 @@ class AuditFileS3Exporter(S3Exporter):
             Key=cls.get_s3_key(name),
             Body=exported_file
         )
+
+    @classmethod
+    def get_s3_export_csv(cls, name):
+        body = cls.get_s3_export_content(name)
+        return body.read().decode('utf-8-sig').split()
