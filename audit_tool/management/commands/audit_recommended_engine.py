@@ -104,6 +104,9 @@ class Command(BaseCommand):
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
