@@ -81,7 +81,13 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def process_seed_file(self, seed_file):
-        f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
+        try:
+            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
+        except Exception as e:
+            self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
+            raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
         for row in reader:
@@ -96,10 +102,7 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
         return vids
-        self.audit.params['error'] = "can not open seed file {}".format(seed_file)
-        self.audit.completed = timezone.now()
-        self.audit.save(update_fields=['params', 'completed'])
-        raise Exception("can not open seed file {}".format(seed_file))
+
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
