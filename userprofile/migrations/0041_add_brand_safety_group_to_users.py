@@ -12,7 +12,7 @@ def add_brand_safety_group_to_users(apps, schema_editor):
         UserProfile = apps.get_model("userprofile", "UserProfile")
         for user in UserProfile.objects.all():
             user.groups.add(brand_safety_group)
-    except Group.DoesNotExist:
+    except Exception:
         pass
 
 
