@@ -44,7 +44,11 @@ class BrandSafetyVideoAPIView(APIView):
         for category_id, data in video_es_data["categories"].items():
             if str(category_id) in BadWordCategory.EXCLUDED:
                 continue
-            category_name = category_mapping[category_id]
+            # Handle category ids that may have been removed
+            try:
+                category_name = category_mapping[category_id]
+            except KeyError:
+                continue
             keywords = [word["keyword"] for word in data["keywords"]]
             all_keywords.update(keywords)
             video_brand_safety_data["total_unique_flagged_words"] += len(keywords)
