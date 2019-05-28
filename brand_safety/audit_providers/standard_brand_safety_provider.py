@@ -2,13 +2,14 @@ import logging
 from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
+from time import sleep
 
 from flashtext import KeywordProcessor
 
+from audit_tool.models import AuditLanguage
 from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-# from brand_safety.models import BadWordLanguage
 from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
@@ -21,8 +22,8 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 240
-    channel_id_pool_batch_limit = 30
+    channel_id_master_batch_limit = 80
+    channel_id_pool_batch_limit = 10
     max_process_count = 8
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
@@ -35,6 +36,7 @@ class StandardBrandSafetyProvider(object):
     channel_batch_counter_limit = 500
     # Hours in which a channel should be updated
     update_time_threshold = 24 * 7
+    DEFAULT_SLEEP = 1.5
 
     def __init__(self, *_, **kwargs):
         self.script_tracker = kwargs["api_tracker"]
@@ -90,8 +92,10 @@ class StandardBrandSafetyProvider(object):
         :param channel_ids: Channel ids to retrieve video data for
         :return:
         """
+        sleep(self.DEFAULT_SLEEP)
         video_audits = self.audit_service.audit_videos(channel_ids=channel_ids)
         sorted_video_audits = self.audit_service.sort_video_audits(video_audits)
+        sleep(self.DEFAULT_SLEEP)
         channel_audits = self.audit_service.audit_channels(sorted_video_audits)
         results = {
             "video_audits": video_audits,
@@ -240,5 +244,11 @@ class StandardBrandSafetyProvider(object):
             bad_words_by_language[language.name].add_keywords_from_list(language_words)
         return bad_words_by_language
 
-
+    def manual_update(self, channel_ids):
+        if type(channel_ids) is str:
+            channel_ids = channel_ids.split(",")
+        results = self._process_audits(channel_ids)
+        video_audits = results["video_audits"]
+        channel_audits = results["channel_audits"]
+        self._index_results(video_audits, channel_audits)
 

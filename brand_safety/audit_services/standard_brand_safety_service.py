@@ -109,7 +109,7 @@ class StandardBrandSafetyService(AuditService):
             size=self.sdb_batch_limit,
             channel_id__terms=",".join(channel_ids),
         )
-        response = self.sdb_connector.get_video_list(params)
+        response = self.sdb_connector.get_channel_list(params)
         sorted_channel_data = {
             channel["channel_id"]: channel
             for channel in response["items"]
