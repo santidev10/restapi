@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='badword',
             name='language',
-            field=models.ForeignKey(default=brand_safety.models.bad_word.get_default_language, on_delete=django.db.models.deletion.CASCADE, related_name='bad_words', to='audit_tool.AuditLanguage'),
+            field=models.ForeignKey(default=None, on_delete=django.db.models.deletion.CASCADE, related_name='bad_words', to='audit_tool.AuditLanguage'),
         ),
         migrations.DeleteModel(
             name='BadWordLanguage',
