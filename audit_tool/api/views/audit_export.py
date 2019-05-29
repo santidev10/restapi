@@ -146,10 +146,10 @@ class AuditExportApiView(APIView):
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
                 audit.save()
-                file_name = audit.params['export_{}'.format(clean_string)]
-                myfile.buffer.seek(0)
-                url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
-                os.remove(myfile.name)
+            file_name = audit.params['export_{}'.format(clean_string)]
+            myfile.buffer.seek(0)
+            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+            os.remove(myfile.name)
         return url
 
     def export_channels(self, audit, audit_id=None, clean=None):
@@ -225,10 +225,10 @@ class AuditExportApiView(APIView):
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
                 audit.save()
-                file_name = audit.params['export_{}'.format(clean_string)]
-                myfile.buffer.seek(0)
-                url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
-                os.remove(myfile.name)
+            file_name = audit.params['export_{}'.format(clean_string)]
+            myfile.buffer.seek(0)
+            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+            os.remove(myfile.name)
         return url
 
     def get_hit_words(self, hit_words, v_id, clean=None):
