@@ -83,6 +83,7 @@ class AuditExportApiView(APIView):
             "country",
             "all hit words",
             "unique hit words",
+            "video_count",
         ]
         video_ids = []
         hit_words = {}
@@ -140,6 +141,7 @@ class AuditExportApiView(APIView):
                     country,
                     all_hit_words,
                     unique_hit_words,
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else '',
                 ]
                 wr.writerow(data)
             if audit and audit.completed:
