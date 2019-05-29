@@ -22,6 +22,14 @@ class AuditSaveApiView(APIView):
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
+        if move_to_top and audit_id:
+            try:
+                audit = AuditProcessor.objects.get(id=audit_id)
+                lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
+                audit.pause = lowest_priority.pause - 1
+                audit.save(update_fields=['pause'])
+            except Exception as e:
+                raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
         except ValueError:
@@ -82,12 +90,6 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
-            if move_to_top:
-                try:
-                    lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit.id).order_by("pause")[0]
-                    audit.pause = lowest_priority.pause - 1
-                except Exception as e:
-                    pass
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
