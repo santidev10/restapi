@@ -43,11 +43,10 @@ class AuditExportApiView(APIView):
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
         audit_type = audit.audit_type
-
-        if audit_type == 0 or audit_type == 1:
-            url = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
-        elif audit_type == 2:
+        if audit_type == 2:
             url = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
+        else:
+            url = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
         return Response(url)
 
     def get_categories(self):
@@ -67,23 +66,23 @@ class AuditExportApiView(APIView):
             return AuditS3Exporter.generate_temporary_url(audit.params['export_{}'.format(clean_string)])
         self.get_categories()
         cols = [
-            "video ID",
-            "name",
-            "language",
-            "category",
-            "views",
-            "likes",
-            "dislikes",
-            "emoji",
-            "publish date",
-            "channel name",
-            "channel ID",
-            "channel default lang.",
-            "channel subscribers",
-            "country",
-            "all hit words",
-            "unique hit words",
-            "video_count",
+            "Video ID",
+            "Name",
+            "Language",
+            "Category",
+            "Views",
+            "Likes",
+            "Dislikes",
+            "Emoji",
+            "Publish Date",
+            "Channel Name",
+            "Channel ID",
+            "Channel Default Lang.",
+            "Channel Subscribers",
+            "Country",
+            "All Hit Words",
+            "Unique Hit Words",
+            "Video Count",
         ]
         video_ids = []
         hit_words = {}
@@ -166,13 +165,13 @@ class AuditExportApiView(APIView):
         cols = [
             "Channel Title",
             "Channel ID",
-            "views",
-            "subscribers",
-            "num_videos",
-            "country",
-            "language",
-            "unique bad words",
-            "bad words",
+            "Views",
+            "Subscribers",
+            "Num Videos Checked",
+            "Country",
+            "Language",
+            "Unique Bad Words",
+            "Bad Words",
         ]
         channel_ids = []
         hit_words = {}
