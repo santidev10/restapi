@@ -50,27 +50,27 @@ class AuditSaveApiView(APIView):
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
         # Source File Validation
-        if source_file is None:
-            raise ValidationError("Source file is required.")
-
-        if source_file:
-            source_split = source_file.name.split(".")
-
-        if len(source_split) < 2:
-            raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
-        source_type = source_split[1]
-        if source_type.lower() != "csv":
-            raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
-
         params = {
             'name': name,
             'language': language,
             'user_id': user_id,
             'do_videos': do_videos
         }
-        # Put Source File on S3
-        if source_file:
-            params['seed_file'] = self.put_source_file_on_s3(source_file)
+        if not audit_id:
+            if source_file is None:
+                raise ValidationError("Source file is required.")
+
+            if source_file:
+                source_split = source_file.name.split(".")
+
+            if len(source_split) < 2:
+                raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
+            source_type = source_split[1]
+            if source_type.lower() != "csv":
+                raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
+            # Put Source File on S3
+            if source_file:
+                params['seed_file'] = self.put_source_file_on_s3(source_file)
         # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
