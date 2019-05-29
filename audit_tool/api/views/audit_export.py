@@ -123,7 +123,7 @@ class AuditExportApiView(APIView):
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
                     channel_lang = ''
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
+                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
                     v.name,
@@ -232,15 +232,18 @@ class AuditExportApiView(APIView):
                 os.remove(myfile.name)
         return url
 
-    def get_hit_words(self, hit_words, v_id):
+    def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
         uniques = []
+        words_to_use = 'exclusion'
+        if clean and clean=='True':
+            words_to_use = 'inclusion'
         if hits:
-            if hits.get('exclusion'):
-                for word in hits['exclusion']:
+            if hits.get(words_to_use):
+                for word in hits[words_to_use]:
                     if word not in uniques:
                         uniques.append(word)
-                return len(hits['exclusion']), ','.join(uniques)
+                return len(hits[words_to_use]), ','.join(uniques)
         return '', ''
 
     def put_file_on_s3_and_create_url(self, file, name):
