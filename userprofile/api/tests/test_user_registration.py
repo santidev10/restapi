@@ -107,14 +107,3 @@ class UserRegistrationTestCase(APITestCase):
         response = self.client.post(self.registration_url, data=json.dumps(user_data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(UserProfile.objects.count(), 0)
-
-    def test_default_brand_safety_scoring_group(self):
-        password = "test"
-        email = "test@example.com"
-        user_data = self._user_data(password=password)
-        response = self.client.post(self.registration_url, data=user_data)
-        user = UserProfile.objects.get(email=email)
-        brand_safety_group = Group.objects.get(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        self.assertTrue(any(group["name"] == brand_safety_group.name for group in response.data["access"]))
-        self.assertTrue(brand_safety_group in user.groups.all())
-
