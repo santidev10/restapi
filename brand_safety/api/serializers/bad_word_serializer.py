@@ -13,6 +13,11 @@ class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
     language = StringRelatedField(default=BadWord.DEFAULT_LANGUAGE)
 
+    def validate(self, attrs):
+        language = self.validate_language(attrs.pop("language", None))
+        attrs["language"] = language
+        return attrs
+
     def validate_name(self, value):
         try:
             name = str(value).strip().lower()
@@ -42,10 +47,13 @@ class BadWordSerializer(ModelSerializer):
             raise ValidationError("Negative_score must be Integer with value between 1-4. Received: {}".format(value))
 
     def validate_language(self, value):
-        try:
-            language = AuditLanguage.from_string(str(value).strip())
-        except (ValueError, TypeError):
-            raise ValidationError("Unable to process language: {}".format(value))
+        if value is None:
+            language = AuditLanguage.from_string(BadWord.DEFAULT_LANGUAGE)
+        else:
+            try:
+                language = AuditLanguage.from_string(str(value).strip())
+            except (ValueError, TypeError):
+                raise ValidationError("Unable to process language: {}".format(value))
         return language
 
     class Meta:
