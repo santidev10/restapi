@@ -7,24 +7,22 @@ from django.db import migrations
 
 def add_brand_safety_group_to_users(apps, schema_editor):
     Group = apps.get_model("auth", "Group")
-    try:
-        brand_safety_group = Group.objects.get(name="Brand Safety Scoring")
+    brand_safety_group = Group.objects.filter(name="Brand Safety Scoring")
+    if brand_safety_group.exists():
+        brand_safety_group = brand_safety_group.first()
         UserProfile = apps.get_model("userprofile", "UserProfile")
         for user in UserProfile.objects.all():
             user.groups.add(brand_safety_group)
-    except Exception:
-        pass
 
 
 def remove_brand_safety_group_from_users(apps, schema_editor):
     Group = apps.get_model("auth", "Group")
-    try:
-        brand_safety_group = Group.objects.get(name="Brand Safety Scoring")
+    brand_safety_group = Group.objects.filter(name="Brand Safety Scoring")
+    if brand_safety_group.exists():
+        brand_safety_group = brand_safety_group.first()
         UserProfile = apps.get_model("userprofile", "UserProfile")
         for user in UserProfile.objects.all():
             user.groups.remove(brand_safety_group)
-    except Exception:
-        pass
 
 
 class Migration(migrations.Migration):
