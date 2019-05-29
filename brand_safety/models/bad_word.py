@@ -45,22 +45,17 @@ class BadWordManager(models.Manager):
         if self.active_only:
             return BadWordQuerySet(self.model).filter(deleted_at=None)
         return BadWordQuerySet(self.model)
-
-
-def get_default_language():
-    language = AuditLanguage.from_string(BadWord.DEFAULT_LANGUAGE).id
-    return language
-
+    
 
 class BadWord(models.Model):
     DEFAULT_LANGUAGE = "en"
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=80, db_index=True)
     category = models.ForeignKey(BadWordCategory, db_index=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=get_default_language, related_name="bad_words")
+    language = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None, related_name="bad_words")
     negative_score = models.IntegerField(default=1, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    deleted_at = models.DateTimeField(blank=True, null=True, db_index=True)
+    deleted_at = models.DateTimeField(null=True, default=None, db_index=True)
 
     objects = BadWordManager(active_only=True)
     all_objects = BadWordManager(active_only=False)
