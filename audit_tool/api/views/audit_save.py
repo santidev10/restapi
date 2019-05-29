@@ -9,6 +9,7 @@ from distutils.util import strtobool
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
+
 class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
@@ -54,7 +55,7 @@ class AuditSaveApiView(APIView):
             'user_id': user_id,
             'do_videos': do_videos
         }
-        # Put Source File on S3
+        # Put Source File on S3m
         if source_file:
             params['seed_file'] = self.put_source_file_on_s3(source_file)
         # Load Keywords from Inclusion File
@@ -91,7 +92,8 @@ class AuditSaveApiView(APIView):
             )
         return Response(audit.to_dict())
 
-    def put_source_file_on_s3(self, file):
+    @staticmethod
+    def put_source_file_on_s3(file):
         # take the file uploaded locally, put on S3 and return the s3 filename
         random_file_name = uuid4().hex
         AuditFileS3Exporter.export_to_s3(file, random_file_name)
