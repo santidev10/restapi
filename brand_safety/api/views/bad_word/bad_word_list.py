@@ -42,9 +42,16 @@ class BadWordListApiView(ListCreateAPIView):
         return queryset
 
     def get_queryset(self):
-        queryset = BadWord.objects.all().order_by("name")
+        queryset = BadWord.objects.select_related("category", "language").all().order_by("name")
         queryset = self.do_filters(queryset)
         return queryset
+
+    def get(self, request, *args, **kwargs):
+        page = request.query_params.get("page")
+        if page is None:
+            self.pagination_class = None
+        result = super().get(request, *args, **kwargs)
+        return result
 
     def post(self, request):
         serializer = BadWordSerializer(data=request.data, context={'request': request})
@@ -66,3 +73,4 @@ class BadWordListApiView(ListCreateAPIView):
                 serializer.save()
             return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
