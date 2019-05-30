@@ -126,11 +126,11 @@ class StandardBrandSafetyProvider(object):
         """
         self._index_brand_safety_results(
             video_audits,
-            index_name=constants.BRAND_SAFETY_VIDEO_ES_INDEX
+            index_name=constants.BRAND_SAFETY_VIDEO_LANG_ES_INDEX
         )
         self._index_brand_safety_results(
             channel_audits,
-            index_name=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            index_name=constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX
         )
 
     def _index_brand_safety_results(self, results, index_name):
