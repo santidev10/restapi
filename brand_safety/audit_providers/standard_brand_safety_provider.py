@@ -1,19 +1,21 @@
 import logging
-from datetime import datetime
 from collections import defaultdict
 import multiprocessing as mp
 from time import sleep
+from datetime import datetime
+from collections import Counter
 
 from flashtext import KeywordProcessor
+from django.db.models import F
 
-from audit_tool.models import AuditLanguage
-from utils.elasticsearch import ElasticSearchConnector
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from singledb.connector import SingleDatabaseApiConnector
+from utils.elasticsearch import ElasticSearchConnector
+from utils.languages import LANGUAGES
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +59,7 @@ class StandardBrandSafetyProvider(object):
             score_multiplier=self.brand_safety_score_multiplier,
             default_video_category_scores=self.default_video_category_scores,
             default_channel_category_scores=self.default_channel_category_scores,
-            es_video_index=constants.BRAND_SAFETY_VIDEO_ES_INDEX,
-            es_channel_index=constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            languages=self.map_language_to_code()
         )
         self.es_connector = ElasticSearchConnector()
 
@@ -84,7 +85,7 @@ class StandardBrandSafetyProvider(object):
             # Update brand safety processors
             self.audits[constants.BRAND_SAFETY] = self.get_bad_word_processors_by_language()
             self.audit_service.audits = self.audits
-        self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
+        # self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
 
     def _process_audits(self, channel_ids):
         """
@@ -169,7 +170,6 @@ class StandardBrandSafetyProvider(object):
         Map brand safety BadWord rows to their score
         :return: dict
         """
-        # TODO: Need to separate the words into their respective languages
         score_mapping = defaultdict(dict)
         for word in BadWord.objects.all():
             score_mapping[word.name] = {
@@ -209,42 +209,28 @@ class StandardBrandSafetyProvider(object):
         }
         return default_category_scores
 
-    def _get_channels_to_update(self, channel_ids):
-        """
-        Get Elasticsearch channels to check when channels were last updated
-            and filter for channels to update
-        :param channel_ids: list
-        :return: list
-        """
-        channels_to_update = []
-        es_channels = self.es_connector.search_by_id(
-            constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
-            channel_ids,
-            constants.BRAND_SAFETY_SCORE_TYPE
-        )
-        if not es_channels:
-            return channel_ids
-        for channel in channel_ids:
-            try:
-                es_channel = es_channels[channel]
-                time_elapsed = datetime.today() - datetime.strptime(es_channel["updated_at"], "%Y-%m-%d")
-                elapsed_hours = time_elapsed.seconds // 3600
-                if elapsed_hours > self.update_time_threshold:
-                    channels_to_update.append(channel)
-            except KeyError:
-                # If channel is not in index or has no updated_at, create / update it
-                channels_to_update.append(channel)
-        return channels_to_update
-
     def get_bad_word_processors_by_language(self):
+        """
+        Generate dictionary of keyword processors by language
+            Also provides an "all" key that contains every keyword
+        :return:
+        """
         bad_words_by_language = defaultdict(KeywordProcessor)
-        for language in BadWordLanguage:
-            language_words = language.words.all().values_list("name", flat=True)
-            bad_words_by_language["all"].add_keywords_from_list(language_words)
-            bad_words_by_language[language.name].add_keywords_from_list(language_words)
+        all_words = BadWord.objects.annotate(language_name=F("language__language"))
+        for word in all_words:
+            language = word.language_name
+            bad_words_by_language["all"].add_keyword(word.name)
+            bad_words_by_language[language].add_keyword(word.name)
+        # Cast back to dictionary to avoid creation of new keys
+        bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language
 
     def manual_update(self, channel_ids):
+        """
+        Update specific channels and videos
+        :param channel_ids: list
+        :return: None
+        """
         if type(channel_ids) is str:
             channel_ids = channel_ids.split(",")
         results = self._process_audits(channel_ids)
@@ -252,3 +238,71 @@ class StandardBrandSafetyProvider(object):
         channel_audits = results["channel_audits"]
         self._index_results(video_audits, channel_audits)
 
+    @staticmethod
+    def map_language_to_code():
+        """
+        Mapping of language strings to ISO 2 Letter language codes
+        :return:
+        """
+        mapped = {
+            lang.lower(): code
+            for code, lang in LANGUAGES.items()
+        }
+        return mapped
+
+    def _get_channels_to_update(self, channel_ids):
+        """
+        Gets channels to update
+            If either the last time the channel has been updated is greater than threshold time or if the number of videos
+            has changed since the last time the channel was scored, it should be upated
+        :param channel_ids: list
+        :return: list
+        """
+        channels_to_update = []
+        channel_es_data = self._get_channel_es_data(channel_ids)
+        channel_ids_from_videos = self.audit_service.get_channel_video_data(channel_ids, fields="channel_id")
+        channel_video_counts = Counter([item["channel_id"] for item in channel_ids_from_videos])
+        for _id in channel_ids:
+            try:
+                es_data = channel_es_data[_id]
+                # If elapsed time since channel has been updated is greater than threshold or if the number of videos
+                # last scored is different than the current number of channel's videos, then should be updated
+                if es_data["should_update"] is True or channel_video_counts[_id] != es_data["videos_scored"]:
+                    channels_to_update.append(_id)
+            except KeyError:
+                channels_to_update.append(_id)
+        return channels_to_update
+
+    def _get_channel_es_data(self, channel_ids):
+        """
+        Get Elasticsearch channels to check when channels were last updated
+        :param channel_ids: list
+        :return: list
+        """
+        all_data = {}
+        es_channels = self.es_connector.search_by_id(
+            # constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
+            "test_channel",
+            channel_ids,
+            constants.BRAND_SAFETY_SCORE_TYPE
+        )
+        if not es_channels:
+            return all_data
+        for _id in channel_ids:
+            channel_data = {
+                "should_update": True,
+                "videos_scored": 0,
+            }
+            try:
+                es_channel = es_channels[_id]
+                # check if any videos have been added
+                time_elapsed = datetime.today() - datetime.strptime(es_channel["updated_at"], "%Y-%m-%d")
+                elapsed_hours = time_elapsed.seconds // 3600
+                channel_data["videos_scored"] = es_channel["videos_scored"]
+                if not elapsed_hours > self.update_time_threshold:
+                    channel_data["should_update"] = False
+            except KeyError:
+                # If channel is not in index or has no updated_at, create / update it
+                pass
+            all_data[_id] = channel_data
+        return all_data

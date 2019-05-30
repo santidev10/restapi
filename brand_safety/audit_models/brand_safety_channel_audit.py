@@ -3,7 +3,6 @@ from datetime import date
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety import constants
-from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyChannelAudit(object):
@@ -15,6 +14,7 @@ class BrandSafetyChannelAudit(object):
         self.score_mapping = kwargs["score_mapping"]
         self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
         self.default_category_scores = kwargs["default_category_scores"]
+        self.languages = kwargs["languages"]
         self.auditor = Audit()
         self.results = {}
         self.video_audits = video_audits
@@ -37,7 +37,8 @@ class BrandSafetyChannelAudit(object):
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
         # Try to get channel language processor
         try:
-            keyword_processor = brand_safety_audit[self.metadata["language"]]
+            language_code = self.languages[self.metadata["language"].lower()]
+            keyword_processor = brand_safety_audit[language_code]
         except KeyError:
             keyword_processor = brand_safety_audit["all"]
         title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, keyword_processor)

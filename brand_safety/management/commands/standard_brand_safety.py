@@ -27,7 +27,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):
         try:
-            api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafety")[0]
+            api_tracker = APIScriptTracker.objects.get_or_create(name="TestBrandSafety")[0]
             standard_audit = StandardBrandSafetyProvider(api_tracker=api_tracker)
             if options.get("manual"):
                 channel_ids = options["manual"]

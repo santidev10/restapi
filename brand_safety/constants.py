@@ -3,6 +3,8 @@ CHANNEL = "channel"
 
 BRAND_SAFETY_VIDEO_ES_INDEX = "brand_safety_video"
 BRAND_SAFETY_CHANNEL_ES_INDEX = "brand_safety_channel"
+BRAND_SAFETY_VIDEO_LANG_ES_INDEX = "brand_safety_video_language"
+BRAND_SAFETY_CHANNEL_LANG_ES_INDEX = "brand_safety_channel_language"
 BRAND_SAFETY_SCORE_TYPE = "score"
 
 BRAND_SAFETY_PASS = "brand_safety_pass"

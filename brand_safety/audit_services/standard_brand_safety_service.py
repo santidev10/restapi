@@ -4,6 +4,7 @@ from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChan
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from singledb.connector import SingleDatabaseApiConnector
 from utils.data_providers.sdb_data_provider import SDBDataProvider
+from utils.elasticsearch import ElasticSearchConnector
 
 
 class StandardBrandSafetyService(AuditService):
@@ -19,14 +20,16 @@ class StandardBrandSafetyService(AuditService):
     def __init__(self, *_, **kwargs):
         audit_types = kwargs["audit_types"]
         super().__init__(audit_types)
+        self.es_connector = ElasticSearchConnector()
         self.sdb_connector = SingleDatabaseApiConnector()
         self.sdb_data_provider = SDBDataProvider()
         self.score_mapping = kwargs["score_mapping"]
         self.brand_safety_score_multiplier = kwargs["score_multiplier"]
         self.default_video_category_scores = kwargs["default_video_category_scores"]
         self.default_channel_category_scores = kwargs["default_channel_category_scores"]
+        self.languages = kwargs["languages"]
 
-    def audit_videos(self, video_data=None, channel_ids=None):
+    def audit_videos(self, video_data=None, channel_ids=None,):
         """
         Audits SingleDB video data
         :param video_data: list -> Video data from SDB
@@ -48,7 +51,8 @@ class StandardBrandSafetyService(AuditService):
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
-                default_category_scores=default_category_score_copy
+                default_category_scores=default_category_score_copy,
+                languages=self.languages,
             )
             audit.run_audit()
             video_audits.append(audit)
@@ -78,7 +82,8 @@ class StandardBrandSafetyService(AuditService):
                 source=constants.SDB,
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
-                default_category_scores=default_category_score_copy
+                default_category_scores=default_category_score_copy,
+                languages = self.languages,
             )
             channel_audit.run_audit()
             channel_audits.append(channel_audit)
@@ -117,14 +122,14 @@ class StandardBrandSafetyService(AuditService):
         }
         return sorted_channel_data
 
-    def get_channel_video_data(self, channel_ids):
+    def get_channel_video_data(self, channel_ids, fields=None):
         """
         Retrieve channel metadata from SDB
         :param channel_ids:
         :return:
         """
         params = dict(
-            fields=self.video_fields,
+            fields=self.video_fields if fields is None else fields,
             sort="video_id",
             size=self.sdb_batch_limit,
             channel_id__terms=",".join(channel_ids),

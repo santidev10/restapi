@@ -1,5 +1,4 @@
 from collections import defaultdict
-from collections import Counter
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
@@ -12,6 +11,7 @@ class BrandSafetyVideoAudit(object):
         self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
         self.score_mapping = kwargs["score_mapping"]
         self.default_category_scores = kwargs["default_category_scores"]
+        self.languages = kwargs["languages"]
         self.auditor = Audit()
         self.audit_types = audit_types
         self.metadata = self.get_metadata(data)
@@ -24,9 +24,10 @@ class BrandSafetyVideoAudit(object):
 
     def run_audit(self):
         brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
+        language_code = self.languages[self.metadata["language"].lower()]
         # Try to get video language processor
         try:
-            keyword_processor = brand_safety_audit[self.metadata["language"]]
+            keyword_processor = brand_safety_audit[language_code]
         except KeyError:
             keyword_processor = brand_safety_audit["all"]
         tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, keyword_processor)
