@@ -370,6 +370,9 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             "items": []
         }
         for item in response.data.get("items", []):
+            items_count = item.get("statistics", {}).get("items_count", 0)
+            if items_count is None or items_count <= 0:
+                continue
             if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
                 formatted_response["master_blacklist"] = item
 
@@ -496,8 +499,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        max_items = size * self.MAX_PAGE_SIZE
-        related_items = segment.related.all()[:max_items]
+        related_items = segment.related.select_related("segment").order_by("related_id")
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
