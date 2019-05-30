@@ -38,7 +38,7 @@ class AuditExportApiView(APIView):
             try:
                 clean = strtobool(clean)
             except ValidationError:
-                raise ValidationError("Expected clean var to have boolean value or no value. Received {}.".format(clean))
+                clean = None
 
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
