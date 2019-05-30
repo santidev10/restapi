@@ -9,6 +9,8 @@ from django.core.management import call_command as django_call_command
 from django.test import TransactionTestCase
 from django.test import override_settings
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -903,6 +905,14 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
              self.subTest("Not update"):
             call_command("browse_salesforce_data", no_get="1")
             sf_mock().sf.Flight__c.update.assert_not_called()
+
+    def test_does_not_remove_demo_data(self):
+        recreate_demo_data()
+        demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
+        flights_count = demo_flights_qs.count()
+        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection"):
+            call_command("browse_salesforce_data")
+        self.assertEqual(demo_flights_qs.count(), flights_count)
 
 
 class MockSalesforceConnection(Connection):
