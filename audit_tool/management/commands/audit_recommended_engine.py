@@ -77,7 +77,10 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
-            pending_videos = self.process_seed_list()
+            if self.thread_id == 0:
+                pending_videos = self.process_seed_list()
+            else:
+                raise Exception("waiting for seed list to finish on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
