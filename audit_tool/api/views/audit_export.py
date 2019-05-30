@@ -143,13 +143,13 @@ class AuditExportApiView(APIView):
                     v.video.channel.auditchannelmeta.video_count if v.video.channel else '',
                 ]
                 wr.writerow(data)
-            if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
-                audit.save()
-            file_name = audit.params['export_{}'.format(clean_string)]
+            file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
             myfile.buffer.seek(0)
             url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
+            if audit and audit.completed:
+                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.save()
         return url
 
     def export_channels(self, audit, audit_id=None, clean=None):
@@ -198,7 +198,7 @@ class AuditExportApiView(APIView):
             name = audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
@@ -222,13 +222,13 @@ class AuditExportApiView(APIView):
                     ','.join(hit_words[v.channel.channel_id])
                 ]
                 wr.writerow(data)
-            if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
-                audit.save()
-            file_name = audit.params['export_{}'.format(clean_string)]
+            file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
             myfile.buffer.seek(0)
             url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
+            if audit and audit.completed:
+                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.save()
         return url
 
     def get_hit_words(self, hit_words, v_id, clean=None):
