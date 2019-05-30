@@ -353,7 +353,7 @@ class Command(BaseCommand):
                 try:
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
-                    channel_lang = ''
+                    channel_lang = ""
                 data = [
                     v.video.video_id,
                     v.name,
@@ -363,13 +363,13 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else  "",
+                    v.video.channel.channel_id if v.video.channel else  "",
                     channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ''
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ""
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
