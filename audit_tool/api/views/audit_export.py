@@ -248,8 +248,7 @@ class AuditExportApiView(APIView):
                 audit.save()
         return file_name
 
-    @staticmethod
-    def get_hit_words(hit_words, v_id, clean=None):
+    def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
         uniques = []
         words_to_use = 'exclusion'
@@ -263,8 +262,7 @@ class AuditExportApiView(APIView):
                 return len(hits[words_to_use]), ','.join(uniques)
         return '', ''
 
-    @staticmethod
-    def put_file_on_s3_and_create_url(file, name):
+    def put_file_on_s3_and_create_url(self, file, name):
         AuditS3Exporter.export_to_s3(file, name)
         url = AuditS3Exporter.generate_temporary_url(name)
         return url
