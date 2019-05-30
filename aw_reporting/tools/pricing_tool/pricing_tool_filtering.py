@@ -20,14 +20,12 @@ from django.db.models.expressions import Value
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
-from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Devices
 from aw_reporting.models import Genders
 from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatuses
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Topic
-from aw_reporting.models import TopicStatistic
 from aw_reporting.tools.pricing_tool.constants import AGE_FIELDS
 from aw_reporting.tools.pricing_tool.constants import DEVICE_FIELDS
 from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS
@@ -46,12 +44,6 @@ CONDITIONS = [
     dict(id="and", name="And"),
 ]
 
-INTERESTS_MAP = {
-    "audience_id": "id",
-    "audience__name": "name",
-    "audience__type": "type"
-}
-
 
 class PricingToolFiltering:
     default_condition = "or"
@@ -67,15 +59,16 @@ class PricingToolFiltering:
 
         start, end = cls._get_default_dates()
 
-        opportunities = Opportunity.objects.have_campaigns(user=user)
+        opportunities_ids = Opportunity.objects.have_campaigns(user=user).values_list("id", flat=True)
+        opportunities = Opportunity.objects.filter(id__in=opportunities_ids)
 
         brands = opportunities \
-            .filter(brand__isnull=False,) \
+            .filter(brand__isnull=False, ) \
             .values_list("brand", flat=True) \
             .order_by("brand").distinct()
 
         categories = opportunities \
-            .filter(category__isnull=False,) \
+            .filter(category__isnull=False, ) \
             .values_list("category_id", flat=True) \
             .order_by("category_id").distinct()
 
@@ -112,14 +105,7 @@ class PricingToolFiltering:
             genders=list_to_filter(Genders),
             parents=list_to_filter(ParentStatuses),
             demographic_condition=CONDITIONS,
-
-            topics=[
-                dict(id=i['topic_id'], name=i['topic__name'])
-                for i in TopicStatistic.objects.filter(
-                    topic__parent__isnull=True,
-                ).values('topic_id', 'topic__name').order_by('topic__name',
-                                                             'topic_id').distinct()
-            ],
+            topics=Topic.objects.filter(parent=None).exclude(topicstatistic=None).order_by("name", "id").values("id", "name"),
             topics_condition=CONDITIONS,
             devices=list_to_filter(Devices),
             devices_condition=CONDITIONS,
@@ -228,8 +214,10 @@ class PricingToolFiltering:
                                     self.default_condition)
         true_value = Value(1)
         annotation = {"has_" + t: Max(Case(When(
-            **{"placements__adwords_campaigns__has_" + t: Value(True),
-               "then": true_value}),
+            **{
+                "placements__adwords_campaigns__has_" + t: Value(True),
+                "then": true_value
+            }),
             output_field=BooleanField(),
             default=Value(0)))
             for t in TARGETING_TYPES}
@@ -715,13 +703,12 @@ class PricingToolFiltering:
 
 
 def _get_interests_filters():
-    interests = AudienceStatistic.objects \
-        .filter(audience__parent__isnull=True, ) \
-        .values("audience_id", "audience__name", "audience__type") \
-        .order_by("audience__name", "audience_id") \
-        .distinct()
+    interests = Audience.objects.filter(parent=None) \
+        .exclude(audiencestatistic=None) \
+        .order_by("name", "id") \
+        .values("id", "name", "type")
 
-    return dict(interests=map_items(interests, INTERESTS_MAP),
+    return dict(interests=list(interests),
                 interests_condition=CONDITIONS)
 
 

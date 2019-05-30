@@ -41,11 +41,6 @@ def get_segment_model_by_type(segment_type):
 def update_all_segments_statistics():
     for model in SEGMENT_MODELS.fget():
         model.objects.update_statistics()
-
-
-def cleanup_segments_related_records():
-    for model in SEGMENT_MODELS.fget():
-        model.objects.cleanup_related_records()
         
 
 def total_update_segments(force_creation=False):

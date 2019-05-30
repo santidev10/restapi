@@ -1,5 +1,6 @@
-from utils.elasticsearch import ElasticSearchConnector
 import brand_safety.constants as constants
+from utils.elasticsearch import ElasticSearchConnector
+from userprofile.permissions import PermissionGroupNames
 
 
 def add_brand_safety_data(view):
@@ -24,7 +25,10 @@ def add_brand_safety_data(view):
             else:
                 return response
 
-            if len(response.data.get("items", [])) > 1:
+            user = args[1].user
+            if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
+                return response
+            if response.data.get("items"):
                 _handle_list_view(response, index_name)
             else:
                 _handle_single_view(response, index_name)

@@ -13,6 +13,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid.decorator import pidfile
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 
 """
 requirements:
@@ -29,7 +30,6 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    categories = {}
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -64,7 +64,7 @@ class Command(BaseCommand):
             if self.audit.params.get('do_videos') == True:
                 self.audit.audit_type = 1
                 self.audit.params['audit_type_original'] = 2
-                self.audit.save(update_fields=['audit_type', 'audit_type_original'])
+                self.audit.save(update_fields=['audit_type', 'params'])
                 print("Audit of channels completed, turning to video processor.")
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
@@ -81,21 +81,33 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def process_seed_file(self, seed_file):
-        with open(seed_file) as f:
-            reader = csv.reader(f)
-            vids = []
-            for row in reader:
-                seed = row[0]
-                if 'youtube.com/channel/' in seed:
-                    v_id = seed.split("/")[-1]
-                    channel = AuditChannel.get_or_create(v_id)
-                    AuditChannelMeta.objects.get_or_create(channel=channel)
-                    acp, _ = AuditChannelProcessor.objects.get_or_create(
-                            audit=self.audit,
-                            channel=channel,
-                    )
-                    vids.append(acp)
-            return vids
+        try:
+            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
+        except Exception as e:
+            self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
+            raise Exception("can not open seed file {}".format(seed_file))
+        reader = csv.reader(f)
+        vids = []
+        for row in reader:
+            seed = row[0]
+            if 'youtube.com/channel/' in seed:
+                v_id = seed.split("/")[-1]
+                channel = AuditChannel.get_or_create(v_id)
+                AuditChannelMeta.objects.get_or_create(channel=channel)
+                acp, _ = AuditChannelProcessor.objects.get_or_create(
+                        audit=self.audit,
+                        channel=channel,
+                )
+                vids.append(acp)
+        if len(vids) == 0:
+            self.audit.params['error'] = "no valid YouTube URL's in seed file {}".format(seed_file)
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
+            raise Exception("no valid YouTube URL's in seed file {}".format(seed_file))
+        return vids
+
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -103,10 +115,15 @@ class Command(BaseCommand):
             seed_file = self.audit.params.get('seed_file')
             if seed_file:
                 return self.process_seed_file(seed_file)
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
         for seed in seed_list:
             if 'youtube.com/channel/' in seed:
+                if seed[-1] == '/':
+                    seed = seed[:-1]
                 v_id = seed.split("/")[-1]
                 channel = AuditChannel.get_or_create(v_id)
                 AuditChannelMeta.objects.get_or_create(channel=channel)
@@ -205,3 +222,71 @@ class Command(BaseCommand):
         if len(keywords) > 0:
             return True, keywords
         return False, None
+
+    def export_channels(self, audit_id=None):
+        cols = [
+            "Channel Title",
+            "Channel ID",
+            "views",
+            "subscribers",
+            "num_videos",
+            "country",
+            "language",
+            "unique bad words",
+            "bad words",
+        ]
+        if not audit_id and self.audit:
+            audit_id = self.audit.id
+        channel_ids = []
+        hit_words = {}
+        video_count = {}
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related("channel")
+        for cid in channels:
+            channel_ids.append(cid.channel_id)
+            hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
+            if not hit_words[cid.channel.channel_id]:
+                hit_words[cid.channel.channel_id] = []
+            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
+            video_count[cid.channel.channel_id] = videos.count()
+            for video in videos:
+                if video.word_hits.get('exclusion'):
+                    for bad_word in video.word_hits.get('exclusion'):
+                        if bad_word not in hit_words[cid.channel.channel_id]:
+                            hit_words[cid.channel.channel_id].append(bad_word)
+        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids).select_related(
+                "channel",
+                "language",
+                "country"
+        )
+        try:
+            name = self.audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+            wr.writerow(cols)
+            for v in channel_meta:
+                try:
+                    language = v.language.language
+                except Exception as e:
+                    language = ""
+                try:
+                    country = v.country.country
+                except Exception as e:
+                    country = ""
+                data = [
+                    v.name,
+                    v.channel.channel_id,
+                    v.view_count,
+                    v.subscribers,
+                    video_count[v.channel.channel_id],
+                    country,
+                    language,
+                    len(hit_words[v.channel.channel_id]),
+                    ','.join(hit_words[v.channel.channel_id])
+                ]
+                wr.writerow(data)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()
+            return 'export_{}.csv'.format(name)

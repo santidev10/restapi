@@ -1,6 +1,9 @@
+from datetime import date
+
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety import constants
+from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyChannelAudit(object):
@@ -33,6 +36,7 @@ class BrandSafetyChannelAudit(object):
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
         title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, self.audit_types[constants.BRAND_SAFETY])
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
+        self.results["metadata_hits"] = title_hits + description_hits
         self.calculate_brand_safety_score(*title_hits, *description_hits)
 
     def get_metadata(self, channel_data):
@@ -54,8 +58,8 @@ class BrandSafetyChannelAudit(object):
             "views": channel_data.get("video_views", 0),
             "audited_videos": len(self.video_audits),
             "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
-            "likes": channel_data.get("likes", 0),
-            "dislikes": channel_data.get("dislikes", 0),
+            "likes": channel_data.get("likes", constants.DISABLED),
+            "dislikes": channel_data.get("dislikes", constants.DISABLED),
             "country": channel_data.get("country", ""),
             "thumbnail_image_url": channel_data.get("thumbnail_image_url", "")
         }
@@ -93,6 +97,25 @@ class BrandSafetyChannelAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
         return channel_brand_safety_score
 
+    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
+        details = {
+            "language": self.metadata["language"],
+            "thumbnail": self.metadata["thumbnail_image_url"],
+            "likes": self.metadata["likes"],
+            "dislikes": self.metadata["dislikes"],
+            "views": self.metadata["views"],
+        }
+        if segment_type == constants.BLACKLIST:
+            details["bad_words"] = self.results["metadata_hits"]
+        obj = model(
+            related_id=self.pk,
+            segment=related_segment,
+            title=self.metadata["channel_title"],
+            category=self.metadata["category"],
+            details=details
+        )
+        return obj
+
     def es_repr(self, index_name, index_type, action):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
@@ -105,8 +128,9 @@ class BrandSafetyChannelAudit(object):
             "_op_type": action,
             "_id": self.pk,
             "channel_id": brand_safety_results.pk,
-            "overall_score": brand_safety_results.overall_score,
+            "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "videos_scored": brand_safety_results.videos_scored,
+            "updated_at": str(date.today()),
             "categories": {
                 category: {
                     "category_score": score,
@@ -119,3 +143,4 @@ class BrandSafetyChannelAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
+

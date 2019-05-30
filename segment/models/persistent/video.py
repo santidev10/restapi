@@ -5,6 +5,9 @@ from django.db.models import BigIntegerField
 from django.db.models import Count
 from django.db.models import ForeignKey
 from django.db.models import Sum
+from django.db.models import CharField
+from django.db.models import DateTimeField
+from django.db.models import Model
 from django.db.models.functions import Cast
 
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
@@ -53,6 +56,7 @@ class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
             PersistentSegmentExportColumn.LIKES: details.get("likes"),
             PersistentSegmentExportColumn.DISLIKES: details.get("dislikes"),
             PersistentSegmentExportColumn.VIEWS: details.get("views"),
+            PersistentSegmentExportColumn.OVERALL_SCORE: details.get("overall_score"),
             PersistentSegmentExportColumn.BAD_WORDS: ",".join(details.get("bad_words", [])),
         }
 

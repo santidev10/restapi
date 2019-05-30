@@ -1,3 +1,5 @@
+from brand_safety.models import BadWordCategory
+
 class BrandSafetyChannelScore(object):
     """
         Class to encapsulate brand safety score logic for Channel brand safety audits
@@ -60,13 +62,12 @@ class BrandSafetyChannelScore(object):
         self.overall_score //= self.videos_scored
         for category in self.category_scores.keys():
             self.category_scores[category] //= self.videos_scored
-            # self.category_scores[category]["category_score"] = self.category_scores[category]["category_score"] // self.category_scores[category]["count"]
         self.average_calculated = True
 
     def add_metadata_score(self, keyword, category, score):
         """
         Add Channel metadata scores
-            This method must be called after calculcate_average_scores as channel metadata scores must be calculcated with
+            This method must be called after calculate_average_scores as channel metadata scores must be calculated with
             the channel's average scores
         :param keyword: str
         :param category: str
@@ -75,8 +76,9 @@ class BrandSafetyChannelScore(object):
         """
         if not self.average_calculated:
             raise BrandSafetyChannelScoreException("You must call calculate_average_scores before calling add_metadata_score.")
-        self.overall_score -= score
-        self.add_keyword_score(keyword, category, score, 1)
+        if str(category) not in BadWordCategory.EXCLUDED:
+            self.overall_score -= score
+            self.add_keyword_score(keyword, category, score, 1)
 
 
 class BrandSafetyChannelScoreException(Exception):

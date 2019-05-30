@@ -29,7 +29,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cleanup-segments-related": {
         "task": "segment.tasks.cleanup_segments_related",
-        "schedule": crontab(minute=0, hour='*/8'),
+        "schedule": crontab(hour="0", minute="0"),
     }
 }
 CELERY_RESULT_BACKEND = "django-db"
+
+# Suggestion from this thread https://github.com/celery/celery/issues/4226
+CELERY_BROKER_POOL_LIMIT = None

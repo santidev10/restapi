@@ -43,6 +43,7 @@ from userprofile.models import UserProfile
 from userprofile.permissions import PermissionGroupNames
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import user_has_permission
+from segment.models.persistent import PersistentSegmentFileUpload
 
 
 class SegmentPaginator(CustomPageNumberPaginator):

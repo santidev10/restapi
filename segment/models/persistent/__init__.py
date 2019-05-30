@@ -1,3 +1,4 @@
+from .base import PersistentSegmentFileUpload
 from .channel import PersistentSegmentChannel
 from .channel import PersistentSegmentRelatedChannel
 from .video import PersistentSegmentRelatedVideo

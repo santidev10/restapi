@@ -408,6 +408,8 @@ if is_running_under_teamcity():
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
 AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
+AMAZON_S3_AUDITS_FILES_BUCKET_NAME = "viewiq-audit-files"
+AMAZON_S3_AUDITS_EXPORTS_BUCKET_NAME = "viewiq-audit-exports"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
@@ -444,6 +446,9 @@ MAX_SEGMENT_TO_AGGREGATE = 10000
 USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
+
+ELASTIC_SEARCH_URLS = [""]
+ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
 try:
     from .local_settings import *

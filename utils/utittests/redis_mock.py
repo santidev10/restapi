@@ -19,7 +19,7 @@ class MockRedisLock:
         return
 
     def do_release(self, *args, **kwargs):
-        MockRedis().delete(self.key)
+        MockRedis().delete(self.name)
 
 
 class MockRedis:
@@ -42,4 +42,4 @@ class MockRedis:
         return result
 
     def lock(self, key, timeout=0, sleep=0):
-        return MockRedisLock(self, key)
+        return MockRedisLock(self, key, timeout)
