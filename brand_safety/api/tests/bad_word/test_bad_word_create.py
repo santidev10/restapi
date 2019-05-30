@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -138,3 +139,21 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         )
         from_db = BadWord.objects.get(name=test_bad_word)
         self.assertEqual(from_db.language.language, BadWord.DEFAULT_LANGUAGE)
+
+    def test_create_after_delete(self):
+        self.create_admin_user()
+        test_category = BadWordCategory.objects.create(name="testing")
+        test_language = AuditLanguage.objects.create(language="en")
+        test_bad_word = BadWord.objects.create(name="testing", category=test_category, language=test_language)
+
+        self.assertIsNone(test_bad_word.deleted_at)
+        test_bad_word.delete()
+        soft_deleted = BadWord.all_objects.get(name=test_bad_word.name, category=test_category, language=test_language)
+        self.assertIsNotNone(soft_deleted.deleted_at)
+
+        response = self._request(
+            name=soft_deleted.name,
+            category=soft_deleted.category.id,
+            language=soft_deleted.language.language
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)

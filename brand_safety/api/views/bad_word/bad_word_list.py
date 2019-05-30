@@ -49,6 +49,12 @@ class BadWordListApiView(ListCreateAPIView):
     def post(self, request):
         serializer = BadWordSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            try:
+                data = serializer.validated_data
+                existing_word = BadWord.all_objects.get(name=data["name"], category=data["category"], language=data["language"])
+                existing_word.deleted_at = None
+                existing_word.save()
+            except BadWord.DoesNotExist:
+                serializer.save()
             return Response(serializer.data, status=HTTP_201_CREATED)
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
