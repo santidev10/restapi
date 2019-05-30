@@ -157,7 +157,7 @@ class AuditProcessor(models.Model):
             d = a.to_dict()
             status = 'running'
             if output:
-                print(d['name'], d['data'], d['percent_done'])
+                print(d['id'], d['name'], d['data'], d['percent_done'])
             else:
                 if a.completed is not None:
                     status = 'completed'
