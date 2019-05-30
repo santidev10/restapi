@@ -11,12 +11,10 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_200_OK
 
 from django.http import StreamingHttpResponse
-from django.http import Http404
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -137,7 +135,7 @@ class AuditExportApiView(APIView):
                 try:
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
-                    channel_lang = ''
+                    channel_lang = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -148,15 +146,15 @@ class AuditExportApiView(APIView):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else '',
-                    v.video.channel.channel_id if v.video.channel else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else "",
+                    v.video.channel.channel_id if v.video.channel else "",
                     channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
                     all_hit_words,
                     unique_hit_words,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else "",
                 ]
                 wr.writerow(data)
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
