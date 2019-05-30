@@ -64,6 +64,7 @@ class Command(BaseCommand):
                     self.language = "en"
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
+                self.category = self.audit.params.get('category')
             except Exception as e:
                 logger.exception(e)
             self.process_audit()

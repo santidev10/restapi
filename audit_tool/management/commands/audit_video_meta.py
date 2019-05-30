@@ -79,7 +79,7 @@ class Command(BaseCommand):
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
-                    c =  ChannelCommand()
+                    c = ChannelCommand()
                     c.audit = self.audit
                     c.export_channels()
                     raise Exception("Audit completed, all channels processed")
