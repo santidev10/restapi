@@ -101,6 +101,11 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 vids.append(acp)
+        if len(vids) == 0:
+            self.audit.params['error'] = "no valid YouTube URL's in seed file {}".format(seed_file)
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
+            raise Exception("no valid YouTube URL's in seed file {}".format(seed_file))
         return vids
 
 

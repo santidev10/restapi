@@ -202,6 +202,13 @@ class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
 
+    @staticmethod
+    def get_all():
+        res = {}
+        for c in AuditCategory.objects.all():
+            res[str(c.category)] = c.category_display
+        return res
+
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
 
