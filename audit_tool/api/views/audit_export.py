@@ -144,7 +144,7 @@ class AuditExportApiView(APIView):
                 ]
                 wr.writerow(data)
             if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
+                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
                 audit.save()
             file_name = audit.params['export_{}'.format(clean_string)]
             myfile.buffer.seek(0)
@@ -223,7 +223,7 @@ class AuditExportApiView(APIView):
                 ]
                 wr.writerow(data)
             if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
+                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
                 audit.save()
             file_name = audit.params['export_{}'.format(clean_string)]
             myfile.buffer.seek(0)
