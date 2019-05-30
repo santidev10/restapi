@@ -16,6 +16,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -76,6 +77,12 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
+            if self.audit.params.get('audit_type_original'):
+                if self.audit.params['audit_type_original'] == 2:
+                    c =  ChannelCommand()
+                    c.audit = self.audit
+                    c.export_channels()
+                    raise Exception("Audit completed, all channels processed")
             self.export_videos()
             raise Exception("Audit completed, all videos processed")
         videos = {}
