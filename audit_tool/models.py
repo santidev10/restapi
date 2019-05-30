@@ -177,6 +177,7 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': self.params.get('language'),
+            'category': self.params.get('category'),
             'max_recommended': self.max_recommended
         }
         if self.params.get('error'):
