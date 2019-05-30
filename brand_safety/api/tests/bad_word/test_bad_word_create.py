@@ -5,6 +5,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -92,6 +93,19 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
         self.assertEqual(test_bad_word_obj.category_id, test_category.id)
         self.assertEqual(test_bad_word_obj.category.name, test_category.name)
 
+    def test_reject_duplicate_words_same_language(self):
+        self.create_admin_user()
+        test_category = BadWordCategory.objects.create(name="testing")
+        another_test_category = BadWordCategory.objects.create(name="another testing")
+        test_language = AuditLanguage.objects.create(language="en")
+        test_bad_word = BadWord.objects.create(name="testing", category=test_category, language=test_language)
+        response = self._request(
+            name=test_bad_word.name,
+            category=another_test_category.id,
+            language=test_language.language
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_bad_word_name_strip(self):
         self.create_admin_user()
         test_bad_word = "testing"
@@ -137,4 +151,23 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         from_db = BadWord.objects.get(name=test_bad_word)
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(from_db.language.language, BadWord.DEFAULT_LANGUAGE)
+
+    def test_create_after_soft_delete(self):
+        self.create_admin_user()
+        test_category = BadWordCategory.objects.create(name="testing")
+        test_language = AuditLanguage.objects.create(language="en")
+        test_bad_word = BadWord.objects.create(name="testing", category=test_category, language=test_language)
+
+        self.assertIsNone(test_bad_word.deleted_at)
+        test_bad_word.delete()
+        soft_deleted = BadWord.all_objects.get(name=test_bad_word.name, category=test_category, language=test_language)
+        self.assertIsNotNone(soft_deleted.deleted_at)
+
+        response = self._request(
+            name=soft_deleted.name,
+            category=soft_deleted.category.id,
+            language=soft_deleted.language.language
+        )
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
