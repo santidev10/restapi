@@ -10,6 +10,7 @@ from distutils.util import strtobool
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
+
 class AuditSaveApiView(APIView):
     def post(self, request):
         query_params = request.query_params
@@ -22,6 +23,14 @@ class AuditSaveApiView(APIView):
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
+        if move_to_top and audit_id:
+            try:
+                audit = AuditProcessor.objects.get(id=audit_id)
+                lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
+                audit.pause = lowest_priority.pause - 1
+                audit.save(update_fields=['pause'])
+            except Exception as e:
+                raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
         except ValueError:
@@ -42,27 +51,28 @@ class AuditSaveApiView(APIView):
                 AuditProcessor.AUDIT_TYPES, audit_type
             ))
         # Source File Validation
-        if source_file is None:
-            raise ValidationError("Source file is required.")
-
-        if source_file:
-            source_split = source_file.name.split(".")
-
-        if len(source_split) < 2:
-            raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
-        source_type = source_split[1]
-        if source_type.lower() != "csv":
-            raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
-
         params = {
             'name': name,
             'language': language,
             'user_id': user_id,
             'do_videos': do_videos
         }
-        # Put Source File on S3
-        if source_file:
-            params['seed_file'] = self.put_source_file_on_s3(source_file)
+        if not audit_id:
+            if source_file is None:
+                raise ValidationError("Source file is required.")
+
+            if source_file:
+                source_split = source_file.name.split(".")
+
+            if len(source_split) < 2:
+                raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
+            source_type = source_split[1]
+            if source_type.lower() != "csv":
+                raise ValidationError("Invalid source file type. Expected CSV file. Received {} file.".format(source_type))
+            # Put Source File on S3
+            if source_file:
+                params['seed_file'] = self.put_source_file_on_s3(source_file)
+
         # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
@@ -82,12 +92,6 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
-            if move_to_top:
-                try:
-                    lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit.id).order_by("pause")[0]
-                    audit.pause = lowest_priority.pause - 1
-                except Exception as e:
-                    pass
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
@@ -97,7 +101,8 @@ class AuditSaveApiView(APIView):
             )
         return Response(audit.to_dict())
 
-    def put_source_file_on_s3(self, file):
+    @staticmethod
+    def put_source_file_on_s3(file):
         # take the file uploaded locally, put on S3 and return the s3 filename
         random_file_name = uuid4().hex
         AuditFileS3Exporter.export_to_s3(file, random_file_name)

@@ -33,3 +33,6 @@ CELERY_BEAT_SCHEDULE = {
     }
 }
 CELERY_RESULT_BACKEND = "django-db"
+
+# Suggestion from this thread https://github.com/celery/celery/issues/4226
+CELERY_BROKER_POOL_LIMIT = None
