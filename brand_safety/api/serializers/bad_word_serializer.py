@@ -1,8 +1,6 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
 from rest_framework.serializers import CharField
-from rest_framework.serializers import StringRelatedField
-from rest_framework.validators import UniqueTogetherValidator
 
 from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
@@ -11,10 +9,10 @@ from brand_safety.models import BadWordCategory
 
 class BadWordSerializer(ModelSerializer):
     category = CharField(max_length=80)
-    language = StringRelatedField(default=BadWord.DEFAULT_LANGUAGE)
+    language = CharField(max_length=80, required=False, default=BadWord.DEFAULT_LANGUAGE)
 
     def validate(self, attrs):
-        language = self.validate_language(attrs.pop("language", None))
+        language = self.validate_language(attrs.get("language", None))
         attrs["language"] = language
         return attrs
 
@@ -59,9 +57,5 @@ class BadWordSerializer(ModelSerializer):
     class Meta:
         model = BadWord
         fields = ("id", "name", "category", "negative_score", "language")
-        validators = [
-            UniqueTogetherValidator(
-                queryset=BadWord.all_objects.all(),
-                fields=("name", "category", "language")
-            )
-        ]
+
+
