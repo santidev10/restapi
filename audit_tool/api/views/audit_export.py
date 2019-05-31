@@ -196,6 +196,7 @@ class AuditExportApiView(APIView):
             "Num Videos Checked",
             "Country",
             "Language",
+            "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
         ]
@@ -206,6 +207,7 @@ class AuditExportApiView(APIView):
         if clean is not None:
             channels = channels.filter(clean=clean)
         channels = channels.select_related("channel")
+        bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
@@ -213,7 +215,10 @@ class AuditExportApiView(APIView):
                 hit_words[cid.channel.channel_id] = []
             videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
             video_count[cid.channel.channel_id] = videos.count()
+            bad_videos_count[cid.channel.channel_id] = 0
             for video in videos:
+                if not video.clean:
+                    bad_videos_count[cid.channel.channel_id] +=1
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
                         if bad_word not in hit_words[cid.channel.channel_id]:
@@ -243,6 +248,7 @@ class AuditExportApiView(APIView):
                     video_count[v.channel.channel_id],
                     country,
                     language,
+                    bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])
                 ]
