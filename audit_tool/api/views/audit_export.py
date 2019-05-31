@@ -136,6 +136,10 @@ class AuditExportApiView(APIView):
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
                     channel_lang = ""
+                try:
+                    video_count = v.video.channel.auditchannelmeta.video_count
+                except Exception as e:
+                    video_count = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -154,7 +158,7 @@ class AuditExportApiView(APIView):
                     country,
                     all_hit_words,
                     unique_hit_words,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else "",
+                    video_count if video_count else "",
                 ]
                 wr.writerow(data)
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
@@ -228,7 +232,7 @@ class AuditExportApiView(APIView):
                 data = [
                     v.name,
                     v.channel.channel_id,
-                    v.view_count,
+                    v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],
                     country,
