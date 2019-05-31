@@ -34,6 +34,8 @@ class AuditSaveApiView(APIView):
                 raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+            if max_recommended > 500000:
+                max_recommended = 500000
         except ValueError:
             raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
                                   .format(query_params["max_recommended"], type(query_params["max_recommended"])))
@@ -100,8 +102,7 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
-            if category:
-                audit.params['category'] = category
+            audit.params['category'] = category
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
