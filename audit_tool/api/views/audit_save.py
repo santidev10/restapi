@@ -81,6 +81,11 @@ class AuditSaveApiView(APIView):
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'] = self.load_keywords(exclusion_file)
+        if category:
+            c = []
+            for a in list(category):
+                c.append(int(a))
+            audit.params['category'] = c
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
@@ -94,11 +99,6 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
-            if category:
-                c = []
-                for a in list(category):
-                    c.append(int(a))
-                audit.params['category'] = c
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
