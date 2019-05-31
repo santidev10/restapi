@@ -58,7 +58,7 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='get_current_audit_to_process_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
                 self.language = self.audit.params.get('language')
                 if not self.language:
                     self.language = "en"
@@ -76,8 +76,11 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
+        thread_id = self.thread_id
+        if thread_id % 3 == 0:
+            thread_id = 0
         if pending_videos.count() == 0:
-            if self.thread_id == 0:
+            if thread_id == 0:
                 pending_videos = self.process_seed_list()
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
@@ -89,7 +92,7 @@ class Command(BaseCommand):
                 print("Audit completed, all videos processed")
                 self.export_videos()
                 raise Exception("Audit completed, all videos processed")
-        start = self.thread_id * 100
+        start = thread_id * 100
         for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
@@ -114,21 +117,28 @@ class Command(BaseCommand):
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            v_id = seed.split("/")[-1]
+            v_id = seed.replace(",", "").split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
             if '?t=' in  v_id:
                 v_id = v_id.split("?t")[0]
-            video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=video,
-            )
-            vids.append(avp)
+            if v_id:
+                v_id = v_id.strip()
+                video = AuditVideo.get_or_create(v_id)
+                avp, _ = AuditVideoProcessor.objects.get_or_create(
+                    audit=self.audit,
+                    video=video,
+                )
+                vids.append(avp)
         return vids
 
     def do_recommended_api_call(self, avp):
         video = avp.video
+        if video.video_id is None:
+            avp.clean = False
+            avp.processed = timezone.now()
+            avp.save()
+            return
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
@@ -138,6 +148,12 @@ class Command(BaseCommand):
         )
         r = requests.get(url)
         data = r.json()
+        if 'error' in data:
+            if data['error']['message'] == 'Invalid video.':
+                avp.processed = timezone.now()
+                avp.clean = False
+                avp.save()
+                return
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
@@ -159,6 +175,7 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
+                #print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
                         v, _ = AuditVideoProcessor.objects.get_or_create(
