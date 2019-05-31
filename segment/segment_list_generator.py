@@ -1,6 +1,7 @@
 from collections import defaultdict
 import logging
 
+from django.conf import settings
 from django.contrib.postgres.fields.jsonb import KeyTransform
 from django.utils import timezone
 
@@ -76,7 +77,7 @@ class SegmentListGenerator(object):
             self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
             self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_CHANNEL_SIZE
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_CHANNEL_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            self.INDEX_NAME = settings.BRAND_SAFETY_CHANNEL_INDEX
             self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
             self.MASTER_SEGMENT_RELATED_SORT_KEY = "subscribers"
 
@@ -101,7 +102,7 @@ class SegmentListGenerator(object):
             self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
             self.MASTER_BLACKLIST_SIZE = self.MASTER_BLACKLIST_VIDEO_SIZE
             self.MASTER_WHITELIST_SIZE = self.MASTER_WHITELIST_VIDEO_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
+            self.INDEX_NAME = settings.BRAND_SAFETY_VIDEO_INDEX
             self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
             self.MASTER_SEGMENT_RELATED_SORT_KEY = "views"
 
@@ -305,7 +306,7 @@ class SegmentListGenerator(object):
         :param item_ids:
         :return:
         """
-        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, constants.BRAND_SAFETY_SCORE_TYPE)
+        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, settings.BRAND_SAFETY_TYPE)
         return response
 
     def _get_sdb_data(self, item_ids, item_type):
