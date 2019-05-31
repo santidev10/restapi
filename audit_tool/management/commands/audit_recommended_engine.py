@@ -144,6 +144,7 @@ class Command(BaseCommand):
         if 'error' in data:
             if data['error']['message'] == 'Invalid video.':
                 avp.processed = timezone.now()
+                avp.clean = False
                 avp.save()
                 return
         for i in data['items']:
