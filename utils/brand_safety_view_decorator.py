@@ -1,6 +1,8 @@
+from django.conf import settings
+
 import brand_safety.constants as constants
-from utils.elasticsearch import ElasticSearchConnector
 from userprofile.permissions import PermissionGroupNames
+from utils.elasticsearch import ElasticSearchConnector
 
 
 def add_brand_safety_data(view):
@@ -19,9 +21,9 @@ def add_brand_safety_data(view):
                 return response
             view_name = view_name.lower()
             if constants.CHANNEL in view_name:
-                index_name = constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX
+                index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
             elif constants.VIDEO in view_name:
-                index_name = constants.BRAND_SAFETY_VIDEO_LANG_ES_INDEX
+                index_name = settings.BRAND_SAFETY_VIDEO_INDEX
             else:
                 return response
 
@@ -76,7 +78,7 @@ def _handle_list_view(response, index_name):
         es_data = ElasticSearchConnector().search_by_id(
             index_name,
             doc_ids,
-            constants.BRAND_SAFETY_SCORE_TYPE
+            settings.BRAND_SAFETY_TYPE
         )
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
@@ -94,7 +96,7 @@ def _handle_single_view(response, index_name):
         es_data = ElasticSearchConnector().search_by_id(
             index_name,
             doc_id,
-            constants.BRAND_SAFETY_SCORE_TYPE
+            settings.BRAND_SAFETY_TYPE
         )
         score = es_data["overall_score"]
         response.data["brand_safety_data"] = get_brand_safety_data(score)

@@ -1,19 +1,20 @@
-from rest_framework.views import APIView
-from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_502_BAD_GATEWAY
-from rest_framework.response import Response
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.core.paginator import InvalidPage
 from django.core.paginator import EmptyPage
 from django.http import Http404
+from rest_framework.views import APIView
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_502_BAD_GATEWAY
+from rest_framework.response import Response
 
-from utils.elasticsearch import ElasticSearchConnectorException
-from utils.brand_safety_view_decorator import get_brand_safety_data
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
 from brand_safety.api.views.brand_safety.utils.utils import get_es_data
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
+from singledb.connector import SingleDatabaseApiConnector
+from singledb.connector import SingleDatabaseApiConnectorException
+from utils.elasticsearch import ElasticSearchConnectorException
+from utils.brand_safety_view_decorator import get_brand_safety_data
 
 
 class BrandSafetyChannelAPIView(APIView):
@@ -44,7 +45,7 @@ class BrandSafetyChannelAPIView(APIView):
         except (ValueError, TypeError, KeyError):
             size = self.MAX_PAGE_SIZE
 
-        channel_es_data = get_es_data(channel_id, constants.BRAND_SAFETY_CHANNEL_ES_INDEX)
+        channel_es_data = get_es_data(channel_id, settings.BRAND_SAFETY_CHANNEL_INDEX)
         if channel_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
@@ -57,7 +58,7 @@ class BrandSafetyChannelAPIView(APIView):
 
         # Get video brand safety data to merge with sdb video data
         video_ids = list(video_sdb_data.keys())
-        video_es_data = get_es_data(video_ids, constants.BRAND_SAFETY_VIDEO_ES_INDEX)
+        video_es_data = get_es_data(video_ids, settings.BRAND_SAFETY_VIDEO_INDEX)
         if video_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
