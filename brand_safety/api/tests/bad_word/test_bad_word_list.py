@@ -43,6 +43,7 @@ class BadWordListTestCase(ExtendedAPITestCase):
         ]
 
     def _request(self, **query_params):
+        query_params["page"] = 1
         url = reverse(
             PathNames.BadWord.LIST_AND_CREATE,
             [Namespace.BRAND_SAFETY],

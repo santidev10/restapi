@@ -6,7 +6,7 @@ import csv
 from uuid import uuid4
 from io import StringIO
 from distutils.util import strtobool
-
+import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -20,6 +20,7 @@ class AuditSaveApiView(APIView):
         move_to_top = strtobool(query_params["move_to_top"]) if "move_to_top" in query_params else None
         name = query_params["name"] if "name" in query_params else None
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
+        category = query_params["category"] if "category" in query_params else None
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
@@ -55,7 +56,8 @@ class AuditSaveApiView(APIView):
             'name': name,
             'language': language,
             'user_id': user_id,
-            'do_videos': do_videos
+            'do_videos': do_videos,
+            'category': category,
         }
         if not audit_id:
             if source_file is None:
@@ -79,6 +81,12 @@ class AuditSaveApiView(APIView):
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'] = self.load_keywords(exclusion_file)
+        if category:
+            c = []
+            for a in json.loads(category):
+                c.append(int(a))
+            category = c
+            params['category'] = category
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
@@ -92,6 +100,8 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
+            if category:
+                audit.params['category'] = category
             audit.save()
         else:
             audit = AuditProcessor.objects.create(

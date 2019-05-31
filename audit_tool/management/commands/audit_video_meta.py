@@ -16,6 +16,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -65,17 +66,26 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
-            self.process_seed_list()
-            pending_videos = AuditVideoProcessor.objects.filter(
-                audit=self.audit,
-                processed__isnull=True
-            )
+            if self.thread_id == 0:
+                self.process_seed_list()
+                pending_videos = AuditVideoProcessor.objects.filter(
+                    audit=self.audit,
+                    processed__isnull=True
+                )
+            else:
+                raise Exception("waiting to process seed list on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
+            if self.audit.params.get('audit_type_original'):
+                if self.audit.params['audit_type_original'] == 2:
+                    c = ChannelCommand()
+                    c.audit = self.audit
+                    c.export_channels()
+                    raise Exception("Audit completed, all channels processed")
             self.export_videos()
             raise Exception("Audit completed, all videos processed")
         videos = {}

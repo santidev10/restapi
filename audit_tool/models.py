@@ -141,7 +141,7 @@ class AuditProcessor(models.Model):
     audit_type = models.IntegerField(db_index=True, default=0)
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60):
+    def get(running=None, audit_type=None, num_days=60, output=None):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
@@ -156,10 +156,14 @@ class AuditProcessor(models.Model):
         for a in all.order_by("pause", "-completed", "id"):
             d = a.to_dict()
             status = 'running'
-            if a.completed is not None:
-                status = 'completed'
-            ret[status].append(d)
-        return ret
+            if output:
+                print(d['id'], d['name'], d['data'], d['percent_done'])
+            else:
+                if a.completed is not None:
+                    status = 'completed'
+                ret[status].append(d)
+        if not output:
+            return ret
 
     def to_dict(self):
         audit_type = self.params.get('audit_type_original')
@@ -177,6 +181,7 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': self.params.get('language'),
+            'category': self.params.get('category'),
             'max_recommended': self.max_recommended
         }
         if self.params.get('error'):
@@ -201,6 +206,13 @@ class AuditLanguage(models.Model):
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
+
+    @staticmethod
+    def get_all():
+        res = {}
+        for c in AuditCategory.objects.all():
+            res[str(c.category)] = c.category_display
+        return res
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)

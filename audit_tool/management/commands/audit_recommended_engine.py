@@ -64,6 +64,7 @@ class Command(BaseCommand):
                     self.language = "en"
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
+                self.category = self.audit.params.get('category')
             except Exception as e:
                 logger.exception(e)
             self.process_audit()
@@ -76,7 +77,10 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
-            pending_videos = self.process_seed_list()
+            if self.thread_id == 0:
+                pending_videos = self.process_seed_list()
+            else:
+                raise Exception("waiting for seed list to finish on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
@@ -156,13 +160,14 @@ class Command(BaseCommand):
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
-                    v, _  = AuditVideoProcessor.objects.get_or_create(
-                        video=db_video,
-                        audit=self.audit
-                    )
-                    if not v.video_source:
-                        v.video_source = video
-                        v.save()
+                    if not self.category or int(db_video_meta.category.category) in self.category:
+                        v, _ = AuditVideoProcessor.objects.get_or_create(
+                            video=db_video,
+                            audit=self.audit
+                        )
+                        if not v.video_source:
+                            v.video_source = video
+                            v.save()
         avp.processed = timezone.now()
         avp.save()
 
@@ -351,7 +356,7 @@ class Command(BaseCommand):
                 try:
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
-                    channel_lang = ''
+                    channel_lang = ""
                 data = [
                     v.video.video_id,
                     v.name,
@@ -361,13 +366,13 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else  "",
+                    v.video.channel.channel_id if v.video.channel else  "",
                     channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ''
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ""
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
