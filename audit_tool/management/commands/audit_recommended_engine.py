@@ -141,6 +141,11 @@ class Command(BaseCommand):
         )
         r = requests.get(url)
         data = r.json()
+        if 'error' in data:
+            if data['error']['message'] == 'Invalid video.':
+                avp.processed = timezone.now()
+                avp.save()
+                return
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
