@@ -19,9 +19,9 @@ def add_brand_safety_data(view):
                 return response
             view_name = view_name.lower()
             if constants.CHANNEL in view_name:
-                index_name = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+                index_name = constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX
             elif constants.VIDEO in view_name:
-                index_name = constants.BRAND_SAFETY_VIDEO_ES_INDEX
+                index_name = constants.BRAND_SAFETY_VIDEO_LANG_ES_INDEX
             else:
                 return response
 
