@@ -85,7 +85,8 @@ class AuditSaveApiView(APIView):
             c = []
             for a in list(category):
                 c.append(int(a))
-            audit.params['category'] = c
+            category = c
+            params['category'] = category
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
@@ -99,6 +100,8 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
+            if category:
+                audit.params['category'] = category
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
