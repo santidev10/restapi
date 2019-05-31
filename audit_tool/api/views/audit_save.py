@@ -6,7 +6,7 @@ import csv
 from uuid import uuid4
 from io import StringIO
 from distutils.util import strtobool
-
+import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -83,7 +83,7 @@ class AuditSaveApiView(APIView):
             params['exclusion'] = self.load_keywords(exclusion_file)
         if category:
             c = []
-            for a in list(category):
+            for a in json.loads(category):
                 c.append(int(a))
             category = c
             params['category'] = category
