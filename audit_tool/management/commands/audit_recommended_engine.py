@@ -117,7 +117,7 @@ class Command(BaseCommand):
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            v_id = seed.split("/")[-1]
+            v_id = seed.replace(",", "").split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
             if '?t=' in  v_id:
