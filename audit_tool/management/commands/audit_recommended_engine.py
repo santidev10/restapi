@@ -122,16 +122,22 @@ class Command(BaseCommand):
                 v_id = v_id.split("v=")[-1]
             if '?t=' in  v_id:
                 v_id = v_id.split("?t")[0]
-            video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=video,
-            )
-            vids.append(avp)
+            if v_id:
+                video = AuditVideo.get_or_create(v_id)
+                avp, _ = AuditVideoProcessor.objects.get_or_create(
+                    audit=self.audit,
+                    video=video,
+                )
+                vids.append(avp)
         return vids
 
     def do_recommended_api_call(self, avp):
         video = avp.video
+        if video.video_id is None:
+            avp.clean = False
+            avp.processed = timezone.now()
+            avp.save()
+            return
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
