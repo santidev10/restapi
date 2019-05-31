@@ -175,7 +175,7 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
-                print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
+                #print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
                         v, _ = AuditVideoProcessor.objects.get_or_create(
