@@ -96,7 +96,7 @@ class AuditSaveApiView(APIView):
                 audit.params['language'] = language
             if category:
                 c = []
-                for a in category:
+                for a in list(category):
                     c.append(int(a))
                 audit.params['category'] = c
             audit.save()
