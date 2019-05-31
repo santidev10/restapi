@@ -85,7 +85,7 @@ class StandardBrandSafetyProvider(object):
             # Update brand safety processors
             self.audits[constants.BRAND_SAFETY] = self.get_bad_word_processors_by_language()
             self.audit_service.audits = self.audits
-        # self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
+        logger.info("Complete.")
 
     def _process_audits(self, channel_ids):
         """
@@ -155,6 +155,8 @@ class StandardBrandSafetyProvider(object):
             response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
             channel_ids = [item["channel_id"] for item in response.get("items", []) if item["channel_id"] != cursor_id]
             if not channel_ids:
+                # No more items to process, reset cursor
+                self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
                 break
             channels_to_update = self._get_channels_to_update(channel_ids)
             yield channels_to_update
@@ -281,8 +283,7 @@ class StandardBrandSafetyProvider(object):
         """
         all_data = {}
         es_channels = self.es_connector.search_by_id(
-            # constants.BRAND_SAFETY_CHANNEL_ES_INDEX,
-            "test_channel",
+            constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX,
             channel_ids,
             constants.BRAND_SAFETY_SCORE_TYPE
         )
