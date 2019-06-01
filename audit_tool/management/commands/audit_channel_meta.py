@@ -262,7 +262,7 @@ class Command(BaseCommand):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
