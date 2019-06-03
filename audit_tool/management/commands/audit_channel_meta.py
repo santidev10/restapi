@@ -53,10 +53,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
         if pending_channels.count() == 0:
-            if self.thread_id == 0:
-                self.process_seed_list()
-            else:
-                raise Exception("waiting for seed list to finish processing on thread 0")
+            self.process_seed_list()
             pending_channels = AuditChannelProcessor.objects.filter(
                 audit=self.audit,
                 processed__isnull=True
@@ -265,7 +262,7 @@ class Command(BaseCommand):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
