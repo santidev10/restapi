@@ -82,7 +82,7 @@ class AuditExportApiView(APIView):
         # If audit already exported, simply generate and return temp link
         if 'export_{}'.format(clean_string) in audit.params:
             return file_name
-        # self.get_categories()
+        self.get_categories()
         cols = [
             "Video ID",
             "Name",
@@ -167,7 +167,7 @@ class AuditExportApiView(APIView):
             myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
-            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = file_name
                 audit.save()
@@ -251,7 +251,7 @@ class AuditExportApiView(APIView):
             myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
-            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = file_name
