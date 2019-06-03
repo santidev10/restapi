@@ -119,7 +119,7 @@ class AuditExportApiView(APIView):
                 "language",
                 "category"
         )
-        with open('export_{}_{}.csv'.format(name, clean_string), 'w+', newline='') as myfile:
+        with open('export_{}_{}.csv'.format(name, clean_string), 'a', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -166,11 +166,13 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
             myfile.buffer.seek(0)
+
+        with open('export_{}_{}.csv'.format(name, clean_string)) as myfile:
             url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
-            os.remove(myfile.name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = file_name
                 audit.save()
+            os.remove(myfile.name)
         return file_name
 
     def export_channels(self, audit, audit_id=None, clean=None):
