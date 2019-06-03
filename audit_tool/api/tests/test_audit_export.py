@@ -1,4 +1,3 @@
-from tempfile import mkstemp
 import csv
 from rest_framework.status import HTTP_200_OK
 from django.utils import timezone
@@ -28,7 +27,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
         self.create_admin_user()
         self.s3 = AuditS3Exporter._s3()
         video_params = {
-            'name': str(timezone.now()),
+            'name': 'test_video',
             'language': 'en'
         }
 
@@ -64,28 +63,26 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
                                                                  })
 
     def tearDown(self):
-        if 'export_false' in self.video_audit.params:
-            video_audit_key = 'export_{}_{}_false.csv'.format(self.video_audit.id, self.video_audit.name)
-            try:
-                self.s3.delete_object(
-                    Bucket=AuditS3Exporter.bucket_name,
-                    Key=video_audit_key
-                )
-            except Exception as e:
-                raise KeyError("Failed to delete object. Object with key {} not found in bucket."
-                               .format(video_audit_key))
+        video_audit_key = 'export_{}_{}_false.csv'.format(self.video_audit.id, self.video_audit.params['name'])
+        try:
+            self.s3.delete_object(
+                Bucket=AuditS3Exporter.bucket_name,
+                Key=video_audit_key
+            )
+        except Exception as e:
+            raise KeyError("Failed to delete object. Object with key {} not found in bucket."
+                           .format(video_audit_key))
 
-        if 'export_true' in self.channel_audit.params:
-            channel_audit_key = 'export_{}_{}_true.csv'.format(self.channel_audit.id, self.channel_audit.name)
-            try:
-                self.s3.delete_object(
-                    Bucket=AuditS3Exporter.bucket_name,
-                    Key=channel_audit_key
-                )
-            except Exception as e:
-                raise KeyError(
-                    "Failed to delete object. Object with key {} not found in bucket."
-                        .format(channel_audit_key))
+        channel_audit_key = 'export_{}_{}_true.csv'.format(self.channel_audit.id, self.channel_audit.params['name'])
+        try:
+            self.s3.delete_object(
+                Bucket=AuditS3Exporter.bucket_name,
+                Key=channel_audit_key
+            )
+        except Exception as e:
+            raise KeyError(
+                "Failed to delete object. Object with key {} not found in bucket."
+                    .format(channel_audit_key))
 
 
     def test_video_export(self):
@@ -94,9 +91,7 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
         except Exception as e:
             raise KeyError("No Audit with id: {} found.".format(self.video_audit.id))
         reader = csv.reader(video_response)
-        for row in reader:
-            print(row)
-        return
+        self.assertEqual(video_response.status_code, HTTP_200_OK)
 
 
     def test_channel_export(self):
@@ -104,7 +99,4 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
             channel_response = self.client.get(self.url + "?audit_id={}&clean=True".format(self.channel_audit.id))
         except Exception as e:
             raise KeyError("No Audit with id: {} found.".format(self.channel_audit.id))
-        reader = csv.reader(channel_response)
-        for row in reader:
-            print(row)
-        return
+        self.assertEqual(channel_response.status_code, HTTP_200_OK)
