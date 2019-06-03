@@ -16,6 +16,7 @@ from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
 from aw_reporting.models import ALL_PARENTS
+from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
@@ -31,6 +32,11 @@ MODELS_WITH_ACCOUNT_ID_REF = (
 
 
 def recalculate_de_norm_fields_for_account(account_id):
+    _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id)
+    _recalculate_de_norm_fields_for_account_statisics(account_id)
+
+
+def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
     for model, account_ref in MODELS_WITH_ACCOUNT_ID_REF:
         filter_dict = {
             "de_norm_fields_are_recalculated": False,
@@ -125,6 +131,23 @@ def recalculate_de_norm_fields_for_account(account_id):
 
         for uid, updates in update.items():
             model.objects.filter(id=uid).update(**updates)
+
+
+def _recalculate_de_norm_fields_for_account_statisics(account_id):
+    formulas = dict(
+        ad_count=Count("campaigns__ad_groups__ads", distinct=True),
+        channel_count=Count("campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
+        video_count=Count("campaigns__ad_groups__managed_video_statistics__yt_id", distinct=True),
+        interest_count=Count("campaigns__ad_groups__audiences__audience_id", distinct=True),
+        topic_count=Count("campaigns__ad_groups__topics__topic_id", distinct=True),
+        keyword_count=Count("campaigns__ad_groups__keywords__keyword", distinct=True),
+    )
+    queryset = Account.objects.filter(pk=account_id)
+    data = dict()
+    for k, v in formulas.items():
+        data_item = queryset.aggregate(**{k: v})
+        data.update(data_item)
+    queryset.update(**data)
 
 
 def _build_boolean_case(ref, value):

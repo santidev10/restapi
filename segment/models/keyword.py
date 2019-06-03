@@ -11,8 +11,10 @@ from django.db.models import ForeignKey
 
 from aw_reporting.models import KeywordStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
+from singledb.settings import DEFAULT_KEYWORD_LIST_SOURCES
 from .base import BaseSegment
 from .base import BaseSegmentRelated
+from .base import SegmentRelatedManager
 from .base import SegmentManager
 
 logger = logging.getLogger(__name__)
@@ -86,7 +88,8 @@ class SegmentKeyword(BaseSegment):
     def singledb_method(self):
         return Connector().get_keyword_list
 
-    segment_type = 'keyword'
+    segment_type = "keyword"
+    sources = DEFAULT_KEYWORD_LIST_SOURCES
 
     objects = SegmentKeywordManager()
 
@@ -147,5 +150,15 @@ class SegmentKeyword(BaseSegment):
         return statistics
 
 
+class SegmentRelatedKeywordManager(SegmentRelatedManager):
+    id_fields_name = "keyword"
+    sources = DEFAULT_KEYWORD_LIST_SOURCES
+
+    @property
+    def singledb_method(self):
+        return Connector().get_keyword_list
+
+
 class SegmentRelatedKeyword(BaseSegmentRelated):
     segment = ForeignKey(SegmentKeyword, related_name='related')
+    objects = SegmentRelatedKeywordManager()

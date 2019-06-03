@@ -16,8 +16,9 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
-from pid.decorator import pidfile
+from pid import PidFile
 
 """
 requirements:
@@ -42,14 +43,20 @@ class Command(BaseCommand):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                            "?key={key}&part=id,snippet&id={id}"
 
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     # this is the primary method to call to trigger the entire audit sequence
-    @pidfile(piddir=".", pidname="audit_video_meta.pid")
     def handle(self, *args, **options):
-        try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
-        except Exception as e:
-            logger.exception(e)
-        self.process_audit()
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
+            try:
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
+            except Exception as e:
+                logger.exception(e)
+            self.process_audit()
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
@@ -59,21 +66,32 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
-            self.process_seed_list()
-            pending_videos = AuditVideoProcessor.objects.filter(
-                audit=self.audit,
-                processed__isnull=True
-            )
+            if self.thread_id == 0:
+                self.process_seed_list()
+                pending_videos = AuditVideoProcessor.objects.filter(
+                    audit=self.audit,
+                    processed__isnull=True
+                )
+            else:
+                raise Exception("waiting to process seed list on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             print("Audit completed, all videos processed")
+            if self.audit.params.get('audit_type_original'):
+                if self.audit.params['audit_type_original'] == 2:
+                    c = ChannelCommand()
+                    c.audit = self.audit
+                    c.export_channels()
+                    raise Exception("Audit completed, all channels processed")
+            self.export_videos()
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
-        for video in pending_videos[:num]:
+        start = self.thread_id * num
+        for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
             if len(videos) == 50:
                 self.do_check_video(videos)
@@ -102,6 +120,10 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
             return vids
+        self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+        self.audit.completed = timezone.now()
+        self.audit.save(update_fields=['params', 'completed'])
+        raise Exception("can not open seed file {}".format(seed_file))
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -109,6 +131,9 @@ class Command(BaseCommand):
             seed_file = self.audit.params.get('seed_file')
             if seed_file:
                 return self.process_seed_file(seed_file)
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
@@ -304,6 +329,8 @@ class Command(BaseCommand):
             "publish date",
             "channel name",
             "channel ID",
+            "channel default lang.",
+            "channel subscribers",
             "country",
             "all hit words",
             "unique hit words",
@@ -326,7 +353,15 @@ class Command(BaseCommand):
         )
         if num_out:
             video_meta = video_meta[:num_out]
-        with open('export_{}.csv'.format(audit_id), 'w', newline='') as myfile:
+        if self.audit:
+            audit_id = self.audit.id
+        else:
+            audit_id = audit_id
+        try:
+            name = self.audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -342,6 +377,10 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                try:
+                    channel_lang = v.video.channel.auditchannelmeta.language.language
+                except Exception as e:
+                    channel_lang = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
                 data = [
                     v.video.video_id,
@@ -352,15 +391,20 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
                     v.video.channel.auditchannelmeta.name if v.video.channel else  '',
                     v.video.channel.channel_id if v.video.channel else  '',
+                    channel_lang,
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
                     country,
                     all_hit_words,
                     unique_hit_words,
                 ]
                 wr.writerow(data)
-            return 'export_{}.csv'.format(audit_id)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()
+            return 'export_{}.csv'.format(name)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)

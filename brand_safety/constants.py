@@ -1,10 +1,6 @@
 VIDEO = "video"
 CHANNEL = "channel"
 
-BRAND_SAFETY_VIDEO_ES_INDEX = "brand_safety_video"
-BRAND_SAFETY_CHANNEL_ES_INDEX = "brand_safety_channel"
-BRAND_SAFETY_SCORE_TYPE = "score"
-
 BRAND_SAFETY_PASS = "brand_safety_pass"
 BRAND_SAFETY_FAIL = "brand_safety_fail"
 BRAND_SAFETY = "brand_safety"
@@ -70,3 +66,21 @@ BRAND_SAFETY_SCORE = "brand_safety_score"
 TITLE = "title"
 DESCRIPTION = "description"
 TAGS = "tags"
+TRANSCRIPT = "transcript"
+
+UNAVAILABLE_MESSAGE = "Brand Safety data unavailable."
+CHANNEL_LIST_API_VIEW = "ChannelListApiView"
+CHANNEL_RETRIEVE_UPDATE_DELETE_API_VIEW = "ChannelRetrieveUpdateDeleteApiView"
+VIDEO_LIST_API_VIEW = "VideoListApiView"
+VIDEO_RETRIEVE_UPDATE_API_VIEW = "VideoRetrieveUpdateApiView"
+HIGHLIGHT_CHANNELS_LIST_API_VIEW = "HighlightChannelsListApiView"
+HIGHLIGHT_VIDEOS_LIST_API_VIEW = "HighlightVideosListApiView"
+BRAND_SAFETY_DECORATED_VIEWS = (
+    CHANNEL_LIST_API_VIEW, CHANNEL_RETRIEVE_UPDATE_DELETE_API_VIEW,
+    VIDEO_LIST_API_VIEW, VIDEO_RETRIEVE_UPDATE_API_VIEW,
+    HIGHLIGHT_CHANNELS_LIST_API_VIEW, HIGHLIGHT_VIDEOS_LIST_API_VIEW
+)
+SAFE = "SAFE"
+LOW_RISK = "LOW RISK"
+RISKY = "RISKY"
+HIGH_RISK = "HIGH RISK"

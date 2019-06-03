@@ -1,5 +1,5 @@
 """
-Chanel api urls module
+Channel api urls module
 """
 from django.conf.urls import url
 

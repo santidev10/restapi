@@ -21,7 +21,7 @@ from pid import PidFile
 
 """
 requirements:
-    we receive a list of video URLs as a 'seed list'. 
+    we receive a list of video URLs as a 'seed list'.
     we receive a list of blacklist keywords
     we receive a list of inclusion keywords
 process:
@@ -39,7 +39,8 @@ class Command(BaseCommand):
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
-                               "?key={key}&part=id,snippet&relatedToVideoId={id}&type=video&maxResults=50&relevanceLanguage={language}"
+                               "?key={key}&part=id,snippet&relatedToVideoId={id}" \
+                               "&type=video&maxResults=50&relevanceLanguage={language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -57,10 +58,13 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='get_current_audit_to_process_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[0]
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
                 self.language = self.audit.params.get('language')
                 if not self.language:
                     self.language = "en"
+                self.location = self.audit.params.get('location')
+                self.location_radius = self.audit.params.get('location_radius')
+                self.category = self.audit.params.get('category')
             except Exception as e:
                 logger.exception(e)
             self.process_audit()
@@ -72,22 +76,31 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
+        thread_id = self.thread_id
+        if thread_id % 3 == 0:
+            thread_id = 0
         if pending_videos.count() == 0:
-            pending_videos = self.process_seed_list()
+            if thread_id == 0:
+                pending_videos = self.process_seed_list()
+            else:
+                raise Exception("waiting for seed list to finish on thread 0")
         else:
-            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video")
+            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
                 print("Audit completed, all videos processed")
+                self.export_videos()
                 raise Exception("Audit completed, all videos processed")
-        for video in pending_videos[self.thread_id:self.thread_id+100]:
+        start = thread_id * 100
+        for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
+            self.export_videos()
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
@@ -98,25 +111,49 @@ class Command(BaseCommand):
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
+            self.audit.params['error'] = "seed list is empty"
+            self.audit.completed = timezone.now()
+            self.audit.save(update_fields=['params', 'completed'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            v_id = seed.split("/")[-1]
+            v_id = seed.replace(",", "").split("/")[-1]
             if '?v=' in  v_id:
                 v_id = v_id.split("v=")[-1]
-            video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=video,
-            )
-            vids.append(avp)
+            if '?t=' in  v_id:
+                v_id = v_id.split("?t")[0]
+            if v_id:
+                v_id = v_id.strip()
+                video = AuditVideo.get_or_create(v_id)
+                avp, _ = AuditVideoProcessor.objects.get_or_create(
+                    audit=self.audit,
+                    video=video,
+                )
+                vids.append(avp)
         return vids
 
     def do_recommended_api_call(self, avp):
         video = avp.video
-        url = self.DATA_RECOMMENDED_API_URL.format(key=self.DATA_API_KEY, id=video.video_id, language=self.language)
+        if video.video_id is None:
+            avp.clean = False
+            avp.processed = timezone.now()
+            avp.save()
+            return
+        url = self.DATA_RECOMMENDED_API_URL.format(
+            key=self.DATA_API_KEY,
+            id=video.video_id,
+            language=self.language,
+            location="&location={}".format(self.location) if self.location else '',
+            location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
+        )
         r = requests.get(url)
         data = r.json()
+        if 'error' in data:
+            if data['error']['message'] == 'Invalid video.':
+                avp.processed = timezone.now()
+                avp.clean = False
+                avp.save()
+                return
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
@@ -138,13 +175,16 @@ class Command(BaseCommand):
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
             if self.check_video_is_clean(db_video_meta, avp):
-                v, _  = AuditVideoProcessor.objects.get_or_create(
-                    video=db_video,
-                    audit=self.audit
-                )
-                if not v.video_source:
-                    v.video_source = video
-                    v.save()
+                #print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
+                if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
+                    if not self.category or int(db_video_meta.category.category) in self.category:
+                        v, _ = AuditVideoProcessor.objects.get_or_create(
+                            video=db_video,
+                            audit=self.audit
+                        )
+                        if not v.video_source:
+                            v.video_source = video
+                            v.save()
         avp.processed = timezone.now()
         avp.save()
 
@@ -292,8 +332,10 @@ class Command(BaseCommand):
             "publish date",
             "channel name",
             "channel ID",
+            "channel default lang.",
             "subscribers",
-            "country"
+            "country",
+            "video_count"
         ]
         if not audit_id and self.audit:
             audit_id = self.audit.id
@@ -328,6 +370,10 @@ class Command(BaseCommand):
                     country = v.video.channel.auditchannelmeta.country.country
                 except Exception as e:
                     country = ""
+                try:
+                    channel_lang = v.video.channel.auditchannelmeta.language.language
+                except Exception as e:
+                    channel_lang = ""
                 data = [
                     v.video.video_id,
                     v.name,
@@ -337,10 +383,15 @@ class Command(BaseCommand):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
-                    country
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else  "",
+                    v.video.channel.channel_id if v.video.channel else  "",
+                    channel_lang,
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
+                    country,
+                    v.video.channel.auditchannelmeta.video_count if v.video.channel else ""
                 ]
                 wr.writerow(data)
+            if self.audit and self.audit.completed:
+                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.save()

@@ -6,6 +6,8 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
+from audit_tool.models import AuditLanguage
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -44,10 +46,13 @@ class BadWordExportTestCase(ExtendedAPITestCase):
 
     def test_response(self):
         self.create_admin_user()
+        category = BadWordCategory.objects.create(name="test category")
+        language = AuditLanguage.objects.create(language="sv")
         bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test name",
-            category="test category",
+            category=category,
+            language=language
         )
 
         response = self._request()
@@ -58,9 +63,10 @@ class BadWordExportTestCase(ExtendedAPITestCase):
             "Id",
             "Name",
             "Category",
+            "Language"
         ])
         data = next(csv_data)
-        self.assertEqual(data, [str(bad_word.id), bad_word.name, bad_word.category])
+        self.assertEqual(data, [str(bad_word.id), bad_word.name, bad_word.category.name, bad_word.language.language])
 
 
 def get_data_from_csv_response(response):

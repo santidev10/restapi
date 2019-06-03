@@ -4,7 +4,6 @@ from collections import defaultdict
 from django.db.models import Avg
 from django.db.models import Case
 from django.db.models import CharField
-from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import FloatField as AggrFloatField
@@ -17,9 +16,9 @@ from rest_framework.serializers import BooleanField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
-from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
@@ -99,13 +98,6 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
-    # structural data
-    ad_count = StruckField()
-    channel_count = StruckField()
-    video_count = StruckField()
-    interest_count = StruckField()
-    topic_count = StruckField()
-    keyword_count = StruckField()
 
     average_cpv = StatField()
     average_cpm = StatField()
@@ -132,9 +124,17 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         self.settings = {}
         self.stats = {}
         self.plan_rates = {}
-        self.struck = {}
         self.daily_chart = defaultdict(list)
         self.user = kwargs.get("context").get("request").user
+        ids = self._get_ids(*args, **kwargs)
+        if ids:
+            self.settings = self._get_settings(ids)
+            self.plan_rates = self._get_plan_rates(ids)
+            self.stats = self._get_stats(ids)
+            self.daily_chart = self._get_daily_chart(ids)
+            self.video_ads_data = self._get_video_ads_data(ids)
+
+    def _get_ids(self, *args, **kwargs):
         if args:
             if isinstance(args[0], AccountCreation):
                 ids = [args[0].id]
@@ -142,13 +142,7 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
                 ids = [i.id for i in args[0]]
             else:
                 ids = [args[0].id]
-
-            self.settings = self._get_settings(ids)
-            self.plan_rates = self._get_plan_rates(ids)
-            self.stats = self._get_stats(ids)
-            self.struck = self._get_struck(ids)
-            self.daily_chart = self._get_daily_chart(ids)
-            self.video_ads_data = self._get_video_ads_data(ids)
+            return ids
 
     def _get_stats(self, account_creation_ids):
         stats = {}
@@ -156,17 +150,27 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
             CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
 
-        data = Campaign.objects \
+        queryset = Campaign.objects \
             .filter(**campaign_filter) \
             .values(CAMPAIGN_ACCOUNT_ID_KEY) \
-            .order_by(CAMPAIGN_ACCOUNT_ID_KEY) \
+            .order_by(CAMPAIGN_ACCOUNT_ID_KEY)
+
+        data = queryset \
+             \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      statistic_min_date=Min("statistics__date"),
-                      statistic_max_date=Max("statistics__date"),
                       **self.stats_aggregations)
+        dates = queryset.annotate(
+            statistic_min_date=Min("statistics__date"),
+            statistic_max_date=Max("statistics__date"),
+        )
+        dates_by_id = {
+            item[CAMPAIGN_ACCOUNT_ID_KEY]: pick_dict(item, ["statistic_min_date", "statistic_max_date"])
+            for item in dates
+        }
         for account_data in data:
             account_id = account_data[CAMPAIGN_ACCOUNT_ID_KEY]
+            account_data.update(dates_by_id[account_id])
             dict_norm_base_stats(account_data)
             dict_add_calculated_stats(account_data)
 
@@ -196,37 +200,6 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
                 distinct=True)
         )
         return {s['account_creation_id']: s for s in settings}
-
-    def _get_struck(self, account_creation_ids):
-        annotates = dict(
-            ad_count=Count("account__campaigns__ad_groups__ads",
-                           distinct=True),
-            channel_count=Count(
-                "account__campaigns__ad_groups__channel_statistics__yt_id",
-                distinct=True),
-            video_count=Count(
-                "account__campaigns__ad_groups__managed_video_statistics__yt_id",
-                distinct=True),
-            interest_count=Count(
-                "account__campaigns__ad_groups__audiences__audience_id",
-                distinct=True),
-            topic_count=Count(
-                "account__campaigns__ad_groups__topics__topic_id",
-                distinct=True),
-            keyword_count=Count(
-                "account__campaigns__ad_groups__keywords__keyword",
-                distinct=True),
-        )
-        struck = defaultdict(dict)
-        for annotate, aggr in annotates.items():
-            struck_data = AccountCreation.objects \
-                .filter(id__in=account_creation_ids) \
-                .values("id") \
-                .order_by("id") \
-                .annotate(**{annotate: aggr})
-            for d in struck_data:
-                struck[d['id']][annotate] = d[annotate]
-        return struck
 
     def _get_daily_chart(self, account_creation_ids):
         ids = account_creation_ids
@@ -303,7 +276,7 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
         return obj.account.update_time if obj.account else None
 
     def get_is_editable(self, obj):
-        return obj.owner == self.user
+        return obj.owner == self.user or obj.id == DEMO_ACCOUNT_ID
 
     def get_details(self, account_creation):
         ads_and_placements_stats = {s: Sum(s) for s in

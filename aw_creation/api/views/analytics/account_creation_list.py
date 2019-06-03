@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Case
+from django.db.models import Case, BooleanField
 from django.db.models import Count
 from django.db.models import ExpressionWrapper
 from django.db.models import F
@@ -26,6 +26,7 @@ from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
 from utils.api_paginator import CustomPageNumberPaginator
 
@@ -99,6 +100,11 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
     def get_queryset(self, **filters):
         user = self.request.user
         queryset = AccountCreation.objects.user_related(user) \
+            .annotate(
+            is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
+                         default=False,
+                         output_field=BooleanField(), ),
+        ) \
             .filter(**filters)
 
         sort_by = self.request.query_params.get("sort_by")
@@ -115,7 +121,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
-        return queryset.order_by("is_ended", sort_by)
+        return queryset.order_by("-is_demo", "is_ended", sort_by)
 
     def filter_queryset(self, queryset):
         filters = self.request.query_params

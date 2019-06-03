@@ -20,3 +20,7 @@ class BrandSafetyPathName:
         CATEGORY_LIST = "bad_channel_category_list"
         UPDATE_DELETE = "bad_channel_update_delete"
         EXPORT = "bad_channel_export"
+
+    class BrandSafety:
+        GET_BRAND_SAFETY_CHANNEL = "brand_safety_channel"
+        GET_BRAND_SAFETY_VIDEO = "brand_safety_video"

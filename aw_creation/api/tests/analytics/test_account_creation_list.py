@@ -38,10 +38,8 @@ from utils.utittests.reverse import reverse
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
     details_keys = {
         "account",
-        "ad_count",
         "average_cpm",
         "average_cpv",
-        "channel_count",
         "clicks",
         "cost",
         "ctr",
@@ -52,12 +50,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "from_aw",
         "id",
         "impressions",
-        "interest_count",
         "is_changed",
         "is_disapproved",
         "is_editable",
         "is_managed",
-        "keyword_count",
         "name",
         "plan_cpm",
         "plan_cpv",
@@ -66,9 +62,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         "statistic_min_date",
         "status",
         "thumbnail",
-        "topic_count",
         "updated_at",
-        "video_count",
         "video_view_rate",
         "video_views",
         "weekly_chart",
@@ -353,6 +347,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
             account = Account.objects.create(id=next(int_iterator), name="", skip_creating_account_creation=True)
             account.managers.add(mcc_account)
             return account
+
         # ended
         ended_account = create_account()
         Campaign.objects.create(name="ended 1", id="1", account=ended_account, status="ended")
@@ -979,3 +974,29 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.data["items_count"], 1)
         item = response.data["items"][0]
         self.assertEqual(item["id"], DEMO_ACCOUNT_ID)
+
+    def test_demo_is_editable(self):
+        recreate_demo_data()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+
+        item = response.data["items"][0]
+        self.assertEqual(item["is_editable"], True)
+
+    def test_demo_is_first(self):
+        recreate_demo_data()
+        account = Account.objects.create(id=next(int_iterator),
+                                         skip_creating_account_creation=True)
+        AccountCreation.objects.create(account=account, owner=self.user)
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self.url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        items = response.data["items"]
+        self.assertEqual([i["id"] for i in items], [DEMO_ACCOUNT_ID, account.account_creation.id])

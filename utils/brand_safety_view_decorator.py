@@ -1,5 +1,8 @@
-from utils.elasticsearch import ElasticSearchConnector
+from django.conf import settings
+
 import brand_safety.constants as constants
+from userprofile.permissions import PermissionGroupNames
+from utils.elasticsearch import ElasticSearchConnector
 
 
 def add_brand_safety_data(view):
@@ -10,43 +13,96 @@ def add_brand_safety_data(view):
     """
     def wrapper(*args, **kwargs):
         # Get result of view handling request first
-        result = view(*args, **kwargs)
+        response = view(*args, **kwargs)
         try:
-            view_type = args[0].export_file_title
-            if result.data.get("items"):
-                indexes = {
-                    "video": constants.BRAND_SAFETY_VIDEO_ES_INDEX,
-                    "channel": constants.BRAND_SAFETY_CHANNEL_ES_INDEX
-                }
-                try:
-                    index_name = indexes[view_type]
-                except KeyError:
-                    return result
-                try:
-                    doc_ids = [item["id"] for item in result.data["items"]]
-                except KeyError:
-                    # Unexpected SDB response
-                    return result
-                body = {
-                    "query": {
-                        "terms": {
-                            "_id": doc_ids
-                        }
-                    }
-                }
-                es_result = ElasticSearchConnector(index_name=index_name)\
-                    .search(doc_type=constants.BRAND_SAFETY_SCORE_TYPE, body=body, size=10000)
-                # Map to dictionary to merge to singledb data
-                es_data = {
-                    item["_id"]: item["_source"]["overall_score"] for item in es_result["hits"]["hits"]
-                }
-                # Singledb channel data contains brand_safety fields while videos do not
-                for item in result.data["items"]:
-                    item["brand_safety"] = es_data.get(item["id"], item.get("brand_safety", "Unavailable")) \
-                        if index_name == constants.BRAND_SAFETY_CHANNEL_ES_INDEX \
-                        else es_data.get(item["id"], "Unavailable")
+            view_name = args[0].__class__.__name__
+            # Ensure decorator is being used in appropriate views
+            if view_name not in constants.BRAND_SAFETY_DECORATED_VIEWS:
+                return response
+            view_name = view_name.lower()
+            if constants.CHANNEL in view_name:
+                index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
+            elif constants.VIDEO in view_name:
+                index_name = settings.BRAND_SAFETY_VIDEO_INDEX
+            else:
+                return response
+
+            user = args[1].user
+            if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
+                return response
+            if response.data.get("items"):
+                _handle_list_view(response, index_name)
+            else:
+                _handle_single_view(response, index_name)
         except (IndexError, AttributeError):
             pass
-        return result
+        return response
+
     return wrapper
+
+
+def get_brand_safety_label(score):
+    """
+    Helper method to return appropriate brand safety score label
+    :param score: Integer convertible value
+    :return: str or None
+    """
+    try:
+        score = int(score)
+    except (ValueError, TypeError):
+        return None
+
+    if 90 <= score:
+        label = constants.SAFE
+    elif 80 <= score:
+        label = constants.LOW_RISK
+    elif 70 <= score:
+        label = constants.RISKY
+    else:
+        label = constants.HIGH_RISK
+    return label
+
+
+def get_brand_safety_data(score):
+    label = get_brand_safety_label(score)
+    data = {
+        "score": score,
+        "label": label
+    }
+    return data
+
+
+def _handle_list_view(response, index_name):
+    try:
+        doc_ids = [item["id"] for item in response.data["items"]]
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            settings.BRAND_SAFETY_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in response.data["items"]:
+            score = es_scores.get(item["id"], None)
+            item["brand_safety_data"] = get_brand_safety_data(score)
+    except (TypeError, KeyError):
+        return
+
+
+def _handle_single_view(response, index_name):
+    try:
+        doc_id = response.data["id"]
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_id,
+            settings.BRAND_SAFETY_TYPE
+        )
+        score = es_data["overall_score"]
+        response.data["brand_safety_data"] = get_brand_safety_data(score)
+    except (TypeError, KeyError):
+        return
+
+
+
 

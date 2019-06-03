@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -14,6 +15,7 @@ from userprofile.constants import UserStatuses
 from userprofile.models import UserProfile
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
+from userprofile.permissions import PermissionGroupNames
 
 
 class UserRegistrationTestCase(APITestCase):

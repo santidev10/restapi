@@ -47,6 +47,6 @@ def update_parents():
             parent_name = "/".join(
                 audience.name.split("/")[:-1]
             )
-            parent = Audience.objects.get(name=parent_name)
+            parent = Audience.objects.get(name=parent_name, type=audience.type)
             audience.parent = parent
             audience.save()

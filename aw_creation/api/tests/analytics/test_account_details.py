@@ -45,10 +45,8 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
 
     account_list_header_fields = {
         "account",
-        "ad_count",
         "average_cpm",
         "average_cpv",
-        "channel_count",
         "clicks",
         "cost",
         "ctr",
@@ -58,12 +56,10 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "from_aw",
         "id",
         "impressions",
-        "interest_count",
         "is_changed",
         "is_disapproved",
         "is_editable",
         "is_managed",
-        "keyword_count",
         "name",
         "plan_cpm",
         "plan_cpv",
@@ -72,9 +68,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         "statistic_min_date",
         "status",
         "thumbnail",
-        "topic_count",
         "updated_at",
-        "video_count",
         "video_view_rate",
         "video_views",
         "weekly_chart",
@@ -388,3 +382,36 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(data["statistic_min_date"], dates[0])
         self.assertEqual(data["statistic_max_date"], dates[-1])
+
+    def test_no_overcalculate_statistic(self):
+        account = Account.objects.create(
+            id=next(int_iterator),
+            skip_creating_account_creation=True,
+        )
+        AccountCreation.objects.create(
+            account=account,
+            owner=self.user,
+        )
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            impressions=1,
+        )
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(5)]
+        for dt in dates:
+            CampaignStatistic.objects.create(
+                campaign=campaign,
+                cost=1,
+                date=dt,
+            )
+        response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["impressions"], campaign.impressions)
+
+    def test_demo_is_editable(self):
+        recreate_demo_data()
+        response = self._request(DEMO_ACCOUNT_ID)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["is_editable"], True)
