@@ -557,5 +557,3 @@ class PersistentSegmentPreviewAPIView(APIView):
             mapped_data["subscribers"] = data["details"].get("subscribers")
             mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data
-
-
