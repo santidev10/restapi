@@ -47,6 +47,8 @@ class AuditExportApiView(APIView):
         if audit_type == 2:
             file_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
         else:
+            if audit_type == 0:
+                clean = None
             file_name = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
 
         try:
