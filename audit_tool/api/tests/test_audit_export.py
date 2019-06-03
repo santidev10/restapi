@@ -90,7 +90,6 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
             video_response = self.client.get(self.url + "?audit_id={}&clean=False".format(self.video_audit.id))
         except Exception as e:
             raise KeyError("No Audit with id: {} found.".format(self.video_audit.id))
-        reader = csv.reader(video_response)
         self.assertEqual(video_response.status_code, HTTP_200_OK)
 
 
