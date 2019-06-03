@@ -53,7 +53,10 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
         if pending_channels.count() == 0:
-            self.process_seed_list()
+            if self.thread_id == 0:
+                self.process_seed_list()
+            else:
+                raise Exception("waiting for seed list to finish processing on thread 0")
             pending_channels = AuditChannelProcessor.objects.filter(
                 audit=self.audit,
                 processed__isnull=True

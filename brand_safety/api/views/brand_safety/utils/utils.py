@@ -1,6 +1,7 @@
+from django.conf import settings
+
 from utils.elasticsearch import ElasticSearchConnector
 from utils.elasticsearch import ElasticSearchConnectorException
-import brand_safety.constants as constants
 
 
 def get_es_data(item_ids, index_name):
@@ -15,7 +16,7 @@ def get_es_data(item_ids, index_name):
         es_data = ElasticSearchConnector().search_by_id(
             index_name,
             item_ids,
-            constants.BRAND_SAFETY_SCORE_TYPE)
+            settings.BRAND_SAFETY_TYPE)
         return es_data
     except ElasticSearchConnectorException:
         return ElasticSearchConnectorException

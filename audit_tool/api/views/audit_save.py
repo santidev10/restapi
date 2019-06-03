@@ -6,7 +6,7 @@ import csv
 from uuid import uuid4
 from io import StringIO
 from distutils.util import strtobool
-
+import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -34,6 +34,8 @@ class AuditSaveApiView(APIView):
                 raise ValidationError("invalid audit_id")
         try:
             max_recommended = int(query_params["max_recommended"]) if "max_recommended" in query_params else 100000
+            if max_recommended > 500000:
+                max_recommended = 500000
         except ValueError:
             raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
                                   .format(query_params["max_recommended"], type(query_params["max_recommended"])))
@@ -81,6 +83,12 @@ class AuditSaveApiView(APIView):
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'] = self.load_keywords(exclusion_file)
+        if category:
+            c = []
+            for a in json.loads(category):
+                c.append(int(a))
+            category = c
+            params['category'] = category
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
@@ -94,11 +102,7 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
-            if category:
-                c = []
-                for a in category:
-                    c.append(int(a))
-                audit.params['category'] = c
+            audit.params['category'] = category
             audit.save()
         else:
             audit = AuditProcessor.objects.create(

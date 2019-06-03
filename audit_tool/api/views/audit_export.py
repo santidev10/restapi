@@ -11,12 +11,10 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_200_OK
 
 from django.http import StreamingHttpResponse
-from django.http import Http404
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -106,7 +104,10 @@ class AuditExportApiView(APIView):
         ]
         video_ids = []
         hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
+        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
+        if clean is not None:
+            videos = videos.filter(clean=clean)
+        videos = videos.select_related("video")
         for vid in videos:
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
@@ -137,7 +138,11 @@ class AuditExportApiView(APIView):
                 try:
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
-                    channel_lang = ''
+                    channel_lang = ""
+                try:
+                    video_count = v.video.channel.auditchannelmeta.video_count
+                except Exception as e:
+                    video_count = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -148,15 +153,15 @@ class AuditExportApiView(APIView):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else '',
-                    v.video.channel.channel_id if v.video.channel else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else "",
+                    v.video.channel.channel_id if v.video.channel else "",
                     channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
                     all_hit_words,
                     unique_hit_words,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else '',
+                    video_count if video_count else "",
                 ]
                 wr.writerow(data)
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
@@ -197,7 +202,10 @@ class AuditExportApiView(APIView):
         channel_ids = []
         hit_words = {}
         video_count = {}
-        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related("channel")
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
+        if clean is not None:
+            channels = channels.filter(clean=clean)
+        channels = channels.select_related("channel")
         for cid in channels:
             channel_ids.append(cid.channel_id)
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
@@ -230,7 +238,7 @@ class AuditExportApiView(APIView):
                 data = [
                     v.name,
                     v.channel.channel_id,
-                    v.view_count,
+                    v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],
                     country,
