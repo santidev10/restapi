@@ -35,7 +35,7 @@ class AuditExportApiView(APIView):
         if clean is not None:
             try:
                 clean = strtobool(clean)
-            except ValidationError:
+            except ValueError:
                 clean = None
 
         try:
@@ -82,7 +82,7 @@ class AuditExportApiView(APIView):
         if 'export_{}'.format(clean_string) in audit.params:
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
             return file_name
-        self.get_categories()
+        # self.get_categories()
         cols = [
             "Video ID",
             "Name",
@@ -119,7 +119,7 @@ class AuditExportApiView(APIView):
                 "language",
                 "category"
         )
-        with open('export_{}_{}.csv'.format(name, clean_string), 'a', newline='') as myfile:
+        with open('export_{}_{}.csv'.format(name, clean_string), 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -225,7 +225,7 @@ class AuditExportApiView(APIView):
                 "language",
                 "country"
         )
-        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
@@ -251,6 +251,8 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
             file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
             myfile.buffer.seek(0)
+
+        with open('export_{}.csv'.format(name)) as myfile:
             url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
             if audit and audit.completed:
