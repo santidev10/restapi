@@ -97,18 +97,25 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_status_change_is_staff_success(self):
+    def test_set_admin_success(self):
         self.create_admin_user()
         test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
         test_user.is_staff = False
         test_user.save()
-        payload = {"staff_status": True}
+        payload = {
+            "access": [
+                {
+                    "name": "Admin",
+                    "value": True
+                }
+            ]
+        }
         update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
         response = self.client.put(update_url, data=payload)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["is_staff"], True)
 
-    def test_status_change_is_staff_fail(self):
+    def test_set_admin_reject(self):
         self.create_test_user()
         test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
         test_user.is_staff = False

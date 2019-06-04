@@ -7,7 +7,8 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import URLField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import SerializerMethodField
-from rest_framework.serializers import BooleanField
+from rest_framework.serializers import ListField
+from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
@@ -84,6 +85,7 @@ class UserSerializer(ModelSerializer):
     Retrieve user serializer
     """
     can_access_media_buying = SerializerMethodField()
+    is_superuser = SerializerMethodField()
 
     class Meta:
         """
@@ -98,6 +100,7 @@ class UserSerializer(ModelSerializer):
             "phone_number",
             "email",
             "is_staff",
+            "is_superuser",
             "last_login",
             "date_joined",
             "token",
@@ -112,11 +115,18 @@ class UserSerializer(ModelSerializer):
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
 
+    def get_is_superuser(self, obj):
+        try:
+            is_superuser = obj.is_superuser
+            return is_superuser
+        except AttributeError:
+            return False
+
 
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
-    staff_status = BooleanField(required=False)
+    access = ListField()
 
     def validate(self, data):
         """
@@ -125,21 +135,27 @@ class UserUpdateSerializer(ModelSerializer):
         :return: data
         """
         user = self.context["request"].user
-        if data.get("staff_status") and user.is_superuser is False:
-            raise ValidationError("You do not have permission to change staff status.")
+        access = data.pop("access")
+        admin_access = any(item["name"] == "Admin" for item in access)
+        if admin_access:
+            if user.is_superuser is False:
+                exception = ValidationError("You do not have permission to change admin status.")
+                exception.status_code = HTTP_403_FORBIDDEN
+                raise exception
+            else:
+                data["is_staff"] = admin_access
         return data
 
     class Meta:
         model = get_user_model()
         fields = (
-            "status", "staff_status",
+            "status", "access"
         )
 
     def save(self, **kwargs):
         old_status = self.instance.status
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
-        staff_status = request.data.get("staff_status", None)
         access = request.data.get("access", None)
         status = request.data.get("status", None)
         if access:
@@ -151,7 +167,5 @@ class UserUpdateSerializer(ModelSerializer):
                 user.is_active = True
             if old_status != user.status and user.status == UserStatuses.ACTIVE.value:
                 user.email_user_active(request)
-        if staff_status is not None:
-            user.is_staff = staff_status
         user.save()
         return user
