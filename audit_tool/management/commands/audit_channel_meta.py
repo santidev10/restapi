@@ -79,7 +79,8 @@ class Command(BaseCommand):
             else:
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
-                print("Audit of channels completed, turning to video processor.")
+                print("Audit of channels completed")
+                self.export_channels()
                 raise Exception("Audit of channels completed, turning to video processor")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
