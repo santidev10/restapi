@@ -73,13 +73,13 @@ class BrandSafetyChannelAPIView(APIView):
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
         sorting = query_params['sort'] if 'sort' in query_params else None
+        reverse = False
         if sorting is not None and len(sorting) > 2:
             if sorting[0] == '-':
                 sorting = sorting[1:]
-                if sorting in sort_options:
-                    flagged_videos.sort(key=lambda video: video[sorting], reverse=True)
-            elif sorting in sort_options:
-                flagged_videos.sort(key=lambda video: video[sorting])
+                reverse = True
+        if sorting in sort_options:
+            flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
 
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
