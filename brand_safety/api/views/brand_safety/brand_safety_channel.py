@@ -98,6 +98,9 @@ class BrandSafetyChannelAPIView(APIView):
                     "title": sdb_video.get("title"),
                     "thumbnail_image_url": sdb_video.get("thumbnail_image_url"),
                     "transcript": sdb_video.get("transcript"),
+                    "youtube_published_at": sdb_video.get("youtube_published_at"),
+                    "views": sdb_video.get("views"),
+                    "engage_rate": sdb_video.get("engage_rate")
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
