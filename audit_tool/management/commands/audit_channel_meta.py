@@ -81,7 +81,7 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed'])
                 print("Audit of channels completed")
                 self.export_channels()
-                raise Exception("Audit of channels completed, turning to video processor")
+                raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
         for channel in pending_channels[start:start+num]:
