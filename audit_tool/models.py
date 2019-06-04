@@ -187,7 +187,7 @@ class AuditProcessor(models.Model):
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
-            d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+            d['percent_done'] = round(100.0 * d['data']['count'] / d['data']['total'], 2)
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
