@@ -112,7 +112,7 @@ class BrandSafetyChannelAPIView(APIView):
         :return: dict or SingleDatabaseApiConnectorException
         """
         params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url",
+            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
             "sort": "video_id",
             "size": self.MAX_SIZE,
             "channel_id__terms": channel_id
