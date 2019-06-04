@@ -2,7 +2,7 @@ from collections import defaultdict
 import logging
 
 from django.contrib.postgres.fields.jsonb import KeyTransform
-from django.utils import timezone
+from django.conf import settings
 
 import brand_safety.constants as constants
 from brand_safety.audit_providers.base import AuditProvider
@@ -12,7 +12,6 @@ from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
-from segment.models.persistent import PersistentSegmentFileUpload
 from segment.utils import get_persistent_segment_connector_config_by_type
 from singledb.connector import SingleDatabaseApiConnector
 from utils.elasticsearch import ElasticSearchConnector
@@ -27,7 +26,7 @@ class SegmentListGenerator(object):
     VIDEO_SCORE_FAIL_THRESHOLD = 89
     # Size of batch items retrieved from sdb
     CHANNEL_BATCH_LIMIT = 300
-    VIDEO_BATCH_LIMIT = 300
+    VIDEO_BATCH_LIMIT = 600
     # Whitelist / blacklist requirements
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
@@ -92,7 +91,7 @@ class SegmentListGenerator(object):
             self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
             self.BLACKLIST_SIZE = self.BLACKLIST_CHANNEL_SIZE
             self.WHITELIST_SIZE = self.WHITELIST_CHANNEL_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_CHANNEL_ES_INDEX
+            self.INDEX_NAME = settings.BRAND_SAFETY_CHANNEL_INDEX
             self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
             self.RELATED_SEGMENT_SORT_KEY = "subscribers"
 
@@ -114,7 +113,7 @@ class SegmentListGenerator(object):
             self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
             self.BLACKLIST_SIZE = self.BLACKLIST_VIDEO_SIZE
             self.WHITELIST_SIZE = self.WHITELIST_VIDEO_SIZE
-            self.INDEX_NAME = constants.BRAND_SAFETY_VIDEO_ES_INDEX
+            self.INDEX_NAME = settings.BRAND_SAFETY_VIDEO_INDEX
             self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
             self.RELATED_SEGMENT_SORT_KEY = "views"
         else:
