@@ -70,6 +70,17 @@ class BrandSafetyChannelAPIView(APIView):
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
 
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
+        # Sort video responses if parameter is passed in
+        sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
+        sorting = query_params['sort'] if 'sort' in query_params else None
+        reverse = False
+        if sorting is not None and len(sorting) > 2:
+            if sorting[0] == '-':
+                sorting = sorting[1:]
+                reverse = True
+        if sorting in sort_options:
+            flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
+
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
@@ -98,10 +109,13 @@ class BrandSafetyChannelAPIView(APIView):
                     "title": sdb_video.get("title"),
                     "thumbnail_image_url": sdb_video.get("thumbnail_image_url"),
                     "transcript": sdb_video.get("transcript"),
+                    "youtube_published_at": sdb_video.get("youtube_published_at"),
+                    "views": sdb_video.get("views"),
+                    "engage_rate": sdb_video.get("engage_rate")
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
-        flagged_videos.sort(key=lambda video: video["score"])
+        flagged_videos.sort(key=lambda video: video["youtube_published_at"], reverse=True)
         return channel_data, flagged_videos
 
     def _get_sdb_channel_video_data(self, channel_id):
@@ -112,7 +126,7 @@ class BrandSafetyChannelAPIView(APIView):
         :return: dict or SingleDatabaseApiConnectorException
         """
         params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url",
+            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
             "sort": "video_id",
             "size": self.MAX_SIZE,
             "channel_id__terms": channel_id
