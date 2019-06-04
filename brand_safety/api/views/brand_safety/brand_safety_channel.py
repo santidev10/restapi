@@ -70,6 +70,17 @@ class BrandSafetyChannelAPIView(APIView):
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
 
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
+        # Sort video responses if parameter is passed in
+        sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
+        sorting = query_params['sort'] if 'sort' in query_params else None
+        if sorting is not None and len(sorting) > 2:
+            if sorting[0] == '-':
+                sorting = sorting[1:]
+                if sorting in sort_options:
+                    flagged_videos.sort(key=lambda video: video[sorting], reverse=True)
+            elif sorting in sort_options:
+                flagged_videos.sort(key=lambda video: video[sorting])
+
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
