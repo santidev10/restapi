@@ -278,7 +278,7 @@ class AuditExportApiView(APIView):
                     if word not in uniques:
                         uniques.append(word)
                 return len(hits[words_to_use]), ','.join(uniques)
-        return '', ''
+        return "", ""
 
     def put_file_on_s3_and_create_url(self, file, name):
         AuditS3Exporter.export_to_s3(file, name)
