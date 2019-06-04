@@ -57,20 +57,25 @@ class BadWordListApiView(ListCreateAPIView):
         serializer = BadWordSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             try:
-                data = serializer.validated_data
-                existing_word = BadWord.all_objects.get(name=data["name"], language=data["language"])
+                validated_data = serializer.validated_data
+                existing_word = BadWord.all_objects.get(name=validated_data["name"], language=validated_data["language"])
                 # If the word has been soft deleted, reset its deleted_at
                 if existing_word.deleted_at is not None:
                     existing_word.deleted_at = None
                     existing_word.save()
+
+                    result = self.serializer_class(existing_word).data
+                    status = HTTP_201_CREATED
                 else:
                     # Reject trying to create a word that has not been soft deleted
-                    return Response(
-                        data="{} and {} must make a unique set.".format(data["name"], str(data["language"])),
-                        status=HTTP_400_BAD_REQUEST
-                    )
+                    result = "{} and {} must make a unique set.".format(validated_data["name"], str(validated_data["language"]))
+                    status = HTTP_400_BAD_REQUEST
             except BadWord.DoesNotExist:
                 serializer.save()
-            return Response(serializer.data, status=HTTP_201_CREATED)
-        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+                result = serializer.data
+                status = HTTP_201_CREATED
+        else:
+            result = serializer.errors
+            status = HTTP_400_BAD_REQUEST
+        return Response(data=result, status=status)
 
