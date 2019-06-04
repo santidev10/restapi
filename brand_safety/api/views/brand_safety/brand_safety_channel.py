@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.response import Response
 
+from distutils.util import strtobool
 from brand_safety.api.views.brand_safety.utils.utils import get_es_data
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
@@ -72,12 +73,16 @@ class BrandSafetyChannelAPIView(APIView):
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
-        sorting = query_params['sort'] if 'sort' in query_params else None
-        reverse = False
-        if sorting is not None and len(sorting) > 2:
-            if sorting[0] == '-':
-                sorting = sorting[1:]
-                reverse = True
+        sorting = query_params['sort'] if "sort" in query_params else None
+        ascending = query_params['sortAscending'] if "sortAscending" in query_params else None
+        if ascending is not None:
+            try:
+                ascending = strtobool(ascending)
+            except Exception as e:
+                raise ValueError("Expected sortAscending to be boolean value. Received {}".format(ascending))
+        reverse = True
+        if ascending:
+            reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
 
