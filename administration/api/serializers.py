@@ -85,7 +85,6 @@ class UserSerializer(ModelSerializer):
     Retrieve user serializer
     """
     can_access_media_buying = SerializerMethodField()
-    is_superuser = SerializerMethodField()
 
     class Meta:
         """
@@ -100,7 +99,6 @@ class UserSerializer(ModelSerializer):
             "phone_number",
             "email",
             "is_staff",
-            "is_superuser",
             "last_login",
             "date_joined",
             "token",
@@ -115,18 +113,11 @@ class UserSerializer(ModelSerializer):
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
 
-    def get_is_superuser(self, obj):
-        try:
-            is_superuser = obj.is_superuser
-            return is_superuser
-        except AttributeError:
-            return False
-
 
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
-    access = ListField()
+    access = ListField(required=False)
 
     def validate(self, data):
         """
@@ -135,7 +126,7 @@ class UserUpdateSerializer(ModelSerializer):
         :return: data
         """
         user = self.context["request"].user
-        access = data.pop("access")
+        access = data.pop("access", [])
         admin_access = any(item["name"] == "Admin" for item in access)
         if admin_access:
             if user.is_superuser is False:

@@ -120,7 +120,14 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
         test_user.is_staff = False
         test_user.save()
-        payload = {"staff_status": True}
+        payload = {
+            "access": [
+                {
+                    "name": "Admin",
+                    "value": True
+                }
+            ]
+        }
         update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
         response = self.client.put(update_url, data=payload)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
