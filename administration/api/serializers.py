@@ -121,7 +121,7 @@ class UserUpdateSerializer(ModelSerializer):
 
     def validate(self, data):
         """
-        Check if user is superuser before allowing to change staff status
+        Check if user is superuser before allowing to change admin status
         :param data: request data
         :return: data
         """
