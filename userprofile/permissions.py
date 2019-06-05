@@ -124,6 +124,9 @@ class Permissions:
             "keyword_details",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
+            "channel_list",
+            "video_list",
+            "keyword_list",
         )),
         (PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY, (
             "view_audit_segments",
