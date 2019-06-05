@@ -50,6 +50,7 @@ class UserSerializer(ModelSerializer):
             "has_accepted_GDPR",
         )
         read_only_fields = (
+            "is_staff",
             "last_login",
             "date_joined",
             "token",
@@ -83,4 +84,3 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
-
