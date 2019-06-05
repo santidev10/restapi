@@ -127,14 +127,16 @@ class UserUpdateSerializer(ModelSerializer):
         """
         user = self.context["request"].user
         access = data.pop("access", [])
-        admin_access = any(item["name"] == "Admin" for item in access)
-        if admin_access:
+        try:
+            admin_access = [item for item in access if item["name"].lower() == "admin"][0]
             if user.is_superuser is False:
                 exception = ValidationError("You do not have permission to change admin status.")
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
             else:
-                data["is_staff"] = admin_access
+                data["is_staff"] = admin_access["value"]
+        except (KeyError, IndexError):
+            pass
         return data
 
     class Meta:
