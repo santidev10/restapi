@@ -13,6 +13,8 @@ from django.utils import timezone
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                                                  PacingReportHelper):
     queryset = Flight.objects.all()
+    MIN_ALLOCATION_SUM = 99
+    MAX_ALLOCATION_SUM = 101
 
     def get(self, *a, **_):
         """
@@ -54,7 +56,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             )
 
         actual_sum = sum(request.data.values())
-        if round(actual_sum) != 100:
+        if not self.MIN_ALLOCATION_SUM <= round(actual_sum) <= self.MAX_ALLOCATION_SUM:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Sum of the values is wrong: {}".format(actual_sum)
@@ -68,14 +70,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
 
         for campaign_id, allocation_value in request.data.items():
             campaign_budget = (flight_updated_budget * allocation_value) / 100
-
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value,
                 budget=campaign_budget,
                 update_time=timezone.now()
             )
-
-        # return
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
         return res
