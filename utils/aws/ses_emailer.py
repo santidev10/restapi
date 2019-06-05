@@ -1,18 +1,12 @@
 import boto3
 from botocore.exceptions import ClientError
+from django.core.exceptions import ValidationError
 
 from django.conf import settings
 
 class SESEmailer(object):
     AWS_REGION = "us-east-1"
     CHARSET = "UTF-8"
-    BODY_HTML = """<html>
-    <head></head>
-    <body>
-    <p>{}</p>
-    </body>
-    </html>
-    """
     aws_access_key_id = settings.AMAZON_S3_ACCESS_KEY_ID
     aws_secret_access_key = settings.AMAZON_S3_SECRET_ACCESS_KEY
 
@@ -27,9 +21,7 @@ class SESEmailer(object):
         return ses
 
     @classmethod
-    def send_email(cls, sender, recipient, subject, body_text, body_html=None):
-        if body_html is None:
-            body_html = cls.BODY_HTML.format(body_text)
+    def send_email(cls, sender, recipient, subject, body_html):
         ses = cls._ses()
         try:
             ses.send_email(
@@ -44,10 +36,6 @@ class SESEmailer(object):
                             'Charset': cls.CHARSET,
                             'Data': body_html,
                         },
-                        'Text': {
-                            'Charset': cls.CHARSET,
-                            'Data': body_text,
-                        },
                     },
                     'Subject': {
                         'Charset': cls.CHARSET,
@@ -56,5 +44,8 @@ class SESEmailer(object):
                 },
                 Source=sender,
             )
-        except ClientError as e:
-            raise ClientError
+        except ClientError:
+            raise ValidationError("Failed to send email. Either the sender {} does not have AWS SES permissions,"
+                                  "or the recipient {} is an invalid email address.".format(sender, recipient))
+        except Exception as e:
+            raise e
