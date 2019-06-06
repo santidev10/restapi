@@ -104,22 +104,26 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def process_seed_file(self, seed_file):
-        with open(seed_file) as f:
-            reader = csv.reader(f)
-            vids = []
-            for row in reader:
-                seed = row[0]
-                if 'youtube.' in seed:
-                    v_id = seed.split("/")[-1]
-                    if '?v=' in v_id:
-                        v_id = v_id.split("v=")[-1]
-                    video = AuditVideo.get_or_create(v_id)
-                    avp, _ = AuditVideoProcessor.objects.get_or_create(
-                            audit=self.audit,
-                            video=video,
-                    )
-                    vids.append(avp)
-            return vids
+        try:
+            with open(seed_file) as f:
+                reader = csv.reader(f)
+                vids = []
+                for row in reader:
+                    seed = row[0]
+                    if 'youtube.' in seed:
+                        v_id = seed.strip().split("/")[-1]
+                        if '?v=' in v_id:
+                            v_id = v_id.split("v=")[-1]
+                        if v_id:
+                            video = AuditVideo.get_or_create(v_id)
+                            avp, _ = AuditVideoProcessor.objects.get_or_create(
+                                    audit=self.audit,
+                                    video=video,
+                            )
+                            vids.append(avp)
+                return vids
+        except Exception as e:
+            pass
         self.audit.params['error'] = "can not open seed file {}".format(seed_file)
         self.audit.completed = timezone.now()
         self.audit.save(update_fields=['params', 'completed'])

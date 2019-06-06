@@ -6,11 +6,15 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED, \
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
+from aw_reporting.api.views.pacing_report.pacing_report_flights_campaign_allocations import PacingReportFlightsCampaignAllocationsView
 from saas.urls.namespaces import Namespace
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
+    min_allocation = PacingReportFlightsCampaignAllocationsView.MIN_ALLOCATION_SUM
+    max_allocation = PacingReportFlightsCampaignAllocationsView.MAX_ALLOCATION_SUM
+
     def _update(self, flight_id, data):
         url = reverse(
             "{namespace}:{viewname}".format(
@@ -86,13 +90,10 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
 
         allocation_1, allocation_2 = 70, 30
         put_data = {
-            'flight_budget': 0,
+            "flight_budget": 0,
             campaign_1.id: allocation_1,
             campaign_2.id: allocation_2
         }
-
-        # goal_allocations are no longer percentage values, do not need to sum 100
-        # self.assertEqual(sum(put_data.values()), 100)
 
         response = self._update(flight.id, put_data)
         campaign_1.refresh_from_db()
@@ -100,3 +101,68 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         self.assertEqual(campaign_1.goal_allocation, allocation_1)
         self.assertEqual(campaign_2.goal_allocation, allocation_2)
+
+    def test_success_allocation_within_margin(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
+        campaign_1 = Campaign.objects.create(
+            id=1, salesforce_placement=placement, account=account)
+        campaign_2 = Campaign.objects.create(
+            id=2, salesforce_placement=placement, account=account)
+
+        allocation_1, allocation_2 = 70, 31
+        put_data = {
+            "flight_budget": 0,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+        response = self._update(flight.id, put_data)
+        campaign_1.refresh_from_db()
+        campaign_2.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        self.assertTrue(self.min_allocation <= sum([allocation_1, allocation_2]) <= self.max_allocation)
+
+    def test_reject_allocation_outside_margin(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
+        campaign_1 = Campaign.objects.create(
+            id=1, salesforce_placement=placement, account=account)
+        campaign_2 = Campaign.objects.create(
+            id=2, salesforce_placement=placement, account=account)
+        campaign_3 = Campaign.objects.create(
+            id=3, salesforce_placement=placement, account=account)
+        campaign_4 = Campaign.objects.create(
+            id=4, salesforce_placement=placement, account=account)
+
+        allocation_1, allocation_2 = 70, 19
+        allocation_3, allocation_4 = 90, 12
+        put_data_1 = {
+            "flight_budget": 0,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+        put_data_2 = {
+            "flight_budget": 0,
+            campaign_1.id: allocation_3,
+            campaign_2.id: allocation_4
+        }
+        response_1 = self._update(flight.id, put_data_1)
+        response_2 = self._update(flight.id, put_data_2)
+        campaign_1.refresh_from_db()
+        campaign_2.refresh_from_db()
+        campaign_3.refresh_from_db()
+        campaign_4.refresh_from_db()
+
+        self.assertEqual(response_1.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
+        self.assertTrue(sum([allocation_1, allocation_2]) <= self.min_allocation)
+        self.assertTrue(sum([allocation_3, allocation_4]) >= self.max_allocation)
+

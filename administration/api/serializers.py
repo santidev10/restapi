@@ -3,8 +3,13 @@ Administration api serializers module
 """
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
-from rest_framework.serializers import ModelSerializer, URLField, CharField, \
-    SerializerMethodField
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import URLField
+from rest_framework.serializers import CharField
+from rest_framework.serializers import SerializerMethodField
+from rest_framework.serializers import ListField
+from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
 from userprofile.api.serializers.validators.extended_enum import extended_enum
@@ -112,11 +117,32 @@ class UserSerializer(ModelSerializer):
 class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
+    access = ListField(required=False)
+
+    def validate(self, data):
+        """
+        Check if user is superuser before allowing to change admin status
+        :param data: request data
+        :return: data
+        """
+        user = self.context["request"].user
+        access = data.pop("access", [])
+        try:
+            admin_access = [item for item in access if item["name"].lower() == "admin"][0]
+            if user.is_superuser is False:
+                exception = ValidationError("You do not have permission to change admin status.")
+                exception.status_code = HTTP_403_FORBIDDEN
+                raise exception
+            else:
+                data["is_staff"] = admin_access["value"]
+        except (KeyError, IndexError):
+            pass
+        return data
 
     class Meta:
         model = get_user_model()
         fields = (
-            "status",
+            "status", "access"
         )
 
     def save(self, **kwargs):
