@@ -11,42 +11,41 @@ class SESEmailer(object):
     aws_access_key_id = settings.AMAZON_S3_ACCESS_KEY_ID
     aws_secret_access_key = settings.AMAZON_S3_SECRET_ACCESS_KEY
 
-    @classmethod
-    def _ses(cls):
-        ses = boto3.client(
+    def __init__(self):
+        self.ses = boto3.client(
             "ses",
-            region_name=cls.AWS_REGION,
-            aws_access_key_id=cls.aws_access_key_id,
-            aws_secret_access_key=cls.aws_secret_access_key
+            region_name=self.AWS_REGION,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key
         )
-        return ses
 
-    @classmethod
-    def send_email(cls, sender, recipient, subject, body_html):
-        ses = cls._ses()
-        try:
-            ses.send_email(
-                Destination={
-                    'ToAddresses': [
-                        recipient,
-                    ],
-                },
-                Message={
-                    'Body': {
-                        'Html': {
-                            'Charset': cls.CHARSET,
-                            'Data': body_html,
+    def send_email(self, sender, recipients, subject, body_html):
+        if not isinstance(recipients, list) and isinstance(recipients, str):
+            recipients = [recipients]
+        for recipient in recipients:
+            try:
+                self.ses.send_email(
+                    Destination={
+                        'ToAddresses': [
+                            recipient,
+                        ],
+                    },
+                    Message={
+                        'Body': {
+                            'Html': {
+                                'Charset': self.CHARSET,
+                                'Data': body_html,
+                            },
+                        },
+                        'Subject': {
+                            'Charset': self.CHARSET,
+                            'Data': subject,
                         },
                     },
-                    'Subject': {
-                        'Charset': cls.CHARSET,
-                        'Data': subject,
-                    },
-                },
-                Source=sender,
-            )
-        except ClientError:
-            raise ValidationError("Failed to send email. Either the sender {} does not have AWS SES permissions,"
-                                  "or the recipient {} is an invalid email address.".format(sender, recipient))
-        except Exception as e:
-            raise e
+                    Source=sender,
+                )
+            except ClientError:
+                raise ValidationError("Failed to send email. Either the sender ({}) or the "
+                                      "recipient ({}) is an invalid email address.".format(sender, recipient))
+            except Exception as e:
+                raise e
