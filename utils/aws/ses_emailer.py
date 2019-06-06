@@ -22,30 +22,27 @@ class SESEmailer(object):
     def send_email(self, sender, recipients, subject, body_html):
         if not isinstance(recipients, list) and isinstance(recipients, str):
             recipients = [recipients]
-        for recipient in recipients:
-            try:
-                self.ses.send_email(
-                    Destination={
-                        'ToAddresses': [
-                            recipient,
-                        ],
-                    },
-                    Message={
-                        'Body': {
-                            'Html': {
-                                'Charset': self.CHARSET,
-                                'Data': body_html,
-                            },
-                        },
-                        'Subject': {
+        try:
+            self.ses.send_email(
+                Destination={
+                    'ToAddresses': recipients,
+                },
+                Message={
+                    'Body': {
+                        'Html': {
                             'Charset': self.CHARSET,
-                            'Data': subject,
+                            'Data': body_html,
                         },
                     },
-                    Source=sender,
-                )
-            except ClientError:
-                raise ValidationError("Failed to send email. Either the sender ({}) or the "
-                                      "recipient ({}) is an invalid email address.".format(sender, recipient))
-            except Exception as e:
-                raise e
+                    'Subject': {
+                        'Charset': self.CHARSET,
+                        'Data': subject,
+                    },
+                },
+                Source=sender,
+            )
+        except ClientError:
+            raise ValidationError("Failed to send email. Either the sender ({}) or the "
+                                  "recipient ({}) is an invalid email address.".format(sender, recipient))
+        except Exception as e:
+            raise e
