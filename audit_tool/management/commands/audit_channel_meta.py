@@ -49,6 +49,7 @@ class Command(BaseCommand):
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
             except Exception as e:
                 logger.exception(e)
+                raise Exception("no audits to process at present")
             self.process_audit()
 
     def process_audit(self, num=50000):
@@ -191,7 +192,7 @@ class Command(BaseCommand):
     def load_inclusion_list(self):
         if self.inclusion_list:
             return
-        input_list = self.audit.params.get("inclusion")
+        input_list = self.audit.params.get("inclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(
@@ -202,7 +203,7 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion")
+        input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(

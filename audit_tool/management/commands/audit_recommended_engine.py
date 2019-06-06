@@ -67,6 +67,7 @@ class Command(BaseCommand):
                 self.category = self.audit.params.get('category')
             except Exception as e:
                 logger.exception(e)
+                raise Exception("no audits to process at present")
             self.process_audit()
 
     def process_audit(self):

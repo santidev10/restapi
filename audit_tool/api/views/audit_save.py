@@ -125,7 +125,10 @@ class AuditSaveApiView(APIView):
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=";", quotechar="|")
         for row in reader:
-            word = row[0].lower().strip()
+            try:
+                word = row[0].lower().strip()
+            except Exception as e:
+                pass
             if word:
                 keywords.append(word)
         return keywords
