@@ -206,7 +206,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     @property
     def access(self):
-        return self.groups.values('name')
+        accesses = list(self.groups.values('name'))
+        if self.is_staff:
+            accesses.append({"name": "Admin"})
+        return accesses
 
     @property
     def logo_url(self):
