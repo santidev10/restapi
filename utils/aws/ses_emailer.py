@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 
 from django.conf import settings
 
+
 class SESEmailer(object):
     AWS_REGION = "us-east-1"
     CHARSET = "UTF-8"
