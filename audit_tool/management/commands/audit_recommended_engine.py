@@ -67,6 +67,7 @@ class Command(BaseCommand):
                 self.category = self.audit.params.get('category')
             except Exception as e:
                 logger.exception(e)
+                raise Exception("no audits to process at present")
             self.process_audit()
 
     def process_audit(self):
@@ -354,7 +355,7 @@ class Command(BaseCommand):
         )
         if num_out:
             video_meta = video_meta[:num_out]
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}_{}.csv'.format(name, audit_id), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -393,5 +394,5 @@ class Command(BaseCommand):
                 ]
                 wr.writerow(data)
             if self.audit and self.audit.completed:
-                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.params['export'] = 'export_{}_{}.csv'.format(name, audit_id)
                 self.audit.save()

@@ -56,6 +56,7 @@ class Command(BaseCommand):
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
             except Exception as e:
                 logger.exception(e)
+                raise Exception("no audits to process at present")
             self.process_audit()
 
     def process_audit(self, num=50000):
@@ -104,22 +105,26 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def process_seed_file(self, seed_file):
-        with open(seed_file) as f:
-            reader = csv.reader(f)
-            vids = []
-            for row in reader:
-                seed = row[0]
-                if 'youtube.' in seed:
-                    v_id = seed.split("/")[-1]
-                    if '?v=' in v_id:
-                        v_id = v_id.split("v=")[-1]
-                    video = AuditVideo.get_or_create(v_id)
-                    avp, _ = AuditVideoProcessor.objects.get_or_create(
-                            audit=self.audit,
-                            video=video,
-                    )
-                    vids.append(avp)
-            return vids
+        try:
+            with open(seed_file) as f:
+                reader = csv.reader(f)
+                vids = []
+                for row in reader:
+                    seed = row[0]
+                    if 'youtube.' in seed:
+                        v_id = seed.strip().split("/")[-1]
+                        if '?v=' in v_id:
+                            v_id = v_id.split("v=")[-1]
+                        if v_id:
+                            video = AuditVideo.get_or_create(v_id)
+                            avp, _ = AuditVideoProcessor.objects.get_or_create(
+                                    audit=self.audit,
+                                    video=video,
+                            )
+                            vids.append(avp)
+                return vids
+        except Exception as e:
+            pass
         self.audit.params['error'] = "can not open seed file {}".format(seed_file)
         self.audit.completed = timezone.now()
         self.audit.save(update_fields=['params', 'completed'])
@@ -282,7 +287,7 @@ class Command(BaseCommand):
     def load_inclusion_list(self):
         if self.inclusion_list:
             return
-        input_list = self.audit.params.get("inclusion")
+        input_list = self.audit.params.get("inclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(
@@ -293,7 +298,7 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion")
+        input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(
@@ -361,7 +366,7 @@ class Command(BaseCommand):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:

@@ -12,7 +12,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
-from pid.decorator import pidfile
+from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 
 """
@@ -36,14 +36,21 @@ class Command(BaseCommand):
                             "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
                             "&maxResults=50&type=video"
 
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     # this is the primary method to call to trigger the entire audit sequence
-    @pidfile(piddir=".", pidname="audit_channel_meta.pid")
     def handle(self, *args, **options):
-        try:
-            self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
-        except Exception as e:
-            logger.exception(e)
-        self.process_audit()
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
+            try:
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
+            except Exception as e:
+                logger.exception(e)
+                raise Exception("no audits to process at present")
+            self.process_audit()
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
@@ -55,12 +62,12 @@ class Command(BaseCommand):
         if pending_channels.count() == 0:
             if self.thread_id == 0:
                 self.process_seed_list()
+                pending_channels = AuditChannelProcessor.objects.filter(
+                    audit=self.audit,
+                    processed__isnull=True
+                )
             else:
-                raise Exception("waiting for seed list to finish processing on thread 0")
-            pending_channels = AuditChannelProcessor.objects.filter(
-                audit=self.audit,
-                processed__isnull=True
-            )
+                raise Exception("waiting to process seed list on thread 0")
         else:
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
@@ -73,10 +80,12 @@ class Command(BaseCommand):
             else:
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
-                print("Audit of channels completed, turning to video processor.")
-                raise Exception("Audit of channels completed, turning to video processor")
+                print("Audit of channels completed")
+                self.export_channels()
+                raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
-        for channel in pending_channels[:num]:
+        start = self.thread_id * num
+        for channel in pending_channels[start:start+num]:
             self.do_check_channel(channel)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
@@ -183,7 +192,7 @@ class Command(BaseCommand):
     def load_inclusion_list(self):
         if self.inclusion_list:
             return
-        input_list = self.audit.params.get("inclusion")
+        input_list = self.audit.params.get("inclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(
@@ -194,7 +203,7 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion")
+        input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
         regexp = "({})".format(
@@ -265,7 +274,7 @@ class Command(BaseCommand):
             name = self.audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
