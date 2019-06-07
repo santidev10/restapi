@@ -48,9 +48,9 @@ class BrandSafetyVideoAudit(object):
             "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
             "video_title": data.get("title", ""),
             "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
-            "views": data.get("views", 0),
+            "views": data.get("views") if data.get("views") is not None else 0,
             "description": data.get("description", ""),
-            "category": data.get("category") if data.get("category") is not None else "",
+            "category": data.get("category").lower() if data.get("category") is not None else constants.UNKNOWN.lower(),
             "country": data.get("country", constants.UNKNOWN),
             "likes": data.get("likes", 0),
             "dislikes": data.get("dislikes", 0),
@@ -58,7 +58,7 @@ class BrandSafetyVideoAudit(object):
             "tags": data.get("tags", "") if data.get("tags") is not None else "",
             "video_id": data["video_id"],
             "transcript": data.get("transcript") if data.get("transcript") is not None else "",
-            "thumbnail_image_url": data.get("thumbnail_image_url", "")
+            "thumbnail_image_url": data.get("thumbnail_image_url", ""),
         }
         text = ", ".join([
             metadata.get("video_title", ""),
@@ -103,6 +103,8 @@ class BrandSafetyVideoAudit(object):
             "video_id": brand_safety_results.pk,
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "language": self.metadata["language"],
+            "youtube_category": self.metadata["category"],
+            "views": self.metadata["views"],
             "categories": {
                 category: {
                     "category_score": category_score,

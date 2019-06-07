@@ -55,17 +55,18 @@ class BrandSafetyChannelAudit(object):
             "channel_id": channel_data.get("channel_id", ""),
             "channel_title": channel_data.get("title", ""),
             "channel_url": channel_data.get("url", ""),
-            "category": channel_data.get("category", ""),
+            "category": channel_data.get("category").lower() if channel_data.get("category") is not None else constants.UNKNOWN.lower(),
             "description": channel_data.get("description", ""),
             "videos": channel_data.get("videos", constants.DISABLED),
-            "subscribers": channel_data.get("subscribers", constants.DISABLED),
-            "views": channel_data.get("video_views", 0),
+            "views": channel_data.get("views") if channel_data.get("views") is not None else 0,
             "audited_videos": len(self.video_audits),
             "likes": channel_data.get("likes", constants.DISABLED),
             "dislikes": channel_data.get("dislikes", constants.DISABLED),
             "country": channel_data.get("country", ""),
             "thumbnail_image_url": channel_data.get("thumbnail_image_url", ""),
-            "tags": channel_data.get("tags", "") if channel_data.get("tags") is not None else ""
+            "tags": channel_data.get("tags", "") if channel_data.get("tags") is not None else "",
+            "subscribers": channel_data.get("subscribers", 0),
+            "monthly_views": channel_data.get("thirty_days_views", 0),
         }
         text = ", ".join([
             metadata["channel_title"],
@@ -123,6 +124,8 @@ class BrandSafetyChannelAudit(object):
             "videos_scored": brand_safety_results.videos_scored,
             "updated_at": str(date.today()),
             "language": self.metadata["language"],
+            "subscribers": self.metadata["subscribers"],
+            "youtube_category": self.metadata["category"],
             "categories": {
                 category: {
                     "category_score": score,
