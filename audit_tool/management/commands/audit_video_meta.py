@@ -79,7 +79,8 @@ class Command(BaseCommand):
             pending_videos = pending_videos.filter(processed__isnull=True)
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
@@ -127,7 +128,8 @@ class Command(BaseCommand):
             pass
         self.audit.params['error'] = "can not open seed file {}".format(seed_file)
         self.audit.completed = timezone.now()
-        self.audit.save(update_fields=['params', 'completed'])
+        self.audit.pause = 0
+        self.audit.save(update_fields=['params', 'completed', 'pause'])
         raise Exception("can not open seed file {}".format(seed_file))
 
     def process_seed_list(self):
@@ -138,7 +140,8 @@ class Command(BaseCommand):
                 return self.process_seed_file(seed_file)
             self.audit.params['error'] = "seed list is empty"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:

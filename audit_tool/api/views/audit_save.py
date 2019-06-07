@@ -134,7 +134,7 @@ class AuditSaveApiView(APIView):
         return keywords
 
 
-class AuditFileS3Exporter(S3Exporter):
+class AuditFileS3Exporter(c):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
     export_content_type = "application/CSV"
 

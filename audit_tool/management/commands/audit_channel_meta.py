@@ -79,7 +79,8 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 self.audit.completed = timezone.now()
-                self.audit.save(update_fields=['completed'])
+                self.audit.pause = 0
+                self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit of channels completed")
                 self.export_channels()
                 raise Exception("Audit of channels completed")
@@ -98,7 +99,8 @@ class Command(BaseCommand):
         except Exception as e:
             self.audit.params['error'] = "can not open seed file {}".format(seed_file)
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
@@ -114,10 +116,11 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
         if len(vids) == 0:
-            self.audit.params['error'] = "no valid YouTube URL's in seed file {}".format(seed_file)
+            self.audit.params['error'] = "no valid YouTube Channel URL's in seed file {}".format(seed_file)
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
-            raise Exception("no valid YouTube URL's in seed file {}".format(seed_file))
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
 
 
@@ -129,7 +132,8 @@ class Command(BaseCommand):
                 return self.process_seed_file(seed_file)
             self.audit.params['error'] = "seed list is empty"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
         for seed in seed_list:

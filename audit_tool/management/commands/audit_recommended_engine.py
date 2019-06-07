@@ -89,7 +89,8 @@ class Command(BaseCommand):
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
-                self.audit.save(update_fields=['completed'])
+                self.audit.pause = 0
+                self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit completed, all videos processed")
                 self.export_videos()
                 raise Exception("Audit completed, all videos processed")
@@ -100,7 +101,8 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
             self.export_videos()
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
@@ -114,7 +116,8 @@ class Command(BaseCommand):
         if not seed_list:
             self.audit.params['error'] = "seed list is empty"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
