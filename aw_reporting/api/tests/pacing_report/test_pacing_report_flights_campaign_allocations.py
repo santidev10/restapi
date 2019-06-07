@@ -102,6 +102,30 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertEqual(campaign_1.goal_allocation, allocation_1)
         self.assertEqual(campaign_2.goal_allocation, allocation_2)
 
+    def test_reject_invalid_allocation_values(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
+        campaign_1 = Campaign.objects.create(
+            id=1, salesforce_placement=placement, account=account)
+        campaign_2 = Campaign.objects.create(
+            id=2, salesforce_placement=placement, account=account)
+
+        allocation_1, allocation_2 = 30, "7!"
+        put_data = {
+            "flight_budget": 0,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+
+        response = self._update(flight.id, put_data)
+        campaign_1.refresh_from_db()
+        campaign_2.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_success_allocation_within_margin(self):
         self.create_test_user()
         opportunity = Opportunity.objects.create()
