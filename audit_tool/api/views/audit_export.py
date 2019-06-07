@@ -11,9 +11,10 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.status import HTTP_200_OK
 
+from django.http import StreamingHttpResponse
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 
@@ -34,8 +35,8 @@ class AuditExportApiView(APIView):
         if clean is not None:
             try:
                 clean = strtobool(clean)
-            except ValidationError:
-                raise ValidationError("Expected clean var to have boolean value or no value. Received {}.".format(clean))
+            except ValueError:
+                clean = None
 
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
@@ -44,10 +45,24 @@ class AuditExportApiView(APIView):
 
         audit_type = audit.audit_type
         if audit_type == 2:
-            url = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
+            file_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
         else:
-            url = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
-        return Response(url)
+            if audit_type == 0:
+                clean = None
+            file_name = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
+
+        try:
+            content_generator = AuditS3Exporter.get_s3_export_content(file_name).iter_chunks()
+        except Exception as e:
+            raise ValidationError("File with name: {} not found on S3.".format(file_name))
+
+        response = StreamingHttpResponse(
+            content_generator,
+            content_type="application/CSV",
+            status=HTTP_200_OK,
+        )
+        response["Content-Disposition"] = "attachment; filename={}".format(file_name)
+        return response
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
@@ -61,9 +76,14 @@ class AuditExportApiView(APIView):
         clean_string = 'none'
         if clean is not None:
             clean_string = 'true' if clean else 'false'
+        try:
+            name = audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         if 'export_{}'.format(clean_string) in audit.params:
-            return AuditS3Exporter.generate_temporary_url(audit.params['export_{}'.format(clean_string)])
+            return file_name
         self.get_categories()
         cols = [
             "Video ID",
@@ -86,7 +106,10 @@ class AuditExportApiView(APIView):
         ]
         video_ids = []
         hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
+        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
+        if clean is not None:
+            videos = videos.filter(clean=clean)
+        videos = videos.select_related("video")
         for vid in videos:
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
@@ -98,11 +121,7 @@ class AuditExportApiView(APIView):
                 "language",
                 "category"
         )
-        try:
-            name = audit.params['name'].replace("/", "-")
-        except Exception as e:
-            name = audit_id
-        with open('export_{}_{}.csv'.format(name, clean_string), 'w+', newline='') as myfile:
+        with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -121,7 +140,11 @@ class AuditExportApiView(APIView):
                 try:
                     channel_lang = v.video.channel.auditchannelmeta.language.language
                 except Exception as e:
-                    channel_lang = ''
+                    channel_lang = ""
+                try:
+                    video_count = v.video.channel.auditchannelmeta.video_count
+                except Exception as e:
+                    video_count = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -132,25 +155,26 @@ class AuditExportApiView(APIView):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y, %H:%M:%S") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else '',
-                    v.video.channel.channel_id if v.video.channel else '',
+                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                    v.video.channel.auditchannelmeta.name if v.video.channel else "",
+                    v.video.channel.channel_id if v.video.channel else "",
                     channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
                     all_hit_words,
                     unique_hit_words,
-                    v.video.channel.auditchannelmeta.video_count if v.video.channel else '',
+                    video_count if video_count else "",
                 ]
                 wr.writerow(data)
-            if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
-                audit.save()
-            file_name = audit.params['export_{}'.format(clean_string)]
             myfile.buffer.seek(0)
-            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+
+        with open(file_name) as myfile:
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            if audit and audit.completed:
+                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.save()
             os.remove(myfile.name)
-        return url
+        return file_name
 
     def export_channels(self, audit, audit_id=None, clean=None):
         if not audit_id:
@@ -158,9 +182,14 @@ class AuditExportApiView(APIView):
         clean_string = 'none'
         if clean is not None:
             clean_string = 'true' if clean else 'false'
+        try:
+            name = audit.params['name'].replace("/", "-")
+        except Exception as e:
+            name = audit_id
+        file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         if 'export_{}'.format(clean_string) in audit.params:
-            return AuditS3Exporter.generate_temporary_url(audit.params['export_{}'.format(clean_string)])
+            return file_name
         self.get_categories()
         cols = [
             "Channel Title",
@@ -170,13 +199,18 @@ class AuditExportApiView(APIView):
             "Num Videos Checked",
             "Country",
             "Language",
+            "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
         ]
         channel_ids = []
         hit_words = {}
         video_count = {}
-        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related("channel")
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
+        if clean is not None:
+            channels = channels.filter(clean=clean)
+        channels = channels.select_related("channel")
+        bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
@@ -184,7 +218,10 @@ class AuditExportApiView(APIView):
                 hit_words[cid.channel.channel_id] = []
             videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
             video_count[cid.channel.channel_id] = videos.count()
+            bad_videos_count[cid.channel.channel_id] = 0
             for video in videos:
+                if not video.clean:
+                    bad_videos_count[cid.channel.channel_id] +=1
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
                         if bad_word not in hit_words[cid.channel.channel_id]:
@@ -194,11 +231,7 @@ class AuditExportApiView(APIView):
                 "language",
                 "country"
         )
-        try:
-            name = audit.params['name'].replace("/", "-")
-        except Exception as e:
-            name = audit_id
-        with open('export_{}.csv'.format(name), 'w', newline='') as myfile:
+        with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
@@ -213,23 +246,25 @@ class AuditExportApiView(APIView):
                 data = [
                     v.name,
                     v.channel.channel_id,
-                    v.view_count,
+                    v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],
                     country,
                     language,
+                    bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])
                 ]
                 wr.writerow(data)
-            if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = 'export_{}_{}.csv'.format(name, clean_string)
-                audit.save()
-            file_name = audit.params['export_{}'.format(clean_string)]
             myfile.buffer.seek(0)
-            url = self.put_file_on_s3_and_create_url(myfile.buffer.raw, file_name)
+
+        with open(file_name) as myfile:
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
-        return url
+            if audit and audit.completed:
+                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.save()
+        return file_name
 
     def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
@@ -243,7 +278,7 @@ class AuditExportApiView(APIView):
                     if word not in uniques:
                         uniques.append(word)
                 return len(hits[words_to_use]), ','.join(uniques)
-        return '', ''
+        return "", ""
 
     def put_file_on_s3_and_create_url(self, file, name):
         AuditS3Exporter.export_to_s3(file, name)

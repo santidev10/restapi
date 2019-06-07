@@ -2,6 +2,7 @@ from distutils.util import strtobool
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditCategory
 from rest_framework.exceptions import ValidationError
 
 class AuditListApiView(APIView):
@@ -18,5 +19,6 @@ class AuditListApiView(APIView):
                                   .format(query_params["num_days"], type(query_params["num_days"])))
         return Response({
             'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days),
-            'audit_types': AuditProcessor.AUDIT_TYPES
+            'audit_types': AuditProcessor.AUDIT_TYPES,
+            'youtube_categories': AuditCategory.get_all(),
         })

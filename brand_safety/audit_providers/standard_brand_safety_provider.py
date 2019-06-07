@@ -1,16 +1,17 @@
-import logging
+from collections import Counter
 from collections import defaultdict
+from datetime import datetime
+import logging
 import multiprocessing as mp
 from time import sleep
-from datetime import datetime
-from collections import Counter
 
-from flashtext import KeywordProcessor
 from django.db.models import F
+from django.conf import settings
+from flashtext import KeywordProcessor
 
+from brand_safety import constants
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety import constants
 from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from singledb.connector import SingleDatabaseApiConnector
@@ -59,7 +60,9 @@ class StandardBrandSafetyProvider(object):
             score_multiplier=self.brand_safety_score_multiplier,
             default_video_category_scores=self.default_video_category_scores,
             default_channel_category_scores=self.default_channel_category_scores,
-            languages=self.map_language_to_code()
+            languages=self.map_language_to_code(),
+            es_video_index=settings.BRAND_SAFETY_VIDEO_INDEX,
+            es_channel_index=settings.BRAND_SAFETY_CHANNEL_INDEX
         )
         self.es_connector = ElasticSearchConnector()
 
@@ -126,11 +129,11 @@ class StandardBrandSafetyProvider(object):
         """
         self._index_brand_safety_results(
             video_audits,
-            index_name=constants.BRAND_SAFETY_VIDEO_LANG_ES_INDEX
+            index_name=settings.BRAND_SAFETY_VIDEO_INDEX
         )
         self._index_brand_safety_results(
             channel_audits,
-            index_name=constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX
+            index_name=settings.BRAND_SAFETY_CHANNEL_INDEX
         )
 
     def _index_brand_safety_results(self, results, index_name):
@@ -283,9 +286,9 @@ class StandardBrandSafetyProvider(object):
         """
         all_data = {}
         es_channels = self.es_connector.search_by_id(
-            constants.BRAND_SAFETY_CHANNEL_LANG_ES_INDEX,
+            settings.BRAND_SAFETY_CHANNEL_INDEX,
             channel_ids,
-            constants.BRAND_SAFETY_SCORE_TYPE
+            settings.BRAND_SAFETY_TYPE
         )
         if not es_channels:
             return all_data

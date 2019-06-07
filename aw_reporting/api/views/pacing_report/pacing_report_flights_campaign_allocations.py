@@ -13,6 +13,8 @@ from django.utils import timezone
 class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                                                  PacingReportHelper):
     queryset = Flight.objects.all()
+    MIN_ALLOCATION_SUM = 99
+    MAX_ALLOCATION_SUM = 101
 
     def get(self, *a, **_):
         """
@@ -46,18 +48,26 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data='You must provide a flight budget as "flight_budget"'
             )
-
         if set(request.data.keys()) != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
-
-        actual_sum = sum(request.data.values())
-        if round(actual_sum) != 100:
+        try:
+            allocations = {
+                _id: float(value) for _id, value in request.data.items()
+            }
+        except ValueError:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data="Sum of the values is wrong: {}".format(actual_sum)
+                data="Invalid numerical values: {}".format(request.data.values())
+            )
+
+        allocation_sum = sum(allocations.values())
+        if not self.MIN_ALLOCATION_SUM <= round(allocation_sum) <= self.MAX_ALLOCATION_SUM:
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data="Sum of the values is wrong: {}".format(allocation_sum)
             )
 
         Flight.objects.filter(
@@ -66,16 +76,13 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             budget=flight_updated_budget
         )
 
-        for campaign_id, allocation_value in request.data.items():
+        for campaign_id, allocation_value in allocations.items():
             campaign_budget = (flight_updated_budget * allocation_value) / 100
-
             Campaign.objects.filter(pk=campaign_id).update(
                 goal_allocation=allocation_value,
                 budget=campaign_budget,
                 update_time=timezone.now()
             )
-
-        # return
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
         return res

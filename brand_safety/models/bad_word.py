@@ -70,5 +70,5 @@ class BadWord(models.Model):
         return super(BadWord, self).delete()
 
     class Meta:
-        unique_together = ("name", "category", "language")
+        unique_together = ("name", "language")
 

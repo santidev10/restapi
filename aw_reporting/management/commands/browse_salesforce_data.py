@@ -28,6 +28,7 @@ from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from utils.cache import cache_reset
 from utils.datetime import now_in_default_tz
+from utils.db.models.persistent_entities import PersistentEntityModelMixin
 from utils.lang import almost_equal
 
 logger = logging.getLogger(__name__)
@@ -294,6 +295,9 @@ class Command(BaseCommand):
         ]:
             logger.info("Getting %s items" % model.__name__)
             existed_ids = model.objects.all().values_list('id', flat=True)
+            persistent_ids = list(model.persistent_items().values_list('id', flat=True)) \
+                if issubclass(model, PersistentEntityModelMixin) \
+                else []
 
             item_ids = []
             insert_list = []
@@ -333,7 +337,7 @@ class Command(BaseCommand):
             logger.info('   Updated %d items' % update)
 
             # delete items
-            deleted_ids = set(existed_ids) - set(item_ids)
+            deleted_ids = set(existed_ids) - set(item_ids) - set(persistent_ids)
             if deleted_ids:
                 model.objects.filter(pk__in=deleted_ids).delete()
                 logger.info('   Deleted %d items' % len(deleted_ids))

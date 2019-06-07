@@ -236,6 +236,9 @@ class SingleDatabaseApiConnector(object):
             self.set_sources_query_param(
                 query_params, DEFAULT_VIDEO_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
+        if "channel__channel_id" in query_params.get("fields").split(","):
+            if "items" in response_data:
+                response_data["items"] = [item for item in response_data["items"] if "channel__channel_id" in item]
         return response_data
 
     def get_video_list_full(self, filters, fields=None, batch_size=5000):

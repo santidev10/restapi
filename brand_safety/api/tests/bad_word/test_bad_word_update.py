@@ -57,7 +57,9 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
     def test_has_permissions(self):
         self.create_admin_user()
 
-        response = self._request()
+        response = self._request(
+            name="test"
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
