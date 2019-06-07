@@ -60,7 +60,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         except ValueError:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data="Invalid numeric values: {}".format(request.data.values())
+                data="Invalid numerical values: {}".format(request.data.values())
             )
 
         allocation_sum = sum(allocations.values())
