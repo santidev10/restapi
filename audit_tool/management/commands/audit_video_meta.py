@@ -110,7 +110,7 @@ class Command(BaseCommand):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
         except Exception as e:
-            self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+            self.audit.params['error'] = "can not open seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
@@ -131,7 +131,7 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
         if len(vids) == 0:
-            self.audit.params['error'] = "no valid YouTube Video URL's in seed file {}".format(seed_file)
+            self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])

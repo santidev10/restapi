@@ -128,7 +128,7 @@ class Command(BaseCommand):
             if avp:
                 vids.append(avp)
         if len(vids) == 0:
-            self.audit.params['error'] = "no valid YouTube Video URL's in seed file {}".format(seed_file)
+            self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
