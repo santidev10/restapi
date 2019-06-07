@@ -25,9 +25,9 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    channel_id_master_batch_limit = 80
-    channel_id_pool_batch_limit = 10
     max_process_count = 8
+    channel_id_pool_batch_limit = 10
+    channel_id_master_batch_limit = max_process_count * channel_id_pool_batch_limit
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
         "title": 4,
@@ -246,7 +246,7 @@ class StandardBrandSafetyProvider(object):
     @staticmethod
     def map_language_to_code():
         """
-        Mapping of language strings to ISO 2 Letter language codes
+        Mapping of language strings to ISO 1 Letter language codes
         :return:
         """
         mapped = {

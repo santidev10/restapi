@@ -37,8 +37,7 @@ class BrandSafetyChannelAudit(object):
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
         # Try to get channel language processor
         try:
-            language_code = self.languages[self.metadata["language"].lower()]
-            keyword_processor = brand_safety_audit[language_code]
+            keyword_processor = brand_safety_audit[self.metadata["language"]]
         except KeyError:
             keyword_processor = brand_safety_audit["all"]
         title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, keyword_processor)
@@ -52,24 +51,28 @@ class BrandSafetyChannelAudit(object):
         :param channel_data:
         :return: dict
         """
-        text = channel_data.get("title", "") + channel_data.get("description", "")
         metadata = {
             "channel_id": channel_data.get("channel_id", ""),
-            "channel_title": channel_data.get("title"),
+            "channel_title": channel_data.get("title", ""),
             "channel_url": channel_data.get("url", ""),
-            "language": channel_data.get("language", ""),
             "category": channel_data.get("category", ""),
             "description": channel_data.get("description", ""),
             "videos": channel_data.get("videos", constants.DISABLED),
             "subscribers": channel_data.get("subscribers", constants.DISABLED),
             "views": channel_data.get("video_views", 0),
             "audited_videos": len(self.video_audits),
-            "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
             "likes": channel_data.get("likes", constants.DISABLED),
             "dislikes": channel_data.get("dislikes", constants.DISABLED),
             "country": channel_data.get("country", ""),
-            "thumbnail_image_url": channel_data.get("thumbnail_image_url", "")
+            "thumbnail_image_url": channel_data.get("thumbnail_image_url", ""),
+            "tags": channel_data.get("tags", "") if channel_data.get("tags") is not None else ""
         }
+        text = ", ".join([
+            metadata["channel_title"],
+            metadata["description"],
+        ])
+        metadata["has_emoji"] = self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
+        metadata["language"] = self.auditor.get_language(text)
         return metadata
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
@@ -104,25 +107,6 @@ class BrandSafetyChannelAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
         return channel_brand_safety_score
 
-    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
-        details = {
-            "language": self.metadata["language"],
-            "thumbnail": self.metadata["thumbnail_image_url"],
-            "likes": self.metadata["likes"],
-            "dislikes": self.metadata["dislikes"],
-            "views": self.metadata["views"],
-        }
-        if segment_type == constants.BLACKLIST:
-            details["bad_words"] = self.results["metadata_hits"]
-        obj = model(
-            related_id=self.pk,
-            segment=related_segment,
-            title=self.metadata["channel_title"],
-            category=self.metadata["category"],
-            details=details
-        )
-        return obj
-
     def es_repr(self, index_name, index_type, action):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
@@ -138,6 +122,7 @@ class BrandSafetyChannelAudit(object):
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "videos_scored": brand_safety_results.videos_scored,
             "updated_at": str(date.today()),
+            "language": self.metadata["language"],
             "categories": {
                 category: {
                     "category_score": score,
@@ -150,4 +135,13 @@ class BrandSafetyChannelAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
+
+    def get_text_metadata(self):
+        text = ", ".join([
+            self.metadata.get("channel_title", ""),
+            self.metadata.get("description", ""),
+            self.metadata.get("tags", ""),
+        ])
+        return text
+
 
