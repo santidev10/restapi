@@ -39,6 +39,8 @@ class BrandSafetyChannelAudit(object):
         try:
             keyword_processor = brand_safety_audit[self.metadata["language"]]
         except KeyError:
+            # Set the language the audit uses
+            self.metadata["language"] = "all"
             keyword_processor = brand_safety_audit["all"]
         title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, keyword_processor)
         description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)

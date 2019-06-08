@@ -28,6 +28,8 @@ class BrandSafetyVideoAudit(object):
         try:
             keyword_processor = brand_safety_audit[self.metadata["language"]]
         except KeyError:
+            # Set the language the audit uses
+            self.metadata["language"] = "all"
             keyword_processor = brand_safety_audit["all"]
         tag_hits = self.auditor.audit(self.metadata["tags"], constants.TAGS, keyword_processor)
         title_hits = self.auditor.audit(self.metadata["video_title"], constants.TITLE, keyword_processor)
