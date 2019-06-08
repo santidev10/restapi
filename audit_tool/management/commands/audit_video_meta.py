@@ -19,6 +19,7 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
 from pid import PidFile
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 
 """
 requirements:
@@ -107,30 +108,35 @@ class Command(BaseCommand):
 
     def process_seed_file(self, seed_file):
         try:
-            with open(seed_file) as f:
-                reader = csv.reader(f)
-                vids = []
-                for row in reader:
-                    seed = row[0]
-                    if 'youtube.' in seed:
-                        v_id = seed.strip().split("/")[-1]
-                        if '?v=' in v_id:
-                            v_id = v_id.split("v=")[-1]
-                        if v_id:
-                            video = AuditVideo.get_or_create(v_id)
-                            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                                    audit=self.audit,
-                                    video=video,
-                            )
-                            vids.append(avp)
-                return vids
+            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
         except Exception as e:
-            pass
-        self.audit.params['error'] = "can not open seed file {}".format(seed_file)
-        self.audit.completed = timezone.now()
-        self.audit.pause = 0
-        self.audit.save(update_fields=['params', 'completed', 'pause'])
-        raise Exception("can not open seed file {}".format(seed_file))
+            self.audit.params['error'] = "can not open seed file"
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("can not open seed file {}".format(seed_file))
+        reader = csv.reader(f)
+        vids = []
+        for row in reader:
+            seed = row[0]
+            if 'youtube.' in seed:
+                v_id = seed.strip().split("/")[-1]
+                if '?v=' in v_id:
+                    v_id = v_id.split("v=")[-1]
+                if v_id:
+                    video = AuditVideo.get_or_create(v_id)
+                    avp, _ = AuditVideoProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            video=video,
+                    )
+                    vids.append(avp)
+        if len(vids) == 0:
+            self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
+        return vids
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
