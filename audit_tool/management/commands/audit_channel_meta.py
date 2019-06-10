@@ -88,13 +88,7 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed'])
                 print("Audit of channels completed")
                 file_name = self.export_channels()
-                file_url = AuditS3Exporter.generate_temporary_url(file_name, 0)
-                subject = "Audit '{}' Completed".format(self.audit.params['name'])
-                body = "Audit '{}' has finished with {} results. Click "\
-                    .format(self.audit.params['name'], self.audit.cached_data['count'])\
-                       + "<a href='{}'>here</a> to download."\
-                           .format(file_url)
-                self.emailer.send_email(self.sender, self.recipients, subject, body)
+                self.send_audit_email(file_name)
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
@@ -104,6 +98,16 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+
+    def send_audit_email(self, file_name):
+        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
+        subject = "Audit '{}' Completed".format(self.audit.params['name'])
+        body = "Audit '{}' has finished with {} results. Click " \
+                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
+                   .format(file_url)
+        self.emailer.send_email(self.sender, self.recipients, subject, body)
+
 
     def process_seed_file(self, seed_file):
         try:
@@ -318,6 +322,6 @@ class Command(BaseCommand):
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
             os.remove(myfile.name)
             if self.audit and self.audit.completed:
-                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.params['export'] = file_name
                 self.audit.save()
         return file_name

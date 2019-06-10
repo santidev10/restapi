@@ -19,7 +19,9 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
 from pid import PidFile
+import os
 from utils.aws.ses_emailer import SESEmailer
+from audit_tool.api.views.audit_export import AuditS3Exporter
 
 """
 requirements:
@@ -91,13 +93,8 @@ class Command(BaseCommand):
                     c.audit = self.audit
                     c.export_channels()
                     raise Exception("Audit completed, all channels processed")
-            self.export_videos()
-            subject = "Audit '{}' Completed".format(self.audit.params['name'])
-            body = "Audit '{}' has finished with {} results. Click " \
-                       .format(self.audit.params['name'], self.audit.cached_data['count']) \
-                   + "<a href='{}'>here</a> to download." \
-                       .format()
-            self.emailer.send_email(self.sender, self.recipients, subject, body)
+            file_name = self.export_videos()
+            self.send_audit_email(file_name)
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
@@ -113,6 +110,15 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+
+    def send_audit_email(self, file_name):
+        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
+        subject = "Audit '{}' Completed".format(self.audit.params['name'])
+        body = "Audit '{}' has finished with {} results. Click " \
+                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
+                   .format(file_url)
+        self.emailer.send_email(self.sender, self.recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:
@@ -416,10 +422,19 @@ class Command(BaseCommand):
                     unique_hit_words,
                 ]
                 wr.writerow(data)
+            myfile.buffer.seek(0)
+
+        with open('export_{}.csv') as myfile:
+            clean_string = 'none'
+            if clean is not None:
+                clean_string = 'true' if clean else 'false'
+            file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            os.remove(myfile.name)
             if self.audit and self.audit.completed:
-                self.audit.params['export'] = 'export_{}.csv'.format(name)
+                self.audit.params['export'] = file_name
                 self.audit.save()
-            return 'export_{}.csv'.format(name)
+        return file_name
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)

@@ -18,7 +18,9 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
+import os
 from utils.aws.ses_emailer import SESEmailer
+from audit_tool.api.views.audit_export import AuditS3Exporter
 
 """
 requirements:
@@ -105,19 +107,23 @@ class Command(BaseCommand):
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
-            self.export_videos()
-            subject = "Audit '{}' Completed".format(self.audit.params['name'])
-            body = "Audit '{}' has finished with {} results. Click " \
-                       .format(self.audit.params['name'], self.audit.cached_data['count']) \
-                   + "<a href='{}'>here</a> to download." \
-                       .format()
-            self.emailer.send_email(self.sender, self.recipients, subject, body)
+            file_name = self.export_videos()
+            self.send_audit_email(file_name)
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
             print("Done one step, continuing audit {}.".format(self.audit.id))
             raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
             #self.process_audit()
+
+    def send_audit_email(self, file_name):
+        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
+        subject = "Audit '{}' Completed".format(self.audit.params['name'])
+        body = "Audit '{}' has finished with {} results. Click " \
+                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
+                   .format(file_url)
+        self.emailer.send_email(self.sender, self.recipients, subject, body)
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -403,6 +409,13 @@ class Command(BaseCommand):
                     v.video.channel.auditchannelmeta.video_count if v.video.channel else ""
                 ]
                 wr.writerow(data)
+            myfile.buffer.seek(0)
+
+        with open('export_{}_{}.csv'.format(name, audit_id)) as myfile:
+            file_name = 'export_{}_{}_true.csv'.format(audit_id, name)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            os.remove(myfile.name)
             if self.audit and self.audit.completed:
-                self.audit.params['export'] = 'export_{}_{}.csv'.format(name, audit_id)
+                self.audit.params['export'] = file_name
                 self.audit.save()
+        return file_name
