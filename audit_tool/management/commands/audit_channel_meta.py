@@ -16,6 +16,7 @@ from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.api.views.audit_export import AuditS3Exporter
 from utils.aws.ses_emailer import SESEmailer
+import os
 
 """
 requirements:
@@ -86,12 +87,13 @@ class Command(BaseCommand):
                 self.audit.completed = timezone.now()
                 self.audit.save(update_fields=['completed'])
                 print("Audit of channels completed")
-                self.export_channels()
+                file_name = self.export_channels()
+                file_url = AuditS3Exporter.generate_temporary_url(file_name, 0)
                 subject = "Audit '{}' Completed".format(self.audit.params['name'])
                 body = "Audit '{}' has finished with {} results. Click "\
                     .format(self.audit.params['name'], self.audit.cached_data['count'])\
                        + "<a href='{}'>here</a> to download."\
-                           .format()
+                           .format(file_url)
                 self.emailer.send_email(self.sender, self.recipients, subject, body)
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
@@ -309,7 +311,13 @@ class Command(BaseCommand):
                     ','.join(hit_words[v.channel.channel_id])
                 ]
                 wr.writerow(data)
+            myfile.buffer.seek(0)
+
+        with open('export_{}.csv') as myfile:
+            file_name = 'export_{}_{}_true.csv'.format(audit_id, name)
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            os.remove(myfile.name)
             if self.audit and self.audit.completed:
                 self.audit.params['export'] = 'export_{}.csv'.format(name)
                 self.audit.save()
-            return 'export_{}.csv'.format(name)
+        return file_name
