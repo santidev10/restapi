@@ -14,6 +14,8 @@ from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
+from audit_tool.api.views.audit_export import AuditS3Exporter
+from utils.aws.ses_emailer import SESEmailer
 
 """
 requirements:
@@ -31,6 +33,9 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     audit = None
+    emailer = SESEmailer()
+    sender = "viewiq-notifications@channelfactory.com"
+    recipients = ["andrew.vonpelt@channelfactory.com", "bryan.ngo@channelfactory.com"]
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                             "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
@@ -82,6 +87,13 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed'])
                 print("Audit of channels completed")
                 self.export_channels()
+                subject = "Audit '{}' Completed".format(self.audit.params['name'])
+                body = "Audit '{}' has finished with {} results. Click "\
+                    .format(self.audit.params['name'], self.audit.cached_data['count'])\
+                       + "<a href='{}'>here</a> to download."\
+                           .format()
+                self.emailer.send_email(self.sender, self.recipients, subject, )
+
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num

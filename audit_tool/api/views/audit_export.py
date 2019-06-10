@@ -280,7 +280,8 @@ class AuditExportApiView(APIView):
                 return len(hits[words_to_use]), ','.join(uniques)
         return "", ""
 
-    def put_file_on_s3_and_create_url(self, file, name):
+    @staticmethod
+    def put_file_on_s3_and_create_url(file, name):
         AuditS3Exporter.export_to_s3(file, name)
         url = AuditS3Exporter.generate_temporary_url(name)
         return url

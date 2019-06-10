@@ -18,6 +18,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
+from utils.aws.ses_emailer import SESEmailer
 
 """
 requirements:
@@ -37,6 +38,9 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
+    emailer = SESEmailer()
+    sender = "viewiq-notifications@channelfactory.com"
+    recipients = ["andrew.vonpelt@channelfactory.com", "bryan.ngo@channelfactory.com"]
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
