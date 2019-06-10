@@ -92,8 +92,7 @@ class Command(BaseCommand):
                     .format(self.audit.params['name'], self.audit.cached_data['count'])\
                        + "<a href='{}'>here</a> to download."\
                            .format()
-                self.emailer.send_email(self.sender, self.recipients, subject, )
-
+                self.emailer.send_email(self.sender, self.recipients, subject, body)
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num

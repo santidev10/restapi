@@ -106,6 +106,12 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.save(update_fields=['completed'])
             self.export_videos()
+            subject = "Audit '{}' Completed".format(self.audit.params['name'])
+            body = "Audit '{}' has finished with {} results. Click " \
+                       .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   + "<a href='{}'>here</a> to download." \
+                       .format()
+            self.emailer.send_email(self.sender, self.recipients, subject, body)
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:

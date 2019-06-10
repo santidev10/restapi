@@ -92,6 +92,12 @@ class Command(BaseCommand):
                     c.export_channels()
                     raise Exception("Audit completed, all channels processed")
             self.export_videos()
+            subject = "Audit '{}' Completed".format(self.audit.params['name'])
+            body = "Audit '{}' has finished with {} results. Click " \
+                       .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   + "<a href='{}'>here</a> to download." \
+                       .format()
+            self.emailer.send_email(self.sender, self.recipients, subject, body)
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
