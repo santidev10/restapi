@@ -18,10 +18,10 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
-import os
 from utils.aws.ses_emailer import SESEmailer
 from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 
 """
 requirements:
@@ -96,7 +96,8 @@ class Command(BaseCommand):
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 self.audit.completed = timezone.now()
-                self.audit.save(update_fields=['completed'])
+                self.audit.pause = 0
+                self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit completed, all videos processed")
                 self.export_videos()
                 raise Exception("Audit completed, all videos processed")
@@ -107,7 +108,8 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
             export_funcs = AuditExportApiView()
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
             self.send_audit_email(file_name)
@@ -127,29 +129,61 @@ class Command(BaseCommand):
                    .format(file_url)
         self.emailer.send_email(self.sender, self.recipients, subject, body)
 
+    def process_seed_file(self, seed_file):
+        try:
+            f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
+        except Exception as e:
+            self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("can not open seed file {}".format(seed_file))
+        reader = csv.reader(f)
+        vids = []
+        for row in reader:
+            avp = self.get_avp_from_url(row[0])
+            if avp:
+                vids.append(avp)
+        if len(vids) == 0:
+            self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
+        return vids
+
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
+            seed_file = self.audit.params.get('seed_file')
+            if seed_file:
+                return self.process_seed_file(seed_file)
             self.audit.params['error'] = "seed list is empty"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            v_id = seed.replace(",", "").split("/")[-1]
-            if '?v=' in  v_id:
-                v_id = v_id.split("v=")[-1]
-            if '?t=' in  v_id:
-                v_id = v_id.split("?t")[0]
-            if v_id:
-                v_id = v_id.strip()
-                video = AuditVideo.get_or_create(v_id)
-                avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
-                )
+            avp = self.get_avp_from_url(seed)
+            if avp:
                 vids.append(avp)
         return vids
+
+    def get_avp_from_url(self, seed):
+        v_id = seed.replace(",", "").split("/")[-1]
+        if '?v=' in v_id:
+            v_id = v_id.split("v=")[-1]
+        if '?t=' in v_id:
+            v_id = v_id.split("?t")[0]
+        if v_id:
+            v_id = v_id.strip()
+            video = AuditVideo.get_or_create(v_id)
+            avp, _ = AuditVideoProcessor.objects.get_or_create(
+                    audit=self.audit,
+                    video=video,
+            )
+            return avp
 
     def do_recommended_api_call(self, avp):
         video = avp.video

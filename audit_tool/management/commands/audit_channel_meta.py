@@ -17,7 +17,6 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
 from utils.aws.ses_emailer import SESEmailer
-import os
 
 """
 requirements:
@@ -51,13 +50,16 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
-        with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
-            try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
-            except Exception as e:
-                logger.exception(e)
-                raise Exception("no audits to process at present")
-            self.process_audit()
+        try:
+            with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
+                try:
+                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
+                except Exception as e:
+                    logger.exception(e)
+                    raise Exception("no audits to process at present")
+                self.process_audit()
+        except Exception as e:
+            print("problem {} {}".format(self.thread_id, str(e)))
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
@@ -86,7 +88,8 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 self.audit.completed = timezone.now()
-                self.audit.save(update_fields=['completed'])
+                self.audit.pause = 0
+                self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit of channels completed")
                 export_funcs = AuditExportApiView()
                 file_name = export_funcs.export_channels(self.audit, self.audit.id)
@@ -94,12 +97,14 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
+        counter = 0
         for channel in pending_channels[start:start+num]:
+            counter+=1
             self.do_check_channel(channel)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
-        raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+        raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
 
     def send_audit_email(self, file_name):
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
@@ -115,9 +120,10 @@ class Command(BaseCommand):
         try:
             f = AuditFileS3Exporter.get_s3_export_csv(seed_file)
         except Exception as e:
-            self.audit.params['error'] = "can not open seed file {}".format(seed_file)
+            self.audit.params['error'] = "can not open seed file"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
@@ -133,10 +139,11 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
         if len(vids) == 0:
-            self.audit.params['error'] = "no valid YouTube URL's in seed file {}".format(seed_file)
+            self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
-            raise Exception("no valid YouTube URL's in seed file {}".format(seed_file))
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
+            raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
 
 
@@ -148,7 +155,8 @@ class Command(BaseCommand):
                 return self.process_seed_file(seed_file)
             self.audit.params['error'] = "seed list is empty"
             self.audit.completed = timezone.now()
-            self.audit.save(update_fields=['params', 'completed'])
+            self.audit.pause = 0
+            self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
         for seed in seed_list:
