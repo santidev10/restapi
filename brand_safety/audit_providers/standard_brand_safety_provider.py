@@ -137,7 +137,7 @@ class StandardBrandSafetyProvider(object):
         )
 
     def _index_brand_safety_results(self, results, index_name):
-        index_type = "score"
+        index_type = settings.BRAND_SAFETY_TYPE
         op_type = "index"
         es_bulk_generator = (audit.es_repr(index_name, index_type, op_type) for audit in results)
         self.es_connector.push_to_index(es_bulk_generator)
