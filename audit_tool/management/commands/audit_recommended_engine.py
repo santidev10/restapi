@@ -99,7 +99,8 @@ class Command(BaseCommand):
                 self.audit.pause = 0
                 self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit completed, all videos processed")
-                export_funcs.export_videos(self.audit, self.audit.id)
+                file_name = export_funcs.export_videos(self.audit, self.audit.id)
+                self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                 raise Exception("Audit completed, all videos processed")
         start = thread_id * 100
         for video in pending_videos[start:start+100]:
@@ -111,7 +112,7 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
-            self.send_audit_email(file_name, settings.NOTIFICATIONS_EMAIL_SENDER, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))
         else:
@@ -119,14 +120,14 @@ class Command(BaseCommand):
             raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
             #self.process_audit()
 
-    def send_audit_email(self, file_name, sender, recipients):
+    def send_audit_email(self, file_name, recipients):
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
                    .format(self.audit.params['name'], self.audit.cached_data['count']) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
-        self.emailer.send_email(sender, recipients, subject, body)
+        self.emailer.send_email(settings.NOTIFICATIONS_EMAIL_SENDER, recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:

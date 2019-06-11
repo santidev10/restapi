@@ -91,10 +91,11 @@ class Command(BaseCommand):
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
-                    export_funcs.export_channels(self.audit, self.audit.id)
+                    file_name = export_funcs.export_channels(self.audit, self.audit.id)
+                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                     raise Exception("Audit completed, all channels processed")
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
-            self.send_audit_email(file_name, settings.NOTIFICATIONS_EMAIL_SENDER, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
@@ -111,14 +112,14 @@ class Command(BaseCommand):
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
-    def send_audit_email(self, file_name, sender, recipients):
+    def send_audit_email(self, file_name, recipients):
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
                    .format(self.audit.params['name'], self.audit.cached_data['count']) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
-        self.emailer.send_email(sender, recipients, subject, body)
+        self.emailer.send_email(settings.NOTIFICATIONS_EMAIL_SENDER, recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:

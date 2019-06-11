@@ -360,6 +360,7 @@ AUDIT_TOOL_EMAIL_ADDRESSES = [
 AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "andrew.vonpelt@channelfactory.com",
     "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
