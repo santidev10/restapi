@@ -83,6 +83,7 @@ class Command(BaseCommand):
                 raise Exception("waiting to process seed list on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True)
+        export_funcs = AuditExportApiView()
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
             self.audit.pause = 0
@@ -90,11 +91,8 @@ class Command(BaseCommand):
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
-                    c = ChannelCommand()
-                    c.audit = self.audit
-                    c.export_channels()
+                    export_funcs.export_channels(self.audit, self.audit.id)
                     raise Exception("Audit completed, all channels processed")
-            export_funcs = AuditExportApiView()
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
             self.send_audit_email(file_name, settings.NOTIFICATIONS_EMAIL_SENDER, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             raise Exception("Audit completed, all videos processed")

@@ -84,6 +84,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
+        export_funcs = AuditExportApiView()
         if thread_id % 3 == 0:
             thread_id = 0
         if pending_videos.count() == 0:
@@ -98,7 +99,7 @@ class Command(BaseCommand):
                 self.audit.pause = 0
                 self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit completed, all videos processed")
-                self.export_videos()
+                export_funcs.export_videos(self.audit, self.audit.id)
                 raise Exception("Audit completed, all videos processed")
         start = thread_id * 100
         for video in pending_videos[start:start+100]:
@@ -109,7 +110,6 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
-            export_funcs = AuditExportApiView()
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
             self.send_audit_email(file_name, settings.NOTIFICATIONS_EMAIL_SENDER, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             print("Audit completed {}".format(self.audit.id))
