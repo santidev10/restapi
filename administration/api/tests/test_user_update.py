@@ -137,7 +137,6 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         test_user.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["is_staff"], False)
-        self.assertEqual(set(test_user.groups.values_list("name", flat=True)), set(get_default_accesses()))
 
     def test_set_admin_reject(self):
         self.create_test_user()
