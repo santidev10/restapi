@@ -121,6 +121,8 @@ class Command(BaseCommand):
             #self.process_audit()
 
     def send_audit_email(self, file_name, recipients):
+        if self.audit.cached_data['count'] == 0:
+            return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \

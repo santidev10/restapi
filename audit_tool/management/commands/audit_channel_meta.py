@@ -106,6 +106,8 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
 
     def send_audit_email(self, file_name, recipients):
+        if self.audit.cached_data['count'] == 0:
+            return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
@@ -113,7 +115,6 @@ class Command(BaseCommand):
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         self.emailer.send_email(recipients, subject, body)
-
 
     def process_seed_file(self, seed_file):
         try:
