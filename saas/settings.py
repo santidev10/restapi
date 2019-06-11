@@ -306,6 +306,7 @@ LOGGING = {
 }
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
+NOTIFICATIONS_EMAIL_SENDER = "viewiq-notifications@channelfactory.com"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = os.getenv("EMAIL_PORT", None) or 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -354,6 +355,11 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
+]
+
+AUDIT_TOOL_EMAIL_RECIPIENTS = [
+    "andrew.vonpelt@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
