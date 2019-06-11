@@ -22,6 +22,7 @@ from pid import PidFile
 import os
 from utils.aws.ses_emailer import SESEmailer
 from audit_tool.api.views.audit_export import AuditS3Exporter
+from audit_tool.api.views.audit_export import AuditExportApiView
 
 """
 requirements:
@@ -93,7 +94,8 @@ class Command(BaseCommand):
                     c.audit = self.audit
                     c.export_channels()
                     raise Exception("Audit completed, all channels processed")
-            file_name = self.export_videos()
+            export_funcs = AuditExportApiView()
+            file_name = export_funcs.export_videos(self.audit, self.audit.id)
             self.send_audit_email(file_name)
             raise Exception("Audit completed, all videos processed")
         videos = {}
@@ -336,105 +338,105 @@ class Command(BaseCommand):
         for i in data['items']:
             AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
-    def export_videos(self, audit_id=None, num_out=None, clean=True):
-        self.get_categories()
-        cols = [
-            "video ID",
-            "name",
-            "language",
-            "category",
-            "views",
-            "likes",
-            "dislikes",
-            "emoji",
-            "publish date",
-            "channel name",
-            "channel ID",
-            "channel default lang.",
-            "channel subscribers",
-            "country",
-            "all hit words",
-            "unique hit words",
-        ]
-        if not audit_id and self.audit:
-            audit_id = self.audit.id
-        video_ids = []
-        hit_words = {}
-        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
-        for vid in videos:
-            video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
-        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
-                "video",
-                "video__channel",
-                "video__channel__auditchannelmeta",
-                "video__channel__auditchannelmeta__country",
-                "language",
-                "category"
-        )
-        if num_out:
-            video_meta = video_meta[:num_out]
-        if self.audit:
-            audit_id = self.audit.id
-        else:
-            audit_id = audit_id
-        try:
-            name = self.audit.params['name'].replace("/", "-")
-        except Exception as e:
-            name = audit_id
-        with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerow(cols)
-            for v in video_meta:
-                try:
-                    language = v.language.language
-                except Exception as e:
-                    language = ""
-                try:
-                    category = v.category.category_display
-                except Exception as e:
-                    category = ""
-                try:
-                    country = v.video.channel.auditchannelmeta.country.country
-                except Exception as e:
-                    country = ""
-                try:
-                    channel_lang = v.video.channel.auditchannelmeta.language.language
-                except Exception as e:
-                    channel_lang = ''
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
-                data = [
-                    v.video.video_id,
-                    v.name,
-                    language,
-                    category,
-                    v.views,
-                    v.likes,
-                    v.dislikes,
-                    'T' if v.emoji else 'F',
-                    v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
-                    v.video.channel.auditchannelmeta.name if v.video.channel else  '',
-                    v.video.channel.channel_id if v.video.channel else  '',
-                    channel_lang,
-                    v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
-                    country,
-                    all_hit_words,
-                    unique_hit_words,
-                ]
-                wr.writerow(data)
-            myfile.buffer.seek(0)
-
-        with open('export_{}.csv') as myfile:
-            clean_string = 'none'
-            if clean is not None:
-                clean_string = 'true' if clean else 'false'
-            file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
-            os.remove(myfile.name)
-            if self.audit and self.audit.completed:
-                self.audit.params['export'] = file_name
-                self.audit.save()
-        return file_name
+    # def export_videos(self, audit_id=None, num_out=None, clean=True):
+    #     self.get_categories()
+    #     cols = [
+    #         "video ID",
+    #         "name",
+    #         "language",
+    #         "category",
+    #         "views",
+    #         "likes",
+    #         "dislikes",
+    #         "emoji",
+    #         "publish date",
+    #         "channel name",
+    #         "channel ID",
+    #         "channel default lang.",
+    #         "channel subscribers",
+    #         "country",
+    #         "all hit words",
+    #         "unique hit words",
+    #     ]
+    #     if not audit_id and self.audit:
+    #         audit_id = self.audit.id
+    #     video_ids = []
+    #     hit_words = {}
+    #     videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, clean=clean).select_related("video")#.values_list('video_id', flat=True)
+    #     for vid in videos:
+    #         video_ids.append(vid.video_id)
+    #         hit_words[vid.video.video_id] = vid.word_hits
+    #     video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
+    #             "video",
+    #             "video__channel",
+    #             "video__channel__auditchannelmeta",
+    #             "video__channel__auditchannelmeta__country",
+    #             "language",
+    #             "category"
+    #     )
+    #     if num_out:
+    #         video_meta = video_meta[:num_out]
+    #     if self.audit:
+    #         audit_id = self.audit.id
+    #     else:
+    #         audit_id = audit_id
+    #     try:
+    #         name = self.audit.params['name'].replace("/", "-")
+    #     except Exception as e:
+    #         name = audit_id
+    #     with open('export_{}.csv'.format(name), 'w+', newline='') as myfile:
+    #         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+    #         wr.writerow(cols)
+    #         for v in video_meta:
+    #             try:
+    #                 language = v.language.language
+    #             except Exception as e:
+    #                 language = ""
+    #             try:
+    #                 category = v.category.category_display
+    #             except Exception as e:
+    #                 category = ""
+    #             try:
+    #                 country = v.video.channel.auditchannelmeta.country.country
+    #             except Exception as e:
+    #                 country = ""
+    #             try:
+    #                 channel_lang = v.video.channel.auditchannelmeta.language.language
+    #             except Exception as e:
+    #                 channel_lang = ''
+    #             all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id)
+    #             data = [
+    #                 v.video.video_id,
+    #                 v.name,
+    #                 language,
+    #                 category,
+    #                 v.views,
+    #                 v.likes,
+    #                 v.dislikes,
+    #                 'T' if v.emoji else 'F',
+    #                 v.publish_date.strftime("%m/%d/%Y") if v.publish_date else '',
+    #                 v.video.channel.auditchannelmeta.name if v.video.channel else  '',
+    #                 v.video.channel.channel_id if v.video.channel else  '',
+    #                 channel_lang,
+    #                 v.video.channel.auditchannelmeta.subscribers if v.video.channel else '',
+    #                 country,
+    #                 all_hit_words,
+    #                 unique_hit_words,
+    #             ]
+    #             wr.writerow(data)
+    #         myfile.buffer.seek(0)
+    #
+    #     with open('export_{}.csv') as myfile:
+    #         clean_string = 'none'
+    #         if clean is not None:
+    #             clean_string = 'true' if clean else 'false'
+    #         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
+    #         AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+    #         os.remove(myfile.name)
+    #         if self.audit and self.audit.completed:
+    #             self.audit.params['export'] = file_name
+    #             self.audit.save()
+    #     return file_name
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
