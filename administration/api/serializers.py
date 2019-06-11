@@ -128,10 +128,16 @@ class UserUpdateSerializer(ModelSerializer):
         user = self.context["request"].user
         target = self.instance
         access = data.pop("access", [])
+        status = data.get("status", None)
+        # Users may not change the status of their accounts
+        if status and target.id == user.id:
+            exception = ValidationError("You do not have permission to perform this action.")
+            exception.status_code = HTTP_403_FORBIDDEN
+            raise exception
         try:
             admin_access = [item for item in access if item["name"].lower() == "admin"][0]
             if target.is_staff != admin_access["value"] and user.is_superuser is False:
-                exception = ValidationError("You do not have permission to change admin status.")
+                exception = ValidationError("You do not have permission to perform this action.")
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
             else:
