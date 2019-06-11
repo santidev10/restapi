@@ -129,8 +129,8 @@ class UserUpdateSerializer(ModelSerializer):
         target = self.instance
         access = data.pop("access", [])
         status = data.get("status", None)
-        # Users may not change the status of their accounts
-        if status and target.id == user.id:
+        # Reject if changing own status or target is admin
+        if (status and target.id == user.id) or target.is_superuser:
             exception = ValidationError("You do not have permission to perform this action.")
             exception.status_code = HTTP_403_FORBIDDEN
             raise exception
