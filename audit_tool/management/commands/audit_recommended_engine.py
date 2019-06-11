@@ -398,12 +398,12 @@ class Command(BaseCommand):
     #         name = audit_id
     #     video_ids = AuditVideoProcessor.objects.filter(audit_id=audit_id).values_list('video_id', flat=True)
     #     video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
-    #             "video",
-    #             "video__channel",
-    #             "video__channel__auditchannelmeta",
-    #             "video__channel__auditchannelmeta__country",
-    #             "language",
-    #             "category"
+    #         "video",
+    #         "video__channel",
+    #         "video__channel__auditchannelmeta",
+    #         "video__channel__auditchannelmeta__country",
+    #         "language",
+    #         "category"
     #     )
     #     if num_out:
     #         video_meta = video_meta[:num_out]
@@ -437,21 +437,14 @@ class Command(BaseCommand):
     #                 v.dislikes,
     #                 'T' if v.emoji else 'F',
     #                 v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
-    #                 v.video.channel.auditchannelmeta.name if v.video.channel else  "",
-    #                 v.video.channel.channel_id if v.video.channel else  "",
+    #                 v.video.channel.auditchannelmeta.name if v.video.channel else "",
+    #                 v.video.channel.channel_id if v.video.channel else "",
     #                 channel_lang,
     #                 v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
     #                 country,
     #                 v.video.channel.auditchannelmeta.video_count if v.video.channel else ""
     #             ]
     #             wr.writerow(data)
-    #         myfile.buffer.seek(0)
-    #
-    #     with open('export_{}_{}.csv'.format(name, audit_id)) as myfile:
-    #         file_name = 'export_{}_{}_true.csv'.format(audit_id, name)
-    #         AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
-    #         os.remove(myfile.name)
     #         if self.audit and self.audit.completed:
-    #             self.audit.params['export'] = file_name
+    #             self.audit.params['export'] = 'export_{}_{}.csv'.format(name, audit_id)
     #             self.audit.save()
-    #     return file_name
