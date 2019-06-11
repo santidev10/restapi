@@ -127,7 +127,7 @@ class Command(BaseCommand):
                    .format(self.audit.params['name'], self.audit.cached_data['count']) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
-        self.emailer.send_email(settings.NOTIFICATIONS_EMAIL_SENDER, recipients, subject, body)
+        self.emailer.send_email(recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:
