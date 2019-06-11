@@ -89,12 +89,14 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
+        counter = 0
         for channel in pending_channels[start:start+num]:
+            counter+=1
             self.do_check_channel(channel)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
-        raise Exception("Audit completed 1 step.  pausing {}. {}".format(self.audit.id, self.thread_id))
+        raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
 
     def process_seed_file(self, seed_file):
         try:
