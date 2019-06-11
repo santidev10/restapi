@@ -1,17 +1,18 @@
 from collections import defaultdict
 
+from django.conf import settings
 from django.http import Http404
-from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
-from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from utils.elasticsearch import ElasticSearchConnectorException
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from brand_safety.api.views.brand_safety.utils.utils import get_es_data
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from brand_safety.api.views.brand_safety.utils.utils import get_es_data
 import brand_safety.constants as constants
+from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.elasticsearch import ElasticSearchConnectorException
 
 
 class BrandSafetyVideoAPIView(APIView):
@@ -27,7 +28,7 @@ class BrandSafetyVideoAPIView(APIView):
         """
         video_id = kwargs["pk"]
         category_mapping = BadWordCategory.get_category_mapping()
-        video_es_data = get_es_data(video_id, constants.BRAND_SAFETY_VIDEO_ES_INDEX)
+        video_es_data = get_es_data(video_id, settings.BRAND_SAFETY_VIDEO_INDEX)
         if isinstance(video_es_data, ElasticSearchConnectorException):
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not video_es_data:

@@ -1,11 +1,12 @@
 from datetime import datetime
 from datetime import timedelta
+from django.utils import timezone
 from django.db import IntegrityError
-
 from django.db import models
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
+from django.db.models import Q
 from django.contrib.postgres.fields import JSONField
 import hashlib
 
@@ -140,23 +141,29 @@ class AuditProcessor(models.Model):
     audit_type = models.IntegerField(db_index=True, default=0)
 
     @staticmethod
-    def get(running=None, audit_type=None):
+    def get(running=None, audit_type=None, num_days=60, output=None):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
+        if num_days:
+            all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
         ret = {
             'running': [],
             'completed': []
         }
-        for a in all.order_by("pause", "-id"):
+        for a in all.order_by("pause", "-completed", "id"):
             d = a.to_dict()
             status = 'running'
-            if a.completed is not None:
-                status = 'completed'
-            ret[status].append(d)
-        return ret
+            if output:
+                print(d['id'], d['name'], d['data'], d['percent_done'])
+            else:
+                if a.completed is not None:
+                    status = 'completed'
+                ret[status].append(d)
+        if not output:
+            return ret
 
     def to_dict(self):
         audit_type = self.params.get('audit_type_original')
@@ -170,11 +177,17 @@ class AuditProcessor(models.Model):
             'created_time': self.created,
             'data': self.cached_data,
             'name': self.params.get('name'),
+            'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
+            'language': self.params.get('language'),
+            'category': self.params.get('category'),
+            'max_recommended': self.max_recommended
         }
+        if self.params.get('error'):
+            d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
-            d['percent_done'] = 100.0 * d['data']['count'] / d['data']['total']
+            d['percent_done'] = round(100.0 * d['data']['count'] / d['data']['total'], 2)
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
@@ -182,9 +195,24 @@ class AuditProcessor(models.Model):
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditLanguage.objects.get_or_create(language=in_var.lower())
+        return db_result
+
+    def __str__(self):
+        return self.language
+
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
+
+    @staticmethod
+    def get_all():
+        res = {}
+        for c in AuditCategory.objects.all():
+            res[str(c.category)] = c.category_display
+        return res
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
@@ -219,6 +247,7 @@ class AuditChannelMeta(models.Model):
     country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
     subscribers = models.BigIntegerField(default=0, db_index=True)
     view_count = models.BigIntegerField(default=0, db_index=True)
+    video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
 
 class AuditVideo(models.Model):
