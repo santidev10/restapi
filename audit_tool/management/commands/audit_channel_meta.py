@@ -44,13 +44,16 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
-        with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
-            try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
-            except Exception as e:
-                logger.exception(e)
-                raise Exception("no audits to process at present")
-            self.process_audit()
+        try:
+            with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
+                try:
+                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
+                except Exception as e:
+                    logger.exception(e)
+                    raise Exception("no audits to process at present")
+                self.process_audit()
+        except Exception as e:
+            print("locked {}".format(self.thread_id))
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
