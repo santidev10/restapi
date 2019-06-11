@@ -122,7 +122,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
     def test_set_admin_success_revoke(self):
         self.create_admin_user()
         test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
-        test_user.is_staff = False
+        test_user.is_staff = True
         test_user.save()
         payload = {
             "access": [
