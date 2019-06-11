@@ -94,7 +94,7 @@ class Command(BaseCommand):
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
-        raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+        raise Exception("Audit completed 1 step.  pausing {}. {}".format(self.audit.id, self.thread_id))
 
     def process_seed_file(self, seed_file):
         try:
