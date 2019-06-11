@@ -88,6 +88,8 @@ class Command(BaseCommand):
                     c = ChannelCommand()
                     c.audit = self.audit
                     c.export_channels()
+                    self.audit.audit_type = 2
+                    self.audit.save(update_fields=['audit_type'])
                     raise Exception("Audit completed, all channels processed")
             self.export_videos()
             raise Exception("Audit completed, all videos processed")
