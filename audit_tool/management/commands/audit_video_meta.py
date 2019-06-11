@@ -432,19 +432,10 @@ class Command(BaseCommand):
     #                 unique_hit_words,
     #             ]
     #             wr.writerow(data)
-    #         myfile.buffer.seek(0)
-    #
-    #     with open('export_{}.csv') as myfile:
-    #         clean_string = 'none'
-    #         if clean is not None:
-    #             clean_string = 'true' if clean else 'false'
-    #         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
-    #         AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
-    #         os.remove(myfile.name)
     #         if self.audit and self.audit.completed:
-    #             self.audit.params['export'] = file_name
+    #             self.audit.params['export'] = 'export_{}.csv'.format(name)
     #             self.audit.save()
-    #     return file_name
+    #         return 'export_{}.csv'.format(name)
 
     def get_hit_words(self, hit_words, v_id):
         hits = hit_words.get(v_id)
