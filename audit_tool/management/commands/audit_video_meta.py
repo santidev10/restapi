@@ -23,6 +23,7 @@ from utils.aws.ses_emailer import SESEmailer
 from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
+from django.conf import settings
 
 """
 requirements:
@@ -40,8 +41,6 @@ class Command(BaseCommand):
     categories = {}
     audit = None
     emailer = SESEmailer()
-    sender = "viewiq-notifications@channelfactory.com"
-    recipients = ["andrew.vonpelt@channelfactory.com", "bryan.ngo@channelfactory.com"]
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
@@ -84,6 +83,7 @@ class Command(BaseCommand):
                 raise Exception("waiting to process seed list on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True)
+        export_funcs = AuditExportApiView()
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
             self.audit.completed = timezone.now()
             self.audit.pause = 0
@@ -91,15 +91,13 @@ class Command(BaseCommand):
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
-                    c = ChannelCommand()
-                    c.audit = self.audit
-                    c.export_channels()
                     self.audit.audit_type = 2
                     self.audit.save(update_fields=['audit_type'])
+                    file_name = export_funcs.export_channels(self.audit, self.audit.id)
+                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                     raise Exception("Audit completed, all channels processed")
-            export_funcs = AuditExportApiView()
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
-            self.send_audit_email(file_name)
+            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
@@ -116,14 +114,16 @@ class Command(BaseCommand):
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
-    def send_audit_email(self, file_name):
+    def send_audit_email(self, file_name, recipients):
+        if self.audit.cached_data['count'] == 0:
+            return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
                    .format(self.audit.params['name'], self.audit.cached_data['count']) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
-        self.emailer.send_email(self.sender, self.recipients, subject, body)
+        self.emailer.send_email(recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:
