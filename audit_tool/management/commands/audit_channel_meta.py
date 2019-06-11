@@ -293,9 +293,9 @@ class Command(BaseCommand):
     #                     if bad_word not in hit_words[cid.channel.channel_id]:
     #                         hit_words[cid.channel.channel_id].append(bad_word)
     #     channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids).select_related(
-    #             "channel",
-    #             "language",
-    #             "country"
+    #         "channel",
+    #         "language",
+    #         "country"
     #     )
     #     try:
     #         name = self.audit.params['name'].replace("/", "-")
@@ -325,13 +325,7 @@ class Command(BaseCommand):
     #                 ','.join(hit_words[v.channel.channel_id])
     #             ]
     #             wr.writerow(data)
-    #         myfile.buffer.seek(0)
-    #
-    #     with open('export_{}.csv') as myfile:
-    #         file_name = 'export_{}_{}_true.csv'.format(audit_id, name)
-    #         AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
-    #         os.remove(myfile.name)
     #         if self.audit and self.audit.completed:
-    #             self.audit.params['export'] = file_name
+    #             self.audit.params['export'] = 'export_{}.csv'.format(name)
     #             self.audit.save()
-    #     return file_name
+    #         return 'export_{}.csv'.format(name)
