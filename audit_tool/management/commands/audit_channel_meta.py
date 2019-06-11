@@ -53,7 +53,7 @@ class Command(BaseCommand):
                     raise Exception("no audits to process at present")
                 self.process_audit()
         except Exception as e:
-            print("locked {}".format(self.thread_id))
+            print("problem {} {}".format(self.thread_id, str(e)))
 
     def process_audit(self, num=50000):
         self.load_inclusion_list()
