@@ -176,7 +176,7 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if self.audit.params.get('do_videos') == True:
+        if not acp.processed and self.audit.params.get('do_videos') == True:
             self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
