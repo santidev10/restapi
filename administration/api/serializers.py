@@ -17,7 +17,7 @@ from administration.models import UserAction
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
 from userprofile.models import get_default_accesses
-
+from userprofile.permissions import PermissionGroupNames
 
 class UserActionCreateSerializer(ModelSerializer):
     """
@@ -121,7 +121,7 @@ class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
     access = ListField(required=False)
-    is_staff = BooleanField(required=False)
+    admin = BooleanField(required=False)
 
     def validate(self, data):
         """
@@ -146,7 +146,7 @@ class UserUpdateSerializer(ModelSerializer):
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
             else:
-                data["is_staff"] = admin_access["value"]
+                data["admin"] = admin_access["value"]
         except (KeyError, IndexError):
             pass
         return data
@@ -154,7 +154,7 @@ class UserUpdateSerializer(ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
-            "status", "access", "is_staff",
+            "status", "access", "admin",
         )
 
     def save(self, **kwargs):
@@ -163,16 +163,21 @@ class UserUpdateSerializer(ModelSerializer):
         request = self.context.get("request")
         status = request.data.get("status", None)
         access = request.data.get("access", [])
-        try:
-            is_staff = self.validated_data["is_staff"]
-            if is_staff:
-                user.groups.set(Group.objects.all())
-            else:
-                default_access = get_default_accesses()
-                user.groups.clear()
-                user.groups.set(Group.objects.filter(name__in=default_access))
-        except KeyError:
+
+        admin = self.validated_data.get("admin", None)
+        # If setting admin status, give all access
+        if admin == True and admin != user.is_staff:
+            user.groups.set(Group.objects.exclude(name=PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS))
+            user.is_staff = True
+        # If revoking admin status, set default access
+        elif admin == False and admin != user.is_staff:
+            default_access = get_default_accesses()
+            user.groups.clear()
+            user.groups.set(Group.objects.filter(name__in=default_access))
+            user.is_staff = False
+        else:
             user.update_access(access)
+
         if status:
             if user.status in (UserStatuses.PENDING.value, UserStatuses.REJECTED.value):
                 user.is_active = False
