@@ -64,7 +64,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="Invalid numerical values: {}".format(request.data.values())
             )
-        if any(allocation * flight_updated_budget < self.MIN_BUDGET for allocation in allocations.values()):
+        if any((allocation / 100) * flight_updated_budget < self.MIN_BUDGET for allocation in allocations.values()):
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="All budget allocations must be greater than ${}.".format(self.MIN_BUDGET)
