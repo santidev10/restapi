@@ -15,6 +15,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
     queryset = Flight.objects.all()
     MIN_ALLOCATION_SUM = 99
     MAX_ALLOCATION_SUM = 101
+    MIN_BUDGET = 0.01
 
     def get(self, *a, **kwargs):
         """
@@ -63,10 +64,10 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="Invalid numerical values: {}".format(request.data.values())
             )
-        if any(allocation * flight_updated_budget <= 0 for allocation in allocations.values()):
+        if any(allocation * flight_updated_budget < self.MIN_BUDGET for allocation in allocations.values()):
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data="All budget allocations must be greater than $0."
+                data="All budget allocations must be greater than ${}.".format(self.MIN_BUDGET)
             )
         allocation_sum = sum(allocations.values())
         if not self.MIN_ALLOCATION_SUM <= round(allocation_sum) <= self.MAX_ALLOCATION_SUM:

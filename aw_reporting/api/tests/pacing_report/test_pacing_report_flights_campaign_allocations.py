@@ -223,7 +223,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertTrue(sum([allocation_1, allocation_2]) <= self.min_allocation)
         self.assertTrue(sum([allocation_3, allocation_4]) >= self.max_allocation)
 
-    def test_reject_allocation_zero(self):
+    def test_reject_allocation_min_budget(self):
         self.create_test_user()
         opportunity = Opportunity.objects.create()
         placement = OpPlacement.objects.create(opportunity=opportunity)
@@ -235,9 +235,9 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         campaign_2 = Campaign.objects.create(
             id=2, salesforce_placement=placement, account=account)
 
-        allocation_1, allocation_2 = 0, 100
+        allocation_1, allocation_2 = 0.009, 100
         put_data = {
-            "flight_budget": 0,
+            "flight_budget": 100,
             campaign_1.id: allocation_1,
             campaign_2.id: allocation_2
         }
