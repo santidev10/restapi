@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core import mail
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -10,6 +11,7 @@ from userprofile.constants import UserStatuses
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+from userprofile.models import get_default_accesses
 
 
 class AdminUpdateUserTestCase(ExtendedAPITestCase):
@@ -97,7 +99,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_set_admin_success(self):
+    def test_set_admin_success_grant(self):
         self.create_admin_user()
         test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
         test_user.is_staff = False
@@ -112,8 +114,29 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         }
         update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
         response = self.client.put(update_url, data=payload, format="json")
+        test_user.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["is_staff"], True)
+        self.assertEqual(set(test_user.groups.values_list("name", flat=True)), set(Group.objects.all().values_list("name", flat=True)))
+
+    def test_set_admin_success_revoke(self):
+        self.create_admin_user()
+        test_user = get_user_model().objects.create(email="test_status@example.com", status=UserStatuses.ACTIVE.value)
+        test_user.is_staff = True
+        test_user.save()
+        payload = {
+            "access": [
+                {
+                    "name": "Admin",
+                    "value": False
+                }
+            ]
+        }
+        update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(test_user.id,))
+        response = self.client.put(update_url, data=payload, format="json")
+        test_user.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["is_staff"], False)
 
     def test_set_admin_reject(self):
         self.create_test_user()

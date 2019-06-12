@@ -3,6 +3,8 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
+
 
 from administration.api.serializers import UserSerializer
 from administration.api.serializers import UserUpdateSerializer
@@ -32,3 +34,12 @@ class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
             return Response(data=serializer.errors, status=HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(data=self.serializer_class(user).data)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Prevent deletion of admin accounts
+        """
+        user = self.get_object()
+        if user.is_superuser:
+            return Response(status=HTTP_403_FORBIDDEN, data="You do not have permission to perform this action.")
+        return super().delete(self, request, *args, **kwargs)
