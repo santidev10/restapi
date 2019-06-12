@@ -11,7 +11,6 @@ from userprofile.constants import UserStatuses
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
-from userprofile.models import get_default_accesses
 
 
 class AdminUpdateUserTestCase(ExtendedAPITestCase):
