@@ -2,18 +2,21 @@
 Administration api serializers module
 """
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import PermissionsMixin
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import URLField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ListField
+from rest_framework.serializers import BooleanField
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.validators import ValidationError
 
 from administration.models import UserAction
 from userprofile.api.serializers.validators.extended_enum import extended_enum
 from userprofile.constants import UserStatuses
+from userprofile.models import get_default_accesses
 
 
 class UserActionCreateSerializer(ModelSerializer):
@@ -118,6 +121,7 @@ class UserUpdateSerializer(ModelSerializer):
     status = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                        validators=[extended_enum(UserStatuses)])
     access = ListField(required=False)
+    is_staff = BooleanField(required=False)
 
     def validate(self, data):
         """
@@ -128,10 +132,17 @@ class UserUpdateSerializer(ModelSerializer):
         user = self.context["request"].user
         target = self.instance
         access = data.pop("access", [])
+        status = data.get("status", None)
+        # Reject if changing own status or target is admin
+        if (status and target.id == user.id) or target.is_superuser:
+            exception = ValidationError("You do not have permission to perform this action.")
+            exception.status_code = HTTP_403_FORBIDDEN
+            raise exception
         try:
+            # Reject if changing admin access and auth user is not superuser
             admin_access = [item for item in access if item["name"].lower() == "admin"][0]
             if target.is_staff != admin_access["value"] and user.is_superuser is False:
-                exception = ValidationError("You do not have permission to change admin status.")
+                exception = ValidationError("You do not have permission to perform this action.")
                 exception.status_code = HTTP_403_FORBIDDEN
                 raise exception
             else:
@@ -143,16 +154,24 @@ class UserUpdateSerializer(ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = (
-            "status", "access"
+            "status", "access", "is_staff",
         )
 
     def save(self, **kwargs):
         old_status = self.instance.status
         user = super(UserUpdateSerializer, self).save(**kwargs)
         request = self.context.get("request")
-        access = request.data.get("access", None)
         status = request.data.get("status", None)
-        if access:
+        access = request.data.get("access", [])
+        try:
+            is_staff = self.validated_data["is_staff"]
+            if is_staff:
+                user.groups.set(Group.objects.all())
+            else:
+                default_access = get_default_accesses()
+                user.groups.clear()
+                user.groups.set(Group.objects.filter(name__in=default_access))
+        except KeyError:
             user.update_access(access)
         if status:
             if user.status in (UserStatuses.PENDING.value, UserStatuses.REJECTED.value):
