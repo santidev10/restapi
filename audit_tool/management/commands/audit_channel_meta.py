@@ -131,13 +131,16 @@ class Command(BaseCommand):
             seed = row[0]
             if 'youtube.com/channel/' in seed:
                 v_id = seed.split("/")[-1]
-                channel = AuditChannel.get_or_create(v_id)
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        channel=channel,
-                )
-                vids.append(acp)
+                if '?' in v_id:
+                    v_id = v_id.split("?")[0]
+                if v_id:
+                    channel = AuditChannel.get_or_create(v_id)
+                    AuditChannelMeta.objects.get_or_create(channel=channel)
+                    acp, _ = AuditChannelProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            channel=channel,
+                    )
+                    vids.append(acp)
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
