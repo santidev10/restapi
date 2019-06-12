@@ -118,7 +118,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         campaign_4 = Campaign.objects.create(
             id=4, salesforce_placement=placement, account=account)
 
-        allocation_1, allocation_2, allocation_3, allocation_4 = 70, 30, 0, 1
+        allocation_1, allocation_2, allocation_3, allocation_4 = 70, 27, 1, 2
         put_data = {
             "flight_budget": 100,
             campaign_1.id: allocation_1,
@@ -130,6 +130,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         by_id = {
             campaign["id"]: campaign for campaign in response.data
         }
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         self.assertEqual(by_id["1"]["goal_allocation"], allocation_1)
         self.assertEqual(by_id["2"]["goal_allocation"], allocation_2)
         self.assertEqual(by_id["3"]["goal_allocation"], allocation_3)
@@ -235,7 +236,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         campaign_2 = Campaign.objects.create(
             id=2, salesforce_placement=placement, account=account)
 
-        allocation_1, allocation_2 = 0.009, 100
+        allocation_1, allocation_2 = 0.00009, 100
         put_data = {
             "flight_budget": 100,
             campaign_1.id: allocation_1,
