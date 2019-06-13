@@ -22,7 +22,7 @@ class Command(BaseCommand):
         try:
             self.run(*args, **kwargs)
         except PidFileAlreadyLockedError:
-            logger.info("I am already running")
+            pass
 
     @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):

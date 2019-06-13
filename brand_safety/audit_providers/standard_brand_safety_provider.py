@@ -86,7 +86,7 @@ class StandardBrandSafetyProvider(object):
             # Update brand safety processors
             self.audits[constants.BRAND_SAFETY] = self.get_bad_word_processors_by_language()
             self.audit_service.audits = self.audits
-        logger.info("Complete.")
+        logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
 
     def _process_audits(self, channel_ids):
         """
