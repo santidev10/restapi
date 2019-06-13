@@ -27,7 +27,6 @@ class StandardBrandSafetyService(AuditService):
         self.brand_safety_score_multiplier = kwargs["score_multiplier"]
         self.default_video_category_scores = kwargs["default_video_category_scores"]
         self.default_channel_category_scores = kwargs["default_channel_category_scores"]
-        self.languages = kwargs["languages"]
 
     def audit_videos(self, video_data=None, channel_ids=None,):
         """
@@ -52,7 +51,6 @@ class StandardBrandSafetyService(AuditService):
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
                 default_category_scores=default_category_score_copy,
-                languages=self.languages,
             )
             audit.run_audit()
             video_audits.append(audit)
@@ -83,7 +81,6 @@ class StandardBrandSafetyService(AuditService):
                 score_mapping=self.score_mapping,
                 brand_safety_score_multiplier=self.brand_safety_score_multiplier,
                 default_category_scores=default_category_score_copy,
-                languages = self.languages,
             )
             channel_audit.run_audit()
             channel_audits.append(channel_audit)

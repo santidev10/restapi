@@ -14,7 +14,6 @@ class BrandSafetyChannelAudit(object):
         self.score_mapping = kwargs["score_mapping"]
         self.brand_safety_score_multiplier = kwargs["brand_safety_score_multiplier"]
         self.default_category_scores = kwargs["default_category_scores"]
-        self.languages = kwargs["languages"]
         self.auditor = Audit()
         self.results = {}
         self.video_audits = video_audits

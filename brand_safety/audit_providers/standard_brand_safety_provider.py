@@ -16,7 +16,6 @@ from brand_safety.audit_providers.base import AuditProvider
 from brand_safety.audit_services.standard_brand_safety_service import StandardBrandSafetyService
 from singledb.connector import SingleDatabaseApiConnector
 from utils.elasticsearch import ElasticSearchConnector
-from utils.languages import LANGUAGES
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,6 @@ class StandardBrandSafetyProvider(object):
             score_multiplier=self.brand_safety_score_multiplier,
             default_video_category_scores=self.default_video_category_scores,
             default_channel_category_scores=self.default_channel_category_scores,
-            languages=self.map_language_to_code(),
             es_video_index=settings.BRAND_SAFETY_VIDEO_INDEX,
             es_channel_index=settings.BRAND_SAFETY_CHANNEL_INDEX
         )
@@ -242,18 +240,6 @@ class StandardBrandSafetyProvider(object):
         video_audits = results["video_audits"]
         channel_audits = results["channel_audits"]
         self._index_results(video_audits, channel_audits)
-
-    @staticmethod
-    def map_language_to_code():
-        """
-        Mapping of language strings to ISO 1 Letter language codes
-        :return:
-        """
-        mapped = {
-            lang.lower(): code
-            for code, lang in LANGUAGES.items()
-        }
-        return mapped
 
     def _get_channels_to_update(self, channel_ids):
         """
