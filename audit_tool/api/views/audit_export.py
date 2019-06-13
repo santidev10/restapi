@@ -17,6 +17,8 @@ from rest_framework.status import HTTP_200_OK
 from django.http import StreamingHttpResponse
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
+import boto3
+from botocore.client import Config
 
 
 class AuditExportApiView(APIView):
@@ -292,6 +294,16 @@ class AuditS3Exporter(S3Exporter):
     export_content_type = "application/CSV"
 
     @classmethod
+    def _presigned_s3(cls):
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=cls.aws_access_key_id,
+            aws_secret_access_key=cls.aws_secret_access_key,
+            config=Config(signature_version='s3v4')
+        )
+        return s3
+
+    @classmethod
     def get_s3_key(cls, name):
         key = name
         return key
@@ -306,7 +318,7 @@ class AuditS3Exporter(S3Exporter):
 
     @classmethod
     def generate_temporary_url(cls, key_name, time_limit=3600):
-        return cls._s3().generate_presigned_url(
+        return cls._presigned_s3().generate_presigned_url(
             ClientMethod="get_object",
             Params={
                 "Bucket": cls.bucket_name,
