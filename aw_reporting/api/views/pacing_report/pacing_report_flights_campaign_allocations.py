@@ -24,8 +24,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         :return: (list) Campaign objects
         """
         flight = self.get_object()
-        split_goal_allocations = kwargs.pop("split_goal_allocations", True)
-        data = PacingReport().get_campaigns(flight, split_goal_allocations)
+        data = PacingReport().get_campaigns(flight)
         self.multiply_percents(data)
         return Response(data=data)
 
@@ -89,7 +88,6 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 budget=campaign_budget,
                 update_time=timezone.now()
             )
-        kwargs["split_goal_allocations"] = False
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
         return res
