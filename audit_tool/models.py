@@ -169,6 +169,9 @@ class AuditProcessor(models.Model):
         audit_type = self.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit_type
+        lang = self.params.get('language')
+        if not lang:
+            lang = 'en'
         d = {
             'id': self.id,
             'priority': self.pause,
@@ -180,7 +183,7 @@ class AuditProcessor(models.Model):
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
-            'language': self.params.get('language'),
+            'language': lang,
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended
         }
