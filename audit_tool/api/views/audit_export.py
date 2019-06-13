@@ -113,14 +113,15 @@ class AuditExportApiView(APIView):
         for vid in videos:
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
-        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids).select_related(
+        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
+        """.select_related(
                 "video",
                 "video__channel",
                 "video__channel__auditchannelmeta",
                 "video__channel__auditchannelmeta__country",
                 "language",
                 "category"
-        )
+        )"""
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
