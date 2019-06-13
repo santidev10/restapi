@@ -44,7 +44,9 @@ def get_default_accesses(via_google=False):
         PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,
         PermissionGroupNames.MEDIA_PLANNING,
+        PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
         PermissionGroupNames.FORECASTING,
+        PermissionGroupNames.BRAND_SAFETY_SCORING,
     ]
     if not via_google:
         default_accesses_group_names.append(PermissionGroupNames.MANAGED_SERVICE)
@@ -204,7 +206,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
     @property
     def access(self):
-        return self.groups.values('name')
+        accesses = list(self.groups.values('name'))
+        if self.is_staff:
+            accesses.append({"name": "Admin"})
+        return accesses
 
     @property
     def logo_url(self):

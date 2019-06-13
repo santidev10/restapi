@@ -371,6 +371,9 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             "items": []
         }
         for item in response.data.get("items", []):
+            items_count = item.get("statistics", {}).get("items_count", 0)
+            if items_count is None or items_count <= 0:
+                continue
             if item.get("title") in PersistentSegmentTitles.MASTER_BLACKLIST_SEGMENT_TITLES:
                 formatted_response["master_blacklist"] = item
 
@@ -466,7 +469,6 @@ class PersistentSegmentPreviewAPIView(APIView):
     )
     MAX_PAGE_SIZE = 10
     DEFAULT_PAGE_SIZE = 5
-    MAX_ITEMS = 100
 
     def get(self, request, **kwargs):
         """
@@ -506,7 +508,7 @@ class PersistentSegmentPreviewAPIView(APIView):
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        related_items = segment.related.select_related("segment").order_by("related_id")[:self.MAX_ITEMS]
+        related_items = segment.related.select_related("segment").order_by("related_id")
         paginator = Paginator(related_items, size)
         try:
             preview_page = paginator.page(page)
@@ -564,4 +566,3 @@ class PersistentSegmentPreviewAPIView(APIView):
             mapped_data["subscribers"] = data["details"].get("subscribers")
             mapped_data["audited_videos"] = data["details"].get("audited_videos")
         return mapped_data
-

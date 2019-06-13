@@ -306,6 +306,7 @@ LOGGING = {
 }
 
 SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
+NOTIFICATIONS_EMAIL_SENDER = "viewiq-notifications@channelfactory.com"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = os.getenv("EMAIL_PORT", None) or 1025
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -354,6 +355,12 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
+]
+
+AUDIT_TOOL_EMAIL_RECIPIENTS = [
+    "andrew.vonpelt@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
@@ -408,7 +415,8 @@ if is_running_under_teamcity():
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
 AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
-AMAZON_S3_AUDITS_BUCKET_NAME = "viewiq-audit-files"
+AMAZON_S3_AUDITS_FILES_BUCKET_NAME = "viewiq-audit-files"
+AMAZON_S3_AUDITS_EXPORTS_BUCKET_NAME = "viewiq-audit-exports"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
@@ -445,6 +453,9 @@ USE_LEGACY_BRAND_SAFETY = True
 CELERY_ENABLED = True
 
 ELASTIC_SEARCH_URLS = [""]
+BRAND_SAFETY_CHANNEL_INDEX = ""
+BRAND_SAFETY_VIDEO_INDEX = ""
+BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
 try:

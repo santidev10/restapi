@@ -102,6 +102,10 @@ class Command(BaseCommand):
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])
                 except Exception as e:
                     pass
+                try:
+                    db_channel_meta.video_count = int(i['statistics']['videoCount'])
+                except Exception as e:
+                    pass
                 db_channel_meta.emoji = self.audit_channel_meta_for_emoji(db_channel_meta)
                 try:
                     db_channel_meta.save()

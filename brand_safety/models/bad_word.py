@@ -1,7 +1,8 @@
 from django.db import models
+from django.utils import timezone
 
 from aw_reporting.models import BaseQueryset
-
+from audit_tool.models import AuditLanguage
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
@@ -25,13 +26,49 @@ class BadWordCategory(models.Model):
         return self.name
 
 
-class BadWord(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=80, unique=True)
-    category = models.ForeignKey(BadWordCategory, db_index=True)
-    negative_score = models.IntegerField(default=1, db_index=True)
+class BadWordQuerySet(BaseQueryset):
+    # Soft delete for queryset bulk delete operations
+    def delete(self):
+        return super(BadWordQuerySet, self).update(deleted_at=timezone.now())
 
-    objects = BaseQueryset.as_manager()
+    def hard_delete(self):
+        return super(BadWordQuerySet, self).delete()
+
+
+class BadWordManager(models.Manager):
+    def __init__(self, *args, **kwargs):
+        self.active_only = kwargs.pop("active_only", True)
+        super(BadWordManager, self).__init__(*args, **kwargs)
+
+    def get_queryset(self):
+        # If manager was accessed with BadWord.objects, then return objects with deleted_at=None
+        if self.active_only:
+            return BadWordQuerySet(self.model).filter(deleted_at=None)
+        return BadWordQuerySet(self.model)
+    
+
+class BadWord(models.Model):
+    DEFAULT_LANGUAGE = "en"
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=80, db_index=True)
+    category = models.ForeignKey(BadWordCategory, db_index=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None, related_name="bad_words")
+    negative_score = models.IntegerField(default=1, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, default=None, db_index=True)
+
+    objects = BadWordManager(active_only=True)
+    all_objects = BadWordManager(active_only=False)
+
+    # Soft delete for single objects
+    def delete(self):
+        self.deleted_at = timezone.now()
+        self.save()
+        return self
+
+    def hard_delete(self):
+        return super(BadWord, self).delete()
 
     class Meta:
-        unique_together = ("name", "category")
+        unique_together = ("name", "language")
+
