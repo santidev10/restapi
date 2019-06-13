@@ -273,7 +273,7 @@ class AuditExportApiView(APIView):
         hits = hit_words.get(v_id)
         uniques = []
         words_to_use = 'exclusion'
-        if clean and clean=='True':
+        if clean is None or clean=='True':
             words_to_use = 'inclusion'
         if hits:
             if hits.get(words_to_use):
