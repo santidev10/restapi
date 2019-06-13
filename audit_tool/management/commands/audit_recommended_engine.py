@@ -231,21 +231,24 @@ class Command(BaseCommand):
             )
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
-            if self.check_video_is_clean(db_video_meta, avp):
-                #print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
+            is_clean, hits = self.check_video_is_clean(db_video_meta)
+            if is_clean:
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
                         v, _ = AuditVideoProcessor.objects.get_or_create(
                             video=db_video,
                             audit=self.audit
                         )
+                        v.word_hits = hits
                         if not v.video_source:
                             v.video_source = video
-                            v.save()
+                        v.save()
+
         avp.processed = timezone.now()
         avp.save()
 
-    def check_video_is_clean(self, db_video_meta, avp):
+    def check_video_is_clean(self, db_video_meta):
+        hits = {}
         full_string = "{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
@@ -253,15 +256,14 @@ class Command(BaseCommand):
         )
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list)
-            avp.word_hits['inclusion'] = hits
+            hits['inclusion'] = hits
             if not is_there:
-                return False
+                return False, hits
         if self.exclusion_list:
             is_there, hits = self.check_exists(full_string, self.exclusion_list)
-            avp.word_hits['exclusion'] = hits
             if is_there:
-                return False
-        return True
+                return False, hits
+        return True, hits
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
