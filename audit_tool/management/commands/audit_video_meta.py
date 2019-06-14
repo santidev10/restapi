@@ -91,6 +91,8 @@ class Command(BaseCommand):
             print("Audit completed, all videos processed")
             if self.audit.params.get('audit_type_original'):
                 if self.audit.params['audit_type_original'] == 2:
+                    self.audit.audit_type = 2
+                    self.audit.save(update_fields=['audit_type'])
                     file_name = export_funcs.export_channels(self.audit, self.audit.id)
                     self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                     raise Exception("Audit completed, all channels processed")
@@ -113,6 +115,8 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
     def send_audit_email(self, file_name, recipients):
+        if self.audit.cached_data['count'] == 0:
+            return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
