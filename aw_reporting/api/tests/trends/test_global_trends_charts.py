@@ -705,6 +705,28 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
         self.assertEqual(set(i['value'] for i in trend[0]["trend"]),
                          {test_impressions})
 
+    def test_request_without_date_filter(self):
+        start = date(2018, 1, 1)
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+            start=start,
+        )
+        self.campaign.salesforce_placement = placement
+        self.campaign.save()
+
+        filters = dict(
+            indicator=Indicator.CPV,
+            breakdown=Breakdown.HOURLY,
+        )
+        url = "{}?{}".format(self.url, urlencode(filters))
+        manager = self.campaign.account.managers.first()
+        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+
 def get_trend(data, uid):
     trends = dict(((t["id"], t["data"])
                    for t in data))
