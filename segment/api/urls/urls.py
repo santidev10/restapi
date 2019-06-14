@@ -14,6 +14,8 @@ from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentListApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.api.views import PersistentSegmentPreviewAPIView
+
+
 from segment.utils import SEGMENT_TYPES
 from segment.utils import PERSISTENT_SEGMENT_TYPES
 
