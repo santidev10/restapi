@@ -140,6 +140,12 @@ class AuditProcessor(models.Model):
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
+    def remove_exports(self):
+        for b,c in self.params.items():
+            if 'export_' in b:
+                del self.params[b]
+        self.save()
+
     @staticmethod
     def get(running=None, audit_type=None, num_days=60, output=None):
         all = AuditProcessor.objects.all()
