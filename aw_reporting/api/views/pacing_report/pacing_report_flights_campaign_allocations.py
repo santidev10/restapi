@@ -15,6 +15,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
     queryset = Flight.objects.all()
     MIN_ALLOCATION_SUM = 99
     MAX_ALLOCATION_SUM = 101
+    MIN_BUDGET = 0.01
 
     def get(self, *a, **kwargs):
         """
@@ -23,8 +24,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         :return: (list) Campaign objects
         """
         flight = self.get_object()
-        split_goal_allocations = kwargs.pop("split_goal_allocations", True)
-        data = PacingReport().get_campaigns(flight, split_goal_allocations)
+        data = PacingReport().get_campaigns(flight)
         self.multiply_percents(data)
         return Response(data=data)
 
@@ -63,7 +63,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data="Invalid numerical values: {}".format(request.data.values())
             )
-
+        if any((allocation / 100) * flight_updated_budget < self.MIN_BUDGET for allocation in allocations.values()):
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data="All budget allocations must be greater than ${}.".format(self.MIN_BUDGET)
+            )
         allocation_sum = sum(allocations.values())
         if not self.MIN_ALLOCATION_SUM <= round(allocation_sum) <= self.MAX_ALLOCATION_SUM:
             return Response(
@@ -84,7 +88,6 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 budget=campaign_budget,
                 update_time=timezone.now()
             )
-        kwargs["split_goal_allocations"] = False
         res = self.get(request, *args, **kwargs)
         res.status_code = HTTP_202_ACCEPTED
         return res

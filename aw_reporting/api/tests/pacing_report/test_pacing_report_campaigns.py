@@ -176,6 +176,67 @@ class PacingReportTestCase(APITestCase):
         self.assertEqual(chart_data_1["goal"], expected_goal_1)
         self.assertEqual(chart_data_2["goal"], expected_goal_2)
 
+    def test_campaign_allocation_goal_split(self):
+        now = datetime(2018, 10, 10, 10, 10)
+        today = now.date()
+        ordered_views = 100
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement,
+            ordered_units=ordered_views,
+            start=today,
+            end=today,
+        )
+        allocation_1 = 0
+        allocation_2 = 40
+        allocation_3 = 0
+        allocation_4 = 20
+        campaign_1 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_1,
+        )
+        campaign_2 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_2,
+        )
+        campaign_3 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_3,
+        )
+        campaign_4 = Campaign.objects.create(
+            id=str(next(int_iterator)),
+            salesforce_placement=placement,
+            goal_allocation=allocation_4,
+        )
+
+        user_settings = {
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
+        }
+        url = reverse("aw_reporting_urls:pacing_report_campaigns", args=(flight.id,))
+        with self.patch_user_settings(**user_settings), \
+             patch_now(now):
+            response = self.client.get(url)
+
+        split_allocation = (100 - allocation_2 - allocation_4) / 2
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        data = response.data
+
+        self.assertEqual(len(data), 4)
+        items_by_id = {item["id"]: item for item in data}
+        self.assertEqual(items_by_id[campaign_1.id]["goal_allocation"], split_allocation)
+        self.assertEqual(items_by_id[campaign_2.id]["goal_allocation"], allocation_2)
+        self.assertEqual(items_by_id[campaign_3.id]["goal_allocation"], split_allocation)
+        self.assertEqual(items_by_id[campaign_4.id]["goal_allocation"], allocation_4)
+
     def test_campaign_allocation_planned_delivery_chart(self):
         now = datetime(2018, 10, 10, 10, 10)
         today = now.date()
