@@ -37,7 +37,7 @@ class StandardBrandSafetyProvider(object):
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
     # Hours in which a channel should be updated
-    update_time_threshold = 24 * 7
+    update_time_threshold = 24 * 3
     DEFAULT_SLEEP = 1.5
 
     def __init__(self, *_, **kwargs):
