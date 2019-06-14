@@ -1,4 +1,5 @@
 from django.db.models import Q
+
 from segment.utils import get_persistent_segment_model_by_type
 from segment.utils import get_segment_model_by_type
 
