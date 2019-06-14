@@ -17,6 +17,6 @@ class PacingReportCampaignsApiView(ListAPIView, PacingReportHelper):
             return Response(status=HTTP_404_NOT_FOUND)
 
         report = PacingReport()
-        campaigns = report.get_campaigns(flight, split_goal_allocations=False)
+        campaigns = report.get_campaigns(flight)
         self.multiply_percents(campaigns)
         return Response(campaigns)

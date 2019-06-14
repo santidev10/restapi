@@ -36,7 +36,7 @@ class AuditExportApiView(APIView):
             raise ValidationError("audit_id is required.")
         if clean is not None:
             try:
-                clean = strtobool(clean)
+                clean = bool(strtobool(clean))
             except ValueError:
                 clean = None
 
