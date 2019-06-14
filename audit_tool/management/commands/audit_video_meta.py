@@ -11,12 +11,12 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
-from audit_tool.management.commands.audit_channel_meta import Command as ChannelCommand
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from utils.aws.ses_emailer import SESEmailer
@@ -83,8 +83,8 @@ class Command(BaseCommand):
                 raise Exception("waiting to process seed list on thread 0")
         else:
             pending_videos = pending_videos.filter(processed__isnull=True)
-        export_funcs = AuditExportApiView()
         if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
+            export_funcs = AuditExportApiView()
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
@@ -94,10 +94,11 @@ class Command(BaseCommand):
                     self.audit.audit_type = 2
                     self.audit.save(update_fields=['audit_type'])
                     file_name = export_funcs.export_channels(self.audit, self.audit.id)
-                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+                    count = AuditChannelProcessor.objects.filter(audit=self.audit).count()
+                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
                     raise Exception("Audit completed, all channels processed")
             file_name = export_funcs.export_videos(self.audit, self.audit.id)
-            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, self.audit.cached_data['count'])
             raise Exception("Audit completed, all videos processed")
         videos = {}
         pending_videos = pending_videos.select_related("video")
@@ -114,13 +115,13 @@ class Command(BaseCommand):
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
 
-    def send_audit_email(self, file_name, recipients):
-        if self.audit.cached_data['count'] == 0:
+    def send_audit_email(self, file_name, recipients, count):
+        if count == 0:
             return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   .format(self.audit.params['name'], count) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         self.emailer.send_email(recipients, subject, body)
@@ -340,13 +341,13 @@ class Command(BaseCommand):
             return True, keywords
         return False, None
 
-    def get_categories(self):
-        categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
-        url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
-        r = requests.get(url)
-        data = r.json()
-        for i in data['items']:
-            AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
+    # def get_categories(self):
+    #     categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
+    #     url = self.CATEGORY_API_URL.format(key=self.DATA_API_KEY, id=','.join(categories))
+    #     r = requests.get(url)
+    #     data = r.json()
+    #     for i in data['items']:
+    #         AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     # def export_videos(self, audit_id=None, num_out=None, clean=True):
     #     self.get_categories()
@@ -439,13 +440,13 @@ class Command(BaseCommand):
     #             self.audit.save()
     #         return 'export_{}.csv'.format(name)
 
-    def get_hit_words(self, hit_words, v_id):
-        hits = hit_words.get(v_id)
-        uniques = []
-        if hits:
-            if hits.get('exclusion'):
-                for word in hits['exclusion']:
-                    if word not in uniques:
-                        uniques.append(word)
-                return len(hits['exclusion']), ','.join(uniques)
-        return '', ''
+    # def get_hit_words(self, hit_words, v_id):
+    #     hits = hit_words.get(v_id)
+    #     uniques = []
+    #     if hits:
+    #         if hits.get('exclusion'):
+    #             for word in hits['exclusion']:
+    #                 if word not in uniques:
+    #                     uniques.append(word)
+    #             return len(hits['exclusion']), ','.join(uniques)
+    #     return '', ''

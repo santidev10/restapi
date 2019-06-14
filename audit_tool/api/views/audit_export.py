@@ -45,7 +45,9 @@ class AuditExportApiView(APIView):
         except Exception as e:
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
-        audit_type = audit.audit_type
+        audit_type = audit.params.get('audit_type_original')
+        if not audit_type:
+            audit_type = audit.audit_type
         if audit_type == 2:
             file_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
         else:
