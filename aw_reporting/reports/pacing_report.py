@@ -910,7 +910,7 @@ class PacingReport:
     # ## FLIGHTS ## #
 
     # ## CAMPAIGNS ## #
-    def get_campaigns(self, flight):
+    def get_campaigns(self, flight, split_goal_allocations=True):
         queryset = Campaign.objects.filter(
             salesforce_placement__flights=flight)
         campaigns = queryset.values(
@@ -918,7 +918,7 @@ class PacingReport:
         ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
 
         # get allocations
-        if campaigns:
+        if campaigns and split_goal_allocations:
             if abs(sum(c['goal_allocation'] for c in campaigns) - 100) > 0.1:
                 def_allocation = 100 / len(campaigns)  # 50 for two campaigns
                 for c in campaigns:

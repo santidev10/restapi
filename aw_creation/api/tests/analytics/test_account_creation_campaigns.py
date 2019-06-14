@@ -5,9 +5,9 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
+from aw_reporting.demo.data import CAMPAIGN_STATS
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.data import DEMO_AD_GROUPS
-from aw_reporting.demo.data import DEMO_CAMPAIGNS_COUNT
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -18,9 +18,11 @@ from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
+
+DEMO_CAMPAIGNS_COUNT = len(CAMPAIGN_STATS)
 
 
 class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):

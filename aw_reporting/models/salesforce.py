@@ -4,7 +4,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.db import models
 from django.db.models import Count
+from django.db.models import Q
 
+from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
@@ -13,6 +15,7 @@ from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
+from utils.db.models.persistent_entities import PersistentEntityModelMixin
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,8 @@ class Category(BaseModel):
         return dict(id=data['value'])
 
 
-class SFAccount(BaseModel):
+class SFAccount(BaseModel, PersistentEntityModelMixin):
+    _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200)
     parent = models.ForeignKey('self', null=True)
@@ -129,7 +133,8 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .filter(campaign_count__gt=0)
 
 
-class Opportunity(models.Model):
+class Opportunity(models.Model, PersistentEntityModelMixin):
+    _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True)
@@ -364,7 +369,8 @@ class Opportunity(models.Model):
         ordering = ('-start',)
 
 
-class OpPlacement(BaseModel):
+class OpPlacement(BaseModel, PersistentEntityModelMixin):
+    _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     opportunity = models.ForeignKey(Opportunity, related_name='placements')
     name = models.CharField(max_length=100)
@@ -454,7 +460,8 @@ class OpPlacement(BaseModel):
             return self.ordered_units
 
 
-class Flight(BaseModel):
+class Flight(BaseModel, PersistentEntityModelMixin):
+    _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     placement = models.ForeignKey(OpPlacement, related_name='flights')
     name = models.CharField(max_length=100)

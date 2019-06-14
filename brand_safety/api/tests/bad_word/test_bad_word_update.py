@@ -5,8 +5,10 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
-from brand_safety.models import BadWord, BadWordCategory
+from brand_safety.models import BadWord
+from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -24,10 +26,12 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
 
     def setUp(self):
         self.category = BadWordCategory.objects.create(name="test_category")
+        self.language = AuditLanguage.objects.create(language="sv")
         self.bad_word = BadWord.objects.create(
             id=next(int_iterator),
             name="test bad word",
-            category=self.category
+            category=self.category,
+            language=self.language
         )
 
     def _request(self, pk=None, **kwargs):
@@ -53,7 +57,9 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
     def test_has_permissions(self):
         self.create_admin_user()
 
-        response = self._request()
+        response = self._request(
+            name="test"
+        )
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -77,32 +83,25 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
 
     def test_category_required(self):
         self.create_admin_user()
-
         response = self._request(
             name="Test bad word",
             category=None,
         )
-
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_disallow_the_same_bad_word_in_different_categories(self):
+    def test_reject_same_word_language_category(self):
         self.create_admin_user()
-        bad_word = self.bad_word
-        category_2 = BadWordCategory.objects.create(name="test category #2")
         another_bad_word = BadWord.objects.create(
             id=next(int_iterator),
-            name="test bad word #2",
-            category=category_2,
+            name="test_word_reject",
+            category=self.category,
+            language=self.language
         )
-
         response = self._request(
-            pk=bad_word.pk,
-            name=another_bad_word.name,
+            pk=another_bad_word.pk,
+            name=self.bad_word.name,
         )
-
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        bad_word.refresh_from_db()
-        self.assertNotEqual(bad_word.category, another_bad_word.category)
 
     def test_reject_duplicates(self):
         self.create_admin_user()
@@ -135,3 +134,4 @@ class BadWordUpdateTestCase(ExtendedAPITestCase):
         bad_word.refresh_from_db()
         self.assertEqual(bad_word.category.id, new_category.id)
         self.assertEqual(bad_word.category.name, new_category.name)
+
