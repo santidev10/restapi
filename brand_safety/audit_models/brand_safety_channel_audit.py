@@ -121,6 +121,7 @@ class BrandSafetyChannelAudit(object):
             "_op_type": action,
             "_id": self.pk,
             "channel_id": brand_safety_results.pk,
+            "title": self.metadata["channel_title"],
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "videos_scored": brand_safety_results.videos_scored,
             "updated_at": str(date.today()),

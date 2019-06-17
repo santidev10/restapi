@@ -102,6 +102,7 @@ class BrandSafetyVideoAudit(object):
             "_op_type": op_type,
             "_id": self.pk,
             "video_id": brand_safety_results.pk,
+            "title": self.metadata["video_title"],
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "language": self.metadata["language"],
             "youtube_category": self.metadata["category"],
