@@ -144,7 +144,7 @@ class AuditProcessor(models.Model):
         exports = []
         for b,c in self.params.items():
             if 'export_' in b:
-                exports.add(b)
+                exports.append(b)
         for export_name in exports:
            del self.params[export_name]
         self.save()
