@@ -17,6 +17,11 @@ urlpatterns = [
         name=Names.CATEGORY_LIST
     ),
     url(
+        r'^history/$',
+        views.BadWordHistoryApiView.as_view(),
+        name=Names.HISTORY,
+    ),
+    url(
         r'^export/$',
         views.BadWordExportApiView.as_view(),
         name=Names.EXPORT,
@@ -25,10 +30,5 @@ urlpatterns = [
         r'^(?P<pk>.+)/$',
         views.BadWordUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
-    ),
-    url(
-        r"^history/$",
-        views.BadWordHistoryApiView.as_view(),
-        name=Names.HISTORY
     )
 ]

@@ -1,5 +1,7 @@
 from django.db import models
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from aw_reporting.models import BaseQueryset
 from audit_tool.models import AuditLanguage
@@ -60,19 +62,9 @@ class BadWord(models.Model):
     objects = BadWordManager(active_only=True)
     all_objects = BadWordManager(active_only=False)
 
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            super().save(*args, **kwargs)
-            BadWordHistory.objects.create(tag=self, action="Added")
-        else:
-            BadWordHistory.objects.create(tag=self, action="Edited")
-        super().save(*args, **kwargs)
-
-    # Soft delete for single objects
     def delete(self):
         self.deleted_at = timezone.now()
-        BadWordHistory.objects.create(tag=self, action="Deleted")
-        self.save()
+        self.save(update_fields=['deleted_at'])
         return self
 
     def hard_delete(self):
@@ -80,6 +72,20 @@ class BadWord(models.Model):
 
     class Meta:
         unique_together = ("name", "language")
+
+
+@receiver(post_save, sender=BadWord)
+def update_history(sender, update_fields, created, instance, **kwargs):
+    if created:
+        BadWordHistory.objects.create(tag=instance, action="Added")
+    elif update_fields is not None and 'deleted_at' in update_fields:
+        if instance.deleted_at is not None:
+            BadWordHistory.objects.create(tag=instance, action="Deleted")
+        else:
+            BadWordHistory.objects.create(tag=instance, action="Recovered")
+    else:
+        BadWordHistory.objects.create(tag=instance, action="Edited")
+    return
 
 
 class BadWordHistory(models.Model):
