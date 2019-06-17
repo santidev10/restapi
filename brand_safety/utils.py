@@ -30,17 +30,17 @@ class BrandSafetyQueryBuilder(object):
         self.languages = data.get("languages", [])
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
+        self.options = self._get_segment_options()
+        self.query_body = self._construct_query()
 
     def execute(self):
-        options = self._get_segment_options(self.segment_type, self.list_type)
-        query = self._construct_query(options)
         try:
-            result = ElasticSearchConnector(index_name=options["index"]).search(doc_type=settings.BRAND_SAFETY_TYPE, body=query)
+            result = ElasticSearchConnector(index_name=self.options["index"]).search(doc_type=settings.BRAND_SAFETY_TYPE, body=self.query_body)
         except ElasticSearchConnectorException:
             raise ElasticSearchConnectorException
         return result
 
-    def _get_segment_options(self, segment_type: str, list_type: str) -> dict:
+    def _get_segment_options(self) -> dict:
         """
         Get options for segment wizard
         :param segment_type: (str) channel, video
@@ -62,13 +62,13 @@ class BrandSafetyQueryBuilder(object):
             },
         }
         config = {
-            "index": options[segment_type]["index"],
-            "minimum_option": options[segment_type]["minimum_option"],
-            "range_param": options["range_param"][list_type],
+            "index": options[self.segment_type]["index"],
+            "minimum_option": options[self.segment_type]["minimum_option"],
+            "range_param": options["range_param"][self.list_type],
         }
         return config
 
-    def _construct_query(self, options: dict) -> dict:
+    def _construct_query(self) -> dict:
         """
         Construct Elasticsearch query for segment items
         :param config: dict
@@ -109,7 +109,7 @@ class BrandSafetyQueryBuilder(object):
 
         # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
         category_score_params = [
-            {"range": {"categories.{}.category_score".format(category): {options["range_param"]: self.score_threshold}}}
+            {"range": {"categories.{}.category_score".format(category): {self.options["range_param"]: self.score_threshold}}}
             for category in self.brand_safety_categories
         ]
         youtube_categories = [
@@ -127,6 +127,6 @@ class BrandSafetyQueryBuilder(object):
 
         # Sets range query in must clause
         # e.g. { "range": { "subscribers": { "gte": 1000 } }
-        minimum_option_body[options["minimum_option"]] = {"gte": self.score_threshold}
+        minimum_option_body[self.options["minimum_option"]] = {"gte": self.score_threshold}
         return query_body
 

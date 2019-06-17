@@ -1,11 +1,13 @@
+from django.conf import settings
 from rest_framework.response import Response
+from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.views import APIView
 
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.views import SegmentListCreateApiView
-from utils.elasticsearch import ElasticSearchConnectorException
+from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+from segment.custom_segment_export_generator import CustomSegemntExportGenerator
 
 
 class SegmentListCreateApiViewV2(SegmentListCreateApiView, APIView):
@@ -13,6 +15,7 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView, APIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
+        content_type = self.model.segment_type
         try:
             self._validate_data(data)
         except ValueError:
@@ -20,18 +23,22 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView, APIView):
                 status=HTTP_400_BAD_REQUEST,
                 data="You must provide the following fields: {}".format(", ".join(self.REQUIRED_FIELDS))
             )
-        data["segment_type"] = self.model.segment_type
+        data["segment_type"] = content_type
         query_builder = BrandSafetyQueryBuilder(data)
-        try:
-            result = query_builder.execute()
-        except ElasticSearchConnectorException:
-            return Response(status=HTTP_502_BAD_GATEWAY, data="Unable to connect to Elasticsearch.")
-
-        return Response(result)
+        filename = "testing"
+        to_export = CustomSegmentFileUpload.enqueue(
+            owner=request.user,
+            query=query_builder.query_body,
+            content_type=content_type,
+            filename=filename
+        )
+        return Response(status=HTTP_201_CREATED, data=to_export.quey)
 
     def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)
         received = set(data.keys())
         if expected != received:
             raise ValueError
+
+
 
