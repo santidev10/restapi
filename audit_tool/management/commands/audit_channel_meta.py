@@ -185,7 +185,7 @@ class Command(BaseCommand):
         acp.processed = timezone.now()
         if db_channel_meta.name:
             acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed'])
+        acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
