@@ -44,6 +44,9 @@ class BadWordHistoryApiView(ListAPIView):
                 entry['date'] = object.created_at
                 entry['language'] = tag_object.language.language
                 entry['category'] = tag_object.category.name
+                entry['before'] = object.before
+                entry['after'] = object.after
+                entry['fields_modified'] = object.fields_modified
                 history.append(entry)
             except Exception as e:
                 pass
