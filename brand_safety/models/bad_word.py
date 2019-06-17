@@ -75,7 +75,7 @@ class BadWord(models.Model):
 
 
 @receiver(post_save, sender=BadWord)
-def update_history(sender, update_fields, created, instance, **kwargs):
+def update_history(update_fields, created, instance, **kwargs):
     if created:
         BadWordHistory.objects.create(tag=instance, action="Added")
     elif update_fields is not None and 'deleted_at' in update_fields:

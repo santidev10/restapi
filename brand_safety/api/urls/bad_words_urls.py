@@ -27,6 +27,11 @@ urlpatterns = [
         name=Names.EXPORT,
     ),
     url(
+        r'^(?P<pk>.+)/recover/$',
+        views.BadWordRecoverApiView.as_view(),
+        name=Names.RECOVER,
+    ),
+    url(
         r'^(?P<pk>.+)/$',
         views.BadWordUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
