@@ -60,9 +60,18 @@ class BadWord(models.Model):
     objects = BadWordManager(active_only=True)
     all_objects = BadWordManager(active_only=False)
 
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            super().save(*args, **kwargs)
+            BadWordHistory.objects.create(tag=self, action="Added")
+        else:
+            BadWordHistory.objects.create(tag=self, action="Edited")
+        super().save(*args, **kwargs)
+
     # Soft delete for single objects
     def delete(self):
         self.deleted_at = timezone.now()
+        BadWordHistory.objects.create(tag=self, action="Deleted")
         self.save()
         return self
 
@@ -72,3 +81,9 @@ class BadWord(models.Model):
     class Meta:
         unique_together = ("name", "language")
 
+
+class BadWordHistory(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    tag = models.ForeignKey(BadWord, on_delete=models.CASCADE)
+    action = models.CharField(max_length=30, db_column='action')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
