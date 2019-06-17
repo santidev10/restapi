@@ -12,6 +12,12 @@ class BadWordHistorySerializer(ModelSerializer):
     def validate_tag(self, value):
         try:
             tag_id = int(value)
+            try:
+                tag = BadWord.objects.get(id=tag_id)
+            except BadWordHistory.DoesNotExist:
+                raise ValidationError("BadWord with ID: {} does not exist. Please enter a valid BadWord ID."
+                                      .format(value))
+            return tag
         except ValueError:
             raise ValidationError("Expected BadWord ID value. Received: {}".format(value))
 

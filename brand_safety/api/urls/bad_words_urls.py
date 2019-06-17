@@ -30,5 +30,5 @@ urlpatterns = [
         r"^history/$",
         views.BadWordHistoryApiView.as_view(),
         name=Names.HISTORY
-    ),
+    )
 ]
