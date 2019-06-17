@@ -141,9 +141,12 @@ class AuditProcessor(models.Model):
     audit_type = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
+        exports = []
         for b,c in self.params.items():
             if 'export_' in b:
-                del self.params[b]
+                exports.add(b)
+        for export_name in exports:
+           del self.params[export_name]
         self.save()
 
     @staticmethod
