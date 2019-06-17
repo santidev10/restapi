@@ -25,5 +25,10 @@ urlpatterns = [
         r'^(?P<pk>.+)/$',
         views.BadWordUpdateDeleteApiView.as_view(),
         name=Names.UPDATE_DELETE,
-    )
+    ),
+    url(
+        r"^history/$",
+        views.BadWordHistoryApiView.as_view(),
+        name=Names.HISTORY
+    ),
 ]
