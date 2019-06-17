@@ -8,7 +8,7 @@ from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 
 
-class CustomSegemntExportGenerator(S3Exporter):
+class CustomSegmentExportGenerator(S3Exporter):
     def __init__(self):
         self.es_conn = ElasticSearchConnector()
 
