@@ -78,7 +78,7 @@ class BadWord(models.Model):
                 prev_instance = BadWord.all_objects.get(id=self.id)
             except Exception as e:
                 prev_instance = None
-        if prev_instance:
+        if prev_instance is not None:
             if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
                 if self.deleted_at is not None:
                     BadWordHistory.objects.create(tag=self, action="Deleted")
