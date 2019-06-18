@@ -10,9 +10,9 @@ import brand_safety.constants as constants
 
 
 class CustomSegmentFileUpload(Model):
-    BASE_COLUMNS = ["overall_score", "language", "youtube_category"]
-    VIDEO_COLUMNS = BASE_COLUMNS + ["channel_id", "views"]
-    CHANNEL_COLUMNS = BASE_COLUMNS + ["video_id", "subscribers"]
+    BASE_COLUMNS = ["url", "overall_score", "language", "youtube_category"]
+    CHANNEL_COLUMNS = BASE_COLUMNS + ["subscribers"]
+    VIDEO_COLUMNS = BASE_COLUMNS + ["views"]
 
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=SET_NULL)
     content_type = CharField(max_length=15)

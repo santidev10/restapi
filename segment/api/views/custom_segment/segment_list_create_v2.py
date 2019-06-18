@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.views import SegmentListCreateApiView
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
-from segment.custom_segment_export_generator import CustomSegemntExportGenerator
 
 
 class SegmentListCreateApiViewV2(SegmentListCreateApiView, APIView):

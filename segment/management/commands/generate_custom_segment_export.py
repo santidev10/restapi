@@ -1,15 +1,29 @@
-from django.core.management import BaseCommand
 import logging
+
+from django.core.management import BaseCommand
 from pid.decorator import pidfile
+from pid import PidFileAlreadyLockedError
 
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
+from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmpty
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    @pidfile(piddir=".", pidname="custom_segment_export.pid")
+
     def handle(self, *args, **options):
-        # Process five at a time
+        try:
+            self.run(*args, **options)
+        except PidFileAlreadyLockedError:
+            pass
+
+    @pidfile(piddir=".", pidname="custom_segment_export.pid")
+    def run(self, *args, **kwargs):
         generator = CustomSegmentExportGenerator()
-        generator.generate()
+        while generator.has_next():
+            try:
+                generator.generate()
+            except CustomSegmentFileUploadQueueEmpty:
+                break
+        logger.error("Complete.")
