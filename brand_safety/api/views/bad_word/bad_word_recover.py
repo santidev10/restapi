@@ -2,7 +2,6 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
-from django.core import serializers
 
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord

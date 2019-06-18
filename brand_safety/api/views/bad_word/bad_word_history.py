@@ -2,7 +2,6 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.serializers import ValidationError
 
 from datetime import datetime
@@ -42,8 +41,6 @@ class BadWordHistoryApiView(ListAPIView):
                 entry['tag_id'] = tag_object.id
                 entry['action'] = object.action
                 entry['date'] = object.created_at
-                entry['language'] = tag_object.language.language
-                entry['category'] = tag_object.category.name
                 entry['before'] = object.before
                 entry['after'] = object.after
                 entry['fields_modified'] = object.fields_modified

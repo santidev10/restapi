@@ -99,9 +99,6 @@ def track_previous(sender, instance, **kwargs):
         fields_modified = ", ".join(fields_modified)
         BadWordHistory.objects.create(tag=instance, action="Edited", before=before,
                                       after=after, fields_modified=fields_modified)
-    # kwargs['before'] = before
-    # kwargs['after'] = after
-    # kwargs['fields_modified'] = fields_modified
 
 
 @receiver(post_save, sender=BadWord)
@@ -113,13 +110,6 @@ def update_history_action(update_fields, created, instance, **kwargs):
             BadWordHistory.objects.create(tag=instance, action="Deleted")
         else:
             BadWordHistory.objects.create(tag=instance, action="Recovered")
-    # else:
-    #     if len(kwargs['fields_modified']) > 0:
-    #         before = ", ".join(kwargs['before'])
-    #         after = ", ".join(kwargs['after'])
-    #         fields_modified = ", ".join(kwargs['fields_modified'])
-    #         BadWordHistory.objects.create(tag=instance, action="Edited", before=before,
-    #                                       after=after, fields_modified=fields_modified)
     return
 
 
