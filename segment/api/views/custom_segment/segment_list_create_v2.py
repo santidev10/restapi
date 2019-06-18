@@ -20,16 +20,20 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView):
                 status=HTTP_400_BAD_REQUEST,
                 data="You must provide the following fields: {}".format(", ".join(self.REQUIRED_FIELDS))
             )
-        segment = super().post(request, *args, **kwargs)
+        result = super().post(request, *args, **kwargs)
+        segment = self.model.objects.get(id=result.data["id"])
         data["segment_type"] = content_type
         query_builder = BrandSafetyQueryBuilder(data)
         to_export = CustomSegmentFileUpload.enqueue(
             owner=request.user,
             query=query_builder.query_body,
+            segment=segment
         )
-        segment.export = to_export
-        segment.save()
-        return Response(status=HTTP_201_CREATED, data=to_export.query)
+        data = {
+            "segment_id": segment.id,
+            "export_id": to_export.id
+        }
+        return Response(status=HTTP_201_CREATED, data=data)
 
     def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)
