@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.utils import timezone
 
 from brand_safety.constants import CHANNEL
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
@@ -20,6 +19,10 @@ class CustomSegmentExportGenerator(S3Exporter):
         self.es_conn = ElasticSearchConnector()
 
     def generate(self):
+        """
+        Dequeue segment to create and process
+        :return:
+        """
         try:
             export = CustomSegmentFileUpload.dequeue()
         except CustomSegmentFileUploadQueueEmpty:
@@ -45,6 +48,10 @@ class CustomSegmentExportGenerator(S3Exporter):
 
     @staticmethod
     def has_next():
+        """
+        Check if queue has at least one item
+        :return:
+        """
         has_next = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
         if has_next:
             return True
