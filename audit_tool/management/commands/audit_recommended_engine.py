@@ -121,12 +121,15 @@ class Command(BaseCommand):
             #self.process_audit()
 
     def send_audit_email(self, file_name, recipients):
-        if self.audit.cached_data['count'] == 0:
+        count = AuditVideoProcessor.objects.filter(audit=self.audit).count()
+        if count == 0:
             return
+        self.audit.cached_data['count'] = count
+        self.audit.save(update_fields=['cached_data'])
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   .format(self.audit.params['name'], "{:,}".format(count)) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         self.emailer.send_email(recipients, subject, body)

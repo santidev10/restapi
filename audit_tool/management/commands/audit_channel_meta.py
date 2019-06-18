@@ -109,9 +109,10 @@ class Command(BaseCommand):
         if self.audit.cached_data['count'] == 0:
             return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
+        count = self.audit.cached_data['count']
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   .format(self.audit.params['name'], "{:,}".format(count)) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         self.emailer.send_email(recipients, subject, body)
@@ -184,7 +185,7 @@ class Command(BaseCommand):
         acp.processed = timezone.now()
         if db_channel_meta.name:
             acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed'])
+        acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
