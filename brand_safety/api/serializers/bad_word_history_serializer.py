@@ -23,4 +23,4 @@ class BadWordHistorySerializer(ModelSerializer):
 
     class Meta:
         model = BadWordHistory
-        fields = ("id", "tag", "action", "created_at")
+        fields = ("id", "tag", "action", "created_at", "changes")
