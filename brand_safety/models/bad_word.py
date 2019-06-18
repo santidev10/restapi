@@ -78,7 +78,11 @@ class BadWord(models.Model):
                 prev_instance = BadWord.all_objects.get(id=self.id)
             except Exception as e:
                 prev_instance = None
-        if prev_instance is not None:
+        if self.id is None or prev_instance is None:
+            super().save(*args, **kwargs)
+            BadWordHistory.objects.create(tag=self, action="Added")
+            return
+        else:
             if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
                 if self.deleted_at is not None:
                     BadWordHistory.objects.create(tag=self, action="Deleted")
@@ -97,10 +101,6 @@ class BadWord(models.Model):
                             field.capitalize(), old_field_value, new_field_value
                         )
                         BadWordHistory.objects.create(tag=self, action="Edited", changes=changes)
-        else:
-            super().save(*args, **kwargs)
-            BadWordHistory.objects.create(tag=self, action="Added")
-            return
         return super().save(*args, **kwargs)
 
     class Meta:
