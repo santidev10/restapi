@@ -64,6 +64,7 @@ class BadWord(models.Model):
     objects = BadWordManager(active_only=True)
     all_objects = BadWordManager(active_only=False)
 
+    # Soft delete for single objects
     def delete(self):
         self.deleted_at = timezone.now()
         self.save(update_fields=['deleted_at'])
@@ -80,14 +81,14 @@ class BadWord(models.Model):
                 prev_instance = None
         if self.id is None or prev_instance is None:
             super().save(*args, **kwargs)
-            BadWordHistory.objects.create(tag=self, action="Added")
+            BadWordHistory.objects.create(tag=self, action=1)
             return
         else:
             if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
                 if self.deleted_at is not None:
-                    BadWordHistory.objects.create(tag=self, action="Deleted")
+                    BadWordHistory.objects.create(tag=self, action=2)
                 else:
-                    BadWordHistory.objects.create(tag=self, action="Recovered")
+                    BadWordHistory.objects.create(tag=self, action=3)
             else:
                 prev_instance = BadWord.all_objects.get(id=self.id)
                 fields = ['name', 'category', 'language', 'negative_score']
@@ -100,7 +101,7 @@ class BadWord(models.Model):
                         changes = "{}: {} -> {}".format(
                             field.capitalize(), old_field_value, new_field_value
                         )
-                        BadWordHistory.objects.create(tag=self, action="Edited", changes=changes)
+                        BadWordHistory.objects.create(tag=self, action=0, changes=changes)
         return super().save(*args, **kwargs)
 
     class Meta:
@@ -108,8 +109,14 @@ class BadWord(models.Model):
 
 
 class BadWordHistory(models.Model):
+    ACTIONS = {
+        0: 'Edited',
+        1: 'Added',
+        2: 'Deleted',
+        3: 'Recovered'
+    }
     id = models.AutoField(primary_key=True, db_column='id')
     tag = models.ForeignKey(BadWord, on_delete=models.CASCADE)
-    action = models.CharField(max_length=30, db_column='action')
+    action = models.IntegerField(default=1, db_column='action')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     changes = models.CharField(max_length=250, db_index=True, default="")

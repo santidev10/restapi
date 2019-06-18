@@ -16,7 +16,7 @@ class BadWordRecoverApiView(RetrieveUpdateDestroyAPIView):
         pk = kwargs.get('pk')
         try:
             instance = BadWord.all_objects.get(id=pk)
-        except Exception as e:
+        except BadWord.DoesNotExist:
             raise ValidationError("BadWord object with id: '{}' does not exist.".format(pk))
         if instance.deleted_at:
             instance.deleted_at = None

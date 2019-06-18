@@ -32,17 +32,9 @@ class BadWordHistoryApiView(ListAPIView):
         return queryset
 
     def get(self, request, *args, **kwargs):
-        history = []
-        for object in self.get_queryset():
-            try:
-                tag_object = object.tag
-                entry = {}
-                entry['name'] = tag_object.name
-                entry['id'] = tag_object.id
-                entry['action'] = object.action
-                entry['date'] = object.created_at
-                entry['changes'] = object.changes
-                history.append(entry)
-            except Exception as e:
-                pass
+        history = self.get_queryset().values('tag__name', 'tag__id', 'action', 'created_at', 'changes')
+        for entry in history:
+            entry['name'] = entry.pop('tag__name')
+            entry['id'] = entry.pop('tag__id')
+            entry['action'] = BadWordHistory.ACTIONS[entry['action']]
         return Response(data=history, status=HTTP_200_OK)
