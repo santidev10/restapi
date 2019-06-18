@@ -1,4 +1,3 @@
-from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -31,7 +30,7 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView, APIView):
             content_type=content_type,
             filename=filename
         )
-        return Response(status=HTTP_201_CREATED, data=to_export.quey)
+        return Response(status=HTTP_201_CREATED, data=to_export.query)
 
     def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)

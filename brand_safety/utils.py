@@ -27,6 +27,7 @@ class BrandSafetyQueryBuilder(object):
         self.list_type = data["list_type"]
         self.segment_type = data["segment_type"]
         self.score_threshold = data.get("score_threshold", 0)
+        self.score_threshold = self.score_threshold if self.list_type == "whitelist" else self._map_blacklist_severity(self.score_threshold)
         self.languages = data.get("languages", [])
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
@@ -129,4 +130,20 @@ class BrandSafetyQueryBuilder(object):
         # e.g. { "range": { "subscribers": { "gte": 1000 } }
         minimum_option_body[self.options["minimum_option"]] = {"gte": self.score_threshold}
         return query_body
+
+    def _map_blacklist_severity(self, score_threshold):
+        """
+        Map blacklist severity from client to score
+        :param score_threshold: int
+        :return: int
+        """
+        if score_threshold == 1:
+            threshold = 50
+        elif score_threshold == 2:
+            threshold = 75
+        elif score_threshold == 3:
+            threshold = 89
+        else:
+            threshold = 100
+        return threshold
 
