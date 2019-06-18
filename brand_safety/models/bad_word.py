@@ -73,7 +73,7 @@ class BadWord(models.Model):
         return super(BadWord, self).delete()
 
     def save(self, *args, **kwargs):
-        if self.id is not None:
+        if self.id is not None and len(BadWord.all_objects.filter(id=self.id)) > 0:
             if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
                 if self.deleted_at is not None:
                     BadWordHistory.objects.create(tag=self, action="Deleted")
