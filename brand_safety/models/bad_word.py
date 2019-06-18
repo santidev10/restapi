@@ -88,7 +88,7 @@ def track_previous(sender, instance, **kwargs):
         if old_field_value != new_field_value:
             if field == 'negative_score':
                 field = 'rating'
-            changes = "Changed {}: {} -> {}.".format(
+            changes = "{}: {} -> {}".format(
                 field.capitalize(), old_field_value, new_field_value
             )
             BadWordHistory.objects.create(tag=instance, action="Edited", changes=changes)
