@@ -77,10 +77,6 @@ class BadWord(models.Model):
 
 @receiver(pre_save, sender=BadWord)
 def track_previous(sender, instance, **kwargs):
-    # changes = []
-    before = []
-    after = []
-    fields_modified = []
     if instance.id is not None:
         prev_instance = sender.all_objects.get(id=instance.id)
     else:
@@ -90,15 +86,12 @@ def track_previous(sender, instance, **kwargs):
         old_field_value = getattr(prev_instance, field)
         new_field_value = getattr(instance, field)
         if old_field_value != new_field_value:
-            before.append(str(old_field_value))
-            after.append(str(new_field_value))
-            fields_modified.append(field)
-    if len(fields_modified) > 0:
-        before = ", ".join(before)
-        after = ", ".join(after)
-        fields_modified = ", ".join(fields_modified)
-        BadWordHistory.objects.create(tag=instance, action="Edited", before=before,
-                                      after=after, fields_modified=fields_modified)
+            if field == 'negative_score':
+                field = 'rating'
+            changes = "Changed {}: {} -> {}.".format(
+                field.capitalize(), old_field_value, new_field_value
+            )
+            BadWordHistory.objects.create(tag=instance, action="Edited", changes=changes)
 
 
 @receiver(post_save, sender=BadWord)
@@ -118,6 +111,4 @@ class BadWordHistory(models.Model):
     tag = models.ForeignKey(BadWord, on_delete=models.CASCADE)
     action = models.CharField(max_length=30, db_column='action')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
-    before = models.CharField(max_length=180, db_index=True, default="")
-    after = models.CharField(max_length=180, db_index=True, default="")
-    fields_modified = models.CharField(max_length=80, db_index=True, default="")
+    changes = models.CharField(max_length=250, db_index=True, default="")
