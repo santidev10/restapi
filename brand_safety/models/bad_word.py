@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from aw_reporting.models import BaseQueryset
 from audit_tool.models import AuditLanguage
 
+
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
     # Categories to exclude from brand safety
@@ -71,39 +72,34 @@ class BadWord(models.Model):
     def hard_delete(self):
         return super(BadWord, self).delete()
 
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
+                if self.deleted_at is not None:
+                    BadWordHistory.objects.create(tag=self, action="Deleted")
+                else:
+                    BadWordHistory.objects.create(tag=self, action="Recovered")
+            else:
+                prev_instance = BadWord.all_objects.get(id=self.id)
+                fields = ['name', 'category', 'language', 'negative_score']
+                for field in fields:
+                    old_field_value = getattr(prev_instance, field)
+                    new_field_value = getattr(self, field)
+                    if old_field_value != new_field_value:
+                        if field == 'negative_score':
+                            field = 'rating'
+                        changes = "{}: {} -> {}".format(
+                            field.capitalize(), old_field_value, new_field_value
+                        )
+                        BadWordHistory.objects.create(tag=self, action="Edited", changes=changes)
+        else:
+            super().save(*args, **kwargs)
+            BadWordHistory.objects.create(tag=self, action="Added")
+            return
+        return super().save(*args, **kwargs)
+
     class Meta:
         unique_together = ("name", "language")
-
-
-@receiver(pre_save, sender=BadWord)
-def track_previous(sender, instance, **kwargs):
-    if instance.id is not None:
-        prev_instance = sender.all_objects.get(id=instance.id)
-    else:
-        return
-    fields = ['name', 'category', 'language', 'negative_score']
-    for field in fields:
-        old_field_value = getattr(prev_instance, field)
-        new_field_value = getattr(instance, field)
-        if old_field_value != new_field_value:
-            if field == 'negative_score':
-                field = 'rating'
-            changes = "{}: {} -> {}".format(
-                field.capitalize(), old_field_value, new_field_value
-            )
-            BadWordHistory.objects.create(tag=instance, action="Edited", changes=changes)
-
-
-@receiver(post_save, sender=BadWord)
-def update_history_action(update_fields, created, instance, **kwargs):
-    if created:
-        BadWordHistory.objects.create(tag=instance, action="Added")
-    elif update_fields is not None and 'deleted_at' in update_fields:
-        if instance.deleted_at is not None:
-            BadWordHistory.objects.create(tag=instance, action="Deleted")
-        else:
-            BadWordHistory.objects.create(tag=instance, action="Recovered")
-    return
 
 
 class BadWordHistory(models.Model):
