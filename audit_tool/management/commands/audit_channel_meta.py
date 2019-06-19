@@ -91,7 +91,7 @@ class Command(BaseCommand):
                 self.audit.save(update_fields=['completed', 'pause'])
                 print("Audit of channels completed")
                 export_funcs = AuditExportApiView()
-                file_name = export_funcs.export_channels(self.audit, self.audit.id)
+                file_name = export_funcs.export_channels(self.audit, self.audit.id)[0]
                 self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                 raise Exception("Audit of channels completed")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
