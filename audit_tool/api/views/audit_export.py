@@ -50,23 +50,23 @@ class AuditExportApiView(APIView):
         if not audit_type:
             audit_type = audit.audit_type
         if audit_type == 2:
-            file_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
+            s3_name, download_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
         else:
             if audit_type == 0:
                 clean = None
-            file_name = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
+            s3_name, download_name = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
 
         try:
-            content_generator = AuditS3Exporter.get_s3_export_content(file_name).iter_chunks()
+            content_generator = AuditS3Exporter.get_s3_export_content(s3_name).iter_chunks()
         except Exception as e:
-            raise ValidationError("File with name: {} not found on S3.".format(file_name))
+            raise ValidationError("File with name: {} not found on S3.".format(s3_name))
 
         response = StreamingHttpResponse(
             content_generator,
             content_type="application/CSV",
             status=HTTP_200_OK,
         )
-        response["Content-Disposition"] = "attachment; filename={}".format(file_name)
+        response["Content-Disposition"] = "attachment; filename={}".format(download_name)
         return response
 
     def get_categories(self):
@@ -182,7 +182,7 @@ class AuditExportApiView(APIView):
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save()
             os.remove(myfile.name)
-        return s3_file_name
+        return s3_file_name, download_file_name
 
     def export_channels(self, audit, audit_id=None, clean=None):
         if not audit_id:
@@ -274,7 +274,7 @@ class AuditExportApiView(APIView):
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save()
-        return s3_file_name
+        return s3_file_name, download_file_name
 
     def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
@@ -323,7 +323,8 @@ class AuditS3Exporter(S3Exporter):
             Bucket=cls.bucket_name,
             Key=cls.get_s3_key(s3_name),
             Body=exported_file,
-            ContentDisposition=download_name
+            ContentDisposition='attachment; filename="{}"'.format(download_name),
+            ContentType="text/csv"
         )
 
     @classmethod
