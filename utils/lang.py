@@ -81,5 +81,5 @@ def remove_links(s):
 
 
 # Cleans string by removing mentions, hashtags, and links
-def clean_string(s):
+def remove_mentions_hashes_urls(s):
     return remove_links(remove_hashtags(remove_mentions(s)))

@@ -17,7 +17,7 @@ from singledb.connector import SingleDatabaseApiConnector
 import re
 import requests
 import langid
-from utils.lang import clean_string
+from utils.lang import remove_mentions_hashes_urls
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,8 @@ class AuditUK():
 
     def calc_language(self, data):
         try:
-            return langid.classify(clean_string(data))[0].lower()
+            data = remove_mentions_hashes_urls(data)
+            return langid.classify(data)[0].lower()
         except Exception as e:
             pass
 
