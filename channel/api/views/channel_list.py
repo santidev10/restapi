@@ -57,7 +57,6 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
         "country",
         "category",
         "emails",
-        "description",
         "subscribers",
         "thirty_days_subscribers",
         "thirty_days_views",
