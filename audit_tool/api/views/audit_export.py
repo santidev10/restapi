@@ -2,6 +2,7 @@ from distutils.util import strtobool
 import csv
 import requests
 import os
+from uuid import uuid4
 
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditVideoProcessor
@@ -174,12 +175,14 @@ class AuditExportApiView(APIView):
             myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            s3_file_name = uuid4().hex
+            download_file_name = file_name
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save()
             os.remove(myfile.name)
-        return file_name
+        return s3_file_name
 
     def export_channels(self, audit, audit_id=None, clean=None):
         if not audit_id:
@@ -264,12 +267,14 @@ class AuditExportApiView(APIView):
             myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
-            AuditS3Exporter.export_to_s3(myfile.buffer.raw, file_name)
+            s3_file_name = uuid4().hex
+            download_file_name = file_name
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             os.remove(myfile.name)
             if audit and audit.completed:
-                audit.params['export_{}'.format(clean_string)] = file_name
+                audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save()
-        return file_name
+        return s3_file_name
 
     def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
@@ -285,9 +290,9 @@ class AuditExportApiView(APIView):
                 return len(hits[words_to_use]), ','.join(uniques)
         return "", ""
 
-    def put_file_on_s3_and_create_url(self, file, name):
-        AuditS3Exporter.export_to_s3(file, name)
-        url = AuditS3Exporter.generate_temporary_url(name)
+    def put_file_on_s3_and_create_url(self, file, s3_name, download_name):
+        AuditS3Exporter.export_to_s3(file, s3_name, download_name)
+        url = AuditS3Exporter.generate_temporary_url(s3_name)
         return url
 
 
@@ -311,11 +316,14 @@ class AuditS3Exporter(S3Exporter):
         return key
 
     @classmethod
-    def export_to_s3(cls, exported_file, name):
+    def export_to_s3(cls, exported_file, s3_name, download_name=None):
+        if download_name is None:
+            download_name = s3_name + ".csv"
         cls._s3().put_object(
             Bucket=cls.bucket_name,
-            Key=cls.get_s3_key(name),
-            Body=exported_file
+            Key=cls.get_s3_key(s3_name),
+            Body=exported_file,
+            ContentDisposition=download_name
         )
 
     @classmethod
