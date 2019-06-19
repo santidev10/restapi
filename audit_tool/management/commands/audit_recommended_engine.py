@@ -19,6 +19,7 @@ from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from utils.aws.ses_emailer import SESEmailer
+from utils.lang import remove_mentions_hashes_urls
 from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
@@ -338,6 +339,7 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
+            data = remove_mentions_hashes_urls(data)
             l = langid.classify(data.lower())[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
