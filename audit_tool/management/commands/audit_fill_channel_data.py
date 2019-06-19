@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from utils.lang import clean_string
 import langid
 import logging
 from django.conf import settings
@@ -57,6 +58,7 @@ class Command(BaseCommand):
         if channel.description:
             str_long = "{} {}".format(str_long, channel.description)
         try:
+            str_long = clean_string(str_long)
             l = langid.classify(str_long.lower())[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             channel.language = db_lang

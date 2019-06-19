@@ -1,4 +1,5 @@
 import langid
+from utils.lang import clean_string
 
 from brand_safety import constants
 from brand_safety.audit_models.base import Audit
@@ -69,6 +70,7 @@ class CustomVideoAudit(Audit):
         language = data["snippet"].get("defaultLanguage", None)
         if language is None:
             text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
+            text = clean_string(text)
             language = langid.classify(text)[0].lower()
         return language
 

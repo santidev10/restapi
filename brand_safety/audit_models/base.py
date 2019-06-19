@@ -2,6 +2,7 @@ import re
 from collections import Counter
 from collections import namedtuple
 
+from utils.lang import clean_string
 import langid
 
 KeywordHit = namedtuple("KeywordHit", "name location")
@@ -46,6 +47,7 @@ class Audit(object):
         :param text: text to analyze
         :return: Language code
         """
+        text = clean_string(text)
         language = langid.classify(text)[0].lower()
         return language
 

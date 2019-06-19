@@ -24,6 +24,7 @@ from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from utils.lang import clean_string
 
 """
 requirements:
@@ -307,7 +308,7 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
-            l = langid.classify(data.lower())[0]
+            l = langid.classify(clean_string(data.lower()))[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
         except Exception as e:
