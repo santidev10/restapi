@@ -101,7 +101,7 @@ class Command(BaseCommand):
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
                     print("Audit completed, all videos processed")
-                    file_name = export_funcs.export_videos(self.audit, self.audit.id)
+                    file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
                     self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
                     raise Exception("Audit completed, all videos processed")
                 else:
@@ -115,7 +115,7 @@ class Command(BaseCommand):
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
-            file_name = export_funcs.export_videos(self.audit, self.audit.id)
+            file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
             self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
             print("Audit completed {}".format(self.audit.id))
             raise Exception("Audit completed {}".format(self.audit.id))

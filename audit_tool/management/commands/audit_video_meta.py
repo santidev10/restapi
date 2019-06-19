@@ -95,11 +95,11 @@ class Command(BaseCommand):
                     if self.audit.params['audit_type_original'] == 2:
                         self.audit.audit_type = 2
                         self.audit.save(update_fields=['audit_type'])
-                        file_name = export_funcs.export_channels(self.audit, self.audit.id)
+                        file_name = export_funcs.export_channels(self.audit, self.audit.id)[0]
                         count = AuditChannelProcessor.objects.filter(audit=self.audit).count()
                         self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
                         raise Exception("Audit completed, all channels processed")
-                file_name = export_funcs.export_videos(self.audit, self.audit.id)
+                file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
                 self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, self.audit.cached_data['count'])
                 raise Exception("Audit completed, all videos processed")
             else:
