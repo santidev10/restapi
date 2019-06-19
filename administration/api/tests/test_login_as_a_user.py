@@ -15,6 +15,13 @@ class LoginAsAUserAPITestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    def test_fail_as_admin(self):
+        self.user = self.create_admin_user()
+        url = reverse("admin_api_urls:user_auth_admin",
+                      args=(self.user.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
     def test_fail_404(self):
         self.user = self.create_test_user()
         self.user.is_staff = True

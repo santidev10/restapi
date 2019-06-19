@@ -140,6 +140,15 @@ class AuditProcessor(models.Model):
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
+    def remove_exports(self):
+        exports = []
+        for b,c in self.params.items():
+            if 'export_' in b:
+                exports.append(b)
+        for export_name in exports:
+           del self.params[export_name]
+        self.save()
+
     @staticmethod
     def get(running=None, audit_type=None, num_days=60, output=None):
         all = AuditProcessor.objects.all()
@@ -169,6 +178,9 @@ class AuditProcessor(models.Model):
         audit_type = self.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit_type
+        lang = self.params.get('language')
+        if not lang:
+            lang = 'en'
         d = {
             'id': self.id,
             'priority': self.pause,
@@ -180,7 +192,7 @@ class AuditProcessor(models.Model):
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
-            'language': self.params.get('language'),
+            'language': lang,
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended
         }

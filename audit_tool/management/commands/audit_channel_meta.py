@@ -60,7 +60,7 @@ class Command(BaseCommand):
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
 
-    def process_audit(self, num=50000):
+    def process_audit(self, num=5000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -106,14 +106,16 @@ class Command(BaseCommand):
         raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
 
     def send_audit_email(self, file_name, recipients):
+        if self.audit.cached_data['count'] == 0:
+            return
         file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
+        count = self.audit.cached_data['count']
         subject = "Audit '{}' Completed".format(self.audit.params['name'])
         body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
+                   .format(self.audit.params['name'], "{:,}".format(count)) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
         self.emailer.send_email(recipients, subject, body)
-
 
     def process_seed_file(self, seed_file):
         try:
@@ -130,13 +132,16 @@ class Command(BaseCommand):
             seed = row[0]
             if 'youtube.com/channel/' in seed:
                 v_id = seed.split("/")[-1]
-                channel = AuditChannel.get_or_create(v_id)
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        channel=channel,
-                )
-                vids.append(acp)
+                if '?' in v_id:
+                    v_id = v_id.split("?")[0]
+                if v_id:
+                    channel = AuditChannel.get_or_create(v_id)
+                    AuditChannelMeta.objects.get_or_create(channel=channel)
+                    acp, _ = AuditChannelProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            channel=channel,
+                    )
+                    vids.append(acp)
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -175,11 +180,12 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        self.get_videos(acp)
+        if not acp.processed and self.audit.params.get('do_videos') == True:
+            self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
             acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed'])
+        acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel

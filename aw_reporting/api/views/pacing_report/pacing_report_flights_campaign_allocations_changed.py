@@ -1,11 +1,13 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from collections import defaultdict
+
 from django.utils import timezone
 from django.db.models import F
 from django.db.models import Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-from aw_reporting.models import Campaign
 from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 
 
 class PacingReportFlightsCampaignAllocationsChangedView(APIView):
@@ -33,15 +35,11 @@ class PacingReportFlightsCampaignAllocationsChangedView(APIView):
                 salesforce_placement__end__gte=now,
             )
 
-        all_updated_campaign_budgets = {}
+        all_updated_campaign_budgets = defaultdict(dict)
         for campaign in running_campaigns:
             account_id = campaign.account.id
-            # Skip over campaigns whose account is not managed by mcc_account_id or budget that has not been set in viewiq
-            if account_id not in managed_accounts or campaign.goal_allocation <= 0:
+            # Ignore campaigns whose account is not managed by mcc_account_id
+            if account_id not in managed_accounts:
                 continue
-            if not all_updated_campaign_budgets.get(account_id):
-                all_updated_campaign_budgets[account_id] = {}
-                all_updated_campaign_budgets[account_id][campaign.id] = campaign.budget
-            else:
-                all_updated_campaign_budgets[account_id][campaign.id] = campaign.budget
+            all_updated_campaign_budgets[account_id][campaign.id] = campaign.budget
         return Response(all_updated_campaign_budgets)
