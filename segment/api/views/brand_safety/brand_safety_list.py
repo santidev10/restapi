@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework.generics import ListAPIView
 
 from segment.api.mixins import DynamicPersistentModelViewMixin
