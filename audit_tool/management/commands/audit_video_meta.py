@@ -24,6 +24,7 @@ from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.api.views.audit_export import AuditExportApiView
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from utils.lang import remove_mentions_hashes_urls
 
 """
 requirements:
@@ -307,6 +308,7 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
+            data = remove_mentions_hashes_urls(data)
             l = langid.classify(data.lower())[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
