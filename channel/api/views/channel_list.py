@@ -63,7 +63,11 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
         "views_per_video",
         "sentiment",
         "engage_rate",
-        "last_video_published_at"
+        "last_video_published_at",
+        "video_view_rate",
+        "ctr",
+        "ctr_v",
+        "average_cpv"
     ]
 
 
