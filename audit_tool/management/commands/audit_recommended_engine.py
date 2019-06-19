@@ -96,13 +96,16 @@ class Command(BaseCommand):
         else:
             pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
-                self.audit.completed = timezone.now()
-                self.audit.pause = 0
-                self.audit.save(update_fields=['completed', 'pause'])
-                print("Audit completed, all videos processed")
-                file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
-                self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-                raise Exception("Audit completed, all videos processed")
+                if self.thread_id == 0:
+                    self.audit.completed = timezone.now()
+                    self.audit.pause = 0
+                    self.audit.save(update_fields=['completed', 'pause'])
+                    print("Audit completed, all videos processed")
+                    file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
+                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+                    raise Exception("Audit completed, all videos processed")
+                else:
+                    raise Exception("not first thread but audit is done")
         start = thread_id * 100
         for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
