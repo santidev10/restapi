@@ -216,10 +216,10 @@ class AuditExportApiView(APIView):
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
             if not hit_words[cid.channel.channel_id]:
                 hit_words[cid.channel.channel_id] = []
-            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id, clean=False)
+            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = 0
-            for video in videos:
+            for video in videos.filter(clean=False):
                 bad_videos_count[cid.channel.channel_id] +=1
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
