@@ -12,7 +12,7 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
-        content_type = self.model.segment_type
+        segment_type = self.model.segment_type
         try:
             self._validate_data(data)
         except ValueError:
@@ -22,12 +22,13 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView):
             )
         result = super().post(request, *args, **kwargs)
         segment = self.model.objects.get(id=result.data["id"])
-        data["segment_type"] = content_type
+        data["segment_type"] = segment_type
         query_builder = BrandSafetyQueryBuilder(data)
         to_export = CustomSegmentFileUpload.enqueue(
             owner=request.user,
             query=query_builder.query_body,
-            segment=segment
+            segment=segment,
+            list_type=data["list_type"]
         )
         data = {
             "segment_id": segment.id,
@@ -40,6 +41,3 @@ class SegmentListCreateApiViewV2(SegmentListCreateApiView):
         received = set(data.keys())
         if expected != received:
             raise ValueError
-
-
-

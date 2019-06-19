@@ -1,4 +1,6 @@
+from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models.base import BaseSegment
+from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.models.keyword import SegmentKeyword
 from segment.models.video import SegmentVideo
 from segment.models.persistent.base import BasePersistentSegment
@@ -84,3 +86,10 @@ def get_persistent_segment_connector_config_by_type(segment_type, related_ids):
     }
     config = valid_segment_types.get(segment_type)
     return config
+
+
+def update_exports():
+    export_generator = CustomSegmentExportGenerator(updating=True)
+    to_update = CustomSegmentFileUpload.objects.filter(completed_at__isnull=False)
+    for export in to_update:
+        export_generator.generate(export=export)
