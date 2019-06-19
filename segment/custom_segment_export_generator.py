@@ -55,16 +55,17 @@ class CustomSegmentExportGenerator(S3Exporter):
             export.updated_at = now
         else:
             export.completed_at = timezone.now()
-        segment_title = export.segment.title
-        s3_key_filename = self.get_s3_key(segment_title)
-        download_url = self.generate_temporary_url(s3_key_filename, time_limit=24 * 7)
-        export.download_url = download_url
         export.save()
-        if not self.updating:
-            # These methods should be invoked only when the segment is created for the first time
-            export.segment.update_statistics()
-            self._send_notification_email(export.owner.email, segment_title, download_url)
-        logger.error("Done processing: {}".format(segment_title))
+        # segment_title = export.segment.title
+        # s3_key_filename = self.get_s3_key(segment_title)
+        # download_url = self.generate_temporary_url(s3_key_filename, time_limit=24 * 7)
+        # export.download_url = download_url
+        # export.save()
+        # if not self.updating:
+        #     # These methods should be invoked only when the segment is created for the first time
+        #     export.segment.update_statistics()
+        #     self._send_notification_email(export.owner.email, segment_title, download_url)
+        # logger.error("Done processing: {}".format(segment_title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         self.ses.send_email(email, "Custom Segment Download: {}".format(segment_title), "Download: {}".format(download_url))
@@ -86,6 +87,8 @@ class CustomSegmentExportGenerator(S3Exporter):
         :param export:
         :return:
         """
+        segment = export.segment
+        print('exporting export: ', export.id)
         scroll = self.es_conn.scroll(
             export.query,
             export.index,
@@ -96,9 +99,12 @@ class CustomSegmentExportGenerator(S3Exporter):
         for batch in scroll:
             for method in self.generator_operations:
                 method(export, batch, sequence=True)
+            print("got", len(batch))
+            segment.add_related_ids([item["_id"] for item in batch])
             # Yield pertinent es data
             batch = [item["_source"] for item in batch]
             yield batch
+            break
 
     def _update_fields(self, export, chunk, sequence=True):
         """
@@ -130,4 +136,5 @@ class CustomSegmentExportGenerator(S3Exporter):
         else:
             chunk = [item["_id"] for item in chunk]
         segment.add_related_ids(chunk)
+
 

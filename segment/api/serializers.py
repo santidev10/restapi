@@ -12,8 +12,11 @@ from rest_framework.serializers import ValidationError
 
 from segment.models import PersistentSegmentChannel
 from segment.models import SegmentKeyword
+from segment.models import CustomSegment
 from segment.tasks import fill_segment_from_filters
 from singledb.connector import SingleDatabaseApiConnector
+
+import brand_safety.constants as constants
 
 
 class SegmentSerializer(ModelSerializer):
@@ -159,3 +162,47 @@ class PersistentSegmentSerializer(ModelSerializer):
         details = obj.details or {}
         statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
         return statistics
+
+
+class CustomSegmentSerializer(ModelSerializer):
+    segment_type = CharField(max_length=10)
+    list_type = CharField(max_length=10)
+    title = CharField(
+        max_length=255, required=True, allow_null=False, allow_blank=False
+    )
+
+    class Meta:
+        model = CustomSegment
+        fields = (
+            "segment_type",
+            "list_type",
+            "title"
+        )
+
+    def validate_list_type(self, list_type):
+        config = {
+            constants.WHITELIST: 0,
+            constants.BLACKLIST: 1,
+        }
+        try:
+            data = config[list_type.lower().strip()]
+        except KeyError:
+            raise ValidationError("blacklist or whitelist")
+        return data
+
+    def validate_segment_type(self, segment_type):
+        config = {
+            constants.VIDEO: 0,
+            constants.CHANNEL: 1,
+        }
+        try:
+            data = config[segment_type.lower().strip()]
+        except KeyError:
+            raise ValidationError("channel or video")
+        return data
+
+    # def save(self, **kwargs):
+    #     segment = super(CustomSegmentSerializer, self).save(**kwargs)
+    #     # segment.update_statistics()
+    #     # segment.sync_recommend_channels(self.ids_to_add)
+    #     return segment
