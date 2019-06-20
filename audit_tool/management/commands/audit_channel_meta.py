@@ -88,7 +88,8 @@ class Command(BaseCommand):
                     self.audit.save(update_fields=['completed', 'pause'])
                     print("Audit of channels completed")
                     a = AuditExporter.objects.create(
-                            audit=self.audit,
+                        audit=self.audit,
+                        owner=None,
                     )
                     raise Exception("Audit of channels completed")
             else:
