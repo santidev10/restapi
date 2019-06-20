@@ -64,7 +64,8 @@ class AuditExportApiView(APIView):
         except AuditExporter.DoesNotExist:
             a = AuditExporter.objects.create(
                 audit=audit,
-                clean=clean
+                clean=clean,
+                user=request.user
             )
             return Response({
                 'message': 'processing',

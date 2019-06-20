@@ -9,6 +9,8 @@ from django.db.models import ForeignKey
 from django.db.models import Q
 from django.contrib.postgres.fields import JSONField
 import hashlib
+from django.db.models import SET_NULL
+from django.conf import settings
 
 def get_hash_name(s):
     return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10 ** 8
@@ -325,3 +327,4 @@ class AuditExporter(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
+    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
