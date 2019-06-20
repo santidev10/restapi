@@ -233,12 +233,12 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list)
-            hits['inclusion'] = hits
+            is_there, b_hits = self.check_exists(full_string, self.inclusion_list)
+            hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list)
             if is_there:
                 return False, hits
         return True, hits

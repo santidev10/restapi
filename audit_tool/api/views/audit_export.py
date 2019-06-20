@@ -62,15 +62,26 @@ class AuditExportApiView(APIView):
                     'id': a.id
                 })
         except AuditExporter.DoesNotExist:
-            a = AuditExporter.objects.create(
-                audit=audit,
-                clean=clean,
-                owner=request.user
-            )
-            return Response({
-                'message': 'processing',
-                'id': a.id,
-            })
+            try:
+                a = AuditExporter.objects.get(
+                        audit=audit,
+                        clean=clean,
+                        processed__isnull=True
+                )
+                return Response({
+                    'message': 'export still pending.',
+                    'id': a.id
+                })
+            except  AuditExporter.DoesNotExist:
+                a = AuditExporter.objects.create(
+                    audit=audit,
+                    clean=clean,
+                    owner=request.user
+                )
+                return Response({
+                    'message': 'processing',
+                    'id': a.id,
+                })
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
