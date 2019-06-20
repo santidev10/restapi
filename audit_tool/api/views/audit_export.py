@@ -119,14 +119,6 @@ class AuditExportApiView(APIView):
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
-        """.select_related(
-                "video",
-                "video__channel",
-                "video__channel__auditchannelmeta",
-                "video__channel__auditchannelmeta__country",
-                "language",
-                "category"
-        )"""
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -217,7 +209,7 @@ class AuditExportApiView(APIView):
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
-        channels = channels.select_related("channel")
+        # channels = channels.select_related("channel")
         bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
@@ -227,18 +219,13 @@ class AuditExportApiView(APIView):
             videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = 0
-            for video in videos:
-                if not video.clean:
-                    bad_videos_count[cid.channel.channel_id] +=1
+            for video in videos.filter(clean=False):
+                bad_videos_count[cid.channel.channel_id] +=1
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
                         if bad_word not in hit_words[cid.channel.channel_id]:
                             hit_words[cid.channel.channel_id].append(bad_word)
-        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids).select_related(
-                "channel",
-                "language",
-                "country"
-        )
+        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
