@@ -240,7 +240,7 @@ class Command(BaseCommand):
         if self.exclusion_list:
             is_there, b_hits = self.check_exists(full_string, self.exclusion_list)
             if is_there:
-                return False, b_hits
+                return False, hits
         return True, hits
 
     def audit_video_meta_for_emoji(self, db_video_meta):
