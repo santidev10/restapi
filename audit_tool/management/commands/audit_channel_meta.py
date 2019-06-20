@@ -1,22 +1,19 @@
 from django.core.management.base import BaseCommand
 import csv
 import logging
-from django.conf import settings
 import re
 import requests
 from django.utils import timezone
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
+from audit_tool.models import AuditExporter
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from audit_tool.api.views.audit_export import AuditS3Exporter
-from audit_tool.api.views.audit_export import AuditExportApiView
-from utils.aws.ses_emailer import SESEmailer
 from django.conf import settings
 
 """
@@ -35,7 +32,6 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     audit = None
-    emailer = SESEmailer()
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                             "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
@@ -91,9 +87,9 @@ class Command(BaseCommand):
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
                     print("Audit of channels completed")
-                    export_funcs = AuditExportApiView()
-                    file_name = export_funcs.export_channels(self.audit, self.audit.id)[0]
-                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+                    a = AuditExporter.objects.create(
+                            audit=self.audit,
+                    )
                     raise Exception("Audit of channels completed")
             else:
                 raise Exception("not first thread but audit is done")
@@ -107,18 +103,6 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
-
-    def send_audit_email(self, file_name, recipients):
-        if self.audit.cached_data['count'] == 0:
-            return
-        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
-        count = self.audit.cached_data['count']
-        subject = "Audit '{}' Completed".format(self.audit.params['name'])
-        body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], "{:,}".format(count)) \
-               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
-                   .format(file_url)
-        self.emailer.send_email(recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:

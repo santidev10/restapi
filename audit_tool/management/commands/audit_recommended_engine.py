@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 import csv
 import logging
-from django.conf import settings
 import re
 import requests
 from django.utils import timezone
@@ -11,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
@@ -18,10 +18,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
-from utils.aws.ses_emailer import SESEmailer
 from utils.lang import remove_mentions_hashes_urls
-from audit_tool.api.views.audit_export import AuditS3Exporter
-from audit_tool.api.views.audit_export import AuditExportApiView
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
 
@@ -43,7 +40,6 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
-    emailer = SESEmailer()
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
@@ -85,7 +81,6 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
-        export_funcs = AuditExportApiView()
         if thread_id % 3 == 0:
             thread_id = 0
         if pending_videos.count() == 0:
@@ -101,8 +96,9 @@ class Command(BaseCommand):
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
                     print("Audit completed, all videos processed")
-                    file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
-                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+                    a = AuditExporter.objects.create(
+                        audit=self.audit,
+                    )
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
@@ -111,32 +107,6 @@ class Command(BaseCommand):
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
-        if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=['completed', 'pause'])
-            file_name = export_funcs.export_videos(self.audit, self.audit.id)[0]
-            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-            print("Audit completed {}".format(self.audit.id))
-            raise Exception("Audit completed {}".format(self.audit.id))
-        else:
-            print("Done one step, continuing audit {}.".format(self.audit.id))
-            raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
-            #self.process_audit()
-
-    def send_audit_email(self, file_name, recipients):
-        count = AuditVideoProcessor.objects.filter(audit=self.audit).count()
-        if count == 0:
-            return
-        self.audit.cached_data['count'] = count
-        self.audit.save(update_fields=['cached_data'])
-        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
-        subject = "Audit '{}' Completed".format(self.audit.params['name'])
-        body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], "{:,}".format(count)) \
-               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
-                   .format(file_url)
-        self.emailer.send_email(recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:

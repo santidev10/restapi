@@ -317,3 +317,11 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
+
+class AuditExporter(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    clean = models.NullBooleanField(default=None, db_index=True)
+    completed = models.DateTimeField(default=None, null=True, db_index=True)
+    file_name = models.TextField(default=None, null=True)
+    final = models.BooleanField(default=False, db_index=True)
