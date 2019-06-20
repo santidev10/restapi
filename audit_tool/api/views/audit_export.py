@@ -5,6 +5,7 @@ import os
 from uuid import uuid4
 
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditExporter
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
@@ -13,14 +14,12 @@ from audit_tool.models import AuditProcessor
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
-from rest_framework.status import HTTP_200_OK
 
-from django.http import StreamingHttpResponse
+from rest_framework.response import Response
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 import boto3
 from botocore.client import Config
-
 
 class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -46,28 +45,31 @@ class AuditExportApiView(APIView):
         except Exception as e:
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
-        audit_type = audit.params.get('audit_type_original')
-        if not audit_type:
-            audit_type = audit.audit_type
-        if audit_type == 2:
-            s3_name, download_name = self.export_channels(audit=audit, audit_id=audit_id, clean=clean)
-        else:
-            if audit_type == 0:
-                clean = None
-            s3_name, download_name = self.export_videos(audit=audit, audit_id=audit_id, clean=clean)
-
         try:
-            content_generator = AuditS3Exporter.get_s3_export_content(s3_name).iter_chunks()
-        except Exception as e:
-            raise ValidationError("File with name: {} not found on S3.".format(s3_name))
-
-        response = StreamingHttpResponse(
-            content_generator,
-            content_type="application/CSV",
-            status=HTTP_200_OK,
-        )
-        response["Content-Disposition"] = "attachment; filename={}".format(download_name)
-        return response
+            a = AuditExporter.objects.get(
+                audit=audit,
+                clean=clean,
+                final=True
+            )
+            if a.completed and a.file_name:
+                file_url = AuditS3Exporter.generate_temporary_url(a.file_name, 604800)
+                return Response({
+                    'export_url': file_url,
+                })
+            else:
+                return Response({
+                    'message': 'export still pending.',
+                    'id': a.id
+                })
+        except AuditExporter.DoesNotExist:
+            a = AuditExporter.objects.create(
+                audit=audit,
+                clean=clean
+            )
+            return Response({
+                'message': 'processing',
+                'id': a.id,
+            })
 
     def get_categories(self):
         categories = AuditCategory.objects.filter(category_display__isnull=True).values_list('category', flat=True)
