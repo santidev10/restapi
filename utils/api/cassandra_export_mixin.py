@@ -54,6 +54,7 @@ class CassandraExportMixinApiView(object):
     def _data_filtered(self, filters):
         return self._data_filtered_batch_generator(filters)
 
+
     def post(self, request):
         """
         Export mechanism
