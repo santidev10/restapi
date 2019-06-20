@@ -39,7 +39,7 @@ class ElasticSearchConnector(object):
 
     def get(self, **kwargs):
         return self.client.get(index=self.index_name, **kwargs)
-    
+
     def search_by_id(self, index_name, item_ids, doc_type, full_response=False, size=10000):
         self.index_name = index_name
         body = {
@@ -67,6 +67,40 @@ class ElasticSearchConnector(object):
                 item["_id"]: item["_source"] for item in es_result["hits"]["hits"]
             }
             return es_data
+
+    def scroll(self, query, index=None, doc_type=None, sort_field="overall_score", reverse=True, batches=20, size=1000):
+        """
+        Generator wrapper for Elasticsearch scroll api
+        :param query: Elasticsearch query body
+        :param index: Index to query
+        :param doc_type: Query doc_type
+        :param sort_field: Field to sort on
+        :param reverse: reverse=True is descending, else ascending
+        :param batches: Number of scroll batches to retrieve
+        :param size: Size of each scroll batch
+        :return: list
+        """
+        self.index_name = index if index is not None else self.index_name
+        batch_number = 0
+        doc_type = settings.BRAND_SAFETY_TYPE if doc_type is None else doc_type
+        reverse = "desc" if reverse is True else "asc"
+        sort = "{sort_field}:{reverse}".format(sort_field=sort_field, reverse=reverse)
+        page = self.client.search(
+            index=self.index_name,
+            doc_type=doc_type,
+            scroll="1m",
+            size=size,
+            body=query,
+            sort=sort,
+        )
+        hits = page["hits"]["hits"]
+        scroll_id = page["_scroll_id"]
+        while hits and batch_number <= batches:
+            yield hits
+            batch_number += 1
+            page = self.client.scroll(scroll_id=scroll_id, scroll="1m")
+            scroll_id = page["_scroll_id"] if page.get("_scroll_id") else scroll_id
+            hits = page["hits"]["hits"]
 
 
 class ElasticSearchConnectorException(Exception):

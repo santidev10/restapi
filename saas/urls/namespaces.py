@@ -3,6 +3,7 @@ class Namespace:
     AW_CREATION = "aw_creation_urls"
     AW_REPORTING = "aw_reporting_urls"
     SEGMENT = "segment_api_urls"
+    SEGMENT_V2 = "segment_api_urls_v2"
     USER_PROFILE = "userprofile_api_urls"
     VIDEO = "video_api_urls"
     CHANNEL = "channel_api_urls"
