@@ -88,7 +88,6 @@ class CustomSegmentExportGenerator(S3Exporter):
         :return:
         """
         segment = export.segment
-        print('exporting export: ', export.id)
         scroll = self.es_conn.scroll(
             export.query,
             export.index,
@@ -99,7 +98,6 @@ class CustomSegmentExportGenerator(S3Exporter):
         for batch in scroll:
             for method in self.generator_operations:
                 method(export, batch, sequence=True)
-            print("got", len(batch))
             segment.add_related_ids([item["_id"] for item in batch])
             # Yield pertinent es data
             batch = [item["_source"] for item in batch]

@@ -6,26 +6,21 @@ import logging
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db import IntegrityError
 from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
-from django.db.models import Manager
 from django.db.models import Model
-from django.db.models import ManyToManyField
 from django.db.models import SET_NULL
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
-from utils.utils import chunks_generator
 
 from brand_safety.constants import BLACKLIST
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
 
-from segment.custom_segment_channel_statistics import CustomSegmentChannelStatistics
-from segment.custom_segment_video_statistics import CustomSegmentVideoStatistics
+from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
+from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +34,8 @@ class CustomSegment(Timestampable):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.statistics = CustomSegmentVideoStatistics if self.segment_type == 0 else CustomSegmentChannelStatistics
+        self.stats_util = CustomSegmentVideoStatistics() if self.segment_type == 0 else CustomSegmentChannelStatistics()
+        self.related_aw_statistics_model = self.stats_util.related_aw_statistics_model
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -49,7 +45,7 @@ class CustomSegment(Timestampable):
         (0, VIDEO),
         (1, CHANNEL)
     )
-    adw_data = JSONField(default=dict())
+    statistics = JSONField(default=dict())
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES)
@@ -70,13 +66,10 @@ class CustomSegment(Timestampable):
         """
         Process segment statistics fields
         """
-        data = self.statistics.get_data_by_ids(self.related_ids)
-        # just return on any fail
-        if data is None:
-            return
-        # populate statistics fields
-        self.statistics.populate_statistics_fields(data)
-        self.statistics.get_adw_statistics()
+        end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
+        data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
+        updated_statistics = self.stats_util.get_statistics(self, data)
+        self.statistics.update(updated_statistics)
         self.save()
         return "Done"
 

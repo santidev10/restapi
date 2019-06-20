@@ -22,7 +22,6 @@ class Command(BaseCommand):
         generator = CustomSegmentExportGenerator()
         while generator.has_next():
             try:
-                print('starting')
                 generator.generate()
             except CustomSegmentFileUploadQueueEmptyException:
                 logger.error("No items in queue")

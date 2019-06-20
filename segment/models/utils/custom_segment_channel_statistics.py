@@ -1,25 +1,22 @@
+from aw_reporting.models import YTChannelStatistic
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.settings import DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES
-
+from segment.models.utils.count_segment_adwords_statistics import count_segment_adwords_statistics
 
 class CustomSegmentChannelStatistics(object):
+    related_aw_statistics_model = YTChannelStatistic
+
     @property
     def singledb_method(self):
         return Connector().get_channel_list
 
-    def get_ids_hash(self, ids, start=None, end=None):
-        ids = list(ids)[start:end]
-        return Connector().store_ids(ids)
-
-    def get_data_by_ids(self, ids, start=None, end=None):
-        ids_hash = self.get_ids_hash(ids, start, end)
-        return self.obtain_singledb_data(ids_hash)
-
-    def obtain_singledb_data(self, ids_hash):
+    def obtain_singledb_data(self, ids, start=None, end=None):
         """
         Execute call to SDB
         """
+        ids = list(ids)[start:end]
+        ids_hash = Connector().store_ids(ids)
         params = {
             "ids_hash": ids_hash,
             "fields": "channel_id,title,thumbnail_image_url",
@@ -42,32 +39,25 @@ class CustomSegmentChannelStatistics(object):
         }
         return data
 
-    def get_adw_statistics(self):
+    def get_statistics(self, segment, data):
         """
         Prepare segment adwords statistics
         """
-        from segment.models.utils import count_segment_adwords_statistics
-        # prepare adwords statistics
-        adwords_statistics = count_segment_adwords_statistics(self)
+        statistics = {
+            "adwords": count_segment_adwords_statistics(segment),
+            "top_three_items": self.get_top_three_items(data),
+            "channel_count": data.get("base_data").get("items_count"),
+            "video_count": sum(
+                value.get("videos") or 0
+                for value in data.get("base_data").get("items"))
+        }
+        return statistics
 
-        # finalize data
-        self.adw_data.update(adwords_statistics)
-
-    def populate_statistics_fields(self, data):
-        """
-        Update segment statistics fields
-        """
-        self.channels = data.get("base_data").get("items_count")
-        self.set_top_three_items(data)
-
-        self.videos = sum(
-            value.get("videos") or 0
-            for value in data.get("base_data").get("items"))
-
-    def set_top_three_items(self, data):
-        self.top_three_items = [
+    def get_top_three_items(self, data):
+        top_three_items = [
             {"id": obj.get("channel_id"),
              "title": obj.get("title"),
              "image_url": obj.get("thumbnail_image_url")}
             for obj in data.get("top_three_channels_data").get("items")
         ]
+        return top_three_items
