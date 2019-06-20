@@ -65,7 +65,7 @@ class AuditExportApiView(APIView):
             a = AuditExporter.objects.create(
                 audit=audit,
                 clean=clean,
-                user=request.user
+                owner=request.user
             )
             return Response({
                 'message': 'processing',
