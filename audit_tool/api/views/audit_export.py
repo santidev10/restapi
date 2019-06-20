@@ -91,7 +91,7 @@ class AuditExportApiView(APIView):
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         if 'export_{}'.format(clean_string) in audit.params:
-            return file_name
+            return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
         cols = [
             "Video ID",
@@ -192,7 +192,7 @@ class AuditExportApiView(APIView):
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         if 'export_{}'.format(clean_string) in audit.params:
-            return file_name
+            return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
         cols = [
             "Channel Title",
