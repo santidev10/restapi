@@ -83,7 +83,7 @@ class CassandraExportMixinApiView(object):
                 item["brand_safety_score"] = score
             except (TypeError, KeyError):
                 pass
-        return data
+        return
 
     def post(self, request):
         """
@@ -110,7 +110,7 @@ class CassandraExportMixinApiView(object):
             export_type = None
 
         if export_type is not None:
-            export_data = self.add_brand_safety_to_export(export_data, index_name, export_type)
+            self.add_brand_safety_to_export(export_data, index_name, export_type)
 
         data_generator = self.renderer().render(data=self.data_generator(export_data))
         response = FileResponse(data_generator, content_type='text/csv')
