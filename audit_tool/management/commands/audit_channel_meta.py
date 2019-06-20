@@ -79,21 +79,24 @@ class Command(BaseCommand):
         else:
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
-            if self.audit.params.get('do_videos') == True:
-                self.audit.audit_type = 1
-                self.audit.params['audit_type_original'] = 2
-                self.audit.save(update_fields=['audit_type', 'params'])
-                print("Audit of channels completed, turning to video processor.")
-                raise Exception("Audit of channels completed, turning to video processor")
+            if self.thread_id == 0:
+                if self.audit.params.get('do_videos') == True:
+                    self.audit.audit_type = 1
+                    self.audit.params['audit_type_original'] = 2
+                    self.audit.save(update_fields=['audit_type', 'params'])
+                    print("Audit of channels completed, turning to video processor.")
+                    raise Exception("Audit of channels completed, turning to video processor")
+                else:
+                    self.audit.completed = timezone.now()
+                    self.audit.pause = 0
+                    self.audit.save(update_fields=['completed', 'pause'])
+                    print("Audit of channels completed")
+                    export_funcs = AuditExportApiView()
+                    file_name = export_funcs.export_channels(self.audit, self.audit.id)[0]
+                    self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
+                    raise Exception("Audit of channels completed")
             else:
-                self.audit.completed = timezone.now()
-                self.audit.pause = 0
-                self.audit.save(update_fields=['completed', 'pause'])
-                print("Audit of channels completed")
-                export_funcs = AuditExportApiView()
-                file_name = export_funcs.export_channels(self.audit, self.audit.id)
-                self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-                raise Exception("Audit of channels completed")
+                raise Exception("not first thread but audit is done")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
         counter = 0
