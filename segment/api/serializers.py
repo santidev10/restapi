@@ -115,6 +115,7 @@ class SegmentSerializer(ModelSerializer):
         return data
 
     def save(self, **kwargs):
+        print('in side save')
         segment = super(SegmentSerializer, self).save(**kwargs)
         if self.ids_to_delete or self.ids_to_add:
             segment.add_related_ids(self.ids_to_add)

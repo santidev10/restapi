@@ -174,7 +174,7 @@ class BaseSegment(Timestampable):
         """
         Prepare segment adwords statistics
         """
-        from segment.models.utils import count_segment_adwords_statistics
+        from segment.models.utils.count_segment_adwords_statistics import count_segment_adwords_statistics
         # prepare adwords statistics
         adwords_statistics = count_segment_adwords_statistics(self)
 
