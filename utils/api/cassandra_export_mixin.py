@@ -57,30 +57,33 @@ class CassandraExportMixinApiView(object):
         return self._data_filtered_batch_generator(filters)
 
     def add_brand_safety_to_export(self, data, index_name, export_type):
-        try:
-            doc_ids = []
-            for item in data:
+        doc_ids = []
+        for item in data:
+            try:
                 if export_type == "channel":
                     doc_ids.append(item["url"].split("/")[-2])
                 elif export_type == "video":
                     doc_ids.append(item["url"].split("=")[1])
-            es_data = ElasticSearchConnector().search_by_id(
-                index_name,
-                doc_ids,
-                settings.BRAND_SAFETY_TYPE
-            )
-            es_scores = {
-                _id: data["overall_score"] for _id, data in es_data.items()
-            }
-            for item in data:
+            except (TypeError, KeyError):
+                pass
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            settings.BRAND_SAFETY_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in data:
+            try:
                 if export_type == "channel":
                     score = es_scores.get(item["url"].split("/")[-2], None)
                 elif export_type == "video":
                     score = es_scores.get(item["url"].split("=")[1], None)
                 item["brand_safety_score"] = score
-            return data
-        except (TypeError, KeyError):
-            return
+            except (TypeError, KeyError):
+                pass
+        return data
 
     def post(self, request):
         """
@@ -98,13 +101,16 @@ class CassandraExportMixinApiView(object):
         class_name = self.__class__.__name__
 
         if "Channel" in class_name:
+            index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
             export_type = "channel"
         elif "Video" in class_name:
+            index_name = settings.BRAND_SAFETY_VIDEO_INDEX
             export_type = "video"
+        else:
+            export_type = None
 
-        index_name = ""
-
-        export_data = self.add_brand_safety_to_export(export_data, index_name, export_type)
+        if export_type is not None:
+            export_data = self.add_brand_safety_to_export(export_data, index_name, export_type)
 
         data_generator = self.renderer().render(data=self.data_generator(export_data))
         response = FileResponse(data_generator, content_type='text/csv')
