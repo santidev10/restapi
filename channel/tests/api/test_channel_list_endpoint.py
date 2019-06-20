@@ -43,7 +43,7 @@ class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
 
     def test_export_filters(self):
         self.create_admin_user()
-        response = self.client.post(self.url, json.dumps(dict(filters=dict())), content_type="application/json")
+        response = self.client.post(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response["Content-Type"], "text/csv")
         csv_data = get_data_from_csv_response(response)

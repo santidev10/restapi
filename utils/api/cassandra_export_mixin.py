@@ -56,9 +56,9 @@ class CassandraExportMixinApiView(object):
     def _data_filtered(self, filters):
         return self._data_filtered_batch_generator(filters)
 
-    def add_brand_safety_to_export(self, data, index_name, export_type):
+    def add_brand_safety_to_export(self, export_data, index_name, export_type):
         doc_ids = []
-        for item in data:
+        for item in export_data:
             try:
                 if export_type == "channel":
                     doc_ids.append(item["url"].split("/")[-2])
@@ -74,7 +74,7 @@ class CassandraExportMixinApiView(object):
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
-        for item in data:
+        for item in export_data:
             try:
                 if export_type == "channel":
                     score = es_scores.get(item["url"].split("/")[-2], None)
@@ -83,6 +83,7 @@ class CassandraExportMixinApiView(object):
                 item["brand_safety_score"] = score
             except (TypeError, KeyError):
                 pass
+
         return
 
     def post(self, request):
