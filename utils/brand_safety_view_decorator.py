@@ -31,7 +31,13 @@ def add_brand_safety_data(view):
             if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
                 return response
             if response.data.get("items"):
-                _handle_list_view(response, index_name)
+                if "id" in response.data.get("items")[0]:
+                    _handle_list_view(response, index_name)
+                else:
+                    if constants.CHANNEL in view_name:
+                        _handle_list_view_export(response, index_name, "channel")
+                    elif constants.VIDEO in view_name:
+                        _handle_list_view_export(response, index_name, "video")
             else:
                 _handle_single_view(response, index_name)
         except (IndexError, AttributeError):
@@ -74,13 +80,7 @@ def get_brand_safety_data(score):
 
 def _handle_list_view(response, index_name):
     try:
-        doc_ids = []
-        for item in response.data["items"]:
-            if "id" in item:
-                doc_ids.append(item["id"])
-            else:
-                doc_ids.append(item["url"].split("=")[1])
-        # doc_ids = [item["id"] for item in response.data["items"]]
+        doc_ids = [item["id"] for item in response.data["items"]]
         es_data = ElasticSearchConnector().search_by_id(
             index_name,
             doc_ids,
@@ -90,12 +90,34 @@ def _handle_list_view(response, index_name):
             _id: data["overall_score"] for _id, data in es_data.items()
         }
         for item in response.data["items"]:
-            if "id" in item:
-                score = es_scores.get(item["id"], None)
-                item["brand_safety_data"] = get_brand_safety_data(score)
-            else:
+            score = es_scores.get(item["id"], None)
+            item["brand_safety_data"] = get_brand_safety_data(score)
+    except (TypeError, KeyError):
+        return
+
+
+def _handle_list_view_export(response, index_name, export_type):
+    try:
+        doc_ids = []
+        for item in response.data["items"]:
+            if export_type == "channel":
+                doc_ids.append(item["url"].split("/")[-2])
+            elif export_type == "video":
+                doc_ids.append(item["url"].split("=")[1])
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            settings.BRAND_SAFETY_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in response.data["items"]:
+            if export_type == "channel":
+                score = es_scores.get(item["url"].split("/")[-2], None)
+            elif export_type == "video":
                 score = es_scores.get(item["url"].split("=")[1], None)
-                item["brand_safety_score"] = score
+            item["brand_safety_score"] = score
     except (TypeError, KeyError):
         return
 
