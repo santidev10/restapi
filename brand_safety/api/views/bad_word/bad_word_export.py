@@ -40,8 +40,7 @@ class BadWordExportApiView(FileListApiView):
         if language:
             filters["language__language"] = language
 
-        if filters:
-            queryset = queryset.filter(**filters)
+        queryset = queryset.filter(**filters)
         return queryset
 
     def get_queryset(self):
