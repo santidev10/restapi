@@ -69,7 +69,7 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["items_count"], expected_segments_count)
 
     def test_admin_filter(self):
-        user = self.create_test_user()
+        user = self.create_admin_user()
         seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0)
         seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0)
         seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0)
