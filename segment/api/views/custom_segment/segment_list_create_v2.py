@@ -69,10 +69,10 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         data = request.data
         try:
             self._validate_data(data)
-        except ValueError:
+        except ValueError as err:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data="You must provide the following fields: {}".format(", ".join(self.REQUIRED_FIELDS))
+                data=str(err)
             )
         kwargs["owner"] = request.user.id
         data.update(kwargs)
@@ -87,8 +87,19 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         }
         return Response(status=HTTP_201_CREATED, data=data)
 
-    def _validate_data(self, data, *args, **kwargs):
+    def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)
         received = set(data.keys())
         if expected != received:
-            raise ValueError
+            err = "Fields must consist of: {}".format(", ".join(self.REQUIRED_FIELDS))
+        else:
+            err = self.validate_threshold(data["score_threshold"])
+        if err:
+            raise ValueError(err)
+
+    @staticmethod
+    def validate_threshold(threshold):
+        err = None
+        if not 0 <= threshold <= 100:
+            err = "Score threshold must be between 0 and 100, inclusive."
+        return err

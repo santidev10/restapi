@@ -52,6 +52,15 @@ class CustomSegmentExportGenerator(S3Exporter):
         return "{owner_id}/{segment_title}.csv".format(owner_id=owner_id, segment_title=segment_title)
 
     def _finalize_export(self, export, segment, owner, s3_key):
+        """
+        Finalize export
+            Different operations depending on if the export is newly created or being upated
+        :param export:
+        :param segment:
+        :param owner:
+        :param s3_key:
+        :return:
+        """
         now = timezone.now()
         if self.updating:
             export.updated_at = now
@@ -84,8 +93,8 @@ class CustomSegmentExportGenerator(S3Exporter):
     def es_generator(self, export, segment):
         """
         Hook to execute operations before providing data to actual export operation
-        :param export:
-        :param segment:
+        :param export: CustomSegmentFileUpload
+        :param segment: CustomSegment
         :return:
         """
         scroll = self.es_conn.scroll(
@@ -102,7 +111,6 @@ class CustomSegmentExportGenerator(S3Exporter):
             # Yield pertinent es data
             batch = [item["_source"] for item in batch]
             yield batch
-            break
 
     def _update_fields(self, export, chunk, sequence=True):
         """

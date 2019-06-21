@@ -51,11 +51,11 @@ class CustomSegmentFileUpload(Model):
 
         # Set max sizes of exports
         if dequeue_item.segment.list_type == 0:
-            setattr(dequeue_item, "batch_size", 1000)
-            setattr(dequeue_item, "batch_limit", 20)
+            setattr(dequeue_item, "batch_size", 2000)
+            setattr(dequeue_item, "batch_limit", 10)
         else:
-            setattr(dequeue_item, "batch_size", 1000)
-            setattr(dequeue_item, "batch_limit", 100)
+            setattr(dequeue_item, "batch_size", 2000)
+            setattr(dequeue_item, "batch_limit", 50)
         return dequeue_item
 
 

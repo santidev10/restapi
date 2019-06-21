@@ -68,7 +68,7 @@ class ElasticSearchConnector(object):
             }
             return es_data
 
-    def scroll(self, query, index=None, doc_type=None, sort_field="overall_score", reverse=True, batches=20, size=1000):
+    def scroll(self, query, index=None, doc_type=None, sort_field="overall_score", reverse=True, batches=10, size=2000):
         """
         Generator wrapper for Elasticsearch scroll api
         :param query: Elasticsearch query body
@@ -95,7 +95,7 @@ class ElasticSearchConnector(object):
         )
         hits = page["hits"]["hits"]
         scroll_id = page["_scroll_id"]
-        while hits and batch_number <= batches:
+        while hits and batch_number < batches:
             yield hits
             batch_number += 1
             page = self.client.scroll(scroll_id=scroll_id, scroll="1m")
