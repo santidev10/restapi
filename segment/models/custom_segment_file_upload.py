@@ -1,16 +1,10 @@
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db.models import CharField
 from django.db.models import DateTimeField
 from django.db.models import OneToOneField
 from django.db.models import Model
-from django.db.models import PositiveIntegerField
-from django.db.models import SET_NULL
 from django.db.models import TextField
 
-from brand_safety.constants import CHANNEL
-from brand_safety.constants import BLACKLIST
-from brand_safety.constants import WHITELIST
 from segment.models.custom_segment import CustomSegment
 
 

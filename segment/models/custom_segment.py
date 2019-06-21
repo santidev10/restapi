@@ -49,7 +49,10 @@ class CustomSegment(Timestampable):
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES)
-    title = CharField(max_length=255, null=True, blank=True)
+    title = CharField(max_length=255)
+
+    class Meta:
+        unique_together = (('owner', 'title'),)
 
     @property
     def related_ids(self):
@@ -69,7 +72,6 @@ class CustomSegment(Timestampable):
         end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
         data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
         updated_statistics = self.stats_util.get_statistics(self, data)
-        print(updated_statistics)
         self.statistics.update(updated_statistics)
         self.save()
         return "Done"
