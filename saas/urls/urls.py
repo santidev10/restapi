@@ -12,7 +12,8 @@ from email_reports import urls as email_reports_api_urls
 from keywords.api import urls as keyword_api_urls
 from landing.api import urls as landing_api_urls
 from saas.urls.namespaces import Namespace
-from segment.api import urls as segment_api_urls
+from segment.api.urls import urlpatterns as segment_v1_url_patterns
+from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
 from singledb.api import urls as singledb_api_urls
 from userprofile.api import urls as userprofile_api_urls
 from utils.documentation import urlpatterns as documentation_api_urls
@@ -43,7 +44,7 @@ urlpatterns = [
     url(r'^api/v1/', include(keyword_api_urls, namespace='keyword_api_urls')),
 
     # Segment api urls
-    url(r'^api/v1/', include(segment_api_urls, namespace=Namespace.SEGMENT)),
+    url(r'^api/v1/', include(segment_v1_url_patterns, namespace=Namespace.SEGMENT)),
 
     # Userprofile api urls
     url(r'^api/v1/', include(userprofile_api_urls,
@@ -63,6 +64,8 @@ urlpatterns = [
                              namespace="email_reports_api_urls")),
 
     url(r'^api/v2/', include(brand_safety_api_urls, namespace=Namespace.BRAND_SAFETY)),
+
+    url(r'^api/v2/', include(segment_v2_url_patterns, namespace=Namespace.SEGMENT_V2)),
 
     url(r'^docs/', include(documentation_api_urls))
 ]
