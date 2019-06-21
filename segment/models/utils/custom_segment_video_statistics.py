@@ -30,9 +30,9 @@ class CustomSegmentVideoStatistics(object):
 
     def get_statistics(self, segment, data):
         statistics = {
-            "adwords": count_segment_adwords_statistics(segment),
+            "adw_data": count_segment_adwords_statistics(segment),
             "top_three_items": self.get_top_three_items(data),
-            "video_count": data.get("items_count")
+            "items_count": data.get("items_count")
         }
         return statistics
 

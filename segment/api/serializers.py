@@ -5,6 +5,7 @@ from django.db.models import F
 from rest_framework.serializers import CharField
 from rest_framework.serializers import DictField
 from rest_framework.serializers import IntegerField
+from rest_framework.serializers import JSONField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -116,7 +117,6 @@ class SegmentSerializer(ModelSerializer):
         return data
 
     def save(self, **kwargs):
-        print('in side save')
         segment = super(SegmentSerializer, self).save(**kwargs)
         if self.ids_to_delete or self.ids_to_add:
             segment.add_related_ids(self.ids_to_add)
@@ -169,18 +169,19 @@ class PersistentSegmentSerializer(ModelSerializer):
 class CustomSegmentSerializer(ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
-    owner = IntegerField()
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False
     )
+    statistics = JSONField(required=False)
 
     class Meta:
         model = CustomSegment
         fields = (
-            "segment_type",
+            "id",
             "list_type",
+            "segment_type",
+            "statistics",
             "title",
-            "owner"
         )
 
     def validate_list_type(self, list_type):
@@ -210,4 +211,21 @@ class CustomSegmentSerializer(ModelSerializer):
             data = config[segment_type.lower().strip()]
         except KeyError:
             raise ValidationError("channel or video")
+        return data
+
+    def _map_segment_type(self, segment_type):
+        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
+        mapped = mapping[int(segment_type)]
+        return mapped
+
+    def _map_list_type(self, list_type):
+        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
+        mapped = mapping[int(list_type)]
+        return mapped
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["segment_type"] = self._map_segment_type(data["segment_type"])
+        data["list_type"] = self._map_segment_type(data["list_type"])
+        data["download_url"] = instance.export.download_url
         return data

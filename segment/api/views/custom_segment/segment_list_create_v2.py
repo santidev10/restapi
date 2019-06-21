@@ -25,13 +25,16 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     }
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
-    queryset = CustomSegment.objects.all()
+    queryset = CustomSegment.objects.all().order_by("id")
 
     def _do_filters(self, queryset):
         """
         Filter queryset
         """
         filters = {}
+        is_admin = self.request.user.is_staff
+        if not is_admin:
+            filters["owner_id"] = self.request.user.id
         # search
         search = self.request.query_params.get("search")
         if search:
