@@ -20,6 +20,24 @@ class CustomSegmentFileUpload(Model):
     query = JSONField()
     updated_at = DateTimeField(null=True, db_index=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.segment.segment_type == 0:
+            self.index = settings.BRAND_SAFETY_VIDEO_INDEX
+            self.columns = CustomSegmentFileUpload.VIDEO_COLUMNS
+            self.sort = "views"
+        else:
+            self.index = settings.BRAND_SAFETY_CHANNEL_INDEX
+            self.columns = CustomSegmentFileUpload.CHANNEL_COLUMNS
+            self.sort = "subscribers"
+
+        # Set max sizes of exports
+        self.batch_size = 2000
+        if self.segment.list_type == 0:
+            self.batch_limit = 10
+        else:
+            self.batch_limit = 50
+
     @staticmethod
     def enqueue(*_, **kwargs):
         """
@@ -40,22 +58,6 @@ class CustomSegmentFileUpload(Model):
         dequeue_item = CustomSegmentFileUpload.objects.filter(completed_at=None).order_by("created_at").first()
         if not dequeue_item:
             raise CustomSegmentFileUploadQueueEmptyException
-        if dequeue_item.segment.segment_type == 0:
-            setattr(dequeue_item, "index", settings.BRAND_SAFETY_VIDEO_INDEX)
-            setattr(dequeue_item, "columns", CustomSegmentFileUpload.VIDEO_COLUMNS)
-            setattr(dequeue_item, "sort", "views")
-        else:
-            setattr(dequeue_item, "index", settings.BRAND_SAFETY_CHANNEL_INDEX)
-            setattr(dequeue_item, "columns", CustomSegmentFileUpload.CHANNEL_COLUMNS)
-            setattr(dequeue_item, "sort", "subscribers")
-
-        # Set max sizes of exports
-        if dequeue_item.segment.list_type == 0:
-            setattr(dequeue_item, "batch_size", 2000)
-            setattr(dequeue_item, "batch_limit", 10)
-        else:
-            setattr(dequeue_item, "batch_size", 2000)
-            setattr(dequeue_item, "batch_limit", 50)
         return dequeue_item
 
 

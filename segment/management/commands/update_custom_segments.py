@@ -23,5 +23,7 @@ class Command(BaseCommand):
         to_update = CustomSegmentFileUpload.objects.filter(completed_at__isnull=False)
         for export in to_update:
             segment = export.segment
+            print("Updating: user: {}, segment:{}".format(segment.owner.id, segment.title))
             segment.update_statistics()
             generator.generate(export=export)
+            print("Updating: user: {}, segment:{}".format(segment.owner.id, segment.title))
