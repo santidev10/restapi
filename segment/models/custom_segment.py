@@ -69,6 +69,7 @@ class CustomSegment(Timestampable):
         end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
         data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
         updated_statistics = self.stats_util.get_statistics(self, data)
+        print(updated_statistics)
         self.statistics.update(updated_statistics)
         self.save()
         return "Done"

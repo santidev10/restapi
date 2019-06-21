@@ -15,6 +15,7 @@ from segment.models import SegmentKeyword
 from segment.models import CustomSegment
 from segment.tasks import fill_segment_from_filters
 from singledb.connector import SingleDatabaseApiConnector
+from userprofile.models import UserProfile
 
 import brand_safety.constants as constants
 
@@ -168,6 +169,7 @@ class PersistentSegmentSerializer(ModelSerializer):
 class CustomSegmentSerializer(ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
+    owner = IntegerField()
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False
     )
@@ -177,7 +179,8 @@ class CustomSegmentSerializer(ModelSerializer):
         fields = (
             "segment_type",
             "list_type",
-            "title"
+            "title",
+            "owner"
         )
 
     def validate_list_type(self, list_type):
@@ -191,6 +194,13 @@ class CustomSegmentSerializer(ModelSerializer):
             raise ValidationError("blacklist or whitelist")
         return data
 
+    def validate_owner(self, owner_id):
+        try:
+            user = UserProfile.objects.get(id=owner_id)
+        except UserProfile.DoesNotExist:
+            raise ValidationError("User with id: {} not found.".format(owner_id))
+        return user
+
     def validate_segment_type(self, segment_type):
         config = {
             constants.VIDEO: 0,
@@ -201,9 +211,3 @@ class CustomSegmentSerializer(ModelSerializer):
         except KeyError:
             raise ValidationError("channel or video")
         return data
-
-    # def save(self, **kwargs):
-    #     segment = super(CustomSegmentSerializer, self).save(**kwargs)
-    #     # segment.update_statistics()
-    #     # segment.sync_recommend_channels(self.ids_to_add)
-    #     return segment

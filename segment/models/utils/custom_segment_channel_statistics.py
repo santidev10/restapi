@@ -4,6 +4,7 @@ from singledb.settings import DEFAULT_CHANNEL_LIST_SOURCES, \
     DEFAULT_VIDEO_LIST_SOURCES
 from segment.models.utils.count_segment_adwords_statistics import count_segment_adwords_statistics
 
+
 class CustomSegmentChannelStatistics(object):
     related_aw_statistics_model = YTChannelStatistic
 

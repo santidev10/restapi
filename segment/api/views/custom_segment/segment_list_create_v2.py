@@ -74,6 +74,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
                 status=HTTP_400_BAD_REQUEST,
                 data="You must provide the following fields: {}".format(", ".join(self.REQUIRED_FIELDS))
             )
+        kwargs["owner"] = request.user.id
         data.update(kwargs)
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)

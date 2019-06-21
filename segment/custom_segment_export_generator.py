@@ -41,6 +41,7 @@ class CustomSegmentExportGenerator(S3Exporter):
                 es_generator = self.es_generator(export)
             except ElasticSearchConnectorException:
                 raise
+        logger.error("Processing export: {}".format(export.segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
         self.export_to_s3(export_manager, export.segment.title)
         self._finalize_export(export)
@@ -56,16 +57,16 @@ class CustomSegmentExportGenerator(S3Exporter):
         else:
             export.completed_at = timezone.now()
         export.save()
-        # segment_title = export.segment.title
-        # s3_key_filename = self.get_s3_key(segment_title)
-        # download_url = self.generate_temporary_url(s3_key_filename, time_limit=24 * 7)
-        # export.download_url = download_url
-        # export.save()
-        # if not self.updating:
-        #     # These methods should be invoked only when the segment is created for the first time
-        #     export.segment.update_statistics()
-        #     self._send_notification_email(export.owner.email, segment_title, download_url)
-        # logger.error("Done processing: {}".format(segment_title))
+        segment_title = export.segment.title
+        s3_key_filename = self.get_s3_key(segment_title)
+        download_url = self.generate_temporary_url(s3_key_filename, time_limit=24 * 7)
+        export.download_url = download_url
+        export.save()
+        if not self.updating:
+            # These methods should be invoked only when the segment is created for the first time
+            export.segment.update_statistics()
+            self._send_notification_email(export.segment.owner.email, segment_title, download_url)
+        logger.error("Done processing: {}".format(segment_title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         self.ses.send_email(email, "Custom Segment Download: {}".format(segment_title), "Download: {}".format(download_url))
