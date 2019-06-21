@@ -66,13 +66,13 @@ class AuditExportApiView(APIView):
                 a = AuditExporter.objects.get(
                         audit=audit,
                         clean=clean,
-                        processed__isnull=True
+                        completed__isnull=True
                 )
                 return Response({
                     'message': 'export still pending.',
                     'id': a.id
                 })
-            except  AuditExporter.DoesNotExist:
+            except AuditExporter.DoesNotExist:
                 a = AuditExporter.objects.create(
                     audit=audit,
                     clean=clean,
