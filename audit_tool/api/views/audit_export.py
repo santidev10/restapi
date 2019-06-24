@@ -101,9 +101,15 @@ class AuditExportApiView(APIView):
         except Exception as e:
             name = audit_id
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
-        # If audit already exported, simply generate and return temp link
-        if 'export_{}'.format(clean_string) in audit.params:
-            return audit.params['export_{}'.format(clean_string)], file_name
+        exports = AuditExporter.objects.filter(
+            audit=audit,
+            clean=clean,
+            final=True
+        )
+        if exports.count() > 0:
+            return exports[0].file_name, _
+        # if 'export_{}'.format(clean_string) in audit.params:
+        #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
         cols = [
             "Video ID",
@@ -203,8 +209,13 @@ class AuditExportApiView(APIView):
             name = audit_id
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
-        if 'export_{}'.format(clean_string) in audit.params:
-            return audit.params['export_{}'.format(clean_string)], file_name
+        exports = AuditExporter.objects.filter(
+                audit=audit,
+                clean=clean,
+                final=True
+        )
+        if exports.count() > 0:
+            return exports[0].file_name, _
         self.get_categories()
         cols = [
             "Channel Title",
