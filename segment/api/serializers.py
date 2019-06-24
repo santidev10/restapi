@@ -171,9 +171,7 @@ class CustomSegmentSerializer(ModelSerializer):
     list_type = CharField(max_length=10)
     owner = CharField(max_length=50, required=False)
     statistics = JSONField(required=False)
-    title = CharField(
-        max_length=255, required=True, allow_null=False, allow_blank=False
-    )
+    title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
 
     class Meta:
@@ -221,12 +219,10 @@ class CustomSegmentSerializer(ModelSerializer):
         hashed = self.initial_data["title_hash"]
         owner_id = self.initial_data["owner"]
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
-        try:
-            segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
-            if any(segment.title == title for segment in segments):
-                raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
-        except CustomSegment.DoesNotExist:
-            return title
+        segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
+        if any(segment.title == title for segment in segments):
+            raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
+        return title
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -59,8 +59,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
 
     def test_owner_filter(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0)
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0)
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         expected_segments_count = 1
@@ -70,9 +70,9 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
 
     def test_admin_filter(self):
         user = self.create_admin_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0)
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0)
-        seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0)
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
+        seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0, title="3")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_3, query={})
