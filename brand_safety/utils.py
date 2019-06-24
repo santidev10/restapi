@@ -1,5 +1,6 @@
 from django.conf import settings
 
+from audit_tool.models import AuditCategory
 from utils.elasticsearch import ElasticSearchConnector
 from utils.elasticsearch import ElasticSearchConnectorException
 
@@ -158,3 +159,10 @@ class BrandSafetyQueryBuilder(object):
             threshold = 100
         return threshold
 
+    @staticmethod
+    def map_youtube_categories(youtube_category_ids):
+        mapping = {
+            _id: category.lower() for _id, category in AuditCategory.get_all().items()
+        }
+        to_string = [mapping[str(_id)] for _id in youtube_category_ids]
+        return to_string
