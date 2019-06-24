@@ -222,8 +222,8 @@ class CustomSegmentSerializer(ModelSerializer):
         owner_id = self.initial_data["owner"]
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         try:
-            segment = CustomSegment.objects.get(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
-            if segment.title == title:
+            segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
+            if any(segment.title == title for segment in segments):
                 raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
         except CustomSegment.DoesNotExist:
             return title
