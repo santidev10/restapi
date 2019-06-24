@@ -45,23 +45,12 @@ class AuditExportApiView(APIView):
         except Exception as e:
             raise ValidationError("Audit with id {} does not exist.".format(audit_id))
 
-        try:
-            a = AuditExporter.objects.get(
-                audit=audit,
-                clean=clean,
-                final=True
-            )
-            if a.completed and a.file_name:
-                file_url = AuditS3Exporter.generate_temporary_url(a.file_name, 604800)
-                return Response({
-                    'export_url': file_url,
-                })
-            else:
-                return Response({
-                    'message': 'export still pending.',
-                    'id': a.id
-                })
-        except AuditExporter.DoesNotExist:
+        a = AuditExporter.objects.filter(
+            audit=audit,
+            clean=clean,
+            final=True
+        )
+        if a.count() > 0:
             try:
                 a = AuditExporter.objects.get(
                         audit=audit,
@@ -81,6 +70,18 @@ class AuditExportApiView(APIView):
                 return Response({
                     'message': 'processing',
                     'id': a.id,
+                })
+        else:
+            a = a[0]
+            if a.completed and a.file_name:
+                file_url = AuditS3Exporter.generate_temporary_url(a.file_name, 604800)
+                return Response({
+                    'export_url': file_url,
+                })
+            else:
+                return Response({
+                    'message': 'export still pending.',
+                    'id': a.id
                 })
 
     def get_categories(self):
