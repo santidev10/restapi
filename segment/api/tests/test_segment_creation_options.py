@@ -15,7 +15,7 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS,
                        kwargs=dict(segment_type=segment_type))
 
-    @patch("utils.elasticsearch.ElasticSearchConnector.search")
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success(self, es_mock):
         self.create_test_user()
         es_mock.return_value = {
@@ -46,4 +46,3 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_params))
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
