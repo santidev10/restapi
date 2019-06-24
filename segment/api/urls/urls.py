@@ -62,5 +62,5 @@ urlpatterns_v2 = [
         name=Name.SEGMENT_LIST),
     url(r'^segments/options/(?P<segment_type>{})/$'.format(segment_types),
         SegmentCreationOptionsApiView.as_view(),
-        name=Name.SEGMENT_CREATION_PROGRESS),
+        name=Name.SEGMENT_CREATION_OPTIONS),
 ]
