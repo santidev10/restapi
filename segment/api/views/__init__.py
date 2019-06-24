@@ -10,7 +10,7 @@ from .custom_segment.segment_retrieve_update_delete import SegmentRetrieveUpdate
 from .custom_segment.segment_share import SegmentShareApiView
 from .custom_segment.segment_suggested_channel import SegmentSuggestedChannelApiView
 from .custom_segment.segment_list_create_v2 import SegmentListCreateApiViewV2
-from .custom_segment.segment_creation_progress import SegmentCreationProgressApiView
+from .custom_segment.segment_creation_options import SegmentCreationOptionsApiView
 
 
 

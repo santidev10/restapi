@@ -30,42 +30,51 @@ class CustomSegmentExportGenerator(S3Exporter):
         Either dequeue segment to create and process or updating existing export
         :return:
         """
-        if export is not None:
-            es_generator = self.es_generator(export)
-        else:
+        if export is None:
             try:
                 export = CustomSegmentFileUpload.dequeue()
             except CustomSegmentFileUploadQueueEmptyException:
                 raise
-            try:
-                es_generator = self.es_generator(export)
-            except ElasticSearchConnectorException:
-                raise
+        segment = export.segment
+        owner = segment.owner
+        try:
+            es_generator = self.es_generator(export, segment)
+        except ElasticSearchConnectorException:
+            raise
+        logger.error("Processing export: {}".format(segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
-        self.export_to_s3(export_manager, export.segment.title)
-        self._finalize_export(export)
+        s3_key = self.get_s3_key(owner.id, segment.title)
+        self.export_to_s3(export_manager, s3_key, get_key=False)
+        self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
-    def get_s3_key(name):
-        return "{}.csv".format(name)
+    def get_s3_key(owner_id, segment_title):
+        return "{owner_id}/{segment_title}.csv".format(owner_id=owner_id, segment_title=segment_title)
 
-    def _finalize_export(self, export):
+    def _finalize_export(self, export, segment, owner, s3_key):
+        """
+        Finalize export
+            Different operations depending on if the export is newly created or being upated
+        :param export:
+        :param segment:
+        :param owner:
+        :param s3_key:
+        :return:
+        """
         now = timezone.now()
         if self.updating:
             export.updated_at = now
         else:
             export.completed_at = timezone.now()
         export.save()
-        # segment_title = export.segment.title
-        # s3_key_filename = self.get_s3_key(segment_title)
-        # download_url = self.generate_temporary_url(s3_key_filename, time_limit=24 * 7)
-        # export.download_url = download_url
-        # export.save()
-        # if not self.updating:
-        #     # These methods should be invoked only when the segment is created for the first time
-        #     export.segment.update_statistics()
-        #     self._send_notification_email(export.owner.email, segment_title, download_url)
-        # logger.error("Done processing: {}".format(segment_title))
+        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        export.download_url = download_url
+        export.save()
+        if not self.updating:
+            # These methods should be invoked only when the segment is created for the first time
+            export.segment.update_statistics()
+            self._send_notification_email(owner.email, segment.title, download_url)
+        logger.error("Done processing: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         self.ses.send_email(email, "Custom Segment Download: {}".format(segment_title), "Download: {}".format(download_url))
@@ -81,13 +90,13 @@ class CustomSegmentExportGenerator(S3Exporter):
             return True
         return False
 
-    def es_generator(self, export):
+    def es_generator(self, export, segment):
         """
         Hook to execute operations before providing data to actual export operation
-        :param export:
+        :param export: CustomSegmentFileUpload
+        :param segment: CustomSegment
         :return:
         """
-        segment = export.segment
         scroll = self.es_conn.scroll(
             export.query,
             export.index,
@@ -102,7 +111,6 @@ class CustomSegmentExportGenerator(S3Exporter):
             # Yield pertinent es data
             batch = [item["_source"] for item in batch]
             yield batch
-            break
 
     def _update_fields(self, export, chunk, sequence=True):
         """

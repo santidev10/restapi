@@ -25,5 +25,3 @@ class Command(BaseCommand):
                 generator.generate()
             except CustomSegmentFileUploadQueueEmptyException:
                 logger.error("No items in queue")
-
-            break
