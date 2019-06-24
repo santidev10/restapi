@@ -49,7 +49,10 @@ class CustomSegment(Timestampable):
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES)
-    title = CharField(max_length=255, null=True, blank=True)
+    title = CharField(max_length=255)
+
+    class Meta:
+        unique_together = (('owner', 'title'),)
 
     @property
     def related_ids(self):
@@ -58,8 +61,7 @@ class CustomSegment(Timestampable):
     def add_related_ids(self, ids):
         if not isinstance(ids, collections.abc.Sequence) and isinstance(ids, str):
             ids = [ids]
-        existing = CustomSegmentRelated.objects.filter(related_id__in=ids)
-        to_create = set(ids) - set(existing.values_list("related_id", flat=True))
+        to_create = set(ids) - set(self.related_ids)
         CustomSegmentRelated.objects.bulk_create([CustomSegmentRelated(segment_id=self.id, related_id=_id) for _id in to_create])
 
     def update_statistics(self):

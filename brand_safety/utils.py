@@ -78,35 +78,45 @@ class BrandSafetyQueryBuilder(object):
         query_body = {
             "query": {
                 "bool": {
-                    "must": [
-                        {
-                            "range": {}
-                        },
-                        {
-                            "nested": {
-                                "path": "categories",
-                                "query": {
+                    "filter": {
+                        "bool": {
+                            "must": [
+                                {
+                                    "range": {}
+                                },
+                                {
                                     "bool": {
-                                        "filter": []
+                                        # language
+                                        "should": []
+                                    }
+                                },
+                                {
+                                    "bool": {
+                                        # youtube_category
+                                        "should": []
+                                    }
+                                },
+                                {
+                                    "nested": {
+                                        "path": "categories",
+                                        "query": {
+                                            "bool": {
+                                                "filter": []
+                                            }
+                                        }
                                     }
                                 }
-                            }
+                            ]
                         }
-                    ],
-                    "filter": [
-                        {
-                            "bool": {
-                                "should": []
-                            }
-                        }
-                    ]
+                    }
                 }
             }
         }
         # Set refs for easier access
-        minimum_option_body = query_body["query"]["bool"]["must"][0]["range"]
-        segment_filters_body = query_body["query"]["bool"]["filter"][0]["bool"]["should"]
-        category_score_filters_body = query_body["query"]["bool"]["must"][1]["nested"]["query"]["bool"]["filter"]
+        minimum_option = query_body["query"]["bool"]["filter"]["bool"]["must"][0]["range"]
+        language_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][1]["bool"]["should"]
+        youtube_categories_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][2]["bool"]["should"]
+        category_score_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][3]["nested"]["query"]["bool"]["filter"]
 
         # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
         category_score_params = [
@@ -123,12 +133,13 @@ class BrandSafetyQueryBuilder(object):
         ]
 
         # Add filters to refs
-        category_score_filters_body.extend(category_score_params)
-        segment_filters_body.extend(youtube_categories + languages)
+        category_score_filters.extend(category_score_params)
+        language_filters.extend(languages)
+        youtube_categories_filters.extend(youtube_categories)
 
         # Sets range query in must clause
         # e.g. { "range": { "subscribers": { "gte": 1000 } }
-        minimum_option_body[self.options["minimum_option"]] = {"gte": self.score_threshold}
+        minimum_option[self.options["minimum_option"]] = {"gte": self.score_threshold}
         return query_body
 
     def _map_blacklist_severity(self, score_threshold):
@@ -138,12 +149,11 @@ class BrandSafetyQueryBuilder(object):
         :return: int
         """
         if score_threshold == 1:
-            threshold = 50
+            threshold = 89
         elif score_threshold == 2:
             threshold = 75
         elif score_threshold == 3:
-            threshold = 89
+            threshold = 50
         else:
             threshold = 100
         return threshold
-
