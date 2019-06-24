@@ -157,3 +157,4 @@ class BrandSafetyQueryBuilder(object):
         else:
             threshold = 100
         return threshold
+

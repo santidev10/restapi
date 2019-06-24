@@ -3,6 +3,7 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.generics import ListCreateAPIView
 
+from audit_tool.models import AuditCategory
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers import CustomSegmentSerializer
@@ -78,12 +79,13 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
                 status=HTTP_400_BAD_REQUEST,
                 data=str(err)
             )
-        kwargs["owner"] = request.user.id
-        data.update(kwargs)
+        data["owner"] = request.user.id
+        data["segment_type"] = kwargs["segment_type"]
         data["title_hash"] = get_hash_name(data["title"].lower().strip())
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
+        data["youtube_categories"] = self._map_youtube_categories(data["youtube_categories"])
         query_builder = BrandSafetyQueryBuilder(data)
         export = CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
         data = {
@@ -108,3 +110,10 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         if not 0 <= threshold <= 100:
             err = "Score threshold must be between 0 and 100, inclusive."
         return err
+
+    def _map_youtube_categories(self, youtube_category_ids):
+        mapping = {
+            _id: category.lower() for _id, category in AuditCategory.get_all().items()
+        }
+        to_string = [mapping[_id] for _id in youtube_category_ids]
+        return to_string
