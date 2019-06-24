@@ -60,13 +60,12 @@ class BadWordExportTestCase(ExtendedAPITestCase):
         csv_data = get_data_from_csv_response(response)
         headers = next(csv_data)
         self.assertEqual(headers, [
-            "Id",
             "Name",
             "Category",
             "Language"
         ])
         data = next(csv_data)
-        self.assertEqual(data, [str(bad_word.id), bad_word.name, bad_word.category.name, bad_word.language.language])
+        self.assertEqual(data, [bad_word.name, bad_word.category.name, bad_word.language.language])
 
 
 def get_data_from_csv_response(response):

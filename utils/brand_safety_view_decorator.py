@@ -102,7 +102,3 @@ def _handle_single_view(response, index_name):
         response.data["brand_safety_data"] = get_brand_safety_data(score)
     except (TypeError, KeyError):
         return
-
-
-
-
