@@ -89,8 +89,15 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
-            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
+            done = False
+            if pending_videos.count() > self.audit.max_recommended:
+                done =  True
+            pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
+                done =  True
+            else:
+                pending_videos = pending_videos.select_related("video").order_by("id")
+            if done:
                 if self.thread_id == 0:
                     self.audit.completed = timezone.now()
                     self.audit.pause = 0
