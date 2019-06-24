@@ -68,7 +68,7 @@ class AuditExportApiView(APIView):
                     owner=request.user
                 )
                 return Response({
-                    'message': 'processing',
+                    'message': 'Processing.  You will receive an email when your export is ready.',
                     'id': a.id,
                 })
         else:
