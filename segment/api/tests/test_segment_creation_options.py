@@ -10,7 +10,7 @@ from segment.api.urls.names import Name
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
+class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS,
                        kwargs=dict(segment_type=segment_type))

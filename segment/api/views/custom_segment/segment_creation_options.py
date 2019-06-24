@@ -41,7 +41,8 @@ class SegmentCreationOptionsApiView(APIView):
         except KeyError:
             pass
         try:
-            query_params["youtube_categories"] = query_params["youtube_categories"].split(",")
+            youtube_categories = query_params["youtube_categories"].split(",")
+            query_params["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(youtube_categories)
         except KeyError:
             pass
         try:

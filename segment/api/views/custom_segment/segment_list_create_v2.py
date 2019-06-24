@@ -78,12 +78,13 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
                 status=HTTP_400_BAD_REQUEST,
                 data=str(err)
             )
-        kwargs["owner"] = request.user.id
-        data.update(kwargs)
+        data["owner"] = request.user.id
+        data["segment_type"] = kwargs["segment_type"]
         data["title_hash"] = get_hash_name(data["title"].lower().strip())
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
+        data["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
         query_builder = BrandSafetyQueryBuilder(data)
         export = CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
         data = {

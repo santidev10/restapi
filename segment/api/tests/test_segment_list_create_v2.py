@@ -35,7 +35,7 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "whitelist",
             "score_threshold": 100,
             "title": "I am a whitelist",
-            "youtube_categories": ["education", "gaming"]
+            "youtube_categories": []
         }
         response = self.client.post(
             self._get_url("channel"), json.dumps(payload), content_type="application/json"
@@ -50,7 +50,7 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "blacklist",
             "score_threshold": 100,
             "title": "I am a blacklist",
-            "youtube_categories": ["education", "gaming"]
+            "youtube_categories": []
         }
         response = self.client.post(
             self._get_url("video"), json.dumps(payload), content_type="application/json"
