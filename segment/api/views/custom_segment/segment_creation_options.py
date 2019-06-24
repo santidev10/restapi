@@ -4,6 +4,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.views import APIView
 
+from audit_tool.models import AuditCategory
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
 from utils.elasticsearch import ElasticSearchConnectorException
