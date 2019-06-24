@@ -80,7 +80,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             )
         kwargs["owner"] = request.user.id
         data.update(kwargs)
-        data["title_hash"] = get_hash_name(data["title"])
+        data["title_hash"] = get_hash_name(data["title"].lower().strip())
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()

@@ -49,7 +49,7 @@ class CustomSegment(Timestampable):
     statistics = JSONField(default=dict())
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
-    segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES)
+    segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255)
     title_hash = BigIntegerField(default=0, db_index=True)
 
