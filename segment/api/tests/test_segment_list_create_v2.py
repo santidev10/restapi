@@ -59,8 +59,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
 
     def test_owner_filter(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0)
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0)
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         expected_segments_count = 1
@@ -70,9 +70,9 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
 
     def test_admin_filter(self):
         user = self.create_admin_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0)
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0)
-        seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0)
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
+        seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0, title="3")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_3, query={})
@@ -80,3 +80,26 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
+
+    def test_reject_duplicate_title(self):
+        self.create_test_user()
+        payload_1 = {
+            "brand_safety_categories": [],
+            "languages": ["en"],
+            "list_type": "blacklist",
+            "score_threshold": 1,
+            "title": "testing",
+            "youtube_categories": []
+        }
+        payload_2 = {
+            "brand_safety_categories": [],
+            "languages": ["pt"],
+            "list_type": "blacklist",
+            "score_threshold": 1,
+            "title": "testing",
+            "youtube_categories": []
+        }
+        response_1 = self.client.post(self._get_url("video"), json.dumps(payload_1), content_type="application/json")
+        response_2 = self.client.post(self._get_url("video"), json.dumps(payload_2), content_type="application/json")
+        self.assertEqual(response_1.status_code, HTTP_201_CREATED)
+        self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)

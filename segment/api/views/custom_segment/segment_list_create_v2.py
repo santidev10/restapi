@@ -3,6 +3,7 @@ from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.generics import ListCreateAPIView
 
+from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
@@ -79,6 +80,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             )
         kwargs["owner"] = request.user.id
         data.update(kwargs)
+        data["title_hash"] = get_hash_name(data["title"].lower().strip())
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
