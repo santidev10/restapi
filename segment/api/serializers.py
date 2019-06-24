@@ -169,19 +169,23 @@ class PersistentSegmentSerializer(ModelSerializer):
 class CustomSegmentSerializer(ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
+    owner = CharField(max_length=50, required=False)
+    statistics = JSONField(required=False)
     title = CharField(
         max_length=255, required=True, allow_null=False, allow_blank=False
     )
-    statistics = JSONField(required=False)
+    title_hash = IntegerField()
 
     class Meta:
         model = CustomSegment
         fields = (
             "id",
             "list_type",
+            "owner",
             "segment_type",
             "statistics",
             "title",
+            "title_hash"
         )
 
     def validate_list_type(self, list_type):
@@ -213,6 +217,26 @@ class CustomSegmentSerializer(ModelSerializer):
             raise ValidationError("channel or video")
         return data
 
+    def validate_title(self, title):
+        hashed = self.initial_data["title_hash"]
+        owner_id = self.initial_data["owner"]
+        segment_type = self.validate_segment_type(self.initial_data["segment_type"])
+        try:
+            segment = CustomSegment.objects.get(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
+            if segment.title == title:
+                raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
+        except CustomSegment.DoesNotExist:
+            return title
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("owner")
+        data.pop("title_hash")
+        data["segment_type"] = self._map_segment_type(data["segment_type"])
+        data["list_type"] = self._map_segment_type(data["list_type"])
+        data["download_url"] = instance.export.download_url
+        return data
+
     def _map_segment_type(self, segment_type):
         mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
         mapped = mapping[int(segment_type)]
@@ -222,10 +246,3 @@ class CustomSegmentSerializer(ModelSerializer):
         mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
         mapped = mapping[int(list_type)]
         return mapped
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data["segment_type"] = self._map_segment_type(data["segment_type"])
-        data["list_type"] = self._map_segment_type(data["list_type"])
-        data["download_url"] = instance.export.download_url
-        return data

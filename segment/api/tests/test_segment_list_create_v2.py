@@ -80,3 +80,26 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
+
+    def test_reject_duplicate_title(self):
+        self.create_test_user()
+        payload_1 = {
+            "brand_safety_categories": [],
+            "languages": ["en"],
+            "list_type": "blacklist",
+            "score_threshold": 1,
+            "title": "testing",
+            "youtube_categories": []
+        }
+        payload_2 = {
+            "brand_safety_categories": [],
+            "languages": ["pt"],
+            "list_type": "blacklist",
+            "score_threshold": 1,
+            "title": "testing",
+            "youtube_categories": []
+        }
+        response_1 = self.client.post(self._get_url("video"), json.dumps(payload_1), content_type="application/json")
+        response_2 = self.client.post(self._get_url("video"), json.dumps(payload_2), content_type="application/json")
+        self.assertEqual(response_1.status_code, HTTP_201_CREATED)
+        self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
