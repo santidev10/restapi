@@ -50,7 +50,7 @@ class AuditExportApiView(APIView):
             clean=clean,
             final=True
         )
-        if a.count() > 0:
+        if a.count() == 0:
             try:
                 a = AuditExporter.objects.get(
                         audit=audit,
