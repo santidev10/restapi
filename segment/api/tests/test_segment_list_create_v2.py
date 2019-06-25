@@ -91,7 +91,7 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "blacklist",
             "score_threshold": 1,
             "title": "testing",
-            "youtube_categories": []
+            "youtube_categories": [],
             "minimum_option": 0
         }
         payload_2 = {
