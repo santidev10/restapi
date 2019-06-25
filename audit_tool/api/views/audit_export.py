@@ -111,6 +111,10 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
+        if clean is None or clean == True:
+            hit_types = 'inclusion'
+        else:
+            hit_types = 'exclusion'
         cols = [
             "Video ID",
             "Name",
@@ -126,8 +130,8 @@ class AuditExportApiView(APIView):
             "Channel Default Lang.",
             "Channel Subscribers",
             "Country",
-            "All Hit Words",
-            "Unique Hit Words",
+            "All {} Hit Words".format(hit_types),
+            "Unique {} Hit Words".format(hit_types),
             "Video Count",
         ]
         video_ids = []
@@ -293,7 +297,7 @@ class AuditExportApiView(APIView):
         hits = hit_words.get(v_id)
         uniques = []
         words_to_use = 'exclusion'
-        if clean is None or clean=='True':
+        if clean is None or clean==True:
             words_to_use = 'inclusion'
         if hits:
             if hits.get(words_to_use):
