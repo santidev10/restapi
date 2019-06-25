@@ -47,8 +47,12 @@ class SegmentCreationOptionsApiView(APIView):
 
     def _get_options(self):
         options = {
-            "brand_safety_categories": [{_id: category} for _id, category in BadWordCategory.get_category_mapping().items()],
-            "youtube_categories": [{ _id: category } for _id, category in AuditCategory.get_all().items()]
+            "brand_safety_categories": [
+                {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
+            ],
+            "youtube_categories": [
+                {"id": _id, "name": category} for _id, category in AuditCategory.get_all().items()
+            ]
         }
         return options
 
