@@ -86,12 +86,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         segment = serializer.save()
         data["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
         query_builder = BrandSafetyQueryBuilder(data)
-        export = CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
-        data = {
-            "segment_id": segment.id,
-            "export_id": export.id
-        }
-        return Response(status=HTTP_201_CREATED, data=data)
+        CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
+        return Response(status=HTTP_201_CREATED, data=serializer.data)
 
     def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)
