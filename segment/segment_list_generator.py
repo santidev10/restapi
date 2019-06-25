@@ -65,6 +65,10 @@ class SegmentListGenerator(object):
         self.batch_count = 0
         self._set_config()
 
+        self.unclassified_whitelist_manager = self.segment_model.objects.get(
+            title=self.get_segment_title(self.segment_model.segment_type, "Unclassified", PersistentSegmentCategory.WHITELIST)
+        )
+
     def _set_config(self):
         """
         Set configuration for script depending on list generation type, either channel or video
@@ -122,6 +126,7 @@ class SegmentListGenerator(object):
     def run(self):
         for batch in self.sdb_data_generator(self.cursor_id):
             self._process(batch)
+        logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
 
     def _process(self, sdb_items):
         """
@@ -137,15 +142,21 @@ class SegmentListGenerator(object):
         sorted_by_category_whitelist = self._sort_by_category(merged_items)
         # Save items into their category segments
         for category, items in sorted_by_category_whitelist.items():
+            clean_unclassified = False
             # For categories, only need to save to whitelists
             segment_title = self.get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
             try:
                 whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
+                # Whitelist found, remove items in current category from Unclassified
+                clean_unclassified = True
             except self.segment_model.DoesNotExist:
-                logger.info("Unable to get segment: {}".format(segment_title))
-                segment_title = self.get_segment_title(self.segment_model.segment_type, "Unclassified", PersistentSegmentCategory.WHITELIST)
-                whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
+                logger.error("Unable to get segment: {}".format(segment_title))
+                logger.error("In unclassified: {}".format(
+                    ["{}, {}".format(item[self.PK_NAME], item["category"]) for item in items]))
+                whitelist_segment_manager = self.unclassified_whitelist_manager
             to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+            if clean_unclassified:
+                self._clean(self.unclassified_whitelist_manager, to_create)
             self._clean(whitelist_segment_manager, to_create)
             self.related_segment_model.objects.bulk_create(to_create)
             self._truncate_list(whitelist_segment_manager, self.WHITELIST_SIZE)
@@ -228,7 +239,7 @@ class SegmentListGenerator(object):
         """
         items_by_category = defaultdict(list)
         for item in items:
-            category = item["category"]
+            category = item["category"].strip()
             whitelist_pass = self.evaluator(item)
             if whitelist_pass is True:
                 items_by_category[category].append(item)
@@ -307,7 +318,7 @@ class SegmentListGenerator(object):
         :param item_ids:
         :return:
         """
-        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, constants.BRAND_SAFETY_SCORE_TYPE)
+        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, settings.BRAND_SAFETY_TYPE)
         return response
 
     def _get_sdb_data(self, item_ids, item_type):
@@ -355,7 +366,6 @@ class SegmentListGenerator(object):
         """
         params = {
             "fields": "channel_id,subscribers,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            # "sort": "subscribers:desc",
             "sort": "channel_id",
             "size": self.CHANNEL_BATCH_LIMIT,
         }
