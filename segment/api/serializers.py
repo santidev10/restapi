@@ -173,6 +173,12 @@ class CustomSegmentSerializer(ModelSerializer):
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
+    segment_type_config = {
+        segment_type: _id for _id, segment_type in dict(CustomSegment.SEGMENT_TYPE_CHOICES).items()
+    }
+    list_type_config = {
+        list_type: _id for _id, list_type in dict(CustomSegment.LIST_TYPE_CHOICES).items()
+    }
 
     class Meta:
         model = CustomSegment
@@ -187,14 +193,17 @@ class CustomSegmentSerializer(ModelSerializer):
         )
 
     def validate_list_type(self, list_type):
-        config = {
-            constants.WHITELIST: 0,
-            constants.BLACKLIST: 1,
-        }
         try:
-            data = config[list_type.lower().strip()]
+            data = self.list_type_config[list_type.lower().strip()]
         except KeyError:
-            raise ValidationError("blacklist or whitelist")
+            raise ValidationError("list_type must be either whitelist or blacklist.")
+        return data
+
+    def validate_segment_type(self, segment_type):
+        try:
+            data = self.segment_type_config[segment_type.lower().strip()]
+        except KeyError:
+            raise ValidationError("segment_type must be either video or channel.")
         return data
 
     def validate_owner(self, owner_id):
@@ -203,17 +212,6 @@ class CustomSegmentSerializer(ModelSerializer):
         except UserProfile.DoesNotExist:
             raise ValidationError("User with id: {} not found.".format(owner_id))
         return user
-
-    def validate_segment_type(self, segment_type):
-        config = {
-            constants.VIDEO: 0,
-            constants.CHANNEL: 1,
-        }
-        try:
-            data = config[segment_type.lower().strip()]
-        except KeyError:
-            raise ValidationError("channel or video")
-        return data
 
     def validate_title(self, title):
         hashed = self.initial_data["title_hash"]
@@ -239,6 +237,6 @@ class CustomSegmentSerializer(ModelSerializer):
         return mapped
 
     def _map_list_type(self, list_type):
-        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
+        mapping = dict(CustomSegment.LIST_TYPE_CHOICES)
         mapped = mapping[int(list_type)]
         return mapped

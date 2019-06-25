@@ -35,7 +35,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "whitelist",
             "score_threshold": 100,
             "title": "I am a whitelist",
-            "youtube_categories": []
+            "youtube_categories": [],
+            "minimum_option": 0
         }
         response = self.client.post(
             self._get_url("channel"), json.dumps(payload), content_type="application/json"
@@ -50,7 +51,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "blacklist",
             "score_threshold": 100,
             "title": "I am a blacklist",
-            "youtube_categories": []
+            "youtube_categories": [],
+            "minimum_option": 0
         }
         response = self.client.post(
             self._get_url("video"), json.dumps(payload), content_type="application/json"
@@ -89,7 +91,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "blacklist",
             "score_threshold": 1,
             "title": "testing",
-            "youtube_categories": []
+            "youtube_categories": [],
+            "minimum_option": 0
         }
         payload_2 = {
             "brand_safety_categories": [],
@@ -97,7 +100,8 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             "list_type": "blacklist",
             "score_threshold": 1,
             "title": "testing",
-            "youtube_categories": []
+            "youtube_categories": [],
+            "minimum_option": 0
         }
         response_1 = self.client.post(self._get_url("video"), json.dumps(payload_1), content_type="application/json")
         response_2 = self.client.post(self._get_url("video"), json.dumps(payload_2), content_type="application/json")
