@@ -36,10 +36,10 @@ class SegmentCreationOptionsApiView(APIView):
 
     def _map_query_params(self, query_params):
         query_params._mutable = True
-        query_params["languages"] = query_params["languages"].split(",") if query_params.get("languages") else []
         query_params["brand_safety_categories"] = query_params["brand_safety_categories"].split(",") if query_params.get("brand_safety_categories") else []
+        query_params["languages"] = query_params["languages"].split(",") if query_params.get("languages") else []
+        query_params["minimum_option"] = int(query_params["minimum_option"]) if query_params.get("minimum_option") else 0
         query_params["score_threshold"] = int(query_params["score_threshold"]) if query_params.get("score_threshold") else 0
-        query_params["minimum_option"] = int(query_params["minimum_option"]) if query_params["minimum_option"] else 0
 
         youtube_categories = query_params["youtube_categories"].split(",") if query_params.get("youtube_categories") else []
         query_params["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(youtube_categories)
