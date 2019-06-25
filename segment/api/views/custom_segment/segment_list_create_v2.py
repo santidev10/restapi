@@ -12,7 +12,7 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
-    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "score_threshold", "title", "youtube_categories"]
+    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories"]
     DEFAULT_ALLOWED_SORTS = {
         "title",
         "videos",
