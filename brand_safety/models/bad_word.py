@@ -120,3 +120,4 @@ class BadWordHistory(models.Model):
     action = models.IntegerField(default=1, db_column='action')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     changes = models.CharField(max_length=250, db_index=True, default="")
+

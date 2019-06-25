@@ -34,7 +34,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             }
         }
         query_prams = QueryDict(
-            "brand_safety_categories=1,2,3&languages=es&list_type=whitelist&score_threshold=50"
+            "brand_safety_categories=1,2,3&languages=es&list_type=whitelist&score_threshold=50&minimum_option="
         ).urlencode()
         response = self.client.get(
             "{}?{}".format(self._get_url("channel"), query_prams))
