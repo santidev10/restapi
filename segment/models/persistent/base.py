@@ -99,7 +99,6 @@ class BasePersistentSegment(Timestampable):
         with PersistentSegmentExportContent(segment=self) as exported_file_name:
             self._s3().upload_file(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                # Key=self.get_s3_key(),
                 Key=s3_key,
                 Filename=exported_file_name,
             )

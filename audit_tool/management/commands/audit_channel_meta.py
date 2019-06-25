@@ -1,22 +1,19 @@
 from django.core.management.base import BaseCommand
 import csv
 import logging
-from django.conf import settings
 import re
 import requests
 from django.utils import timezone
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
+from audit_tool.models import AuditExporter
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from audit_tool.api.views.audit_export import AuditS3Exporter
-from audit_tool.api.views.audit_export import AuditExportApiView
-from utils.aws.ses_emailer import SESEmailer
 from django.conf import settings
 
 """
@@ -35,7 +32,6 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     audit = None
-    emailer = SESEmailer()
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                             "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
@@ -60,7 +56,7 @@ class Command(BaseCommand):
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
 
-    def process_audit(self, num=50000):
+    def process_audit(self, num=5000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -79,21 +75,25 @@ class Command(BaseCommand):
         else:
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
-            if self.audit.params.get('do_videos') == True:
-                self.audit.audit_type = 1
-                self.audit.params['audit_type_original'] = 2
-                self.audit.save(update_fields=['audit_type', 'params'])
-                print("Audit of channels completed, turning to video processor.")
-                raise Exception("Audit of channels completed, turning to video processor")
+            if self.thread_id == 0:
+                if self.audit.params.get('do_videos') == True:
+                    self.audit.audit_type = 1
+                    self.audit.params['audit_type_original'] = 2
+                    self.audit.save(update_fields=['audit_type', 'params'])
+                    print("Audit of channels completed, turning to video processor.")
+                    raise Exception("Audit of channels completed, turning to video processor")
+                else:
+                    self.audit.completed = timezone.now()
+                    self.audit.pause = 0
+                    self.audit.save(update_fields=['completed', 'pause'])
+                    print("Audit of channels completed")
+                    a = AuditExporter.objects.create(
+                        audit=self.audit,
+                        owner=None,
+                    )
+                    raise Exception("Audit of channels completed")
             else:
-                self.audit.completed = timezone.now()
-                self.audit.pause = 0
-                self.audit.save(update_fields=['completed', 'pause'])
-                print("Audit of channels completed")
-                export_funcs = AuditExportApiView()
-                file_name = export_funcs.export_channels(self.audit, self.audit.id)
-                self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-                raise Exception("Audit of channels completed")
+                raise Exception("not first thread but audit is done")
         pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
         start = self.thread_id * num
         counter = 0
@@ -104,16 +104,6 @@ class Command(BaseCommand):
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
         raise Exception("Audit completed 1 step.  pausing {}. {}.  COUNT: {}".format(self.audit.id, self.thread_id, counter))
-
-    def send_audit_email(self, file_name, recipients):
-        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
-        subject = "Audit '{}' Completed".format(self.audit.params['name'])
-        body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
-               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
-                   .format(file_url)
-        self.emailer.send_email(recipients, subject, body)
-
 
     def process_seed_file(self, seed_file):
         try:
@@ -130,13 +120,16 @@ class Command(BaseCommand):
             seed = row[0]
             if 'youtube.com/channel/' in seed:
                 v_id = seed.split("/")[-1]
-                channel = AuditChannel.get_or_create(v_id)
-                AuditChannelMeta.objects.get_or_create(channel=channel)
-                acp, _ = AuditChannelProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        channel=channel,
-                )
-                vids.append(acp)
+                if '?' in v_id:
+                    v_id = v_id.split("?")[0]
+                if v_id:
+                    channel = AuditChannel.get_or_create(v_id)
+                    AuditChannelMeta.objects.get_or_create(channel=channel)
+                    acp, _ = AuditChannelProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            channel=channel,
+                    )
+                    vids.append(acp)
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -175,11 +168,12 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        self.get_videos(acp)
+        if not acp.processed and self.audit.params.get('do_videos') == True:
+            self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
             acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed'])
+        acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel

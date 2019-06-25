@@ -5,6 +5,7 @@ from django.db.models import F
 from rest_framework.serializers import CharField
 from rest_framework.serializers import DictField
 from rest_framework.serializers import IntegerField
+from rest_framework.serializers import JSONField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -12,8 +13,12 @@ from rest_framework.serializers import ValidationError
 
 from segment.models import PersistentSegmentChannel
 from segment.models import SegmentKeyword
+from segment.models import CustomSegment
 from segment.tasks import fill_segment_from_filters
 from singledb.connector import SingleDatabaseApiConnector
+from userprofile.models import UserProfile
+
+import brand_safety.constants as constants
 
 
 class SegmentSerializer(ModelSerializer):
@@ -159,3 +164,81 @@ class PersistentSegmentSerializer(ModelSerializer):
         details = obj.details or {}
         statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
         return statistics
+
+
+class CustomSegmentSerializer(ModelSerializer):
+    segment_type = CharField(max_length=10)
+    list_type = CharField(max_length=10)
+    owner = CharField(max_length=50, required=False)
+    statistics = JSONField(required=False)
+    title = CharField(max_length=255, required=True)
+    title_hash = IntegerField()
+
+    class Meta:
+        model = CustomSegment
+        fields = (
+            "id",
+            "list_type",
+            "owner",
+            "segment_type",
+            "statistics",
+            "title",
+            "title_hash"
+        )
+
+    def validate_list_type(self, list_type):
+        config = {
+            constants.WHITELIST: 0,
+            constants.BLACKLIST: 1,
+        }
+        try:
+            data = config[list_type.lower().strip()]
+        except KeyError:
+            raise ValidationError("blacklist or whitelist")
+        return data
+
+    def validate_owner(self, owner_id):
+        try:
+            user = UserProfile.objects.get(id=owner_id)
+        except UserProfile.DoesNotExist:
+            raise ValidationError("User with id: {} not found.".format(owner_id))
+        return user
+
+    def validate_segment_type(self, segment_type):
+        config = {
+            constants.VIDEO: 0,
+            constants.CHANNEL: 1,
+        }
+        try:
+            data = config[segment_type.lower().strip()]
+        except KeyError:
+            raise ValidationError("channel or video")
+        return data
+
+    def validate_title(self, title):
+        hashed = self.initial_data["title_hash"]
+        owner_id = self.initial_data["owner"]
+        segment_type = self.validate_segment_type(self.initial_data["segment_type"])
+        segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
+        if any(segment.title.lower() == title.lower().strip() for segment in segments):
+            raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
+        return title
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("owner")
+        data.pop("title_hash")
+        data["segment_type"] = self._map_segment_type(data["segment_type"])
+        data["list_type"] = self._map_segment_type(data["list_type"])
+        data["download_url"] = instance.export.download_url
+        return data
+
+    def _map_segment_type(self, segment_type):
+        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
+        mapped = mapping[int(segment_type)]
+        return mapped
+
+    def _map_list_type(self, list_type):
+        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
+        mapped = mapping[int(list_type)]
+        return mapped

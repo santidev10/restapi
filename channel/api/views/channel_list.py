@@ -57,14 +57,18 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
         "country",
         "category",
         "emails",
-        "description",
         "subscribers",
         "thirty_days_subscribers",
         "thirty_days_views",
         "views_per_video",
         "sentiment",
         "engage_rate",
-        "last_video_published_at"
+        "last_video_published_at",
+        "brand_safety_score",
+        "video_view_rate",
+        "ctr",
+        "ctr_v",
+        "average_cpv"
     ]
 
 

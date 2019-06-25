@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from rest_framework.status import HTTP_403_FORBIDDEN
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
@@ -23,6 +24,8 @@ class AuthAsAUserAdminApiView(APIView):
             user = UserProfile.objects.get(pk=pk)
         except UserProfile.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
+        if user.is_superuser:
+            return Response(status=HTTP_403_FORBIDDEN, data="You do not have permission to perform this action.")
         Token.objects.get_or_create(user=user)
         response_data = RegularUserSerializer(user).data
         custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())

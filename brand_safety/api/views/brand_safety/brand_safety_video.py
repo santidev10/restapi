@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.views import APIView
 
-from brand_safety.api.views.brand_safety.utils.utils import get_es_data
+from brand_safety.utils import get_es_data
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants

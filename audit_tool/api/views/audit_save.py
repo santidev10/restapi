@@ -60,6 +60,7 @@ class AuditSaveApiView(APIView):
             'user_id': user_id,
             'do_videos': do_videos,
             'category': category,
+            'audit_type_original': audit_type,
         }
         if not audit_id:
             if source_file is None:

@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 import csv
 import logging
-from django.conf import settings
 import re
 import requests
 from django.utils import timezone
@@ -11,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
@@ -18,9 +18,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 from pid import PidFile
-from utils.aws.ses_emailer import SESEmailer
-from audit_tool.api.views.audit_export import AuditS3Exporter
-from audit_tool.api.views.audit_export import AuditExportApiView
+from utils.lang import remove_mentions_hashes_urls
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
 
@@ -42,7 +40,6 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
-    emailer = SESEmailer()
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
@@ -84,7 +81,6 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
-        export_funcs = AuditExportApiView()
         if thread_id % 3 == 0:
             thread_id = 0
         if pending_videos.count() == 0:
@@ -93,41 +89,32 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
-            pending_videos = pending_videos.filter(processed__isnull=True).select_related("video").order_by("id")
+            done = False
+            if pending_videos.count() > self.audit.max_recommended:
+                done =  True
+            pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
-                self.audit.completed = timezone.now()
-                self.audit.pause = 0
-                self.audit.save(update_fields=['completed', 'pause'])
-                print("Audit completed, all videos processed")
-                file_name = export_funcs.export_videos(self.audit, self.audit.id)
-                self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-                raise Exception("Audit completed, all videos processed")
+                done =  True
+            else:
+                pending_videos = pending_videos.select_related("video").order_by("id")
+            if done:
+                if self.thread_id == 0:
+                    self.audit.completed = timezone.now()
+                    self.audit.pause = 0
+                    self.audit.save(update_fields=['completed', 'pause'])
+                    print("Audit completed, all videos processed")
+                    a = AuditExporter.objects.create(
+                        audit=self.audit,
+                        owner=None
+                    )
+                    raise Exception("Audit completed, all videos processed")
+                else:
+                    raise Exception("not first thread but audit is done")
         start = thread_id * 100
         for video in pending_videos[start:start+100]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
-        if AuditVideoProcessor.objects.filter(audit=self.audit).count() >= self.audit.max_recommended:
-            self.audit.completed = timezone.now()
-            self.audit.pause = 0
-            self.audit.save(update_fields=['completed', 'pause'])
-            file_name = export_funcs.export_videos(self.audit, self.audit.id)
-            self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS)
-            print("Audit completed {}".format(self.audit.id))
-            raise Exception("Audit completed {}".format(self.audit.id))
-        else:
-            print("Done one step, continuing audit {}.".format(self.audit.id))
-            raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
-            #self.process_audit()
-
-    def send_audit_email(self, file_name, recipients):
-        file_url = AuditS3Exporter.generate_temporary_url(file_name, 604800)
-        subject = "Audit '{}' Completed".format(self.audit.params['name'])
-        body = "Audit '{}' has finished with {} results. Click " \
-                   .format(self.audit.params['name'], self.audit.cached_data['count']) \
-               + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
-                   .format(file_url)
-        self.emailer.send_email(recipients, subject, body)
 
     def process_seed_file(self, seed_file):
         try:
@@ -171,6 +158,8 @@ class Command(BaseCommand):
         return vids
 
     def get_avp_from_url(self, seed):
+        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed):
+            return
         v_id = seed.replace(",", "").split("/")[-1]
         if '?v=' in v_id:
             v_id = v_id.split("v=")[-1]
@@ -227,37 +216,39 @@ class Command(BaseCommand):
             )
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
-            if self.check_video_is_clean(db_video_meta, avp):
-                #print(self.category, "video is clean {}".format(db_video.video_id), self.language, db_video_meta.language.language)
+            is_clean, hits = self.check_video_is_clean(db_video_meta)
+            if is_clean:
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
                         v, _ = AuditVideoProcessor.objects.get_or_create(
                             video=db_video,
                             audit=self.audit
                         )
+                        v.word_hits = hits
                         if not v.video_source:
                             v.video_source = video
-                            v.save()
+                        v.save()
+
         avp.processed = timezone.now()
         avp.save()
 
-    def check_video_is_clean(self, db_video_meta, avp):
+    def check_video_is_clean(self, db_video_meta):
+        hits = {}
         full_string = "{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list)
-            avp.word_hits['inclusion'] = hits
+            is_there, b_hits = self.check_exists(full_string, self.inclusion_list)
+            hits['inclusion'] = b_hits
             if not is_there:
-                return False
+                return False, hits
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list)
-            avp.word_hits['exclusion'] = hits
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list)
             if is_there:
-                return False
-        return True
+                return False, hits
+        return True, hits
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
@@ -329,6 +320,7 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
+            data = remove_mentions_hashes_urls(data)
             l = langid.classify(data.lower())[0]
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
