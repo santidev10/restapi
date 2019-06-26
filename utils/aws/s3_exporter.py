@@ -39,12 +39,12 @@ class S3Exporter(ABC):
             )
 
     @classmethod
-    def get_s3_export_content(cls, name):
+    def get_s3_export_content(cls, name, get_key=True):
         s3 = S3Exporter._s3()
         try:
             s3_object = s3.get_object(
                 Bucket=cls.bucket_name,
-                Key=cls.get_s3_key(name)
+                Key=cls.get_s3_key(name) if get_key else name
             )
         except s3.exceptions.NoSuchKey:
             raise ReportNotFoundException()
