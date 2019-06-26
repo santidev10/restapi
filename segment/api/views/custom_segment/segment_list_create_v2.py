@@ -1,3 +1,5 @@
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.db.models import Count
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -13,20 +15,13 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
     REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories"]
-    DEFAULT_ALLOWED_SORTS = {
-        "title",
-        "videos",
-        "engage_rate",
-        "sentiment",
+    ALLOWED_SORTS = {
+        "items",
         "created_at",
-    }
-    allowed_sorts = {
-        "channel": DEFAULT_ALLOWED_SORTS.union({"channels"}),
-        "keyword": {"competition", "average_cpc", "average_volume"}
     }
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
-    queryset = CustomSegment.objects.all().order_by("id")
+    queryset = CustomSegment.objects.all().order_by("created_at")
 
     def _do_filters(self, queryset):
         """
@@ -52,6 +47,18 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             queryset = queryset.filter(**filters)
         return queryset
 
+    def _do_sorts(self, queryset):
+        try:
+            sort_by = self.request.query_params["sort_by"]
+            if sort_by not in self.ALLOWED_SORTS:
+                return Response(status=HTTP_400_BAD_REQUEST, data="Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
+            if sort_by == "items":
+                queryset = queryset.annotate(items=Count("related"))
+            queryset = queryset.order_by(sort_by)
+        except KeyError:
+            pass
+        return queryset
+
     def get_queryset(self):
         """
         Prepare queryset to display
@@ -59,6 +66,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
         queryset = super().get_queryset().filter(segment_type=segment_type)
         queryset = self._do_filters(queryset)
+        queryset = self._do_sorts(queryset)
         return queryset
 
     def paginate_queryset(self, queryset):

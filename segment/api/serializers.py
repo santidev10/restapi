@@ -18,8 +18,6 @@ from segment.tasks import fill_segment_from_filters
 from singledb.connector import SingleDatabaseApiConnector
 from userprofile.models import UserProfile
 
-import brand_safety.constants as constants
-
 
 class SegmentSerializer(ModelSerializer):
     owner = SerializerMethodField()
@@ -178,6 +176,8 @@ class CustomSegmentSerializer(ModelSerializer):
         model = CustomSegment
         fields = (
             "id",
+            "created_at",
+            "updated_at",
             "list_type",
             "owner",
             "segment_type",
