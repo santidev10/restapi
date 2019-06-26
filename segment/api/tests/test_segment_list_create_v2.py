@@ -145,8 +145,22 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_created(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
         seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "sort_by={}".format("created_at")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_2.id)
+        self.assertEqual(data["items"][1]["id"], seg_1.id)
 
+    def test_default_thumbnail_images(self):
+        user = self.create_test_user()
+        segment = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        response = self.client.get(self._get_url("video"))
+        data = response.data
+        self.assertEqual(len(data["items"][0]["statistics"]["top_three_items"]), 3)
