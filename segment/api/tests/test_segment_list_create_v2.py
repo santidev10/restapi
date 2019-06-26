@@ -60,7 +60,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_201_CREATED)
 
     def test_success_response(self):
-        response_fields = ["id", "list_type", "segment_type", "statistics", "title", "download_url", "pending"]
+        response_fields = ["id", "list_type", "segment_type", "statistics", "title", "download_url", "pending", "updated_at", "created_at"]
         self.create_test_user()
         payload = {
             "brand_safety_categories": ["1", "3", "4", "5", "6"],
@@ -86,7 +86,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         expected_segments_count = 1
-        response = self.client.get(self._get_url("channel"))
+        response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
 
@@ -99,7 +99,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_3, query={})
         expected_segments_count = 3
-        response = self.client.get(self._get_url("channel"))
+        response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
 

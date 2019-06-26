@@ -1,4 +1,3 @@
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import Count
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
@@ -38,11 +37,13 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         # category
         segment_type = self.request.query_params.get("segment_type")
         if segment_type:
-            filters["segment_type"] = segment_type
+            value = CustomSegmentSerializer.map_to_id(segment_type, "segment")
+            filters["segment_type"] = value
         # list type
         list_type = self.request.query_params.get("list_type")
         if list_type:
-            filter["list_type"] = list_type
+            value = CustomSegmentSerializer.map_to_id(segment_type, "list_type")
+            filters["list_type"] = value
         if filters:
             queryset = queryset.filter(**filters)
         return queryset
