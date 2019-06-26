@@ -12,7 +12,7 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
-    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "score_threshold", "title", "youtube_categories"]
+    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories"]
     DEFAULT_ALLOWED_SORTS = {
         "title",
         "videos",
@@ -78,19 +78,16 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
                 status=HTTP_400_BAD_REQUEST,
                 data=str(err)
             )
-        kwargs["owner"] = request.user.id
-        data.update(kwargs)
+        data["owner"] = request.user.id
+        data["segment_type"] = kwargs["segment_type"]
         data["title_hash"] = get_hash_name(data["title"].lower().strip())
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
+        data["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
         query_builder = BrandSafetyQueryBuilder(data)
-        export = CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
-        data = {
-            "segment_id": segment.id,
-            "export_id": export.id
-        }
-        return Response(status=HTTP_201_CREATED, data=data)
+        CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
+        return Response(status=HTTP_201_CREATED, data=serializer.data)
 
     def _validate_data(self, data):
         expected = set(self.REQUIRED_FIELDS)

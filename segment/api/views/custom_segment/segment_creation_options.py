@@ -12,7 +12,7 @@ from segment.api.views import SegmentListCreateApiViewV2
 
 
 class SegmentCreationOptionsApiView(APIView):
-    OPTIONAL_FIELDS = ["brand_safety_categories", "languages", "list_type", "score_threshold", "youtube_categories"]
+    OPTIONAL_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "youtube_categories"]
 
     def get(self, request, *args, **kwargs):
         data = self._map_query_params(request.query_params)
@@ -36,28 +36,23 @@ class SegmentCreationOptionsApiView(APIView):
 
     def _map_query_params(self, query_params):
         query_params._mutable = True
-        try:
-            query_params["languages"] = query_params["languages"].split(",")
-        except KeyError:
-            pass
-        try:
-            query_params["youtube_categories"] = query_params["youtube_categories"].split(",")
-        except KeyError:
-            pass
-        try:
-            query_params["brand_safety_categories"] = query_params["brand_safety_categories"].split(",")
-        except KeyError:
-            pass
-        try:
-            query_params["score_threshold"] = int(query_params["score_threshold"])
-        except KeyError:
-            pass
+        query_params["brand_safety_categories"] = query_params["brand_safety_categories"].split(",") if query_params.get("brand_safety_categories") else []
+        query_params["languages"] = query_params["languages"].split(",") if query_params.get("languages") else []
+        query_params["minimum_option"] = int(query_params["minimum_option"]) if query_params.get("minimum_option") else 0
+        query_params["score_threshold"] = int(query_params["score_threshold"]) if query_params.get("score_threshold") else 0
+
+        youtube_categories = query_params["youtube_categories"].split(",") if query_params.get("youtube_categories") else []
+        query_params["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(youtube_categories)
         return query_params
 
     def _get_options(self):
         options = {
-            "brand_safety_categories": BadWordCategory.get_category_mapping(),
-            "youtube_categories": AuditCategory.get_all()
+            "brand_safety_categories": [
+                {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
+            ],
+            "youtube_categories": [
+                {"id": _id, "name": category} for _id, category in AuditCategory.get_all().items()
+            ]
         }
         return options
 

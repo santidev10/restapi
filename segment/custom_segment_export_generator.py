@@ -142,5 +142,3 @@ class CustomSegmentExportGenerator(S3Exporter):
         else:
             chunk = [item["_id"] for item in chunk]
         segment.add_related_ids(chunk)
-
-
