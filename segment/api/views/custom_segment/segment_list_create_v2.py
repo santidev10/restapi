@@ -56,7 +56,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         """
         Prepare queryset to display
         """
-        queryset = super().get_queryset()
+        segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
+        queryset = super().get_queryset().filter(segment_type=segment_type)
         queryset = self._do_filters(queryset)
         return queryset
 

@@ -4,6 +4,7 @@ from .brand_safety.brand_safety_master_list import PersistentMasterSegmentsListA
 from .brand_safety.brand_safety_export import PersistentSegmentExportApiView
 from .brand_safety.brand_safety_preview import PersistentSegmentPreviewAPIView
 from .brand_safety.brand_safety_retrieve import PersistentSegmentRetrieveApiView
+from .custom_segment.segment_delete_v2 import SegmentDeleteApiViewV2
 from .custom_segment.segment_duplicate import SegmentDuplicateApiView
 from .custom_segment.segment_list_create import SegmentListCreateApiView
 from .custom_segment.segment_retrieve_update_delete import SegmentRetrieveUpdateDeleteApiView

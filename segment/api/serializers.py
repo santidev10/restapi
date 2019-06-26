@@ -173,12 +173,6 @@ class CustomSegmentSerializer(ModelSerializer):
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
-    segment_type_config = {
-        segment_type: _id for _id, segment_type in dict(CustomSegment.SEGMENT_TYPE_CHOICES).items()
-    }
-    list_type_config = {
-        list_type: _id for _id, list_type in dict(CustomSegment.LIST_TYPE_CHOICES).items()
-    }
 
     class Meta:
         model = CustomSegment
@@ -194,14 +188,14 @@ class CustomSegmentSerializer(ModelSerializer):
 
     def validate_list_type(self, list_type):
         try:
-            data = self.list_type_config[list_type.lower().strip()]
+            data = self.map_to_id(list_type.lower().strip(), item_type="list")
         except KeyError:
             raise ValidationError("list_type must be either whitelist or blacklist.")
         return data
 
     def validate_segment_type(self, segment_type):
         try:
-            data = self.segment_type_config[segment_type.lower().strip()]
+            data = self.map_to_id(segment_type.lower().strip(), item_type="segment")
         except KeyError:
             raise ValidationError("segment_type must be either video or channel.")
         return data
@@ -219,24 +213,33 @@ class CustomSegmentSerializer(ModelSerializer):
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
-            raise ValidationError("A {} segment with the title: {} already exists.".format(self._map_segment_type(segment_type), title))
+            raise ValidationError("A {} segment with the title: {} already exists.".format(self.map_to_str(segment_type, item_type="segment"), title))
         return title
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data.pop("owner")
         data.pop("title_hash")
-        data["segment_type"] = self._map_segment_type(data["segment_type"])
-        data["list_type"] = self._map_segment_type(data["list_type"])
+        data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
+        data["list_type"] = self.map_to_str(data["list_type"], item_type="list")
         data["download_url"] = instance.export.download_url
+        data["pending"] = True if data["download_url"] is None else False
         return data
 
-    def _map_segment_type(self, segment_type):
-        mapping = dict(CustomSegment.SEGMENT_TYPE_CHOICES)
-        mapped = mapping[int(segment_type)]
-        return mapped
+    @staticmethod
+    def map_to_str(value, item_type="segment"):
+        config = {
+            "segment": dict(CustomSegment.SEGMENT_TYPE_CHOICES),
+            "list": dict(CustomSegment.LIST_TYPE_CHOICES)
+        }
+        to_str = config[item_type][int(value)]
+        return to_str
 
-    def _map_list_type(self, list_type):
-        mapping = dict(CustomSegment.LIST_TYPE_CHOICES)
-        mapped = mapping[int(list_type)]
-        return mapped
+    @staticmethod
+    def map_to_id(value, item_type="segment"):
+        config = {
+            "segment": CustomSegment.segment_type_to_id ,
+            "list": CustomSegment.list_type_to_id
+        }
+        to_id = config[item_type][value]
+        return to_id

@@ -5,6 +5,7 @@ from django.conf.urls import url
 
 from segment.api.urls.names import Name
 from segment.api.views import SegmentDuplicateApiView
+from segment.api.views import SegmentDeleteApiViewV2
 from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentListCreateApiViewV2
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
@@ -59,6 +60,9 @@ urlpatterns = [
 urlpatterns_v2 = [
     url(r'^segments/(?P<segment_type>{})/$'.format(segment_types),
         SegmentListCreateApiViewV2.as_view(),
+        name=Name.SEGMENT_LIST),
+    url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(segment_types),
+        SegmentDeleteApiViewV2.as_view(),
         name=Name.SEGMENT_LIST),
     url(r'^segments/options/(?P<segment_type>{})/$'.format(segment_types),
         SegmentCreationOptionsApiView.as_view(),

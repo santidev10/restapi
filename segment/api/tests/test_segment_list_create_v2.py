@@ -12,7 +12,7 @@ from segment.models import CustomSegmentFileUpload
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
+class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
@@ -58,6 +58,26 @@ class SegmentListCreateV2ApiViewTestCase(ExtendedAPITestCase):
             self._get_url("video"), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
+
+    def test_success_response(self):
+        response_fields = ["id", "list_type", "segment_type", "statistics", "title", "download_url", "pending"]
+        self.create_test_user()
+        payload = {
+            "brand_safety_categories": ["1", "3", "4", "5", "6"],
+            "languages": ["es"],
+            "list_type": "blacklist",
+            "score_threshold": 100,
+            "title": "I am a blacklist",
+            "youtube_categories": [],
+            "minimum_option": 0
+        }
+        response = self.client.post(
+            self._get_url("video"), json.dumps(payload), content_type="application/json"
+        )
+        data = response.data
+        self.assertEqual(response.status_code, HTTP_201_CREATED)
+        self.assertEqual(set(data.keys()), set(response_fields))
+        self.assertTrue(data["pending"])
 
     def test_owner_filter(self):
         user = self.create_test_user()

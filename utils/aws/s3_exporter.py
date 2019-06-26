@@ -71,3 +71,10 @@ class S3Exporter(ABC):
             config=Config(signature_version='s3v4')
         )
         return s3
+
+    @classmethod
+    def delete_obj(cls, s3_object_key):
+        S3Exporter._s3().delete_object(
+            Bucket=cls.bucket_name,
+            Key=s3_object_key
+        )
