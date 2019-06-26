@@ -14,6 +14,6 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = CustomSegment.objects.filter(id=self.kwargs["pk"])
+        queryset = CustomSegment.objects.filter(owner=self.request.user, id=self.kwargs["pk"])
         return queryset
 

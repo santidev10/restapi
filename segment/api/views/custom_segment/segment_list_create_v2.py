@@ -1,8 +1,9 @@
 from django.db.models import Count
+from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.generics import ListCreateAPIView
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -17,6 +18,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     ALLOWED_SORTS = {
         "items",
         "created_at",
+        "updated_at"
     }
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
@@ -34,15 +36,10 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         search = self.request.query_params.get("search")
         if search:
             filters["title__icontains"] = search
-        # category
-        segment_type = self.request.query_params.get("segment_type")
-        if segment_type:
-            value = CustomSegmentSerializer.map_to_id(segment_type, "segment")
-            filters["segment_type"] = value
         # list type
         list_type = self.request.query_params.get("list_type")
         if list_type:
-            value = CustomSegmentSerializer.map_to_id(segment_type, "list_type")
+            value = CustomSegmentSerializer.map_to_id(list_type, item_type="list")
             filters["list_type"] = value
         if filters:
             queryset = queryset.filter(**filters)
@@ -52,7 +49,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         try:
             sort_by = self.request.query_params["sort_by"]
             if sort_by not in self.ALLOWED_SORTS:
-                return Response(status=HTTP_400_BAD_REQUEST, data="Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
+                raise ValidationError("Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
             if sort_by == "items":
                 queryset = queryset.annotate(items=Count("related"))
             queryset = queryset.order_by(sort_by)

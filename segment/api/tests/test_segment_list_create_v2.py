@@ -1,6 +1,7 @@
 import json
 
 from django.core.urlresolvers import reverse
+from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -127,3 +128,25 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response_2 = self.client.post(self._get_url("video"), json.dumps(payload_2), content_type="application/json")
         self.assertEqual(response_1.status_code, HTTP_201_CREATED)
         self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_list_type_filter(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        expected_segments_count = 1
+        query_prams = QueryDict(
+            "list_type={}".format("whitelist")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), expected_segments_count)
+
+    def test_sort_by_created(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+
