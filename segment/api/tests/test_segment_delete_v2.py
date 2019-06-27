@@ -9,6 +9,7 @@ from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
+from userprofile.models import UserProfile
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -25,6 +26,14 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
+    def test_not_found_not_owned(self):
+        user = self.create_test_user()
+        CustomSegment.objects.create(owner=user, id=1, list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(id=2, list_type=0, segment_type=0, title="test_1")
+        response = self.client.delete(
+            self._get_url("video") + "2/"
+        )
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_success(self):
         user = self.create_test_user()

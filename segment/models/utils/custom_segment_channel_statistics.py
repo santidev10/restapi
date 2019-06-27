@@ -26,7 +26,6 @@ class CustomSegmentChannelStatistics(object):
             "size": 3
         }
         top_three_channels_data = self.singledb_method(query_params=params)
-
         params = {
             "ids_hash": ids_hash,
             "fields": "videos",
