@@ -135,19 +135,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], expected_segments_count)
 
-    def test_admin_filter_list(self):
-        user = self.create_admin_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
-        seg_3 = CustomSegment.objects.create(list_type=0, segment_type=0, title="3")
-        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
-        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
-        CustomSegmentFileUpload.objects.create(segment=seg_3, query={})
-        expected_segments_count = 3
-        response = self.client.get(self._get_url("video"))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], expected_segments_count)
-
     def test_list_type_filter_list(self):
         user = self.create_test_user()
         seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
