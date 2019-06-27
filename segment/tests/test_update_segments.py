@@ -1,5 +1,6 @@
 from datetime import date
 from datetime import datetime
+from unittest import skipIf
 
 import pytz
 from django.core.management import call_command
@@ -39,6 +40,7 @@ def get_related_ref(segment_class):
         else "yt_id"
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class UpdateSegmentsTestCase(TransactionTestCase):
     generic_args_list = [
         ("Channel Segment", (SegmentChannel,), dict()),

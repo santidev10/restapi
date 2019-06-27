@@ -1,9 +1,12 @@
+from unittest import skipIf
+
 from django.core.urlresolvers import reverse
 
 from segment.models import SegmentChannel, SegmentKeyword, SegmentVideo
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentDetailsApiViewTestCase(ExtendedAPITestCase):
     def test_segment_details_updated_at_field(self):
         user = self.create_test_user()
