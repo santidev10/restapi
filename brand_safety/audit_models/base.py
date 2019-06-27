@@ -3,7 +3,7 @@ from collections import Counter
 from collections import namedtuple
 
 from utils.lang import remove_mentions_hashes_urls
-from fasttext.FastText import _FastText as FastText
+from utils.lang import fasttext_lang
 
 KeywordHit = namedtuple("KeywordHit", "name location")
 
@@ -48,9 +48,7 @@ class Audit(object):
         :return: Language code
         """
         text = remove_mentions_hashes_urls(text)
-        fast_text_model = FastText('lid.176.bin')
-        fast_text_result = fast_text_model.predict(text)
-        language = fast_text_result[0][0].split('__')[2].lower()
+        language = fasttext_lang(text)
         return language
 
     def audit_emoji(self, text, regexp):

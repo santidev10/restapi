@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from utils.lang import remove_mentions_hashes_urls
-from fasttext.FastText import _FastText as FastText
+from utils.lang import fasttext_lang
 import logging
 from django.conf import settings
 import requests
@@ -59,9 +59,7 @@ class Command(BaseCommand):
             str_long = "{} {}".format(str_long, channel.description)
         try:
             str_long = remove_mentions_hashes_urls(str_long).lower()
-            fast_text_model = FastText('lid.176.bin')
-            fast_text_result = fast_text_model.predict(str_long)
-            l = fast_text_result[0][0].split('__')[2].lower()
+            l = fasttext_lang(str_long)
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             channel.language = db_lang
             channel.save(update_fields=['language'])
