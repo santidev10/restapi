@@ -44,7 +44,7 @@ urlpatterns = [
     url(r'^api/v1/', include(keyword_api_urls, namespace='keyword_api_urls')),
 
     # Segment api urls
-    #url(r'^api/v1/', include(segment_v1_url_patterns, namespace=Namespace.SEGMENT)),
+    url(r'^api/v1/', include(segment_v1_url_patterns, namespace=Namespace.SEGMENT)),
 
     # Userprofile api urls
     url(r'^api/v1/', include(userprofile_api_urls,
