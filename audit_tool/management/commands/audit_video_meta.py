@@ -187,6 +187,9 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
+                if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
+                    db_channel_meta.last_uploaded = db_video_meta.publish_date
+                    db_channel_meta.save(update_fields=['last_uploaded'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()
