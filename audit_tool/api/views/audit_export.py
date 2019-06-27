@@ -229,6 +229,7 @@ class AuditExportApiView(APIView):
             "Num Videos Checked",
             "Country",
             "Language",
+            "Last Video Upload",
             "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
@@ -236,6 +237,7 @@ class AuditExportApiView(APIView):
         channel_ids = []
         hit_words = {}
         video_count = {}
+        last_uploaded = {}
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
@@ -243,10 +245,19 @@ class AuditExportApiView(APIView):
         bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
+            last_video = AuditVideoMeta.objects.filter(
+                video__channel_id=cid.channel_id).order_by("-publish_date")
+            try:
+                last_uploaded[cid.channel.channel_id] = last_video[0].publish_date.strftime("%Y/%m/%d %H:%M")
+            except Exception as e:
+                last_uploaded[cid.channel.channel_id] = ''
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
             if not hit_words[cid.channel.channel_id]:
                 hit_words[cid.channel.channel_id] = []
-            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
+            videos = AuditVideoProcessor.objects.filter(
+                audit_id=audit_id,
+                video__channel_id=cid.channel_id
+            )
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = 0
             for video in videos.filter(clean=False):
@@ -276,6 +287,7 @@ class AuditExportApiView(APIView):
                     video_count[v.channel.channel_id],
                     country,
                     language,
+                    last_uploaded[v.channel.channel_id],
                     bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])

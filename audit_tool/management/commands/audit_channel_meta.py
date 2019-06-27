@@ -4,6 +4,7 @@ import logging
 import re
 import requests
 from django.utils import timezone
+from datetime import timedelta
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
@@ -35,7 +36,7 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                             "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
-                            "&maxResults=50&type=video"
+                            "&maxResults=50&type=video&order=date"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -168,7 +169,7 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed and self.audit.params.get('do_videos') == True:
+        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)):
             self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
@@ -198,7 +199,7 @@ class Command(BaseCommand):
                 acp.save(update_fields=['clean', 'processed'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token:
+            if not page_token or not self.audit.params.get('do_videos'):
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])

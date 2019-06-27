@@ -142,3 +142,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         else:
             chunk = [item["_id"] for item in chunk]
         segment.add_related_ids(chunk)
+
+    def delete_export(self, owner_id, segment_title):
+        s3_key = self.get_s3_key(owner_id, segment_title)
+        self.delete_obj(s3_key)
