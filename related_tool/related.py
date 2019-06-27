@@ -9,7 +9,7 @@ import re
 from multiprocessing import Pool
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
-import langid
+from fasttext.FastText import _FastText as FastText
 from utils.lang import remove_mentions_hashes_urls
 
 class Related(object):
@@ -403,6 +403,8 @@ class Related(object):
         text += obj.channel_title
         text = remove_mentions_hashes_urls(text)
 
-        language = langid.classify(text)[0].lower()
+        fast_text_model = FastText('lid.176.bin')
+        fast_text_result = fast_text_model.predict(text)
+        language = fast_text_result[0][0].split('__')[2].lower()
 
         return language

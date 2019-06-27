@@ -4,7 +4,7 @@ import logging
 import re
 import requests
 from django.utils import timezone
-import langid
+from fasttext.FastText import _FastText as FastText
 from dateutil.parser import parse
 from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
@@ -292,8 +292,10 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
-            data = remove_mentions_hashes_urls(data)
-            l = langid.classify(data.lower())[0]
+            data = remove_mentions_hashes_urls(data).lower()
+            fast_text_model = FastText('lid.176.bin')
+            fast_text_result = fast_text_model.predict(data)
+            l = fast_text_result[0][0].split('__')[2].lower()
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
         except Exception as e:

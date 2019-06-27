@@ -1,4 +1,4 @@
-import langid
+from fasttext.FastText import _FastText as FastText
 from utils.lang import remove_mentions_hashes_urls
 
 from brand_safety import constants
@@ -63,7 +63,7 @@ class CustomVideoAudit(Audit):
 
     def get_language(self, data):
         """
-        Parses metadata to detect language using langid
+        Parses metadata to detect language using fastText
         :param data:
         :return:
         """
@@ -71,7 +71,9 @@ class CustomVideoAudit(Audit):
         if language is None:
             text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
             text = remove_mentions_hashes_urls(text)
-            language = langid.classify(text)[0].lower()
+            fast_text_model = FastText('lid.176.bin')
+            fast_text_result = fast_text_model.predict(text)
+            language = fast_text_result[0][0].split('__')[2].lower()
         return language
 
     def get_export_row(self, audit_type=constants.BRAND_SAFETY):
