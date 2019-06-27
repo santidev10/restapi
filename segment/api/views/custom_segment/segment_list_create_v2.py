@@ -28,9 +28,6 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         Filter queryset
         """
         filters = {}
-        is_admin = self.request.user.is_staff
-        if not is_admin:
-            filters["owner_id"] = self.request.user.id
         # search
         search = self.request.query_params.get("search")
         if search:
@@ -61,7 +58,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         Prepare queryset to display
         """
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
-        queryset = super().get_queryset().filter(segment_type=segment_type)
+        queryset = super().get_queryset().filter(owner=self.request.user, segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)
         return queryset
