@@ -179,10 +179,10 @@ class Command(BaseCommand):
             else:
                 pt=''
             url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
-                    key=self.DATA_API_KEY,
-                    id=db_channel.channel_id,
-                    page_token=pt,
-                    num_videos=num_videos,
+                key=self.DATA_API_KEY,
+                id=db_channel.channel_id,
+                page_token=pt,
+                num_videos=num_videos,
             )
             r = requests.get(url)
             data = r.json()
