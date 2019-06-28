@@ -1,5 +1,5 @@
 from aw_reporting.models import YTVideoStatistic
-from segment.models.utils.count_segment_adwords_statistics import count_segment_adwords_statistics
+from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
 from singledb.connector import SingleDatabaseApiConnector as Connector
 
 
@@ -30,9 +30,9 @@ class CustomSegmentVideoStatistics(object):
 
     def get_statistics(self, segment, data):
         statistics = {
-            "adw_data": count_segment_adwords_statistics(segment),
+            "adw_data": aggregate_segment_statistics(segment),
             "top_three_items": self.get_top_three_items(data),
-            "items_count": data.get("items_count")
+            "items_count": segment.related.count()
         }
         return statistics
 
