@@ -130,6 +130,7 @@ class AuditExportApiView(APIView):
             "Channel Default Lang.",
             "Channel Subscribers",
             "Country",
+            "Last Uploaded Video",
             "All {} Hit Words".format(hit_types),
             "Unique {} Hit Words".format(hit_types),
             "Video Count",
@@ -168,6 +169,10 @@ class AuditExportApiView(APIView):
                     video_count = v.video.channel.auditchannelmeta.video_count
                 except Exception as e:
                     video_count = ""
+                try:
+                    last_uploaded = v.video.channel.auditchannelmeta.last_uploaded.strftime("%m/%d/%Y")
+                except Exception as e:
+                    last_uploaded = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -184,6 +189,7 @@ class AuditExportApiView(APIView):
                     channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
+                    last_uploaded,
                     all_hit_words,
                     unique_hit_words,
                     video_count if video_count else "",

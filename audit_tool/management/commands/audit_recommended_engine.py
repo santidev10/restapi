@@ -10,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -208,11 +209,12 @@ class Command(BaseCommand):
                 pass
             if not db_video_meta.keywords:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-            db_video.channel = AuditChannel.get_or_create(i['snippet']['channelId'])
+            channel = AuditChannel.get_or_create(i['snippet']['channelId'])
+            db_video.channel = channel
             db_video_meta.save()
             db_video.save()
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                    channel=db_video.channel,
+                channel=channel,
             )
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
