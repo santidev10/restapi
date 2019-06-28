@@ -62,15 +62,15 @@ class CustomSegmentExportGenerator(S3Exporter):
         :return:
         """
         now = timezone.now()
-        if self.updating:
-            export.updated_at = now
-        else:
-            export.completed_at = timezone.now()
         download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         export.download_url = download_url
         if not self.updating:
             self._send_notification_email(owner.email, segment.title, download_url)
         export.segment.update_statistics()
+        if self.updating:
+            export.updated_at = now
+        else:
+            export.completed_at = timezone.now()
         export.save()
         logger.error("Done processing: {}".format(segment.title))
 
