@@ -2,9 +2,6 @@
 Segment models utils module
 """
 from django.db.models import F
-from aw_reporting.adwords_api import load_web_app_settings
-from aw_reporting.models import Account
-from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_update
 
@@ -15,7 +12,6 @@ def aggregate_segment_statistics(segment):
     """
     Prepare adwords statistics for segment
     """
-    processed = 0
     user = segment.owner
     mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
@@ -33,7 +29,6 @@ def aggregate_segment_statistics(segment):
     queryset = segment.related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
     queryset.query.clear_ordering(force_empty=True)
     for statistic in queryset:
-        processed += 1
         for field, value in statistic.items():
             if field == "ad_group_video_views":
                 continue
