@@ -36,7 +36,7 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
-                                  "&maxResults=50&type=video"
+                                  "&maxResults={num_videos}&type=video"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -170,6 +170,9 @@ class Command(BaseCommand):
         db_channel = acp.channel
         has_more = True
         page_token = None
+        num_videos = 50
+        if not self.audit.params.get('do_videos'):
+            num_videos=5
         while has_more:
             if page_token:
                 pt = "&pageToken={}".format(page_token)
@@ -178,7 +181,8 @@ class Command(BaseCommand):
             url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
                     key=self.DATA_API_KEY,
                     id=db_channel.channel_id,
-                    page_token=pt
+                    page_token=pt,
+                    num_videos=num_videos,
             )
             r = requests.get(url)
             data = r.json()
