@@ -159,7 +159,7 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)):
+        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
             self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
