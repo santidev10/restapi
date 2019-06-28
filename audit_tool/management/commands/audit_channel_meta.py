@@ -32,6 +32,7 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
+    max_pages = 2
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -170,10 +171,12 @@ class Command(BaseCommand):
         db_channel = acp.channel
         has_more = True
         page_token = None
+        page = 0
         num_videos = 50
         if not self.audit.params.get('do_videos'):
             num_videos=5
         while has_more:
+            page = page + 1
             if page_token:
                 pt = "&pageToken={}".format(page_token)
             else:
@@ -193,7 +196,7 @@ class Command(BaseCommand):
                 acp.save(update_fields=['clean', 'processed'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token or not self.audit.params.get('do_videos'):
+            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos'):
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])
