@@ -17,6 +17,7 @@ drf-yasg==1.11.1
 elasticsearch==6.3.1
 emoji==0.5.2
 et-xmlfile==1.0.1
+fasttext==0.9.1
 flashtext==2.7
 google-api-python-client==1.6.2
 googleads==15.0.1
