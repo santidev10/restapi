@@ -174,7 +174,7 @@ class Command(BaseCommand):
         page = 0
         num_videos = 50
         if not self.audit.params.get('do_videos'):
-            num_videos=5
+            num_videos = 2
         while has_more:
             page = page + 1
             if page_token:
