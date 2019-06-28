@@ -35,8 +35,8 @@ class Command(BaseCommand):
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
-                                  "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
-                                  "&maxResults=50&type=video&order=date"
+                                  "?key={key}&part=id&channelId={id}&order=date{page_token}" \
+                                  "&maxResults=50&type=video"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
