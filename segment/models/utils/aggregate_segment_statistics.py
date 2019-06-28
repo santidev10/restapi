@@ -1,32 +1,26 @@
 """
 Segment models utils module
 """
-from datetime import datetime
-from datetime import timedelta
-
 from django.db.models import F
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import Account
-from aw_reporting.models.ad_words.calculations import multiply_percent
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
+from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_update
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
-from aw_reporting.models import get_average_cpv, get_average_cpm, get_video_view_rate, get_ctr, get_ctr_v
 
 
 def aggregate_segment_statistics(segment):
     """
     Prepare adwords statistics for segment
     """
+    processed = 0
     user = segment.owner
-    # prepare queryset
     mcc_acc, is_chf = get_mcc_to_update(user)
-    related_ids = segment.related_ids
     filters = {
         "ad_group__campaign__account__managers": mcc_acc,
-        "yt_id__in": related_ids,
-        "date__gte": datetime.today() - timedelta(days=180)
+        "yt_id__in": segment.related_ids,
     }
     aggregated = {
         "cost": 0,
@@ -36,23 +30,25 @@ def aggregate_segment_statistics(segment):
         "video_clicks": 0,
         "video_impressions": 0,
     }
-    queryset = segment.related_aw_statistics_model.objects.filter(**filters)\
-        .select_related("ad_group") \
-        .annotate(video_clicks=F("ad_group__video_views"), video_impressions=F("ad_group__video_views")) \
-        .values("cost", "video_views", "clicks", "impressions", "video_clicks", "video_impressions")
+    queryset = segment.related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
+    queryset.query.clear_ordering(force_empty=True)
     for statistic in queryset:
+        processed += 1
         for field, value in statistic.items():
-            if field == "video_clicks" or field == "video_impressions" and value >= 0:
+            if field == "ad_group_video_views":
+                continue
+            elif field == "video_clicks" or field == "video_impressions" and statistic["ad_group_video_views"] > 0:
                 aggregated[field] += value
             else:
                 aggregated[field] += value
     stats = {}
     for key, opts in CALCULATED_STATS.items():
-        args = [aggregated[arg] for arg in opts["args"]]
+        kwargs = {
+            key: aggregated[key] for key in opts["args"]
+        }
         func = opts["receipt"]
-        result = func(*args)
+        result = func(**kwargs)
         stats[key] = result
-
     result = {
         "stats": stats,
         "meta": {
@@ -63,6 +59,3 @@ def aggregate_segment_statistics(segment):
         }
     }
     return result
-
-def get_mcc_to_update(user: UserProfile):
-    return Account.objects.get(id=load_web_app_settings()["cf_account_id"]), True
