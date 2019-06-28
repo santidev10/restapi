@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from utils.lang import remove_mentions_hashes_urls
-import langid
+from utils.lang import fasttext_lang
 import logging
 from django.conf import settings
 import requests
@@ -58,8 +58,8 @@ class Command(BaseCommand):
         if channel.description:
             str_long = "{} {}".format(str_long, channel.description)
         try:
-            str_long = remove_mentions_hashes_urls(str_long)
-            l = langid.classify(str_long.lower())[0]
+            str_long = remove_mentions_hashes_urls(str_long).lower()
+            l = fasttext_lang(str_long)
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             channel.language = db_lang
             channel.save(update_fields=['language'])

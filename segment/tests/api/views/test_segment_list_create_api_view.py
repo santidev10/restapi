@@ -1,4 +1,5 @@
 from urllib.parse import urlencode
+from unittest import skipIf
 
 from rest_framework.reverse import reverse
 from rest_framework.status import HTTP_200_OK
@@ -7,6 +8,7 @@ from segment.models import SegmentKeyword, SegmentChannel, SegmentVideo
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def test_keyword_list_should_be_filtered_by_average_cpc(self):
         user = self.create_test_user()

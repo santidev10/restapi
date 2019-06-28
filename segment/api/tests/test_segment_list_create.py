@@ -1,7 +1,7 @@
 import json
 from datetime import date
 from unittest.mock import patch
-from unittest import skip
+from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
@@ -20,6 +20,7 @@ from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatc
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.SEGMENT_LIST,
@@ -111,7 +112,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(
             response.data["items"][0]["id"], owned_segment.id)
 
-    @skip
     def test_create_channel_segment_from_filters(self):
         self.create_test_user()
         manager = Account.objects.create(id=load_web_app_settings()["cf_account_id"])
@@ -158,7 +158,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
         segment = SegmentChannel.objects.get(pk=segment_id)
         self.assertEqual(len(segment.related.all()), 2)
 
-    @skip
     def test_create_video_segment_from_filters(self):
         self.create_test_user()
         manager = Account.objects.create(id=load_web_app_settings()["cf_account_id"])

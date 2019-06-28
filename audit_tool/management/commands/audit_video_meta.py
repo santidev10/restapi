@@ -4,7 +4,7 @@ import logging
 import re
 import requests
 from django.utils import timezone
-import langid
+from utils.lang import fasttext_lang
 from dateutil.parser import parse
 from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
@@ -187,6 +187,9 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
+                if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
+                    db_channel_meta.last_uploaded = db_video_meta.publish_date
+                    db_channel_meta.save(update_fields=['last_uploaded'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()
@@ -292,8 +295,8 @@ class Command(BaseCommand):
 
     def calc_language(self, data):
         try:
-            data = remove_mentions_hashes_urls(data)
-            l = langid.classify(data.lower())[0]
+            data = remove_mentions_hashes_urls(data).lower()
+            l = fasttext_lang(data)
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             return db_lang
         except Exception as e:
