@@ -10,9 +10,9 @@ from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 class SegmentExport(APIView):
     def get(self, request, pk, *_):
         try:
-            segment = CustomSegment.objects.get(id=pk)
+            segment = CustomSegment.objects.get(owner=request.user, id=pk)
             exporter = CustomSegmentExportGenerator()
-            s3_object_key = CustomSegmentExportGenerator.get_s3_key(segment.owner.id, segment.title)
+            s3_object_key = exporter.get_s3_key(segment.owner.id, segment.title)
             content_generator = exporter.get_s3_export_content(s3_object_key, get_key=False).iter_chunks()
         except CustomSegment.DoesNotExist:
             raise Http404

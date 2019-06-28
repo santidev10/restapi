@@ -3,7 +3,6 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
-from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -29,9 +28,6 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         Filter queryset
         """
         filters = {}
-        is_admin = self.request.user.is_staff
-        if not is_admin:
-            filters["owner_id"] = self.request.user.id
         # search
         search = self.request.query_params.get("search")
         if search:
@@ -62,7 +58,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         Prepare queryset to display
         """
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
-        queryset = super().get_queryset().filter(segment_type=segment_type)
+        queryset = super().get_queryset().filter(owner=self.request.user, segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)
         return queryset
@@ -78,33 +74,32 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
-        try:
-            self._validate_data(data)
-        except ValueError as err:
-            return Response(
-                status=HTTP_400_BAD_REQUEST,
-                data=str(err)
-            )
-        data["owner"] = request.user.id
-        data["segment_type"] = kwargs["segment_type"]
-        data["title_hash"] = get_hash_name(data["title"].lower().strip())
+        validated_data = self._validate_data(data, request, kwargs)
+        data.update(validated_data)
+
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         segment = serializer.save()
-        data["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
+
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
         return Response(status=HTTP_201_CREATED, data=serializer.data)
 
-    def _validate_data(self, data):
-        expected = set(self.REQUIRED_FIELDS)
-        received = set(data.keys())
-        if expected != received:
-            err = "Fields must consist of: {}".format(", ".join(self.REQUIRED_FIELDS))
-        else:
-            err = self.validate_threshold(data["score_threshold"])
-        if err:
-            raise ValueError(err)
+    def _validate_data(self, data, request, kwargs):
+        validated = {}
+        self._validate_fields(data)
+        self.validate_threshold(data["score_threshold"])
+        validated["minimum_option"] = self.validate_numeric(data["minimum_option"])
+        validated["score_threshold"] = self.validate_numeric(data["score_threshold"])
+        validated["segment_type"] = kwargs["segment_type"]
+        validated["owner"] = request.user.id
+        validated["title_hash"] = get_hash_name(data["title"].lower().strip())
+        validated["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
+        return validated
+
+    def _validate_fields(self, fields):
+        if set(self.REQUIRED_FIELDS) != set(fields):
+            raise ValidationError("Fields must consist of: {}".format(", ".join(self.REQUIRED_FIELDS)))
 
     @staticmethod
     def validate_threshold(threshold):
@@ -112,3 +107,13 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         if not 0 <= threshold <= 100:
             err = "Score threshold must be between 0 and 100, inclusive."
         return err
+
+    @staticmethod
+    def validate_numeric(value):
+        formatted = str(value).replace(",", "")
+        try:
+            to_num = int(formatted)
+        except ValueError:
+            raise ValidationError("The number: {} is not valid.".format(value))
+        return to_num
+

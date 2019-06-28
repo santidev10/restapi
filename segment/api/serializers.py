@@ -12,6 +12,7 @@ from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
 from segment.models import PersistentSegmentChannel
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.models import SegmentKeyword
 from segment.models import CustomSegment
 from segment.tasks import fill_segment_from_filters
@@ -223,7 +224,15 @@ class CustomSegmentSerializer(ModelSerializer):
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         data["list_type"] = self.map_to_str(data["list_type"], item_type="list")
         data["download_url"] = instance.export.download_url
-        data["pending"] = True if data["download_url"] is None else False
+        data["pending"] = False if data["statistics"] else True
+        if not data["statistics"]:
+            data["statistics"] = {
+                "top_three_items": [{
+                    "image_url": S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL,
+                    "id": None,
+                    "title": None
+                } for _ in range(3)]
+            }
         return data
 
     @staticmethod
