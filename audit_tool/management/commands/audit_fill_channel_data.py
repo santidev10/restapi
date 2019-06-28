@@ -9,6 +9,7 @@ from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditVideoMeta
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -48,8 +49,19 @@ class Command(BaseCommand):
                     channels = {}
             if len(channels) > 0:
                 self.do_channel_metadata_api_call(channels)
+            self.fill_recent_video_timestamp()
             logger.info("Done {} channels".format(count))
             raise Exception("Done {} channels".format(count))
+
+    def fill_recent_video_timestamp(self):
+        channels = AuditChannelMeta.objects.filter(last_uploaded__isnull=True)
+        for c in channels[:5000]:
+            videos = AuditVideoMeta.objects.filter(video__channel_id=c.channel_id).order_by("-publish_date")
+            try:
+                c.last_uploaded = videos[0].publish_date
+                c.save(update_fields=['last_uploaded'])
+            except Exception as e:
+                pass
 
     def calc_language(self, channel):
         str_long = channel.name
