@@ -38,6 +38,7 @@ class Command(BaseCommand):
             pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
             if pending_channels.count() == 0:
                 logger.info("No channels to fill.")
+                self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
             start = self.thread_id * 20000
@@ -49,7 +50,6 @@ class Command(BaseCommand):
                     channels = {}
             if len(channels) > 0:
                 self.do_channel_metadata_api_call(channels)
-            self.fill_recent_video_timestamp()
             logger.info("Done {} channels".format(count))
             raise Exception("Done {} channels".format(count))
 
