@@ -68,10 +68,10 @@ class CustomSegmentExportGenerator(S3Exporter):
             export.completed_at = timezone.now()
         download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         export.download_url = download_url
-        export.save()
         if not self.updating:
             self._send_notification_email(owner.email, segment.title, download_url)
         export.segment.update_statistics()
+        export.save()
         logger.error("Done processing: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
