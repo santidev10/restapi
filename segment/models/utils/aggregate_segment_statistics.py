@@ -11,6 +11,7 @@ from aw_reporting.models.ad_words.calculations import multiply_percent
 from userprofile.models import UserProfile
 from utils.datetime import now_in_default_tz
 
+from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 from aw_reporting.models import get_average_cpv, get_average_cpm, get_video_view_rate, get_ctr, get_ctr_v
 
 
@@ -45,14 +46,15 @@ def aggregate_segment_statistics(segment):
                 aggregated[field] += value
             else:
                 aggregated[field] += value
+    stats = {}
+    for key, opts in CALCULATED_STATS.items():
+        args = [aggregated[arg] for arg in opts["args"]]
+        func = opts["receipt"]
+        result = func(*args)
+        stats[key] = result
+
     result = {
-        "stats": {
-            "average_cpm": get_average_cpm(aggregated["cost"], aggregated["impressions"]),
-            "average_cpv": get_average_cpv(aggregated["cost"], aggregated["video_views"]),
-            "ctr_v": multiply_percent(get_ctr_v(aggregated["clicks"], aggregated["video_views"])),
-            "ctr": multiply_percent(get_ctr(aggregated["clicks"], aggregated["impressions"])),
-            "video_view_rate": multiply_percent(get_video_view_rate(aggregated["video_views"], aggregated["video_impressions"]))
-        },
+        "stats": stats,
         "meta": {
             "account_id": mcc_acc.id,
             "account_name": mcc_acc.name,
