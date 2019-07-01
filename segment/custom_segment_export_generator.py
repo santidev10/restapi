@@ -62,12 +62,12 @@ class CustomSegmentExportGenerator(S3Exporter):
         :return:
         """
         now = timezone.now()
+        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         if self.updating:
             export.updated_at = now
         else:
             export.completed_at = timezone.now()
             self._send_notification_email(owner.email, segment.title, download_url)
-        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         export.download_url = download_url
         export.save()
         export.segment.update_statistics()
