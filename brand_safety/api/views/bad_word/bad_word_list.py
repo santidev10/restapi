@@ -37,6 +37,11 @@ class BadWordListApiView(ListCreateAPIView):
         if language:
             filters["language__language"] = language
 
+        negative_scores = self.request.query_params.get("negative_score")
+        if negative_scores:
+            negative_scores = negative_scores.split(',')
+            filters["negative_score__in"] = negative_scores
+
         if filters:
             queryset = queryset.filter(**filters)
         return queryset
