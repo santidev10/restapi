@@ -193,7 +193,8 @@ class Command(BaseCommand):
                 logger.info("problem with api call for video {}".format(db_channel.channel_id))
                 acp.clean = False
                 acp.processed = timezone.now()
-                acp.save(update_fields=['clean', 'processed'])
+                acp.word_hits['error'] = r.status_code
+                acp.save(update_fields=['clean', 'processed', 'word_hits'])
                 return
             page_token = data.get('nextPageToken')
             if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos'):
