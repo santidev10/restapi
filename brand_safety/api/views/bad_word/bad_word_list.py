@@ -67,7 +67,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         for tag_name in tag_names:
             tag_data = dict(request.data)
-            tag_data["name"] = tag_name
+            tag_data["name"] = tag_name.strip()
             serializer = BadWordSerializer(data=tag_data, context={'request': request})
             serializers.append(serializer)
         results = []
@@ -79,7 +79,7 @@ class BadWordListApiView(ListCreateAPIView):
                     # If the word has been soft deleted, reset its deleted_at
                     if existing_word.deleted_at is not None:
                         existing_word.deleted_at = None
-                        existing_word.save()
+                        existing_word.save(update_fields=['deleted_at'])
 
                         result = self.serializer_class(existing_word).data
                         results.append(result)
