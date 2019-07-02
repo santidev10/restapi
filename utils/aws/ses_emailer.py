@@ -43,6 +43,7 @@ class SESEmailer(object):
             )
         except ClientError:
             raise ValidationError("Failed to send email. Either the sender ({}) or the "
-                                  "recipient ({}) is an invalid email address.".format(sender, recipient))
+                                  "recipient ({}) is an invalid email address.".format(
+                settings.NOTIFICATIONS_EMAIL_SENDER, recipients))
         except Exception as e:
             raise e
