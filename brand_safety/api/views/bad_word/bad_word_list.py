@@ -59,28 +59,39 @@ class BadWordListApiView(ListCreateAPIView):
         return result
 
     def post(self, request):
-        serializer = BadWordSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            try:
-                validated_data = serializer.validated_data
-                existing_word = BadWord.all_objects.get(name=validated_data["name"], language=validated_data["language"])
-                # If the word has been soft deleted, reset its deleted_at
-                if existing_word.deleted_at is not None:
-                    existing_word.deleted_at = None
-                    existing_word.save()
+        serializers = []
+        tag_names = request.data["name"].split(",")
+        for tag_name in tag_names:
+            tag_data = dict(request.data)
+            tag_data["name"] = tag_name
+            serializer = BadWordSerializer(data=tag_data, context={'request': request})
+            serializers.append(serializer)
+        results = []
+        for serializer in serializers:
+            if serializer.is_valid():
+                try:
+                    validated_data = serializer.validated_data
+                    existing_word = BadWord.all_objects.get(name=validated_data["name"], language=validated_data["language"])
+                    # If the word has been soft deleted, reset its deleted_at
+                    if existing_word.deleted_at is not None:
+                        existing_word.deleted_at = None
+                        existing_word.save()
 
-                    result = self.serializer_class(existing_word).data
+                        result = self.serializer_class(existing_word).data
+                        results.append(result)
+                        status = HTTP_201_CREATED
+                    else:
+                        # Reject trying to create a word that has not been soft deleted
+                        result = "{} and {} must make a unique set.".format(validated_data["name"], str(validated_data["language"]))
+                        results.append(result)
+                        status = HTTP_400_BAD_REQUEST
+                except BadWord.DoesNotExist:
+                    serializer.save()
+                    results.append(serializer.data)
                     status = HTTP_201_CREATED
-                else:
-                    # Reject trying to create a word that has not been soft deleted
-                    result = "{} and {} must make a unique set.".format(validated_data["name"], str(validated_data["language"]))
-                    status = HTTP_400_BAD_REQUEST
-            except BadWord.DoesNotExist:
-                serializer.save()
-                result = serializer.data
-                status = HTTP_201_CREATED
-        else:
-            result = serializer.errors
-            status = HTTP_400_BAD_REQUEST
-        return Response(data=result, status=status)
+            else:
+                result = serializer.errors
+                results.append(result)
+                status = HTTP_400_BAD_REQUEST
+        return Response(data=results, status=status)
 
