@@ -62,10 +62,9 @@ class BadWordListApiView(ListCreateAPIView):
         serializers = []
         try:
             tag_names = request.data["name"].split(",")
-        except AttributeError as e:
-            result = e
-            status = HTTP_400_BAD_REQUEST
-            return Response(data=result, status=status)
+        except Exception as e:
+            raise ValidationError("'name' field is required for BadWord object.")
+
         for tag_name in tag_names:
             tag_data = dict(request.data)
             tag_data["name"] = tag_name
