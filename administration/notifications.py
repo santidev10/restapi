@@ -114,6 +114,22 @@ def send_html_email(subject, to, text_header, text_content, host):
     msg.send(fail_silently=True)
 
 
+def generate_html_email(text_header, text_content):
+    """
+    Generate email html with ChannelFactory template
+    :param text_header:
+    :param text_content:
+    :return:
+    """
+    host = settings.HOST
+    html = get_template("main_v2.html")
+    context = {"text_header": text_header,
+               "text_content": text_content,
+               "host": host}
+    html_content = html.render(context=context)
+    return html_content
+
+
 class SlackAWUpdateLoggingHandler(Handler):
     slack_color_map = {
         "INFO": "good",
