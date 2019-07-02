@@ -60,7 +60,12 @@ class BadWordListApiView(ListCreateAPIView):
 
     def post(self, request):
         serializers = []
-        tag_names = request.data["name"].split(",")
+        try:
+            tag_names = request.data["name"].split(",")
+        except AttributeError as e:
+            result = e
+            status = HTTP_400_BAD_REQUEST
+            return Response(data=result, status=status)
         for tag_name in tag_names:
             tag_data = dict(request.data)
             tag_data["name"] = tag_name

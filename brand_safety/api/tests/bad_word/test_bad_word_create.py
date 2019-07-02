@@ -88,7 +88,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data["category"], test_category.name)
+        self.assertEqual(response.data[0]["category"], test_category.name)
         test_bad_word_obj = BadWord.objects.get(name=test_bad_word)
         self.assertEqual(test_bad_word_obj.category_id, test_category.id)
         self.assertEqual(test_bad_word_obj.category.name, test_category.name)
@@ -116,7 +116,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], test_bad_word)
+        self.assertEqual(response.data[0]["name"], test_bad_word)
 
     def test_bad_word_name_lower(self):
         self.create_admin_user()
@@ -128,7 +128,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], test_bad_word)
+        self.assertEqual(response.data[0]["name"], test_bad_word)
 
     def test_bad_word_name_strip_lower(self):
         self.create_admin_user()
@@ -140,7 +140,7 @@ class BadWordCreateTestCase(ExtendedAPITestCase):
             category=test_category.id,
         )
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], test_bad_word)
+        self.assertEqual(response.data[0]["name"], test_bad_word)
 
     def test_bad_word_default_language(self):
         self.create_admin_user()
