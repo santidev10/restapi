@@ -32,7 +32,7 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    max_pages = 2
+    max_pages = 4
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
