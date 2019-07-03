@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.core.management import BaseCommand
 from django.utils import timezone
 from pid import PidFile
-from pid import PidFileAlreadyLockedError
+from pid import PidFileError
 
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models import CustomSegmentFileUpload
@@ -26,17 +26,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         export_type = "update" if options.get("update") else "generate"
         pid_file = "custom_segment_export_{}.pid".format(export_type)
-        with PidFile(pid_file, piddir=".") as pid:
-            if export_type == "update":
-                try:
+        try:
+            with PidFile(pid_file, piddir=".") as pid:
+                if export_type == "update":
                     self.update(*args, **options)
-                except PidFileAlreadyLockedError:
-                    pass
-            else:
-                try:
+                else:
                     self.generate(*args, **options)
-                except PidFileAlreadyLockedError:
-                    pass
+        except PidFileError:
+            pass
 
     def update(self, *args, **kwargs):
         threshold = timezone.now() - timedelta(days=self.update_threshold)

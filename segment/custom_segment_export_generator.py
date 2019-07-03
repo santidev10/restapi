@@ -43,7 +43,8 @@ class CustomSegmentExportGenerator(S3Exporter):
             es_generator = self.es_generator(export, segment)
         except ElasticSearchConnectorException:
             raise
-        logger.error("Processing export: {}".format(segment.title))
+        log_message = "Updating" if self.updating else "Generating"
+        logger.error("{} export: {}".format(log_message, segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
