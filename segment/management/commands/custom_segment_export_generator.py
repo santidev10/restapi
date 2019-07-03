@@ -1,24 +1,53 @@
+from datetime import timedelta
 import logging
 
+from django.db.models import Q
 from django.core.management import BaseCommand
-from pid.decorator import pidfile
-from pid import PidFileAlreadyLockedError
+from django.utils import timezone
+from pid import PidFile
+from pid import PidFileError
 
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
+from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    def handle(self, *args, **options):
-        try:
-            self.run(*args, **options)
-        except PidFileAlreadyLockedError:
-            pass
+    update_threshold = 7
 
-    @pidfile(piddir=".", pidname="custom_segment_export.pid")
-    def run(self, *args, **kwargs):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--update",
+            help="Update or generate"
+        )
+
+    def handle(self, *args, **options):
+        export_type = "update" if options.get("update") else "generate"
+        pid_file = "custom_segment_export_{}.pid".format(export_type)
+        with PidFile(pid_file, piddir=".") as pid:
+            if export_type == "update":
+                try:
+                    self.update(*args, **options)
+                except PidFileError:
+                    pass
+            else:
+                try:
+                    self.generate(*args, **options)
+                except PidFileError:
+                    pass
+
+    def update(self, *args, **kwargs):
+        threshold = timezone.now() - timedelta(days=self.update_threshold)
+        generator = CustomSegmentExportGenerator(updating=True)
+        to_update = CustomSegmentFileUpload.objects.filter(
+            (Q(updated_at__isnull=True) & Q(created_at__lte=threshold)) | Q(updated_at__lte=threshold)
+        )
+        for export in to_update:
+            generator.generate(export=export)
+
+    def generate(self, *args, **kwargs):
         generator = CustomSegmentExportGenerator()
         while generator.has_next():
             try:

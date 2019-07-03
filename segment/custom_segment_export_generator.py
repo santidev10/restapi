@@ -38,6 +38,8 @@ class CustomSegmentExportGenerator(S3Exporter):
         segment = export.segment
         owner = segment.owner
         try:
+            # Update segment and empty related_ids to recreate relevant related_ids
+            segment.related.all().delete()
             es_generator = self.es_generator(export, segment)
         except ElasticSearchConnectorException:
             raise
