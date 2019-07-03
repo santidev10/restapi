@@ -39,7 +39,7 @@ class Command(BaseCommand):
         threshold = timezone.now() - timedelta(days=self.update_threshold)
         generator = CustomSegmentExportGenerator(updating=True)
         to_update = CustomSegmentFileUpload.objects.filter(
-            (Q(updated_at__isnull=True) & Q(created_at__lte=threshold)) | Q(updated_at__lte=threshold)
+            (Q(updated_at__isnull=True) & Q(created_at__gte=threshold)) | Q(updated_at__gte=threshold)
         )
         for export in to_update:
             generator.generate(export=export)
