@@ -20,11 +20,11 @@ class PersistentSegmentTitles:
     VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE = "Videos Master Blacklist"
     VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE = "Videos Master Whitelist"
 
-    CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Safety Master Blacklist Channels"
-    CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Safety Master Whitelist Channels"
+    CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Channels"
+    CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Channels"
 
-    VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Safety Master Blacklist Videos"
-    VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Safety Master Whitelist Videos"
+    VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Videos"
+    VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Videos"
 
     ALL_MASTER_SEGMENT_TITLES = (
         CHANNELS_MASTER_BLACKLIST_SEGMENT_TITLE,
