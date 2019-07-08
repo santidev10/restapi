@@ -5,4 +5,5 @@ class AuditPathName:
     AUDIT_LIST = "audit_list"
     AUDIT_SAVE = "audit_save"
     AUDIT_EXPORT = "audit_export"
+    AUDIT_RESUME = "audit_resume"
 
