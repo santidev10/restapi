@@ -8,7 +8,6 @@ from datetime import timedelta
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
-from audit_tool.models import AuditExporter
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
@@ -32,11 +31,12 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
+    max_pages = 4
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
-                                  "?key={key}&part=id&channelId={id}&order=viewCount{page_token}" \
-                                  "&maxResults=50&type=video&order=date"
+                                  "?key={key}&part=id&channelId={id}&order=date{page_token}" \
+                                  "&maxResults={num_videos}&type=video"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -159,7 +159,7 @@ class Command(BaseCommand):
     def do_check_channel(self, acp):
         db_channel = acp.channel
         db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)):
+        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
             self.get_videos(acp)
         acp.processed = timezone.now()
         if db_channel_meta.name:
@@ -170,15 +170,21 @@ class Command(BaseCommand):
         db_channel = acp.channel
         has_more = True
         page_token = None
+        page = 0
+        num_videos = 50
+        if not self.audit.params.get('do_videos'):
+            num_videos = 2
         while has_more:
+            page = page + 1
             if page_token:
                 pt = "&pageToken={}".format(page_token)
             else:
                 pt=''
             url = self.DATA_CHANNEL_VIDEOS_API_URL.format(
-                    key=self.DATA_API_KEY,
-                    id=db_channel.channel_id,
-                    page_token=pt
+                key=self.DATA_API_KEY,
+                id=db_channel.channel_id,
+                page_token=pt,
+                num_videos=num_videos,
             )
             r = requests.get(url)
             data = r.json()
@@ -186,10 +192,11 @@ class Command(BaseCommand):
                 logger.info("problem with api call for video {}".format(db_channel.channel_id))
                 acp.clean = False
                 acp.processed = timezone.now()
-                acp.save(update_fields=['clean', 'processed'])
+                acp.word_hits['error'] = r.status_code
+                acp.save(update_fields=['clean', 'processed', 'word_hits'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token or not self.audit.params.get('do_videos'):
+            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos'):
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])

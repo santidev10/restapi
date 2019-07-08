@@ -10,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -68,6 +69,7 @@ class Command(BaseCommand):
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
+                self.related_audits = self.audit.params.get('related_audits')
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -208,11 +210,12 @@ class Command(BaseCommand):
                 pass
             if not db_video_meta.keywords:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-            db_video.channel = AuditChannel.get_or_create(i['snippet']['channelId'])
+            channel = AuditChannel.get_or_create(i['snippet']['channelId'])
+            db_video.channel = channel
             db_video_meta.save()
             db_video.save()
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                    channel=db_video.channel,
+                channel=channel,
             )
             db_channel_meta.name = i['snippet']['channelTitle']
             db_channel_meta.save()
@@ -220,14 +223,15 @@ class Command(BaseCommand):
             if is_clean:
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
-                        v, _ = AuditVideoProcessor.objects.get_or_create(
-                            video=db_video,
-                            audit=self.audit
-                        )
-                        v.word_hits = hits
-                        if not v.video_source:
-                            v.video_source = video
-                        v.save()
+                        if not self.related_audits or not AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+                            v, _ = AuditVideoProcessor.objects.get_or_create(
+                                video=db_video,
+                                audit=self.audit
+                            )
+                            v.word_hits = hits
+                            if not v.video_source:
+                                v.video_source = video
+                            v.save()
 
         avp.processed = timezone.now()
         avp.save()
