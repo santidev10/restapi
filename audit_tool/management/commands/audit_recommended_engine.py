@@ -69,6 +69,7 @@ class Command(BaseCommand):
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
+                self.related_audits = self.audit.params.get('related_audits')
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -222,14 +223,15 @@ class Command(BaseCommand):
             if is_clean:
                 if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
                     if not self.category or int(db_video_meta.category.category) in self.category:
-                        v, _ = AuditVideoProcessor.objects.get_or_create(
-                            video=db_video,
-                            audit=self.audit
-                        )
-                        v.word_hits = hits
-                        if not v.video_source:
-                            v.video_source = video
-                        v.save()
+                        if not self.related_audits or not AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+                            v, _ = AuditVideoProcessor.objects.get_or_create(
+                                video=db_video,
+                                audit=self.audit
+                            )
+                            v.word_hits = hits
+                            if not v.video_source:
+                                v.video_source = video
+                            v.save()
 
         avp.processed = timezone.now()
         avp.save()
