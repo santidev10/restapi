@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
+from segment.models import CustomSegmentRelated
 from segment.models import CustomSegmentFileUpload
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -162,6 +163,38 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
+
+    def test_sort_by_items(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        CustomSegmentRelated.objects.create(
+            related_id="test",
+            segment=seg_1
+        )
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "sort_by={}".format("items")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_2.id)
+        self.assertEqual(data["items"][1]["id"], seg_1.id)
+
+    def test_sort_by_title(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="Second")
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "sort_by={}".format("title")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_1.id)
+        self.assertEqual(data["items"][1]["id"], seg_2.id)
 
     def test_default_thumbnail_images_list(self):
         user = self.create_test_user()
