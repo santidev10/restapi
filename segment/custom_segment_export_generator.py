@@ -76,7 +76,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         export.download_url = download_url
         export.save()
         export.segment.update_statistics()
-        logger.error("Done processing: {}".format(segment.title))
+        logger.error("Complete: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         subject = "Custom Target List: {}".format(segment_title)
