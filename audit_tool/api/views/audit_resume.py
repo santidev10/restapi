@@ -19,7 +19,7 @@ class AuditResumeApiView(APIView):
                 else:
                     related_audits = related_audits + [audit.id]
                 params['related_audits'] = related_audits
-                params['name'] = '{}: resumed'.format(params['name'])
+                params['name'] = 'Resumed: {}'.format(params['name'])
                 new_audit = AuditProcessor.objects.create(
                     audit_type=0,
                     params=params,
