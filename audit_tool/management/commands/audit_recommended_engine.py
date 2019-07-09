@@ -16,6 +16,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from datetime import datetime
 logger = logging.getLogger(__name__)
 from pid import PidFile
 from utils.lang import remove_mentions_hashes_urls
@@ -70,6 +71,8 @@ class Command(BaseCommand):
                 self.category = self.audit.params.get('category')
                 self.related_audits = self.audit.params.get('related_audits')
                 self.min_date = self.audit.params.get('min_date')
+                if self.min_date:
+                    self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
                 self.min_views = self.audit.params.get('min_views')
                 self.min_likes = self.audit.params.get('min_likes')
                 self.max_dislikes = self.audit.params.get('max_dislikes')
