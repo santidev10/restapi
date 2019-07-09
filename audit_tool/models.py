@@ -196,7 +196,11 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'max_recommended': self.max_recommended
+            'max_recommended': self.max_recommended,
+            'min_likes': self.params.get('min_likes'),
+            'max_dislikes': self.params.get('max_dislikes'),
+            'min_views': self.params.get('min_views'),
+            'min_date': self.params.get('min_date'),
         }
         if self.params.get('error'):
             d['error'] = self.params['error']

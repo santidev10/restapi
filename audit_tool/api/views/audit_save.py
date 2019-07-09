@@ -24,6 +24,10 @@ class AuditSaveApiView(APIView):
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
+        min_likes = query_params["min_likes"] if "min_likes" in query_params else None
+        min_views = query_params["min_views"] if "min_views" in query_params else None
+        max_dislikes = query_params["max_dislikes"] if "max_dislikes" in query_params else None
+        min_date = query_params["min_date"] if "min_date" in query_params else None
         if move_to_top and audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
@@ -61,6 +65,10 @@ class AuditSaveApiView(APIView):
             'do_videos': do_videos,
             'category': category,
             'audit_type_original': audit_type,
+            'min_likes': min_likes,
+            'min_date': min_date,
+            'min_views': min_views,
+            'max_dislikes': max_dislikes,
         }
         if not audit_id:
             if source_file is None:
@@ -103,6 +111,10 @@ class AuditSaveApiView(APIView):
                 audit.completed = None
             if language:
                 audit.params['language'] = language
+            audit.params['min_likes'] = min_likes
+            audit.params['min_date'] = min_date
+            audit.params['min_views'] = min_views
+            audit.params['max_dislikes'] = max_dislikes
             audit.params['category'] = category
             audit.save()
         else:

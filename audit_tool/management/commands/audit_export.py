@@ -35,7 +35,7 @@ class Command(BaseCommand):
         else:
             file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if audit_type > 0 and self.export.clean is not None:
+        if self.export.clean is not None:
             count = count.filter(clean=self.export.clean)
         count = count.count()
         self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
