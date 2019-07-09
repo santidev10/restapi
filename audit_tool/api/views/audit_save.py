@@ -21,6 +21,7 @@ class AuditSaveApiView(APIView):
         name = query_params["name"] if "name" in query_params else None
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
         category = query_params["category"] if "category" in query_params else None
+        related_audits = query_params["related_audits"] if "related_audits" in query_params else None
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
@@ -98,6 +99,12 @@ class AuditSaveApiView(APIView):
                 c.append(int(a))
             category = c
             params['category'] = category
+        if related_audits:
+            c = []
+            for a in json.loads(related_audits):
+                c.append(int(a))
+            related_audits = c
+            params['related_audits'] = related_audits
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
