@@ -9,7 +9,7 @@ from distutils.util import strtobool
 import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
-
+from datetime import datetime
 
 class AuditSaveApiView(APIView):
     def post(self, request):
@@ -29,6 +29,21 @@ class AuditSaveApiView(APIView):
         min_views = query_params["min_views"] if "min_views" in query_params else None
         max_dislikes = query_params["max_dislikes"] if "max_dislikes" in query_params else None
         min_date = query_params["min_date"] if "min_date" in query_params else None
+        if min_date:
+            if '/' not in min_date:
+                raise ValidationError("format of min_date must be mm/dd/YYYY")
+            v_date = min_date.split("/")
+            if len(v_date) < 3:
+                raise ValidationError("format of min_date must be mm/dd/YYYY")
+            m = int(v_date[0])
+            d = int(v_date[1])
+            y = int(v_date[2])
+            if d < 1 or d > 31:
+                raise ValidationError("day must be between 1 and 31")
+            if m < 1 or m > 12:
+                raise ValidationError("month must be between 1 and 12")
+            if y < 2000 or y > datetime.now().year:
+                raise ValidationError("year must be between 2000 and {}".format(datetime.now().year))
         if move_to_top and audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
