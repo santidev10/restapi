@@ -258,7 +258,7 @@ class Command(BaseCommand):
             if db_video_meta.views < self.min_views:
                 return False
         if self.min_date:
-            if db_video_meta.publish_date < self.min_date:
+            if db_video_meta.publish_date.replace(tzinfo=None) < self.min_date:
                 return False
         if self.min_likes:
             if db_video_meta.likes < self.min_likes:
