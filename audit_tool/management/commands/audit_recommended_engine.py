@@ -69,6 +69,10 @@ class Command(BaseCommand):
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
                 self.related_audits = self.audit.params.get('related_audits')
+                self.min_date = self.audit.params.get('min_date')
+                self.min_views = self.audit.params.get('min_views')
+                self.min_likes = self.audit.params.get('min_likes')
+                self.max_dislikes = self.audit.params.get('max_dislikes')
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -91,7 +95,7 @@ class Command(BaseCommand):
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
             done = False
-            if pending_videos.count() > self.audit.max_recommended:
+            if pending_videos.filter(clean=True).count() > self.audit.max_recommended:
                 done =  True
             pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
@@ -220,20 +224,46 @@ class Command(BaseCommand):
             db_channel_meta.save()
             is_clean, hits = self.check_video_is_clean(db_video_meta)
             if is_clean:
-                if not self.language or (db_video_meta.language and self.language==db_video_meta.language.language):
-                    if not self.category or int(db_video_meta.category.category) in self.category:
-                        if not self.related_audits or not AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
-                            v, _ = AuditVideoProcessor.objects.get_or_create(
-                                video=db_video,
-                                audit=self.audit
-                            )
-                            v.word_hits = hits
-                            if not v.video_source:
-                                v.video_source = video
-                            v.save()
+                if self.check_video_matches_criteria(db_video_meta, db_video):
+                    v, _ = AuditVideoProcessor.objects.get_or_create(
+                        video=db_video,
+                        audit=self.audit
+                    )
+                    v.word_hits = hits
+                    if not v.video_source:
+                        v.video_source = video
+                    v.clean = self.check_video_matches_minimums(db_video_meta)
+                    v.save()
 
         avp.processed = timezone.now()
         avp.save()
+
+    def check_video_matches_criteria(self, db_video_meta, db_video):
+        if self.language:
+            if db_video_meta.language and self.language != db_video_meta.language.language:
+                return False
+        if self.category:
+            if int(db_video_meta.category.category) not in self.category:
+                return False
+        if self.related_audits:
+            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+                return False
+        return True
+
+    def check_video_matches_minimums(self, db_video_meta):
+        if self.min_views:
+            if db_video_meta.views < self.min_views:
+                return False
+        if self.min_date:
+            if db_video_meta.publish_date < self.min_date:
+                return False
+        if self.min_likes:
+            if db_video_meta.likes < self.min_likes:
+                return False
+        if self.max_dislikes:
+            if db_video_meta.dislikes > self.max_dislikes:
+                return False
+        return True
 
     def check_video_is_clean(self, db_video_meta):
         hits = {}
