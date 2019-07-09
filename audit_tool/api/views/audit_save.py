@@ -80,6 +80,7 @@ class AuditSaveApiView(APIView):
             'user_id': user_id,
             'do_videos': do_videos,
             'category': category,
+            'related_audits': related_audits,
             'audit_type_original': audit_type,
             'min_likes': min_likes,
             'min_date': min_date,
@@ -138,6 +139,7 @@ class AuditSaveApiView(APIView):
             audit.params['min_views'] = min_views
             audit.params['max_dislikes'] = max_dislikes
             audit.params['category'] = category
+            audit.params['related_audits'] = related_audits
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
