@@ -36,6 +36,7 @@ process:
 """
 
 class Command(BaseCommand):
+    MAX_VIDS = 1000000
     keywords = []
     inclusion_list = None
     exclusion_list = None
@@ -98,7 +99,7 @@ class Command(BaseCommand):
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
             done = False
-            if pending_videos.filter(clean=True).count() > self.audit.max_recommended:
+            if pending_videos.filter(clean=True).count() > self.audit.max_recommended or pending_videos.count() > self.MAX_VIDS:
                 done =  True
             pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
