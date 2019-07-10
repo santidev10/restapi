@@ -272,7 +272,7 @@ class SegmentListGenerator(object):
         :param segment_category: whitelist or blacklist
         :return:
         """
-        categorized_segment_title = "{}s {} Brand Safety {}".format(
+        categorized_segment_title = "{}s {} Brand Suitability {}".format(
             segment_type.capitalize(),
             category,
             segment_category.capitalize(),
