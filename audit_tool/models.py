@@ -153,7 +153,7 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None):
+    def get(running=None, audit_type=None, num_days=60, output=None, search=None):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
@@ -161,6 +161,8 @@ class AuditProcessor(models.Model):
             all = all.filter(completed__isnull=running)
         if num_days:
             all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+        if search:
+            all = all.filter(name__icontains=search.lower())
         ret = {
             'running': [],
             'completed': []
