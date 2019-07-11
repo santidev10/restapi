@@ -127,7 +127,7 @@ class AuditSaveApiView(APIView):
                 audit.params['exclusion'] = params['exclusion']
             if name:
                 audit.params['name'] = name
-                audit.name = name
+                audit.name = name.lower()
             if max_recommended:
                 audit.max_recommended = max_recommended
                 audit.completed = None
@@ -146,7 +146,7 @@ class AuditSaveApiView(APIView):
                 params=params,
                 max_recommended=max_recommended
             )
-            audit.name = name
+            audit.name = name.lower()
             audit.save(update_fields=['name'])
         return Response(audit.to_dict())
 

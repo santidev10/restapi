@@ -191,7 +191,7 @@ class AuditProcessor(models.Model):
             'start_time': self.started,
             'created_time': self.created,
             'data': self.cached_data,
-            'name': self.name if self.name else self.params.get('name'),
+            'name': self.params.get('name'),
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
