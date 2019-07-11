@@ -222,11 +222,10 @@ class Command(BaseCommand):
             db_video.channel = channel
             db_video_meta.save()
             db_video.save()
-            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                channel=channel,
-            )
-            db_channel_meta.name = i['snippet']['channelTitle']
-            db_channel_meta.save()
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
+            if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
+                db_channel_meta.name = i['snippet']['channelTitle']
+                db_channel_meta.save(update_fields=['name'])
             is_clean, hits = self.check_video_is_clean(db_video_meta)
             if is_clean:
                 if self.check_video_matches_criteria(db_video_meta, db_video):

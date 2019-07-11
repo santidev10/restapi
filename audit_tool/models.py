@@ -137,6 +137,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
+    name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default={})
     cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
@@ -190,7 +191,7 @@ class AuditProcessor(models.Model):
             'start_time': self.started,
             'created_time': self.created,
             'data': self.cached_data,
-            'name': self.params.get('name'),
+            'name': self.name if self.name else self.params.get('name'),
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
