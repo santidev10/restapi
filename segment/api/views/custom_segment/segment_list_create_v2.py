@@ -17,7 +17,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     ALLOWED_SORTS = {
         "items",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "title"
     }
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
