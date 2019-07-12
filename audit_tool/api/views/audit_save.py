@@ -50,6 +50,7 @@ class AuditSaveApiView(APIView):
                 lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
                 audit.pause = lowest_priority.pause - 1
                 audit.save(update_fields=['pause'])
+                return Response(audit.to_dict())
             except Exception as e:
                 raise ValidationError("invalid audit_id")
         try:
