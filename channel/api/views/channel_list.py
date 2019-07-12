@@ -1,5 +1,8 @@
 import re
 from copy import deepcopy
+From math import ceil
+
+from django.conf import settings
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
@@ -12,10 +15,11 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
+from es_components.managers.channel import ChannelManager
+from es_components.constants import Sections
+
 from channel.api.mixins import ChannelYoutubeSearchMixin
-from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
@@ -72,6 +76,14 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
     ]
 
 
+SORT_KEY = {
+    "thirty_days_subscribers": "stats.last_30day_subscribers",
+    "thirty_days_views": "stats.last_30day_views",
+    "subscribers": "stats.subscribers",
+    "views_per_video": "stats.views_per_video",
+}
+
+
 class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
                          SegmentFilterMixin):
     """
@@ -83,6 +95,15 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
     )
     renderer = ChannelListCSVRendered
     export_file_title = "channel"
+
+    empty_response = {
+        "max_page": 1,
+        "items_count": 0,
+        "items": [],
+        "current_page": 1,
+    }
+    page_size = 50
+    max_pages_count = 200
 
     @swagger_auto_schema(
         manual_parameters=[
@@ -108,227 +129,217 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             HTTP_408_REQUEST_TIMEOUT: openapi.Response("Request timeout"),
         }
     )
+
     @add_brand_safety_data
     def get(self, request):
         """
         Get procedure
         """
-        # search procedure
         if request.user.is_staff and any((
                 request.query_params.get("youtube_link"),
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
+
         # query params validation
         is_query_params_valid, error = self._validate_query_params()
+
         if not is_query_params_valid:
             return Response({"error": error}, HTTP_400_BAD_REQUEST)
-        # init procedures
-        empty_response = {
-            "max_page": 1,
-            "items_count": 0,
-            "items": [],
-            "current_page": 1,
-        }
-        # prepare query params
+
         query_params = deepcopy(request.query_params)
-        query_params._mutable = True
-        channels_ids = []
-        connector = Connector()
-        # own channels
-        user = request.user
-        own_channels = query_params.get("own_channels", "0")
-        user_can_see_own_channels = user.has_perm(
-            "userprofile.settings_my_yt_channels")
-        if own_channels == "1" and user_can_see_own_channels:
-            channels_ids = list(
-                user.channels.values_list("channel_id", flat=True))
+
+        channel_manager = ChannelManager((Sections.GENERAL_DATA, Sections.STATS, Sections.ANALYTICS, Sections.ADS_STATS))
+        filters = [channel_manager.forced_filters()]
+
+        own_channels = int(query_params.get("own_channels", "0"))
+        user_can_see_own_channels = request.user.has_perm("userprofile.settings_my_yt_channels")
+
+        if own_channels and not user_can_see_own_channels:
+            return Response(self.empty_response)
+
+        if own_channels and user_can_see_own_channels:
+            channels_ids = list(request.user.channels.values_list("channel_id", flat=True))
+            filters.append(
+                channel_manager.ids_query(channels_ids)
+            )
+
             if not channels_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(channels_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
-        elif own_channels == "1" and not user_can_see_own_channels:
-            return Response(empty_response)
-        channel_segment_id = self.request.query_params.get("channel_segment")
-        video_segment_id = self.request.query_params.get("video_segment")
-        if any((channel_segment_id, video_segment_id)):
-            segment = self._obtain_segment()
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            if isinstance(segment, SegmentVideo):
-                segment_videos_ids = segment.get_related_ids()
-                try:
-                    ids_hash = connector.store_ids(list(segment_videos_ids))
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                request_params = {
-                    "ids_hash": ids_hash,
-                    "fields": "channel_id",
-                    "size": 10000
-                }
-                try:
-                    videos_data = connector.get_video_list(request_params)
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                segment_channels_ids = {
-                    obj.get("channel_id") for obj in videos_data.get("items")}
-                query_params.pop("video_segment")
-            else:
-                segment_channels_ids = segment.get_related_ids()
-                query_params.pop("channel_segment")
-            if channels_ids:
-                channels_ids = [
-                    channel_id
-                    for channel_id in channels_ids
-                    if channel_id in segment_channels_ids]
-            else:
-                channels_ids = segment_channels_ids
-            if not channels_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(channels_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
-        # adapt the request params
-        self.adapt_query_params(query_params)
-        # make call
+                return Response(self.empty_response)
+
+        filters += self.get_filters_from_query_params(query_params)
+        sort = self.get_sort_rule(query_params)
+
+        size, offset = self.get_limits(query_params)
+
         try:
-            response_data = connector.get_channel_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        # adapt the response data
-        self.adapt_response_data(response_data, request.user)
-        return Response(response_data)
+            items_count = channel_manager.search(filters=filters, sort=sort, limit=None).count()
+            channels = channel_manager.search(filters=filters, sort=sort, limit=size, offset=offset).execute().hits
+            aggregations = None
+        except Exception as e:
+            return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+
+        max_page = None
+        if self.page_size:
+            max_page = min(ceil(items_count / self.page_size), self.max_pages_count)
+
+        result = {
+            "current_page": self.current_page,
+            "items": channels.to_dict(),
+            "items_count": self.items_count,
+            "max_page": max_page,
+            "aggregations": aggregations
+        }
+
+        return Response(result)
+
+    def get_limits(self, query_params):
+        size = int(query_params.pop("size", [self.page_size]).pop())
+        page = int(query_params.pop("page", [1]).pop())
+        offset = 0 if page <= 1 else page - 1 * size
+
+        return size, offset
 
     @staticmethod
-    def adapt_query_params(query_params):
-        """
-        Adapt SDB request format
-        """
+    def get_sort_rule(query_params):
+        sort_params = query_params.pop("sort", None)
 
-        # filters --->
-        def make_range(name, name_min=None, name_max=None):
-            if name_min is None:
-                name_min = "min_{}".format(name)
-            if name_max is None:
-                name_max = "max_{}".format(name)
-            _range = [
-                query_params.pop(name_min, [None])[0],
-                query_params.pop(name_max, [None])[0],
-            ]
-            _range = [str(v) if v is not None else "" for v in _range]
-            _range = ",".join(_range)
-            if _range != ",":
-                query_params.update(**{"{}__range".format(name): _range})
+        if sort_params:
+            key, direction = sort_params[0].split(":")
+            field = SORT_KEY.get(key)
 
-        def make(_type, name, name_in=None):
-            if name_in is None:
-                name_in = name
-            value = query_params.pop(name_in, [None])[0]
-            if value is not None:
-                query_params.update(**{"{}__{}".format(name, _type): value})
+            if field:
+                return [{field: {"order": direction}}]
+
+
+    @staticmethod
+    def get_filters_from_query_params(query_params):
+        manager = ChannelManager()
+
+        def get_filter_range(field, name_min=None, name_max=None):
+            min = query_params.pop(name_min, [None])[0]
+            max = query_params.pop(name_max, [None])[0]
+
+            if min and max:
+                return manager.filter_range(field, gte=min, lte=max)
+
+        filters = []
+
+        country = query_params.pop("country", [None])[0]
+        if country:
+            filters.append(manager.filter_term("general_data.country", country))
+
+        # todo
+        language = query_params.pop("language", [None])[0]
+        if language:
+            filters.append(manager.filter_term("general_data.language", language))
 
         # min_subscribers_yt, max_subscribers_yt
-        make_range("subscribers", "min_subscribers_yt", "max_subscribers_yt")
-
-        # country
-        make("terms", "country")
-
-        # language
-        make("terms", "language")
+        filters.append(
+            get_filter_range("stats.subscribers", "min_subscribers_yt", "max_subscribers_yt")
+        )
 
         # min_thirty_days_subscribers, max_thirty_days_subscribers
-        make_range("thirty_days_subscribers")
+        filters.append(
+            get_filter_range("stats.last_30day_subscribers",
+                             "min_thirty_days_subscribers", "max_thirty_days_subscribers")
+        )
 
         # min_thirty_days_views, max_thirty_days_views
-        make_range("thirty_days_views")
+        filters.append(
+            get_filter_range("stats.last_30day_views",
+                             "min_thirty_days_views", "max_thirty_days_views")
+        )
 
         # min_sentiment, max_sentiment
-        make_range("sentiment")
+        filters.append(
+            get_filter_range("stats.sentiment", "min_sentiment", "max_sentiment")
+        )
 
         # min_engage_rate, max_engage_rate
-        make_range("engage_rate")
+        filters.append(
+            get_filter_range("stats.engage_rate", "min_engage_rate", "max_engage_rate")
+        )
 
         # min_views_per_video, max_views_per_video
-        make_range("views_per_video")
+        filters.append(
+            get_filter_range("stats.views_per_video", "min_views_per_video", "max_views_per_video")
+        )
 
         # min_subscribers_fb, max_subscribers_fb
-        make_range(
-            "facebook_likes", "min_subscribers_fb", "max_subscribers_fb")
+        filters.append(
+            get_filter_range("social.facebook_likes", "min_subscribers_fb", "max_subscribers_fb")
+        )
 
         # min_subscribers_tw, max_subscribers_tw
-        make_range(
-            "twitter_followers", "min_subscribers_tw", "max_subscribers_tw")
+        filters.append(
+            get_filter_range("social.twitter_followers", "min_subscribers_tw", "max_subscribers_tw")
+        )
 
         # min_subscribers_in, max_subscribers_in
-        make_range(
-            "instagram_followers", "min_subscribers_in", "max_subscribers_in")
+        filters.append(
+            get_filter_range("social.instagram_followers", "min_subscribers_in", "max_subscribers_in")
+        )
 
         # category
         category = query_params.pop("category", [None])[0]
         if category is not None:
-            regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
-            query_params.update(category__regexp=regexp)
+            # regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
+            # query_params.update(category__regexp=regexp)
 
-        # text_search
+            filters.append(
+                manager.filter_term("general_data.top_category", category)
+            )
+
+        # todo text_search
         text_search = query_params.pop("text_search", [None])[0]
         if text_search:
             query_params.update(text_search__match_phrase=text_search)
 
-        # channel_group
-        make("term", "channel_group")
-        # <--- filters
+        # todo channel_group
+        # make("term", "channel_group")
+        channel_group = query_params.pop("channel_group", [None])[0]
+        if channel_group:
+            filters.append(manager.filter_term("channel_group", channel_group))
+
+        return [filter for filter in filters if filter is not None]
 
     @staticmethod
-    def adapt_response_data(response_data, user):
+    def adapt_response_data(channels, user):
         """
         Adapt SDB response format
         """
-        user_channels = set(user.channels.values_list(
-            "channel_id", flat=True))
-        items = response_data.get("items", [])
-        for item in items:
-            if "channel_id" in item:
-                item["id"] = item.get("channel_id", "")
-                item["is_owner"] = item["channel_id"] in user_channels
-                del item["channel_id"]
-            if "country" in item and item["country"] is None:
-                item["country"] = ""
-            if "history_date" in item and item["history_date"]:
-                item["history_date"] = item["history_date"][:10]
-
-            is_own = item.get("is_owner", False)
-            if user.has_perm('userprofile.channel_audience') \
-                    or is_own:
-                pass
-            else:
-                item['has_audience'] = False
-                item["verified"] = False
-                item.pop('audience', None)
-                item['brand_safety'] = None
-                item['safety_chart_data'] = None
-                item.pop('traffic_sources', None)
-
-            if not user.is_staff:
-                item.pop("cms__title", None)
-
-            for field in ["youtube_published_at", "updated_at"]:
-                if field in item and item[field]:
-                    item[field] = re.sub(
-                        "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+|)$",
-                        "\g<0>Z",
-                        item[field]
-                    )
-        return response_data
+        # user_channels = set(user.channels.values_list("channel_id", flat=True))
+        # for channel in channels:
+        #     channel.main.is_owner = channel.main.id in user_channels
+        #
+        #     # if "country" in item and item["country"] is None:
+        #     #     item["country"] = ""
+        #     # if "history_date" in item and item["history_date"]:
+        #     #     item["history_date"] = item["history_date"][:10]
+        #
+        #     if channel.stats.historydate:
+        #         channel.stats.historydate = channel.stats.historydate[:10]
+        #
+        #     if not (user.has_perm('userprofile.channel_audience') or channel.main.is_owner):
+        #
+        #         item['has_audience'] = False
+        #         item["verified"] = False
+        #         item.pop('audience', None)
+        #         item['brand_safety'] = None
+        #         item['safety_chart_data'] = None
+        #         item.pop('traffic_sources', None)
+        #
+        #     if not user.is_staff:
+        #         item.pop("cms__title", None)
+        #
+        #     for field in ["youtube_published_at", "updated_at"]:
+        #         if field in item and item[field]:
+        #             item[field] = re.sub(
+        #                 "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+|)$",
+        #                 "\g<0>Z",
+        #                 item[field]
+        #             )
+        # return response_data
 
     def _data_filtered_batch_generator(self, filters):
         return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)

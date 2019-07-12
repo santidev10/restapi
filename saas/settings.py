@@ -460,6 +460,7 @@ BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
 try:
+    from .elasticsearch import *
     from .local_settings import *
 except ImportError:
     pass
