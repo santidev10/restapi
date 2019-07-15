@@ -16,6 +16,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import BlacklistItem
 from datetime import datetime
 logger = logging.getLogger(__name__)
 from pid import PidFile
@@ -254,6 +255,8 @@ class Command(BaseCommand):
         if self.related_audits:
             if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
                 return False
+        if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM):
+            return False
         return True
 
     def check_video_matches_minimums(self, db_video_meta):
