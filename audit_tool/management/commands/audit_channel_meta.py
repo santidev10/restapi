@@ -203,8 +203,8 @@ class Command(BaseCommand):
                 db_video.channel = db_channel
                 db_video.save(update_fields=['channel'])
                 AuditVideoProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        video=db_video
+                    audit=self.audit,
+                    video=db_video
                 )
 
     def load_inclusion_list(self):
