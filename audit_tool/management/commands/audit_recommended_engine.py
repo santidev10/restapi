@@ -255,7 +255,9 @@ class Command(BaseCommand):
         if self.related_audits:
             if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
                 return False
-        if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM):
+        if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM): #if video is blacklisted
+            return False
+        if BlacklistItem.get(db_video.channel.channel_id, BlacklistItem.CHANNEL_ITEM): # if videos channel is blacklisted
             return False
         return True
 
