@@ -189,7 +189,8 @@ class Command(BaseCommand):
                 )
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
-                    db_channel_meta.save(update_fields=['last_uploaded'])
+                    db_channel_meta.last_uploaded_view_count = db_video_meta.views
+                    db_channel_meta.save(update_fields=['last_uploaded', 'last_uploaded_view_count'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()

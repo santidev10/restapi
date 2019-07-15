@@ -131,6 +131,7 @@ class AuditExportApiView(APIView):
             "Channel Subscribers",
             "Country",
             "Last Uploaded Video",
+            "Last Uploaded Video Views",
             "All {} Hit Words".format(hit_types),
             "Unique {} Hit Words".format(hit_types),
             "Video Count",
@@ -173,6 +174,10 @@ class AuditExportApiView(APIView):
                     last_uploaded = v.video.channel.auditchannelmeta.last_uploaded.strftime("%m/%d/%Y")
                 except Exception as e:
                     last_uploaded = ""
+                try:
+                    last_uploaded_view_count = v.video.channel.auditchannelmeta.last_uploaded_view_count
+                except Exception as e:
+                    last_uploaded_view_count = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -190,6 +195,7 @@ class AuditExportApiView(APIView):
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
                     last_uploaded,
+                    last_uploaded_view_count,
                     all_hit_words,
                     unique_hit_words,
                     video_count if video_count else "",
@@ -237,6 +243,7 @@ class AuditExportApiView(APIView):
             "Country",
             "Language",
             "Last Video Upload",
+            "Last Video Views",
             "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
@@ -289,6 +296,7 @@ class AuditExportApiView(APIView):
                     country,
                     language,
                     v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
+                    v.last_uploaded_view_count if v.last_uploaded_view_count else '',
                     bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])
