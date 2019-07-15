@@ -354,11 +354,10 @@ class BlacklistItem(models.Model):
     def get_or_create(item_id, item_type):
         b_i = BlacklistItem.get(item_id, item_type)
         if not b_i:
-            item_id_hash = get_hash_name(item_id)
             b_i = BlacklistItem.objects.create(
                 item_type=item_type,
                 item_id=item_id,
-                item_id_hash=item_id_hash,
+                item_id_hash=get_hash_name(item_id),
             )
         return b_i
 
