@@ -601,7 +601,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=today)
 
         ad_group_1 = AdGroup.objects.create(id="1", name="", campaign=campaign,
-                                            type="Bumper Ad")
+                                            type="Bumper")
         ad_group_2 = AdGroup.objects.create(id="2", name="", campaign=campaign,
                                             type="In-stream")
 
@@ -613,10 +613,10 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
 
         response = self._request(
             start=str(today), end=str(today),
-            product_types=["Bumper Ad"]
+            product_types=["Bumper"]
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["average_cpm"], (15 + 50) / 2.)
+        self.assertEqual(response.data["average_cpm"], 15 * 1000 / 1000)
 
     def test_missing_campaigns_do_not_affect_chart(self):
         today = now_in_default_tz().date()
