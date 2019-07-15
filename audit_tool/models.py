@@ -337,3 +337,32 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+
+class BlacklistItem(models.Model):
+    VIDEO_ITEM = 0
+    CHANNEL_ITEM = 1
+    item_type = models.IntegerField(db_index=True)
+    item_id = models.CharField(db_index=True, max_length=64)
+    item_id_hash = models.BigIntegerField(db_index=True)
+    blacklist_category = JSONField(default={})
+
+    class Meta:
+        unique_together = ("item_type", "item_id")
+
+    @staticmethod
+    def get_or_create(item_id, item_type):
+        b_i = BlacklistItem.get(item_id, item_type)
+        if not b_i:
+            item_id_hash = get_hash_name(item_id)
+            b_i = BlacklistItem.objects.create(
+                item_type=item_type,
+                item_id=item_id,
+                item_id_hash=item_id_hash,
+            )
+        return b_i
+
+    @staticmethod
+    def get(item_id, item_type):
+        for a in BlacklistItem.objects.filter(item_type=item_type, item_id_hash=get_hash_name(item_id)):
+            if a.item_id == item_id:
+                return a
