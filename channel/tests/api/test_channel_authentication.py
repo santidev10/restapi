@@ -69,6 +69,4 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         response = self.client.post(self.url, dict(), )
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        welcome_emails = [m for m in mail.outbox
-                          if m.subject.startswith("Welcome")]
-        self.assertEqual(len(welcome_emails), 1)
+        self.assertEqual(len(mail.outbox), 1)
