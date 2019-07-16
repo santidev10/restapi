@@ -92,7 +92,7 @@ def send_html_email(subject, to, text_header, text_content, host=None):
     Send email with html
     """
     html_email = generate_html_email(text_header, text_content)
-    SESEmailer().send_email(to, subject, html_email)
+    SESEmailer().send_email(to, subject, html_email, host=host)
 
 
 def generate_html_email(text_header, text_content):
