@@ -1,5 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
+from django.core.exceptions import ValidationError
 
 from django.conf import settings
 
@@ -41,11 +42,7 @@ class SESEmailer(object):
                 Source=host,
             )
         except ClientError:
-            raise SESEmailerException("Failed to send email. Either the sender ({}) or the "
-                "recipient ({}) is an invalid email address.".format(host, recipients))
+            raise ValidationError("Failed to send email. Either the sender ({}) or the "
+                                  "recipient ({}) is an invalid email address.".format(host, recipients))
         except Exception as e:
             raise e
-
-
-class SESEmailerException(Exception):
-    pass
