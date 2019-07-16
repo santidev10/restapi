@@ -350,6 +350,12 @@ class BlacklistItem(models.Model):
     class Meta:
         unique_together = ("item_type", "item_id")
 
+    def to_dict(self):
+        d = {
+            'categories': self.blacklist_category
+        }
+        return d
+
     @staticmethod
     def get_or_create(item_id, item_type):
         b_i = BlacklistItem.get(item_id, item_type)
@@ -362,7 +368,10 @@ class BlacklistItem(models.Model):
         return b_i
 
     @staticmethod
-    def get(item_id, item_type):
+    def get(item_id, item_type, to_dict=False):
         for a in BlacklistItem.objects.filter(item_type=item_type, item_id_hash=get_hash_name(item_id)):
             if a.item_id == item_id:
-                return a
+                if to_dict:
+                    return a.to_dict()
+                else:
+                    return a
