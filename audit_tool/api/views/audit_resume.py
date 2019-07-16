@@ -18,6 +18,8 @@ class AuditResumeApiView(APIView):
                     related_audits = [audit.id]
                 else:
                     related_audits = related_audits + [audit.id]
+                audit.params['resumed'] = True
+                audit.save(update_fields=['params'])
                 params['related_audits'] = related_audits
                 if not params['name'].startswith('Resumed: '):
                     params['name'] = 'Resumed: {}'.format(params['name'])
@@ -26,8 +28,6 @@ class AuditResumeApiView(APIView):
                     params=params,
                     max_recommended=max_recommended,
                 )
-                audit.params['resumed'] = True
-                audit.save(update_fields=['params'])
                 # GET SOURCE VIDEOS FROM OLD AUDIT THAT WERE NOT PROCESSED AND COPY THEM AS SOURCE FOR THIS
                 videos = AuditVideoProcessor.objects.filter(audit_id=audit.id, processed__isnull=True)
                 for v in videos[:1000]:
