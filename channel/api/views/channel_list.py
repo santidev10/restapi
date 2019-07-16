@@ -17,6 +17,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
+from elasticsearch_dsl import Q
 
 from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
@@ -102,7 +103,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         "items": [],
         "current_page": 1,
     }
-    page_size = 50
     max_pages_count = 200
     es_manager = ChannelManager
 
@@ -143,11 +143,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS)
         filters = []
 
-        # query params validation
-        is_query_params_valid, error = self._validate_query_params()
-        if not is_query_params_valid:
-            return Response({"error": error}, HTTP_400_BAD_REQUEST)
-
         query_params = deepcopy(request.query_params)
 
         try:
@@ -164,36 +159,36 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         es_manager = self.es_manager(allowed_sections_to_load)
         adapter = Adapter(query_params)
 
-        updated_at = datetime.utcnow() - timedelta(days=7)
+        filters += adapter.get_query() + [es_manager.forced_filters()]
+        query = Q("bool", filter=filters)
 
-        filters += adapter.get_filters() + [es_manager.forced_filters(updated_at)]
-        queries = adapter.get_queries()
         sort = adapter.get_sort_rule()
-        size, offset, page = adapter.get_limits(self.page_size)
-        aggregations_params, aggs_key = adapter.get_aggregations()
+        size, offset, page = adapter.get_limits()
+        aggregations_params = adapter.get_aggregations()
 
         try:
-            items_count = es_manager.search(queries=queries, filters=filters, sort=sort, limit=None).count()
-            channels = es_manager.search(queries=queries, filters=filters, sort=sort, limit=size, offset=offset)\
+            items_count = es_manager.search(query=query, sort=sort, limit=None).count()
+            channels = es_manager.search(query=query, sort=sort, limit=size, offset=offset)\
                 .execute().hits
 
             aggregations = es_manager.aggs_from_dict(
                 aggregations_params,
-                es_manager.search(queries=queries, filters=filters, limit=None)
+                es_manager.search(query=query, limit=None)
             )
         except Exception as e:
             return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
         max_page = None
-        if self.page_size:
-            max_page = min(ceil(items_count / self.page_size), self.max_pages_count)
+        if size:
+            max_page = min(ceil(items_count / size), self.max_pages_count)
 
         result = {
             "current_page": page,
             "items": [channel.to_dict() for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "aggregations": adapter.adapt_aggregation_results(aggregations, aggs_key)
+            "agg": aggregations_params,
+            "aggregations": adapter.adapt_aggregation_results(aggregations)
         }
         return Response(result)
 
