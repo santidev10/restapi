@@ -19,7 +19,7 @@ class SESEmailer(object):
             aws_secret_access_key=self.aws_secret_access_key
         )
 
-    def send_email(self, recipients, subject, body_html, host=settings.NOTIFICATIONS_EMAIL_SENDER):
+    def send_email(self, recipients, subject, body_html):
         if not isinstance(recipients, list) and isinstance(recipients, str):
             recipients = [recipients]
         try:
@@ -39,7 +39,7 @@ class SESEmailer(object):
                         'Data': subject,
                     },
                 },
-                Source=host,
+                Source=settings.SENDER_EMAIL_ADDRESS,
             )
         except ClientError:
             raise ValidationError("Failed to send email. Either the sender ({}) or the "
