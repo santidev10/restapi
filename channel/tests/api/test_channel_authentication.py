@@ -7,9 +7,12 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 import singledb.connector
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
+from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+
+SESEmailer.send_email = lambda *args, **kwargs: None
 
 
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
