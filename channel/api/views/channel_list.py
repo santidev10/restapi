@@ -1,11 +1,7 @@
 import re
 
-from datetime import datetime
-from datetime import timedelta
 from copy import deepcopy
 from math import ceil
-
-from django.conf import settings
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
@@ -28,6 +24,9 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.elasticsearch import init_es_connection
+
+init_es_connection()
 
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
@@ -159,7 +158,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         es_manager = self.es_manager(allowed_sections_to_load)
         adapter = Adapter(query_params)
 
-        filters += adapter.get_query() + [es_manager.forced_filters()]
+        filters += adapter.get_filters() + [es_manager.forced_filters()]
         query = Q("bool", filter=filters)
 
         sort = adapter.get_sort_rule()
@@ -187,7 +186,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             "items": [channel.to_dict() for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "agg": aggregations_params,
             "aggregations": adapter.adapt_aggregation_results(aggregations)
         }
         return Response(result)

@@ -1,8 +1,9 @@
 from es_components.managers.channel import ChannelManager
+from es_components.query_builder import QueryBuilder
 
 AGGREGATION_COUNT_SIZE = 100000
-AGGREGATION_PERCENTS = (10, 20, 30, 40, 50, 60, 70, 80, 90)
-DEFAULT_PAGE_NUMBER = 0
+AGGREGATION_PERCENTS = tuple(range(10, 100, 10))
+DEFAULT_PAGE_NUMBER = 1
 DEFAULT_PAGE_SIZE = 50
 
 SORT_KEY = {
@@ -75,7 +76,8 @@ TERMS_FILTER = {
     "country": "general_data.country",
     "language": "general_data.top_language",
     "cms_title": "analytics.cms_title",
-    "text_search": "general_data.title"
+    "text_search": "general_data.title",
+    "category": "general_data.top_category"
 }
 
 RANGE_FILTER = {
@@ -227,7 +229,7 @@ class Adapter(AggregationAdapter):
         size = int(self.query_params.get("size", [DEFAULT_PAGE_SIZE])[0])
         page = self.query_params.get("page", [DEFAULT_PAGE_NUMBER])
         if len(page) > 1:
-            raise Exception("Pages are defined more than 1")
+            raise ValueError("Passed more than one page number")
 
         page = int(page[0])
         offset = 0 if page <= 1 else (page - 1) * size
@@ -244,20 +246,6 @@ class Adapter(AggregationAdapter):
             if field:
                 return [{field: {"order": direction}}]
 
-    def get_query(self):
-        return self.get_filters() + self.get_queries()
-
-    def get_queries(self):
-        queries = []
-        category = self.query_params.get("top_category", [None])[0]
-        if category is not None:
-            regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
-
-            queries.append(
-                self.es_manager.query_regexp("general_data.top_category", regexp)
-            )
-        return [query for query in queries if query is not None]
-
     def get_filter_range(self):
         filters = []
 
@@ -266,7 +254,9 @@ class Adapter(AggregationAdapter):
             min, max = self.query_params.get(filter_name, [None, None])
 
             if min or max:
-                filters.append(self.es_manager.filter_range(es_field_name, gte=min, lte=max))
+                filters.append(
+                    QueryBuilder().create().must().range().field(es_field_name).gte(min).lte(max).get()
+                )
 
         return filters
 
@@ -277,7 +267,9 @@ class Adapter(AggregationAdapter):
 
             value = self.query_params.get(filter_name, [None])[0]
             if value:
-                filters.append(self.es_manager.filter_term(es_field_name, value))
+                filters.append(
+                    QueryBuilder().create().must().term().field(es_field_name).value(value).get()
+                )
 
         return filters
 

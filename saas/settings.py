@@ -459,8 +459,9 @@ BRAND_SAFETY_VIDEO_INDEX = ""
 BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
 
+from .elasticsearch import *
+
 try:
-    from .elasticsearch import *
     from .local_settings import *
 except ImportError:
     pass
