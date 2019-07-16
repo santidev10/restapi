@@ -71,6 +71,14 @@ def send_new_channel_authentication_email(user, channel_id, request):
     send_mail(subject, text, sender, to, fail_silently=True)
 
 
+def send_html_email(subject, to, text_header, text_content):
+    """
+    Send email with html
+    """
+    html_email = generate_html_email(text_header, text_content)
+    SESEmailer().send_email(to, subject, html_email)
+
+
 def send_welcome_email(user, request):
     """
     Send welcome email to user
@@ -84,15 +92,7 @@ def send_welcome_email(user, request):
                    " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
-    send_html_email(subject, to, text_header, text_content, request.get_host())
-
-
-def send_html_email(subject, to, text_header, text_content, host=None):
-    """
-    Send email with html
-    """
-    html_email = generate_html_email(text_header, text_content)
-    SESEmailer().send_email(to, subject, html_email, host=host)
+    send_html_email(subject, to, text_header, text_content)
 
 
 def generate_html_email(text_header, text_content):
