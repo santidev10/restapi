@@ -205,6 +205,7 @@ class AuditProcessor(models.Model):
             'max_dislikes': self.params.get('max_dislikes'),
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
+            'resumed': self.params.get('resumed')
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
