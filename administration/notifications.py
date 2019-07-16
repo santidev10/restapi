@@ -4,16 +4,15 @@ Administration notifications module
 import json
 import os
 import re
-from email.mime.image import MIMEImage
 from logging import Filter
 from logging import Handler
 
-import requests
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.core.mail import send_mail
 from django.template.loader import get_template
+import requests
 
+from utils.aws.ses_emailer import SESEmailer
 from utils.lang import get_request_prefix
 
 IGNORE_EMAILS_TEMPLATE = {
@@ -88,30 +87,12 @@ def send_welcome_email(user, request):
     send_html_email(subject, to, text_header, text_content, request.get_host())
 
 
-def send_html_email(subject, to, text_header, text_content, host):
+def send_html_email(subject, to, text_header, text_content, host=None):
     """
     Send email with html
     """
-    sender = settings.SENDER_EMAIL_ADDRESS
-    html = get_template("main.html")
-    context = {"text_header": text_header,
-               "text_content": text_content,
-               "host": host}
-    html_content = html.render(context=context)
-
-    msg = EmailMultiAlternatives(subject, "{}{}".format(
-        text_header, text_content), sender, [to])
-    msg.attach_alternative(html_content, "text/html")
-    msg.mixed_subtype = "related"
-
-    for img in ["cf_logo_wt_big.png", "img.png", "cf_logo_footer.png"]:
-        img_path = os.path.join(EMAIL_IMAGES_DIR, img)
-        with open(img_path, 'rb') as fp:
-            msg_img = MIMEImage(fp.read())
-        msg_img.add_header('Content-ID', '<{}>'.format(img))
-        msg.attach(msg_img)
-
-    msg.send(fail_silently=True)
+    html_email = generate_html_email(text_header, text_content)
+    SESEmailer().send_email(to, subject, html_email, host=host)
 
 
 def generate_html_email(text_header, text_content):
