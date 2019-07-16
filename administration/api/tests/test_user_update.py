@@ -1,7 +1,6 @@
-from unittest import mock
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core import mail
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -9,7 +8,6 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserStatuses
-from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.generic_test import generic_test
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -21,7 +19,6 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         for status in UserStatuses
     ])
     def test_status_valid(self, status):
-        SESEmailer.send_email = lambda *args, **kwargs: None
         self.create_admin_user()
         user = get_user_model().objects.create(email="test_status@example.com")
         update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(user.id,))
@@ -58,6 +55,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         user.refresh_from_db()
         self.assertTrue(user.is_active)
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_status_not_allow_none(self):
         self.create_admin_user()
@@ -98,6 +96,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         payload = {"status": UserStatuses.ACTIVE.value}
         response = self.client.put(update_url, data=payload)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_set_admin_success_grant(self):
         self.create_admin_user()
