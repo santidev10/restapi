@@ -16,7 +16,7 @@ from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.elasticsearch import ElasticSearchConnectorException
 from utils.brand_safety_view_decorator import get_brand_safety_data
-
+from audit_tool.models import BlacklistItem
 
 class BrandSafetyChannelAPIView(APIView):
     permission_required = (
@@ -85,7 +85,7 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-
+        #channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)

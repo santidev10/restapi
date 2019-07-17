@@ -9,7 +9,7 @@ import re
 from multiprocessing import Pool
 from django.db.utils import IntegrityError as DjangoIntegrityError
 from psycopg2 import IntegrityError as PostgresIntegrityError
-import langid
+from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
 
 class Related(object):
@@ -403,6 +403,6 @@ class Related(object):
         text += obj.channel_title
         text = remove_mentions_hashes_urls(text)
 
-        language = langid.classify(text)[0].lower()
+        language = fasttext_lang(text)
 
         return language

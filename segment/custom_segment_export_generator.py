@@ -1,8 +1,10 @@
 import logging
 
 from django.conf import settings
+from django.template.loader import get_template
 from django.utils import timezone
 
+from administration.notifications import generate_html_email
 from brand_safety.constants import CHANNEL
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
@@ -62,22 +64,24 @@ class CustomSegmentExportGenerator(S3Exporter):
         :return:
         """
         now = timezone.now()
+        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         if self.updating:
             export.updated_at = now
         else:
             export.completed_at = timezone.now()
-        export.save()
-        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+            self._send_notification_email(owner.email, segment.title, download_url)
         export.download_url = download_url
         export.save()
-        if not self.updating:
-            # These methods should be invoked only when the segment is created for the first time
-            export.segment.update_statistics()
-            self._send_notification_email(owner.email, segment.title, download_url)
+        export.segment.update_statistics()
         logger.error("Done processing: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
-        self.ses.send_email(email, "Custom Segment Download: {}".format(segment_title), "Download: {}".format(download_url))
+        subject = "Custom Target List: {}".format(segment_title)
+        text_header = "Your Custom Target List {} is ready".format(segment_title)
+        text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
+        html_email = generate_html_email(text_header, text_content)
+    
+        self.ses.send_email(email, subject, html_email)
 
     @staticmethod
     def has_next():
@@ -143,4 +147,6 @@ class CustomSegmentExportGenerator(S3Exporter):
             chunk = [item["_id"] for item in chunk]
         segment.add_related_ids(chunk)
 
-
+    def delete_export(self, owner_id, segment_title):
+        s3_key = self.get_s3_key(owner_id, segment_title)
+        self.delete_obj(s3_key)

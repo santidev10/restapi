@@ -46,11 +46,18 @@ class CustomSegment(Timestampable):
         (0, VIDEO),
         (1, CHANNEL)
     )
+    segment_type_to_id = {
+        segment_type: _id for _id, segment_type in dict(SEGMENT_TYPE_CHOICES).items()
+    }
+    list_type_to_id = {
+        list_type: _id for _id, list_type in dict(LIST_TYPE_CHOICES).items()
+    }
+
     statistics = JSONField(default=dict())
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
-    title = CharField(max_length=255)
+    title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
 
     @property

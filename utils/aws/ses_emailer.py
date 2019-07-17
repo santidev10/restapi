@@ -39,10 +39,10 @@ class SESEmailer(object):
                         'Data': subject,
                     },
                 },
-                Source=settings.NOTIFICATIONS_EMAIL_SENDER,
+                Source=settings.SENDER_EMAIL_ADDRESS,
             )
         except ClientError:
             raise ValidationError("Failed to send email. Either the sender ({}) or the "
-                                  "recipient ({}) is an invalid email address.".format(sender, recipient))
+                                  "recipient ({}) is an invalid email address.".format(host, recipients))
         except Exception as e:
             raise e
