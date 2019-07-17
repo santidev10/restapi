@@ -25,7 +25,7 @@ class Command(BaseCommand):
             with PidFile(pid_file, piddir=".") as pid:
                 self.run(*args, **kwargs)
         except PidFileError:
-            logger.info("Already running")
+            pass
 
     def run(self, *args, **options):
         try:
