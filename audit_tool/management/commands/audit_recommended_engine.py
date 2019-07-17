@@ -46,7 +46,7 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
-                               "&type=video&maxResults=50&relevanceLanguage={language}"
+                               "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -196,7 +196,7 @@ class Command(BaseCommand):
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
-            language=self.language,
+            language="&relevanceLanguage={}".format(self.language) if ',' not in self.language else '',
             location="&location={}".format(self.location) if self.location else '',
             location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
         )
