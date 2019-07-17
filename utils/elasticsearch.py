@@ -1,5 +1,4 @@
 from django.conf import settings
-import certifi
 
 from elasticsearch import Elasticsearch
 from elasticsearch import RequestsHttpConnection
@@ -8,7 +7,6 @@ from elasticsearch.helpers import parallel_bulk
 from elasticsearch.exceptions import ConnectionTimeout
 from elasticsearch.exceptions import ImproperlyConfigured
 from elasticsearch.exceptions import ElasticsearchException
-from elasticsearch_dsl import connections
 
 
 class ElasticSearchConnector(object):
@@ -107,17 +105,3 @@ class ElasticSearchConnector(object):
 
 class ElasticSearchConnectorException(Exception):
     pass
-
-
-def init_es_connection():
-    connections.configure(
-        default={
-            "hosts": settings.ELASTIC_SEARCH_URLS,
-            "timeout": settings.ELASTIC_SEARCH_TIMEOUT,
-            "use_ssl": settings.ELASTIC_SEARCH_USE_SSL,
-            "ca_certs": certifi.where()
-        }
-
-    )
-
-

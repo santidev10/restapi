@@ -6,7 +6,6 @@ from math import ceil
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from elasticsearch_dsl import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -18,13 +17,13 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from es_components.query_builder import QueryBuilder
+from es_components.connections import init_es_connection
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.elasticsearch import init_es_connection
 
 init_es_connection()
 
@@ -163,15 +162,15 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         es_manager = self.es_manager(allowed_sections_to_load)
 
-        query = QueryGenerator(query_params).get_search_query(channels_ids)
+        filters = QueryGenerator(query_params).get_search_filters(channels_ids)
         sort = self.get_sort_rule(query_params)
         size, offset, page = self.get_limits(query_params)
 
         try:
-            items_count = es_manager.search(query=query, sort=sort, limit=None).count()
-            channels = es_manager.search(query=query, sort=sort, limit=size, offset=offset).execute().hits
+            items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
+            channels = es_manager.search(filters=filters, sort=sort, limit=size, offset=offset).execute().hits
 
-            aggregations = es_manager.get_aggregation(es_manager.search(query=query, limit=None)) \
+            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
                 if query_params.get("aggregations") else None
 
         except Exception as e:
@@ -305,7 +304,7 @@ class QueryGenerator:
 
         return filters
 
-    def get_search_query(self, channels_ids=None):
+    def get_search_filters(self, channels_ids=None):
         filters_term = self.__get_filters_term()
         filters_range = self.__get_filter_range()
         forced_filter = [self.es_manager.forced_filters()]
@@ -315,4 +314,4 @@ class QueryGenerator:
         if channels_ids:
             filters.append(self.es_manager.ids_query(channels_ids))
 
-        return Q("bool", filter=filters)
+        return filters
