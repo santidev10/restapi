@@ -57,7 +57,7 @@ class CustomSegment(Timestampable):
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=CASCADE)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
-    title = CharField(max_length=255)
+    title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
 
     @property
