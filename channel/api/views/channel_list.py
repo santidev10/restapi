@@ -6,6 +6,7 @@ from math import ceil
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from elasticsearch_dsl import Q
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -13,13 +14,12 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
-from elasticsearch_dsl import Q
 
-from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
+from es_components.managers.channel import ChannelManager
+from es_components.query_builder import QueryBuilder
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
-from channel.api.adapters.channel_list_adapter import Adapter
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
@@ -27,6 +27,17 @@ from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.elasticsearch import init_es_connection
 
 init_es_connection()
+
+
+DEFAULT_PAGE_NUMBER = 1
+DEFAULT_PAGE_SIZE = 50
+
+TERMS_FILTER = ("general_data.country", "general_data.top_language", "analytics.cms_title",
+                "general_data.title", "general_data.top_category")
+
+RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "social.facebook_likes",
+                "stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
+                "stats.last_30day_subscribers", "stats.subscribers")
 
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
@@ -140,8 +151,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             return self.search_channels()
 
         allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS)
-        filters = []
-
         query_params = deepcopy(request.query_params)
 
         try:
@@ -149,31 +158,22 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         except UserChannelsNotAvailable:
             return Response(self.empty_response)
 
-        if channels_ids:
-            filters.append(self.es_manager.ids_query(channels_ids))
-
         if request.user.is_staff or channels_ids:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
         es_manager = self.es_manager(allowed_sections_to_load)
-        adapter = Adapter(query_params)
 
-        filters += adapter.get_filters() + [es_manager.forced_filters()]
-        query = Q("bool", filter=filters)
-
-        sort = adapter.get_sort_rule()
-        size, offset, page = adapter.get_limits()
-        aggregations_params = adapter.get_aggregations()
+        query = QueryGenerator(query_params).get_search_query(channels_ids)
+        sort = self.get_sort_rule(query_params)
+        size, offset, page = self.get_limits(query_params)
 
         try:
             items_count = es_manager.search(query=query, sort=sort, limit=None).count()
-            channels = es_manager.search(query=query, sort=sort, limit=size, offset=offset)\
-                .execute().hits
+            channels = es_manager.search(query=query, sort=sort, limit=size, offset=offset).execute().hits
 
-            aggregations = es_manager.aggs_from_dict(
-                aggregations_params,
-                es_manager.search(query=query, limit=None)
-            )
+            aggregations = es_manager.get_aggregation(es_manager.search(query=query, limit=None)) \
+                if query_params.get("aggregations") else None
+
         except Exception as e:
             return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
@@ -186,7 +186,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             "items": [channel.to_dict() for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "aggregations": adapter.adapt_aggregation_results(aggregations)
+            "aggregations": aggregations.to_dict() if aggregations else None
         }
         return Response(result)
 
@@ -205,6 +205,24 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
                 raise UserChannelsNotAvailable
 
             return channels_ids
+
+    def get_limits(self, query_params):
+        size = int(query_params.get("size", [DEFAULT_PAGE_SIZE])[0])
+        page = query_params.get("page", [DEFAULT_PAGE_NUMBER])
+        if len(page) > 1:
+            raise ValueError("Passed more than one page number")
+
+        page = int(page[0])
+        offset = 0 if page <= 1 else (page - 1) * size
+
+        return size, offset, page
+
+    def get_sort_rule(self, query_params):
+        sort_params = query_params.get("sort", None)
+
+        if sort_params:
+            key, direction = sort_params.split(":")
+            return [{key: {"order": direction}}]
 
     @staticmethod
     def adapt_response_data(response_data, user):
@@ -250,3 +268,51 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
     def _data_filtered_batch_generator(self, filters):
         return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)
+
+
+class QueryGenerator:
+    es_manager = ChannelManager()
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+
+    def __init__(self, query_params):
+        self.query_params = query_params
+
+    def __get_filter_range(self):
+        filters = []
+
+        for field in self.range_filter:
+
+            min, max = self.query_params.get(field, [None, None])
+
+            if min or max:
+                filters.append(
+                    QueryBuilder().build().must().range().field(field).gte(min).lte(max).get()
+                )
+
+        return filters
+
+    def __get_filters_term(self):
+        filters = []
+
+        for field in self.terms_filter:
+
+            value = self.query_params.get(field, [None])[0]
+            if value:
+                filters.append(
+                    QueryBuilder().build().must().term().field(field).value(value).get()
+                )
+
+        return filters
+
+    def get_search_query(self, channels_ids=None):
+        filters_term = self.__get_filters_term()
+        filters_range = self.__get_filter_range()
+        forced_filter = [self.es_manager.forced_filters()]
+
+        filters = filters_term + filters_range + forced_filter
+
+        if channels_ids:
+            filters.append(self.es_manager.ids_query(channels_ids))
+
+        return Q("bool", filter=filters)
