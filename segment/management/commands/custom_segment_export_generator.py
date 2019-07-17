@@ -42,6 +42,8 @@ class Command(BaseCommand):
             (Q(updated_at__isnull=True) & Q(created_at__gte=threshold)) | Q(updated_at__gte=threshold)
         )
         for export in to_update:
+            if export.segment.owner is None:
+                continue
             generator.generate(export=export)
 
     def generate(self, *args, **kwargs):
