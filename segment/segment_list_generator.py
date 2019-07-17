@@ -35,9 +35,9 @@ class SegmentListGenerator(object):
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     VIDEO_BATCH_COUNTER_LIMIT = 500
     # Size of lists types
-    WHITELIST_CHANNEL_SIZE = 20000
+    WHITELIST_CHANNEL_SIZE = 100000
     BLACKLIST_CHANNEL_SIZE = 100000
-    WHITELIST_VIDEO_SIZE = 20000
+    WHITELIST_VIDEO_SIZE = 100000
     BLACKLIST_VIDEO_SIZE = 100000
     # Actual list sizes used during runtime set by _set_config method
     BLACKLIST_SIZE = None
