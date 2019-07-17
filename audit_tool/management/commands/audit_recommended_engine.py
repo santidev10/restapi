@@ -209,6 +209,11 @@ class Command(BaseCommand):
                 avp.clean = False
                 avp.save()
                 return
+        try:
+            d = data['items']
+        except Exception as e:
+            print(str(e))
+            raise Exception("problem with API response {}".format(str(e)))
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
