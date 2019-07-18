@@ -3,7 +3,6 @@ from datetime import date
 from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
 from brand_safety import constants
-from segment.models.persistent.constants import PersistentSegmentCategory
 
 
 class BrandSafetyChannelAudit(object):
@@ -31,11 +30,19 @@ class BrandSafetyChannelAudit(object):
         Drives main audit logic
         :return:
         """
+        brand_safety_audit = self.audit_types[constants.BRAND_SAFETY]
         for video in self.video_audits:
             self.results[constants.BRAND_SAFETY] = self.results.get(constants.BRAND_SAFETY, [])
             self.results[constants.BRAND_SAFETY].extend(video.results[constants.BRAND_SAFETY])
-        title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, self.audit_types[constants.BRAND_SAFETY])
-        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, self.audit_types[constants.BRAND_SAFETY])
+        # Try to get channel language processor
+        try:
+            keyword_processor = brand_safety_audit[self.metadata["language"]]
+        except KeyError:
+            # Set the language the audit uses
+            self.metadata["language"] = "all"
+            keyword_processor = brand_safety_audit["all"]
+        title_hits = self.auditor.audit(self.metadata["channel_title"], constants.TITLE, keyword_processor)
+        description_hits = self.auditor.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
         self.results["metadata_hits"] = title_hits + description_hits
         self.calculate_brand_safety_score(*title_hits, *description_hits)
 
@@ -45,24 +52,29 @@ class BrandSafetyChannelAudit(object):
         :param channel_data:
         :return: dict
         """
-        text = channel_data.get("title", "") + channel_data.get("description", "")
         metadata = {
             "channel_id": channel_data.get("channel_id", ""),
-            "channel_title": channel_data.get("title"),
+            "channel_title": channel_data.get("title", ""),
             "channel_url": channel_data.get("url", ""),
-            "language": channel_data.get("language", ""),
-            "category": channel_data.get("category", ""),
+            "category": channel_data.get("category").lower() if channel_data.get("category") is not None else constants.UNKNOWN.lower(),
             "description": channel_data.get("description", ""),
             "videos": channel_data.get("videos", constants.DISABLED),
-            "subscribers": channel_data.get("subscribers", constants.DISABLED),
-            "views": channel_data.get("video_views", 0),
+            "views": channel_data.get("views") if channel_data.get("views") is not None else 0,
             "audited_videos": len(self.video_audits),
-            "has_emoji": self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
             "likes": channel_data.get("likes", constants.DISABLED),
             "dislikes": channel_data.get("dislikes", constants.DISABLED),
             "country": channel_data.get("country", ""),
-            "thumbnail_image_url": channel_data.get("thumbnail_image_url", "")
+            "thumbnail_image_url": channel_data.get("thumbnail_image_url", ""),
+            "tags": channel_data.get("tags", "") if channel_data.get("tags") is not None else "",
+            "subscribers": channel_data.get("subscribers", 0),
+            "monthly_views": channel_data.get("thirty_days_views", 0),
         }
+        text = ", ".join([
+            metadata["channel_title"],
+            metadata["description"],
+        ])
+        metadata["has_emoji"] = self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
+        metadata["language"] = self.auditor.get_language(text)
         return metadata
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
@@ -97,25 +109,6 @@ class BrandSafetyChannelAudit(object):
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
         return channel_brand_safety_score
 
-    def instantiate_related_model(self, model, related_segment, segment_type=constants.WHITELIST):
-        details = {
-            "language": self.metadata["language"],
-            "thumbnail": self.metadata["thumbnail_image_url"],
-            "likes": self.metadata["likes"],
-            "dislikes": self.metadata["dislikes"],
-            "views": self.metadata["views"],
-        }
-        if segment_type == constants.BLACKLIST:
-            details["bad_words"] = self.results["metadata_hits"]
-        obj = model(
-            related_id=self.pk,
-            segment=related_segment,
-            title=self.metadata["channel_title"],
-            category=self.metadata["category"],
-            details=details
-        )
-        return obj
-
     def es_repr(self, index_name, index_type, action):
         """
         ES Brand Safety Index expects documents formatted by category, keyword, and scores
@@ -128,9 +121,13 @@ class BrandSafetyChannelAudit(object):
             "_op_type": action,
             "_id": self.pk,
             "channel_id": brand_safety_results.pk,
+            "title": self.metadata["channel_title"],
             "overall_score": brand_safety_results.overall_score if brand_safety_results.overall_score >= 0 else 0,
             "videos_scored": brand_safety_results.videos_scored,
             "updated_at": str(date.today()),
+            "language": self.metadata["language"],
+            "subscribers": self.metadata["subscribers"],
+            "youtube_category": self.metadata["category"],
             "categories": {
                 category: {
                     "category_score": score,
@@ -143,4 +140,13 @@ class BrandSafetyChannelAudit(object):
             category = data.pop("category")
             brand_safety_es["categories"][category]["keywords"].append(data)
         return brand_safety_es
+
+    def get_text_metadata(self):
+        text = ", ".join([
+            self.metadata.get("channel_title", ""),
+            self.metadata.get("description", ""),
+            self.metadata.get("tags", ""),
+        ])
+        return text
+
 
