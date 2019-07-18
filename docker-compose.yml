@@ -43,16 +43,6 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
 
-  web:
-    image: viewiq-ui
-    build:
-      context: ../ui
-      dockerfile: Dockerfile.dist
-    volumes:
-      - ./.docker/conf.nginx:/etc/nginx/nginx.conf
-    depends_on:
-      - api
-
   pg:
     image: postgres:9.6
     environment:
