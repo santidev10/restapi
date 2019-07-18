@@ -252,7 +252,7 @@ class StandardBrandSafetyProvider(object):
         channels_to_update = []
         channel_es_data = self._get_channel_es_data(channel_ids)
         channel_ids_from_videos = self.audit_service.get_channel_video_data(channel_ids, fields="channel_id")
-        channel_video_counts = Counter([item["channel_id"] for item in channel_ids_from_videos])
+        channel_video_counts = Counter([item["channel_id"] for item in channel_ids_from_videos if item.get("channel_id")])
         for _id in channel_ids:
             try:
                 es_data = channel_es_data[_id]
