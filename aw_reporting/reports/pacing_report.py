@@ -910,9 +910,17 @@ class PacingReport:
     # ## FLIGHTS ## #
 
     # ## CAMPAIGNS ## #
-    def get_campaigns(self, flight):
+    def get_campaigns(self, flight, status=None):
         queryset = Campaign.objects.filter(
             salesforce_placement__flights=flight)
+
+        # status = "eligible" | "paused" | "ended"
+        if status:
+            if type(status) is str:
+                queryset = queryset.filter(status=status)
+            else:
+                queryset = queryset.filter(status__in=status)
+
         campaigns = queryset.values(
             "id", "name", "goal_allocation",
         ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
