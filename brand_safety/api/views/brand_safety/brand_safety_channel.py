@@ -104,7 +104,7 @@ class BrandSafetyChannelAPIView(APIView):
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
-    def _adapt_channel_video_es_sdb_data(self, channel_data: dict, video_es_data: dict, video_sdb_data: dict):
+    def _adapt_channel_video_es_sdb_data(self, channel_data: dict, video_es_data: dict, video_sdb_data: dict) -> tuple:
         """
         Encapsulate merging of channel and video es/sdb data
         :param es_data: dict
@@ -137,7 +137,7 @@ class BrandSafetyChannelAPIView(APIView):
         flagged_videos.sort(key=lambda video: video["youtube_published_at"], reverse=True)
         return channel_data, flagged_videos
 
-    def _get_sdb_channel_video_data(self, channel_id: str):
+    def _get_sdb_channel_video_data(self, channel_id: str) -> dict:
         """
         Encapsulate getting sdb channel video data
             On SingleDatabaseApiConnectorException, return it to be handled by view
@@ -160,7 +160,12 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return sdb_video_data
 
-    def _get_sdb_video_data(self, video_ids: iter):
+    def _get_sdb_video_data(self, video_ids: iter) -> dict:
+        """
+        Retrieve sdb video data with given ids
+        :param video_ids: list | tuple of id strings
+        :return: dict
+        """
         params = {
             "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
             "sort": "video_id",
@@ -178,7 +183,7 @@ class BrandSafetyChannelAPIView(APIView):
         return sdb_video_data
 
     @staticmethod
-    def _adapt_response_data(brand_safety_data: dict, paginator: Paginator, page: int):
+    def _adapt_response_data(brand_safety_data: dict, paginator: Paginator, page: int) -> dict:
         """
         Adapt brand safety data with pagination
         :param brand_safety_data: channel brand safety data
@@ -201,7 +206,7 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return response
 
-    def _extract_key_words(self, categories: dict):
+    def _extract_key_words(self, categories: dict) -> list:
         """
         Extracts es brand safety category keywords
         :param categories: dict
