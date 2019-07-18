@@ -8,11 +8,17 @@ import time
 from typing import Dict
 from typing import List
 
+import httplib2
+
 from apiclient import discovery
+from oauth2client.client import GoogleCredentials
 
 from django.conf import settings
 from django.core.cache import cache
 logger = logging.getLogger(__name__)
+
+GOOGLE_CREDENTIALS_TOKEN_URI = "https://accounts.google.com/o/oauth2/token"
+GOOGLE_CREDENTIALS_USER_AGENT = "my-user-agent/1.0"
 
 
 class YoutubeAPIConnectorException(Exception):
@@ -29,23 +35,46 @@ class YoutubeAPIConnector(object):
     MAX_RETRIES = 5
     RETRY_DELAY = 30
 
-    def __init__(self, developer_key=settings.YOUTUBE_API_DEVELOPER_KEY,
-                 service_name='youtube', api_version='v3'):
+    def __init__(self, developer_key=settings.YOUTUBE_API_DEVELOPER_KEY, service_name="youtube",
+                 api_version="v3", access_token=None, refresh_token=None, token_expiry=0):
         """
         Make default setting
         """
-        self.developer_key = developer_key
+        self.__developer_key = None
+        self.__credentials = None
+
         self.service_name = service_name
         self.api_version = api_version
         self.max_connect_retries = 5
         self.retry_sleep_coefficient = 4
         self.token_revoked = False
-        self.credentials = None
+        self.token_expiry = token_expiry
+
+        if access_token or refresh_token:
+            self.__auth_with_credentials(access_token, refresh_token)
+        else:
+            self.__auth_with_devkey(developer_key)
+
+    def __auth_with_credentials(self, access_token, refresh_token):
+        self.__credentials = GoogleCredentials(access_token=access_token,
+                                               client_id=settings.GOOGLE_APP_AUD,
+                                               client_secret=settings.GOOGLE_APP_SECRET,
+                                               refresh_token=refresh_token,
+                                               token_expiry=self.token_expiry,
+                                               token_uri=GOOGLE_CREDENTIALS_TOKEN_URI,
+                                               user_agent=GOOGLE_CREDENTIALS_USER_AGENT)
+        http = self.__credentials.authorize(httplib2.Http())
+        self.youtube = discovery.build(self.service_name,
+                                       self.api_version,
+                                       http=http)
+
+    def __auth_with_devkey(self, developer_key):
         self.youtube = discovery.build(
             self.service_name,
             self.api_version,
-            developerKey=self.developer_key
+            developerKey=developer_key
         )
+        self.__developer_key = developer_key
 
     def get_related_videos(self, video_id, page_token=None, max_results=50):
         """
@@ -97,6 +126,17 @@ class YoutubeAPIConnector(object):
             'part': part,
             'maxResults': max_results,
             'id': channels_ids
+        }
+        return self.__execute_call(self.youtube.channels().list(**options))
+
+    def own_channels(self, part="id"):
+        """
+        Get channels for authorized user
+        """
+        assert self.__credentials, "No credentials"
+        options = {
+            "part": part,
+            "mine": True
         }
         return self.__execute_call(self.youtube.channels().list(**options))
 
