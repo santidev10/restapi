@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from distutils.util import strtobool
 from brand_safety.utils import get_es_data
+from brand_safety.utils import BrandSafetyQueryBuilder
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from singledb.connector import SingleDatabaseApiConnector
@@ -51,6 +52,18 @@ class BrandSafetyChannelAPIView(APIView):
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
             raise Http404
+
+        # Retrieve channel flagged videos
+        es_params = {
+            "list_type": "whitelist",
+            "segment_type": "video",
+        }
+        query_builder = BrandSafetyQueryBuilder(
+            es_params,
+            overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
+            related_to=channel_id
+        )
+        videos = query_builder.execute()
 
         # Get channel's video ids from sdb to get es video brand safety data
         video_sdb_data = self._get_sdb_channel_video_data(channel_id)
@@ -182,5 +195,3 @@ class BrandSafetyChannelAPIView(APIView):
                 continue
             keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
         return keywords
-
-
