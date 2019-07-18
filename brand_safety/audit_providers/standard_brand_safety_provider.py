@@ -24,7 +24,7 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    max_process_count = 8
+    max_process_count = 4
     channel_id_pool_batch_limit = 10
     channel_id_master_batch_limit = max_process_count * channel_id_pool_batch_limit
     # Multiplier to apply for brand safety hits
@@ -37,7 +37,7 @@ class StandardBrandSafetyProvider(object):
     channel_batch_counter = 0
     channel_batch_counter_limit = 500
     # Hours in which a channel should be updated
-    update_time_threshold = 24 * 3
+    update_time_threshold = 24 * 7
     DEFAULT_SLEEP = 1.5
 
     def __init__(self, *_, **kwargs):
