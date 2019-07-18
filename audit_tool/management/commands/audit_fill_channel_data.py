@@ -1,13 +1,16 @@
 from django.core.management.base import BaseCommand
-import langid
+from utils.lang import remove_mentions_hashes_urls
+from utils.lang import fasttext_lang
 import logging
 from django.conf import settings
 import requests
 from emoji import UNICODE_EMOJI
+from django.db.models import Q
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditVideoMeta
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -36,6 +39,7 @@ class Command(BaseCommand):
             pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
             if pending_channels.count() == 0:
                 logger.info("No channels to fill.")
+                self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
             start = self.thread_id * 20000
@@ -50,6 +54,17 @@ class Command(BaseCommand):
             logger.info("Done {} channels".format(count))
             raise Exception("Done {} channels".format(count))
 
+    def fill_recent_video_timestamp(self):
+        channels = AuditChannelMeta.objects.filter(Q(last_uploaded_view_count__isnull=True) | Q(last_uploaded__isnull=True))
+        for c in channels[:5000]:
+            videos = AuditVideoMeta.objects.filter(video__channel_id=c.channel_id).order_by("-publish_date")
+            try:
+                c.last_uploaded = videos[0].publish_date
+                c.last_uploaded_view_count = videos[0].views
+                c.save(update_fields=['last_uploaded', 'last_uploaded_view_count'])
+            except Exception as e:
+                pass
+
     def calc_language(self, channel):
         str_long = channel.name
         if channel.keywords:
@@ -57,7 +72,8 @@ class Command(BaseCommand):
         if channel.description:
             str_long = "{} {}".format(str_long, channel.description)
         try:
-            l = langid.classify(str_long.lower())[0]
+            str_long = remove_mentions_hashes_urls(str_long).lower()
+            l = fasttext_lang(str_long)
             db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
             channel.language = db_lang
             channel.save(update_fields=['language'])

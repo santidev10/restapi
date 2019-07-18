@@ -9,4 +9,3 @@ class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = BadWordSerializer
     queryset = BadWord.objects.all()
-

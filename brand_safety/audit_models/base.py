@@ -2,7 +2,8 @@ import re
 from collections import Counter
 from collections import namedtuple
 
-import langid
+from utils.lang import remove_mentions_hashes_urls
+from utils.lang import fasttext_lang
 
 KeywordHit = namedtuple("KeywordHit", "name location")
 
@@ -42,11 +43,12 @@ class Audit(object):
     @staticmethod
     def get_language(text):
         """
-        Analyzes metadata for language using langid module
+        Analyzes metadata for language using fastText module
         :param text: text to analyze
         :return: Language code
         """
-        language = langid.classify(text)[0].lower()
+        text = remove_mentions_hashes_urls(text)
+        language = fasttext_lang(text)
         return language
 
     def audit_emoji(self, text, regexp):

@@ -99,7 +99,6 @@ class BasePersistentSegment(Timestampable):
         with PersistentSegmentExportContent(segment=self) as exported_file_name:
             self._s3().upload_file(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                # Key=self.get_s3_key(),
                 Key=s3_key,
                 Filename=exported_file_name,
             )
@@ -108,10 +107,12 @@ class BasePersistentSegment(Timestampable):
         s3 = self._s3()
         # Get latest entry from file upload manager
         try:
+            key = self.get_s3_key(from_db=True)
             s3_object = s3.get_object(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=self.get_s3_key(from_db=True)
+                Key=key
             )
+            self.s3_filename = key
         except s3.exceptions.NoSuchKey:
             raise self.DoesNotExist
         body = s3_object.get("Body")

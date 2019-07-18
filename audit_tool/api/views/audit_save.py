@@ -9,7 +9,7 @@ from distutils.util import strtobool
 import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
-
+from datetime import datetime
 
 class AuditSaveApiView(APIView):
     def post(self, request):
@@ -21,15 +21,36 @@ class AuditSaveApiView(APIView):
         name = query_params["name"] if "name" in query_params else None
         audit_type = int(query_params["audit_type"]) if "audit_type" in query_params else None
         category = query_params["category"] if "category" in query_params else None
+        related_audits = query_params["related_audits"] if "related_audits" in query_params else None
         source_file = request.data['source_file'] if "source_file" in request.data else None
         exclusion_file = request.data["exclusion_file"] if "exclusion_file" in request.data else None
         inclusion_file = request.data["inclusion_file"] if "inclusion_file" in request.data else None
+        min_likes = query_params["min_likes"] if "min_likes" in query_params else None
+        min_views = query_params["min_views"] if "min_views" in query_params else None
+        max_dislikes = query_params["max_dislikes"] if "max_dislikes" in query_params else None
+        min_date = query_params["min_date"] if "min_date" in query_params else None
+        if min_date:
+            if '/' not in min_date:
+                raise ValidationError("format of min_date must be mm/dd/YYYY")
+            v_date = min_date.split("/")
+            if len(v_date) < 3:
+                raise ValidationError("format of min_date must be mm/dd/YYYY")
+            m = int(v_date[0])
+            d = int(v_date[1])
+            y = int(v_date[2])
+            if d < 1 or d > 31:
+                raise ValidationError("day must be between 1 and 31")
+            if m < 1 or m > 12:
+                raise ValidationError("month must be between 1 and 12")
+            if y < 2000 or y > datetime.now().year:
+                raise ValidationError("year must be between 2000 and {}".format(datetime.now().year))
         if move_to_top and audit_id:
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
                 lowest_priority = AuditProcessor.objects.filter(completed__isnull=True).exclude(id=audit_id).order_by("pause")[0]
                 audit.pause = lowest_priority.pause - 1
                 audit.save(update_fields=['pause'])
+                return Response(audit.to_dict())
             except Exception as e:
                 raise ValidationError("invalid audit_id")
         try:
@@ -60,14 +81,18 @@ class AuditSaveApiView(APIView):
             'user_id': user_id,
             'do_videos': do_videos,
             'category': category,
+            'related_audits': related_audits,
+            'audit_type_original': audit_type,
+            'min_likes': min_likes,
+            'min_date': min_date,
+            'min_views': min_views,
+            'max_dislikes': max_dislikes,
         }
         if not audit_id:
             if source_file is None:
                 raise ValidationError("Source file is required.")
-
             if source_file:
                 source_split = source_file.name.split(".")
-
             if len(source_split) < 2:
                 raise ValidationError("Invalid source file. Expected CSV file. Received {}.".format(source_file))
             source_type = source_split[1]
@@ -89,6 +114,12 @@ class AuditSaveApiView(APIView):
                 c.append(int(a))
             category = c
             params['category'] = category
+        if related_audits:
+            c = []
+            for a in json.loads(related_audits):
+                c.append(int(a))
+            related_audits = c
+            params['related_audits'] = related_audits
         if audit_id:
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
@@ -96,13 +127,19 @@ class AuditSaveApiView(APIView):
             if exclusion_file:
                 audit.params['exclusion'] = params['exclusion']
             if name:
-                audit.params['name'] = params['name']
+                audit.params['name'] = name
+                audit.name = name.lower()
             if max_recommended:
                 audit.max_recommended = max_recommended
                 audit.completed = None
             if language:
                 audit.params['language'] = language
+            audit.params['min_likes'] = min_likes
+            audit.params['min_date'] = min_date
+            audit.params['min_views'] = min_views
+            audit.params['max_dislikes'] = max_dislikes
             audit.params['category'] = category
+            audit.params['related_audits'] = related_audits
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
@@ -110,6 +147,8 @@ class AuditSaveApiView(APIView):
                 params=params,
                 max_recommended=max_recommended
             )
+            audit.name = name.lower()
+            audit.save(update_fields=['name'])
         return Response(audit.to_dict())
 
     @staticmethod

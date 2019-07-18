@@ -2,6 +2,8 @@ from collections import namedtuple
 from enum import Enum
 from functools import reduce
 from typing import Sequence
+import re
+from fasttext.FastText import _FastText as FastText
 
 
 def flatten(l):
@@ -59,3 +61,34 @@ def convert_sequence_items_to_sting(sequence):
 
 def almost_equal(value_1, value_2, delta=1e-6):
     return abs(value_1 - value_2) < delta
+
+
+# Remove @mentions from string
+def remove_mentions(s):
+    mentions_regex = re.compile("(@[^\s]+)")
+    return mentions_regex.sub("", s)
+
+
+# Remove #hashtags from string
+def remove_hashtags(s):
+    hashtag_regex = re.compile("(@#[^\s]+)")
+    return hashtag_regex.sub("", s)
+
+
+# Remove http links from string
+def remove_links(s):
+    links_regex = re.compile("(http[^\s]+)")
+    return links_regex.sub("", s)
+
+
+# Cleans string by removing mentions, hashtags, and links
+def remove_mentions_hashes_urls(s):
+    return remove_links(remove_hashtags(remove_mentions(s)))
+
+
+# Returns Language Detected by FastText
+def fasttext_lang(s):
+    fast_text_model = FastText('lid.176.bin')
+    fast_text_result = fast_text_model.predict(s)
+    language = fast_text_result[0][0].split('__')[2].lower()
+    return language

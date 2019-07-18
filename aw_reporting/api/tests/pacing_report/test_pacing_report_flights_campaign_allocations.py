@@ -90,17 +90,51 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
 
         allocation_1, allocation_2 = 70, 30
         put_data = {
-            "flight_budget": 0,
+            "flight_budget": 100,
             campaign_1.id: allocation_1,
             campaign_2.id: allocation_2
         }
 
         response = self._update(flight.id, put_data)
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         campaign_1.refresh_from_db()
         campaign_2.refresh_from_db()
-        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         self.assertEqual(campaign_1.goal_allocation, allocation_1)
         self.assertEqual(campaign_2.goal_allocation, allocation_2)
+
+    def test_success_response(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
+        campaign_1 = Campaign.objects.create(
+            id=1, salesforce_placement=placement, account=account)
+        campaign_2 = Campaign.objects.create(
+            id=2, salesforce_placement=placement, account=account)
+        campaign_3 = Campaign.objects.create(
+            id=3, salesforce_placement=placement, account=account)
+        campaign_4 = Campaign.objects.create(
+            id=4, salesforce_placement=placement, account=account)
+
+        allocation_1, allocation_2, allocation_3, allocation_4 = 70, 20, 5, 5
+        put_data = {
+            "flight_budget": 100,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2,
+            campaign_3.id: allocation_3,
+            campaign_4.id: allocation_4
+        }
+        response = self._update(flight.id, put_data)
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        by_id = {
+            campaign["id"]: campaign for campaign in response.data
+        }
+        self.assertEqual(by_id["1"]["goal_allocation"], allocation_1)
+        self.assertEqual(by_id["2"]["goal_allocation"], allocation_2)
+        self.assertEqual(by_id["3"]["goal_allocation"], allocation_3)
+        self.assertEqual(by_id["4"]["goal_allocation"], allocation_4)
 
     def test_reject_invalid_allocation_values(self):
         self.create_test_user()
@@ -140,7 +174,7 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
 
         allocation_1, allocation_2 = 70, 31
         put_data = {
-            "flight_budget": 0,
+            "flight_budget": 100,
             campaign_1.id: allocation_1,
             campaign_2.id: allocation_2
         }
@@ -190,3 +224,23 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         self.assertTrue(sum([allocation_1, allocation_2]) <= self.min_allocation)
         self.assertTrue(sum([allocation_3, allocation_4]) >= self.max_allocation)
 
+    def test_reject_allocation_min_budget(self):
+        self.create_test_user()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        flight = Flight.objects.create(id=1, placement=placement)
+        account = Account.objects.create(id=1)
+
+        campaign_1 = Campaign.objects.create(
+            id=1, salesforce_placement=placement, account=account)
+        campaign_2 = Campaign.objects.create(
+            id=2, salesforce_placement=placement, account=account)
+
+        allocation_1, allocation_2 = 0.009, 100
+        put_data = {
+            "flight_budget": 100,
+            campaign_1.id: allocation_1,
+            campaign_2.id: allocation_2
+        }
+        response = self._update(flight.id, put_data)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

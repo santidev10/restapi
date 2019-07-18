@@ -1,4 +1,5 @@
 import json
+from unittest import skipIf
 
 from django.contrib.auth.models import Group
 
@@ -10,6 +11,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.reverse import reverse
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type, segment_pk):
         return reverse(Name.SEGMENT_SHARE, [Namespace.SEGMENT], kwargs=dict(segment_type=segment_type, pk=segment_pk))

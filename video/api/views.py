@@ -35,7 +35,12 @@ class VideoListCSVRendered(CSVStreamingRenderer):
         "likes",
         "dislikes",
         "comments",
-        "youtube_published_at"
+        "youtube_published_at",
+        "brand_safety_score",
+        "video_view_rate",
+        "ctr",
+        "ctr_v",
+        "average_cpv"
     ]
 
 

@@ -34,6 +34,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
         self.assertIn('auth_token', data)
+        self.assertEqual(len(mail.outbox), 1)
 
     @patch("singledb.connector.requests")
     def test_proxy_errors_from_sdb(self, requests_mock):
@@ -65,10 +66,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
             "image": {"isDefault": False},
         }
         requests_mock.get.return_value = MockResponse(json=user_details)
-
         response = self.client.post(self.url, dict(), )
-
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        welcome_emails = [m for m in mail.outbox
-                          if m.subject.startswith("Welcome")]
-        self.assertEqual(len(welcome_emails), 1)
+        self.assertEqual(len(mail.outbox), 2)

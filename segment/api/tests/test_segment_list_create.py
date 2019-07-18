@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from unittest.mock import patch
+from unittest import skipIf
 
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
@@ -19,6 +20,7 @@ from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatc
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type):
         return reverse(Namespace.SEGMENT + ":" + Name.SEGMENT_LIST,
@@ -150,7 +152,6 @@ class SegmentListCreateApiViewTestCase(ExtendedAPITestCase):
                           return_value=sdb_generator) as mock:
             response = self.client.post(url, json.dumps(payload),
                                         content_type="application/json")
-
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         mock.assert_called_with(test_filters, fields=ListEqualInclude(["pk"]))
         segment_id = response.data["id"]

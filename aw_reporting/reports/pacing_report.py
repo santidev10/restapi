@@ -917,12 +917,23 @@ class PacingReport:
             "id", "name", "goal_allocation",
         ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
 
-        # get allocations
-        if campaigns:
-            if abs(sum(c['goal_allocation'] for c in campaigns) - 100) > 0.1:
-                def_allocation = 100 / len(campaigns)  # 50 for two campaigns
-                for c in campaigns:
-                    c['goal_allocation'] = def_allocation
+        total_allocation = sum(campaign["goal_allocation"] for campaign in campaigns)
+        # Distribute remaining goal_allocations to campaigns with 0 goal allocation
+        if campaigns and total_allocation < 100:
+            goal_allocation_remaining = 100
+            campaigns_without_allocation = []
+            for campaign in campaigns:
+                if campaign["goal_allocation"] == 0:
+                    campaigns_without_allocation.append(campaign)
+                else:
+                    goal_allocation_remaining -= campaign["goal_allocation"]
+            # Do not allocate if there are no campaigns without allocations
+            try:
+                split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
+                for campaign in campaigns_without_allocation:
+                    campaign["goal_allocation"] = split_allocation
+            except ZeroDivisionError:
+                pass
 
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated

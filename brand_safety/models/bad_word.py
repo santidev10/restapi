@@ -25,7 +25,6 @@ class BadWordCategory(models.Model):
     def __str__(self):
         return self.name
 
-
 class BadWordQuerySet(BaseQueryset):
     # Soft delete for queryset bulk delete operations
     def delete(self):
@@ -63,12 +62,57 @@ class BadWord(models.Model):
     # Soft delete for single objects
     def delete(self):
         self.deleted_at = timezone.now()
-        self.save()
+        self.save(update_fields=['deleted_at'])
         return self
 
     def hard_delete(self):
         return super(BadWord, self).delete()
 
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            try:
+                prev_instance = BadWord.all_objects.get(id=self.id)
+            except Exception as e:
+                prev_instance = None
+        if self.id is None or prev_instance is None:
+            super().save(*args, **kwargs)
+            BadWordHistory.objects.create(tag=self, action=1)
+            return
+        else:
+            if 'update_fields' in kwargs and 'deleted_at' in kwargs['update_fields']:
+                if self.deleted_at is not None:
+                    BadWordHistory.objects.create(tag=self, action=2)
+                else:
+                    BadWordHistory.objects.create(tag=self, action=3)
+            else:
+                prev_instance = BadWord.all_objects.get(id=self.id)
+                fields = ['name', 'category', 'language', 'negative_score']
+                for field in fields:
+                    old_field_value = getattr(prev_instance, field)
+                    new_field_value = getattr(self, field)
+                    if old_field_value != new_field_value:
+                        if field == 'negative_score':
+                            field = 'rating'
+                        changes = "{}: {} -> {}".format(
+                            field.capitalize(), old_field_value, new_field_value
+                        )
+                        BadWordHistory.objects.create(tag=self, action=0, changes=changes)
+        return super().save(*args, **kwargs)
+
     class Meta:
         unique_together = ("name", "language")
+
+
+class BadWordHistory(models.Model):
+    ACTIONS = {
+        0: 'Edited',
+        1: 'Added',
+        2: 'Deleted',
+        3: 'Recovered'
+    }
+    id = models.AutoField(primary_key=True, db_column='id')
+    tag = models.ForeignKey(BadWord, on_delete=models.CASCADE)
+    action = models.IntegerField(default=1, db_column='action')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    changes = models.CharField(max_length=250, db_index=True, default="")
 

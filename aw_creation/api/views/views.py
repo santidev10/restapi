@@ -72,6 +72,7 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from segment.models import CustomSegmentRelated
 from segment.models import SegmentChannel
 from segment.models import SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
@@ -359,27 +360,15 @@ class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, segment_type, **_):
-        method = "get_{}_item_ids".format(segment_type)
-        item_ids = getattr(self, method)(request.data)
+        item_ids = self.get_related_ids(request.data)
         items = [dict(criteria=uid) for uid in item_ids]
         add_targeting_list_items_info(items, segment_type)
         if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
             return Response(data=[item for item in items if item["id"] is not None])
         return Response(data=items)
 
-    @staticmethod
-    def get_video_item_ids(ids):
-        from segment.models import SegmentRelatedVideo
-        ids = SegmentRelatedVideo.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
-
-    @staticmethod
-    def get_channel_item_ids(ids):
-        from segment.models import SegmentRelatedChannel
-        ids = SegmentRelatedChannel.objects.filter(
+    def get_related_ids(self, ids):
+        ids = CustomSegmentRelated.objects.filter(
             segment_id__in=ids
         ).values_list("related_id", flat=True).order_by(
             "related_id").distinct()

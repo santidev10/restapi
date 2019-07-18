@@ -540,7 +540,7 @@ class DeliveryChart:
             return "ad_group"
 
     def get_placements(self):
-        queryset = OpPlacement.objects.all()
+        queryset = OpPlacement.objects.filter(start__isnull=False, end__isnull=False)
         filters = {
             "adwords_campaigns__account_id__in": self.params['accounts']
         }

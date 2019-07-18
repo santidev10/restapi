@@ -1,3 +1,5 @@
+from unittest import skipIf
+
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_201_CREATED
 
@@ -7,10 +9,12 @@ from segment.models import SegmentChannel
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@skipIf(True, "v1 Custom Segments deprecated")
 class SegmentDuplicateTestCase(ExtendedAPITestCase):
     def _get_url(self, segment_type, segment_id):
         return reverse(Namespace.SEGMENT + ":" + Name.SEGMENT_DUPLICATE, args=(segment_type, segment_id))
 
+    # Segment duplication feature is obsolete with segment wizard feature
     def test_success(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_pre_baked_segments")

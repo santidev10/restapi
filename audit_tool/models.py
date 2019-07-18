@@ -9,6 +9,8 @@ from django.db.models import ForeignKey
 from django.db.models import Q
 from django.contrib.postgres.fields import JSONField
 import hashlib
+from django.db.models import SET_NULL
+from django.conf import settings
 
 def get_hash_name(s):
     return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10 ** 8
@@ -135,13 +137,23 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
+    name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default={})
     cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
+    def remove_exports(self):
+        exports = []
+        for b,c in self.params.items():
+            if 'export_' in b:
+                exports.append(b)
+        for export_name in exports:
+           del self.params[export_name]
+        self.save()
+
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None):
+    def get(running=None, audit_type=None, num_days=60, output=None, search=None):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
@@ -149,6 +161,8 @@ class AuditProcessor(models.Model):
             all = all.filter(completed__isnull=running)
         if num_days:
             all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+        if search:
+            all = all.filter(name__icontains=search.lower())
         ret = {
             'running': [],
             'completed': []
@@ -169,6 +183,9 @@ class AuditProcessor(models.Model):
         audit_type = self.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit_type
+        lang = self.params.get('language')
+        if not lang:
+            lang = 'en'
         d = {
             'id': self.id,
             'priority': self.pause,
@@ -180,9 +197,15 @@ class AuditProcessor(models.Model):
             'do_videos': self.params.get('do_videos'),
             'audit_type': audit_type,
             'percent_done': 0,
-            'language': self.params.get('language'),
+            'language': lang,
             'category': self.params.get('category'),
-            'max_recommended': self.max_recommended
+            'related_audits': self.params.get('related_audits'),
+            'max_recommended': self.max_recommended,
+            'min_likes': self.params.get('min_likes'),
+            'max_dislikes': self.params.get('max_dislikes'),
+            'min_views': self.params.get('min_views'),
+            'min_date': self.params.get('min_date'),
+            'resumed': self.params.get('resumed')
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -249,6 +272,8 @@ class AuditChannelMeta(models.Model):
     view_count = models.BigIntegerField(default=0, db_index=True)
     video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
+    last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
+    last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)
@@ -305,3 +330,49 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
+
+class AuditExporter(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    clean = models.NullBooleanField(default=None, db_index=True)
+    completed = models.DateTimeField(default=None, null=True, db_index=True)
+    file_name = models.TextField(default=None, null=True)
+    final = models.BooleanField(default=False, db_index=True)
+    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+
+class BlacklistItem(models.Model):
+    VIDEO_ITEM = 0
+    CHANNEL_ITEM = 1
+    item_type = models.IntegerField(db_index=True)
+    item_id = models.CharField(db_index=True, max_length=64)
+    item_id_hash = models.BigIntegerField(db_index=True)
+    blacklist_category = JSONField(default={})
+
+    class Meta:
+        unique_together = ("item_type", "item_id")
+
+    def to_dict(self):
+        d = {
+            'categories': self.blacklist_category
+        }
+        return d
+
+    @staticmethod
+    def get_or_create(item_id, item_type):
+        b_i = BlacklistItem.get(item_id, item_type)
+        if not b_i:
+            b_i = BlacklistItem.objects.create(
+                item_type=item_type,
+                item_id=item_id,
+                item_id_hash=get_hash_name(item_id),
+            )
+        return b_i
+
+    @staticmethod
+    def get(item_id, item_type, to_dict=False):
+        for a in BlacklistItem.objects.filter(item_type=item_type, item_id_hash=get_hash_name(item_id)):
+            if a.item_id == item_id:
+                if to_dict:
+                    return a.to_dict()
+                else:
+                    return a

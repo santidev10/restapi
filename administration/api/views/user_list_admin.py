@@ -79,6 +79,7 @@ class UserListAdminApiView(ListAPIView):
         status = self.request.query_params.get(UserListAdminQueryParamsNames.STATUS)
         if status:
             queryset = queryset.filter(status=status)
+        queryset = queryset.exclude(is_superuser=True)
         return queryset
 
     def do_sorts(self, queryset):
