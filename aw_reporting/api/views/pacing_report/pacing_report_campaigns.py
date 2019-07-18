@@ -17,6 +17,7 @@ class PacingReportCampaignsApiView(ListAPIView, PacingReportHelper):
             return Response(status=HTTP_404_NOT_FOUND)
 
         report = PacingReport()
+        # Ad operations require that for pacing reports, only running campaigns should be used
         running_campaigns = report.get_campaigns(flight).filter(status="eligible")
         self.multiply_percents(running_campaigns)
         return Response(running_campaigns)
