@@ -927,9 +927,13 @@ class PacingReport:
                     campaigns_without_allocation.append(campaign)
                 else:
                     goal_allocation_remaining -= campaign["goal_allocation"]
-            split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
-            for campaign in campaigns_without_allocation:
-                campaign["goal_allocation"] = split_allocation
+            # Do not allocate if there are no campaigns without allocations
+            try:
+                split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
+                for campaign in campaigns_without_allocation:
+                    campaign["goal_allocation"] = split_allocation
+            except ZeroDivisionError:
+                pass
 
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated
