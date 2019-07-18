@@ -24,8 +24,8 @@ class StandardBrandSafetyProvider(object):
     """
     Interface for reading source data and providing it to services
     """
-    max_process_count = 3
-    channel_id_pool_batch_limit = 5
+    max_process_count = 4
+    channel_id_pool_batch_limit = 10
     channel_id_master_batch_limit = max_process_count * channel_id_pool_batch_limit
     # Multiplier to apply for brand safety hits
     brand_safety_score_multiplier = {
@@ -86,8 +86,6 @@ class StandardBrandSafetyProvider(object):
             # Update brand safety processors
             self.audits[constants.BRAND_SAFETY] = self.get_bad_word_processors_by_language()
             self.audit_service.audits = self.audits
-
-            print("batch complete")
         logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
 
     def _process_audits(self, channel_ids):
