@@ -10,8 +10,13 @@ import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 from datetime import datetime
+from utils.permissions import user_has_permission
 
 class AuditSaveApiView(APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
+
     def post(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None

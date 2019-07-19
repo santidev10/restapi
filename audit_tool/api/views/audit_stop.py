@@ -3,8 +3,13 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditProcessor
 from django.utils import timezone
+from utils.permissions import user_has_permission
 
 class AuditStopApiView(APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
+
     def post(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None

@@ -4,8 +4,13 @@ from rest_framework.response import Response
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditCategory
 from rest_framework.exceptions import ValidationError
+from utils.permissions import user_has_permission
 
 class AuditListApiView(APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
+
     def get(self, request):
         query_params = request.query_params
         running = query_params["running"] if "running" in query_params else None
