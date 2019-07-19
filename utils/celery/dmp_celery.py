@@ -15,8 +15,8 @@ class Queue:
 
 
 class Task:
-    CHANNEL_GENERAL_DATA = "update.channel.channel_general_data"
-    CHANNEL_STATS = "update.channel.channel_stats"
+    CHANNEL_GENERAL_DATA = "channel_general_data"
+    CHANNEL_STATS = "channel_stats"
 
 
 def send_task_update_channel_stats(task_args):
