@@ -11,6 +11,7 @@ class PersistentSegmentCategory:
     BLACKLIST = "blacklist"
     WHITELIST = "whitelist"
     TOPIC = "topic"
+    APEX = "apex"
 
 
 class PersistentSegmentTitles:
