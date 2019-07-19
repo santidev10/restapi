@@ -153,9 +153,12 @@ class StandardBrandSafetyService(AuditService):
         response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
         remaining = set(video_ids) - set([item["id"] for item in response.get("items", [])])
         result = self.yt_connector.get_video_data(remaining)
-        all_data = response.get("items", []) + result
+        mapped = self._map_youtube_video_data(result)
+        all_data = response.get("items", []) + mapped
         return all_data
 
+    def _map_youtube_video_data(self, data):
+        pass
 
 
 class StandardAuditException(Exception):

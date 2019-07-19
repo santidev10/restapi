@@ -48,9 +48,15 @@ class SegmentListGenerator(object):
     BATCH_LIMIT = None
 
     def __init__(self, *_, **kwargs):
-        self.script_tracker = kwargs["script_tracker"]
+        # If initialized with an APIScriptTracker instance, then expected to run full brand safety
+        # else main run method should not be called since it relies on an APIScriptTracker instance
+        try:
+            self.script_tracker = kwargs["api_tracker"]
+            self.cursor_id = self.script_tracker.cursor_id
+            self.is_manual = False
+        except KeyError:
+            self.is_manual = True
         self.list_generator_type = kwargs["list_generator_type"]
-        self.cursor_id = self.script_tracker.cursor_id
         self.sdb_connector = SingleDatabaseApiConnector()
         self.es_connector = ElasticSearchConnector()
         self.audit_provider = AuditProvider()
@@ -124,6 +130,13 @@ class SegmentListGenerator(object):
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
     def run(self):
+        """
+        If initialized with an APIScriptTracker instance, then expected to run full brand safety
+                else main run method should not be called since it relies on an APIScriptTracker instance
+        :return: None
+        """
+        if self.is_manual:
+            raise ValueError("SegmentListGenerator was not initialized with an APIScriptTracker instance.")
         for batch in self.sdb_data_generator(self.cursor_id):
             self._process(batch)
         logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))

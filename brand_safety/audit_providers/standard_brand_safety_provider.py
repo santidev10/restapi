@@ -41,8 +41,14 @@ class StandardBrandSafetyProvider(object):
     DEFAULT_SLEEP = 1.5
 
     def __init__(self, *_, **kwargs):
-        self.script_tracker = kwargs["api_tracker"]
-        self.cursor_id = self.script_tracker.cursor_id
+        # If initialized with an APIScriptTracker instance, then expected to run full brand safety
+        # else main run method should not be called since it relies on an APIScriptTracker instance
+        try:
+            self.script_tracker = kwargs["api_tracker"]
+            self.cursor_id = self.script_tracker.cursor_id
+            self.is_manual = False
+        except KeyError:
+            self.is_manual = True
         self.audit_provider = AuditProvider()
         self.sdb_connector = SingleDatabaseApiConnector()
         # Audit mapping for audit objects to use
@@ -67,8 +73,12 @@ class StandardBrandSafetyProvider(object):
     def run(self):
         """
         Pools processes to handle main audit logic and processes results
+            If initialized with an APIScriptTracker instance, then expected to run full brand safety
+                else main run method should not be called since it relies on an APIScriptTracker instance
         :return: None
         """
+        if self.is_manual:
+            raise ValueError("Provider was not initialized with an APIScriptTracker instance.")
         logger.info("Starting standard audit...")
         pool = mp.Pool(processes=self.max_process_count)
         for channel_batch in self._channel_id_batch_generator(self.cursor_id):
