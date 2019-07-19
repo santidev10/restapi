@@ -9,7 +9,7 @@ from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.response import Response
 
 from distutils.util import strtobool
-from brand_safety.api.views.brand_safety.utils.utils import get_es_data
+from brand_safety.utils import get_es_data
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from singledb.connector import SingleDatabaseApiConnector

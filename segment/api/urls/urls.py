@@ -6,9 +6,11 @@ from django.conf.urls import url
 from segment.api.urls.names import Name
 from segment.api.views import SegmentDuplicateApiView
 from segment.api.views import SegmentListCreateApiView
+from segment.api.views import SegmentListCreateApiViewV2
 from segment.api.views import SegmentRetrieveUpdateDeleteApiView
 from segment.api.views import SegmentShareApiView
 from segment.api.views import SegmentSuggestedChannelApiView
+from segment.api.views import SegmentCreationOptionsApiView
 from segment.api.views import PersistentMasterSegmentsListApiView
 from segment.api.views import PersistentSegmentExportApiView
 from segment.api.views import PersistentSegmentListApiView
@@ -37,7 +39,6 @@ urlpatterns = [
     url(r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
         SegmentSuggestedChannelApiView.as_view(),
         name="suggested_channels"),
-
     # persistent_segments
     url(r'^persistent_segments/(?P<segment_type>{})/$'.format(persistent_segment_types),
         PersistentSegmentListApiView.as_view(),
@@ -53,4 +54,13 @@ urlpatterns = [
     url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/preview/$'.format(persistent_segment_types),
         PersistentSegmentPreviewAPIView.as_view(),
         name=Name.PERSISTENT_SEGMENT_PREVIEW),
+]
+
+urlpatterns_v2 = [
+    url(r'^segments/(?P<segment_type>{})/$'.format(segment_types),
+        SegmentListCreateApiViewV2.as_view(),
+        name=Name.SEGMENT_LIST),
+    url(r'^segments/options/(?P<segment_type>{})/$'.format(segment_types),
+        SegmentCreationOptionsApiView.as_view(),
+        name=Name.SEGMENT_CREATION_OPTIONS),
 ]

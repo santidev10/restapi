@@ -6,6 +6,7 @@ class Name:
     SEGMENT_LIST = "segment_list"
     SEGMENT_DUPLICATE = "segment_duplicate"
     SEGMENT_SHARE = "segment_share"
+    SEGMENT_CREATION_OPTIONS = "segment_creation_options"
 
     PERSISTENT_SEGMENT_LIST = "persistent_segment_list"
     PERSISTENT_SEGMENT_DETAILS = "persistent_segment_details"

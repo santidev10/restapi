@@ -1,6 +1,5 @@
 import logging
 
-from pid.decorator import pidfile
 from pid import PidFile
 from pid import PidFileError
 

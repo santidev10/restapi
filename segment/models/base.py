@@ -5,6 +5,7 @@ import logging
 from itertools import chain
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import JSONField, ArrayField
 from django.db import IntegrityError
 from django.db.models import CharField
@@ -14,6 +15,7 @@ from django.db.models import Manager
 from django.db.models import Model
 from django.db.models import SET_NULL
 
+from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.models import Timestampable
 from utils.utils import chunks_generator
@@ -59,9 +61,16 @@ class BaseSegment(Timestampable):
     segment_type = None
     sources = None
 
+    export_relation = GenericRelation(CustomSegmentFileUpload, content_type_field="content_type", object_id_field="segment_id")
+
     class Meta:
         abstract = True
         ordering = ["pk"]
+
+    @property
+    def export(self):
+        export = CustomSegmentFileUpload.objects.get(segment_id=self.id)
+        return export
 
     def get_related_ids(self):
         return self.related.values_list("related_id", flat=True)
@@ -165,7 +174,7 @@ class BaseSegment(Timestampable):
         """
         Prepare segment adwords statistics
         """
-        from segment.models.utils import count_segment_adwords_statistics
+        from segment.models.utils.count_segment_adwords_statistics import count_segment_adwords_statistics
         # prepare adwords statistics
         adwords_statistics = count_segment_adwords_statistics(self)
 
