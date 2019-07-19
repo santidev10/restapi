@@ -193,7 +193,7 @@ class Command(BaseCommand):
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
-            language="&relevanceLanguage={}".format(self.language[0]) if len(self.language) == 1 else '',
+            language="&relevanceLanguage={}".format(self.language[0]) if self.language and len(self.language) == 1 else '',
             location="&location={}".format(self.location) if self.location else '',
             location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
         )
