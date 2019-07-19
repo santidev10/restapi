@@ -13,7 +13,7 @@ from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from utils.brand_safety_view_decorator import get_brand_safety_label
 from utils.elasticsearch import ElasticSearchConnectorException
-
+from audit_tool.models import BlacklistItem
 
 class BrandSafetyVideoAPIView(APIView):
     permission_required = (
@@ -56,4 +56,5 @@ class BrandSafetyVideoAPIView(APIView):
             video_brand_safety_data["category_flagged_words"][category_name].update(keywords)
         worst_words = BadWord.objects.filter(name__in=all_keywords).order_by("-negative_score")[:3]
         video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
+        #video_brand_safety_data["blacklist_data"] = BlacklistItem.get(video_id, BlacklistItem.VIDEO_ITEM, to_dict=True)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)

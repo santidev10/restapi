@@ -9,11 +9,12 @@ from utils.api.file_list_api_view import FileListApiView
 
 
 class BadWordCSVRendered(CSVStreamingRenderer):
-    header = ["name", "category", "language"]
+    header = ["name", "category", "language", "negative_score"]
     labels = {
         "name": "Name",
         "category": "Category",
-        "language": "Language"
+        "language": "Language",
+        "negative_score": "Score"
     }
 
 
@@ -39,6 +40,11 @@ class BadWordExportApiView(FileListApiView):
 
         if language:
             filters["language__language"] = language
+
+        negative_scores = self.request.query_params.get("negative_score")
+        if negative_scores:
+            negative_scores = negative_scores.split(',')
+            filters["negative_score__in"] = negative_scores
 
         queryset = queryset.filter(**filters)
         return queryset

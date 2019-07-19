@@ -3,6 +3,7 @@ from enum import Enum
 from functools import reduce
 from typing import Sequence
 import re
+from fasttext.FastText import _FastText as FastText
 
 
 def flatten(l):
@@ -83,3 +84,11 @@ def remove_links(s):
 # Cleans string by removing mentions, hashtags, and links
 def remove_mentions_hashes_urls(s):
     return remove_links(remove_hashtags(remove_mentions(s)))
+
+
+# Returns Language Detected by FastText
+def fasttext_lang(s):
+    fast_text_model = FastText('lid.176.bin')
+    fast_text_result = fast_text_model.predict(s)
+    language = fast_text_result[0][0].split('__')[2].lower()
+    return language

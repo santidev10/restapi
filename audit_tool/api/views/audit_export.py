@@ -111,6 +111,10 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
+        if clean is None or clean == True:
+            hit_types = 'inclusion'
+        else:
+            hit_types = 'exclusion'
         cols = [
             "Video ID",
             "Name",
@@ -126,8 +130,10 @@ class AuditExportApiView(APIView):
             "Channel Default Lang.",
             "Channel Subscribers",
             "Country",
-            "All Hit Words",
-            "Unique Hit Words",
+            "Last Uploaded Video",
+            "Last Uploaded Video Views",
+            "All {} Hit Words".format(hit_types),
+            "Unique {} Hit Words".format(hit_types),
             "Video Count",
         ]
         video_ids = []
@@ -164,6 +170,14 @@ class AuditExportApiView(APIView):
                     video_count = v.video.channel.auditchannelmeta.video_count
                 except Exception as e:
                     video_count = ""
+                try:
+                    last_uploaded = v.video.channel.auditchannelmeta.last_uploaded.strftime("%m/%d/%Y")
+                except Exception as e:
+                    last_uploaded = ""
+                try:
+                    last_uploaded_view_count = v.video.channel.auditchannelmeta.last_uploaded_view_count
+                except Exception as e:
+                    last_uploaded_view_count = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 data = [
                     v.video.video_id,
@@ -180,6 +194,8 @@ class AuditExportApiView(APIView):
                     channel_lang,
                     v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                     country,
+                    last_uploaded,
+                    last_uploaded_view_count,
                     all_hit_words,
                     unique_hit_words,
                     video_count if video_count else "",
@@ -223,8 +239,11 @@ class AuditExportApiView(APIView):
             "Views",
             "Subscribers",
             "Num Videos Checked",
+            "Num Videos Total",
             "Country",
             "Language",
+            "Last Video Upload",
+            "Last Video Views",
             "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
@@ -242,7 +261,10 @@ class AuditExportApiView(APIView):
             hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
             if not hit_words[cid.channel.channel_id]:
                 hit_words[cid.channel.channel_id] = []
-            videos = AuditVideoProcessor.objects.filter(audit_id=audit_id, video__channel_id=cid.channel_id)
+            videos = AuditVideoProcessor.objects.filter(
+                audit_id=audit_id,
+                video__channel_id=cid.channel_id
+            )
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = 0
             for video in videos.filter(clean=False):
@@ -270,8 +292,11 @@ class AuditExportApiView(APIView):
                     v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],
+                    v.video_count,
                     country,
                     language,
+                    v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
+                    v.last_uploaded_view_count if v.last_uploaded_view_count else '',
                     bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])
@@ -293,7 +318,7 @@ class AuditExportApiView(APIView):
         hits = hit_words.get(v_id)
         uniques = []
         words_to_use = 'exclusion'
-        if clean is None or clean=='True':
+        if clean is None or clean==True:
             words_to_use = 'inclusion'
         if hits:
             if hits.get(words_to_use):
