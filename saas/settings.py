@@ -114,9 +114,9 @@ DATABASES = {
     'default': {
         # default values are for the TC only
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
+        'NAME': os.getenv('DB_NAME', 'saas'),
+        'USER': os.getenv('DB_USER', 'admin_saas'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
     }
