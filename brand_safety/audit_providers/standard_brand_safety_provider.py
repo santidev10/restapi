@@ -228,7 +228,7 @@ class StandardBrandSafetyProvider(object):
         bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language
 
-    def manual_update(self, channel_ids):
+    def manual_channel_update(self, channel_ids):
         """
         Update specific channels and videos
         :param channel_ids: list
@@ -240,6 +240,17 @@ class StandardBrandSafetyProvider(object):
         video_audits = results["video_audits"]
         channel_audits = results["channel_audits"]
         self._index_results(video_audits, channel_audits)
+
+    def manual_video_update(self, video_ids: iter):
+        """
+        Manually add / update brand safety video ids
+        :param video_ids: list | tuple -> Youtube video id strings
+        :return: BrandSafetyVideoAudit objects
+        """
+        video_data = self.audit_service.get_video_data(video_ids)
+        video_audits = self.audit_service.audit_videos(video_data)
+        self._index_results(video_audits, [])
+        return video_audits
 
     def _get_channels_to_update(self, channel_ids):
         """

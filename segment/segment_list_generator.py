@@ -128,6 +128,20 @@ class SegmentListGenerator(object):
             self._process(batch)
         logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
 
+    def manual(self, items, segment_title, data_mapping):
+        new_segment = self.segment_model.objects.create(
+            title=segment_title,
+            category=PersistentSegmentCategory.WHITELIST,
+            is_master=False,
+        )
+        related_to_create = []
+        for item in items:
+            data = {
+                related_key: item[data_key] for related_key, data_key in item.items()
+            }
+            related_to_create.append(self.related_segment_model(segment=new_segment, **data))
+        self.related_segment_model.objects.bulk_create(related_to_create)
+
     def _process(self, sdb_items):
         """
         Drives main list generation logic

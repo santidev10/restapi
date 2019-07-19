@@ -31,7 +31,7 @@ class Command(BaseCommand):
             standard_audit = StandardBrandSafetyProvider(api_tracker=api_tracker)
             if options.get("manual"):
                 channel_ids = options["manual"]
-                standard_audit.manual_update(channel_ids)
+                standard_audit.manual_channel_update(channel_ids)
             else:
                 standard_audit.run()
         except Exception as e:

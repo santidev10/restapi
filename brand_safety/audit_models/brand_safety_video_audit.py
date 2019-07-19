@@ -39,7 +39,7 @@ class BrandSafetyVideoAudit(object):
 
     def get_metadata(self, data):
         """
-        Extarct Single DB (SDB) Video object metadata
+        Extract Single DB (SDB) Video object metadata
         :param data: SDB video object
         :return: Dictionary of formatted metadata
         """

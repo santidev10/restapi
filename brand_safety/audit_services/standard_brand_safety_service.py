@@ -4,6 +4,7 @@ from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChan
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from singledb.connector import SingleDatabaseApiConnector
 from utils.data_providers.sdb_data_provider import SDBDataProvider
+from utils.data_providers.youtube_data_provider import YoutubeDataProvider
 from utils.elasticsearch import ElasticSearchConnector
 
 
@@ -22,6 +23,7 @@ class StandardBrandSafetyService(AuditService):
         super().__init__(audit_types)
         self.es_connector = ElasticSearchConnector()
         self.sdb_connector = SingleDatabaseApiConnector()
+        self.yt_connector = YoutubeDataProvider()
         self.sdb_data_provider = SDBDataProvider()
         self.score_mapping = kwargs["score_mapping"]
         self.brand_safety_score_multiplier = kwargs["score_multiplier"]
@@ -134,6 +136,26 @@ class StandardBrandSafetyService(AuditService):
         response = self.sdb_connector.get_video_list(params)
         video_data = response.get("items", [])
         return video_data
+
+    def get_video_data(self, video_ids: iter):
+        """
+        Retrieve video metadata
+            First get from sdb, then default to Youtube Data API
+        :param video_ids: list | tuple -> Youtube video ids
+        :return: list
+        """
+        params = {
+            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
+            "sort": "video_id",
+            "size": self.sdb_batch_limit,
+            "video_id__terms": ",".join(video_ids)
+        }
+        response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
+        remaining = set(video_ids) - set([item["id"] for item in response.get("items", [])])
+        result = self.yt_connector.get_video_data(remaining)
+        all_data = response.get("items", []) + result
+        return all_data
+
 
 
 class StandardAuditException(Exception):
