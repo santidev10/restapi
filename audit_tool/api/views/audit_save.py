@@ -119,6 +119,12 @@ class AuditSaveApiView(APIView):
                 c.append(int(a))
             category = c
             params['category'] = category
+        if language:
+            l = []
+            for a in json.loads(language):
+                l.append(a)
+            language = l
+            params['language'] = language
         if related_audits:
             c = []
             for a in json.loads(related_audits):
@@ -137,8 +143,7 @@ class AuditSaveApiView(APIView):
             if max_recommended:
                 audit.max_recommended = max_recommended
                 audit.completed = None
-            if language:
-                audit.params['language'] = language
+            audit.params['language'] = language
             audit.params['min_likes'] = min_likes
             audit.params['min_date'] = min_date
             audit.params['min_views'] = min_views
