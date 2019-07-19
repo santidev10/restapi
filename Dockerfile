@@ -8,7 +8,7 @@ COPY --chown=www-data:www-data ./ /app
 WORKDIR /app
 USER www-data
 EXPOSE 5000
-CMD ["./manage.py", "runserver", "0.0.0.0:5000"]
+CMD ["python","./manage.py", "runserver", "0.0.0.0:5000"]
 
 FROM prod as dev
 ENV PYTHONPATH=/app
