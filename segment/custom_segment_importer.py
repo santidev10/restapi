@@ -9,9 +9,9 @@ class CustomSegmentImporter(object):
     def __init__(self, *args, **kwargs):
         self.data_type = kwargs["type"]
         self.youtube_ids = self._read_csv(kwargs["path"])
-        self.config = self._get_config(self.data_type)
         self.brand_safety_provider = StandardBrandSafetyProvider()
-        self.list_generator = SegmentListGenerator()
+        self.list_generator = SegmentListGenerator(list_generator_type=self.data_type)
+        self.config = self._get_config(self.data_type)
 
     def run(self):
         # use ids to get data from sdb
@@ -19,14 +19,14 @@ class CustomSegmentImporter(object):
         # use merged data to score items
         # save data to segment
         # audits = self.config["provider"]()
-        for i in self.youtube_ids:
-            print(i)
+        provider = self.config["provider"]
+        audits = provider(self.youtube_ids)
 
 
     def _read_csv(self, path):
         with open(path, mode="r", encoding="utf-8-sig") as file:
             reader = csv.reader(file)
-            ids = list(reader)
+            ids = [row[0] for row in reader]
         return ids
 
     def _get_config(self, data_type):

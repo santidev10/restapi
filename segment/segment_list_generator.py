@@ -53,6 +53,10 @@ class SegmentListGenerator(object):
         try:
             self.script_tracker = kwargs["api_tracker"]
             self.cursor_id = self.script_tracker.cursor_id
+            self.unclassified_whitelist_manager = self.segment_model.objects.get(
+                title=self.get_segment_title(self.segment_model.segment_type, "Unclassified",
+                                             PersistentSegmentCategory.WHITELIST)
+            )
             self.is_manual = False
         except KeyError:
             self.is_manual = True
@@ -71,26 +75,23 @@ class SegmentListGenerator(object):
         self.batch_count = 0
         self._set_config()
 
-        self.unclassified_whitelist_manager = self.segment_model.objects.get(
-            title=self.get_segment_title(self.segment_model.segment_type, "Unclassified", PersistentSegmentCategory.WHITELIST)
-        )
-
     def _set_config(self):
         """
         Set configuration for script depending on list generation type, either channel or video
         :return:
         """
         if self.list_generator_type == constants.CHANNEL:
+            if not self.is_manual:
+                self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                    category="blacklist")
+                self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+                    category="whitelist")
+
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
             self.related_segment_model = PersistentSegmentRelatedChannel
-
-            self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-                category="blacklist")
-            self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-                category="whitelist")
 
             # Config methods
             self.sdb_data_generator = self._channel_batch_generator
@@ -106,13 +107,17 @@ class SegmentListGenerator(object):
             self.RELATED_SEGMENT_SORT_KEY = "subscribers"
 
         elif self.list_generator_type == constants.VIDEO:
+            if not self.is_manual:
+                self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                    category="blacklist")
+                self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+                    category="whitelist")
+
             # Config segments and models
             self.segment_model = PersistentSegmentVideo
             self.related_segment_model = PersistentSegmentRelatedVideo
-            self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-            self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
 
             # Config methods
             self.sdb_data_generator = self._video_batch_generator

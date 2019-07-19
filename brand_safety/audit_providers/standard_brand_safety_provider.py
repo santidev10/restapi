@@ -258,8 +258,9 @@ class StandardBrandSafetyProvider(object):
         :return: BrandSafetyVideoAudit objects
         """
         video_data = self.audit_service.get_video_data(video_ids)
+        print(video_data)
         video_audits = self.audit_service.audit_videos(video_data)
-        self._index_results(video_audits, [])
+        # self._index_results(video_audits, [])
         return video_audits
 
     def _get_channels_to_update(self, channel_ids):

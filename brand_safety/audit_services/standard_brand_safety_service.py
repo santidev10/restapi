@@ -151,8 +151,13 @@ class StandardBrandSafetyService(AuditService):
             "video_id__terms": ",".join(video_ids)
         }
         response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
+
+        print('sdb response', response)
+
         remaining = set(video_ids) - set([item["id"] for item in response.get("items", [])])
         result = self.yt_connector.get_video_data(remaining)
+
+        print('yt response', result)
         mapped = self._map_youtube_video_data(result)
         all_data = response.get("items", []) + mapped
         return all_data
