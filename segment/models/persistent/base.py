@@ -38,8 +38,8 @@ class BasePersistentSegment(Timestampable):
     Base persistent segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
-    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST)
-    is_master = BooleanField()
+    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
+    is_master = BooleanField(db_index=True)
 
     details = JSONField(default=dict())
 
