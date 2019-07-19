@@ -66,9 +66,6 @@ class Command(BaseCommand):
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
                 self.language = self.audit.params.get('language')
-                if not self.language:
-                    self.language = 'en'
-                self.language_list = self.language.split(",")
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
@@ -196,7 +193,7 @@ class Command(BaseCommand):
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
-            language="&relevanceLanguage={}".format(self.language) if ',' not in self.language else '',
+            language="&relevanceLanguage={}".format(self.language[0]) if len(self.language) == 1 else '',
             location="&location={}".format(self.location) if self.location else '',
             location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
         )
@@ -256,7 +253,7 @@ class Command(BaseCommand):
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if db_video_meta.language and db_video_meta.language.language not in self.language_list:
+            if db_video_meta.language and db_video_meta.language.language not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
