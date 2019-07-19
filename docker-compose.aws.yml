@@ -8,4 +8,4 @@ services:
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     restart: always
     volumes:
-      - ./local-settings.py:/app/local-setting.py
+      - ./local_settings.py:/app/local_setting.py
