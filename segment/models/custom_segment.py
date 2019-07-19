@@ -7,21 +7,18 @@ import logging
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
+from django.db.models import CASCADE
 from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Model
-from django.db.models import CASCADE
-
-from utils.models import Timestampable
-
 from brand_safety.constants import BLACKLIST
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
-
 from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
 from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
+from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.db.models import CASCADE
 from django.db.models import DateTimeField
 from django.db.models import OneToOneField
 from django.db.models import Model
@@ -16,7 +17,7 @@ class CustomSegmentFileUpload(Model):
     completed_at = DateTimeField(null=True, default=None, db_index=True)
     created_at = DateTimeField(auto_now_add=True, db_index=True)
     download_url = TextField(null=True)
-    segment = OneToOneField(CustomSegment, related_name="export")
+    segment = OneToOneField(CustomSegment, related_name="export", on_delete=CASCADE)
     query = JSONField()
     updated_at = DateTimeField(null=True, db_index=True)
 
