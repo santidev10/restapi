@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.template.loader import get_template
 from django.utils import timezone
 
 from administration.notifications import generate_html_email
