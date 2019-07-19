@@ -20,8 +20,13 @@ from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 import boto3
 from botocore.client import Config
+from utils.permissions import user_has_permission
 
 class AuditExportApiView(APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
+
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
