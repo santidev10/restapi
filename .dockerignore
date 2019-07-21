@@ -1,3 +1,7 @@
 env
 .idea
 .git
+Dockerfile*
+.dockerignore
+docker-compose*
+es-components/.git

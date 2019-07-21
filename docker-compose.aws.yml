@@ -1,0 +1,11 @@
+version: "2.4"
+
+services:
+  restapi:
+    ports:
+      - "5000:5000"
+    container_name: restapi
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
