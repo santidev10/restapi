@@ -249,7 +249,7 @@ class StandardBrandSafetyProvider(object):
         results = self._process_audits(channel_ids)
         video_audits = results["video_audits"]
         channel_audits = results["channel_audits"]
-        # self._index_results(video_audits, channel_audits)
+        self._index_results(video_audits, channel_audits)
         return channel_audits
 
     def manual_video_update(self, video_ids: iter):
@@ -260,7 +260,7 @@ class StandardBrandSafetyProvider(object):
         """
         video_data = self.audit_service.get_video_data(video_ids)
         video_audits = self.audit_service.audit_videos(video_data)
-        # self._index_results(video_audits, [])
+        self._index_results(video_audits, [])
         return video_audits
 
     def _get_channels_to_update(self, channel_ids):
