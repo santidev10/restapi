@@ -132,11 +132,11 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = "test_channel_id"
         UserChannel.objects.create(user=user, channel_id=channel_id)
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.send_task_delete_channel") as delete_task:
+        with patch("channel.api.views.channel_retrieve_update_delete.send_task_delete_channels") as delete_task:
             response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-        delete_task.assert_called_once_with((channel_id,))
+        delete_task.assert_called_once_with(([channel_id],))
 
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
@@ -148,7 +148,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         UserChannel.objects.create(user=user_1, channel_id=channel_id)
         UserChannel.objects.create(user=user_2, channel_id=channel_id)
         url = self._get_url(channel_id)
-        with patch("channel.api.views.channel_retrieve_update_delete.send_task_delete_channel") as delete_task:
+        with patch("channel.api.views.channel_retrieve_update_delete.send_task_delete_channels") as delete_task:
             response = self.client.delete(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
