@@ -274,6 +274,7 @@ class AuditChannelMeta(models.Model):
     emoji = models.BooleanField(default=False, db_index=True)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
+    last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)
