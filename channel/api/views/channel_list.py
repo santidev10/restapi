@@ -282,12 +282,20 @@ class QueryGenerator:
 
         for field in self.range_filter:
 
-            min, max = self.query_params.get(field, [None, None])
+            range = self.query_params.get(field, None)
 
-            if min or max:
-                filters.append(
-                    QueryBuilder().build().must().range().field(field).gte(min).lte(max).get()
-                )
+            if range:
+                min, max = range.split(",")
+
+                if not (min and max):
+                    continue
+
+                query = QueryBuilder().build().must().range().field(field)
+                if min:
+                    query = query.gte(int(min))
+                if max:
+                    query = query.lte(int(max))
+                filters.append(query.get())
 
         return filters
 
@@ -296,10 +304,11 @@ class QueryGenerator:
 
         for field in self.terms_filter:
 
-            value = self.query_params.get(field, [None])[0]
+            value = self.query_params.get(field, None)
             if value:
+                value = value.split(",")
                 filters.append(
-                    QueryBuilder().build().must().term().field(field).value(value).get()
+                    QueryBuilder().build().must().terms().field(field).value(value).get()
                 )
 
         return filters
