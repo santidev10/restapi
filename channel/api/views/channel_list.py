@@ -2,6 +2,8 @@ import re
 
 from copy import deepcopy
 from math import ceil
+from datetime import datetime
+from datetime import timedelta
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
@@ -182,7 +184,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         result = {
             "current_page": page,
-            "items": [channel.to_dict() for channel in channels],
+            "items": [self.add_chart_data(channel.to_dict()) for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations.to_dict() if aggregations else None
@@ -222,6 +224,31 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         if sort_params:
             key, direction = sort_params.split(":")
             return [{key: {"order": direction}}]
+
+    def add_chart_data(self, channel):
+        """ Generate and add chart data for channel """
+        if not channel.get("stats"):
+            return channel
+
+        items = []
+        items_count = 0
+        history = zip(
+            reversed(channel["stats"].get("subscribers_history")),
+            reversed(channel["stats"].get("views_history"))
+        )
+        for subscribers, views in history:
+            timestamp = channel["stats"].get("historydate") - timedelta(
+                days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
+            timestamp = datetime.combine(timestamp, datetime.max.time())
+            items_count += 1
+            if any((subscribers, views)):
+                items.append(
+                    {"created_at": str(timestamp) + "Z",
+                     "subscribers": subscribers,
+                     "views": views}
+                )
+        channel["chart_data"] = items
+        return channel
 
     @staticmethod
     def adapt_response_data(response_data, user):
@@ -282,12 +309,20 @@ class QueryGenerator:
 
         for field in self.range_filter:
 
-            min, max = self.query_params.get(field, [None, None])
+            range = self.query_params.get(field, None)
 
-            if min or max:
-                filters.append(
-                    QueryBuilder().build().must().range().field(field).gte(min).lte(max).get()
-                )
+            if range:
+                min, max = range.split(",")
+
+                if not (min and max):
+                    continue
+
+                query = QueryBuilder().build().must().range().field(field)
+                if min:
+                    query = query.gte(int(min))
+                if max:
+                    query = query.lte(int(max))
+                filters.append(query.get())
 
         return filters
 
@@ -296,10 +331,11 @@ class QueryGenerator:
 
         for field in self.terms_filter:
 
-            value = self.query_params.get(field, [None])[0]
+            value = self.query_params.get(field, None)
             if value:
+                value = value.split(",")
                 filters.append(
-                    QueryBuilder().build().must().term().field(field).value(value).get()
+                    QueryBuilder().build().must().terms().field(field).value(value).get()
                 )
 
         return filters
