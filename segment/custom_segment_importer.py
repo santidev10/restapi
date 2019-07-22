@@ -21,7 +21,9 @@ class CustomSegmentImporter(object):
         # audits = self.config["provider"]()
         provider = self.config["provider"]
         audits = provider(self.youtube_ids)
-
+        for audit in audits:
+            print(audit.metadata)
+            print("-"*25)
 
     def _read_csv(self, path):
         with open(path, mode="r", encoding="utf-8-sig") as file:

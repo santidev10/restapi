@@ -1,5 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_services.base import AuditService
+from brand_safety.audit_models.base import Audit
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
 from singledb.connector import SingleDatabaseApiConnector
@@ -145,27 +146,47 @@ class StandardBrandSafetyService(AuditService):
         :return: list
         """
         params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
+            "fields": self.video_fields,
             "sort": "video_id",
             "size": self.sdb_batch_limit,
             "video_id__terms": ",".join(video_ids)
         }
-        response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
+        sdb_response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
+        remaining = list(set(video_ids) - set([item["video_id"] for item in sdb_response.get("items", [])]))
 
-        print('sdb response', response)
-
-        remaining = set(video_ids) - set([item["id"] for item in response.get("items", [])])
-        result = self.yt_connector.get_video_data(remaining)
-
-        print('yt response', result)
-        mapped = self._map_youtube_video_data(result)
-        all_data = response.get("items", []) + mapped
+        yt_response = self.yt_connector.get_video_data(remaining)
+        yt_mapped = [self.map_youtube_video_data(item) for item in yt_response]
+        all_data = sdb_response.get("items", []) + yt_mapped
         return all_data
 
-    def _map_youtube_video_data(self, data):
-        pass
+    def map_youtube_video_data(self, data):
+        """
+        Map Youtube Data API Video list response to SDB video response
+        :param data:
+        :return:
+        """
+        text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
+        sdb_mapped = {
+            "channel_title": data["snippet"].get("channelTitle", ""),
+            "channel_id": data["snippet"].get("channelId", ""),
+            "channel_url": "https://www.youtube.com/channel/" + data["snippet"].get("channelId", ""),
+            "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
+            "video_id": data["id"],
+            "video_title": data["snippet"]["title"],
+            "video_url": "https://www.youtube.com/video/" + data["id"],
+            "has_emoji": Audit.audit_emoji(text, self.audit_types["emoji"]),
+            "views": data["statistics"].get("viewCount", constants.DISABLED),
+            "description": data["snippet"].get("description", ""),
+            "category": constants.VIDEO_CATEGORIES.get(data["snippet"].get("categoryId"), constants.DISABLED),
+            "language": Audit.get_language(text),
+            "country": data["snippet"].get("country", constants.UNKNOWN),
+            "likes": data["statistics"].get("likeCount", constants.DISABLED),
+            "dislikes": data["statistics"].get("dislikeCount", constants.DISABLED),
+            "tags": data["snippet"].get("tags", []),
+            "transcript": data["snippet"].get("transcript", ""),
+        }
+        return sdb_mapped
 
 
 class StandardAuditException(Exception):
     pass
-

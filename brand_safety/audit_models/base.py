@@ -52,7 +52,8 @@ class Audit(object):
         language = fasttext_lang(text)
         return language
 
-    def audit_emoji(self, text, regexp):
+    @staticmethod
+    def audit_emoji(text, regexp):
         has_emoji = bool(re.search(regexp, text))
         return has_emoji
 
