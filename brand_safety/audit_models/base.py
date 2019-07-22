@@ -47,6 +47,7 @@ class Audit(object):
         :param text: text to analyze
         :return: Language code
         """
+        text = " ".join(text.split("\n"))
         text = remove_mentions_hashes_urls(text)
         language = fasttext_lang(text)
         return language

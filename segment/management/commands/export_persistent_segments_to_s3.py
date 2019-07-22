@@ -15,8 +15,8 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="audit_segments_export.pid")
     def handle(self, *args, **options):
         logger.info("Start")
-        self.finalize_segments(PersistentSegmentChannel.objects.filter(title__contains="Brand Safety"))
-        self.finalize_segments(PersistentSegmentVideo.objects.filter(title__contains="Brand Safety"))
+        self.finalize_segments(PersistentSegmentChannel.objects.all())
+        self.finalize_segments(PersistentSegmentVideo.objects.all())
         logger.info("Finish")
 
     def finalize_segments(self, segments):

@@ -9,6 +9,7 @@ import tempfile
 import boto3
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import Manager
 from django.db.models import TextField
@@ -37,7 +38,8 @@ class BasePersistentSegment(Timestampable):
     Base persistent segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
-    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST)
+    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
+    is_master = BooleanField(default=False, db_index=True)
 
     details = JSONField(default=dict())
 
