@@ -13,7 +13,9 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
+from channel.models import AuthChannel
 from userprofile.models import UserChannel
+from utils.celery.dmp_celery import send_task_delete_channel
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -34,7 +36,7 @@ class OwnChannelPermissions(BasePermission):
 class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, ChannelYoutubeStatisticsMixin):
     permission_classes = (
         or_permission_classes(
-            user_has_permission('userprofile.channel_details'),
+            user_has_permission("userprofile.channel_details"),
             OwnChannelPermissions,
             OnlyAdminUserOrSubscriber),)
 
@@ -52,7 +54,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         if "channel_group" in data and data["channel_group"] not in PERMITTED_CHANNEL_GROUPS:
             return Response(status=HTTP_400_BAD_REQUEST)
 
-        channel_id = kwargs.get('pk')
+        channel_id = kwargs.get("pk")
         channel = self.channel_manager(Sections.CUSTOM_PROPERTIES).get([channel_id])
 
         if not channel:
@@ -99,26 +101,26 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = channel.to_dict()
+        result = channel.to_dict(skip_empty=False)
         result.update({
             "performance": {
                 "average_views": average_views,
-                "videos": [video.to_dict() for video in videos],
+                "videos": [video.to_dict(skip_empty=False) for video in videos],
             }
         })
 
         return Response(result)
 
     def delete(self, *args, **kwargs):
-        channel_id = kwargs.get('pk')
+        channel_id = kwargs.get("pk")
 
         UserChannel.objects \
             .filter(channel_id=channel_id, user=self.request.user) \
             .delete()
 
         if not UserChannel.objects.filter(channel_id=channel_id).exists():
-            pass
-            # todo delete from auth_channel, send tasks to remove channel and its video from es
+            AuthChannel.objects.filter(channel_id=channel_id).delete()
+            send_task_delete_channel((channel_id,))
 
         return Response()
 
