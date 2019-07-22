@@ -225,7 +225,7 @@ class AuditProcessor(models.Model):
                         'id': related,
                         'name': AuditProcessor.objects.get(id=related).name
                     })
-                except Exeption as e:
+                except Exception as e:
                     pass
         return d
 
