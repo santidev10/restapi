@@ -225,7 +225,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             key, direction = sort_params.split(":")
             return [{key: {"order": direction}}]
 
-    def add_chart_data(self, channel):
+    @staticmethod
+    def add_chart_data(channel):
         """ Generate and add chart data for channel """
         if not channel.get("stats"):
             return channel

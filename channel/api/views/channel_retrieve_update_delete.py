@@ -13,6 +13,7 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
+from channel.api.views import ChannelListApiView
 from channel.models import AuthChannel
 from userprofile.models import UserChannel
 from utils.celery.dmp_celery import send_task_delete_channel
@@ -101,7 +102,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = channel.to_dict(skip_empty=False)
+        result = ChannelListApiView.add_chart_data(channel.to_dict(skip_empty=False))
         result.update({
             "performance": {
                 "average_views": average_views,
