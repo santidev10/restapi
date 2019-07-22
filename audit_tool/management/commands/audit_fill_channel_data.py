@@ -55,13 +55,14 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(Q(last_uploaded_view_count__isnull=True) | Q(last_uploaded__isnull=True))
+        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True)
         for c in channels[:5000]:
             videos = AuditVideoMeta.objects.filter(video__channel_id=c.channel_id).order_by("-publish_date")
             try:
                 c.last_uploaded = videos[0].publish_date
                 c.last_uploaded_view_count = videos[0].views
-                c.save(update_fields=['last_uploaded', 'last_uploaded_view_count'])
+                c.last_uploaded_category = videos[0].category
+                c.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
             except Exception as e:
                 pass
 
