@@ -46,8 +46,9 @@ class BrandSafetyVideoAudit(object):
         metadata = {
             "channel_title": data.get("channel__title", ""),
             "channel_url": "https://www.youtube.com/channel/" + data["channel_id"],
-            "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
+            "channel_subscribers": data.get("channel__subscribers", 0),
             "video_title": data.get("title", ""),
+            "title": data.get("title", ""),
             "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
             "views": data.get("views") if data.get("views") is not None else 0,
             "description": data.get("description", ""),
@@ -88,6 +89,8 @@ class BrandSafetyVideoAudit(object):
             except KeyError:
                 pass
         setattr(self, constants.BRAND_SAFETY_SCORE, brand_safety_score)
+        self.metadata["overall_score"] = brand_safety_score.overall_score
+        self.metadata[constants.BRAND_SAFETY_HITS] = brand_safety_score.hits
         return brand_safety_score
 
     def es_repr(self, index_name, index_type, op_type):

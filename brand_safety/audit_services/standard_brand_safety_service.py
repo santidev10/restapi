@@ -60,7 +60,7 @@ class StandardBrandSafetyService(AuditService):
         self.video_audits_sorted = True
         return video_audits
 
-    def audit_channels(self, sorted_video_audits):
+    def audit_channels(self, sorted_video_audits: dict) -> list:
         """
         Audits Channels by retrieving channel data and using sorted Video audit objects by channel id
         :param sorted_video_audits: list -> Video Audit objects
@@ -102,7 +102,7 @@ class StandardBrandSafetyService(AuditService):
             results.append(es_repr)
         return results
 
-    def get_sorted_channel_data(self, channel_ids):
+    def get_sorted_channel_data(self, channel_ids: list) -> dict:
         """
         Retrieves singledb data with given channel ids
         :param channel_ids: list -> Youtube channel ids
@@ -122,7 +122,7 @@ class StandardBrandSafetyService(AuditService):
         }
         return sorted_channel_data
 
-    def get_channel_video_data(self, channel_ids, fields=None):
+    def get_channel_video_data(self, channel_ids: list, fields=None) -> list:
         """
         Retrieve channel metadata from SDB
         :param channel_ids:
@@ -138,7 +138,7 @@ class StandardBrandSafetyService(AuditService):
         video_data = response.get("items", [])
         return video_data
 
-    def get_video_data(self, video_ids: iter):
+    def get_video_data(self, video_ids: iter) -> list:
         """
         Retrieve video metadata
             First get from sdb, then default to Youtube Data API
@@ -159,20 +159,21 @@ class StandardBrandSafetyService(AuditService):
         all_data = sdb_response.get("items", []) + yt_mapped
         return all_data
 
-    def map_youtube_video_data(self, data):
+    def map_youtube_video_data(self, data: dict) -> dict:
         """
         Map Youtube Data API Video list response to SDB video response
         :param data:
         :return:
         """
+        # print("yt data", data)
         text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
         sdb_mapped = {
-            "channel_title": data["snippet"].get("channelTitle", ""),
             "channel_id": data["snippet"].get("channelId", ""),
             "channel_url": "https://www.youtube.com/channel/" + data["snippet"].get("channelId", ""),
-            "channel_subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
+            "channel__title": data["snippet"].get("channelTitle", ""),
+            "channel__subscribers": data.get("statistics", {}).get("channelSubscriberCount"),
             "video_id": data["id"],
-            "video_title": data["snippet"]["title"],
+            "title": data["snippet"]["title"],
             "video_url": "https://www.youtube.com/video/" + data["id"],
             "has_emoji": Audit.audit_emoji(text, self.audit_types["emoji"]),
             "views": data["statistics"].get("viewCount", constants.DISABLED),
@@ -182,8 +183,9 @@ class StandardBrandSafetyService(AuditService):
             "country": data["snippet"].get("country", constants.UNKNOWN),
             "likes": data["statistics"].get("likeCount", constants.DISABLED),
             "dislikes": data["statistics"].get("dislikeCount", constants.DISABLED),
-            "tags": data["snippet"].get("tags", []),
+            "tags": ",".join(data["snippet"].get("tags", [])),
             "transcript": data["snippet"].get("transcript", ""),
+            "thumbnail_image_url": data["snippet"].get("thumbnails", {}).get("default", {}).get("url"),
         }
         return sdb_mapped
 

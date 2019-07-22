@@ -11,10 +11,15 @@ class BrandSafetyVideoScore(object):
         self.keyword_scores = {}
         self.category_scores = default_category_scores
         self.excluded_categories = BadWordCategory.EXCLUDED
+        self._hits = set()
 
     @property
     def pk(self):
         return self.video_id
+
+    @property
+    def hits(self):
+        return list(self._hits)
 
     def add_keyword_score(self, keyword, category, negative_score):
         """
@@ -37,3 +42,4 @@ class BrandSafetyVideoScore(object):
         # Exclude categories from overall scores
         if str(category) not in self.excluded_categories:
             self.overall_score -= negative_score
+            self._hits.add(keyword)

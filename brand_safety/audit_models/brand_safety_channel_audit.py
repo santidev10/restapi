@@ -55,6 +55,7 @@ class BrandSafetyChannelAudit(object):
         metadata = {
             "channel_id": channel_data.get("channel_id", ""),
             "channel_title": channel_data.get("title", ""),
+            "title": channel_data.get("title", ""),
             "channel_url": channel_data.get("url", ""),
             "category": channel_data.get("category").lower() if channel_data.get("category") is not None else constants.UNKNOWN.lower(),
             "description": channel_data.get("description", ""),
@@ -107,6 +108,8 @@ class BrandSafetyChannelAudit(object):
             except KeyError:
                 pass
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
+        self.metadata["overall_score"] = channel_brand_safety_score.overall_score
+        self.metadata[constants.BRAND_SAFETY_HITS] = channel_brand_safety_score.hits
         return channel_brand_safety_score
 
     def es_repr(self, index_name, index_type, action):

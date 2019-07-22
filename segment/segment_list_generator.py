@@ -186,7 +186,7 @@ class SegmentListGenerator(object):
                 logger.error("In unclassified: {}".format(
                     ["{}, {}".format(item[self.PK_NAME], item["category"]) for item in items]))
                 whitelist_segment_manager = self.unclassified_whitelist_manager
-            to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+            to_create = self.instantiate_related_items(items, whitelist_segment_manager)
             if clean_unclassified:
                 self._clean(self.unclassified_whitelist_manager, to_create)
             self._clean(whitelist_segment_manager, to_create)
@@ -285,12 +285,12 @@ class SegmentListGenerator(object):
         """
         # Sort audits by brand safety results and truncate master lists
         whitelist_items, blacklist_items = self._sort_whitelist_blacklist(items)
-        blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
+        blacklist_to_create = self.instantiate_related_items(blacklist_items, self.master_blacklist_segment)
         self._clean(self.master_blacklist_segment, blacklist_to_create)
         self.related_segment_model.objects.bulk_create(blacklist_to_create)
         self._truncate_list(self.master_blacklist_segment, self.BLACKLIST_SIZE)
 
-        whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
+        whitelist_to_create = self.instantiate_related_items(whitelist_items, self.master_whitelist_segment)
         self._clean(self.master_whitelist_segment, whitelist_to_create)
         self.related_segment_model.objects.bulk_create(whitelist_to_create)
         self._truncate_list(self.master_whitelist_segment, self.WHITELIST_SIZE)
@@ -311,7 +311,7 @@ class SegmentListGenerator(object):
         )
         return categorized_segment_title
 
-    def _instantiate_related_items(self, items, segment_manager):
+    def instantiate_related_items(self, items, segment_manager):
         """
         Instantiate related objects
         :param items: sdb data merged with es data

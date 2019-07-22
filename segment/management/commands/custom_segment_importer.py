@@ -12,8 +12,20 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--type",
-            help="Channel or video"
+            "--data_type",
+            help="channel or video"
+        )
+        parser.add_argument(
+            "--segment_category",
+            help="whitelist, blacklist, apex"
+        )
+        parser.add_argument(
+            "--title",
+            help="Segment title"
+        )
+        parser.add_argument(
+            "--thumbnail",
+            help="Segment thumbnail to create"
         )
         parser.add_argument(
             "--path",
