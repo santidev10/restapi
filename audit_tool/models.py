@@ -199,7 +199,7 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.params.get('related_audits'),
+            'related_audits': self.get_related_audits(),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -213,6 +213,20 @@ class AuditProcessor(models.Model):
             d['percent_done'] = round(100.0 * d['data']['count'] / d['data']['total'], 2)
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
+        return d
+
+    def get_related_audits(self):
+        d = []
+        r = self.params.get('related_audits')
+        if r:
+            for related in r:
+                try:
+                    d.append({
+                        'id': related,
+                        'name': AuditProcessor.objects.get(id=related).name
+                    })
+                except Exeption as e:
+                    pass
         return d
 
 class AuditLanguage(models.Model):
