@@ -10,6 +10,7 @@ from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_TH
 from userprofile.utils import is_correct_apex_domain
 from utils.permissions import user_has_permission
 
+
 class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView):
     serializer_class = PersistentSegmentSerializer
     pagination_class = SegmentPaginator

@@ -3,14 +3,13 @@ import logging
 
 from django.utils import timezone
 
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
+from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
+import brand_safety.constants as constants
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent import PersistentSegmentRelatedVideo
 from segment.models.persistent import PersistentSegmentFileUpload
 from segment.segment_list_generator import SegmentListGenerator
-from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
-import brand_safety.constants as constants
+from segment.utils import get_persistent_segment_model_by_type
 
 logger = logging.getLogger(__name__)
 
@@ -59,27 +58,24 @@ class CustomSegmentImporter(object):
         if self.segment_category not in self.ALLOWED_SEGMENT_CATEGORIES:
             raise ValueError("Allowed segment categories: {}".format(self.ALLOWED_SEGMENT_CATEGORIES))
 
-        config = {
+        segment_model = get_persistent_segment_model_by_type(data_type)
+        options = {
             constants.VIDEO: {
                 "provider": self.brand_safety_provider.manual_video_update,
-                "segment": PersistentSegmentVideo.objects.get_or_create(
-                    title=segment_title,
-                    category=self.segment_category,
-                    thumbnail_image_url=self.segment_thumbnail
-                )[0],
                 "related_model": PersistentSegmentRelatedVideo
             },
             constants.CHANNEL: {
                 "provider": self.brand_safety_provider.manual_channel_update,
-                "segment": PersistentSegmentChannel.objects.get_or_create(
-                    title=segment_title,
-                    category=self.segment_category,
-                    thumbnail_image_url=self.segment_thumbnail
-                )[0],
                 "related_model": PersistentSegmentRelatedChannel
             },
         }
-        return config[data_type]
+        config = options[data_type]
+        config["segment"] = segment_model.objects.get_or_create(
+            title=segment_title,
+            category=self.segment_category,
+            thumbnail_image_url=self.segment_thumbnail
+        )[0]
+        return config
 
     def _format(self, value: str) -> str:
         formatted = value.lower().strip()
