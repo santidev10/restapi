@@ -1,5 +1,7 @@
 import re
 
+import dateutil.parser
+
 from copy import deepcopy
 from math import ceil
 from datetime import datetime
@@ -225,31 +227,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             key, direction = sort_params.split(":")
             return [{key: {"order": direction}}]
 
-    def add_chart_data(self, channel):
-        """ Generate and add chart data for channel """
-        if not channel.get("stats"):
-            return channel
-
-        items = []
-        items_count = 0
-        history = zip(
-            reversed(channel["stats"].get("subscribers_history")),
-            reversed(channel["stats"].get("views_history"))
-        )
-        for subscribers, views in history:
-            timestamp = channel["stats"].get("historydate") - timedelta(
-                days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((subscribers, views)):
-                items.append(
-                    {"created_at": str(timestamp) + "Z",
-                     "subscribers": subscribers,
-                     "views": views}
-                )
-        channel["chart_data"] = items
-        return channel
-
     @staticmethod
     def add_chart_data(channel):
         """ Generate and add chart data for channel """
@@ -263,7 +240,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             reversed(channel["stats"].get("views_history"))
         )
         for subscribers, views in history:
-            timestamp = channel["stats"].get("historydate") - timedelta(
+            history_date = dateutil.parser.parse(channel["stats"].get("historydate"))
+            timestamp = history_date - timedelta(
                 days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
             timestamp = datetime.combine(timestamp, datetime.max.time())
             items_count += 1
