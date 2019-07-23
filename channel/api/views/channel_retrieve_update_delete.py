@@ -16,7 +16,7 @@ from channel.api.mixins import ChannelYoutubeStatisticsMixin
 from channel.api.views import ChannelListApiView
 from channel.models import AuthChannel
 from userprofile.models import UserChannel
-from utils.celery.dmp_celery import send_task_delete_channel
+from utils.celery.dmp_celery import send_task_delete_channels
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -121,7 +121,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         if not UserChannel.objects.filter(channel_id=channel_id).exists():
             AuthChannel.objects.filter(channel_id=channel_id).delete()
-            send_task_delete_channel((channel_id,))
+            send_task_delete_channels(([channel_id],))
 
         return Response()
 

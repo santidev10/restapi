@@ -19,7 +19,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     @patch("es_components.managers.video.VideoManager.get_all_video_ids", return_value=[])
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
-    def test_success_on_user_duplication(self, flow, requests_mock, *args):
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_success_on_user_duplication(self, mock_youtube, flow, requests_mock, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1602
         On sign in server return server error 500.
@@ -38,22 +39,21 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         flow().step2_exchange().access_token = "^test_access_token$"
         flow().step2_exchange().token_expiry = datetime.now()
 
-        with patch("utils.youtube_api.YoutubeAPIConnector.own_channels",
-                      return_value=youtube_own_channel_test_value):
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
 
-            response = self.client.post(self.url, dict(code="code"))
+        response = self.client.post(self.url, dict(code="code"))
 
-            self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-            data = response.data
-            self.assertIn('auth_token', data)
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        data = response.data
+        self.assertIn('auth_token', data)
 
     def test_error_no_code(self):
         response = self.client.post(self.url, dict())
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    @patch("utils.youtube_api.YoutubeAPIConnector.own_channels", return_value={"items": []})
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
-    def test_proxy_errors_from_sdb(self, flow, *args):
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_proxy_errors_from_sdb(self, mock_youtube, flow, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1718
         Profile Page > Authorize > 408 error when user try
@@ -68,6 +68,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         flow().step2_exchange().access_token = "^test_access_token$"
         flow().step2_exchange().token_expiry = datetime.now()
 
+        mock_youtube().own_channels.return_value = {"items": []}
+
         response = self.client.post(self.url, dict(code="code"))
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -75,7 +77,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
     @patch("es_components.managers.video.VideoManager.get_all_video_ids", return_value=[])
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
-    def test_send_welcome_email(self, flow, *args):
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_send_welcome_email(self, mock_youtube, flow, *args):
         user_details = {
             "email": "test@test.test",
             "image": {"isDefault": False},
@@ -86,9 +89,10 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         flow().step2_exchange().access_token = "^test_access_token$"
         flow().step2_exchange().token_expiry = datetime.now()
 
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
         with patch("channel.api.views.channel_authentication.requests.get",
-                   return_value=MockResponse(json=user_details)), \
-             patch("utils.youtube_api.YoutubeAPIConnector.own_channels", return_value=youtube_own_channel_test_value):
+                   return_value=MockResponse(json=user_details)):
 
             response = self.client.post(self.url, dict(code="code"), )
 
