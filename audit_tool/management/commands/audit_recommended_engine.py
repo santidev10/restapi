@@ -73,9 +73,9 @@ class Command(BaseCommand):
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = self.audit.params.get('min_views')
-                self.min_likes = self.audit.params.get('min_likes')
-                self.max_dislikes = self.audit.params.get('max_dislikes')
+                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
