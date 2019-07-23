@@ -178,7 +178,10 @@ LOGS_DIRECTORY = 'logs'
 
 DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
-ip = socket.gethostbyname(hostname)
+try:
+    ip = socket.gethostbyname(hostname)
+except Exception as e:
+    ip = socket.getfqdn(hostname)
 
 LOGGING = {
     'version': 1,
