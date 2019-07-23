@@ -32,7 +32,9 @@ class CustomSegmentImporter(object):
         provider = self.config["provider"]
         segment = self.config["segment"]
         to_create_ids = set(self.youtube_ids) - set(segment.related.filter(related_id__in=self.youtube_ids).values_list("related_id", flat=True))
-        audits = provider(to_create_ids)
+        audits = provider(list(to_create_ids))
+
+        print('audits got', len(audits))
         to_create = self.list_generator.instantiate_related_items([audit.metadata for audit in audits], segment)
         self.config["related_model"].objects.bulk_create(to_create)
         self._finalize(segment)

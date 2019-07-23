@@ -76,6 +76,9 @@ class BrandSafetyChannelAudit(object):
         ])
         metadata["has_emoji"] = self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
         metadata["language"] = self.auditor.get_language(text)
+
+        if metadata["likes"] == 0 or metadata["dislikes"] == 0:
+            metadata.update(self._aggregate_video_audit_data())
         return metadata
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
@@ -152,4 +155,23 @@ class BrandSafetyChannelAudit(object):
         ])
         return text
 
-
+    def _aggregate_video_audit_data(self) -> dict:
+        """
+        Aggregate video audit data
+        :return: dict
+        """
+        video_audits = self.video_audits
+        aggregated_data = {
+            "likes": 0,
+            "dislikes": 0,
+        }
+        for video in video_audits:
+            try:
+                aggregated_data["likes"] += int(video.metadata["likes"])
+            except ValueError:
+                pass
+            try:
+                aggregated_data["dislikes"] += int(video.metadata["dislikes"])
+            except ValueError:
+                pass
+        return aggregated_data

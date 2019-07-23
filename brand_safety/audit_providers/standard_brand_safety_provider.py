@@ -106,9 +106,12 @@ class StandardBrandSafetyProvider(object):
         """
         sleep(self.DEFAULT_SLEEP)
         video_audits = self.audit_service.audit_videos(channel_ids=channel_ids)
+        print("got video audits", len(video_audits))
         sorted_video_audits = self.audit_service.sort_video_audits(video_audits)
         sleep(self.DEFAULT_SLEEP)
         channel_audits = self.audit_service.audit_channels(sorted_video_audits)
+
+        print('got channel auits', len(channel_audits))
         results = {
             "video_audits": video_audits,
             "channel_audits": channel_audits
@@ -244,9 +247,12 @@ class StandardBrandSafetyProvider(object):
         :param channel_ids: list | tuple
         :return: None
         """
-        results = self._process_audits(channel_ids)
-        video_audits = results["video_audits"]
-        channel_audits = results["channel_audits"]
+        self.channel_id_pool_batch_limit = 3
+        pool = mp.Pool(processes=self.max_process_count)
+        results = pool.map(self._process_audits, self.audit_provider.batch(channel_ids, self.channel_id_pool_batch_limit))
+
+        # Extract nested results from each process and index into es
+        video_audits, channel_audits = self._extract_results(results)
         self._index_results(video_audits, channel_audits)
         return channel_audits
 

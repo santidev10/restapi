@@ -93,7 +93,7 @@ class StandardBrandSafetyService(AuditService):
     def gather_brand_safety_results(audits):
         """
         Maps audits to their brand safety scores
-        :param video_audits: Video Audit objects
+        :param audits: Video Audit objects
         :return: list -> brand safety score dictionaries
         """
         results = []
@@ -115,12 +115,19 @@ class StandardBrandSafetyService(AuditService):
             channel_id__terms=",".join(channel_ids),
         )
         response = self.sdb_connector.get_channel_list(params)
-        sorted_channel_data = {
+        data = response.get("items")
+        retrieved_channel_ids = [channel["channel_id"] for channel in data]
+        remaining_channel_ids = set(channel_ids) - set(retrieved_channel_ids)
+        remaining_channel_data = self.yt_connector.get_channel_data(list(remaining_channel_ids))
+        mapped_to_sdb = [self.map_youtube_channel_data(channel) for channel in remaining_channel_data]
+        data.extend(mapped_to_sdb)
+
+        channel_data_by_id = {
             channel["channel_id"]: channel
-            for channel in response["items"]
+            for channel in data
             if channel.get("channel_id") is not None
         }
-        return sorted_channel_data
+        return channel_data_by_id
 
     def get_channel_video_data(self, channel_ids: list, fields=None) -> list:
         """
@@ -136,7 +143,13 @@ class StandardBrandSafetyService(AuditService):
         )
         response = self.sdb_connector.get_video_list(params)
         video_data = response.get("items", [])
-        return video_data
+        retrieved_channel_ids = [video["channel_id"] for video in video_data if video.get("channel_id")]
+        remaining_channel_ids = set(channel_ids) - set(retrieved_channel_ids)
+        remaining_video_data = self.yt_connector.get_channel_video_data(list(remaining_channel_ids))
+        mapped_to_sdb = [self.map_youtube_video_data(video) for video in remaining_video_data]
+
+        all_data = video_data + mapped_to_sdb
+        return all_data
 
     def get_video_data(self, video_ids: iter) -> list:
         """
@@ -159,13 +172,13 @@ class StandardBrandSafetyService(AuditService):
         all_data = sdb_response.get("items", []) + yt_mapped
         return all_data
 
-    def map_youtube_video_data(self, data: dict) -> dict:
+    @staticmethod
+    def map_youtube_video_data(data: dict) -> dict:
         """
         Map Youtube Data API Video list response to SDB video response
         :param data:
         :return:
         """
-        # print("yt data", data)
         text = data["snippet"].get("title", "") + data["snippet"].get("description", "")
         sdb_mapped = {
             "channel_id": data["snippet"].get("channelId", ""),
@@ -175,7 +188,6 @@ class StandardBrandSafetyService(AuditService):
             "video_id": data["id"],
             "title": data["snippet"]["title"],
             "video_url": "https://www.youtube.com/video/" + data["id"],
-            "has_emoji": Audit.audit_emoji(text, self.audit_types["emoji"]),
             "views": data["statistics"].get("viewCount", 0),
             "description": data["snippet"].get("description", ""),
             "category": constants.VIDEO_CATEGORIES.get(data["snippet"].get("categoryId"), constants.DISABLED),
@@ -186,6 +198,28 @@ class StandardBrandSafetyService(AuditService):
             "tags": ",".join(data["snippet"].get("tags", [])),
             "transcript": data["snippet"].get("transcript", ""),
             "thumbnail_image_url": data["snippet"].get("thumbnails", {}).get("default", {}).get("url"),
+        }
+        return sdb_mapped
+
+    @staticmethod
+    def map_youtube_channel_data(data: dict) -> dict:
+        """
+        Map Youtube Data API Channel list response to SDB video response
+        :param data:
+        :return:
+        """
+        sdb_mapped = {
+            "channel_id": data["id"],
+            "title": data["snippet"]["title"],
+            "url": "https://www.youtube.com/channel/" + data["snippet"].get("channelId", ""),
+            "category": constants.VIDEO_CATEGORIES.get(data["snippet"].get("categoryId"), None),
+            "description": data["snippet"].get("description", ""),
+            "videos": data["statistics"].get("videoCount"),
+            "views": data["statistics"].get("viewCount", 0),
+            "country": data["snippet"].get("country", constants.UNKNOWN),
+            "thumbnail_image_url": data["snippet"].get("thumbnails", {}).get("default", {}).get("url"),
+            "tags": ",".join(data["snippet"].get("tags", [])),
+            "subscribers": data.get("statistics", {}).get("subscriberCount"),
         }
         return sdb_mapped
 

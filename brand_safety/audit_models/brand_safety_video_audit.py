@@ -43,25 +43,46 @@ class BrandSafetyVideoAudit(object):
         :param data: SDB video object
         :return: Dictionary of formatted metadata
         """
-        metadata = {
-            "channel_title": data.get("channel__title", ""),
-            "channel_url": "https://www.youtube.com/channel/" + data["channel_id"],
-            "channel_subscribers": data.get("channel__subscribers", 0),
-            "video_title": data.get("title", ""),
-            "title": data.get("title", ""),
-            "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
-            "views": data.get("views") if data.get("views") is not None else 0,
-            "description": data.get("description", ""),
-            "category": data.get("category").lower() if data.get("category") is not None else constants.UNKNOWN.lower(),
-            "country": data.get("country", constants.UNKNOWN),
-            "likes": data.get("likes", 0),
-            "dislikes": data.get("dislikes", 0),
-            "channel_id": data["channel_id"],
-            "tags": data.get("tags", "") if data.get("tags") is not None else "",
-            "video_id": data["video_id"],
-            "transcript": data.get("transcript") if data.get("transcript") is not None else "",
-            "thumbnail_image_url": data.get("thumbnail_image_url", ""),
-        }
+        try:
+            metadata = {
+                "channel_title": data.get("channel__title", ""),
+                "channel_url": "https://www.youtube.com/channel/" + data["channel_id"],
+                "channel_subscribers": data.get("channel__subscribers", 0),
+                "video_title": data.get("title", ""),
+                "title": data.get("title", ""),
+                "video_url": "https://www.youtube.com/video/" + data.get("video_id", ""),
+                "views": data.get("views") if data.get("views") is not None else 0,
+                "description": data.get("description", ""),
+                "category": data.get("category").lower() if data.get("category") is not None else constants.UNKNOWN.lower(),
+                "country": data.get("country", constants.UNKNOWN),
+                "likes": data.get("likes", 0),
+                "dislikes": data.get("dislikes", 0),
+                "channel_id": data["channel_id"],
+                "tags": data.get("tags", "") if data.get("tags") is not None else "",
+                "video_id": data["video_id"],
+                "transcript": data.get("transcript") if data.get("transcript") is not None else "",
+                "thumbnail_image_url": data.get("thumbnail_image_url", ""),
+            }
+        except KeyError:
+            # todo: """
+            # Traceback (most recent call last):
+            #   File "/anaconda3/lib/python3.6/multiprocessing/pool.py", line 119, in worker
+            #     result = (True, func(*args, **kwds))
+            #   File "/anaconda3/lib/python3.6/multiprocessing/pool.py", line 44, in mapstar
+            #     return list(map(*args))
+            #   File "/Users/kennethoh/Documents/chf/restapi/brand_safety/audit_providers/standard_brand_safety_provider.py", line 108, in _process_audits
+            #     video_audits = self.audit_service.audit_videos(channel_ids=channel_ids)
+            #   File "/Users/kennethoh/Documents/chf/restapi/brand_safety/audit_services/standard_brand_safety_service.py", line 56, in audit_videos
+            #     default_category_scores=default_category_score_copy,
+            #   File "/Users/kennethoh/Documents/chf/restapi/brand_safety/audit_models/brand_safety_video_audit.py", line 16, in __init__
+            #     self.metadata = self.get_metadata(data)
+            #   File "/Users/kennethoh/Documents/chf/restapi/brand_safety/audit_models/brand_safety_video_audit.py", line 48, in get_metadata
+            #     "channel_url": "https://www.youtube.com/channel/" + data["channel_id"],
+            # KeyError: 'channel_id'
+            # """
+            print('keyerror', data)
+            raise
+
         text = ", ".join([
             metadata.get("video_title", ""),
             metadata.get("description", ""),
