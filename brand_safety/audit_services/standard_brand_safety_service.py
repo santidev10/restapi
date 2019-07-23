@@ -31,7 +31,7 @@ class StandardBrandSafetyService(AuditService):
         self.default_video_category_scores = kwargs["default_video_category_scores"]
         self.default_channel_category_scores = kwargs["default_channel_category_scores"]
 
-    def audit_videos(self, video_data=None, channel_ids=None,):
+    def audit_videos(self, video_data=None, channel_ids=None):
         """
         Audits SingleDB video data
         :param video_data: list -> Video data from SDB

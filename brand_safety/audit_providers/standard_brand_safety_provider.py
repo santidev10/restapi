@@ -238,14 +238,12 @@ class StandardBrandSafetyProvider(object):
         bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language
 
-    def manual_channel_update(self, channel_ids):
+    def manual_channel_update(self, channel_ids: iter):
         """
         Update specific channels and videos
-        :param channel_ids: list
+        :param channel_ids: list | tuple
         :return: None
         """
-        if type(channel_ids) is str:
-            channel_ids = channel_ids.split(",")
         results = self._process_audits(channel_ids)
         video_audits = results["video_audits"]
         channel_audits = results["channel_audits"]
