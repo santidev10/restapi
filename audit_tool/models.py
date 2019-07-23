@@ -215,6 +215,20 @@ class AuditProcessor(models.Model):
                 d['percent_done'] = 100
         return d
 
+    def get_related_audits(self):
+        d = []
+        r = self.params.get('related_audits')
+        if r:
+            for related in r:
+                try:
+                    d.append({
+                        'id': related,
+                        'name': AuditProcessor.objects.get(id=related).name
+                    })
+                except Exception as e:
+                    pass
+        return d
+
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
 
