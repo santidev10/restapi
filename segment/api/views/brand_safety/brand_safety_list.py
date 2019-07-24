@@ -20,7 +20,6 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
 
     def get_queryset(self):
         request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
-        request_origin = "https://apex.viewiq.com"
         if is_correct_apex_domain(request_origin):
             queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
         else:
