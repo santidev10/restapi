@@ -6,49 +6,61 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 
-from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
+from es_components.managers.channel import ChannelManager
+from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.query_builder import QueryBuilder
+from es_components.connections import init_es_connection
+
+from channel.models import AuthChannel
+
+CHANNEL_SUBSCRIBERS_FIELD = "stats.subscribers"
+
+init_es_connection()
 
 
 class TopAuthChannels(APIView):
     permission_classes = tuple()
+    manager = ChannelManager((Sections.GENERAL_DATA, Sections.STATS))
+    subscribers_min_value = 10000
+    top_last_auth_items_limit = 21
+
+    def get_top_last_auth(self):
+        auth_channels_ids = list(AuthChannel.objects.all().order_by("-created_at")
+                                 .values_list("channel_id", flat=True))
+        subscribers_range_filter = QueryBuilder().build().must().range()\
+            .field(CHANNEL_SUBSCRIBERS_FIELD).gte(self.subscribers_min_value).get()
+
+        ids_filter = self.manager.ids_query(auth_channels_ids)
+        filters = self.manager.forced_filters() & subscribers_range_filter & ids_filter
+
+        channels = self.manager.search(filters=filters, limit=self.top_last_auth_items_limit).execute().hits
+
+        return channels
+
+    def get_testimonials(self):
+        ids_filter = self.manager.ids_query(list(settings.TESTIMONIALS.keys()))
+        sort_rule = [{CHANNEL_SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}]
+        testimonials_channels = self.manager.search(filters=ids_filter, sort=sort_rule).execute().hits
+        return testimonials_channels
+
+    def __add_video_id(self, channel):
+        channel_id = channel["main"]["id"]
+        if channel_id in settings.TESTIMONIALS:
+            video_id = settings.TESTIMONIALS[channel_id]
+            channel["video_id"] = video_id
+        return channel
 
     def get(self, request):
-        connector = Connector()
-        params_last_authed = dict(fields="channel_id,"
-                                         "title,"
-                                         "thumbnail_image_url,"
-                                         "url,"
-                                         "subscribers,"
-                                         "auth__created_at",
-                                  sort="auth__created_at:desc",
-                                  sources="",
-                                  auth__created_at__exists="true",
-                                  subscribers__range="10000,",
-                                  size="21")
-
-        params_testimonials = dict(fields="channel_id,"
-                                          "title,"
-                                          "thumbnail_image_url,"
-                                          "url,"
-                                          "subscribers",
-                                   sort="subscribers:desc",
-                                   sources="",
-                                   channel_id__terms=",".join(settings.TESTIMONIALS.keys()))
         try:
-            channels_last_authed = connector.get_channel_list(params_last_authed)["items"]
-            channels_testimonials = connector.get_channel_list(params_testimonials)["items"]
-        except SingleDatabaseApiConnectorException as e:
+            channels_last_authed = self.get_top_last_auth()
+            channels_testimonials = self.get_testimonials()
+        except Exception as e:
             return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
-        for channel in channels_testimonials:
-            channel_id = channel.get("channel_id")
-            if channel_id in settings.TESTIMONIALS:
-                channel["video_id"] = settings.TESTIMONIALS[channel_id]
-
         data = {
-            "last": channels_last_authed,
-            "testimonials": channels_testimonials
+            "last": [channel.to_dict() for channel in channels_last_authed],
+            "testimonials": [self.__add_video_id(channel.to_dict()) for channel in channels_testimonials]
         }
 
         return Response(data)
