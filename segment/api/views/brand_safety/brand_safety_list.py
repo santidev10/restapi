@@ -7,6 +7,7 @@ from segment.api.paginator import SegmentPaginator
 from segment.api.serializers import PersistentSegmentSerializer
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from userprofile.utils import is_correct_apex_domain
 from utils.permissions import user_has_permission
 
 
@@ -18,10 +19,14 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     )
 
     def get_queryset(self):
-        queryset = super().get_queryset()\
-            .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
-            .annotate(items_count=KeyTextTransform("items_count", "details"))\
-            .exclude(Q(items_count__lte=0) & Q(is_master=False))
+        request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
+        if is_correct_apex_domain(request_origin):
+            queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
+        else:
+            queryset = super().get_queryset()\
+                .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
+                .annotate(items_count=KeyTextTransform("items_count", "details"))\
+                .exclude(Q(items_count__lte=0) & Q(is_master=False))
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):

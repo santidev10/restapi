@@ -55,14 +55,15 @@ class BrandSafetyChannelAudit(object):
         metadata = {
             "channel_id": channel_data.get("channel_id", ""),
             "channel_title": channel_data.get("title", ""),
+            "title": channel_data.get("title", ""),
             "channel_url": channel_data.get("url", ""),
             "category": channel_data.get("category").lower() if channel_data.get("category") is not None else constants.UNKNOWN.lower(),
             "description": channel_data.get("description", ""),
-            "videos": channel_data.get("videos", constants.DISABLED),
+            "videos": channel_data.get("videos", 0),
             "views": channel_data.get("views") if channel_data.get("views") is not None else 0,
             "audited_videos": len(self.video_audits),
-            "likes": channel_data.get("likes", constants.DISABLED),
-            "dislikes": channel_data.get("dislikes", constants.DISABLED),
+            "likes": channel_data.get("likes", 0),
+            "dislikes": channel_data.get("dislikes", 0),
             "country": channel_data.get("country", ""),
             "thumbnail_image_url": channel_data.get("thumbnail_image_url", ""),
             "tags": channel_data.get("tags", "") if channel_data.get("tags") is not None else "",
@@ -75,6 +76,9 @@ class BrandSafetyChannelAudit(object):
         ])
         metadata["has_emoji"] = self.auditor.audit_emoji(text, self.audit_types[constants.EMOJI]),
         metadata["language"] = self.auditor.get_language(text)
+
+        if metadata["likes"] == 0 or metadata["dislikes"] == 0:
+            metadata.update(self._aggregate_video_audit_data())
         return metadata
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
@@ -107,6 +111,8 @@ class BrandSafetyChannelAudit(object):
             except KeyError:
                 pass
         setattr(self, constants.BRAND_SAFETY_SCORE, channel_brand_safety_score)
+        self.metadata["overall_score"] = channel_brand_safety_score.overall_score
+        self.metadata[constants.BRAND_SAFETY_HITS] = channel_brand_safety_score.hits
         return channel_brand_safety_score
 
     def es_repr(self, index_name, index_type, action):
@@ -149,4 +155,23 @@ class BrandSafetyChannelAudit(object):
         ])
         return text
 
-
+    def _aggregate_video_audit_data(self) -> dict:
+        """
+        Aggregate video audit data
+        :return: dict
+        """
+        video_audits = self.video_audits
+        aggregated_data = {
+            "likes": 0,
+            "dislikes": 0,
+        }
+        for video in video_audits:
+            try:
+                aggregated_data["likes"] += int(video.metadata["likes"])
+            except ValueError:
+                pass
+            try:
+                aggregated_data["dislikes"] += int(video.metadata["dislikes"])
+            except ValueError:
+                pass
+        return aggregated_data
