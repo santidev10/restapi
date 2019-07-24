@@ -44,6 +44,8 @@ class StandardBrandSafetyService(AuditService):
             video_data = self.get_channel_video_data(channel_ids)
         video_audits = []
         for video in video_data:
+            if not video.get("channel_id"):
+                continue
             # Create a copy of default scores for each audit
             default_category_score_copy = {}
             default_category_score_copy.update(self.default_video_category_scores)
