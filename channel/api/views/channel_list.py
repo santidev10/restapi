@@ -172,7 +172,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-            channels = es_manager.search(filters=filters, sort=sort, limit=size, offset=offset).execute().hits
+            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset).execute().hits
 
             aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
                 if query_params.get("aggregations") else None
@@ -210,12 +210,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             return channels_ids
 
     def get_limits(self, query_params):
-        size = int(query_params.get("size", [DEFAULT_PAGE_SIZE])[0])
-        page = query_params.get("page", [DEFAULT_PAGE_NUMBER])
-        if len(page) > 1:
-            raise ValueError("Passed more than one page number")
-
-        page = int(page[0])
+        size = int(query_params.get("size", DEFAULT_PAGE_SIZE))
+        page = int(query_params.get("page", DEFAULT_PAGE_NUMBER))
         offset = 0 if page <= 1 else (page - 1) * size
 
         return size, offset, page
@@ -236,8 +232,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         items = []
         items_count = 0
         history = zip(
-            reversed(channel["stats"].get("subscribers_history")),
-            reversed(channel["stats"].get("views_history"))
+            reversed(channel["stats"].get("subscribers_history")) if channel["stats"].get("subscribers_history") else [],
+            reversed(channel["stats"].get("views_history")) if channel["stats"].get("views_history") else []
         )
         for subscribers, views in history:
             history_date = dateutil.parser.parse(channel["stats"].get("historydate"))
