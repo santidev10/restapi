@@ -208,6 +208,7 @@ class Command(BaseCommand):
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
                 self.audit.completed = timezone.now()
+                self.audit.pause = 0
                 self.audit.save()
                 raise Exception("problem with relevance language.")
         try:
