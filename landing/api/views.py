@@ -10,12 +10,13 @@ from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.query_builder import QueryBuilder
+from es_components.connections import init_es_connection
 
 from channel.models import AuthChannel
-from utils.utils import chunks_generator
 
 CHANNEL_SUBSCRIBERS_FIELD = "stats.subscribers"
-CHUNK_SIZE = 10000
+
+init_es_connection()
 
 
 class TopAuthChannels(APIView):
@@ -25,25 +26,17 @@ class TopAuthChannels(APIView):
     top_last_auth_items_limit = 21
 
     def get_top_last_auth(self):
-        remaining_len = self.top_last_auth_items_limit
-        top_auth_channels = []
+        auth_channels_ids = list(AuthChannel.objects.all().order_by("-created_at")
+                                 .values_list("channel_id", flat=True))
+        subscribers_range_filter = QueryBuilder().build().must().range()\
+            .field(CHANNEL_SUBSCRIBERS_FIELD).gte(self.subscribers_min_value).get()
 
-        for auth_channels in chunks_generator(AuthChannel.objects.all().order_by("-created_at"), CHUNK_SIZE):
+        ids_filter = self.manager.ids_query(auth_channels_ids)
+        filters = self.manager.forced_filters() & subscribers_range_filter & ids_filter
 
-            if remaining_len <= 0:
-                break
+        channels = self.manager.search(filters=filters, limit=self.top_last_auth_items_limit).execute().hits
 
-            subscribers_range_filter = QueryBuilder().build().must().range()\
-                .field(CHANNEL_SUBSCRIBERS_FIELD).gte(self.subscribers_min_value).get()
-
-            ids_filter = self.manager.ids_query([channel.channel_id for channel in auth_channels])
-            filters = self.manager.forced_filters() & subscribers_range_filter & ids_filter
-
-            channels = self.manager.search(filters=filters, limit=remaining_len).execute().hits
-            remaining_len -= len(channels)
-            top_auth_channels += channels
-
-        return top_auth_channels
+        return channels
 
     def get_testimonials(self):
         ids_filter = self.manager.ids_query(list(settings.TESTIMONIALS.keys()))
