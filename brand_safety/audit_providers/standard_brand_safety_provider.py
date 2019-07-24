@@ -106,12 +106,9 @@ class StandardBrandSafetyProvider(object):
         """
         sleep(self.DEFAULT_SLEEP)
         video_audits = self.audit_service.audit_videos(channel_ids=channel_ids)
-        print("got video audits", len(video_audits))
         sorted_video_audits = self.audit_service.sort_video_audits(video_audits)
         sleep(self.DEFAULT_SLEEP)
         channel_audits = self.audit_service.audit_channels(sorted_video_audits)
-
-        print('got channel auits', len(channel_audits))
         results = {
             "video_audits": video_audits,
             "channel_audits": channel_audits
