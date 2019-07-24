@@ -1,7 +1,5 @@
 import re
 
-import dateutil.parser
-
 from copy import deepcopy
 from math import ceil
 from datetime import datetime
@@ -35,12 +33,19 @@ init_es_connection()
 DEFAULT_PAGE_NUMBER = 1
 DEFAULT_PAGE_SIZE = 50
 
-TERMS_FILTER = ("general_data.country", "general_data.top_language", "analytics.cms_title",
-                "general_data.title", "general_data.top_category")
+TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
+                "custom_properties.preferred", "analytics.verified", "analytics.cms_title")
+
+MATCH_PHRASE_FILTER = ("general_data.title",)
 
 RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "social.facebook_likes",
                 "stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
-                "stats.last_30day_subscribers", "stats.subscribers")
+                "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
+                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
+                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
+                "analytics.age55_64", "analytics.age65_")
+
+EXISTS_FILTER = ("custom_properties.emails", "ads_stats")
 
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
@@ -153,7 +158,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
 
-        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS)
+        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
+                                    Sections.CUSTOM_PROPERTIES)
         query_params = deepcopy(request.query_params)
 
         try:
@@ -172,7 +178,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-            channels = es_manager.search(filters=filters, sort=sort, limit=size, offset=offset).execute().hits
+            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset).execute().hits
 
             aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
                 if query_params.get("aggregations") else None
@@ -189,7 +195,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             "items": [self.add_chart_data(channel.to_dict()) for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "aggregations": aggregations.to_dict() if aggregations else None
+            "aggregations": aggregations
         }
         return Response(result)
 
@@ -210,12 +216,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             return channels_ids
 
     def get_limits(self, query_params):
-        size = int(query_params.get("size", [DEFAULT_PAGE_SIZE])[0])
-        page = query_params.get("page", [DEFAULT_PAGE_NUMBER])
-        if len(page) > 1:
-            raise ValueError("Passed more than one page number")
-
-        page = int(page[0])
+        size = int(query_params.get("size", DEFAULT_PAGE_SIZE))
+        page = int(query_params.get("page", DEFAULT_PAGE_NUMBER))
         offset = 0 if page <= 1 else (page - 1) * size
 
         return size, offset, page
@@ -236,12 +238,11 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         items = []
         items_count = 0
         history = zip(
-            reversed(channel["stats"].get("subscribers_history")),
-            reversed(channel["stats"].get("views_history"))
+            reversed(channel["stats"].get("subscribers_history")) if channel["stats"].get("subscribers_history") else [],
+            reversed(channel["stats"].get("views_history")) if channel["stats"].get("views_history") else []
         )
         for subscribers, views in history:
-            history_date = dateutil.parser.parse(channel["stats"].get("historydate"))
-            timestamp = history_date - timedelta(
+            timestamp = channel["stats"].get("historydate") - timedelta(
                 days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
             timestamp = datetime.combine(timestamp, datetime.max.time())
             items_count += 1
@@ -304,6 +305,8 @@ class QueryGenerator:
     es_manager = ChannelManager()
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+    exists_filter = EXISTS_FILTER
 
     def __init__(self, query_params):
         self.query_params = query_params
@@ -344,12 +347,46 @@ class QueryGenerator:
 
         return filters
 
+    def __get_filters_match_phrase(self):
+        filters = []
+
+        for field in self.match_phrase_filter:
+            value = self.query_params.get(field, None)
+            if value:
+                filters.append(
+                    QueryBuilder().build().must().match_phrase().field(field).value(value).get()
+                )
+
+        return filters
+
+    def __get_filters_exists(self):
+        filters = []
+
+        for field in self.exists_filter:
+            value = self.query_params.get(field, None)
+
+            if value is None:
+                continue
+
+            query = QueryBuilder().build()
+
+            if value is True or value == "true":
+                query = query.must()
+            else:
+                query = query.must_not()
+            filters.append(query.exists().field(field).get())
+
+        return filters
+
     def get_search_filters(self, channels_ids=None):
         filters_term = self.__get_filters_term()
         filters_range = self.__get_filter_range()
+        filters_match_phrase = self.__get_filters_match_phrase()
+        filters_exists = self.__get_filters_exists()
         forced_filter = [self.es_manager.forced_filters()]
 
-        filters = filters_term + filters_range + forced_filter
+        filters = filters_term + filters_range + filters_match_phrase +\
+            filters_exists + forced_filter
 
         if channels_ids:
             filters.append(self.es_manager.ids_query(channels_ids))

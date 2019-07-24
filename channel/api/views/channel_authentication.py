@@ -18,6 +18,7 @@ from administration.notifications import send_admin_notification
 from administration.notifications import send_new_channel_authentication_email
 from administration.notifications import send_welcome_email
 from es_components.managers.video import VideoManager
+from es_components.connections import init_es_connection
 from segment.models import SegmentChannel
 from segment.models import SegmentKeyword
 from segment.models import SegmentVideo
@@ -31,6 +32,8 @@ from utils.celery.dmp_celery import send_task_update_channel_stats
 from utils.celery.dmp_celery import send_task_update_channel_general_data
 from channel.models import AuthChannel
 
+
+init_es_connection()
 
 GOOGLE_API_TOKENINFO_URL_TEMPLATE = "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={}"
 

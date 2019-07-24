@@ -63,6 +63,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         channel = channel[0]
         channel.populate_custom_properties(**data)
+
         self.channel_manager().upsert([channel])
 
         return self.get(*args, **kwargs)
