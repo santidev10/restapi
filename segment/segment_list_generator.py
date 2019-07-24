@@ -48,9 +48,19 @@ class SegmentListGenerator(object):
     BATCH_LIMIT = None
 
     def __init__(self, *_, **kwargs):
-        self.script_tracker = kwargs["script_tracker"]
+        # If initialized with an APIScriptTracker instance, then expected to run full brand safety
+        # else main run method should not be called since it relies on an APIScriptTracker instance
+        try:
+            self.script_tracker = kwargs["api_tracker"]
+            self.cursor_id = self.script_tracker.cursor_id
+            self.unclassified_whitelist_manager = self.segment_model.objects.get(
+                title=self.get_segment_title(self.segment_model.segment_type, "Unclassified",
+                                             PersistentSegmentCategory.WHITELIST)
+            )
+            self.is_manual = False
+        except KeyError:
+            self.is_manual = True
         self.list_generator_type = kwargs["list_generator_type"]
-        self.cursor_id = self.script_tracker.cursor_id
         self.sdb_connector = SingleDatabaseApiConnector()
         self.es_connector = ElasticSearchConnector()
         self.audit_provider = AuditProvider()
@@ -65,26 +75,23 @@ class SegmentListGenerator(object):
         self.batch_count = 0
         self._set_config()
 
-        self.unclassified_whitelist_manager = self.segment_model.objects.get(
-            title=self.get_segment_title(self.segment_model.segment_type, "Unclassified", PersistentSegmentCategory.WHITELIST)
-        )
-
     def _set_config(self):
         """
         Set configuration for script depending on list generation type, either channel or video
         :return:
         """
         if self.list_generator_type == constants.CHANNEL:
+            if not self.is_manual:
+                self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                    category="blacklist")
+                self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
+                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+                    category="whitelist")
+
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
             self.related_segment_model = PersistentSegmentRelatedChannel
-
-            self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-                category="blacklist")
-            self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-                category="whitelist")
 
             # Config methods
             self.sdb_data_generator = self._channel_batch_generator
@@ -100,13 +107,17 @@ class SegmentListGenerator(object):
             self.RELATED_SEGMENT_SORT_KEY = "subscribers"
 
         elif self.list_generator_type == constants.VIDEO:
+            if not self.is_manual:
+                self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                    category="blacklist")
+                self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
+                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
+                    category="whitelist")
+
             # Config segments and models
             self.segment_model = PersistentSegmentVideo
             self.related_segment_model = PersistentSegmentRelatedVideo
-            self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE, category="blacklist")
-            self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE, category="whitelist")
 
             # Config methods
             self.sdb_data_generator = self._video_batch_generator
@@ -124,9 +135,30 @@ class SegmentListGenerator(object):
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
 
     def run(self):
+        """
+        If initialized with an APIScriptTracker instance, then expected to run full brand safety
+                else main run method should not be called since it relies on an APIScriptTracker instance
+        :return: None
+        """
+        if self.is_manual:
+            raise ValueError("SegmentListGenerator was not initialized with an APIScriptTracker instance.")
         for batch in self.sdb_data_generator(self.cursor_id):
             self._process(batch)
         logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
+
+    def manual(self, items, segment_title, data_mapping):
+        new_segment = self.segment_model.objects.create(
+            title=segment_title,
+            category=PersistentSegmentCategory.WHITELIST,
+            is_master=False,
+        )
+        related_to_create = []
+        for item in items:
+            data = {
+                related_key: item[data_key] for related_key, data_key in item.items()
+            }
+            related_to_create.append(self.related_segment_model(segment=new_segment, **data))
+        self.related_segment_model.objects.bulk_create(related_to_create)
 
     def _process(self, sdb_items):
         """
@@ -154,7 +186,7 @@ class SegmentListGenerator(object):
                 logger.error("In unclassified: {}".format(
                     ["{}, {}".format(item[self.PK_NAME], item["category"]) for item in items]))
                 whitelist_segment_manager = self.unclassified_whitelist_manager
-            to_create = self._instantiate_related_items(items, whitelist_segment_manager)
+            to_create = self.instantiate_related_items(items, whitelist_segment_manager)
             if clean_unclassified:
                 self._clean(self.unclassified_whitelist_manager, to_create)
             self._clean(whitelist_segment_manager, to_create)
@@ -253,12 +285,12 @@ class SegmentListGenerator(object):
         """
         # Sort audits by brand safety results and truncate master lists
         whitelist_items, blacklist_items = self._sort_whitelist_blacklist(items)
-        blacklist_to_create = self._instantiate_related_items(blacklist_items, self.master_blacklist_segment)
+        blacklist_to_create = self.instantiate_related_items(blacklist_items, self.master_blacklist_segment)
         self._clean(self.master_blacklist_segment, blacklist_to_create)
         self.related_segment_model.objects.bulk_create(blacklist_to_create)
         self._truncate_list(self.master_blacklist_segment, self.BLACKLIST_SIZE)
 
-        whitelist_to_create = self._instantiate_related_items(whitelist_items, self.master_whitelist_segment)
+        whitelist_to_create = self.instantiate_related_items(whitelist_items, self.master_whitelist_segment)
         self._clean(self.master_whitelist_segment, whitelist_to_create)
         self.related_segment_model.objects.bulk_create(whitelist_to_create)
         self._truncate_list(self.master_whitelist_segment, self.WHITELIST_SIZE)
@@ -279,7 +311,7 @@ class SegmentListGenerator(object):
         )
         return categorized_segment_title
 
-    def _instantiate_related_items(self, items, segment_manager):
+    def instantiate_related_items(self, items, segment_manager):
         """
         Instantiate related objects
         :param items: sdb data merged with es data
