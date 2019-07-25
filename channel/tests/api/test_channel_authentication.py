@@ -16,7 +16,6 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     url = reverse(ChannelPathName.CHANNEL_AUTHENTICATION, [Namespace.CHANNEL])
 
-    @patch("es_components.managers.video.VideoManager.get_all_video_ids", return_value=[])
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
@@ -75,7 +74,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, test_error)
 
-    @patch("es_components.managers.video.VideoManager.get_all_video_ids", return_value=[])
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
     def test_send_welcome_email(self, mock_youtube, flow, *args):
