@@ -17,7 +17,6 @@ from oauth2client.client import OAuth2WebServerFlow
 from administration.notifications import send_admin_notification
 from administration.notifications import send_new_channel_authentication_email
 from administration.notifications import send_welcome_email
-from es_components.managers.video import VideoManager
 from es_components.connections import init_es_connection
 from segment.models import SegmentChannel
 from segment.models import SegmentKeyword
@@ -90,10 +89,8 @@ class ChannelAuthenticationApiView(APIView):
                         data={"auth_token": user.auth_token.key, "is_active": user.is_active})
 
     def send_update_channel_tasks(self, channel_id):
-        video_ids = VideoManager().get_all_video_ids(channel_id)
-
-        send_task_update_channel_stats((channel_id, video_ids))
-        send_task_update_channel_general_data((channel_id, video_ids))
+        send_task_update_channel_stats((channel_id,))
+        send_task_update_channel_general_data((channel_id,))
 
     def get_credentials(self, code):
         oauth2_flow = OAuth2WebServerFlow(
