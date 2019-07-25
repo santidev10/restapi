@@ -158,8 +158,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
 
-        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                                    Sections.CUSTOM_PROPERTIES)
+        allowed_sections_to_load = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
+                                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
         query_params = deepcopy(request.query_params)
 
         try:
@@ -170,15 +170,19 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         if request.user.is_staff or channels_ids:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        es_manager = self.es_manager(allowed_sections_to_load)
+        es_manager = self.es_manager()
 
         filters = ChannelQueryGenerator(query_params).get_search_filters(channels_ids)
         sort = get_sort_rule(query_params)
         size, offset, page = get_limits(query_params)
 
+        fields_to_load = self.get_fields(query_params, allowed_sections_to_load)
+
+
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset).execute().hits
+            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset)\
+                .source(includes=fields_to_load).execute().hits
 
             aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
                 if query_params.get("aggregations") else None
@@ -192,7 +196,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         result = {
             "current_page": page,
-            "items": [self.add_chart_data(channel.to_dict()) for channel in channels],
+            "items": [self.add_chart_data(channel.to_dict(skip_empty=False)) for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations
@@ -215,10 +219,26 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
             return channels_ids
 
+    def get_fields(self, query_params, allowed_sections_to_load):
+        fields = query_params.get("fields", [])
+
+        if fields:
+            fields = fields.split(",")
+
+        fields = [
+            field
+            for field in fields
+            if field.split(".")[0] in allowed_sections_to_load
+        ]
+
+        return fields
+
     @staticmethod
     def add_chart_data(channel):
         """ Generate and add chart data for channel """
         if not channel.get("stats"):
+            channel["chart_data"] = {}
+            channel["stats"] = {}
             return channel
 
         items = []
