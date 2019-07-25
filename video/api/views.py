@@ -94,8 +94,9 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         "current_page": 1,
     }
     es_manager = VideoManager
+    max_pages_count = 200
 
-    @add_brand_safety_data
+    # @add_brand_safety_data
     def get(self, request):
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
@@ -105,7 +106,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,)
         try:
-            channels_ids = self.get_own_channel_ids(request.user, query_params)
+            channels_ids = self.get_channel_id(request.user, query_params)
         except ChannelsVideoNotAvailable:
             return Response(self.empty_response)
 
@@ -116,14 +117,14 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         es_manager = self.es_manager(allowed_sections_to_load)
 
         filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
-        sort = get_sort_rule(query_params)
+        # sort = get_sort_rule(query_params)
+        sort = None
         size, offset, page = get_limits(query_params)
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
             videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset).execute().hits
-
-            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
+            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None))\
                 if query_params.get("aggregations") else None
 
         except Exception as e:
