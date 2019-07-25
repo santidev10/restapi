@@ -221,26 +221,37 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 class VideoRetrieveUpdateApiView(SingledbApiView):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ('userprofile.video_details',)
-    _connector_get = None
     connector_put = Connector().put_video
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
 
-    @property
-    def connector_get(self):
-        """
-        Lazy init for test purpose
-        :return:
-        """
-        if self._connector_get is None:
-            self._connector_get = Connector().get_video
-        return self._connector_get
+    __video_manager = VideoManager
+
+    def video_manager(self, sections=None):
+        if sections or self.__video_manager is None:
+            self.__video_manager = VideoManager(sections)
+        return self.__video_manager
 
     @add_brand_safety_data
     def get(self, *args, **kwargs):
-        response = super().get(*args, **kwargs)
-        VideoListApiView.adapt_response_data(
-            {'items': [response.data]}, self.request.user)
-        return response
+        video_id = kwargs.get('pk')
+
+        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.CHANNEL,
+                                    Sections.ADS_STATS, Sections.ANALYTICS)
+
+        video = self.video_manager(allowed_sections_to_load).model.get(video_id)
+
+        if not video:
+            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
+
+        user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
+
+        result = video.to_dict()
+
+        if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
+                or not self.request.user.is_staff):
+            result[Sections.ANALYTICS] = {}
+
+        return Response(result)
 
 
 class VideoSetApiView(SingledbApiView):
