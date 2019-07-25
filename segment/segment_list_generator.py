@@ -51,12 +51,8 @@ class SegmentListGenerator(object):
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
         # else main run method should not be called since it relies on an APIScriptTracker instance
         try:
-            self.script_tracker = kwargs["api_tracker"]
+            self.script_tracker = kwargs["script_tracker"]
             self.cursor_id = self.script_tracker.cursor_id
-            self.unclassified_whitelist_manager = self.segment_model.objects.get(
-                title=self.get_segment_title(self.segment_model.segment_type, "Unclassified",
-                                             PersistentSegmentCategory.WHITELIST)
-            )
             self.is_manual = False
         except KeyError:
             self.is_manual = True
@@ -133,6 +129,11 @@ class SegmentListGenerator(object):
             self.RELATED_SEGMENT_SORT_KEY = "views"
         else:
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
+
+        self.unclassified_whitelist_manager = self.segment_model.objects.get(
+            title=self.get_segment_title(self.segment_model.segment_type, "Unclassified",
+                                         PersistentSegmentCategory.WHITELIST)
+        )
 
     def run(self):
         """

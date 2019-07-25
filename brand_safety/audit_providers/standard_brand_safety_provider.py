@@ -244,7 +244,6 @@ class StandardBrandSafetyProvider(object):
         :param channel_ids: list | tuple
         :return: None
         """
-        self.channel_id_pool_batch_limit = 3
         pool = mp.Pool(processes=self.max_process_count)
         results = pool.map(self._process_audits, self.audit_provider.batch(channel_ids, self.channel_id_pool_batch_limit))
 
