@@ -120,7 +120,7 @@ class BrandSafetyChannelAPIView(APIView):
                 try:
                     sdb_video = video_sdb_data[_id]
                 except KeyError:
-                    sdb_video = {}
+                    continue
                 video_brand_safety_data = get_brand_safety_data(data["overall_score"])
                 video_data = {
                     "id": _id,
