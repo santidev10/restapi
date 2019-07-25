@@ -26,12 +26,12 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.es_components_api_utils import get_limits
+from utils.es_components_api_utils import get_sort_rule
+from utils.es_components_api_utils import QueryGenerator
 
 init_es_connection()
 
-
-DEFAULT_PAGE_NUMBER = 1
-DEFAULT_PAGE_SIZE = 50
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title")
@@ -172,9 +172,9 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         es_manager = self.es_manager(allowed_sections_to_load)
 
-        filters = QueryGenerator(query_params).get_search_filters(channels_ids)
-        sort = self.get_sort_rule(query_params)
-        size, offset, page = self.get_limits(query_params)
+        filters = ChannelQueryGenerator(query_params).get_search_filters(channels_ids)
+        sort = get_sort_rule(query_params)
+        size, offset, page = get_limits(query_params)
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
@@ -214,20 +214,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
                 raise UserChannelsNotAvailable
 
             return channels_ids
-
-    def get_limits(self, query_params):
-        size = int(query_params.get("size", DEFAULT_PAGE_SIZE))
-        page = int(query_params.get("page", DEFAULT_PAGE_NUMBER))
-        offset = 0 if page <= 1 else (page - 1) * size
-
-        return size, offset, page
-
-    def get_sort_rule(self, query_params):
-        sort_params = query_params.get("sort", None)
-
-        if sort_params:
-            key, direction = sort_params.split(":")
-            return [{key: {"order": direction}}]
 
     @staticmethod
     def add_chart_data(channel):
@@ -301,94 +287,9 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)
 
 
-class QueryGenerator:
+class ChannelQueryGenerator(QueryGenerator):
     es_manager = ChannelManager()
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-
-    def __init__(self, query_params):
-        self.query_params = query_params
-
-    def __get_filter_range(self):
-        filters = []
-
-        for field in self.range_filter:
-
-            range = self.query_params.get(field, None)
-
-            if range:
-                min, max = range.split(",")
-
-                if not (min and max):
-                    continue
-
-                query = QueryBuilder().build().must().range().field(field)
-                if min:
-                    query = query.gte(int(min))
-                if max:
-                    query = query.lte(int(max))
-                filters.append(query.get())
-
-        return filters
-
-    def __get_filters_term(self):
-        filters = []
-
-        for field in self.terms_filter:
-
-            value = self.query_params.get(field, None)
-            if value:
-                value = value.split(",")
-                filters.append(
-                    QueryBuilder().build().must().terms().field(field).value(value).get()
-                )
-
-        return filters
-
-    def __get_filters_match_phrase(self):
-        filters = []
-
-        for field in self.match_phrase_filter:
-            value = self.query_params.get(field, None)
-            if value:
-                filters.append(
-                    QueryBuilder().build().must().match_phrase().field(field).value(value).get()
-                )
-
-        return filters
-
-    def __get_filters_exists(self):
-        filters = []
-
-        for field in self.exists_filter:
-            value = self.query_params.get(field, None)
-
-            if value is None:
-                continue
-
-            query = QueryBuilder().build()
-
-            if value is True or value == "true":
-                query = query.must()
-            else:
-                query = query.must_not()
-            filters.append(query.exists().field(field).get())
-
-        return filters
-
-    def get_search_filters(self, channels_ids=None):
-        filters_term = self.__get_filters_term()
-        filters_range = self.__get_filter_range()
-        filters_match_phrase = self.__get_filters_match_phrase()
-        filters_exists = self.__get_filters_exists()
-        forced_filter = [self.es_manager.forced_filters()]
-
-        filters = filters_term + filters_range + filters_match_phrase +\
-            filters_exists + forced_filter
-
-        if channels_ids:
-            filters.append(self.es_manager.ids_query(channels_ids))
-
-        return filters
