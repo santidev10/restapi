@@ -1,24 +1,18 @@
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
-from segment.models.base import BaseSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.models.persistent.base import BasePersistentSegment
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS
 from singledb.connector import SingleDatabaseApiConnector as Connector
-
+import brand_safety.constants as constants
 
 class ModelDoesNotExist(Exception):
     pass
 
 
 @property
-def SEGMENT_MODELS():
-    return [m for m in BaseSegment.__subclasses__()]
-
-
-@property
 def SEGMENT_TYPES():
-    return [m.segment_type for m in SEGMENT_MODELS.fget()]
+    return [constants.CHANNEL, constants.VIDEO]
 
 
 @property
@@ -29,6 +23,7 @@ def PERSISTENT_SEGMENT_MODELS():
 @property
 def PERSISTENT_SEGMENT_TYPES():
     return [m.segment_type for m in PERSISTENT_SEGMENT_MODELS.fget()]
+
 
 def get_persistent_segment_model_by_type(segment_type):
     for model in PERSISTENT_SEGMENT_MODELS.fget():
