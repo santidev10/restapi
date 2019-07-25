@@ -1,8 +1,6 @@
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models.base import BaseSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
-from segment.models.keyword import SegmentKeyword
-from segment.models.video import SegmentVideo
 from segment.models.persistent.base import BasePersistentSegment
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS
@@ -31,25 +29,6 @@ def PERSISTENT_SEGMENT_MODELS():
 @property
 def PERSISTENT_SEGMENT_TYPES():
     return [m.segment_type for m in PERSISTENT_SEGMENT_MODELS.fget()]
-
-
-def get_segment_model_by_type(segment_type):
-    for model in SEGMENT_MODELS.fget():
-        if model.segment_type == segment_type:
-            return model
-    raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
-
-
-def update_all_segments_statistics():
-    for model in SEGMENT_MODELS.fget():
-        model.objects.update_statistics()
-        
-
-def total_update_segments(force_creation=False):
-    SegmentVideo.objects.update_youtube_segments(force_creation=force_creation)
-    SegmentKeyword.objects.update_youtube_segments(force_creation=force_creation)
-    update_all_segments_statistics()
-
 
 def get_persistent_segment_model_by_type(segment_type):
     for model in PERSISTENT_SEGMENT_MODELS.fget():

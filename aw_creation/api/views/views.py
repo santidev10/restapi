@@ -73,8 +73,6 @@ from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from segment.models import CustomSegmentRelated
-from segment.models import SegmentChannel
-from segment.models import SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -1717,31 +1715,6 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
             ad_group_creation=ad_group_creation, type=targeting_type,
         )
         return obj
-
-
-class UserListsImportMixin:
-    @staticmethod
-    def get_lists_items_ids(ids, list_type):
-        from segment.utils import get_segment_model_by_type
-        from keyword_tool.models import KeywordsList
-
-        if list_type == "keyword":
-            item_ids = KeywordsList.objects.filter(
-                id__in=ids, keywords__text__isnull=False
-            ).values_list(
-                "keywords__text", flat=True
-            ).order_by("keywords__text").distinct()
-        else:
-            manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids,
-                                      related__related_id__isnull=False) \
-                .values_list('related__related_id', flat=True) \
-                .order_by('related__related_id') \
-                .distinct()
-        return item_ids
-
-
-# tools
 
 
 class TopicToolListApiView(ListAPIView):

@@ -13,10 +13,8 @@ from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from channel.api.mixins import ChannelYoutubeSearchMixin
-from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
-from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
 
@@ -72,8 +70,7 @@ class ChannelListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
-                         SegmentFilterMixin):
+class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin):
     """
     Proxy view for channel list
     """
@@ -118,10 +115,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
                 request.query_params.get("youtube_link"),
                 request.query_params.get("youtube_keyword"))):
             return self.search_channels()
-        # query params validation
-        is_query_params_valid, error = self._validate_query_params()
-        if not is_query_params_valid:
-            return Response({"error": error}, HTTP_400_BAD_REQUEST)
         # init procedures
         empty_response = {
             "max_page": 1,
@@ -132,7 +125,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         # prepare query params
         query_params = deepcopy(request.query_params)
         query_params._mutable = True
-        channels_ids = []
         connector = Connector()
         # own channels
         user = request.user
@@ -152,50 +144,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             query_params.update(ids_hash=ids_hash)
         elif own_channels == "1" and not user_can_see_own_channels:
             return Response(empty_response)
-        channel_segment_id = self.request.query_params.get("channel_segment")
-        video_segment_id = self.request.query_params.get("video_segment")
-        if any((channel_segment_id, video_segment_id)):
-            segment = self._obtain_segment()
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            if isinstance(segment, SegmentVideo):
-                segment_videos_ids = segment.get_related_ids()
-                try:
-                    ids_hash = connector.store_ids(list(segment_videos_ids))
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                request_params = {
-                    "ids_hash": ids_hash,
-                    "fields": "channel_id",
-                    "size": 10000
-                }
-                try:
-                    videos_data = connector.get_video_list(request_params)
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                segment_channels_ids = {
-                    obj.get("channel_id") for obj in videos_data.get("items")}
-                query_params.pop("video_segment")
-            else:
-                segment_channels_ids = segment.get_related_ids()
-                query_params.pop("channel_segment")
-            if channels_ids:
-                channels_ids = [
-                    channel_id
-                    for channel_id in channels_ids
-                    if channel_id in segment_channels_ids]
-            else:
-                channels_ids = segment_channels_ids
-            if not channels_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(channels_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
+
         # adapt the request params
         self.adapt_query_params(query_params)
         # make call
