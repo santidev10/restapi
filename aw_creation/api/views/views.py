@@ -359,25 +359,8 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
 class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
-    def post(self, request, segment_type, **_):
-        item_ids = self.get_related_ids(request.data)
-        items = [dict(criteria=uid) for uid in item_ids]
-        add_targeting_list_items_info(items, segment_type)
-        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
-            return Response(data=[item for item in items if item["id"] is not None])
-        return Response(data=items)
-
     def get_related_ids(self, ids):
         ids = CustomSegmentRelated.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
-
-    @staticmethod
-    def get_keyword_item_ids(ids):
-        from segment.models import SegmentRelatedKeyword
-        ids = SegmentRelatedKeyword.objects.filter(
             segment_id__in=ids
         ).values_list("related_id", flat=True).order_by(
             "related_id").distinct()
@@ -434,18 +417,6 @@ class TargetingItemsSearchApiView(APIView):
                      name=i['title'], thumbnail=i['thumbnail_image_url'])
                 for i in response_data["items"]
             ]
-        return items
-
-    @staticmethod
-    def search_keyword_items(query):
-        from keyword_tool.models import KeyWord
-        keywords = KeyWord.objects.filter(
-            text__icontains=query,
-        ).exclude(text=query).values_list("text", flat=True).order_by("text")
-        items = [
-            dict(criteria=k, name=k)
-            for k in itertools.chain((query,), keywords)
-        ]
         return items
 
     @staticmethod
