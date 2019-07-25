@@ -36,7 +36,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         UserChannel.objects.create(channel_id=channel_id, user=user)
 
         with patch("es_components.managers.channel.ChannelManager.get",
-                   return_value=[Channel(id=channel_id)]):
+                   return_value=[Channel(id=channel_id)]), \
+             patch("es_components.managers.channel.ChannelManager.model.get",
+                   return_value=Channel(id=channel_id)):
 
             url = self._get_url(channel_id)
             response = self.client.put(url, dict())
@@ -53,7 +55,9 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         channel_id = "test_channel_id"
 
         with patch("es_components.managers.channel.ChannelManager.get",
-                   return_value=[Channel(id=channel_id)]):
+                   return_value=[Channel(id=channel_id)]), \
+             patch("es_components.managers.channel.ChannelManager.model.get",
+                   return_value=Channel(id=channel_id)):
 
             url = self._get_url(channel_id)
             response = self.client.put(url, dict())
@@ -80,8 +84,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.fill_all_groups(user)
         channel_id = "test_channel_id"
 
-        with patch("es_components.managers.channel.ChannelManager.get",
-                   return_value=[Channel(id=channel_id)]):
+        with patch("es_components.managers.channel.ChannelManager.model.get",
+                   return_value=Channel(id=channel_id)):
 
             url = self._get_url(channel_id)
             response = self.client.get(url)
@@ -100,8 +104,8 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         user.refresh_from_db()
         channel_id = "test_channel_id"
 
-        with patch("es_components.managers.channel.ChannelManager.get",
-                   return_value=[Channel(id=channel_id, ads_stats={"clicks_count": 100})]):
+        with patch("es_components.managers.channel.ChannelManager.model.get",
+                   return_value=Channel(id=channel_id, ads_stats={"clicks_count": 100})):
 
             url = self._get_url(channel_id)
             response = self.client.get(url)
