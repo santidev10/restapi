@@ -178,7 +178,6 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         fields_to_load = self.get_fields(query_params, allowed_sections_to_load)
 
-
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
             channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset)\
