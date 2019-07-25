@@ -3,7 +3,7 @@ class ESResultPatcher:
     def hits(self):
         return []
 
-    def to_dict(self):
+    def to_dict(self, *args, **kwargs):
         return {}
 
 
@@ -13,3 +13,6 @@ class SearchDSLPatcher:
 
     def count(self):
         return 0
+
+    def source(self, *args, **kwargs):
+        return SearchDSLPatcher()

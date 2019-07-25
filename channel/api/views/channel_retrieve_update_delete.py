@@ -45,7 +45,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
     video_manager = VideoManager((Sections.GENERAL_DATA, Sections.STATS))
 
     def channel_manager(self, sections=None):
-        if sections or self.channel_manager is None:
+        if sections or self.__channel_manager is None:
             self.__channel_manager = ChannelManager(sections)
         return self.__channel_manager
 
@@ -69,25 +69,25 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         return self.get(*args, **kwargs)
 
     @add_brand_safety_data
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
 
         channel_id = kwargs.get('pk')
-        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
-                                    Sections.STATS, Sections.ADS_STATS)
+        allowed_sections_to_load = (Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA,
+                                    Sections.CUSTOM_PROPERTIES, Sections.STATS, Sections.ADS_STATS)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience")\
                 or self.request.user.is_staff:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        channel = self.channel_manager(allowed_sections_to_load).get([channel_id])
+        fields_to_load = self.get_fields(request.query_params, allowed_sections_to_load)
+
+        channel = self.channel_manager().model.get(channel_id, _source=fields_to_load)
 
         if not channel:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
-
-        channel = channel[0]
 
         video_filters = self.video_manager.by_channel_ids_query(channel_id) & self.video_manager.forced_filters()
         videos = self.video_manager.search(
@@ -125,6 +125,20 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             send_task_delete_channels(([channel_id],))
 
         return Response()
+
+    def get_fields(self, query_params, allowed_sections_to_load):
+        fields = query_params.get("fields", [])
+
+        if fields:
+            fields = fields.split(",")
+
+        fields = [
+            field
+            for field in fields
+            if field.split(".")[0] in allowed_sections_to_load
+        ]
+
+        return fields
 
     def get_video_sort_rule(self):
         return [{"general_data.youtube_published_at": {"order": SortDirections.DESCENDING}}]
