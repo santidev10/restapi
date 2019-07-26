@@ -2,6 +2,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
@@ -59,10 +60,23 @@ class HighlightChannelPermissionsApiViewTestCase(ExtendedAPITestCase):
         )
 
 
-class HighlightChannelAggregationsApiViewTestCase(ExtendedAPITestCase):
+class HighlightChannelBaseApiViewTestCase(ExtendedAPITestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        init_es_connection()
+
     def setUp(self):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_highlights")
+        try:
+            ChannelManager().truncate()
+        except:
+            pass
+        Channel.init()
+
+
+class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
     def test_aggregations_no_aggregations(self):
         url = get_url()
@@ -115,10 +129,7 @@ class HighlightChannelAggregationsApiViewTestCase(ExtendedAPITestCase):
         )
 
 
-class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase):
-    def setUp(self):
-        self.user = self.create_test_user()
-        self.user.add_custom_user_permission("view_highlights")
+class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
     def test_no_items(self):
         url = get_url(size=0)
@@ -132,7 +143,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase):
         channels = [Channel(id=next(int_iterator)) for _ in range(page_size + 1)]
         ChannelManager(Sections.GENERAL_DATA).upsert(channels)
 
-        url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC)
+        url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
 
         self.assertEqual(
@@ -143,11 +154,11 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase):
     def test_max_items(self):
         max_page = 5
         page_size = 20
-        total_items = page_size*max_page + 1
+        total_items = page_size * max_page + 1
         channels = [Channel(id=next(int_iterator)) for _ in range(total_items)]
         ChannelManager(Sections.GENERAL_DATA).upsert(channels)
 
-        url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC)
+        url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
 
         self.assertEqual(

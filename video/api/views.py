@@ -213,7 +213,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         """
         user_channels = set(user.channels.values_list(
             "channel_id", flat=True))
-        from channel.api.views import ChannelListApiView
+        from channel.api.views.channel_list import adapt_response_channel_data
         items = response_data.get("items", [])
         for item in items:
             if "video_id" in item:
@@ -262,7 +262,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
                     channel_item[key[9:]] = item[key]
                     del item[key]
             if channel_item:
-                item["channel"] = ChannelListApiView.adapt_response_data(
+                item["channel"] = adapt_response_channel_data(
                     {"items": [channel_item]}, user)["items"][0]
 
         return response_data
