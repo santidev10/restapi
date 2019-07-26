@@ -1,16 +1,12 @@
 import json
 import logging
-from unittest import skip
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from segment.models import SegmentChannel
-from segment.models import SegmentRelatedChannel
 from segment.models import CustomSegment
 from segment.models import CustomSegmentRelated
-from utils.utittests.int_iterator import int_iterator
 from utils.utittests.test_case import ExtendedAPITestCase
 
 logger = logging.getLogger(__name__)
