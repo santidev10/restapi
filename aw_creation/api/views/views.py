@@ -418,6 +418,18 @@ class TargetingItemsSearchApiView(APIView):
         return items
 
     @staticmethod
+    def search_keyword_items(query):
+        from keyword_tool.models import KeyWord
+        keywords = KeyWord.objects.filter(
+            text__icontains=query,
+        ).exclude(text=query).values_list("text", flat=True).order_by("text")
+        items = [
+            dict(criteria=k, name=k)
+            for k in itertools.chain((query,), keywords)
+        ]
+        return items
+
+    @staticmethod
     def search_interest_items(query):
         audiences = Audience.objects.filter(
             name__icontains=query,
