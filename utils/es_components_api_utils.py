@@ -20,6 +20,21 @@ def get_sort_rule(query_params):
         return [{key: {"order": direction}}]
 
 
+def get_fields(query_params, allowed_sections_to_load):
+    fields = query_params.get("fields", [])
+
+    if fields:
+        fields = fields.split(",")
+
+    fields = [
+        field
+        for field in fields
+        if field.split(".")[0] in allowed_sections_to_load
+    ]
+
+    return fields
+
+
 class QueryGenerator:
     es_manager = None
     terms_filter = ()

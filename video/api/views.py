@@ -4,10 +4,9 @@ Video api views module
 import re
 from copy import deepcopy
 from datetime import timedelta
-from datetime import timezone
+from datetime import datetime
 from math import ceil
 
-from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -16,16 +15,12 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
-from segment.models import SegmentChannel
-from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
 
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
-from es_components.query_builder import QueryBuilder
 from es_components.connections import init_es_connection
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.api_views_mixins import SegmentFilterMixin
@@ -34,13 +29,15 @@ from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_limits
 from utils.es_components_api_utils import get_sort_rule
 from utils.es_components_api_utils import QueryGenerator
+from utils.es_components_api_utils import get_fields
+from utils.celery.dmp_celery import send_task_delete_videos
 
 
 init_es_connection()
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
-                "monetization.is_monetizable", "monetization.channel_preferred")
+                "monetization.is_monetizable", "monetization.channel_preferred", "stats.flags")
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
 
@@ -74,6 +71,57 @@ class VideoListCSVRendered(CSVStreamingRenderer):
     ]
 
 
+REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+
+
+def add_transcript(video):
+    transcript = None
+    if video.get("captions") and video["captions"].get("items"):
+        for caption in video["captions"].get("items"):
+            if caption.get("language_code") == "en":
+                text = caption.get("text")
+                transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+    video["transcript"] = transcript
+    return video
+
+
+def add_extra_fields(video):
+    video = add_transcript(video)
+    video = add_chart_data(video)
+    return video
+
+
+def add_chart_data(video):
+    if not video.get("stats"):
+        video["chart_data"] = []
+        video["stats"] = {}
+        return video
+
+    chart_data = []
+    items_count = 0
+    history = zip(
+        reversed(video["stats"].get("views_history") or []),
+        reversed(video["stats"].get("likes_history") or []),
+        reversed(video["stats"].get("dislikes_history") or []),
+        reversed(video["stats"].get("comments_history") or [])
+    )
+    for views, likes, dislikes, comments in history:
+        timestamp = video["stats"].get("history_date") - timedelta(
+                days=len(video["stats"].get("views_history")) - items_count - 1)
+        timestamp = datetime.combine(timestamp, datetime.max.time())
+        items_count += 1
+        if any((views, likes, dislikes, comments)):
+            chart_data.append(
+                {"created_at": "{}{}".format(str(timestamp), "Z"),
+                 "views": views,
+                 "likes": likes,
+                 "dislikes": dislikes,
+                 "comments": comments}
+            )
+    video["chart_data"] = chart_data
+    return video
+
+
 class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
@@ -96,7 +144,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
     es_manager = VideoManager
     max_pages_count = 200
 
-    # @add_brand_safety_data
+    @add_brand_safety_data
     def get(self, request):
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
@@ -104,7 +152,9 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         query_params = deepcopy(request.query_params)
 
-        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,)
+        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
+                                    Sections.CAPTIONS,)
         try:
             channels_ids = self.get_channel_id(request.user, query_params)
         except ChannelsVideoNotAvailable:
@@ -117,14 +167,17 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         es_manager = self.es_manager(allowed_sections_to_load)
 
         filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
-        # sort = get_sort_rule(query_params)
-        sort = None
+        sort = get_sort_rule(query_params)
         size, offset, page = get_limits(query_params)
+
+        fields_to_load = get_fields(query_params, allowed_sections_to_load)
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-            videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset).execute().hits
-            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None))\
+            videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
+                .source(includes=fields_to_load).execute().hits
+
+            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
                 if query_params.get("aggregations") else None
 
         except Exception as e:
@@ -136,7 +189,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         result = {
             "current_page": page,
-            "items": [video.to_dict() for video in videos],
+            "items": [add_extra_fields(video.to_dict()) for video in videos],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations
@@ -218,10 +271,9 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         return Connector().get_video_list_full(filters, fields=VideoListCSVRendered.header, batch_size=1000)
 
 
-class VideoRetrieveUpdateApiView(SingledbApiView):
+class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    permission_required = ('userprofile.video_details',)
-    connector_put = Connector().put_video
+    permission_required = ("userprofile.video_details",)
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
 
     __video_manager = VideoManager
@@ -232,20 +284,23 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
         return self.__video_manager
 
     @add_brand_safety_data
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         video_id = kwargs.get('pk')
 
-        allowed_sections_to_load = (Sections.GENERAL_DATA, Sections.STATS, Sections.CHANNEL,
-                                    Sections.ADS_STATS, Sections.ANALYTICS)
+        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
+                                    Sections.CAPTIONS,)
 
-        video = self.video_manager(allowed_sections_to_load).model.get(video_id)
+        fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
+
+        video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
 
         if not video:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = video.to_dict()
+        result = add_extra_fields(video.to_dict())
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
                 or not self.request.user.is_staff):
@@ -254,9 +309,13 @@ class VideoRetrieveUpdateApiView(SingledbApiView):
         return Response(result)
 
 
-class VideoSetApiView(SingledbApiView):
+class VideoSetApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    connector_delete = Connector().delete_videos
+
+    def delete(self, request, *args, **kwargs):
+        video_ids = request.data.get("delete", [])
+        send_task_delete_videos((video_ids,))
+        return Response()
 
 
 class VideoQueryGenerator(QueryGenerator):

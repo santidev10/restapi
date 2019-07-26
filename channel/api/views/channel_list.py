@@ -27,6 +27,7 @@ from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_limits
+from utils.es_components_api_utils import get_fields
 from utils.es_components_api_utils import get_sort_rule
 from utils.es_components_api_utils import QueryGenerator
 
@@ -176,7 +177,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         sort = get_sort_rule(query_params)
         size, offset, page = get_limits(query_params)
 
-        fields_to_load = self.get_fields(query_params, allowed_sections_to_load)
+        fields_to_load = get_fields(query_params, allowed_sections_to_load)
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
@@ -218,33 +219,19 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
             return channels_ids
 
-    def get_fields(self, query_params, allowed_sections_to_load):
-        fields = query_params.get("fields", [])
-
-        if fields:
-            fields = fields.split(",")
-
-        fields = [
-            field
-            for field in fields
-            if field.split(".")[0] in allowed_sections_to_load
-        ]
-
-        return fields
-
     @staticmethod
     def add_chart_data(channel):
         """ Generate and add chart data for channel """
         if not channel.get("stats"):
-            channel["chart_data"] = {}
+            channel["chart_data"] = []
             channel["stats"] = {}
             return channel
 
         items = []
         items_count = 0
         history = zip(
-            reversed(channel["stats"].get("subscribers_history")) if channel["stats"].get("subscribers_history") else [],
-            reversed(channel["stats"].get("views_history")) if channel["stats"].get("views_history") else []
+            reversed(channel["stats"].get("subscribers_history") or []),
+            reversed(channel["stats"].get("views_history") or [])
         )
         for subscribers, views in history:
             timestamp = channel["stats"].get("historydate") - timedelta(
