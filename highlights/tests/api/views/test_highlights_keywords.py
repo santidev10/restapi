@@ -1,11 +1,13 @@
 from unittest.mock import patch
 from urllib import parse
 
-from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
 import singledb.connector
+from highlights.api.urls.names import HighlightsNames
+from saas.urls.namespaces import Namespace
 from utils.utittests.response import MockResponse
+from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -14,14 +16,14 @@ class HighlightKeywordsListApiViewTestCase(ExtendedAPITestCase):
     def test_list_requests_views_from_sdb(self, requests_mock):
         self.create_test_user()
         requests_mock.get.return_value = MockResponse(json=dict())
-        url = reverse("singledb_api_urls:highlights_keywords") + "?" \
-              + parse.urlencode(dict(page=1, sort_by="thirty_days_views"))
-        with patch("singledb.api.views.highlights.Connector",
+        url = reverse(HighlightsNames.KEYWORDS, [Namespace.HIGHLIGHTS],
+                      query_params=dict(page=1, sort_by="thirty_days_views"))
+        with patch("highlights.api.views.keywords.Connector",
                    new=singledb.connector.SingleDatabaseApiConnector_origin):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         call_url = requests_mock.get.call_args[0][0]
-        requests_mock.get.assert_called_once_with(call_url, headers={'Content-Type': 'application/json'}, verify=False)
+        requests_mock.get.assert_called_once_with(call_url, headers={"Content-Type": "application/json"}, verify=False)
         parsed_url = parse.urlparse(call_url)
         query_params = parse.parse_qs(parsed_url.query)
         fields = query_params.get("fields", [])
