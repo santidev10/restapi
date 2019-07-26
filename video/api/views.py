@@ -4,9 +4,9 @@ Video api views module
 import re
 from copy import deepcopy
 from datetime import timedelta
-from datetime import timezone
+from datetime import datetime
+from math import ceil
 
-from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -15,16 +15,43 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
-from segment.models import SegmentChannel
-from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
+
+from es_components.constants import Sections
+from es_components.managers.video import VideoManager
+from es_components.connections import init_es_connection
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.es_components_api_utils import get_limits
+from utils.es_components_api_utils import get_sort_rule
+from utils.es_components_api_utils import QueryGenerator
+from utils.es_components_api_utils import get_fields
+from utils.celery.dmp_celery import send_task_delete_videos
+
+
+init_es_connection()
+
+TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
+                "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
+                "monetization.is_monetizable", "monetization.channel_preferred", "stats.flags")
+
+MATCH_PHRASE_FILTER = ("general_data.title",)
+
+RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
+                "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
+                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
+                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
+                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
+
+EXISTS_FILTER = ("ads_stats",)
+
+
+class ChannelsVideoNotAvailable(Exception):
+    pass
 
 
 class VideoListCSVRendered(CSVStreamingRenderer):
@@ -44,6 +71,57 @@ class VideoListCSVRendered(CSVStreamingRenderer):
     ]
 
 
+REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+
+
+def add_transcript(video):
+    transcript = None
+    if video.get("captions") and video["captions"].get("items"):
+        for caption in video["captions"].get("items"):
+            if caption.get("language_code") == "en":
+                text = caption.get("text")
+                transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+    video["transcript"] = transcript
+    return video
+
+
+def add_extra_fields(video):
+    video = add_transcript(video)
+    video = add_chart_data(video)
+    return video
+
+
+def add_chart_data(video):
+    if not video.get("stats"):
+        video["chart_data"] = []
+        video["stats"] = {}
+        return video
+
+    chart_data = []
+    items_count = 0
+    history = zip(
+        reversed(video["stats"].get("views_history") or []),
+        reversed(video["stats"].get("likes_history") or []),
+        reversed(video["stats"].get("dislikes_history") or []),
+        reversed(video["stats"].get("comments_history") or [])
+    )
+    for views, likes, dislikes, comments in history:
+        timestamp = video["stats"].get("history_date") - timedelta(
+                days=len(video["stats"].get("views_history")) - items_count - 1)
+        timestamp = datetime.combine(timestamp, datetime.max.time())
+        items_count += 1
+        if any((views, likes, dislikes, comments)):
+            chart_data.append(
+                {"created_at": "{}{}".format(str(timestamp), "Z"),
+                 "views": views,
+                 "likes": likes,
+                 "dislikes": dislikes,
+                 "comments": comments}
+            )
+    video["chart_data"] = chart_data
+    return video
+
+
 class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
@@ -57,192 +135,76 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
     renderer = VideoListCSVRendered
     export_file_title = "video"
     default_request_fields = DEFAULT_VIDEO_LIST_FIELDS
+    empty_response = {
+        "max_page": 1,
+        "items_count": 0,
+        "items": [],
+        "current_page": 1,
+    }
+    es_manager = VideoManager
+    max_pages_count = 200
 
     @add_brand_safety_data
     def get(self, request):
         is_query_params_valid, error = self._validate_query_params()
         if not is_query_params_valid:
             return Response({"error": error}, HTTP_400_BAD_REQUEST)
-        empty_response = {
-            "max_page": 1,
-            "items_count": 0,
-            "items": [],
-            "current_page": 1,
-        }
-        # prepare query params
+
         query_params = deepcopy(request.query_params)
-        query_params._mutable = True
-        # channel
-        channel_id = query_params.get("channel")
-        if not request.user.has_perm("userprofile.video_list") and \
-                not request.user.has_perm("userprofile.view_highlights"):
-            user_channels_ids = set(request.user.channels.values_list(
-                "channel_id", flat=True))
-            if channel_id and (channel_id not in user_channels_ids):
-                return Response(empty_response)
-            query_params.update(**{"channel": ",".join(user_channels_ids)})
-        # set up connector
-        connector = Connector()
-        # segment
-        channel_segment_id = self.request.query_params.get("channel_segment")
-        video_segment_id = self.request.query_params.get("video_segment")
-        if any((channel_segment_id, video_segment_id)):
-            # obtain segment
-            segment = self._obtain_segment()
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            if isinstance(segment, SegmentChannel):
-                segment_channels_ids = segment.get_related_ids()
-                try:
-                    ids_hash = connector.store_ids(list(segment_channels_ids))
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                query_params["hashed_channel_id__terms"] = ids_hash
-                query_params.pop("channel_segment")
-                self.adapt_query_params(query_params)
-                try:
-                    response_data = connector.get_video_list(query_params)
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                self.adapt_response_data(response_data, request.user)
-                return Response(response_data)
-            videos_ids = segment.get_related_ids()
-            query_params.pop("video_segment")
-            if not videos_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(videos_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
-        # adapt the request params
-        self.adapt_query_params(query_params)
-        # make call
+
+        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
+                                    Sections.CAPTIONS,)
         try:
-            response_data = connector.get_video_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        # adapt the response data
-        self.adapt_response_data(response_data, request.user)
-        return Response(response_data)
+            channels_ids = self.get_channel_id(request.user, query_params)
+        except ChannelsVideoNotAvailable:
+            return Response(self.empty_response)
 
-    @staticmethod
-    def adapt_query_params(query_params):
-        """
-        Adapt SDB request format
-        """
+        if channels_ids or request.user.is_staff or \
+                request.user.has_perm("userprofile.video_audience"):
+                allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        # filters --->
-        def make_range(name, name_min=None, name_max=None):
-            if name_min is None:
-                name_min = "min_{}".format(name)
-            if name_max is None:
-                name_max = "max_{}".format(name)
-            _range = [
-                query_params.pop(name_min, [None])[0],
-                query_params.pop(name_max, [None])[0],
-            ]
-            _range = [str(v) if v is not None else "" for v in _range]
-            _range = ",".join(_range)
-            if _range != ",":
-                query_params.update(**{"{}__range".format(name): _range})
+        es_manager = self.es_manager(allowed_sections_to_load)
 
-        def make(_type, name, name_in=None):
-            if name_in is None:
-                name_in = name
-            value = query_params.pop(name_in, [None])[0]
-            if value is not None:
-                query_params.update(**{"{}__{}".format(name, _type): value})
+        filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
+        sort = get_sort_rule(query_params)
+        size, offset, page = get_limits(query_params)
 
-        # min_views, max_views
-        make_range("views")
+        fields_to_load = get_fields(query_params, allowed_sections_to_load)
 
-        # min_daily_views, max_daily_views
-        make_range("daily_views")
+        try:
+            items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
+            videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
+                .source(includes=fields_to_load).execute().hits
 
-        # min_sentiment, max_sentiment
-        make_range("sentiment")
+            aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
+                if query_params.get("aggregations") else None
 
-        # min_engage_rate, max_engage_rate
-        make_range("engage_rate")
+        except Exception as e:
+            return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
-        # min_subscribers, max_subscribers
-        make_range(
-            "channel__subscribers", "min_subscribers", "max_subscribers")
+        max_page = None
+        if size:
+            max_page = min(ceil(items_count / size), self.max_pages_count)
 
-        # country
-        make("terms", "country")
+        result = {
+            "current_page": page,
+            "items": [add_extra_fields(video.to_dict()) for video in videos],
+            "items_count": items_count,
+            "max_page": max_page,
+            "aggregations": aggregations
+        }
+        return Response(result)
 
-        # category
-        make("terms", "category")
+    def get_channel_id(self, user, query_params):
+        channel_id = query_params.get("channel")
+        if not user.has_perm("userprofile.video_list") and \
+                not user.has_perm("userprofile.view_highlights"):
+            user_channels_ids = set(user.channels.values_list("channel_id", flat=True))
 
-        # language
-        make("terms", "lang_code", "language")
-
-        # text_search
-        text_search = query_params.pop("text_search", [None])[0]
-        if text_search:
-            query_params.update(text_search__match_phrase=text_search)
-
-        # channel
-        make("terms", "channel_id", "channel")
-
-        # creator
-        make("term", "channel__title", "creator")
-
-        # brand_safety
-        brand_safety = query_params.pop("brand_safety", [None])[0]
-        if brand_safety is not None:
-            val = "true" if brand_safety == "1" else "false"
-            query_params.update(has_transcript__term=val)
-
-        # is_monetizable
-        is_monetizable = query_params.pop("is_monetizable", [None])[0]
-        if is_monetizable is not None:
-            val = "false" if is_monetizable == "0" else "true"
-            query_params.update(is_monetizable__term=val)
-
-        # preferred_channel
-        preferred_channel = query_params.pop("preferred_channel", [None])[0]
-        if preferred_channel is not None:
-            val = "false" if preferred_channel == "0" else "true"
-            query_params.update(channel__preferred__term=val)
-
-        # upload_at
-        upload_at = query_params.pop("upload_at", [None])[0]
-        if upload_at is not None:
-            if upload_at != "0":
-                try:
-                    date = parse(upload_at).date()
-                    query_params.update(
-                        youtube_published_at__range="{},".format(
-                            date.isoformat()))
-                except (TypeError, ValueError):
-                    pass
-            elif upload_at == "0":
-                now = timezone.now()
-                start = now - timedelta(
-                    hours=now.hour,
-                    minutes=now.minute,
-                    seconds=now.second,
-                    microseconds=now.microsecond
-                )
-                end = start + timedelta(
-                    hours=23, minutes=59, seconds=59, microseconds=999999)
-                query_params.update(
-                    youtube_published_at__range="{},{}".format(
-                        start.isoformat(), end.isoformat()))
-
-        # trending
-        trending = query_params.pop("trending", [None])[0]
-        if trending is not None and trending != "all":
-            query_params.update(trends_list__term=trending)
-        # <--- filters
+            if channel_id and (channel_id not in user_channels_ids):
+                raise ChannelsVideoNotAvailable
+            return channel_id
 
     @staticmethod
     def adapt_response_data(response_data, user):
@@ -309,31 +271,64 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         return Connector().get_video_list_full(filters, fields=VideoListCSVRendered.header, batch_size=1000)
 
 
-class VideoRetrieveUpdateApiView(SingledbApiView):
+class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    permission_required = ('userprofile.video_details',)
-    _connector_get = None
-    connector_put = Connector().put_video
+    permission_required = ("userprofile.video_details",)
     default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
 
-    @property
-    def connector_get(self):
-        """
-        Lazy init for test purpose
-        :return:
-        """
-        if self._connector_get is None:
-            self._connector_get = Connector().get_video
-        return self._connector_get
+    __video_manager = VideoManager
+
+    def video_manager(self, sections=None):
+        if sections or self.__video_manager is None:
+            self.__video_manager = VideoManager(sections)
+        return self.__video_manager
 
     @add_brand_safety_data
-    def get(self, *args, **kwargs):
-        response = super().get(*args, **kwargs)
-        VideoListApiView.adapt_response_data(
-            {'items': [response.data]}, self.request.user)
-        return response
+    def get(self, request, *args, **kwargs):
+        video_id = kwargs.get('pk')
+
+        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
+                                    Sections.CAPTIONS,)
+
+        fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
+
+        video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
+
+        if not video:
+            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
+
+        user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
+
+        result = add_extra_fields(video.to_dict())
+
+        if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
+                or not self.request.user.is_staff):
+            result[Sections.ANALYTICS] = {}
+
+        return Response(result)
 
 
-class VideoSetApiView(SingledbApiView):
+class VideoSetApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    connector_delete = Connector().delete_videos
+
+    def delete(self, request, *args, **kwargs):
+        video_ids = request.data.get("delete", [])
+        send_task_delete_videos((video_ids,))
+        return Response()
+
+
+class VideoQueryGenerator(QueryGenerator):
+    es_manager = VideoManager()
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+    exists_filter = EXISTS_FILTER
+
+    def get_search_filters(self, channels_ids):
+        filters = super(VideoQueryGenerator, self).get_search_filters()
+
+        if channels_ids:
+            filters += self.es_manager.by_channel_ids_query(channels_ids)
+
+        return filters

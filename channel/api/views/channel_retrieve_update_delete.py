@@ -21,6 +21,7 @@ from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.es_components_api_utils import get_fields
 
 init_es_connection()
 
@@ -82,7 +83,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 or self.request.user.is_staff:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
-        fields_to_load = self.get_fields(request.query_params, allowed_sections_to_load)
+        fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
         channel = self.channel_manager().model.get(channel_id, _source=fields_to_load)
 
@@ -125,20 +126,6 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             send_task_delete_channels(([channel_id],))
 
         return Response()
-
-    def get_fields(self, query_params, allowed_sections_to_load):
-        fields = query_params.get("fields", [])
-
-        if fields:
-            fields = fields.split(",")
-
-        fields = [
-            field
-            for field in fields
-            if field.split(".")[0] in allowed_sections_to_load
-        ]
-
-        return fields
 
     def get_video_sort_rule(self):
         return [{"general_data.youtube_published_at": {"order": SortDirections.DESCENDING}}]

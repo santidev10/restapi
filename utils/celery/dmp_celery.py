@@ -19,6 +19,7 @@ class Task:
     CHANNEL_GENERAL_DATA = "channel_general_data"
     CHANNEL_STATS = "channel_stats"
     DELETE_CHANNELS = "delete_channels"
+    DELETE_VIDEOS = "delete_videos"
 
 
 def send_task_update_channel_stats(task_args):
@@ -31,3 +32,7 @@ def send_task_update_channel_general_data(task_args):
 
 def send_task_delete_channels(task_args):
     dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)
+
+
+def send_task_delete_videos(task_args):
+    dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
