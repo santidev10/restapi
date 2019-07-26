@@ -1,9 +1,8 @@
 import re
-
 from copy import deepcopy
-from math import ceil
 from datetime import datetime
 from datetime import timedelta
+from math import ceil
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
@@ -16,23 +15,20 @@ from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
+from channel.api.mixins import ChannelYoutubeSearchMixin
+from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
-from es_components.query_builder import QueryBuilder
-from es_components.connections import init_es_connection
-
-from channel.api.mixins import ChannelYoutubeSearchMixin
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.api_views_mixins import SegmentFilterMixin
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
+from utils.api_views_mixins import SegmentFilterMixin
 from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.es_components_api_utils import get_limits
-from utils.es_components_api_utils import get_fields
-from utils.es_components_api_utils import get_sort_rule
 from utils.es_components_api_utils import QueryGenerator
+from utils.es_components_api_utils import get_fields
+from utils.es_components_api_utils import get_limits
+from utils.es_components_api_utils import get_sort_rule
 
 init_es_connection()
-
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title")
@@ -47,7 +43,6 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "analytics.age55_64", "analytics.age65_")
 
 EXISTS_FILTER = ("custom_properties.emails", "ads_stats")
-
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
     title="Youtube channel",
@@ -181,7 +176,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset)\
+            channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
                 .source(includes=fields_to_load).execute().hits
 
             aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \

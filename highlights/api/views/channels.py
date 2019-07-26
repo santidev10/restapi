@@ -1,3 +1,4 @@
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
@@ -7,11 +8,16 @@ from singledb.api.views import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class HighlightChannelsListApiView(SingledbApiView):
-    permission_required = (
-        "userprofile.view_highlights",
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.view_highlights"),
+            IsAdminUser
+        ),
     )
 
     @add_brand_safety_data

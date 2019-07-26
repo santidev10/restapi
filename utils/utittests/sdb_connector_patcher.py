@@ -125,6 +125,9 @@ class SingleDatabaseApiConnectorPatcher:
     def unauthorize_channel(self, *args):
         pass
 
+    def get_highlights_channels(self, *args, **kwargs):
+        return {}
+
 
 def monkey_patch():
     import singledb.connector
