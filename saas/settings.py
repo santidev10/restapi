@@ -55,7 +55,8 @@ PROJECT_APPS = (
     "landing",
     "segment",
     "userprofile",
-    "related_tool"
+    "related_tool",
+    "highlights",
 )
 
 THIRD_PARTY_APPS = (
