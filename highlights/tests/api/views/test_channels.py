@@ -92,7 +92,7 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
 
         self.assertIn("aggregations", response.data)
         expected_aggregations = {
-            f"{agg}:count": []
+            agg: dict(buckets=[], doc_count_error_upper_bound=0, sum_other_doc_count=0)
             for agg in AllowedAggregations.values()
         }
         self.assertEqual(expected_aggregations, response.data["aggregations"])
@@ -107,10 +107,10 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         response = self.client.get(url)
 
         self.assertIn("aggregations", response.data)
-        self.assertIn("category:count", response.data["aggregations"])
+        self.assertIn("general_data.top_category", response.data["aggregations"])
         self.assertEqual(
-            [category, 1],
-            response.data["aggregations"]["category:count"]
+            [dict(key=category, doc_count=1)],
+            response.data["aggregations"]["general_data.top_category"]["buckets"]
         )
 
     def test_aggregations_languages(self):
@@ -123,10 +123,10 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         response = self.client.get(url)
 
         self.assertIn("aggregations", response.data)
-        self.assertIn("language:count", response.data["aggregations"])
+        self.assertIn("general_data.top_language", response.data["aggregations"])
         self.assertEqual(
-            [language, 1],
-            response.data["aggregations"]["language:count"]
+            [dict(key=language, doc_count=1)],
+            response.data["aggregations"]["general_data.top_language"]["buckets"]
         )
 
 
@@ -169,8 +169,8 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
 
 class AllowedAggregations(ExtendedEnum):
-    CATEGORY = "category"
-    LANGUAGE = "language"
+    CATEGORY = "general_data.top_category"
+    LANGUAGE = "general_data.top_language"
 
 
 class AllowedSorts(ExtendedEnum):

@@ -102,6 +102,7 @@ class UserChannelsNotAvailable(Exception):
 class BaseChannelListApiView:
     page_size = None
     max_pages_count = 0
+    allowed_aggregations = []
     es_manager = ChannelManager
 
     def _get_channel_list_data(self, request, channels_ids=None):
@@ -124,8 +125,7 @@ class BaseChannelListApiView:
         channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
             .source(includes=fields_to_load).execute().hits
 
-        aggregations = es_manager.get_aggregation(es_manager.search(filters=filters, limit=None)) \
-            if query_params.get("aggregations") else None
+        aggregations = self._get_aggregations(es_manager, filters, query_params)
 
         max_page = None
         if size:
@@ -139,6 +139,19 @@ class BaseChannelListApiView:
             "aggregations": aggregations
         }
         return result
+
+    def _get_aggregations(self, es_manager, filters, query_params):
+        aggregation_properties_str = query_params.get("aggregations", "")
+        aggregation_properties = [
+            prop
+            for prop in aggregation_properties_str.split(",")
+            if prop in self.allowed_aggregations
+        ]
+        aggregations = es_manager.get_aggregation(
+            es_manager.search(filters=filters, limit=None),
+            properties=aggregation_properties
+        )
+        return aggregations
 
     @staticmethod
     def add_chart_data(channel):
@@ -188,6 +201,77 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         "current_page": 1,
     }
     max_pages_count = 200
+    allowed_aggregations = (
+        "ads_stats.average_cpv:max",
+        "ads_stats.average_cpv:min",
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.ctr:max",
+        "ads_stats.ctr:min",
+        "ads_stats.ctr:percentiles",
+        "ads_stats.ctr_v:max",
+        "ads_stats.ctr_v:min",
+        "ads_stats.ctr_v:percentiles",
+        "ads_stats.video_view_rate:max",
+        "ads_stats.video_view_rate:min",
+        "ads_stats.video_view_rate:percentiles",
+        "ads_stats:exists",
+        "analytics.age13_17:max",
+        "analytics.age13_17:min",
+        "analytics.age18_24:max",
+        "analytics.age18_24:min",
+        "analytics.age25_34:max",
+        "analytics.age25_34:min",
+        "analytics.age35_44:max",
+        "analytics.age35_44:min",
+        "analytics.age45_54:max",
+        "analytics.age45_54:min",
+        "analytics.age55_64:max",
+        "analytics.age55_64:min",
+        "analytics.age65_:max",
+        "analytics.age65_:min",
+        "analytics.cms_title",
+        "analytics.gender_female:max",
+        "analytics.gender_female:min",
+        "analytics.gender_male:max",
+        "analytics.gender_male:min",
+        "analytics.gender_other:max",
+        "analytics.gender_other:min",
+        "analytics.is_auth",
+        "analytics.is_cms",
+        "analytics:exists",
+        "analytics:missing",
+        "custom_properties.emails:exists",
+        "custom_properties.emails:missing",
+        "custom_properties.preferred",
+        "general_data.country",
+        "general_data.top_category",
+        "general_data.top_language",
+        "social.facebook_likes:max",
+        "social.facebook_likes:min",
+        "social.facebook_likes:percentiles",
+        "social.instagram_followers:max",
+        "social.instagram_followers:min",
+        "social.instagram_followers:percentiles",
+        "social.twitter_followers:max",
+        "social.twitter_followers:min",
+        "social.twitter_followers:percentiles",
+        "stats.engage_rate:max",
+        "stats.engage_rate:min",
+        "stats.last_30day_subscribers:max",
+        "stats.last_30day_subscribers:min",
+        "stats.last_30day_subscribers:percentiles",
+        "stats.last_30day_views:max",
+        "stats.last_30day_views:min",
+        "stats.last_30day_views:percentiles",
+        "stats.sentiment:max",
+        "stats.sentiment:min",
+        "stats.subscribers:max",
+        "stats.subscribers:min",
+        "stats.subscribers:percentiles",
+        "stats.views_per_video:max",
+        "stats.views_per_video:min",
+        "stats.views_per_video:percentiles",
+    )
 
     @swagger_auto_schema(
         manual_parameters=[

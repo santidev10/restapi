@@ -19,6 +19,10 @@ class HighlightChannelsListApiView(APIView,
 
     max_pages_count = 5
     page_size = 20
+    allowed_aggregations = (
+        "general_data.top_category",
+        "general_data.top_language",
+    )
 
     @add_brand_safety_data
     def get(self, request, *args, **kwargs):
