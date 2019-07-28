@@ -70,10 +70,6 @@ class HighlightChannelBaseApiViewTestCase(ExtendedAPITestCase):
     def setUp(self):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_highlights")
-        try:
-            ChannelManager().truncate()
-        except:
-            pass
         Channel.init()
 
 
@@ -166,6 +162,18 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
             max_page,
             response.data["max_page"]
         )
+
+    def test_filter_languages(self):
+        language = "lang"
+        channels = [Channel(id=next(int_iterator)) for _ in range(2)]
+        channels[0].populate_general_data(top_language=language)
+        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+
+        url = get_url(**{AllowedAggregations.LANGUAGE.value: language})
+        response = self.client.get(url)
+
+        self.assertEqual(1, response.data["items_count"])
+        self.assertEqual(channels[0].main.id, response.data["items"][0]["main"]["id"])
 
 
 class AllowedAggregations(ExtendedEnum):
