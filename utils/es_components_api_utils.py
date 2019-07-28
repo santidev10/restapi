@@ -1,12 +1,12 @@
 from es_components.query_builder import QueryBuilder
 
-DEFAULT_PAGE_NUMBER = 1
 DEFAULT_PAGE_SIZE = 50
 
 
-def get_limits(query_params):
-    size = int(query_params.get("size", DEFAULT_PAGE_SIZE))
-    page = int(query_params.get("page", DEFAULT_PAGE_NUMBER))
+def get_limits(query_params, default_page_size=None, max_page_number=None):
+    size = int(query_params.get("size", default_page_size or DEFAULT_PAGE_SIZE))
+    page = int(query_params.get("page", 1))
+    page = min(page, max_page_number) if max_page_number else page
     offset = 0 if page <= 1 else (page - 1) * size
 
     return size, offset, page
