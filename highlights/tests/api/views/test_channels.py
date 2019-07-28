@@ -64,6 +64,7 @@ class HighlightChannelBaseApiViewTestCase(ExtendedAPITestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(HighlightChannelBaseApiViewTestCase, cls).setUpClass()
         init_es_connection()
 
     def setUp(self):
