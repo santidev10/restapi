@@ -100,6 +100,7 @@ class UserChannelsNotAvailable(Exception):
 
 
 class BaseChannelListApiView:
+    page_size = None
     max_pages_count = 0
     es_manager = ChannelManager
 
@@ -114,7 +115,9 @@ class BaseChannelListApiView:
 
         filters = ChannelQueryGenerator(query_params).get_search_filters(channels_ids)
         sort = get_sort_rule(query_params)
-        size, offset, page = get_limits(query_params)
+        size, offset, page = get_limits(query_params,
+                                        default_page_size=self.page_size,
+                                        max_page_number=self.max_pages_count)
 
         fields_to_load = get_fields(query_params, allowed_sections_to_load)
         items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()

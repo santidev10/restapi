@@ -174,7 +174,7 @@ class AllowedAggregations(ExtendedEnum):
 
 
 class AllowedSorts(ExtendedEnum):
-    VIEWS_30_DAYS_DESC = "thirty_days_views:desc"
+    VIEWS_30_DAYS_DESC = "stats.last_30day_views:desc"
 
 
 def get_url(**kwargs):
