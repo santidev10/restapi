@@ -1,3 +1,4 @@
+from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
@@ -139,10 +140,11 @@ class ESQuerysetAdapter:
     def __init__(self, manager, max_items=None):
         self.manager = manager
         self.sort = None
+        self.filter_query = None
         self.max_items = max_items
 
     def count(self):
-        count = self.manager.search().count()
+        count = self.manager.search(filters=self.filter_query).count()
         return min(count, self.max_items or count)
 
     def order_by(self, *sorting):
@@ -153,7 +155,47 @@ class ESQuerysetAdapter:
         ]
         return self
 
+    def filter(self, query):
+        self.filter_query = query
+        return self
+
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return self.manager.search(sort=self.sort, offset=item.start, limit=item.stop).execute().hits
+            return self.manager.search(
+                filters=self.filter_query,
+                sort=self.sort,
+                offset=item.start,
+                limit=item.stop
+            ) \
+                .execute().hits
         raise NotImplementedError
+
+
+class ESFilterBackend(BaseFilterBackend):
+    def _get_query_generator(self, request, queryset, view):
+        dynamic_generator_class = type(
+            "DynamicGenerator",
+            (QueryGenerator,),
+            dict(
+                es_manager=type(queryset.manager)(),
+                terms_filter=view.terms_filter,
+                range_filter=view.range_filter,
+                match_phrase_filter=view.match_phrase_filter,
+                exists_filter=view.exists_filter,
+            )
+        )
+        return dynamic_generator_class(request.query_params)
+
+    def filter_queryset(self, request, queryset, view):
+        if not isinstance(view.queryset, ESQuerysetAdapter):
+            raise BrokenPipeError
+        query_generator = self._get_query_generator(request, queryset, view)
+        query = query_generator.get_search_filters()
+        return queryset.filter(query)
+
+
+class APIViewMixin:
+    terms_filter = ()
+    range_filter = ()
+    match_phrase_filter = ()
+    exists_filter = ()

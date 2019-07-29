@@ -133,7 +133,9 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
     def test_items_page_size(self):
         page_size = 20
         keywords = [Keyword(id=next(int_iterator)) for _ in range(page_size + 1)]
-        KeywordManager(Sections.MAIN).upsert(keywords)
+        for keyword in keywords:
+            keyword.populate_stats()
+        KeywordManager(Sections.STATS).upsert(keywords)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -147,11 +149,14 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
         page_size = 20
         next_id = lambda: ("0" * 5 + str(next(int_iterator)))[-5:]
         keywords = [Keyword(id=next_id()) for _ in range(2 * page_size + 1)]
-        KeywordManager(Sections.MAIN).upsert(keywords)
+        for keyword in keywords:
+            keyword.populate_stats()
+        KeywordManager(Sections.STATS).upsert(keywords)
 
         url = get_url(page=2, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
 
+        print(response.data)
         self.assertEqual(
             page_size,
             len(response.data["items"])
@@ -167,7 +172,9 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
         page_size = 20
         total_items = page_size * max_page + 1
         keywords = [Keyword(id=next(int_iterator)) for _ in range(total_items)]
-        KeywordManager(Sections.MAIN).upsert(keywords)
+        for keyword in keywords:
+            keyword.populate_stats()
+        KeywordManager(Sections.STATS).upsert(keywords)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -178,8 +185,10 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
         )
 
     def test_filter_category(self):
-        category = "category"
+        category = "test_category"
         keywords = [Keyword(id=next(int_iterator)) for _ in range(2)]
+        for keyword in keywords:
+            keyword.populate_stats()
         keywords[0].populate_stats(top_category=category)
         KeywordManager(Sections.STATS).upsert(keywords)
 
@@ -207,7 +216,7 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
 
 
 class AllowedAggregations(ExtendedEnum):
-    CATEGORY = "general_data.top_category"
+    CATEGORY = "stats.top_category"
 
 
 class AllowedSorts(ExtendedEnum):
