@@ -2,10 +2,10 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
+from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
 from saas.urls.namespaces import Namespace
 from utils.lang import ExtendedEnum
@@ -60,17 +60,12 @@ class HighlightChannelPermissionsApiViewTestCase(ExtendedAPITestCase):
         )
 
 
-class HighlightChannelBaseApiViewTestCase(ExtendedAPITestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        super(HighlightChannelBaseApiViewTestCase, cls).setUpClass()
-        init_es_connection()
+class HighlightChannelBaseApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def setUp(self):
+        super(HighlightChannelBaseApiViewTestCase, self).setUp()
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_highlights")
-        Channel.init()
 
 
 class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
