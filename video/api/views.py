@@ -155,9 +155,9 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         channel_id = query_params.get("channel")
 
-        if not user.has_perm("userprofile.video_list") and \
-                not user.has_perm("userprofile.view_highlights"):
-            user_channels_ids = set(user.channels.values_list("channel_id", flat=True))
+        if not request.user.has_perm("userprofile.video_list") and \
+                not request.user.has_perm("userprofile.view_highlights"):
+            user_channels_ids = set(request.user.channels.values_list("channel_id", flat=True))
 
             if channel_id and (channel_id in user_channels_ids):
                 allowed_sections_to_load += (Sections.ANALYTICS,)
