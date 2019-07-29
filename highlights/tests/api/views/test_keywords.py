@@ -156,7 +156,6 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
         url = get_url(page=2, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
 
-        print(response.data)
         self.assertEqual(
             page_size,
             len(response.data["items"])
