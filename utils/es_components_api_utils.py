@@ -177,7 +177,7 @@ class ESFilterBackend(BaseFilterBackend):
             "DynamicGenerator",
             (QueryGenerator,),
             dict(
-                es_manager=type(queryset.manager)(),
+                es_manager=queryset.manager,
                 terms_filter=view.terms_filter,
                 range_filter=view.range_filter,
                 match_phrase_filter=view.match_phrase_filter,
