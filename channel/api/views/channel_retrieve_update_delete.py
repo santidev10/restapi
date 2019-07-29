@@ -68,8 +68,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         channel.populate_custom_properties(**data)
 
         self.channel_manager().upsert([channel])
-        send_task_channel_general_data_priority((channel.main.id))
-        send_task_channel_stats_priority((channel.main.id))
+        send_task_channel_general_data_priority((channel.main.id,))
+        send_task_channel_stats_priority((channel.main.id,))
 
         return self.get(*args, **kwargs)
 
