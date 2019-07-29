@@ -208,6 +208,7 @@ class Command(BaseCommand):
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
                 self.audit.completed = timezone.now()
+                self.audit.pause = 0
                 self.audit.save()
                 raise Exception("problem with relevance language.")
         try:
@@ -253,7 +254,7 @@ class Command(BaseCommand):
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if db_video_meta.language and db_video_meta.language.language not in self.language:
+            if not db_video_meta.language or db_video_meta.language.language not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
