@@ -1,3 +1,5 @@
+from rest_framework.serializers import BaseSerializer
+
 from es_components.query_builder import QueryBuilder
 
 DEFAULT_PAGE_SIZE = 50
@@ -119,10 +121,39 @@ class QueryGenerator:
         filters_exists = self.__get_filters_exists()
         forced_filter = [self.es_manager.forced_filters()]
 
-        filters = filters_term + filters_range + filters_match_phrase +\
-            filters_exists + forced_filter
+        filters = filters_term + filters_range + filters_match_phrase + \
+                  filters_exists + forced_filter
 
         if ids:
             filters.append(self.es_manager.ids_query(ids))
 
         return filters
+
+
+class ESSerializer(BaseSerializer):
+    def to_representation(self, instance):
+        return instance.to_dict()
+
+
+class ESQuerysetAdapter:
+    def __init__(self, manager, max_items=None):
+        self.manager = manager
+        self.sort = None
+        self.max_items = max_items
+
+    def count(self):
+        count = self.manager.search().count()
+        return min(count, self.max_items or count)
+
+    def order_by(self, *sorting):
+        key, direction = sorting[0].split(":")
+        self.sort = [
+            {key: {"order": direction}},
+            {"main.id": {"order": "asc"}}
+        ]
+        return self
+
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            return self.manager.search(sort=self.sort, offset=item.start, limit=item.stop).execute().hits
+        raise NotImplementedError

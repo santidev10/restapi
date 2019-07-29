@@ -92,7 +92,7 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
         category = "Music"
         keyword = Keyword(id=next(int_iterator))
         keyword.populate_general_data(category=category)
-        KeywordManager(Sections.GENERAL_DATA).upsert([keyword])
+        KeywordManager(Sections.MAIN).upsert([keyword])
 
         url = get_url(size=0, aggregations=AllowedAggregations.CATEGORY.value)
         response = self.client.get(url)
@@ -108,7 +108,7 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
         language = "English"
         keyword = Keyword(id=next(int_iterator))
         keyword.populate_general_data(language=language)
-        KeywordManager(Sections.GENERAL_DATA).upsert([keyword])
+        KeywordManager(Sections.MAIN).upsert([keyword])
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
         response = self.client.get(url)
@@ -133,7 +133,7 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
     def test_items_page_size(self):
         page_size = 20
         keywords = [Keyword(id=next(int_iterator)) for _ in range(page_size + 1)]
-        KeywordManager(Sections.GENERAL_DATA).upsert(keywords)
+        KeywordManager(Sections.MAIN).upsert(keywords)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -143,12 +143,31 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
             len(response.data["items"])
         )
 
+    def test_items_offset(self):
+        page_size = 20
+        next_id = lambda: ("0" * 5 + str(next(int_iterator)))[-5:]
+        keywords = [Keyword(id=next_id()) for _ in range(2 * page_size + 1)]
+        KeywordManager(Sections.MAIN).upsert(keywords)
+
+        url = get_url(page=2, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
+        response = self.client.get(url)
+
+        self.assertEqual(
+            page_size,
+            len(response.data["items"])
+        )
+        expected_ids = [item.main.id for item in keywords[page_size:page_size * 2]]
+        self.assertEqual(
+            expected_ids,
+            [item["main"]["id"] for item in response.data["items"]]
+        )
+
     def test_max_items(self):
         max_page = 5
         page_size = 20
         total_items = page_size * max_page + 1
         keywords = [Keyword(id=next(int_iterator)) for _ in range(total_items)]
-        KeywordManager(Sections.GENERAL_DATA).upsert(keywords)
+        KeywordManager(Sections.MAIN).upsert(keywords)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -158,22 +177,37 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
             response.data["max_page"]
         )
 
-    def test_filter_languages(self):
-        language = "lang"
+    def test_filter_category(self):
+        category = "category"
         keywords = [Keyword(id=next(int_iterator)) for _ in range(2)]
-        keywords[0].populate_general_data(language=language)
-        KeywordManager(Sections.GENERAL_DATA).upsert(keywords)
+        keywords[0].populate_stats(top_category=category)
+        KeywordManager(Sections.STATS).upsert(keywords)
 
-        url = get_url(**{AllowedAggregations.LANGUAGE.value: language})
+        url = get_url(**{AllowedAggregations.CATEGORY.value: category})
         response = self.client.get(url)
 
         self.assertEqual(1, response.data["items_count"])
         self.assertEqual(keywords[0].main.id, response.data["items"][0]["main"]["id"])
 
+    def test_sorting(self):
+        views = [1, 3, 2]
+        keywords = [Keyword(next(int_iterator)) for _ in range(len(views))]
+        for keyword, item_views in zip(keywords, views):
+            keyword.populate_stats(last_30day_views=item_views)
+        KeywordManager(Sections.STATS).upsert(keywords)
+
+        url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
+        response = self.client.get(url)
+
+        response_views = [item["stats"]["last_30day_views"] for item in response.data["items"]]
+        self.assertEqual(
+            list(sorted(views, reverse=True)),
+            response_views
+        )
+
 
 class AllowedAggregations(ExtendedEnum):
-    CATEGORY = "general_data.category"
-    LANGUAGE = "general_data.language"
+    CATEGORY = "general_data.top_category"
 
 
 class AllowedSorts(ExtendedEnum):
