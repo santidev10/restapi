@@ -31,11 +31,35 @@ class StandardBrandSafetyService(AuditService):
         self.default_video_category_scores = kwargs["default_video_category_scores"]
         self.default_channel_category_scores = kwargs["default_channel_category_scores"]
 
-    def audit_videos(self, video_data=None, channel_ids=None):
+    def audit_video(self, data, full_audit=True) -> BrandSafetyVideoAudit:
+        """
+        Score SDB formatted Youtube video data
+        :param data: dict -> keys required: video_id
+        :param full_audit: bool
+        :return: BrandSafetyVideoAudit
+        """
+        # Create a copy of default scores for each audit
+        default_category_score_copy = {}
+        default_category_score_copy.update(self.default_video_category_scores)
+        audit = BrandSafetyVideoAudit(
+            data,
+            self.audit_types,
+            source=constants.SDB,
+            score_mapping=self.score_mapping,
+            brand_safety_score_multiplier=self.brand_safety_score_multiplier,
+            default_category_scores=default_category_score_copy,
+        )
+        audit.run_audit()
+        if not full_audit:
+            audit = audit.metadata["overall_score"]
+        return audit
+
+    def audit_videos(self, video_data: list = None, channel_ids: list = None, full_audit=True):
         """
         Audits SingleDB video data
-        :param video_data: list -> Video data from SDB
-        :param channel_ids: list -> Channel ids
+        :param video_data: list -> SDB formatted Video data
+        :param channel_ids: list -> Youtube Channel ids
+        :param full_audit: bool -> Require channel id in metadata
         :return: Video audit objects
         """
         if video_data and channel_ids:
@@ -43,23 +67,15 @@ class StandardBrandSafetyService(AuditService):
         if channel_ids:
             video_data = self.get_channel_video_data(channel_ids)
         video_audits = []
-        for video in video_data:
-            if not video.get("channel_id"):
+        for data in video_data:
+            # If full audit, only score videos with channel ids
+            if full_audit and not data.get("channel_id"):
                 continue
-            # Create a copy of default scores for each audit
-            default_category_score_copy = {}
-            default_category_score_copy.update(self.default_video_category_scores)
-            audit = BrandSafetyVideoAudit(
-                video,
-                self.audit_types,
-                source=constants.SDB,
-                score_mapping=self.score_mapping,
-                brand_safety_score_multiplier=self.brand_safety_score_multiplier,
-                default_category_scores=default_category_score_copy,
-            )
-            audit.run_audit()
+            audit = self.audit_video(data, full_audit=True)
             video_audits.append(audit)
         self.video_audits_sorted = True
+        if not full_audit:
+            video_audits = [audit.metadata["overall_score"] for audit in video_audits]
         return video_audits
 
     def audit_channels(self, sorted_video_audits: dict) -> list:
