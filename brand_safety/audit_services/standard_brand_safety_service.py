@@ -36,10 +36,13 @@ class StandardBrandSafetyService(AuditService):
         Score SDB formatted Youtube video data
         :param data: dict -> Data to provide to BrandSafetyVideoAudit
             Required keys: video_id
-            Optional keys: video_title, description, tags, transcript, channel_title, channel_url, channel_subscribers,
-                channel_id, video_url, views, category, country, likes, dislikes, thumbnail_image_url
+            Optional keys for scoring (full_audit=False): video_title, description, tags, transcript
+            Optional keys for full audit (full_audit=True): video_title, description, tags, transcript, channel_title,
+                channel_url, channel_subscribers, channel_id, video_url, views, category, country, likes, dislikes, thumbnail_image_url
         :param full_audit: bool
-        :return: BrandSafetyVideoAudit
+        :return: int | BrandSafetyVideoAudit ->
+            full_audit=False: (int) BrandSafetyVideoAudit score
+            full_audit=True: BrandSafetyVideoAudit object
         """
         # Create a copy of default scores for each audit
         default_category_score_copy = {}
