@@ -14,7 +14,7 @@ from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class HighlightKeywordPermissionsApiViewTestCase(ExtendedAPITestCase):
+class HighlightKeywordPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_unauthorized(self):
         url = get_url()

@@ -2,6 +2,7 @@ import logging
 
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
+from utils.api.filters import FreeFieldOrderingFilter
 
 from es_components.query_builder import QueryBuilder
 from utils.api_paginator import CustomPageNumberPaginator
@@ -216,7 +217,7 @@ class ESFilterBackend(BaseFilterBackend):
         return aggregations
 
     def filter_queryset(self, request, queryset, view):
-        if not isinstance(view.queryset, ESQuerysetAdapter):
+        if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
         query = query_generator.get_search_filters()
@@ -225,11 +226,15 @@ class ESFilterBackend(BaseFilterBackend):
 
 
 class APIViewMixin:
+    serializer_class = ESSerializer
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
+
+    allowed_aggregations = ()
+
     terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
-    allowed_aggregations = ()
 
 
 class PaginatorWithAggregationMixin:
