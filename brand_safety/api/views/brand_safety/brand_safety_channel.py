@@ -54,12 +54,12 @@ class BrandSafetyChannelAPIView(APIView):
             raise Http404
 
         # Retrieve channel flagged videos
-        query_params = {
-            "list_type": "whitelist",
+        brand_safety_params = {
+            "list_type": "blacklist",
             "segment_type": "video",
         }
         query_builder = BrandSafetyQueryBuilder(
-            query_params,
+            brand_safety_params,
             overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
             related_to=channel_id
         )
