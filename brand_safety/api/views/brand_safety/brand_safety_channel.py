@@ -19,6 +19,7 @@ from utils.elasticsearch import ElasticSearchConnectorException
 from utils.brand_safety_view_decorator import get_brand_safety_data
 from audit_tool.models import BlacklistItem
 
+
 class BrandSafetyChannelAPIView(APIView):
     permission_required = (
         "userprofile.channel_list",
@@ -170,7 +171,7 @@ class BrandSafetyChannelAPIView(APIView):
         params = {
             "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
             "sort": "video_id",
-            "size": self.MAX_SIZE,
+            "size": len(video_ids),
             "video_id__terms": ",".join(video_ids)
         }
         try:
