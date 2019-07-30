@@ -126,7 +126,7 @@ class BrandSafetyQueryBuilder(object):
         must_statements = query_body["query"]["bool"]["filter"]["bool"]["must"]
         if self.overall_score:
             # Get items with overall score <= or >= self.overall score depending on self.segment_type
-            threshold_operator = "gte" if self.segment_type == constants.WHITELIST else "lte"
+            threshold_operator = "gte" if self.list_type == constants.WHITELIST else "lte"
             overall_score_threshold = {
                 "range": {"overall_score": {threshold_operator: self.overall_score}}
             }
