@@ -9,20 +9,16 @@ from datetime import timezone
 from dateutil.parser import parse
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
-from segment.models import SegmentChannel
 from singledb.api.views.base import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
 from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
-from utils.api_views_mixins import SegmentFilterMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.brand_safety_view_decorator import add_brand_safety_data
 
@@ -44,7 +40,7 @@ class VideoListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
+class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin):
     """
     Proxy view for video list
     """
@@ -60,9 +56,6 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
     @add_brand_safety_data
     def get(self, request):
-        is_query_params_valid, error = self._validate_query_params()
-        if not is_query_params_valid:
-            return Response({"error": error}, HTTP_400_BAD_REQUEST)
         empty_response = {
             "max_page": 1,
             "items_count": 0,
@@ -83,41 +76,6 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
             query_params.update(**{"channel": ",".join(user_channels_ids)})
         # set up connector
         connector = Connector()
-        # segment
-        channel_segment_id = self.request.query_params.get("channel_segment")
-        video_segment_id = self.request.query_params.get("video_segment")
-        if any((channel_segment_id, video_segment_id)):
-            # obtain segment
-            segment = self._obtain_segment()
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            if isinstance(segment, SegmentChannel):
-                segment_channels_ids = segment.get_related_ids()
-                try:
-                    ids_hash = connector.store_ids(list(segment_channels_ids))
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                query_params["hashed_channel_id__terms"] = ids_hash
-                query_params.pop("channel_segment")
-                self.adapt_query_params(query_params)
-                try:
-                    response_data = connector.get_video_list(query_params)
-                except SingleDatabaseApiConnectorException as e:
-                    return Response(data={"error": " ".join(e.args)},
-                                    status=HTTP_408_REQUEST_TIMEOUT)
-                self.adapt_response_data(response_data, request.user)
-                return Response(response_data)
-            videos_ids = segment.get_related_ids()
-            query_params.pop("video_segment")
-            if not videos_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(videos_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
         # adapt the request params
         self.adapt_query_params(query_params)
         # make call

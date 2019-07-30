@@ -12,16 +12,12 @@ from rest_framework.views import APIView
 
 from administration.notifications import send_new_channel_authentication_email
 from administration.notifications import send_welcome_email
-from segment.models import SegmentChannel
-from segment.models import SegmentKeyword
-from segment.models import SegmentVideo
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
-from userprofile.permissions import PermissionGroupNames
 
 
 class ChannelAuthenticationApiView(APIView):
@@ -114,15 +110,7 @@ class ChannelAuthenticationApiView(APIView):
             Token.objects.get_or_create(user=user)
             created = True
             send_welcome_email(user, self.request)
-            self.check_user_segment_access(user)
         return user, created
-
-    def check_user_segment_access(self, user):
-        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
-        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
-        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
-            user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING)
 
     def obtain_extra_user_data(self, token, user_id):
         """

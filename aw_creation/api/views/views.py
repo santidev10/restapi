@@ -73,8 +73,6 @@ from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from segment.models import CustomSegmentRelated
-from segment.models import SegmentChannel
-from segment.models import SegmentVideo
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -359,25 +357,8 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
 class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
-    def post(self, request, segment_type, **_):
-        item_ids = self.get_related_ids(request.data)
-        items = [dict(criteria=uid) for uid in item_ids]
-        add_targeting_list_items_info(items, segment_type)
-        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
-            return Response(data=[item for item in items if item["id"] is not None])
-        return Response(data=items)
-
     def get_related_ids(self, ids):
         ids = CustomSegmentRelated.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
-
-    @staticmethod
-    def get_keyword_item_ids(ids):
-        from segment.models import SegmentRelatedKeyword
-        ids = SegmentRelatedKeyword.objects.filter(
             segment_id__in=ids
         ).values_list("related_id", flat=True).order_by(
             "related_id").distinct()
@@ -1746,31 +1727,6 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
             ad_group_creation=ad_group_creation, type=targeting_type,
         )
         return obj
-
-
-class UserListsImportMixin:
-    @staticmethod
-    def get_lists_items_ids(ids, list_type):
-        from segment.utils import get_segment_model_by_type
-        from keyword_tool.models import KeywordsList
-
-        if list_type == "keyword":
-            item_ids = KeywordsList.objects.filter(
-                id__in=ids, keywords__text__isnull=False
-            ).values_list(
-                "keywords__text", flat=True
-            ).order_by("keywords__text").distinct()
-        else:
-            manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids,
-                                      related__related_id__isnull=False) \
-                .values_list('related__related_id', flat=True) \
-                .order_by('related__related_id') \
-                .distinct()
-        return item_ids
-
-
-# tools
 
 
 class TopicToolListApiView(ListAPIView):
