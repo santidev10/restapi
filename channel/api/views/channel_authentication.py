@@ -27,8 +27,8 @@ from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
 from userprofile.permissions import PermissionGroupNames
 from utils.youtube_api import YoutubeAPIConnector
-from utils.celery.dmp_celery import send_task_update_channel_stats
-from utils.celery.dmp_celery import send_task_update_channel_general_data
+from utils.celery.dmp_celery import send_task_channel_stats_priority
+from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from channel.models import AuthChannel
 
 
@@ -89,8 +89,8 @@ class ChannelAuthenticationApiView(APIView):
                         data={"auth_token": user.auth_token.key, "is_active": user.is_active})
 
     def send_update_channel_tasks(self, channel_id):
-        send_task_update_channel_stats((channel_id,))
-        send_task_update_channel_general_data((channel_id,))
+        send_task_channel_stats_priority((channel_id,))
+        send_task_channel_general_data_priority((channel_id,))
 
     def get_credentials(self, code):
         oauth2_flow = OAuth2WebServerFlow(
