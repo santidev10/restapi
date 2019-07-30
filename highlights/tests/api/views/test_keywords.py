@@ -79,7 +79,7 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
 
     def test_aggregations_empty(self):
         url = get_url(size=0, aggregations=",".join(AllowedAggregations.values()))
-        response = self.client.get(url)
+        response = self.client.get(url, aggregations=AllowedAggregations.CATEGORY.value)
 
         self.assertIn("aggregations", response.data)
         expected_aggregations = {
@@ -91,33 +91,17 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
     def test_aggregations_categories(self):
         category = "Music"
         keyword = Keyword(id=next(int_iterator))
-        keyword.populate_general_data(category=category)
-        KeywordManager(Sections.MAIN).upsert([keyword])
+        keyword.populate_stats(top_category=category)
+        KeywordManager(Sections.STATS).upsert([keyword])
 
         url = get_url(size=0, aggregations=AllowedAggregations.CATEGORY.value)
         response = self.client.get(url)
 
         self.assertIn("aggregations", response.data)
-        self.assertIn("general_data.category", response.data["aggregations"])
+        self.assertIn("stats.top_category", response.data["aggregations"])
         self.assertEqual(
             [dict(key=category, doc_count=1)],
-            response.data["aggregations"]["general_data.category"]["buckets"]
-        )
-
-    def test_aggregations_languages(self):
-        language = "English"
-        keyword = Keyword(id=next(int_iterator))
-        keyword.populate_general_data(language=language)
-        KeywordManager(Sections.MAIN).upsert([keyword])
-
-        url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
-        response = self.client.get(url)
-
-        self.assertIn("aggregations", response.data)
-        self.assertIn("general_data.language", response.data["aggregations"])
-        self.assertEqual(
-            [dict(key=language, doc_count=1)],
-            response.data["aggregations"]["general_data.language"]["buckets"]
+            response.data["aggregations"]["stats.top_category"]["buckets"]
         )
 
 
@@ -147,7 +131,10 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
 
     def test_items_offset(self):
         page_size = 20
-        next_id = lambda: ("0" * 5 + str(next(int_iterator)))[-5:]
+
+        def next_id():
+            return ("0" * 5 + str(next(int_iterator)))[-5:]
+
         keywords = [Keyword(id=next_id()) for _ in range(2 * page_size + 1)]
         for keyword in keywords:
             keyword.populate_stats()

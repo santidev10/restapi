@@ -27,3 +27,4 @@ class HighlightKeywordsListApiView(ListAPIView, APIViewMixin):
     ordering_fields = ("stats.last_30day_views:desc",)
 
     terms_filter = ("stats.top_category",)
+    allowed_aggregations = ("stats.top_category",)

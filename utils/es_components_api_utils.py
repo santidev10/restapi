@@ -1,9 +1,14 @@
+import logging
+
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
+from utils.api_paginator import CustomPageNumberPaginator
 
 DEFAULT_PAGE_SIZE = 50
+
+logger = logging.getLogger(__name__)
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
@@ -142,6 +147,8 @@ class ESQuerysetAdapter:
         self.sort = None
         self.filter_query = None
         self.max_items = max_items
+        self.slice = None
+        self.aggregations = None
 
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
@@ -159,15 +166,28 @@ class ESQuerysetAdapter:
         self.filter_query = query
         return self
 
+    def get_data(self, slice_item):
+        return self.manager.search(
+            filters=self.filter_query,
+            sort=self.sort,
+            offset=slice_item.start,
+            limit=slice_item.stop
+        ) \
+            .execute().hits
+
+    def get_aggregations(self):
+        return self.manager.get_aggregation(
+            search=self.manager.search(filters=self.filter_query),
+            properties=self.aggregations,
+        )
+
+    def with_aggregations(self, aggregations):
+        self.aggregations = aggregations
+        return self
+
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return self.manager.search(
-                filters=self.filter_query,
-                sort=self.sort,
-                offset=item.start,
-                limit=item.stop
-            ) \
-                .execute().hits
+            return self.get_data(item)
         raise NotImplementedError
 
 
@@ -186,12 +206,22 @@ class ESFilterBackend(BaseFilterBackend):
         )
         return dynamic_generator_class(request.query_params)
 
+    def _get_aggregations(self, request, queryset, view):
+        aggregations = request.query_params.get("aggregations", "").split(",")
+        if view.allowed_aggregations is not None:
+            aggregations = [
+                agg for agg in aggregations
+                if agg in view.allowed_aggregations
+            ]
+        return aggregations
+
     def filter_queryset(self, request, queryset, view):
         if not isinstance(view.queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
         query = query_generator.get_search_filters()
-        return queryset.filter(query)
+        aggregations = self._get_aggregations(request, queryset, view)
+        return queryset.filter(query).with_aggregations(aggregations)
 
 
 class APIViewMixin:
@@ -199,3 +229,15 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    allowed_aggregations = ()
+
+
+class PaginatorWithAggregationMixin:
+    def _get_response_data(self: CustomPageNumberPaginator, data):
+        response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
+        object_list = self.page.paginator.object_list
+        if isinstance(object_list, ESQuerysetAdapter):
+            response_data["aggregations"] = object_list.get_aggregations() or None
+        else:
+            logger.warning("Can't get aggregation from %s", str(type(object_list)))
+        return response_data
