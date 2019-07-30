@@ -91,7 +91,7 @@ def add_extra_fields(video):
 
 
 def add_chart_data(video):
-    if not video.get("stats") or not video["stats"].get("historydate"):
+    if not video.get("stats"):
         video["chart_data"] = []
         return video
 
