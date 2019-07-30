@@ -31,7 +31,6 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
-    auditor = StandardBrandSafetyProvider()
 
     def get(self, request):
         query_params = request.query_params
@@ -155,6 +154,7 @@ class AuditExportApiView(APIView):
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
+        auditor = StandardBrandSafetyProvider()
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -192,7 +192,7 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     last_uploaded_category = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
-                video_audit_score = self.auditor.audit_service.audit_video({
+                video_audit_score = auditor.audit_service.audit_video({
                     "video_id": v.video.video_id,
                     "video_title": v.name,
                     "description": v.description,
