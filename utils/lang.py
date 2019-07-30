@@ -5,7 +5,7 @@ from typing import Sequence
 import re
 from fasttext.FastText import _FastText as FastText
 
-fast_text_model = FastText('lid.176.bin')
+fast_text_model = None
 
 
 def flatten(l):
