@@ -34,7 +34,10 @@ class StandardBrandSafetyService(AuditService):
     def audit_video(self, data, full_audit=True) -> BrandSafetyVideoAudit:
         """
         Score SDB formatted Youtube video data
-        :param data: dict -> keys required: video_id
+        :param data: dict -> Data to provide to BrandSafetyVideoAudit
+            Required keys: video_id
+            Optional keys: video_title, description, tags, transcript, channel_title, channel_url, channel_subscribers,
+                channel_id, video_url, views, category, country, likes, dislikes, thumbnail_image_url
         :param full_audit: bool
         :return: BrandSafetyVideoAudit
         """
