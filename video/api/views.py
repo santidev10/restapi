@@ -69,6 +69,8 @@ class VideoListCSVRendered(CSVStreamingRenderer):
 
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
+                  "stats.comments_history", "stats.historydate",)
 
 
 def add_transcript(video):
@@ -91,7 +93,6 @@ def add_extra_fields(video):
 def add_chart_data(video):
     if not video.get("stats"):
         video["chart_data"] = []
-        video["stats"] = {}
         return video
 
     chart_data = []
@@ -103,7 +104,7 @@ def add_chart_data(video):
         reversed(video["stats"].get("comments_history") or [])
     )
     for views, likes, dislikes, comments in history:
-        timestamp = video["stats"].get("history_date") - timedelta(
+        timestamp = video["stats"].get("historydate") - timedelta(
                 days=len(video["stats"].get("views_history")) - items_count - 1)
         timestamp = datetime.combine(timestamp, datetime.max.time())
         items_count += 1
@@ -172,7 +173,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         sort = get_sort_rule(query_params)
         size, offset, page = get_limits(query_params)
 
-        fields_to_load = get_fields(query_params, allowed_sections_to_load)
+        fields_to_load = get_fields(query_params, allowed_sections_to_load) + list(HISTORY_FIELDS)
 
         try:
             items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
@@ -284,7 +285,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
                                     Sections.CAPTIONS,)
 
-        fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
+        fields_to_load = get_fields(request.query_params, allowed_sections_to_load) + list(HISTORY_FIELDS)
 
         video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
 
