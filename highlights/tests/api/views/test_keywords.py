@@ -108,6 +108,9 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
 class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
 
     def test_no_items(self):
+        keyword = Keyword(id=next(int_iterator))
+        keyword.populate_stats()
+        KeywordManager(Sections.STATS).upsert([keyword])
         url = get_url(size=0)
         response = self.client.get(url)
 

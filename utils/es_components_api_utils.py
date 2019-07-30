@@ -2,9 +2,9 @@ import logging
 
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
-from utils.api.filters import FreeFieldOrderingFilter
 
 from es_components.query_builder import QueryBuilder
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 
 DEFAULT_PAGE_SIZE = 50
