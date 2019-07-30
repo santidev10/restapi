@@ -50,9 +50,6 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
 EXISTS_FILTER = ("ads_stats",)
 
 
-class ChannelsVideoNotAvailable(Exception):
-    pass
-
 
 class VideoListCSVRendered(CSVStreamingRenderer):
     header = [
@@ -155,18 +152,23 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
                                     Sections.CAPTIONS,)
-        try:
-            channels_ids = self.get_channel_id(request.user, query_params)
-        except ChannelsVideoNotAvailable:
-            return Response(self.empty_response)
 
-        if channels_ids or request.user.is_staff or \
+        channel_id = query_params.get("channel")
+
+        if not request.user.has_perm("userprofile.video_list") and \
+                not request.user.has_perm("userprofile.view_highlights"):
+            user_channels_ids = set(request.user.channels.values_list("channel_id", flat=True))
+
+            if channel_id and (channel_id in user_channels_ids):
+                allowed_sections_to_load += (Sections.ANALYTICS,)
+
+        if request.user.is_staff or \
                 request.user.has_perm("userprofile.video_audience"):
                 allowed_sections_to_load += (Sections.ANALYTICS,)
 
         es_manager = self.es_manager(allowed_sections_to_load)
 
-        filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
+        filters = VideoQueryGenerator(query_params).get_search_filters(channel_id)
         sort = get_sort_rule(query_params)
         size, offset, page = get_limits(query_params)
 
@@ -196,15 +198,6 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
         }
         return Response(result)
 
-    def get_channel_id(self, user, query_params):
-        channel_id = query_params.get("channel")
-        if not user.has_perm("userprofile.video_list") and \
-                not user.has_perm("userprofile.view_highlights"):
-            user_channels_ids = set(user.channels.values_list("channel_id", flat=True))
-
-            if channel_id and (channel_id not in user_channels_ids):
-                raise ChannelsVideoNotAvailable
-            return channel_id
 
     @staticmethod
     def adapt_response_data(response_data, user):
@@ -325,10 +318,10 @@ class VideoQueryGenerator(QueryGenerator):
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
 
-    def get_search_filters(self, channels_ids):
+    def get_search_filters(self, channel_id=None):
         filters = super(VideoQueryGenerator, self).get_search_filters()
 
-        if channels_ids:
-            filters += self.es_manager.by_channel_ids_query(channels_ids)
+        if channel_id:
+            filters.append(self.es_manager.by_channel_ids_query(channel_id))
 
         return filters

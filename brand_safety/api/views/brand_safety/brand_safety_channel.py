@@ -1,3 +1,4 @@
+import re
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.core.paginator import InvalidPage
@@ -8,14 +9,16 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.response import Response
 
+from es_components.managers.video import VideoManager
+from es_components.constants import SortDirections
 from distutils.util import strtobool
 from brand_safety.utils import get_es_data
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
 from utils.elasticsearch import ElasticSearchConnectorException
 from utils.brand_safety_view_decorator import get_brand_safety_data
+
+REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
 
 class BrandSafetyChannelAPIView(APIView):
@@ -26,6 +29,7 @@ class BrandSafetyChannelAPIView(APIView):
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
     MAX_PAGE_SIZE = 24
+    video_manager = VideoManager()
 
     def get(self, request, **kwargs):
         """
@@ -51,14 +55,12 @@ class BrandSafetyChannelAPIView(APIView):
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
         if not channel_es_data:
             raise Http404
-
-        # Get channel's video ids from sdb to get es video brand safety data
-        video_sdb_data = self._get_sdb_channel_video_data(channel_id)
-        if video_sdb_data is SingleDatabaseApiConnectorException:
+        try:
+            videos = self._get_channel_video_data(channel_id)
+        except Exception as e:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
-        # Get video brand safety data to merge with sdb video data
-        video_ids = list(video_sdb_data.keys())
+        video_ids = list(videos.keys())
         video_es_data = get_es_data(video_ids, settings.BRAND_SAFETY_VIDEO_INDEX)
         if video_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
@@ -70,7 +72,8 @@ class BrandSafetyChannelAPIView(APIView):
         }
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
 
-        channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
+        channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, videos)
+
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
         sorting = query_params['sort'] if "sort" in query_params else None
@@ -90,7 +93,7 @@ class BrandSafetyChannelAPIView(APIView):
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
-    def _adapt_channel_video_es_sdb_data(self, channel_data, video_es_data, video_sdb_data):
+    def _adapt_channel_video_es_sdb_data(self, channel_data, video_es_data, videos):
         """
         Encapsulate merging of channel and video es/sdb data
         :param es_data: dict
@@ -100,51 +103,49 @@ class BrandSafetyChannelAPIView(APIView):
         flagged_videos = []
         # Merge video brand safety wtih video sdb data
         for id_, data in video_es_data.items():
-            if data["overall_score"] <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
-                # In some instances video data will not be in both Elasticsearch and sdb
-                try:
-                    sdb_video = video_sdb_data[id_]
-                except KeyError:
-                    sdb_video = {}
+            if data.get("overall_score") and data.get("overall_score") <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
+                video = videos.get(id_)
                 video_brand_safety_data = get_brand_safety_data(data["overall_score"])
                 video_data = {
                     "id": id_,
                     "score": video_brand_safety_data["score"],
                     "label": video_brand_safety_data["label"],
-                    "title": sdb_video.get("title"),
-                    "thumbnail_image_url": sdb_video.get("thumbnail_image_url"),
-                    "transcript": sdb_video.get("transcript"),
-                    "youtube_published_at": sdb_video.get("youtube_published_at"),
-                    "views": sdb_video.get("views"),
-                    "engage_rate": sdb_video.get("engage_rate")
+                    "title": video.general_data.title,
+                    "thumbnail_image_url": video.general_data.thumbnail_image_url,
+                    "transcript": self.__get_transcript(video.captions),
+                    "youtube_published_at": video.general_data.youtube_published_at,
+                    "views": video.stats.views,
+                    "engage_rate": video.stats.engage_rate
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
         flagged_videos.sort(key=lambda video: video["youtube_published_at"], reverse=True)
         return channel_data, flagged_videos
 
-    def _get_sdb_channel_video_data(self, channel_id):
-        """
-        Encapsulate getting sdb channel video data
-            On SingleDatabaseApiConnectorException, return it to be handled by view
-        :param channel_id: str
-        :return: dict or SingleDatabaseApiConnectorException
-        """
-        params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
-            "sort": "video_id",
-            "size": self.MAX_SIZE,
-            "channel_id__terms": channel_id
+    def __get_transcript(self, captions):
+        if captions and captions.items:
+            for caption in captions.items:
+                if caption.language_code == "en":
+                    text = caption.text
+                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+                    return transcript
+
+    def _get_channel_video_data(self, channel_id):
+        fields_to_load = ("main.id", "general_data.title", "general_data.thumbnail_image_url",
+                          "general_data.youtube_published_at", "stats.views", "stats.engage_rate",
+                          "captions")
+
+        by_channel_filter = self.video_manager.by_channel_ids_query(channel_id)
+        videos = self.video_manager.search(filters=by_channel_filter,
+                                           limit=self.MAX_SIZE,
+                                           sort=[{"main.id": {"order": SortDirections.ASCENDING}}]).\
+            source(includes=fields_to_load).execute().hits
+
+        video_data = {
+            video.main.id: video
+            for video in videos
         }
-        try:
-            response = SingleDatabaseApiConnector().get_video_list(params)
-        except SingleDatabaseApiConnectorException:
-            return SingleDatabaseApiConnectorException
-        sdb_video_data = {
-            video["video_id"]: video
-            for video in response["items"]
-        }
-        return sdb_video_data
+        return video_data
 
     @staticmethod
     def _adapt_response_data(brand_safety_data, paginator, page):

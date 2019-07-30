@@ -35,7 +35,8 @@ init_es_connection()
 
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
-                "custom_properties.preferred", "analytics.verified", "analytics.cms_title")
+                "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
+                "stats.channel_group")
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
 
@@ -46,7 +47,7 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_")
 
-EXISTS_FILTER = ("custom_properties.emails", "ads_stats")
+EXISTS_FILTER = ("general_data.emails", "ads_stats")
 
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
