@@ -11,6 +11,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
+from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -30,6 +31,7 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
+    auditor = StandardBrandSafetyProvider()
 
     def get(self, request):
         query_params = request.query_params
@@ -141,6 +143,7 @@ class AuditExportApiView(APIView):
             "All {} Hit Words".format(hit_types),
             "Unique {} Hit Words".format(hit_types),
             "Video Count",
+            "Brand Safety Score",
         ]
         video_ids = []
         hit_words = {}
@@ -189,6 +192,12 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     last_uploaded_category = ''
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
+                video_audit_score = self.auditor.audit_service.audit_video({
+                    "video_id": v.video.video_id,
+                    "video_title": v.name,
+                    "description": v.description,
+                    "tags": v.keywords,
+                }, full_audit=False)
                 data = [
                     v.video.video_id,
                     v.name,
@@ -210,6 +219,7 @@ class AuditExportApiView(APIView):
                     all_hit_words,
                     unique_hit_words,
                     video_count if video_count else "",
+                    video_audit_score,
                 ]
                 wr.writerow(data)
             myfile.buffer.seek(0)
