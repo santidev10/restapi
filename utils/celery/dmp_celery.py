@@ -1,8 +1,13 @@
+from time import sleep
+from time import time
+
 from celery import Celery
 from django.conf import settings
 
-
 dmp_celery_app = Celery("update", broker=settings.DMP_BROKER_URL)
+
+WAIT_RESULTS_TIMEOUT = 300
+WAIT_RESULTS_SLEEP_TIME = 1
 
 
 class Queue:
@@ -20,16 +25,30 @@ class Task:
 
 
 def send_task_channel_general_data_priority(task_args):
-    dmp_celery_app.send_task(Task.CHANNEL_GENERAL_DATA_PRIORITY, task_args, queue=Queue.CHANNEL_GENERAL_DATA_PRIORITY)
-
+    future = dmp_celery_app.send_task(
+        Task.CHANNEL_GENERAL_DATA_PRIORITY,
+        task_args,
+        queue=Queue.CHANNEL_GENERAL_DATA_PRIORITY,
+    )
+    wait_results(future)
 
 def send_task_channel_stats_priority(task_args):
-    dmp_celery_app.send_task(Task.CHANNEL_STATS_PRIORITY, task_args, queue=Queue.CHANNEL_STATS_PRIORITY)
-
+    future = dmp_celery_app.send_task(Task.CHANNEL_STATS_PRIORITY, task_args, queue=Queue.CHANNEL_STATS_PRIORITY)
+    wait_results(future)
 
 def send_task_delete_channels(task_args):
-    dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)
+    future = dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)
+    wait_results(future)
 
 
 def send_task_delete_videos(task_args):
-    dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
+    future = dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
+    wait_results(future)
+
+
+def wait_results(future):
+    time_start = time()
+    while not future.ready():
+        sleep(WAIT_RESULTS_SLEEP_TIME)
+        if time() - time_start > WAIT_RESULTS_TIMEOUT:
+            break
