@@ -114,6 +114,12 @@ def add_chart_data(video):
     return video
 
 
+def add_extra_field(video):
+    video = add_chart_data(video)
+    video = add_transcript(video)
+    return video
+
+
 class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
@@ -186,7 +192,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         result = {
             "current_page": page,
-            "items": [add_chart_data(video.to_dict()) for video in videos],
+            "items": [add_extra_field(video.to_dict()) for video in videos],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations
@@ -288,7 +294,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = add_chart_data(video.to_dict())
+        result = add_extra_field(video.to_dict())
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
                 or not self.request.user.is_staff):
