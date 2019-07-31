@@ -47,7 +47,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
 
-EXISTS_FILTER = ("ads_stats",)
+EXISTS_FILTER = ("ads_stats", "analytics")
 
 
 
@@ -84,9 +84,13 @@ def add_transcript(video):
     return video
 
 
-def add_extra_fields(video):
+def add_extra_fields(video, section_to_load):
     video = add_transcript(video)
     video = add_chart_data(video)
+
+    # for section in section_to_load:
+    #     if section not in video.keys():
+    #         video[section] = {}
     return video
 
 
@@ -184,7 +188,8 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
                 if query_params.get("aggregations") else None
 
         except Exception as e:
-            return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
+            raise e
+            # return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
 
         max_page = None
         if size:
@@ -192,7 +197,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         result = {
             "current_page": page,
-            "items": [add_extra_fields(video.to_dict()) for video in videos],
+            "items": [add_extra_fields(video.to_dict(), allowed_sections_to_load) for video in videos],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations
@@ -294,7 +299,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = add_extra_fields(video.to_dict())
+        result = add_extra_fields(video.to_dict(), allowed_sections_to_load)
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
                 or not self.request.user.is_staff):

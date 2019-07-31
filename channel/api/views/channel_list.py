@@ -47,7 +47,7 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_")
 
-EXISTS_FILTER = ("general_data.emails", "ads_stats")
+EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
 
 CHANNEL_ITEM_SCHEMA = openapi.Schema(
@@ -200,7 +200,8 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             "items": [self.add_chart_data(channel.to_dict(skip_empty=False)) for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "aggregations": aggregations
+            "aggregations": aggregations,
+            "filters": [filter.to_dict() for filter in filters]
         }
         return Response(result)
 
