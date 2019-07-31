@@ -60,6 +60,9 @@ class Command(BaseCommand):
     def process_audit(self, num=5000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.num_videos = self.audit.params.get('num_videos')
+        if not self.num_videos:
+            self.num_videos = 50
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
@@ -171,7 +174,7 @@ class Command(BaseCommand):
         has_more = True
         page_token = None
         page = 0
-        num_videos = 50
+        num_videos = self.num_videos
         if not self.audit.params.get('do_videos'):
             num_videos = 1
         while has_more:
