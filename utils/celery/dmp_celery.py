@@ -24,17 +24,19 @@ class Task:
     DELETE_VIDEOS = "delete_videos"
 
 
-def send_task_channel_general_data_priority(task_args):
+def send_task_channel_general_data_priority(task_args, wait=False):
     future = dmp_celery_app.send_task(
         Task.CHANNEL_GENERAL_DATA_PRIORITY,
         task_args,
         queue=Queue.CHANNEL_GENERAL_DATA_PRIORITY,
     )
-    wait_results(future)
+    if wait:
+        wait_results(future)
 
-def send_task_channel_stats_priority(task_args):
+def send_task_channel_stats_priority(task_args, wait=False):
     future = dmp_celery_app.send_task(Task.CHANNEL_STATS_PRIORITY, task_args, queue=Queue.CHANNEL_STATS_PRIORITY)
-    wait_results(future)
+    if wait:
+        wait_results(future)
 
 def send_task_delete_channels(task_args):
     dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)

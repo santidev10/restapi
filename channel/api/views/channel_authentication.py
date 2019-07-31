@@ -89,8 +89,8 @@ class ChannelAuthenticationApiView(APIView):
                         data={"auth_token": user.auth_token.key, "is_active": user.is_active})
 
     def send_update_channel_tasks(self, channel_id):
+        send_task_channel_general_data_priority((channel_id,), wait=True)
         send_task_channel_stats_priority((channel_id,))
-        send_task_channel_general_data_priority((channel_id,))
 
     def get_credentials(self, code):
         oauth2_flow = OAuth2WebServerFlow(
