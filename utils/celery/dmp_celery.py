@@ -37,13 +37,11 @@ def send_task_channel_stats_priority(task_args):
     wait_results(future)
 
 def send_task_delete_channels(task_args):
-    future = dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)
-    wait_results(future)
+    dmp_celery_app.send_task(Task.DELETE_CHANNELS, task_args, queue=Queue.DELETE_ENTITY)
 
 
 def send_task_delete_videos(task_args):
-    future = dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
-    wait_results(future)
+    dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
 
 
 def wait_results(future):
