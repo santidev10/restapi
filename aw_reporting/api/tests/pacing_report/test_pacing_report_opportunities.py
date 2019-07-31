@@ -157,8 +157,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Opportunity.objects.create(id="2", name="2", start=month_ago,
                                    end=month_ago, probability=100)
         response = self.client.get((self.url))
-        print(response.data)
-
+        self.assertEqual(HTTP_200_OK, response.status_code)
 
     def test_get_opportunities_filter_period(self):
         today = timezone.now()

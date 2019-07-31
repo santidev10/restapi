@@ -1,4 +1,4 @@
-version: "3"
+version: "2.4"
 
 services:
   api:
@@ -11,11 +11,17 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      ELASTIC_SEARCH_URLS: es
+      ELASTIC_SEARCH_USE_SSL: 0
     depends_on:
-      - pg
-      - rabbitmq
-      - redis
-      - es
+      rabbitmq:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "/wait-for-it.sh -t 1 localhost:5000"]
       interval: 30s
@@ -56,11 +62,14 @@ services:
 
   es:
     image: elasticsearch:6.4.2
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
+      interval: 5s
+      timeout: 5s
+      retries: 30
 
   rabbitmq:
     image: rabbitmq:3.7.8-management
