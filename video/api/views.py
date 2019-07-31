@@ -47,7 +47,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
 
-EXISTS_FILTER = ("ads_stats",)
+EXISTS_FILTER = ("ads_stats", "analytics")
 
 
 
@@ -84,12 +84,6 @@ def add_transcript(video):
     return video
 
 
-def add_extra_fields(video):
-    video = add_transcript(video)
-    video = add_chart_data(video)
-    return video
-
-
 def add_chart_data(video):
     if not video.get("stats"):
         video["chart_data"] = []
@@ -117,6 +111,12 @@ def add_chart_data(video):
                  "comments": comments}
             )
     video["chart_data"] = chart_data
+    return video
+
+
+def add_extra_field(video):
+    video = add_chart_data(video)
+    video = add_transcript(video)
     return video
 
 
@@ -192,7 +192,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
         result = {
             "current_page": page,
-            "items": [add_extra_fields(video.to_dict()) for video in videos],
+            "items": [add_extra_field(video.to_dict()) for video in videos],
             "items_count": items_count,
             "max_page": max_page,
             "aggregations": aggregations
@@ -294,7 +294,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = add_extra_fields(video.to_dict())
+        result = add_extra_field(video.to_dict())
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
                 or not self.request.user.is_staff):
