@@ -19,7 +19,11 @@ class HighlightKeywordsListApiView(APIViewMixin, ListAPIView):
     )
     pagination_class = HighlightsPaginator
     queryset = ESQuerysetAdapter(KeywordManager(Sections.STATS), max_items=100)
-    ordering_fields = ("stats.last_30day_views:desc",)
+    ordering_fields = (
+        "stats.top_category_last_30day_views:desc",
+        "stats.top_category_last_7day_views:desc",
+        "stats.top_category_last_day_views:desc",
+    )
 
     terms_filter = ("stats.top_category",)
     allowed_aggregations = ("stats.top_category",)
