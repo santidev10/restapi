@@ -64,7 +64,7 @@ class QueryGenerator:
             if range:
                 min, max = range.split(",")
 
-                if not (min and max):
+                if not (min or max):
                     continue
 
                 query = QueryBuilder().build().must().range().field(field)
