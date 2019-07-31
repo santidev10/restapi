@@ -4,6 +4,7 @@ from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 
 DEFAULT_PAGE_SIZE = 50
@@ -166,12 +167,12 @@ class ESQuerysetAdapter:
         self.filter_query = query
         return self
 
-    def get_data(self, slice_item):
+    def get_data(self, start=0, end=None):
         return self.manager.search(
             filters=self.filter_query,
             sort=self.sort,
-            offset=slice_item.start,
-            limit=slice_item.stop
+            offset=start,
+            limit=end,
         ) \
             .execute().hits
 
@@ -187,7 +188,9 @@ class ESQuerysetAdapter:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return self.get_data(item)
+            return self.get_data(item.start, item.stop)
+        if isinstance(item, int):
+            return self.get_data(end=item)
         raise NotImplementedError
 
 
@@ -216,7 +219,7 @@ class ESFilterBackend(BaseFilterBackend):
         return aggregations
 
     def filter_queryset(self, request, queryset, view):
-        if not isinstance(view.queryset, ESQuerysetAdapter):
+        if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
         query = query_generator.get_search_filters()
@@ -225,11 +228,15 @@ class ESFilterBackend(BaseFilterBackend):
 
 
 class APIViewMixin:
+    serializer_class = ESSerializer
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
+
+    allowed_aggregations = ()
+
     terms_filter = ()
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
-    allowed_aggregations = ()
 
 
 class PaginatorWithAggregationMixin:

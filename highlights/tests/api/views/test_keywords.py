@@ -14,7 +14,7 @@ from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class HighlightKeywordPermissionsApiViewTestCase(ExtendedAPITestCase):
+class HighlightKeywordPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_unauthorized(self):
         url = get_url()
@@ -108,6 +108,9 @@ class HighlightKeywordAggregationsApiViewTestCase(HighlightKeywordBaseApiViewTes
 class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
 
     def test_no_items(self):
+        keyword = Keyword(id=next(int_iterator))
+        keyword.populate_stats()
+        KeywordManager(Sections.STATS).upsert([keyword])
         url = get_url(size=0)
         response = self.client.get(url)
 
@@ -184,17 +187,49 @@ class HighlightKeywordItemsApiViewTestCase(HighlightKeywordBaseApiViewTestCase):
         self.assertEqual(1, response.data["items_count"])
         self.assertEqual(keywords[0].main.id, response.data["items"][0]["main"]["id"])
 
-    def test_sorting(self):
+    def test_sorting_30day_views(self):
         views = [1, 3, 2]
         keywords = [Keyword(next(int_iterator)) for _ in range(len(views))]
         for keyword, item_views in zip(keywords, views):
-            keyword.populate_stats(last_30day_views=item_views)
+            keyword.populate_stats(top_category_last_30day_views=item_views)
         KeywordManager(Sections.STATS).upsert(keywords)
 
         url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
 
-        response_views = [item["stats"]["last_30day_views"] for item in response.data["items"]]
+        response_views = [item["stats"]["top_category_last_30day_views"] for item in response.data["items"]]
+        self.assertEqual(
+            list(sorted(views, reverse=True)),
+            response_views
+        )
+
+    def test_sorting_7day_views(self):
+        views = [1, 3, 2]
+        keywords = [Keyword(next(int_iterator)) for _ in range(len(views))]
+        for keyword, item_views in zip(keywords, views):
+            keyword.populate_stats(top_category_last_7day_views=item_views)
+        KeywordManager(Sections.STATS).upsert(keywords)
+
+        url = get_url(sort=AllowedSorts.VIEWS_7_DAYS_DESC.value)
+        response = self.client.get(url)
+
+        response_views = [item["stats"]["top_category_last_7day_views"] for item in response.data["items"]]
+        self.assertEqual(
+            list(sorted(views, reverse=True)),
+            response_views
+        )
+
+    def test_sorting_day_views(self):
+        views = [1, 3, 2]
+        keywords = [Keyword(next(int_iterator)) for _ in range(len(views))]
+        for keyword, item_views in zip(keywords, views):
+            keyword.populate_stats(top_category_last_day_views=item_views)
+        KeywordManager(Sections.STATS).upsert(keywords)
+
+        url = get_url(sort=AllowedSorts.VIEWS_1_DAYS_DESC.value)
+        response = self.client.get(url)
+
+        response_views = [item["stats"]["top_category_last_day_views"] for item in response.data["items"]]
         self.assertEqual(
             list(sorted(views, reverse=True)),
             response_views
@@ -206,7 +241,9 @@ class AllowedAggregations(ExtendedEnum):
 
 
 class AllowedSorts(ExtendedEnum):
-    VIEWS_30_DAYS_DESC = "stats.last_30day_views:desc"
+    VIEWS_30_DAYS_DESC = "stats.top_category_last_30day_views:desc"
+    VIEWS_7_DAYS_DESC = "stats.top_category_last_7day_views:desc"
+    VIEWS_1_DAYS_DESC = "stats.top_category_last_day_views:desc"
 
 
 def get_url(**kwargs):

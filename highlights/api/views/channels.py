@@ -1,30 +1,40 @@
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from channel.api.views.channel_list import BaseChannelListApiView
-from utils.brand_safety_view_decorator import add_brand_safety_data
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from highlights.api.utils import HighlightsPaginator
+from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
-class HighlightChannelsListApiView(APIView,
-                                   BaseChannelListApiView):
+class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_highlights"),
             IsAdminUser
         ),
     )
-
-    max_pages_count = 5
-    page_size = 20
+    pagination_class = HighlightsPaginator
+    ordering_fields = (
+        "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
+    )
+    terms_filter = (
+        "general_data.top_category",
+        "general_data.top_language",
+    )
     allowed_aggregations = (
         "general_data.top_category",
         "general_data.top_language",
     )
 
-    @add_brand_safety_data
-    def get(self, request, *args, **kwargs):
-        response_data = self._get_channel_list_data(request)
-        return Response(response_data)
+    def get_queryset(self):
+        sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)
+        if self.request.user.is_staff:
+            sections += (Sections.ANALYTICS,)
+        return ESQuerysetAdapter(ChannelManager(sections), max_items=100)

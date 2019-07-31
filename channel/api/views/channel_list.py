@@ -99,91 +99,8 @@ class UserChannelsNotAvailable(Exception):
     pass
 
 
-class BaseChannelListApiView:
-    page_size = None
-    max_pages_count = 0
-    allowed_aggregations = []
-    es_manager = ChannelManager
-
-    def _get_channel_list_data(self, request, channels_ids=None):
-        allowed_sections_to_load = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
-        query_params = deepcopy(request.query_params)
-        if request.user.is_staff or channels_ids:
-            allowed_sections_to_load += (Sections.ANALYTICS,)
-
-        es_manager = self.es_manager()
-
-        filters = ChannelQueryGenerator(query_params).get_search_filters(channels_ids)
-        sort = get_sort_rule(query_params)
-        size, offset, page = get_limits(query_params,
-                                        default_page_size=self.page_size,
-                                        max_page_number=self.max_pages_count)
-
-        fields_to_load = get_fields(query_params, allowed_sections_to_load)
-        items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-        channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
-            .source(includes=fields_to_load).execute().hits
-
-        aggregations = self._get_aggregations(es_manager, filters, query_params)
-
-        max_page = None
-        if size:
-            max_page = min(ceil(items_count / size), self.max_pages_count)
-
-        result = {
-            "current_page": page,
-            "items": [self.add_chart_data(channel.to_dict(skip_empty=False)) for channel in channels],
-            "items_count": items_count,
-            "max_page": max_page,
-            "aggregations": aggregations
-        }
-        return result
-
-    def _get_aggregations(self, es_manager, filters, query_params):
-        aggregation_properties_str = query_params.get("aggregations", "")
-        aggregation_properties = [
-            prop
-            for prop in aggregation_properties_str.split(",")
-            if prop in self.allowed_aggregations
-        ]
-        aggregations = es_manager.get_aggregation(
-            es_manager.search(filters=filters, limit=None),
-            properties=aggregation_properties
-        )
-        return aggregations
-
-    @staticmethod
-    def add_chart_data(channel):
-        """ Generate and add chart data for channel """
-        if not channel.get("stats"):
-            channel["chart_data"] = []
-            channel["stats"] = {}
-            return channel
-
-        items = []
-        items_count = 0
-        history = zip(
-            reversed(channel["stats"].get("subscribers_history") or []),
-            reversed(channel["stats"].get("views_history") or [])
-        )
-        for subscribers, views in history:
-            timestamp = channel["stats"].get("historydate") - timedelta(
-                days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((subscribers, views)):
-                items.append(
-                    {"created_at": str(timestamp) + "Z",
-                     "subscribers": subscribers,
-                     "views": views}
-                )
-        channel["chart_data"] = items
-        return channel
-
-
 class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin,
-                         SegmentFilterMixin, BaseChannelListApiView):
+                         SegmentFilterMixin):
     """
     Proxy view for channel list
     """
@@ -201,6 +118,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
         "current_page": 1,
     }
     max_pages_count = 200
+    es_manager = ChannelManager
     allowed_aggregations = (
         "ads_stats.average_cpv:max",
         "ads_stats.average_cpv:min",
@@ -325,6 +243,81 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
 
     def _data_filtered_batch_generator(self, filters):
         return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)
+
+    def _get_channel_list_data(self, request, channels_ids=None):
+        allowed_sections_to_load = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
+                                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
+        query_params = deepcopy(request.query_params)
+        if request.user.is_staff or channels_ids:
+            allowed_sections_to_load += (Sections.ANALYTICS,)
+
+        es_manager = self.es_manager()
+
+        filters = ChannelQueryGenerator(query_params).get_search_filters(channels_ids)
+        sort = get_sort_rule(query_params)
+        size, offset, page = get_limits(query_params,
+                                        max_page_number=self.max_pages_count)
+
+        fields_to_load = get_fields(query_params, allowed_sections_to_load)
+        items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
+        channels = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
+            .source(includes=fields_to_load).execute().hits
+
+        aggregations = self._get_aggregations(es_manager, filters, query_params)
+
+        max_page = None
+        if size:
+            max_page = min(ceil(items_count / size), self.max_pages_count)
+
+        result = {
+            "current_page": page,
+            "items": [self.add_chart_data(channel.to_dict(skip_empty=False)) for channel in channels],
+            "items_count": items_count,
+            "max_page": max_page,
+            "aggregations": aggregations
+        }
+        return result
+
+    def _get_aggregations(self, es_manager, filters, query_params):
+        aggregation_properties_str = query_params.get("aggregations", "")
+        aggregation_properties = [
+            prop
+            for prop in aggregation_properties_str.split(",")
+            if prop in self.allowed_aggregations
+        ]
+        aggregations = es_manager.get_aggregation(
+            es_manager.search(filters=filters, limit=None),
+            properties=aggregation_properties
+        )
+        return aggregations
+
+    @staticmethod
+    def add_chart_data(channel):
+        """ Generate and add chart data for channel """
+        if not channel.get("stats"):
+            channel["chart_data"] = []
+            channel["stats"] = {}
+            return channel
+
+        items = []
+        items_count = 0
+        history = zip(
+            reversed(channel["stats"].get("subscribers_history") or []),
+            reversed(channel["stats"].get("views_history") or [])
+        )
+        for subscribers, views in history:
+            timestamp = channel["stats"].get("historydate") - timedelta(
+                days=len(channel["stats"].get("subscribers_history")) - items_count - 1)
+            timestamp = datetime.combine(timestamp, datetime.max.time())
+            items_count += 1
+            if any((subscribers, views)):
+                items.append(
+                    {"created_at": str(timestamp) + "Z",
+                     "subscribers": subscribers,
+                     "views": views}
+                )
+        channel["chart_data"] = items
+        return channel
 
 
 # todo: refactor/remove it

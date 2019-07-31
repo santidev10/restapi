@@ -120,66 +120,7 @@ def add_chart_data(video):
     return video
 
 
-class BaseVideoListApiView:
-    es_manager_class = VideoManager
-    max_pages_count = None
-    page_size = None
-    allowed_aggregations = tuple()
-
-    def _get_video_list_data(self, request, channels_ids=None):
-        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
-                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                                    Sections.CAPTIONS,)
-        if channels_ids or request.user.is_staff or \
-                request.user.has_perm("userprofile.video_audience"):
-            allowed_sections_to_load += (Sections.ANALYTICS,)
-
-        query_params = deepcopy(request.query_params)
-
-        es_manager = self.es_manager_class(allowed_sections_to_load)
-        filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
-
-        sort = get_sort_rule(query_params)
-        size, offset, page = get_limits(query_params,
-                                        default_page_size=self.page_size,
-                                        max_page_number=self.max_pages_count)
-
-        fields_to_load = get_fields(query_params, allowed_sections_to_load)
-        items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
-        videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
-            .source(includes=fields_to_load).execute().hits
-
-        aggregations = self._get_aggregations(es_manager, filters, query_params)
-
-        max_page = None
-        if size:
-            max_page = min(ceil(items_count / size), self.max_pages_count)
-
-        result = {
-            "current_page": page,
-            "items": [add_extra_fields(video.to_dict()) for video in videos],
-            "items_count": items_count,
-            "max_page": max_page,
-            "aggregations": aggregations
-        }
-        return result
-
-    def _get_aggregations(self, es_manager, filters, query_params):
-        aggregation_properties_str = query_params.get("aggregations", "")
-        aggregation_properties = [
-            prop
-            for prop in aggregation_properties_str.split(",")
-            if prop in self.allowed_aggregations
-        ]
-        aggregations = es_manager.get_aggregation(
-            es_manager.search(filters=filters, limit=None),
-            properties=aggregation_properties
-        )
-        return aggregations
-
-
-class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin,
-                       BaseVideoListApiView):
+class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
     """
@@ -200,6 +141,7 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
     }
     page_size = 50
     max_pages_count = 200
+    es_manager_class = VideoManager
     allowed_aggregations = (
         "ads_stats.average_cpv:max",
         "ads_stats.average_cpv:min",
@@ -257,6 +199,57 @@ class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredM
 
     def _data_filtered_batch_generator(self, filters):
         return Connector().get_video_list_full(filters, fields=VideoListCSVRendered.header, batch_size=1000)
+
+    def _get_video_list_data(self, request, channels_ids=None):
+        allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+                                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
+                                    Sections.CAPTIONS,)
+        if channels_ids or request.user.is_staff or \
+                request.user.has_perm("userprofile.video_audience"):
+            allowed_sections_to_load += (Sections.ANALYTICS,)
+
+        query_params = deepcopy(request.query_params)
+
+        es_manager = self.es_manager_class(allowed_sections_to_load)
+        filters = VideoQueryGenerator(query_params).get_search_filters(channels_ids)
+
+        sort = get_sort_rule(query_params)
+        size, offset, page = get_limits(query_params,
+                                        default_page_size=self.page_size,
+                                        max_page_number=self.max_pages_count)
+
+        fields_to_load = get_fields(query_params, allowed_sections_to_load)
+        items_count = es_manager.search(filters=filters, sort=sort, limit=None).count()
+        videos = es_manager.search(filters=filters, sort=sort, limit=size + offset, offset=offset) \
+            .source(includes=fields_to_load).execute().hits
+
+        aggregations = self._get_aggregations(es_manager, filters, query_params)
+
+        max_page = None
+        if size:
+            max_page = min(ceil(items_count / size), self.max_pages_count)
+
+        result = {
+            "current_page": page,
+            "items": [add_extra_fields(video.to_dict()) for video in videos],
+            "items_count": items_count,
+            "max_page": max_page,
+            "aggregations": aggregations
+        }
+        return result
+
+    def _get_aggregations(self, es_manager, filters, query_params):
+        aggregation_properties_str = query_params.get("aggregations", "")
+        aggregation_properties = [
+            prop
+            for prop in aggregation_properties_str.split(",")
+            if prop in self.allowed_aggregations
+        ]
+        aggregations = es_manager.get_aggregation(
+            es_manager.search(filters=filters, limit=None),
+            properties=aggregation_properties
+        )
+        return aggregations
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
