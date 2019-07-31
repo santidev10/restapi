@@ -25,6 +25,8 @@ def get_es_data(item_ids, index_name):
 
 
 class BrandSafetyQueryBuilder(object):
+    MAX_SIZE = 10000
+
     def __init__(self, data, overall_score: int = None, related_to: str = None):
         """
         :param data: dict -> Query options
@@ -46,7 +48,11 @@ class BrandSafetyQueryBuilder(object):
 
     def execute(self):
         try:
-            result = ElasticSearchConnector(index_name=self.options["index"]).search(doc_type=settings.BRAND_SAFETY_TYPE, body=self.query_body)
+            result = ElasticSearchConnector(index_name=self.options["index"]).search(
+                doc_type=settings.BRAND_SAFETY_TYPE,
+                body=self.query_body,
+                size=self.MAX_SIZE,
+            )
         except ElasticSearchConnectorException:
             raise ElasticSearchConnectorException
         return result
