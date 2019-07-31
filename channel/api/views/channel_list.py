@@ -200,8 +200,7 @@ class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequire
             "items": [self.add_chart_data(channel.to_dict(skip_empty=False)) for channel in channels],
             "items_count": items_count,
             "max_page": max_page,
-            "aggregations": aggregations,
-            "filters": [filter.to_dict() for filter in filters]
+            "aggregations": aggregations
         }
         return Response(result)
 
