@@ -1,4 +1,4 @@
-version: "3"
+version: "2.4"
 
 services:
   api:
@@ -14,10 +14,14 @@ services:
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
     depends_on:
-      - pg
-      - rabbitmq
-      - redis
-      - es
+      rabbitmq:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "/wait-for-it.sh -t 1 localhost:5000"]
       interval: 30s
