@@ -167,12 +167,12 @@ class ESQuerysetAdapter:
         self.filter_query = query
         return self
 
-    def get_data(self, slice_item):
+    def get_data(self, start=0, end=None):
         return self.manager.search(
             filters=self.filter_query,
             sort=self.sort,
-            offset=slice_item.start,
-            limit=slice_item.stop
+            offset=start,
+            limit=end,
         ) \
             .execute().hits
 
@@ -188,7 +188,9 @@ class ESQuerysetAdapter:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return self.get_data(item)
+            return self.get_data(item.start, item.stop)
+        if isinstance(item, int):
+            return self.get_data(end=item)
         raise NotImplementedError
 
 
