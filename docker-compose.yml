@@ -11,6 +11,8 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      ELASTIC_SEARCH_URLS: es
+      ELASTIC_SEARCH_USE_SSL: 0
     depends_on:
       - pg
       - rabbitmq
