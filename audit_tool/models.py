@@ -233,7 +233,6 @@ class AuditProcessor(models.Model):
         return d
 
 class AuditLanguage(models.Model):
-    DEFAULT_AUDIO_LANGUAGE = None
     language = models.CharField(max_length=64, unique=True)
 
     @staticmethod
@@ -327,6 +326,9 @@ class AuditVideoMeta(models.Model):
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    default_audio_langauge = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None)
+    duration = models.CharField(default=None)
+
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
