@@ -15,6 +15,7 @@ class ESQuerysetResearchAdapter(ESQuerysetAdapter):
     def __init__(self, *args, **kwargs):
         super(ESQuerysetResearchAdapter, self).__init__(*args, **kwargs)
         self.brand_safety_index = None
+        self.add_extra_fields_func = None
 
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
@@ -24,9 +25,9 @@ class ESQuerysetResearchAdapter(ESQuerysetAdapter):
         self.brand_safety_index = brand_safety_index
         return self
 
-    @property
-    def add_extra_fields_func(self):
-        return None
+    def extra_fields_func(self, func):
+        self.add_extra_fields_func = func
+        return self
 
     def get_data(self, start=0, end=None):
         items = super(ESQuerysetResearchAdapter, self).get_data(start, end)
@@ -34,8 +35,9 @@ class ESQuerysetResearchAdapter(ESQuerysetAdapter):
             items = add_brand_safety(items, self.brand_safety_index)
         if self.add_extra_fields_func:
             for func in self.add_extra_fields_func:
-                items = [func(item) for item in items]
+                items = func(items)
         return items
+
 
 class ESBrandSafetyFilterBackend(ESFilterBackend):
     def _get_brand_safety_options(self, request, view):

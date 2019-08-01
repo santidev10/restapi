@@ -1,6 +1,9 @@
 import re
 from copy import deepcopy
 from drf_yasg import openapi
+from datetime import datetime
+from datetime import timedelta
+
 from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
@@ -9,9 +12,9 @@ from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 
-from channel.api.views.utils import ESQuerysetResearchChannelAdapter
 from utils.api.research import ResearchPaginator
 from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetResearchAdapter
 
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.es_components_api_utils import APIViewMixin
@@ -133,6 +136,33 @@ def adapt_response_channel_data(response_data, user):
     return response_data
 
 
+def add_chart_data(channels):
+    """ Generate and add chart data for channel """
+    for channel in channels:
+        if not channel.stats:
+            continue
+
+        items = []
+        items_count = 0
+        history = zip(
+            reversed(channel.stats.subscribers_history or []),
+            reversed(channel.stats.views_history or [])
+        )
+        for subscribers, views in history:
+            timestamp = channel.stats.historydate - timedelta(
+                    days=len(channel.stats.subscribers_history) - items_count - 1)
+            timestamp = datetime.combine(timestamp, datetime.max.time())
+            items_count += 1
+            if any((subscribers, views)):
+                items.append(
+                    {"created_at": str(timestamp) + "Z",
+                     "subscribers": subscribers,
+                     "views": views}
+                )
+        channel.chart_data = items
+    return channels
+
+
 class ChannelListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
         or_permission_classes(
@@ -228,7 +258,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchChannelAdapter(ChannelManager(sections), max_items=100)
+        return ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
+            .extra_fields_func((add_chart_data,))
 
     @staticmethod
     def get_own_channel_ids(user, query_params):

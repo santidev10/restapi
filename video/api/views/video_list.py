@@ -6,7 +6,6 @@ from copy import deepcopy
 from datetime import timedelta
 from datetime import datetime
 
-from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
@@ -14,10 +13,9 @@ from es_components.connections import init_es_connection
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
 
-from channel.api.views.utils import ESQuerysetResearchAdapter
 from utils.api.research import ResearchPaginator
 from utils.api.research import ESBrandSafetyFilterBackend
-from singledb.connector import SingleDatabaseApiConnector as Connector
+from utils.api.research import ESQuerysetResearchAdapter
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
@@ -47,9 +45,9 @@ HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_
                   "stats.comments_history", "stats.historydate",)
 
 
-class ESQuerysetResearchVideoAdapter(ESQuerysetResearchAdapter):
-    def add_chart_data(self, video):
-        """ Generate and add chart data for channel """
+def add_chart_data(videos):
+    """ Generate and add chart data for channel """
+    for video in videos:
         if not video.stats:
             video.chart_data = []
             return video
@@ -76,9 +74,11 @@ class ESQuerysetResearchVideoAdapter(ESQuerysetResearchAdapter):
                      "comments": comments}
                 )
         video.chart_data = chart_data
-        return video
+    return videos
 
-    def add_transcript(self, video):
+
+def add_transcript(videos):
+    for video in videos:
         transcript = None
         if video.captions and video.captions.items:
             for caption in video.captions.items:
@@ -86,11 +86,7 @@ class ESQuerysetResearchVideoAdapter(ESQuerysetResearchAdapter):
                     text = caption.text
                     transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         video.transcript = transcript
-        return video
-
-    @property
-    def add_extra_fields_func(self):
-        return (self.add_chart_data, self.add_transcript,)
+    return videos
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -167,7 +163,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchVideoAdapter(VideoManager(sections), max_items=100)
-
-    def _data_filtered_batch_generator(self, filters):
-        return Connector().get_video_list_full(filters, fields=VideoListCSVRendered.header, batch_size=1000)
+        return ESQuerysetResearchAdapter(VideoManager(sections), max_items=100)\
+            .extra_fields_func((add_chart_data, add_transcript,))
