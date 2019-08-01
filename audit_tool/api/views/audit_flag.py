@@ -35,16 +35,6 @@ class AuditFlagApiView(APIView):
             raise ValidationError("Parameter 'item_id' required.")
         else:
             item_id = query_params["item_id"]
-            if item_type == BlacklistItem.VIDEO_ITEM:
-                try:
-                    item = AuditVideo.objects.get(video_id=item_id)
-                except ObjectDoesNotExist:
-                    raise ValidationError("Video with item_id: '{}' does not exist.".format(item_id))
-            else:
-                try:
-                    item = AuditChannel.objects.get(channel_id=item_id)
-                except ObjectDoesNotExist:
-                    raise ValidationError("Channel with item_id: '{}' does not exist.".format(item_id))
 
         flag_categories = {}
         if "flag_categories" not in query_params or len(query_params["flag_categories"]) < 1:
