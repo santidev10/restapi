@@ -1,7 +1,10 @@
 import csv
 from datetime import datetime
+from time import sleep
 
 import pytz
+from django.test import override_settings
+from elasticsearch_dsl import Double
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -10,6 +13,8 @@ from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
+from es_components.models import Keyword
+from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
@@ -62,7 +67,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "channel_export_report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
+        expected_filename = "Channels export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
         self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
 
     def test_headers(self):
@@ -163,6 +168,47 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             ["" for _ in range(len(values))],
             values
         )
+
+    def test_brand_safety(self):
+        self.create_admin_user()
+        channel_id = str(next(int_iterator))
+        channel = Channel(channel_id)
+        ChannelManager().upsert([channel])
+        brand_safety = ChannelBrandSafetyDoc(
+            meta={'id': channel_id},
+            overall_score=12.3
+        )
+        brand_safety.save()
+        sleep(.3)
+
+        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
+            response = self._request()
+
+            csv_data = get_data_from_csv_response(response)
+            headers = next(csv_data)
+            data = next(csv_data)
+
+        brand_safety_index = headers.index("brand_safety_score")
+        self.assertEqual(
+            str(brand_safety.overall_score),
+            data[brand_safety_index]
+        )
+
+
+class ChannelBrandSafetyDoc(BaseDocument):
+    """
+    Temporary solution for testing brand safety.
+    Remove this doc after implementing the Brand Safety feature in the dmp project
+    """
+    channel_id = Keyword()
+    overall_score = Double()
+
+    class Index:
+        name = "channel_brand_safety"
+        prefix = "channel_brand_safety_"
+
+    class Meta:
+        doc_type = "channel_brand_safety"
 
 
 def get_data_from_csv_response(response):

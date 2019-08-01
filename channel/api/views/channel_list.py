@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from math import ceil
 
+from django.conf import settings
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -11,7 +12,6 @@ from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
-from rest_framework.fields import SerializerMethodField
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
@@ -32,6 +32,7 @@ from utils.api.fields import CharFieldListBased
 from utils.api.file_list_api_view import FileListApiView
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.brand_safety_view_decorator import add_brand_safety_data
+from utils.brand_safety_view_decorator import get_brand_safety_items
 from utils.datetime import time_instance
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_api_utils import QueryGenerator
@@ -40,6 +41,7 @@ from utils.es_components_api_utils import get_limits
 from utils.es_components_api_utils import get_sort_rule
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from utils.serializers.fields import ParentDictValueField
 
 init_es_connection()
 
@@ -375,14 +377,19 @@ class ChannelListExportSerializer(Serializer):
     sentiment = FloatField(source="stats.sentiment")
     engage_rate = FloatField(source="stats.engage_rate")
     last_video_published_at = DateTimeField(source="stats.last_video_published_at")
-    brand_safety_score = SerializerMethodField()
+    brand_safety_score = ParentDictValueField("brand_safety_scores", source="main.id", property_key="overall_score")
     video_view_rate = FloatField(source="ads_stats.video_view_rate")
     ctr = FloatField(source="ads_stats.ctr")
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
 
-    def get_brand_safety_score(self, *args, **kwargs):
-        pass
+    def __init__(self, instance, *args, **kwargs):
+        super(ChannelListExportSerializer, self).__init__(instance, *args, **kwargs)
+        self.brand_safety_scores = {}
+        if instance:
+            items = instance if isinstance(instance, list) else [instance]
+            ids = [item.main.id for item in items]
+            self.brand_safety_scores = get_brand_safety_items(ids, settings.BRAND_SAFETY_CHANNEL_INDEX)
 
 
 class ChannelListExportApiView(FileListApiView):
@@ -404,7 +411,7 @@ class ChannelListExportApiView(FileListApiView):
     @property
     def filename(self):
         now = time_instance.now()
-        return "channel_export_report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
+        return "Channels export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
 
 
 # todo: refactor/remove it
