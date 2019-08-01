@@ -354,7 +354,7 @@ class ChannelCSVRendered(CSVStreamingRenderer):
         "video_view_rate",
         "ctr",
         "ctr_v",
-        "average_cpv"
+        "average_cpv",
     ]
 
 

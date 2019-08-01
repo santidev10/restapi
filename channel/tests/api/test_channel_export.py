@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 from time import sleep
+from unittest.mock import patch
 
 import pytz
 from django.test import override_settings
@@ -17,6 +18,7 @@ from es_components.models import Keyword
 from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from utils.elasticsearch import ElasticSearchConnector
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
@@ -193,6 +195,19 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             str(brand_safety.overall_score),
             data[brand_safety_index]
         )
+
+    def test_request_brand_safety_by_batches(self):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        ChannelManager().upsert(channels)
+
+        with patch.object(ElasticSearchConnector, "search_by_id", return_value={}) as es_mock:
+            response = self._request()
+
+            csv_data = get_data_from_csv_response(response)
+            list(csv_data)
+
+            es_mock.assert_called_once()
 
 
 class ChannelBrandSafetyDoc(BaseDocument):
