@@ -1,22 +1,72 @@
 """
 Custom api paginator module
 """
-from rest_framework.pagination import PageNumberPagination
+from django.core.paginator import InvalidPage
+from django.core.paginator import Page
+from django.core.paginator import Paginator
+from django.utils.functional import cached_property
+from rest_framework.pagination import _positive_int
 from rest_framework.response import Response
+from rest_framework.settings import api_settings
 
 
-class CustomPageNumberPaginator(PageNumberPagination):
+class CustomPageNumberPaginator:
     """
     Customize page number paginator response
     """
+    page_query_param = "page"
+    page_size_query_param = "size"
+    max_page_size = None
+    page_size = api_settings.PAGE_SIZE
+
+    def __init__(self):
+        self.page = None
+        self.request = None
+
     def get_paginated_response(self, data):
         """
         Update response to return
         """
-        response_data = {
+        return Response(self._get_response_data(data))
+
+    def _get_response_data(self, data):
+        return {
             'items_count': self.page.paginator.count,
             'items': data,
             'current_page': self.page.number,
             'max_page': self.page.paginator.num_pages,
         }
-        return Response(response_data)
+
+    def get_page_size(self, request):
+        if self.page_size_query_param:
+            try:
+                return _positive_int(
+                    request.query_params[self.page_size_query_param],
+                    strict=False,
+                    cutoff=self.max_page_size
+                )
+            except (KeyError, ValueError):
+                pass
+
+        return self.page_size
+
+    def paginate_queryset(self, queryset, request, view=None):
+        page_size = self.get_page_size(request)
+
+        paginator = PaginatorWithZeroPage(queryset, page_size)
+        page_number = request.query_params.get(self.page_query_param, 1)
+
+        try:
+            self.page = paginator.page(page_number)
+        except InvalidPage:
+            self.page = Page([], 0, paginator)
+
+        return list(self.page)
+
+
+class PaginatorWithZeroPage(Paginator):
+    @cached_property
+    def num_pages(self):
+        if self.per_page == 0:
+            return 0
+        return super(PaginatorWithZeroPage, self).num_pages

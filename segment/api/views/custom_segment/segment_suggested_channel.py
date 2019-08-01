@@ -2,7 +2,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 
-from channel.api.views import ChannelListApiView
+from channel.api.views.channel_list import adapt_response_channel_data
 from segment.api.mixins import DynamicModelViewMixin
 from segment.api.serializers import SegmentSerializer
 from singledb.connector import SingleDatabaseApiConnector as Connector
@@ -27,5 +27,5 @@ class SegmentSuggestedChannelApiView(DynamicModelViewMixin, GenericAPIView):
             except SingleDatabaseApiConnectorException:
                 return Response(status=HTTP_408_REQUEST_TIMEOUT)
         if response_data:
-            ChannelListApiView.adapt_response_data(response_data, request.user)
+            adapt_response_channel_data(response_data, request.user)
         return Response(response_data)
