@@ -1,10 +1,14 @@
+import logging
 from time import sleep
 from time import time
 
 from celery import Celery
+from celery.backends.base import DisabledBackend
+
 from django.conf import settings
 
 dmp_celery_app = Celery("update", broker=settings.DMP_BROKER_URL)
+logger = logging.getLogger(__name__)
 
 WAIT_RESULTS_TIMEOUT = 300
 WAIT_RESULTS_SLEEP_TIME = 1
@@ -45,8 +49,10 @@ def send_task_delete_channels(task_args):
 def send_task_delete_videos(task_args):
     dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
 
-
 def wait_results(future):
+    if isinstance(future.backend, DisabledBackend):
+        logger.warning("Celery backend is disabled. Unable to wait for the results of the async task")
+        return
     time_start = time()
     while not future.ready():
         sleep(WAIT_RESULTS_SLEEP_TIME)
