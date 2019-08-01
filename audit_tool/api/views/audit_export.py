@@ -122,7 +122,7 @@ class AuditExportApiView(APIView):
         else:
             hit_types = 'exclusion'
         cols = [
-            "Video ID",
+            "Video URL",
             "Name",
             "Language",
             "Category",
@@ -199,7 +199,7 @@ class AuditExportApiView(APIView):
                     "tags": v.keywords,
                 }, full_audit=False)
                 data = [
-                    v.video.video_id,
+                    "https://www.youtube.com/video/" + v.video.video_id,
                     v.name,
                     language,
                     category,
@@ -256,7 +256,7 @@ class AuditExportApiView(APIView):
         self.get_categories()
         cols = [
             "Channel Title",
-            "Channel ID",
+            "Channel URL",
             "Views",
             "Subscribers",
             "Num Videos Checked",
@@ -314,7 +314,7 @@ class AuditExportApiView(APIView):
                     last_category = ""
                 data = [
                     v.name,
-                    v.channel.channel_id,
+                    "https://www.youtube.com/channel/" + v.channel.channel_id,
                     v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],
