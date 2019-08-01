@@ -289,7 +289,10 @@ class Command(BaseCommand):
                 db_video_meta.default_audio_langauge = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
             except Exception as e:
                 pass
-            db_video_meta.duration = i['contentDetails']['duration']
+            try:
+                db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)

@@ -327,7 +327,7 @@ class AuditVideoMeta(models.Model):
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     default_audio_langauge = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None)
-    duration = models.CharField(default=None)
+    duration = models.CharField(max_length=30, default=None)
 
 
 class AuditVideoProcessor(models.Model):
