@@ -286,7 +286,7 @@ class Command(BaseCommand):
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             try:
-                db_video_meta.defaultAudioLanguage = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                db_video_meta.default_audio_langauge = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
             except Exception as e:
                 pass
             db_video_meta.duration = i['contentDetails']['duration']
