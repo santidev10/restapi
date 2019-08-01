@@ -24,6 +24,7 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_fields
+from channel.api.views.utils import ESQuerysetResearchChannelAdapter
 
 init_es_connection()
 
@@ -107,7 +108,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelListApiView.add_chart_data(channel.to_dict(skip_empty=False))
+        result = ESQuerysetResearchChannelAdapter.add_chart_data(channel).to_dict()
         result.update({
             "performance": {
                 "average_views": average_views,

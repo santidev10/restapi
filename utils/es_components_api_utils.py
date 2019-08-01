@@ -150,6 +150,7 @@ class ESQuerysetAdapter:
         self.max_items = max_items
         self.slice = None
         self.aggregations = None
+        self.fields_to_load = None
 
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
@@ -167,6 +168,16 @@ class ESQuerysetAdapter:
         self.filter_query = query
         return self
 
+    def fields(self, fields):
+        fields = [
+            field
+            for field in fields
+            if field.split(".")[0] in self.manager.sections
+        ]
+
+        self.fields_to_load = fields or self.manager.sections
+        return self
+
     def get_data(self, start=0, end=None):
         return self.manager.search(
             filters=self.filter_query,
@@ -174,7 +185,7 @@ class ESQuerysetAdapter:
             offset=start,
             limit=end,
         ) \
-            .execute().hits
+            .source(includes=self.fields_to_load).execute().hits
 
     def get_aggregations(self):
         return self.manager.get_aggregation(
@@ -218,13 +229,18 @@ class ESFilterBackend(BaseFilterBackend):
             ]
         return aggregations
 
+    def _get_fields(self, request):
+        fields = request.query_params.get("fields", "").split(",")
+        return fields
+
     def filter_queryset(self, request, queryset, view):
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
         query = query_generator.get_search_filters()
+        fields = self._get_fields(request)
         aggregations = self._get_aggregations(request, queryset, view)
-        return queryset.filter(query).with_aggregations(aggregations)
+        return queryset.filter(query).fields(fields).with_aggregations(aggregations)
 
 
 class APIViewMixin:
