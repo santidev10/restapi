@@ -137,7 +137,7 @@ class QueryGenerator:
         return filters
 
 
-class ESSerializer(BaseSerializer):
+class ESDictSerializer(BaseSerializer):
     def to_representation(self, instance):
         return instance.to_dict()
 
@@ -193,6 +193,12 @@ class ESQuerysetAdapter:
             return self.get_data(end=item)
         raise NotImplementedError
 
+    def __iter__(self):
+        return self.manager.scan(
+            filters=self.filter_query,
+            sort=self.sort,
+        )
+
 
 class ESFilterBackend(BaseFilterBackend):
     def _get_query_generator(self, request, queryset, view):
@@ -228,7 +234,7 @@ class ESFilterBackend(BaseFilterBackend):
 
 
 class APIViewMixin:
-    serializer_class = ESSerializer
+    serializer_class = ESDictSerializer
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 
     allowed_aggregations = ()
@@ -248,3 +254,7 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
+
+
+class ExportMixin:
+    pass
