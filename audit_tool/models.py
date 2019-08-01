@@ -233,6 +233,7 @@ class AuditProcessor(models.Model):
         return d
 
 class AuditLanguage(models.Model):
+    DEFAULT_AUDIO_LANGUAGE = None
     language = models.CharField(max_length=64, unique=True)
 
     @staticmethod
