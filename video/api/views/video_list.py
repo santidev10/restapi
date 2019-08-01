@@ -104,10 +104,15 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
     pagination_class = ResearchPaginator
+
     ordering_fields = (
         "stats.last_30day_views:desc",
-        "stats.last_7day_views:desc",
-        "stats.last_day_views:desc",
+        "stats.views:desc",
+        "stats.likes:desc",
+        "stats.dislikes:desc",
+        "stats.comments:desc",
+        "stats.sentiment:desc",
+        "general_data.youtube_published_at:desc",
     )
 
     terms_filter = TERMS_FILTER
