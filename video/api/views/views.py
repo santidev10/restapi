@@ -22,7 +22,6 @@ from singledb.settings import DEFAULT_VIDEO_LIST_FIELDS
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.connections import init_es_connection
-from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.brand_safety_view_decorator import add_brand_safety_data
@@ -120,7 +119,7 @@ def add_extra_field(video):
     return video
 
 
-class VideoListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, SegmentFilterMixin):
+class VideoListApiView(APIView, PermissionRequiredMixin, SegmentFilterMixin):
     """
     Proxy view for video list
     """
