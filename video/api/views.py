@@ -77,8 +77,8 @@ def add_transcript(video):
     transcript = None
     if video.get("captions") and video["captions"].get("items"):
         for caption in video["captions"].get("items"):
-            if caption.get("language_code") == "en":
-                text = caption.get("text")
+            text = caption.get("text")
+            if caption.get("language_code") == "en" and text:
                 transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
     video["transcript"] = transcript
     return video
