@@ -125,8 +125,8 @@ class BrandSafetyChannelAPIView(APIView):
     def __get_transcript(self, captions):
         if captions and captions.items:
             for caption in captions.items:
-                if caption.language_code == "en":
-                    text = caption.text
+                text = caption.text
+                if caption.language_code == "en" and text:
                     transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
                     return transcript
 
