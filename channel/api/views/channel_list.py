@@ -20,7 +20,6 @@ from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from singledb.connector import SingleDatabaseApiConnector as Connector
-from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.api_views_mixins import SegmentFilterMixin
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import QueryGenerator
