@@ -9,7 +9,6 @@ from datetime import datetime
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.connections import init_es_connection
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
 
@@ -21,8 +20,6 @@ from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
-
-init_es_connection()
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
@@ -152,13 +149,16 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
         channel_id = deepcopy(self.request.query_params).get("channel")
 
+        if channel_id:
+            self.request.query_params._mutable = True
+            self.request.query_params["channel.id"] = [channel_id]
+
         if not self.request.user.has_perm("userprofile.video_list") and \
                 not self.request.user.has_perm("userprofile.view_highlights"):
             user_channels_ids = set(self.request.user.channels.values_list("channel_id", flat=True))
 
             if channel_id and (channel_id in user_channels_ids):
                 sections += (Sections.ANALYTICS,)
-                self.request.query_params["channel.id"] = [channel_id]
 
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):

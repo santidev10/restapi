@@ -8,7 +8,6 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 
@@ -21,7 +20,6 @@ from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
-init_es_connection()
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
@@ -254,6 +252,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
         channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         if channels_ids:
+            self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
 
         if self.request.user.is_staff or channels_ids:

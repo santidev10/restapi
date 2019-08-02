@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 
 
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
@@ -27,7 +26,6 @@ from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_fields
 from channel.api.views.channel_list import add_chart_data
 
-init_es_connection()
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 

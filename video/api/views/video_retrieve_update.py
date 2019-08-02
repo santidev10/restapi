@@ -15,11 +15,9 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_fields
 
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 
 
-init_es_connection()
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
 

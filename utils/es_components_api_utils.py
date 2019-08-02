@@ -83,7 +83,7 @@ class QueryGenerator:
 
             value = self.query_params.get(field, None)
             if value:
-                value = value.split(",")
+                value = value.split(",") if isinstance(value, str) else value
                 filters.append(
                     QueryBuilder().build().must().terms().field(field).value(value).get()
                 )
@@ -95,7 +95,7 @@ class QueryGenerator:
 
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
-            if value:
+            if value and isinstance(value, str):
                 filters.append(
                     QueryBuilder().build().must().match_phrase().field(field).value(value).get()
                 )

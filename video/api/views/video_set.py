@@ -8,12 +8,6 @@ from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.celery.dmp_celery import send_task_delete_videos
 
 
-from es_components.connections import init_es_connection
-
-
-init_es_connection()
-
-
 class VideoSetApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
 
