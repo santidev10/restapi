@@ -3,8 +3,13 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
+from utils.permissions import user_has_permission
 
 class AuditResumeApiView(APIView):
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
+
     def post(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
@@ -18,6 +23,8 @@ class AuditResumeApiView(APIView):
                     related_audits = [audit.id]
                 else:
                     related_audits = related_audits + [audit.id]
+                audit.params['resumed'] = True
+                audit.save(update_fields=['params'])
                 params['related_audits'] = related_audits
                 if not params['name'].startswith('Resumed: '):
                     params['name'] = 'Resumed: {}'.format(params['name'])

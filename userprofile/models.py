@@ -195,7 +195,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         text_content = "Congratulations! You now have access to ViewIQ!\n" \
                        " Click <a href='{link}'>here</a> to access your account." \
             .format(link=link)
-        send_html_email(subject, self.email, text_header, text_content, host)
+        send_html_email(subject, self.email, text_header, text_content)
 
     @property
     def token(self):
