@@ -109,7 +109,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = add_chart_data(channel).to_dict()
+        result = add_chart_data([channel])[0].to_dict()
         result.update({
             "performance": {
                 "average_views": average_views,
