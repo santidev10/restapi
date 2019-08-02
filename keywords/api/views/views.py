@@ -17,7 +17,6 @@ from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
 from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
 from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
-from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 logger = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ class KeywordListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class KeywordListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin):
+class KeywordListApiView(APIView, PermissionRequiredMixin):
     """
     Proxy view for keywords list
     """

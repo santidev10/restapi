@@ -44,7 +44,7 @@ urlpatterns = [
     url(r'^api/v1/', include(video_api_urls, namespace=Namespace.VIDEO)),
 
     # Keyword api urls
-    url(r'^api/v1/', include(keyword_api_urls, namespace='keyword_api_urls')),
+    url(r'^api/v1/', include(keyword_api_urls, namespace=Namespace.KEYWORD)),
 
     # Segment api urls
     url(r'^api/v1/', include(segment_v1_url_patterns, namespace=Namespace.SEGMENT)),

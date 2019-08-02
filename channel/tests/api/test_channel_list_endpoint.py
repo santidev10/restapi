@@ -4,10 +4,10 @@ from rest_framework.status import HTTP_200_OK
 
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
+from utils.utittests.es_components_patcher import SearchDSLPatcher
 from utils.utittests.reverse import reverse
 from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.es_components_patcher import SearchDSLPatcher
 
 
 class ChannelListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):

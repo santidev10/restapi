@@ -1,9 +1,5 @@
 import json
 
-from django.http import Http404
-
-from utils.singleton import singleton
-
 
 # @singleton
 class SingleDatabaseApiConnectorPatcher:
