@@ -26,10 +26,11 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
-    def _request(self):
+    def _request(self, **query_params):
         url = reverse(
             ChannelPathName.CHANNEL_LIST_EXPORT,
             [Namespace.CHANNEL],
+            query_params=query_params,
         )
         return self.client.get(url)
 
@@ -181,7 +182,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             overall_score=12.3
         )
         brand_safety.save()
-        sleep(.3)
+        sleep(.5)
 
         with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
             response = self._request()
@@ -208,6 +209,23 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             list(csv_data)
 
             es_mock.assert_called_once()
+
+    def test_filter(self):
+        self.create_admin_user()
+        filter_count = 2
+        channels = [Channel(next(int_iterator)) for _ in range(filter_count+1)]
+        ChannelManager().upsert(channels)
+        channel_ids = [str(channel.main.id) for channel in channels]
+
+        response = self._request(ids=",".join(channel_ids[:filter_count]))
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
 
 
 class ChannelBrandSafetyDoc(BaseDocument):

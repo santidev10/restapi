@@ -82,16 +82,27 @@ class ChannelListExportApiView(FileListApiView):
             IsAdminUser
         ),
     )
+
     serializer_class = ChannelListExportSerializer
     renderer_classes = (ChannelCSVRendered,)
-    queryset = ESQuerysetAdapter(ChannelManager((
-        Sections.MAIN,
-        Sections.GENERAL_DATA,
-        Sections.STATS,
-        Sections.ADS_STATS,
-    )))
 
     @property
     def filename(self):
         now = time_instance.now()
         return "Channels export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
+
+    def get_queryset(self):
+        return ESQuerysetAdapter(ChannelManager((
+            Sections.MAIN,
+            Sections.GENERAL_DATA,
+            Sections.STATS,
+            Sections.ADS_STATS,
+        )))
+
+    def filter_queryset(self, queryset):
+        ids_params = self.request.query_params.get("ids")
+        if ids_params:
+            ids = ids_params.split(",")
+            query_filter = queryset.manager.ids_query(ids)
+            queryset = queryset.filter(query_filter)
+        return queryset
