@@ -48,7 +48,7 @@ class Command(BaseCommand):
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics&id={id}"
+                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -360,6 +360,15 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            if 'defaultAudioLanguage' in i['snippet']:
+                try:
+                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                except Exception as e:
+                    pass
+            try:
+                db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)
