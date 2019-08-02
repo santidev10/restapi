@@ -14,7 +14,6 @@ from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
-from es_components.models import Keyword
 from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
@@ -213,7 +212,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_filter(self):
         self.create_admin_user()
         filter_count = 2
-        channels = [Channel(next(int_iterator)) for _ in range(filter_count+1)]
+        channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
         ChannelManager().upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
@@ -233,7 +232,6 @@ class ChannelBrandSafetyDoc(BaseDocument):
     Temporary solution for testing brand safety.
     Remove this doc after implementing the Brand Safety feature in the dmp project
     """
-    channel_id = Keyword()
     overall_score = Double()
 
     class Index:

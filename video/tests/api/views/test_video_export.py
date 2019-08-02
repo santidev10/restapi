@@ -12,7 +12,6 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from es_components.models import Keyword
 from es_components.models import Video
 from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
@@ -218,7 +217,6 @@ class VideoBrandSafetyDoc(BaseDocument):
     Temporary solution for testing brand safety.
     Remove this doc after implementing the Brand Safety feature in the dmp project
     """
-    video_id = Keyword()
     overall_score = Double()
 
     class Index:
