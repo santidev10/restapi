@@ -108,3 +108,22 @@ def _handle_single_view(response, index_name):
         response.data["brand_safety_data"] = get_brand_safety_data(score)
     except (TypeError, KeyError):
         return
+
+
+def add_brand_safety(items, index_name):
+    try:
+        doc_ids = [item.main.id for item in items]
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            settings.BRAND_SAFETY_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in items:
+            score = es_scores.get(item.main.id, None)
+            item.brand_safety_data = get_brand_safety_data(score)
+    except (TypeError, KeyError):
+        return
+    return items
