@@ -193,6 +193,10 @@ class AuditExportApiView(APIView):
                     last_uploaded_category = v.video.channel.auditchannelmeta.last_uploaded_category.category_display
                 except Exception as e:
                     last_uploaded_category = ''
+                try:
+                    default_audio_language = v.default_audio_language.language
+                except Exception as e:
+                    default_audio_language = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 video_audit_score = auditor.audit_service.audit_video({
                     "video_id": v.video.video_id,
@@ -209,8 +213,8 @@ class AuditExportApiView(APIView):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
-                    v.default_audio_language.language,
-                    v.duration,
+                    default_audio_language,
+                    v.duration if v.duration else "",
                     v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
                     v.video.channel.auditchannelmeta.name if v.video.channel else "",
                     v.video.channel.channel_id if v.video.channel else "",
