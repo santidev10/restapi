@@ -319,14 +319,14 @@ class AuditVideoMeta(models.Model):
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language')
     category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
-    default_audio_langauge = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None)
+    default_audio_langauge = models.ForeignKey(AuditLanguage, null=True, default=None)
     duration = models.CharField(max_length=30, default=None)
 
 
