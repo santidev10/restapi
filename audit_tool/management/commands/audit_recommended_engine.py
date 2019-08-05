@@ -226,7 +226,7 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video_meta.keywords:
+            if not db_video_meta.keywords or not db_video_meta.duration:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video.channel = channel
