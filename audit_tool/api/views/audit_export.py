@@ -11,6 +11,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
+from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -121,7 +122,7 @@ class AuditExportApiView(APIView):
         else:
             hit_types = 'exclusion'
         cols = [
-            "Video ID",
+            "Video URL",
             "Name",
             "Language",
             "Category",
@@ -129,6 +130,8 @@ class AuditExportApiView(APIView):
             "Likes",
             "Dislikes",
             "Emoji",
+            "Default Audio Language",
+            "Duration",
             "Publish Date",
             "Channel Name",
             "Channel ID",
@@ -141,6 +144,7 @@ class AuditExportApiView(APIView):
             "All {} Hit Words".format(hit_types),
             "Unique {} Hit Words".format(hit_types),
             "Video Count",
+            "Brand Safety Score",
         ]
         video_ids = []
         hit_words = {}
@@ -152,6 +156,7 @@ class AuditExportApiView(APIView):
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
+        auditor = StandardBrandSafetyProvider()
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -188,9 +193,19 @@ class AuditExportApiView(APIView):
                     last_uploaded_category = v.video.channel.auditchannelmeta.last_uploaded_category.category_display
                 except Exception as e:
                     last_uploaded_category = ''
+                try:
+                    default_audio_language = v.default_audio_language.language
+                except Exception as e:
+                    default_audio_language = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
+                video_audit_score = auditor.audit_service.audit_video({
+                    "video_id": v.video.video_id,
+                    "video_title": v.name,
+                    "description": v.description,
+                    "tags": v.keywords,
+                }, full_audit=False)
                 data = [
-                    v.video.video_id,
+                    "https://www.youtube.com/video/" + v.video.video_id,
                     v.name,
                     language,
                     category,
@@ -198,6 +213,8 @@ class AuditExportApiView(APIView):
                     v.likes,
                     v.dislikes,
                     'T' if v.emoji else 'F',
+                    default_audio_language,
+                    v.duration if v.duration else "",
                     v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
                     v.video.channel.auditchannelmeta.name if v.video.channel else "",
                     v.video.channel.channel_id if v.video.channel else "",
@@ -210,6 +227,7 @@ class AuditExportApiView(APIView):
                     all_hit_words,
                     unique_hit_words,
                     video_count if video_count else "",
+                    video_audit_score,
                 ]
                 wr.writerow(data)
             myfile.buffer.seek(0)
@@ -246,7 +264,7 @@ class AuditExportApiView(APIView):
         self.get_categories()
         cols = [
             "Channel Title",
-            "Channel ID",
+            "Channel URL",
             "Views",
             "Subscribers",
             "Num Videos Checked",
@@ -304,7 +322,7 @@ class AuditExportApiView(APIView):
                     last_category = ""
                 data = [
                     v.name,
-                    v.channel.channel_id,
+                    "https://www.youtube.com/channel/" + v.channel.channel_id,
                     v.view_count if v.view_count else "",
                     v.subscribers,
                     video_count[v.channel.channel_id],

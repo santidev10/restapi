@@ -207,7 +207,8 @@ class AuditProcessor(models.Model):
             'max_dislikes': self.params.get('max_dislikes'),
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
-            'resumed': self.params.get('resumed')
+            'resumed': self.params.get('resumed'),
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -318,13 +319,16 @@ class AuditVideoMeta(models.Model):
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language')
     category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True)
+    duration = models.CharField(max_length=30, default=None, null=True)
+
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
