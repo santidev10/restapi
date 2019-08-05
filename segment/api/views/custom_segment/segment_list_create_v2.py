@@ -49,6 +49,10 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
                 raise ValidationError("Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
             if sort_by == "items":
                 queryset = queryset.annotate(items=Count("related"))
+            if self.request.query_params.get("ascending"):
+                sort_by = "{}".format(sort_by)
+            else:
+                sort_by = "-{}".format(sort_by)
             queryset = queryset.order_by(sort_by)
         except KeyError:
             pass

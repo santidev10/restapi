@@ -11,6 +11,7 @@ class PersistentSegmentCategory:
     BLACKLIST = "blacklist"
     WHITELIST = "whitelist"
     TOPIC = "topic"
+    APEX = "apex"
 
 
 class PersistentSegmentTitles:
@@ -162,12 +163,14 @@ class PersistentSegmentExportColumn:
     CHANNEL_CSV_COLUMNS_MAP_BY_CATEGORY = (
         (PersistentSegmentCategory.BLACKLIST, CHANNEL_BLACKLIST_CSV_COLUMNS),
         (PersistentSegmentCategory.WHITELIST, CHANNEL_WHITELIST_CSV_COLUMNS),
+        (PersistentSegmentCategory.APEX, CHANNEL_WHITELIST_CSV_COLUMNS),
         (PersistentSegmentCategory.TOPIC, CHANNEL_TOPIC_CSV_COLUMNS),
     )
 
     VIDEO_CSV_COLUMNS_MAP_BY_CATEGORY = (
         (PersistentSegmentCategory.BLACKLIST, VIDEO_BLACKLIST_CSV_COLUMNS),
         (PersistentSegmentCategory.WHITELIST, VIDEO_WHITELIST_CSV_COLUMNS),
+        (PersistentSegmentCategory.APEX, VIDEO_WHITELIST_CSV_COLUMNS),
         (PersistentSegmentCategory.TOPIC, VIDEO_TOPIC_CSV_COLUMNS),
     )
 

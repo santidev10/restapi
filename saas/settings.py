@@ -188,7 +188,10 @@ LOGS_DIRECTORY = 'logs'
 
 DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
-ip = socket.gethostbyname(hostname)
+try:
+    ip = socket.gethostbyname(hostname)
+except Exception as e:
+    ip = socket.getfqdn(hostname)
 
 LOGGING = {
     'version': 1,
@@ -472,7 +475,8 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
-ELASTIC_SEARCH_URLS = [""]
+from es_components.config import *
+
 BRAND_SAFETY_CHANNEL_INDEX = ""
 BRAND_SAFETY_VIDEO_INDEX = ""
 BRAND_SAFETY_TYPE = ""

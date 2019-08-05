@@ -25,7 +25,7 @@ class PathEndsWith(object):
 
 
 class KeywordRetrieveUpdateApiViewTestCase(ExtendedAPITestCase):
-    @patch("keywords.api.views.Connector", new=singledb.connector.SingleDatabaseApiConnector_origin)
+    @patch("keywords.api.views.views.Connector", new=singledb.connector.SingleDatabaseApiConnector_origin)
     @patch.object(requests, "get")
     def test_get_keyword_should_decode_pk_for_sdb_call(self, get_mock, *args):
         """

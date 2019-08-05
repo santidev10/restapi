@@ -30,10 +30,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
         "schedule": crontab(hour="0", minute="0"),
     },
-    "cleanup-segments-related": {
-        "task": "segment.tasks.cleanup_segments_related",
-        "schedule": crontab(hour="0", minute="0"),
-    }
 }
 CELERY_RESULT_BACKEND = "django-db"
 

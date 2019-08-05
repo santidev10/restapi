@@ -8,6 +8,9 @@ class ESResultPatcher:
 
 
 class SearchDSLPatcher:
+    def to_dict(self):
+        return {}
+    
     def execute(self):
         return ESResultPatcher()
 

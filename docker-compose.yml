@@ -73,8 +73,6 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.7.8-management
-    ports:
-      - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
