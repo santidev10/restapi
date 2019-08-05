@@ -4,6 +4,8 @@ from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.reverse import reverse
 
+from es_components.models.keyword import Keyword
+
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.es_components_patcher import SearchDSLPatcher
 
@@ -13,7 +15,7 @@ class KeywordRetrieveUpdateApiViewTestCase(ExtendedAPITestCase):
         keyword = "#tigerzindahai"
         self.create_test_user()
         url = reverse("keyword_api_urls:keywords", args=(keyword,))
-        with patch("es_components.managers.keyword.KeywordManager.search", return_value=SearchDSLPatcher()):
+        with patch("es_components.managers.keyword.KeywordManager.model.get", return_value=Keyword(id="keyword")):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
 
