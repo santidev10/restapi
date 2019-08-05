@@ -74,7 +74,7 @@ services:
   rabbitmq:
     image: rabbitmq:3.7.8-management
     environment:
-      RABBITMQ_DEFAULT_VHOST: "restapi"
+      RABBITMQ_DEFAULT_VHOST: restapi
 
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
