@@ -16,16 +16,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "--type",
             help="List generation type: channel or video"
-        )
+        ),
 
     def handle(self, *args, **kwargs):
         list_type = kwargs["type"]
         pid_file = "{}_segment_list_generator.pid".format(list_type)
-        with PidFile(pid_file, piddir=".") as pid:
-            try:
+        try:
+            with PidFile(pid_file, piddir=".") as pid:
                 self.run(*args, **kwargs)
-            except PidFileError:
-                pass
+        except PidFileError:
+            pass
 
     def run(self, *args, **options):
         try:

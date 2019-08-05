@@ -4,14 +4,9 @@ Segment api urls endpoint
 from django.conf.urls import url
 
 from segment.api.urls.names import Name
-from segment.api.views import SegmentDuplicateApiView
 from segment.api.views import SegmentDeleteApiViewV2
 from segment.api.views import SegmentExport
-from segment.api.views import SegmentListCreateApiView
 from segment.api.views import SegmentListCreateApiViewV2
-from segment.api.views import SegmentRetrieveUpdateDeleteApiView
-from segment.api.views import SegmentShareApiView
-from segment.api.views import SegmentSuggestedChannelApiView
 from segment.api.views import SegmentCreationOptionsApiView
 from segment.api.views import PersistentMasterSegmentsListApiView
 from segment.api.views import PersistentSegmentExportApiView
@@ -25,24 +20,6 @@ segment_types = '|'.join(SEGMENT_TYPES.fget())
 persistent_segment_types = '|'.join(PERSISTENT_SEGMENT_TYPES.fget())
 
 urlpatterns = [
-    # segments
-    # Deprecated
-    # url(r'^segments/(?P<segment_type>{})/$'.format(segment_types),
-    #    SegmentListCreateApiView.as_view(),
-    #    name=Name.SEGMENT_LIST),
-    # url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(segment_types),
-    #    SegmentRetrieveUpdateDeleteApiView.as_view(),
-    #    name="segment_details"),
-    # url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/share/$'.format(segment_types),
-    #    SegmentShareApiView.as_view(),
-    #    name=Name.SEGMENT_SHARE),
-    # url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/duplicate/$'.format(segment_types),
-    #    SegmentDuplicateApiView.as_view(),
-    #    name=Name.SEGMENT_DUPLICATE),
-    # url(r'^segments/(?P<segment_type>{})/suggested_channels/(?P<pk>\d+)/$'.format(segment_types),
-    #    SegmentSuggestedChannelApiView.as_view(),
-    #    name="suggested_channels"),
-
     # persistent_segments
     url(r'^persistent_segments/(?P<segment_type>{})/$'.format(persistent_segment_types),
         PersistentSegmentListApiView.as_view(),

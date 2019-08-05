@@ -7,4 +7,4 @@ from .user_password_change import UserPasswordChangeApiView
 from .user_password_reset import UserPasswordResetApiView
 from .user_password_set import UserPasswordSetApiView
 from .user_profile import UserProfileApiView
-from .user_profile_shared_list import UserProfileSharedListApiView
+

@@ -5,6 +5,7 @@ import logging
 from django.conf import settings
 import requests
 from emoji import UNICODE_EMOJI
+from django.db.models import Q
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
@@ -54,12 +55,14 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(last_uploaded__isnull=True)
+        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True)
         for c in channels[:5000]:
             videos = AuditVideoMeta.objects.filter(video__channel_id=c.channel_id).order_by("-publish_date")
             try:
                 c.last_uploaded = videos[0].publish_date
-                c.save(update_fields=['last_uploaded'])
+                c.last_uploaded_view_count = videos[0].views
+                c.last_uploaded_category = videos[0].category
+                c.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
             except Exception as e:
                 pass
 

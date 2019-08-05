@@ -49,9 +49,20 @@ class PricingToolEstimate:
         return response
 
     def _get_ad_group_statistic_queryset(self):
-        queryset = AdGroupStatistic.objects.filter(
-            ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities,
-        )
+        """
+        Retrieve ad group statistics to aggregate based on filters
+        :return:
+        """
+        try:
+            product_types = self.kwargs["product_types"]
+            queryset = AdGroupStatistic.objects.filter(
+                ad_group__type__in=product_types,
+                ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities
+            )
+        except KeyError:
+            queryset = AdGroupStatistic.objects.filter(
+                ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities,
+            )
         queryset = self._filter_out_hidden_data(queryset)
         queryset = self._filter_excluded_items(queryset)
         queryset = self._filter_specified_date_range(queryset)

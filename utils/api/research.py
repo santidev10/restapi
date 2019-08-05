@@ -93,7 +93,7 @@ class ESBrandSafetyFilterBackend(ESFilterBackend):
         return True
 
     def _get_brand_safety_index_name(self, view):
-        view_name = view.__class__.__name__
+        view_name = view.__class__.__name__.lower()
         if constants.CHANNEL in view_name:
             return settings.BRAND_SAFETY_CHANNEL_INDEX
         elif constants.VIDEO in view_name:

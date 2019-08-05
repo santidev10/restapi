@@ -150,10 +150,10 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), expected_segments_count)
 
-    def test_sort_by_created_list(self):
+    def test_sort_by_created_list_descending(self):
         user = self.create_test_user()
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
         seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
@@ -164,7 +164,21 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
 
-    def test_sort_by_items(self):
+    def test_sort_by_created_ascending(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "ascending=1&sort_by={}".format("created_at")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_1.id)
+        self.assertEqual(data["items"][1]["id"], seg_2.id)
+
+    def test_sort_by_items_descending(self):
         user = self.create_test_user()
         seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
         seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
@@ -179,10 +193,28 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_prams))
         data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_1.id)
+        self.assertEqual(data["items"][1]["id"], seg_2.id)
+
+    def test_sort_by_items_ascending(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        CustomSegmentRelated.objects.create(
+            related_id="test",
+            segment=seg_1
+        )
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "ascending=1&sort_by={}".format("items")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
         self.assertEqual(data["items"][0]["id"], seg_2.id)
         self.assertEqual(data["items"][1]["id"], seg_1.id)
 
-    def test_sort_by_title(self):
+    def test_sort_by_title_descending(self):
         user = self.create_test_user()
         seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="First")
         seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="Second")
@@ -190,6 +222,20 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
             "sort_by={}".format("title")).urlencode()
+        response = self.client.get(
+            "{}?{}".format(self._get_url("video"), query_prams))
+        data = response.data
+        self.assertEqual(data["items"][0]["id"], seg_2.id)
+        self.assertEqual(data["items"][1]["id"], seg_1.id)
+
+    def test_sort_by_title_ascending(self):
+        user = self.create_test_user()
+        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="Second")
+        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
+        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        query_prams = QueryDict(
+            "ascending=1&sort_by={}".format("title")).urlencode()
         response = self.client.get(
             "{}?{}".format(self._get_url("video"), query_prams))
         data = response.data

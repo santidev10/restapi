@@ -107,6 +107,7 @@ class PermissionGroupNames:
     BRAND_SAFETY_VIEW = "Brand Safety View"
     BRAND_SAFETY_DOWNLOAD = "Brand Safety Download"
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
+    AUDIT_FLAGGING = "Audit Flagging"
 
 
 class Permissions:
@@ -181,6 +182,9 @@ class Permissions:
         (PermissionGroupNames.AUDIT_VIEW, (
             "view_audit",
         )),
+        (PermissionGroupNames.AUDIT_FLAGGING, (
+            "flag_audit",
+        )),
     )
 
     PERM_LIST = (
@@ -215,6 +219,7 @@ class Permissions:
         # audits
         "download_audit",
         "view_audit",
+        "flag_audit",
     )
 
     @staticmethod

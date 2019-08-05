@@ -47,7 +47,7 @@ def add_chart_data(videos):
     for video in videos:
         if not video.stats:
             video.chart_data = []
-            return video
+            continue
 
         chart_data = []
         items_count = 0

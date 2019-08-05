@@ -10,15 +10,12 @@ from userprofile.api.views import UserPasswordChangeApiView
 from userprofile.api.views import UserPasswordResetApiView
 from userprofile.api.views import UserPasswordSetApiView
 from userprofile.api.views import UserProfileApiView
-from userprofile.api.views import UserProfileSharedListApiView
 
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name=UserprofilePathName.CREATE_USER),
     url(r'^auth/$', UserAuthApiView.as_view(), name=UserprofilePathName.AUTH, ),
     url(r'^users/me/$', UserProfileApiView.as_view(), name=UserprofilePathName.USER_PROFILE),
     url(r'^users/me/avatar/$', UserAvatarApiView.as_view(), name=UserprofilePathName.AVATAR),
-    url(r'^users/me/collaborators/$', UserProfileSharedListApiView.as_view(),
-        name="user_profile_collaborators"),
     url(r'^password_reset/$', UserPasswordResetApiView.as_view(),
         name="password_reset"),
     url(r'^set_password/$', UserPasswordSetApiView.as_view(),
