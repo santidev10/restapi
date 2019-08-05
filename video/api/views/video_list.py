@@ -24,7 +24,7 @@ from utils.permissions import user_has_permission
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred", "stats.flags",
-                "channel.id")
+                "channel.id", "general_data.tags",)
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
 

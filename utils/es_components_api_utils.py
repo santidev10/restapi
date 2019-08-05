@@ -69,9 +69,9 @@ class QueryGenerator:
 
                 query = QueryBuilder().build().must().range().field(field)
                 if min:
-                    query = query.gte(int(min))
+                    query = query.gte(float(min))
                 if max:
-                    query = query.lte(int(max))
+                    query = query.lte(float(max))
                 filters.append(query.get())
 
         return filters
