@@ -13,10 +13,12 @@ from es_components.managers.video import VideoManager
 from es_components.constants import SortDirections
 from distutils.util import strtobool
 from brand_safety.utils import get_es_data
+from brand_safety.utils import BrandSafetyQueryBuilder
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from utils.elasticsearch import ElasticSearchConnectorException
 from utils.brand_safety_view_decorator import get_brand_safety_data
+from audit_tool.models import BlacklistItem
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
@@ -59,9 +61,29 @@ class BrandSafetyChannelAPIView(APIView):
             videos = self._get_channel_video_data(channel_id)
         except Exception as e:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
+        if not channel_es_data:
+            raise Http404
 
-        video_ids = list(videos.keys())
-        video_es_data = get_es_data(video_ids, settings.BRAND_SAFETY_VIDEO_INDEX)
+        query_params = {
+            "list_type": "whitelist",
+            "segment_type": "video",
+        }
+        query_builder = BrandSafetyQueryBuilder(
+            query_params,
+            overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
+            related_to=channel_id
+        )
+        result = query_builder.execute()
+        if result is ElasticSearchConnectorException:
+            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
+        if not channel_es_data:
+            raise Http404
+
+        # Extract data from es response
+        video_es_data = {
+            video["_id"]: video["_source"] for video in result["hits"]["hits"]
+        }
+
         if video_es_data is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
@@ -71,9 +93,8 @@ class BrandSafetyChannelAPIView(APIView):
             "flagged_words": self._extract_key_words(channel_es_data["categories"])
         }
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
-
+        # Merge es brand safety with sdb video data
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, videos)
-
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
         sorting = query_params['sort'] if "sort" in query_params else None
@@ -88,12 +109,13 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-
+        if request.user and request.user.is_staff:
+            channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
-    def _adapt_channel_video_es_sdb_data(self, channel_data, video_es_data, videos):
+    def _adapt_channel_video_es_sdb_data(self, channel_data:dict, video_es_data: dict, videos: dict):
         """
         Encapsulate merging of channel and video es/sdb data
         :param es_data: dict
@@ -102,12 +124,12 @@ class BrandSafetyChannelAPIView(APIView):
         """
         flagged_videos = []
         # Merge video brand safety wtih video sdb data
-        for id_, data in video_es_data.items():
+        for video_id, data in video_es_data.items():
             if data.get("overall_score") and data.get("overall_score") <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
-                video = videos.get(id_)
+                video = videos.get(video_id)
                 video_brand_safety_data = get_brand_safety_data(data["overall_score"])
                 video_data = {
-                    "id": id_,
+                    "id": video_id,
                     "score": video_brand_safety_data["score"],
                     "label": video_brand_safety_data["label"],
                     "title": video.general_data.title,
@@ -148,7 +170,7 @@ class BrandSafetyChannelAPIView(APIView):
         return video_data
 
     @staticmethod
-    def _adapt_response_data(brand_safety_data, paginator, page):
+    def _adapt_response_data(brand_safety_data: dict, paginator: Paginator, page: int) -> dict:
         """
         Adapt brand safety data with pagination
         :param brand_safety_data: channel brand safety data
@@ -171,7 +193,7 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return response
 
-    def _extract_key_words(self, categories):
+    def _extract_key_words(self, categories: dict) -> list:
         """
         Extracts es brand safety category keywords
         :param categories: dict
@@ -183,5 +205,3 @@ class BrandSafetyChannelAPIView(APIView):
                 continue
             keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
         return keywords
-
-

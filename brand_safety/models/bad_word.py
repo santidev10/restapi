@@ -1,12 +1,8 @@
 from django.db import models
 from django.utils import timezone
-from django.db.models.signals import pre_save
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 from aw_reporting.models import BaseQueryset
 from audit_tool.models import AuditLanguage
-
 
 class BadWordCategory(models.Model):
     name = models.CharField(max_length=80, unique=True)
@@ -28,7 +24,6 @@ class BadWordCategory(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class BadWordQuerySet(BaseQueryset):
     # Soft delete for queryset bulk delete operations

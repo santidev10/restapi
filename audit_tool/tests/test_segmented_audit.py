@@ -1,4 +1,5 @@
 from django.test import testcases
+from unittest import skip
 from mock import patch
 
 from audit_tool.models import ChannelAuditIgnore
@@ -13,6 +14,8 @@ from segment.models.persistent.constants import PersistentSegmentTitles
 from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 
 
+@skip
+# SegmentedAudit deprecateed
 class SegmentedAuditTestCase(testcases.TransactionTestCase):
     def test_ignores_manual_channel_on_add(self):
         connector = SingleDatabaseApiConnectorPatcher()

@@ -173,7 +173,7 @@ class Command(BaseCommand):
         page = 0
         num_videos = 50
         if not self.audit.params.get('do_videos'):
-            num_videos = 2
+            num_videos = 1
         while has_more:
             page = page + 1
             if page_token:
@@ -203,8 +203,8 @@ class Command(BaseCommand):
                 db_video.channel = db_channel
                 db_video.save(update_fields=['channel'])
                 AuditVideoProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        video=db_video
+                    audit=self.audit,
+                    video=db_video
                 )
 
     def load_inclusion_list(self):

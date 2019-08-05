@@ -1,6 +1,7 @@
 from django.conf import settings
 
 from audit_tool.models import AuditCategory
+import brand_safety.constants as constants
 from utils.elasticsearch import ElasticSearchConnector
 from utils.elasticsearch import ElasticSearchConnectorException
 
@@ -24,7 +25,14 @@ def get_es_data(item_ids, index_name):
 
 
 class BrandSafetyQueryBuilder(object):
-    def __init__(self, data):
+    def __init__(self, data, overall_score: int = None, related_to: str = None):
+        """
+        :param data: dict -> Query options
+        :param overall_score: int -> Overall score threshold (gte for whitelist, lte for blacklist)
+        :param related_to: str -> Youtube ID (Query videos with channel_id=related_to)
+        """
+        self.overall_score = overall_score
+        self.related_to = related_to
         self.list_type = data["list_type"]
         self.segment_type = data["segment_type"]
         self.score_threshold = data.get("score_threshold", 0)
@@ -60,8 +68,8 @@ class BrandSafetyQueryBuilder(object):
                 "minimum_option": "views"
             },
             "range_param": {
-                "blacklist": "lte",
-                "whitelist": "gte"
+                constants.BLACKLIST: "lte",
+                constants.WHITELIST: "gte"
             },
         }
         config = {
@@ -84,6 +92,7 @@ class BrandSafetyQueryBuilder(object):
                         "bool": {
                             "must": [
                                 {
+                                    # Minimum option (views | subscribers)
                                     "range": {}
                                 },
                                 {
@@ -114,6 +123,24 @@ class BrandSafetyQueryBuilder(object):
                 }
             }
         }
+        must_statements = query_body["query"]["bool"]["filter"]["bool"]["must"]
+        if self.overall_score:
+            # Get items with overall score <= or >= self.overall score depending on self.segment_type
+            threshold_operator = "gte" if self.segment_type == constants.WHITELIST else "lte"
+            overall_score_threshold = {
+                "range": {"overall_score": {threshold_operator: self.overall_score}}
+            }
+            must_statements.append(overall_score_threshold)
+
+        if self.related_to:
+            # Get items related to self.related_to e.g. Get videos with channel_id=related_to
+            related_key = self._get_related_key()
+            related_to = {
+                "term": {
+                    related_key: {"value": self.related_to}
+                }
+            }
+            must_statements.append(related_to)
         # Set refs for easier access
         minimum_option = query_body["query"]["bool"]["filter"]["bool"]["must"][0]["range"]
         language_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][1]["bool"]["should"]
@@ -144,7 +171,7 @@ class BrandSafetyQueryBuilder(object):
         minimum_option[self.options["minimum_option"]] = {"gte": self.minimum_option}
         return query_body
 
-    def _map_blacklist_severity(self, score_threshold):
+    def _map_blacklist_severity(self, score_threshold: int):
         """
         Map blacklist severity from client to score
         :param score_threshold: int
@@ -167,3 +194,14 @@ class BrandSafetyQueryBuilder(object):
         }
         to_string = [mapping[str(_id)] for _id in youtube_category_ids]
         return to_string
+
+    def _get_related_key(self):
+        """
+        Interface to get key to retrieve related items
+        :return: str
+        """
+        config = {
+            constants.VIDEO: "channel_id"
+        }
+        key = config[self.segment_type]
+        return key

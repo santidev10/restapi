@@ -16,6 +16,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import BlacklistItem
 from datetime import datetime
 logger = logging.getLogger(__name__)
 from pid import PidFile
@@ -45,7 +46,7 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
-                               "&type=video&maxResults=50&relevanceLanguage={language}"
+                               "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -65,8 +66,6 @@ class Command(BaseCommand):
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
                 self.language = self.audit.params.get('language')
-                if not self.language:
-                    self.language = "en"
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
@@ -74,9 +73,9 @@ class Command(BaseCommand):
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = self.audit.params.get('min_views')
-                self.min_likes = self.audit.params.get('min_likes')
-                self.max_dislikes = self.audit.params.get('max_dislikes')
+                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -194,7 +193,7 @@ class Command(BaseCommand):
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
-            language=self.language,
+            language="&relevanceLanguage={}".format(self.language[0]) if self.language and len(self.language) == 1 else '',
             location="&location={}".format(self.location) if self.location else '',
             location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
         )
@@ -206,6 +205,16 @@ class Command(BaseCommand):
                 avp.clean = False
                 avp.save()
                 return
+            elif data['error']['message'] == 'Invalid relevance language.':
+                self.audit.params['error'] = 'Invalid relevance language.'
+                self.audit.completed = timezone.now()
+                self.audit.save()
+                raise Exception("problem with relevance language.")
+        try:
+            d = data['items']
+        except Exception as e:
+            print(str(data))
+            raise Exception("problem with API response {}".format(str(data)))
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
@@ -222,11 +231,10 @@ class Command(BaseCommand):
             db_video.channel = channel
             db_video_meta.save()
             db_video.save()
-            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
-                channel=channel,
-            )
-            db_channel_meta.name = i['snippet']['channelTitle']
-            db_channel_meta.save()
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
+            if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
+                db_channel_meta.name = i['snippet']['channelTitle']
+                db_channel_meta.save(update_fields=['name'])
             is_clean, hits = self.check_video_is_clean(db_video_meta)
             if is_clean:
                 if self.check_video_matches_criteria(db_video_meta, db_video):
@@ -245,7 +253,7 @@ class Command(BaseCommand):
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if db_video_meta.language and self.language != db_video_meta.language.language:
+            if db_video_meta.language and db_video_meta.language.language not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
@@ -253,6 +261,10 @@ class Command(BaseCommand):
         if self.related_audits:
             if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
                 return False
+        if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM): #if video is blacklisted
+            return False
+        if BlacklistItem.get(db_video.channel.channel_id, BlacklistItem.CHANNEL_ITEM): # if videos channel is blacklisted
+            return False
         return True
 
     def check_video_matches_minimums(self, db_video_meta):

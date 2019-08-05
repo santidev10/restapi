@@ -1,6 +1,5 @@
-from unittest.mock import patch
-
 from datetime import datetime
+from unittest.mock import patch
 
 from django.core import mail
 from rest_framework.status import HTTP_202_ACCEPTED
@@ -8,6 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
+from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -45,6 +45,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
         self.assertIn('auth_token', data)
+        self.assertEqual(len(mail.outbox), 2)
 
     def test_error_no_code(self):
         response = self.client.post(self.url, dict())
@@ -91,10 +92,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         with patch("channel.api.views.channel_authentication.requests.get",
                    return_value=MockResponse(json=user_details)):
-
             response = self.client.post(self.url, dict(code="code"), )
 
             self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
             welcome_emails = [m for m in mail.outbox
-                          if m.subject.startswith("Welcome")]
+                              if isinstance(m.subject, SESEmailer) and m.body.startswith("Welcome")]
             self.assertEqual(len(welcome_emails), 1)

@@ -7,21 +7,18 @@ import logging
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
+from django.db.models import CASCADE
 from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Model
-from django.db.models import SET_NULL
-
-from utils.models import Timestampable
-
 from brand_safety.constants import BLACKLIST
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
-
 from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
 from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
+from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +52,7 @@ class CustomSegment(Timestampable):
 
     statistics = JSONField(default=dict())
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
-    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=CASCADE)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
