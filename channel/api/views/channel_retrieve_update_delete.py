@@ -4,9 +4,9 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 
 
-from es_components.connections import init_es_connection
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
@@ -24,8 +24,8 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_fields
+from channel.api.views.channel_list import add_chart_data
 
-init_es_connection()
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -107,7 +107,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelListApiView.add_chart_data(channel.to_dict(skip_empty=False))
+        result = add_chart_data([channel])[0].to_dict()
         result.update({
             "performance": {
                 "average_views": average_views,

@@ -39,7 +39,7 @@ class Command(BaseCommand):
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics&id={id}"
+                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -189,7 +189,9 @@ class Command(BaseCommand):
                 )
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
-                    db_channel_meta.save(update_fields=['last_uploaded'])
+                    db_channel_meta.last_uploaded_view_count = db_video_meta.views
+                    db_channel_meta.last_uploaded_category = db_video_meta.category
+                    db_channel_meta.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
                 avp.save()
@@ -283,6 +285,15 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            if 'defaultAudioLanguage' in i['snippet']:
+                try:
+                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                except Exception as e:
+                    pass
+            try:
+                db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)

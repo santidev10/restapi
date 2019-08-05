@@ -1,5 +1,6 @@
 from brand_safety.models import BadWordCategory
 
+
 class BrandSafetyChannelScore(object):
     """
         Class to encapsulate brand safety score logic for Channel brand safety audits
@@ -11,10 +12,15 @@ class BrandSafetyChannelScore(object):
         self.keyword_scores = {}
         self.category_scores = default_category_scores
         self.average_calculated = False
+        self._hits = set()
 
     @property
     def pk(self):
         return self.video_id
+
+    @property
+    def hits(self):
+        return list(self._hits)
 
     def add_keyword_score(self, keyword, category, negative_score, hits):
         """
@@ -33,6 +39,7 @@ class BrandSafetyChannelScore(object):
         })
         self.keyword_scores[keyword]["hits"] += hits
         self.keyword_scores[keyword]["negative_score"] += negative_score
+        self._hits.add(keyword)
 
     def add_category_score(self, category, score):
         """

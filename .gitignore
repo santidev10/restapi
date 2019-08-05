@@ -112,3 +112,4 @@ iq_errors.*
 locks/*
 !locks/.gitkeep
 /docker-compose.override.yml
+export_*.csv

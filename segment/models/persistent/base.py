@@ -9,6 +9,7 @@ import tempfile
 import boto3
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import Manager
 from django.db.models import TextField
@@ -37,7 +38,8 @@ class BasePersistentSegment(Timestampable):
     Base persistent segment model
     """
     title = CharField(max_length=255, null=True, blank=True)
-    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST)
+    category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
+    is_master = BooleanField(default=False, db_index=True)
 
     details = JSONField(default=dict())
 
@@ -107,10 +109,12 @@ class BasePersistentSegment(Timestampable):
         s3 = self._s3()
         # Get latest entry from file upload manager
         try:
+            key = self.get_s3_key(from_db=True)
             s3_object = s3.get_object(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=self.get_s3_key(from_db=True)
+                Key=key
             )
+            self.s3_filename = key
         except s3.exceptions.NoSuchKey:
             raise self.DoesNotExist
         body = s3_object.get("Body")

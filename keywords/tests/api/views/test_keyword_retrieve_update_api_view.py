@@ -1,49 +1,29 @@
-from unittest.mock import patch, ANY
-from urllib.parse import quote_plus
+from unittest.mock import patch
 
-import requests
-from rest_framework.reverse import reverse
+from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.reverse import reverse
 
-import singledb.connector
-from utils.utittests.response import MockResponse
+from es_components.models.keyword import Keyword
+
 from utils.utittests.test_case import ExtendedAPITestCase
-
-
-class PathEndsWith(object):
-    def __init__(self, path):
-        self.expected_path = path
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __eq__(self, other):
-        return other.split("?")[0].endswith(self.expected_path)
-
-    def __repr__(self):
-        return "Urls path ends with {path}".format(path=self.expected_path)
+from utils.utittests.es_components_patcher import SearchDSLPatcher
 
 
 class KeywordRetrieveUpdateApiViewTestCase(ExtendedAPITestCase):
-    @patch("keywords.api.views.Connector", new=singledb.connector.SingleDatabaseApiConnector_origin)
-    @patch.object(requests, "get")
-    def test_get_keyword_should_decode_pk_for_sdb_call(self, get_mock, *args):
-        """
-        Bug: https://channelfactory.atlassian.net/browse/SAAS-1807
-        Description: Opening keyword with special symbols leads to 408 error
-        Root cause: keyword should be decoded before lookup
-        """
+    def test_get_keyword(self):
         keyword = "#tigerzindahai"
-        self.assertNotEqual(keyword, quote_plus(keyword),
-                            "Test does not make sense")
-
         self.create_test_user()
-        get_mock.return_value = MockResponse(json={"keyword": keyword})
         url = reverse("keyword_api_urls:keywords", args=(keyword,))
-        response = self.client.get(url)
-
-        path_suffix = "keywords/{keyword}/".format(keyword=quote_plus(keyword))
-
-        get_mock.assert_called_once_with(PathEndsWith(path_suffix),
-                                         headers=ANY, verify=ANY)
+        with patch("es_components.managers.keyword.KeywordManager.model.get", return_value=Keyword(id="keyword")):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_get_keywords(self):
+        url = reverse("keyword_api_urls:keyword_list")
+
+        self.create_admin_user()
+        with patch("es_components.managers.keyword.KeywordManager.search", return_value=SearchDSLPatcher()):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+

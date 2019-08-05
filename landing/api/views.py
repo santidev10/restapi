@@ -10,13 +10,10 @@ from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.query_builder import QueryBuilder
-from es_components.connections import init_es_connection
 
 from channel.models import AuthChannel
 
 CHANNEL_SUBSCRIBERS_FIELD = "stats.subscribers"
-
-init_es_connection()
 
 
 class TopAuthChannels(APIView):

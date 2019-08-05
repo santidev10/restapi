@@ -137,6 +137,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
     max_recommended = models.IntegerField(default=100000)
+    name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default={})
     cached_data = JSONField(default={})
     pause = models.IntegerField(default=0, db_index=True)
@@ -152,7 +153,7 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None):
+    def get(running=None, audit_type=None, num_days=60, output=None, search=None):
         all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
@@ -160,6 +161,8 @@ class AuditProcessor(models.Model):
             all = all.filter(completed__isnull=running)
         if num_days:
             all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+        if search:
+            all = all.filter(name__icontains=search.lower())
         ret = {
             'running': [],
             'completed': []
@@ -182,7 +185,9 @@ class AuditProcessor(models.Model):
             audit_type = self.audit_type
         lang = self.params.get('language')
         if not lang:
-            lang = 'en'
+            lang = ['en']
+        elif type(lang) == str:
+            lang = [lang]
         d = {
             'id': self.id,
             'priority': self.pause,
@@ -202,6 +207,8 @@ class AuditProcessor(models.Model):
             'max_dislikes': self.params.get('max_dislikes'),
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
+            'resumed': self.params.get('resumed'),
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -209,6 +216,20 @@ class AuditProcessor(models.Model):
             d['percent_done'] = round(100.0 * d['data']['count'] / d['data']['total'], 2)
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
+        return d
+
+    def get_related_audits(self):
+        d = []
+        r = self.params.get('related_audits')
+        if r:
+            for related in r:
+                try:
+                    d.append({
+                        'id': related,
+                        'name': AuditProcessor.objects.get(id=related).name
+                    })
+                except Exception as e:
+                    pass
         return d
 
 class AuditLanguage(models.Model):
@@ -269,6 +290,8 @@ class AuditChannelMeta(models.Model):
     video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
+    last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
+    last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)
@@ -296,13 +319,16 @@ class AuditVideoMeta(models.Model):
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language')
     category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True)
+    duration = models.CharField(max_length=30, default=None, null=True)
+
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
@@ -334,3 +360,40 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+
+class BlacklistItem(models.Model):
+    VIDEO_ITEM = 0
+    CHANNEL_ITEM = 1
+    item_type = models.IntegerField(db_index=True)
+    item_id = models.CharField(db_index=True, max_length=64)
+    item_id_hash = models.BigIntegerField(db_index=True)
+    blacklist_category = JSONField(default={})
+
+    class Meta:
+        unique_together = ("item_type", "item_id")
+
+    def to_dict(self):
+        d = {
+            'categories': self.blacklist_category
+        }
+        return d
+
+    @staticmethod
+    def get_or_create(item_id, item_type):
+        b_i = BlacklistItem.get(item_id, item_type)
+        if not b_i:
+            b_i = BlacklistItem.objects.create(
+                item_type=item_type,
+                item_id=item_id,
+                item_id_hash=get_hash_name(item_id),
+            )
+        return b_i
+
+    @staticmethod
+    def get(item_id, item_type, to_dict=False):
+        for a in BlacklistItem.objects.filter(item_type=item_type, item_id_hash=get_hash_name(item_id)):
+            if a.item_id == item_id:
+                if to_dict:
+                    return a.to_dict()
+                else:
+                    return a

@@ -1,7 +1,6 @@
 import logging
 
 from django.conf import settings
-from django.template.loader import get_template
 from django.utils import timezone
 
 from administration.notifications import generate_html_email
@@ -40,10 +39,13 @@ class CustomSegmentExportGenerator(S3Exporter):
         segment = export.segment
         owner = segment.owner
         try:
+            # Update segment and empty related_ids to recreate relevant related_ids
+            segment.related.all().delete()
             es_generator = self.es_generator(export, segment)
         except ElasticSearchConnectorException:
             raise
-        logger.error("Processing export: {}".format(segment.title))
+        log_message = "Updating" if self.updating else "Generating"
+        logger.error("{} export: {}".format(log_message, segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
@@ -73,7 +75,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         export.download_url = download_url
         export.save()
         export.segment.update_statistics()
-        logger.error("Done processing: {}".format(segment.title))
+        logger.error("Complete: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         subject = "Custom Target List: {}".format(segment_title)
