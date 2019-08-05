@@ -1,22 +1,82 @@
 import logging
-from copy import deepcopy
 
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from rest_framework.response import Response
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
-from rest_framework_csv.renderers import CSVStreamingRenderer
+from datetime import datetime
+from datetime import timedelta
 
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
-from singledb.api.views import SingledbApiView
-from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
-from singledb.settings import DEFAULT_KEYWORD_DETAILS_FIELDS
-from singledb.settings import DEFAULT_KEYWORD_LIST_FIELDS
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
+from copy import deepcopy
+from rest_framework_csv.renderers import CSVStreamingRenderer
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAdminUser
+
+from es_components.constants import Sections
+from es_components.managers.keyword import KeywordManager
+from es_components.managers.channel import ChannelManager
+
+from utils.api.research import ResearchPaginator
+from utils.api.research import ESBrandSafetyFilterBackend
+
+from utils.api.filters import FreeFieldOrderingFilter
+from utils.es_components_api_utils import APIViewMixin
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
+from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESRetrieveApiView
+from utils.api.research import ESRetrieveAdapter
+
+
+TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
+
+MATCH_PHRASE_FILTER = ("main.id",)
+
+RANGE_FILTER = ("stats.search_volume", "stats.average_cpc", "stats.competition",)
+
+
 logger = logging.getLogger(__name__)
+
+
+
+def add_aw_stats(items):
+    from aw_reporting.models import BASE_STATS, CALCULATED_STATS, \
+        dict_norm_base_stats, dict_add_calculated_stats
+
+    keywords = set(item.main.id for item in items)
+    stats = get_keywords_aw_stats(keywords)
+    top_bottom_stats = get_keywords_aw_top_bottom_stats(keywords)
+
+    for item in items:
+        item_stats = stats.get(item.main.id)
+        if item_stats:
+            dict_norm_base_stats(item_stats)
+            dict_add_calculated_stats(item_stats)
+            del item_stats['keyword']
+            item.aw_stats = item_stats
+
+            item_top_bottom_stats = top_bottom_stats.get(item['keyword'])
+            item.aw_stats.update(item_top_bottom_stats)
+    return items
+
+def add_views_history_chart(keywords):
+    for keyword in keywords:
+        items = []
+        items_count = 0
+        today = datetime.now()
+        if keyword.stats and keyword.stats.views_history:
+                history = reversed(keyword.stats.views_history)
+                for views in history:
+                    timestamp = today - timedelta(days=len(keyword.stats.views_history) - items_count - 1)
+                    timestamp = datetime.combine(timestamp, datetime.max.time())
+                    items_count += 1
+                    if views:
+                        items.append(
+                            {"created_at": timestamp.strftime('%Y-%m-%d'),
+                             "views": views}
+                        )
+        keyword.views_history_chart = items
+    return keywords
 
 
 class KeywordListCSVRendered(CSVStreamingRenderer):
@@ -30,161 +90,69 @@ class KeywordListCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class KeywordListApiView(APIView, PermissionRequiredMixin):
-    """
-    Proxy view for keywords list
-    """
-    permission_classes = tuple()
-    permission_required = (
-        "userprofile.keyword_list",
+class KeywordListApiView(APIViewMixin, ListAPIView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.keyword_list"),
+            IsAdminUser
+        ),
     )
-    export_file_title = "keyword"
-    renderer = KeywordListCSVRendered
+    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    pagination_class = ResearchPaginator
+    ordering_fields = (
+        "stats.last_30day_views:desc",
+        "stats.search_volume:desc",
+        "stats.average_cpc:desc",
+        "stats.competition:desc",
+    )
 
-    default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
 
-    def get(self, request):
-        connector = Connector()
+    allowed_aggregations = (
+        "stats.search_volume:min",
+        "stats.search_volume:max",
+        "stats.average_cpc:min",
+        "stats.average_cpc:max",
+        "stats.competition:min",
+        "stats.competition:max",
+        "stats.search_volume:percentiles",
+        "stats.average_cpc:percentiles",
+        "stats.competition:percentiles",
+    )
 
-        # prepare query params
-        query_params = deepcopy(request.query_params)
-        query_params._mutable = True
-        empty_response = {
-            "max_page": 1,
-            "items_count": 0,
-            "items": [],
-            "current_page": 1,
-        }
+    def get_queryset(self):
+        sections = (Sections.MAIN, Sections.STATS,)
 
+        query_params = deepcopy(self.request.query_params)
         if query_params.get("from_channel"):
-            channel = query_params.get("from_channel")
-            channel_data = connector.get_channel(query_params=EmptyQueryDict(), pk=channel)
-            if channel_data.get('tags'):
-                keyword_ids = channel_data.get('tags').split(',')
-                ids_hash = connector.store_ids(keyword_ids)
-                query_params.update(ids_hash=ids_hash)
+            channel_id = query_params.get("from_channel")
+            channel = ChannelManager().model.get(channel_id, _source=(f"{Sections.GENERAL_DATA}.video_tags"))
+            keyword_ids = channel.general_data.video_tags
 
-        if not request.user.has_perm("userprofile.keyword_list"):
-            return Response(empty_response)
+            if keyword_ids:
+                self.request.query_params._mutable = True
+                self.request.query_params["main.id"] = keyword_ids
+                self.terms_filter = self.terms_filter + ("main.id",)
 
-        # adapt the request params
-        self.adapt_query_params(query_params)
-
-        try:
-            response_data = connector.get_keyword_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-
-        # adapt the response data
-        self.adapt_response_data(request=self.request, response_data=response_data)
-        return Response(response_data)
-
-    @staticmethod
-    def adapt_query_params(query_params):
-        """
-        Adapt SDB request format
-        """
-        # adapt keyword_text for terms search
-        keyword_text = query_params.pop('keyword_text', [None])[0]
-        if keyword_text:
-            query_params.update(**{"keyword_text": keyword_text.replace(' ', ',')})
-
-        # filters --->
-        def make_range(name, name_min=None, name_max=None):
-            if name_min is None:
-                name_min = "min_{}".format(name)
-            if name_max is None:
-                name_max = "max_{}".format(name)
-            _range = [
-                query_params.pop(name_min, [None])[0],
-                query_params.pop(name_max, [None])[0],
-            ]
-            _range = [str(v) if v is not None else "" for v in _range]
-            _range = ",".join(_range)
-            if _range != ",":
-                query_params.update(**{"{}__range".format(name): _range})
-
-        def make(_type, name, name_in=None):
-            if name_in is None:
-                name_in = name
-            value = query_params.pop(name_in, [None])[0]
-            if value is not None:
-                query_params.update(**{"{}__{}".format(name, _type): value})
-
-        # min_search_volume, max_search_volume
-        make_range("search_volume")
-
-        # min_average_cpc, max_average_cpc
-        make_range("average_cpc")
-
-        # min_competition, max_competition
-        make_range("competition")
-
-        # keyword
-        make("terms", "keyword")
-
-        # keyword_text search
-        make("terms", "keyword_text")
-
-        # viral
-        is_viral = query_params.pop("is_viral", [None])[0]
-        if is_viral is not None:
-            query_params.update(
-                is_viral__term="false" if is_viral == "0" else "true")
-
-        # category
-        make("terms", "category")
-
-        # <--- filters
-
-    @staticmethod
-    def adapt_response_data(request, response_data):
-        """
-        Adapt SDB response format
-        """
-        items = response_data.get("items", [])
-        from aw_reporting.models import BASE_STATS, CALCULATED_STATS, \
-            dict_norm_base_stats, dict_add_calculated_stats
-
-        keywords = set(i['keyword'] for i in items)
-        stats = get_keywords_aw_stats(keywords)
-        top_bottom_stats = get_keywords_aw_top_bottom_stats(keywords)
-
-        aw_fields = BASE_STATS + tuple(CALCULATED_STATS.keys()) + ("campaigns_count",)
-        for item in items:
-            item_stats = stats.get(item['keyword'])
-            if item_stats:
-                dict_norm_base_stats(item_stats)
-                dict_add_calculated_stats(item_stats)
-                del item_stats['keyword']
-                item.update(item_stats)
-
-                item_top_bottom_stats = top_bottom_stats.get(item['keyword'])
-                item.update(item_top_bottom_stats)
-            else:
-                item.update({f: 0 if f == "campaigns_count" else None for f in aw_fields})
+        return ESQuerysetResearchAdapter(KeywordManager(sections), max_items=100).\
+            extra_fields_func((add_aw_stats, add_views_history_chart,))
 
 
-class KeywordRetrieveUpdateApiView(SingledbApiView):
-    permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
-    permission_required = ('userprofile.keyword_details',)
-    _connector_get = None
-    default_request_fields = DEFAULT_KEYWORD_DETAILS_FIELDS
+class KeywordRetrieveUpdateApiView(ESRetrieveApiView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.keyword_details"),
+            OnlyAdminUserCanCreateUpdateDelete
+        ),
+    )
 
-    @property
-    def connector_get(self):
-        if self._connector_get is None:
-            self._connector_get = Connector().get_keyword
-        return self._connector_get
+    def get_object(self):
+        keyword = self.kwargs.get("pk")
+        logging.info("keyword id {}".format(keyword))
+        sections = (Sections.MAIN, Sections.STATS,)
 
-    def get(self, *args, **kwargs):
-        response = super().get(*args, **kwargs)
-        if not response.data.get('error'):
-            KeywordListApiView.adapt_response_data(request=self.request, response_data={'items': [response.data]})
-        return response
-
-
-class EmptyQueryDict(dict):
-    pass
+        return ESRetrieveAdapter(KeywordManager(sections))\
+            .id(keyword).fields().extra_fields_func((add_aw_stats, add_views_history_chart,))\
+            .get_data()

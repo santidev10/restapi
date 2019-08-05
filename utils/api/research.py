@@ -1,5 +1,7 @@
 from django.conf import settings
 
+from rest_framework.generics import RetrieveAPIView
+
 import brand_safety.constants as constants
 
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -8,6 +10,48 @@ from utils.es_components_api_utils import PaginatorWithAggregationMixin
 from utils.es_components_api_utils import ESFilterBackend
 from userprofile.permissions import PermissionGroupNames
 from utils.brand_safety_view_decorator import add_brand_safety
+
+from utils.es_components_api_utils import ESDictSerializer
+
+
+class ESRetrieveAdapter:
+    def __init__(self, manager):
+        self.manager = manager
+        self.search_id = None
+        self.fields_to_load = None
+        self.add_extra_fields_func = None
+        self.brand_safety_index = None
+
+    def extra_fields_func(self, func):
+        self.add_extra_fields_func = func
+        return self
+
+    def brand_safety(self, brand_safety_index):
+        self.brand_safety_index = brand_safety_index
+        return self
+
+    def id(self, search_id):
+        self.search_id = search_id
+        return self
+
+    def fields(self, fields=()):
+        fields = [
+            field
+            for field in fields
+            if field.split(".")[0] in self.manager.sections
+        ]
+
+        self.fields_to_load = fields or self.manager.sections
+        return self
+
+    def get_data(self):
+        item = self.manager.model.get(self.search_id, _source=self.fields_to_load)
+        if self.brand_safety_index:
+            item = add_brand_safety([item], self.brand_safety_index)[0]
+        if self.add_extra_fields_func:
+            for func in self.add_extra_fields_func:
+                item = func([item])[0]
+        return item
 
 
 class ESQuerysetResearchAdapter(ESQuerysetAdapter):
@@ -61,6 +105,10 @@ class ESBrandSafetyFilterBackend(ESFilterBackend):
         if self._get_brand_safety_options(request, view):
             brand_safety_index = self._get_brand_safety_index_name(view)
         return _filter_queryset.brand_safety(brand_safety_index)
+
+
+class ESRetrieveApiView(RetrieveAPIView):
+    serializer_class = ESDictSerializer
 
 
 class ResearchPaginator(PaginatorWithAggregationMixin, CustomPageNumberPaginator):
