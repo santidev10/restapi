@@ -11,6 +11,7 @@ def add_brand_safety_data(view):
     :param view: View handling request for channel / video datas
     :return: Response with merged ES and singledb data
     """
+
     def wrapper(*args, **kwargs):
         # Get result of view handling request first
         response = view(*args, **kwargs)
@@ -72,14 +73,18 @@ def get_brand_safety_data(score):
     return data
 
 
+def get_brand_safety_items(doc_ids, index_name):
+    return ElasticSearchConnector().search_by_id(
+        index_name,
+        doc_ids,
+        settings.BRAND_SAFETY_TYPE
+    )
+
+
 def _handle_list_view(response, index_name):
     try:
         doc_ids = [item.get("id") or item["main"].get("id") for item in response.data["items"]]
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            doc_ids,
-            settings.BRAND_SAFETY_TYPE
-        )
+        es_data = get_brand_safety_items(doc_ids, index_name)
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
