@@ -119,7 +119,18 @@ class AuditExportApiView(APIView):
                 current_num = ""
             else:
                 current_num += char
-        return str(time_duration)
+        if time_duration.days > 0:
+            try:
+                time_split = str(time_duration).split(", ")
+                num_days = int(time_split[0].split(" ")[0])
+                hours_minutes_secs = time_split[1].split(":")
+                hours_minutes_secs[0] = str(num_days*24 + int(hours_minutes_secs[0]))
+                time_string = ":".join(hours_minutes_secs)
+            except Exception as e:
+                raise e
+        else:
+            time_string = str(time_duration)
+        return time_string
 
     def export_videos(self, audit, audit_id=None, clean=None):
         clean_string = 'none'
