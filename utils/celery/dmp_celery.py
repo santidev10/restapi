@@ -7,7 +7,7 @@ from celery.backends.base import DisabledBackend
 
 from django.conf import settings
 
-dmp_celery_app = Celery("update", broker=settings.DMP_BROKER_URL)
+dmp_celery_app = Celery("update", broker=settings.DMP_BROKER_URL, backend=settings.DMP_RESULT_BACKEND)
 logger = logging.getLogger(__name__)
 
 WAIT_RESULTS_TIMEOUT = 300
