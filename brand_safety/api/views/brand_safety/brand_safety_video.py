@@ -14,7 +14,6 @@ import brand_safety.constants as constants
 from utils.brand_safety_view_decorator import get_brand_safety_label
 from utils.elasticsearch import ElasticSearchConnectorException
 from audit_tool.models import BlacklistItem
-from utils.permissions import user_has_permission
 
 class BrandSafetyVideoAPIView(APIView):
     permission_required = (
