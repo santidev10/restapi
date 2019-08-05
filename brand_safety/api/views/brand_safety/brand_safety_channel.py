@@ -100,7 +100,7 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-        if request.user and request.user.is_staff:
+        if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
             channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
