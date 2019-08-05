@@ -11,3 +11,4 @@ services:
       - ./local_settings.py:/app/saas/local_settings.py
     env_file:
       - chf.restapi.env
+    command: ["uwsgi","--ini", "/etc/uwsgi/restapi.ini"]
