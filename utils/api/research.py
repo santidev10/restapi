@@ -11,7 +11,7 @@ from utils.es_components_api_utils import ESFilterBackend
 from userprofile.permissions import PermissionGroupNames
 from utils.brand_safety_view_decorator import add_brand_safety
 
-from utils.es_components_api_utils import ESSerializer
+from utils.es_components_api_utils import ESDictSerializer
 
 
 class ESRetrieveAdapter:
@@ -108,7 +108,7 @@ class ESBrandSafetyFilterBackend(ESFilterBackend):
 
 
 class ESRetrieveApiView(RetrieveAPIView):
-    serializer_class = ESSerializer
+    serializer_class = ESDictSerializer
 
 
 class ResearchPaginator(PaginatorWithAggregationMixin, CustomPageNumberPaginator):
