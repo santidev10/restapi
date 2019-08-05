@@ -2,16 +2,13 @@ import logging
 from copy import deepcopy
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
-from segment.models import SegmentKeyword
 from singledb.api.views import SingledbApiView
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from singledb.connector import SingleDatabaseApiConnectorException
@@ -46,23 +43,6 @@ class KeywordListApiView(APIView, PermissionRequiredMixin):
 
     default_request_fields = DEFAULT_KEYWORD_LIST_FIELDS
 
-    def obtain_segment(self, segment_id):
-        """
-        Try to get segment from db
-        """
-        try:
-            if self.request.user.is_staff:
-                segment = SegmentKeyword.objects.get(id=segment_id)
-            else:
-                segment = SegmentKeyword.objects.filter(
-                    Q(owner=self.request.user) |
-                    ~Q(category="private") |
-                    Q(shared_with__contains=[self.request.user.email])
-                ).get(id=segment_id)
-        except SegmentKeyword.DoesNotExist:
-            return None
-        return segment
-
     def get(self, request):
         connector = Connector()
 
@@ -83,24 +63,6 @@ class KeywordListApiView(APIView, PermissionRequiredMixin):
                 keyword_ids = channel_data.get('tags').split(',')
                 ids_hash = connector.store_ids(keyword_ids)
                 query_params.update(ids_hash=ids_hash)
-
-        # segment
-        segment = query_params.get("segment")
-        if segment is not None:
-            # obtain segment
-            segment = self.obtain_segment(segment)
-            if segment is None:
-                return Response(status=HTTP_404_NOT_FOUND)
-            # obtain keyword ids
-            keyword_ids = segment.get_related_ids()
-            if not keyword_ids:
-                return Response(empty_response)
-            query_params.pop("segment")
-            try:
-                ids_hash = connector.store_ids(list(keyword_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)}, status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
 
         if not request.user.has_perm("userprofile.keyword_list"):
             return Response(empty_response)

@@ -1,34 +1,28 @@
 import hashlib
 
 import requests
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from django.conf import settings
-from celery import Celery
+from oauth2client.client import OAuth2WebServerFlow
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
 from rest_framework.status import HTTP_412_PRECONDITION_FAILED
 from rest_framework.views import APIView
-from oauth2client.client import OAuth2WebServerFlow
 
 from administration.notifications import send_admin_notification
 from administration.notifications import send_new_channel_authentication_email
 from administration.notifications import send_welcome_email
-from segment.models import SegmentChannel
-from segment.models import SegmentKeyword
-from segment.models import SegmentVideo
+from channel.models import AuthChannel
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
-from userprofile.permissions import PermissionGroupNames
-from utils.youtube_api import YoutubeAPIConnector
-from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
-from channel.models import AuthChannel
+from utils.celery.dmp_celery import send_task_channel_stats_priority
+from utils.youtube_api import YoutubeAPIConnector
 
 GOOGLE_API_TOKENINFO_URL_TEMPLATE = "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={}"
 
@@ -152,15 +146,7 @@ class ChannelAuthenticationApiView(APIView):
             Token.objects.get_or_create(user=user)
 
             send_welcome_email(user, self.request)
-            self.check_user_segment_access(user)
         return user
-
-    def check_user_segment_access(self, user):
-        channel_segment_email_lists = SegmentChannel.objects.filter(shared_with__contains=[user.email]).exists()
-        video_segment_email_lists = SegmentVideo.objects.filter(shared_with__contains=[user.email]).exists()
-        keyword_segment_email_lists = SegmentKeyword.objects.filter(shared_with__contains=[user.email]).exists()
-        if any([channel_segment_email_lists, video_segment_email_lists, keyword_segment_email_lists]):
-            user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING)
 
     def obtain_extra_user_data(self, token, user_id):
         """
@@ -219,7 +205,7 @@ class ChannelAuthenticationApiView(APIView):
         # <-- set user avatar
         return
 
-    def call_people_google_api(self,  user_google_id, access_token, fields, api_version="v1"):
+    def call_people_google_api(self, user_google_id, access_token, fields, api_version="v1"):
         url = "https://people.googleapis.com/{}/people/{}/?access_token={}&personFields={}".format(
             api_version, user_google_id, access_token, ",".join(fields))
         response = requests.get(url)
