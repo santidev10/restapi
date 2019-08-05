@@ -120,14 +120,14 @@ class AuditExportApiView(APIView):
             else:
                 current_num += char
         if time_duration.days > 0:
-            try:
-                time_split = str(time_duration).split(", ")
-                num_days = int(time_split[0].split(" ")[0])
-                hours_minutes_secs = time_split[1].split(":")
-                hours_minutes_secs[0] = str(num_days*24 + int(hours_minutes_secs[0]))
-                time_string = ":".join(hours_minutes_secs)
-            except Exception as e:
-                raise e
+            seconds = time_duration.seconds
+            days = time_duration.days
+            hours = seconds // 3600
+            seconds -= (hours * 3600)
+            minutes = seconds // 60
+            seconds -= (minutes * 60)
+            hours += (days * 24)
+            time_string = "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
         else:
             time_string = str(time_duration)
         return time_string
