@@ -56,6 +56,6 @@ class BrandSafetyVideoAPIView(APIView):
             video_brand_safety_data["category_flagged_words"][category_name].update(keywords)
         worst_words = BadWord.objects.filter(name__in=all_keywords).order_by("-negative_score")[:3]
         video_brand_safety_data["worst_words"] = [word.name for word in worst_words]
-        if request.user and request.user.is_staff:
+        if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
             video_brand_safety_data["blacklist_data"] = BlacklistItem.get(video_id, BlacklistItem.VIDEO_ITEM, to_dict=True)
         return Response(status=HTTP_200_OK, data=video_brand_safety_data)
