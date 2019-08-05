@@ -106,7 +106,7 @@ class Command(BaseCommand):
             else:
                 pending_videos = pending_videos.select_related("video").order_by("id")
             if done:
-                if self.thread_id == 0:
+                if thread_id == 0:
                     self.audit.completed = timezone.now()
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
