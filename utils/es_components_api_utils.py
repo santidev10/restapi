@@ -117,8 +117,10 @@ class QueryGenerator:
 
             if value is True or value == "true":
                 query = query.must()
-            else:
+            elif value is False or value == "false":
                 query = query.must_not()
+            else:
+                continue
             filters.append(query.exists().field(field).get())
 
         return filters
