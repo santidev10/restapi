@@ -72,7 +72,7 @@ class BrandSafetyChannelAPIView(APIView):
         query_builder = BrandSafetyQueryBuilder(
             brand_safety_params,
             overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
-            related_to=channel_id
+            video_ids=list(videos.keys())
         )
         result = query_builder.execute()
         if result is ElasticSearchConnectorException:
@@ -95,6 +95,7 @@ class BrandSafetyChannelAPIView(APIView):
         }
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
         # Merge es brand safety with sdb video data
+        # return Response(status=HTTP_200_OK, data={"video_es_data": video_es_data, "videos": videos})
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, videos)
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
