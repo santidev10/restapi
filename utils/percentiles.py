@@ -13,6 +13,8 @@ def get_percentiles(manager, fields, add_suffix=None):
     for field in fields:
         key = get_redis_key(model=manager.model, field=field)
         value = pickle.loads(redis.get(key))
+        if not value:
+            continue
         name = key if add_suffix is None else f"{field}{add_suffix}"
         percentiles[name] = value
     return percentiles
