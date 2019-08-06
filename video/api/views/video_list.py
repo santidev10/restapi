@@ -3,25 +3,23 @@ Video api views module
 """
 import re
 from copy import deepcopy
-from datetime import timedelta
 from datetime import datetime
+from datetime import timedelta
 
 from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.managers.video import VideoManager
 from es_components.constants import Sections
-
-from utils.api.research import ResearchPaginator
+from es_components.managers.video import VideoManager
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetResearchAdapter
-from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
@@ -37,7 +35,6 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
-
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
@@ -174,5 +171,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(VideoManager(sections), max_items=100)\
+        return ESQuerysetResearchAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))
