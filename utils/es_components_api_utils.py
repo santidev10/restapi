@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import unquote
 
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
@@ -238,15 +239,19 @@ class ESFilterBackend(BaseFilterBackend):
         return dynamic_generator_class(request.query_params)
 
     def _get_aggregations(self, request, queryset, view):
-        aggregations = request.query_params.get("aggregations", "").replace("%3A", ":").replace("%2C", ",").split(",")
+        aggregations = unquote(request.query_params.get("aggregations", "")).split(",")
         if view.allowed_aggregations is not None:
-            aggregations = [agg for agg in aggregations if agg in view.allowed_aggregations]
+            aggregations = [agg
+                            for agg in aggregations
+                            if agg in view.allowed_aggregations]
         return aggregations
 
     def _get_percentiles(self, request, queryset, view):
-        percentiles = request.query_params.get("aggregations", "").replace("%3A", ":").replace("%2C", ",").split(",")
+        percentiles = unquote(request.query_params.get("aggregations", "")).split(",")
         if view.allowed_percentiles is not None:
-            percentiles = [agg for agg in percentiles if agg in view.allowed_percentiles]
+            percentiles = [agg
+                           for agg in percentiles
+                           if agg in view.allowed_percentiles]
         return percentiles
 
     def _get_fields(self, request):
@@ -261,9 +266,9 @@ class ESFilterBackend(BaseFilterBackend):
         fields = self._get_fields(request)
         aggregations = self._get_aggregations(request, queryset, view)
         percentiles = self._get_percentiles(request, queryset, view)
-        result = queryset.filter(query)\
-                         .fields(fields)\
-                         .with_aggregations(aggregations)\
+        result = queryset.filter(query) \
+                         .fields(fields) \
+                         .with_aggregations(aggregations) \
                          .with_percentiles(percentiles)
         return result
 
