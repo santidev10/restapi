@@ -30,6 +30,18 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
         "schedule": crontab(hour="0", minute="0"),
     },
+    "update-videos-percentiles": {
+        "task": "video.tasks.update_videos_percentiles",
+        "schedule": 3600,
+    },
+    "update-channels-percentiles": {
+        "task": "channel.tasks.update_channels_percentiles",
+        "schedule": 3600,
+    },
+    "update-keywords-percentiles": {
+        "task": "keywords.tasks.update_keywords_percentiles",
+        "schedule": 3600,
+    },
 }
 CELERY_RESULT_BACKEND = "django-db"
 

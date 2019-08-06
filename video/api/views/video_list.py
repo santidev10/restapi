@@ -134,13 +134,15 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.last_day_views:min",
         "stats.views:max",
         "stats.views:min",
-        # FIXME: Disabled because of overloading of ES by these aggregations
-        # "ads_stats.average_cpv:percentiles",
-        # "ads_stats.ctr_v:percentiles",
-        # "ads_stats.video_view_rate:percentiles",
-        # "stats.channel_subscribers:percentiles",
-        # "stats.last_day_views:percentiles",
-        # "stats.views:percentiles",
+    )
+
+    allowed_percentiles = (
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.ctr_v:percentiles",
+        "ads_stats.video_view_rate:percentiles",
+        "stats.channel_subscribers:percentiles",
+        "stats.last_day_views:percentiles",
+        "stats.views:percentiles",
     )
 
     def get_queryset(self):

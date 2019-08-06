@@ -117,6 +117,9 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.average_cpc:max",
         "stats.competition:min",
         "stats.competition:max",
+    )
+
+    allowed_percentiles = (
         "stats.search_volume:percentiles",
         "stats.average_cpc:percentiles",
         "stats.competition:percentiles",
