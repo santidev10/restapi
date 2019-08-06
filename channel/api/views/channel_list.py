@@ -187,13 +187,10 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     allowed_aggregations = (
         "ads_stats.average_cpv:max",
         "ads_stats.average_cpv:min",
-        "ads_stats.average_cpv:percentiles",
         "ads_stats.ctr_v:max",
         "ads_stats.ctr_v:min",
-        "ads_stats.ctr_v:percentiles",
         "ads_stats.video_view_rate:max",
         "ads_stats.video_view_rate:min",
-        "ads_stats.video_view_rate:percentiles",
         "ads_stats:exists",
         "analytics.age13_17:max",
         "analytics.age13_17:min",
@@ -226,24 +223,30 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "general_data.top_language",
         "social.facebook_likes:max",
         "social.facebook_likes:min",
-        "social.facebook_likes:percentiles",
         "social.instagram_followers:max",
         "social.instagram_followers:min",
-        "social.instagram_followers:percentiles",
         "social.twitter_followers:max",
         "social.twitter_followers:min",
-        "social.twitter_followers:percentiles",
         "stats.last_30day_subscribers:max",
         "stats.last_30day_subscribers:min",
-        "stats.last_30day_subscribers:percentiles",
         "stats.last_30day_views:max",
         "stats.last_30day_views:min",
-        "stats.last_30day_views:percentiles",
         "stats.subscribers:max",
         "stats.subscribers:min",
-        "stats.subscribers:percentiles",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
+    )
+
+    allowed_percentiles = (
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.video_view_rate:percentiles",
+        "ads_stats.ctr_v:percentiles",
+        "social.facebook_likes:percentiles",
+        "social.instagram_followers:percentiles",
+        "social.twitter_followers:percentiles",
+        "stats.last_30day_subscribers:percentiles",
+        "stats.last_30day_views:percentiles",
+        "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
 
@@ -257,8 +260,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
-            .extra_fields_func((add_chart_data,))
+
+        result = ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
+                 .extra_fields_func((add_chart_data,))
+
+        return result
 
     @staticmethod
     def get_own_channel_ids(user, query_params):
