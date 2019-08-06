@@ -72,7 +72,7 @@ class BrandSafetyChannelAPIView(APIView):
         query_builder = BrandSafetyQueryBuilder(
             brand_safety_params,
             overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
-            related_to=channel_id
+            video_ids=list(videos.keys())
         )
         result = query_builder.execute()
         if result is ElasticSearchConnectorException:
