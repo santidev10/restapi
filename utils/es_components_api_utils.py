@@ -5,6 +5,7 @@ from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
+from saas.settings import ES_MAX_RESULTS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.percentiles import get_percentiles
@@ -145,7 +146,7 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, max_items=None):
+    def __init__(self, manager, max_items=ES_MAX_RESULTS):
         self.manager = manager
         self.sort = None
         self.filter_query = None

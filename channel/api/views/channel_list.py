@@ -1,25 +1,22 @@
 import re
 from copy import deepcopy
-from drf_yasg import openapi
 from datetime import datetime
 from datetime import timedelta
 
-from rest_framework_csv.renderers import CSVStreamingRenderer
+from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
-
-from utils.api.research import ResearchPaginator
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetResearchAdapter
-
-from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
@@ -148,7 +145,7 @@ def add_chart_data(channels):
         )
         for subscribers, views in history:
             timestamp = channel.stats.historydate - timedelta(
-                    days=len(channel.stats.subscribers_history) - items_count - 1)
+                days=len(channel.stats.subscribers_history) - items_count - 1)
             timestamp = datetime.combine(timestamp, datetime.max.time())
             items_count += 1
             if any((subscribers, views)):
@@ -261,8 +258,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
 
-        result = ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
-                 .extra_fields_func((add_chart_data,))
+        result = ESQuerysetResearchAdapter(ChannelManager(sections)) \
+            .extra_fields_func((add_chart_data,))
 
         return result
 
