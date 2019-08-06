@@ -180,7 +180,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             overall_score=12.3
         )
         brand_safety.save()
-        sleep(.5)
+        sleep(1)
 
         with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
             response = self._request()
