@@ -23,7 +23,7 @@ from utils.permissions import user_has_permission
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
-                "monetization.is_monetizable", "monetization.channel_preferred", "stats.flags",
+                "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags",)
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
@@ -34,7 +34,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
 
-EXISTS_FILTER = ("ads_stats", "analytics")
+EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
@@ -148,10 +148,16 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
+        flag = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
             self.request.query_params._mutable = True
             self.request.query_params["channel.id"] = [channel_id]
+
+        if flag:
+            self.request.query_params._mutable = True
+            self.request.query_params["stats.flags"] = flag
+            self.terms_filter += ("stats.flags",)
 
         if not self.request.user.has_perm("userprofile.video_list") and \
                 not self.request.user.has_perm("userprofile.view_highlights"):
