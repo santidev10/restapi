@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
 from utils.aws.ses_emailer import SESEmailer
+from utils.utittests.celery import mock_send_task
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -16,6 +17,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     url = reverse(ChannelPathName.CHANNEL_AUTHENTICATION, [Namespace.CHANNEL])
 
+    @mock_send_task()
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
@@ -75,6 +77,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, test_error)
 
+    @mock_send_task()
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
     def test_send_welcome_email(self, mock_youtube, flow, *args):
