@@ -2,6 +2,7 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
+from itertools import zip_longest
 
 from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
@@ -139,7 +140,7 @@ def add_chart_data(channels):
 
         items = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(channel.stats.subscribers_history or []),
             reversed(channel.stats.views_history or [])
         )
