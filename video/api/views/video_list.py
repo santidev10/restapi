@@ -127,7 +127,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
-        "is_flagged:count",
+        "stats.flags:exists",
+        "stats.flags:missing",
         "stats.channel_subscribers:max",
         "stats.channel_subscribers:min",
         "stats.last_day_views:max",
@@ -148,15 +149,15 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flag = deepcopy(self.request.query_params).get("flags")
+        flags = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
             self.request.query_params._mutable = True
             self.request.query_params["channel.id"] = [channel_id]
 
-        if flag:
+        if flags:
             self.request.query_params._mutable = True
-            self.request.query_params["stats.flags"] = flag
+            self.request.query_params["stats.flags"] = flags
             self.terms_filter += ("stats.flags",)
 
         if not self.request.user.has_perm("userprofile.video_list") and \
