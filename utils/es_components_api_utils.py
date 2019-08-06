@@ -286,8 +286,8 @@ class PaginatorWithAggregationMixin:
         response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
         object_list = self.page.paginator.object_list
         if isinstance(object_list, ESQuerysetAdapter):
-            aggregations = object_list.get_aggregations()
-            percentiles = object_list.get_percentiles()
+            aggregations = object_list.get_aggregations() or {}
+            percentiles = object_list.get_percentiles() or {}
             all_aggregations = dict(**aggregations, **percentiles)
             response_data["aggregations"] = all_aggregations or None
         else:
