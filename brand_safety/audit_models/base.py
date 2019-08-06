@@ -47,11 +47,13 @@ class Audit(object):
         :param text: text to analyze
         :return: Language code
         """
+        text = " ".join(text.split("\n"))
         text = remove_mentions_hashes_urls(text)
         language = fasttext_lang(text)
         return language
 
-    def audit_emoji(self, text, regexp):
+    @staticmethod
+    def audit_emoji(text, regexp):
         has_emoji = bool(re.search(regexp, text))
         return has_emoji
 

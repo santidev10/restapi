@@ -185,7 +185,9 @@ class AuditProcessor(models.Model):
             audit_type = self.audit_type
         lang = self.params.get('language')
         if not lang:
-            lang = 'en'
+            lang = ['en']
+        elif type(lang) == str:
+            lang = [lang]
         d = {
             'id': self.id,
             'priority': self.pause,
@@ -213,6 +215,20 @@ class AuditProcessor(models.Model):
             d['percent_done'] = round(100.0 * d['data']['count'] / d['data']['total'], 2)
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
+        return d
+
+    def get_related_audits(self):
+        d = []
+        r = self.params.get('related_audits')
+        if r:
+            for related in r:
+                try:
+                    d.append({
+                        'id': related,
+                        'name': AuditProcessor.objects.get(id=related).name
+                    })
+                except Exception as e:
+                    pass
         return d
 
 class AuditLanguage(models.Model):
@@ -274,6 +290,7 @@ class AuditChannelMeta(models.Model):
     emoji = models.BooleanField(default=False, db_index=True)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
+    last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)

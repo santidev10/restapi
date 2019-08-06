@@ -88,6 +88,8 @@ def remove_mentions_hashes_urls(s):
 
 # Returns Language Detected by FastText
 def fasttext_lang(s):
+    s = remove_mentions_hashes_urls(s)
+    s = s.replace("\n", " ")
     fast_text_model = FastText('lid.176.bin')
     fast_text_result = fast_text_model.predict(s)
     language = fast_text_result[0][0].split('__')[2].lower()

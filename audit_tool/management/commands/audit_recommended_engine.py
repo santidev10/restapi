@@ -46,7 +46,7 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
-                               "&type=video&maxResults=50&relevanceLanguage={language}"
+                               "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -66,10 +66,6 @@ class Command(BaseCommand):
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
                 self.language = self.audit.params.get('language')
-                if not self.language:
-                    self.language = ["en"]
-                else:
-                    self.language = self.language.split(",")
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
@@ -77,9 +73,9 @@ class Command(BaseCommand):
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = self.audit.params.get('min_views')
-                self.min_likes = self.audit.params.get('min_likes')
-                self.max_dislikes = self.audit.params.get('max_dislikes')
+                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -197,7 +193,7 @@ class Command(BaseCommand):
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
             id=video.video_id,
-            language=self.language,
+            language="&relevanceLanguage={}".format(self.language[0]) if self.language and len(self.language) == 1 else '',
             location="&location={}".format(self.location) if self.location else '',
             location_radius="&locationRadius={}mi".format(self.location_radius) if self.location_radius else ''
         )
@@ -209,6 +205,16 @@ class Command(BaseCommand):
                 avp.clean = False
                 avp.save()
                 return
+            elif data['error']['message'] == 'Invalid relevance language.':
+                self.audit.params['error'] = 'Invalid relevance language.'
+                self.audit.completed = timezone.now()
+                self.audit.save()
+                raise Exception("problem with relevance language.")
+        try:
+            d = data['items']
+        except Exception as e:
+            print(str(data))
+            raise Exception("problem with API response {}".format(str(data)))
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)

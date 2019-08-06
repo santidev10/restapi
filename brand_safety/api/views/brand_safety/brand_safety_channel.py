@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from distutils.util import strtobool
 from brand_safety.utils import get_es_data
+from brand_safety.utils import BrandSafetyQueryBuilder
 from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from singledb.connector import SingleDatabaseApiConnector
@@ -52,15 +53,28 @@ class BrandSafetyChannelAPIView(APIView):
         if not channel_es_data:
             raise Http404
 
-        # Get channel's video ids from sdb to get es video brand safety data
-        video_sdb_data = self._get_sdb_channel_video_data(channel_id)
-        if video_sdb_data is SingleDatabaseApiConnectorException:
+        # Retrieve channel flagged videos
+        query_params = {
+            "list_type": "whitelist",
+            "segment_type": "video",
+        }
+        query_builder = BrandSafetyQueryBuilder(
+            query_params,
+            overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
+            related_to=channel_id
+        )
+        result = query_builder.execute()
+        if result is ElasticSearchConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
+        if not channel_es_data:
+            raise Http404
 
-        # Get video brand safety data to merge with sdb video data
-        video_ids = list(video_sdb_data.keys())
-        video_es_data = get_es_data(video_ids, settings.BRAND_SAFETY_VIDEO_INDEX)
-        if video_es_data is ElasticSearchConnectorException:
+        # Extract data from es response
+        video_es_data = {
+            video["_id"]: video["_source"] for video in result["hits"]["hits"]
+        }
+        video_sdb_data = self._get_sdb_video_data(video_es_data.keys())
+        if video_sdb_data is SingleDatabaseApiConnectorException:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
         channel_brand_safety_data = {
@@ -69,7 +83,7 @@ class BrandSafetyChannelAPIView(APIView):
             "flagged_words": self._extract_key_words(channel_es_data["categories"])
         }
         channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
-
+        # Merge es brand safety with sdb video data
         channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
@@ -85,12 +99,13 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-        #channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
+        if request.user and request.user.is_staff:
+            channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
-    def _adapt_channel_video_es_sdb_data(self, channel_data, video_es_data, video_sdb_data):
+    def _adapt_channel_video_es_sdb_data(self, channel_data: dict, video_es_data: dict, video_sdb_data: dict) -> tuple:
         """
         Encapsulate merging of channel and video es/sdb data
         :param es_data: dict
@@ -99,31 +114,31 @@ class BrandSafetyChannelAPIView(APIView):
         """
         flagged_videos = []
         # Merge video brand safety wtih video sdb data
-        for id_, data in video_es_data.items():
+        for _id, data in video_es_data.items():
             if data["overall_score"] <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
                 # In some instances video data will not be in both Elasticsearch and sdb
                 try:
-                    sdb_video = video_sdb_data[id_]
+                    sdb_video = video_sdb_data[_id]
                 except KeyError:
-                    sdb_video = {}
+                    continue
                 video_brand_safety_data = get_brand_safety_data(data["overall_score"])
                 video_data = {
-                    "id": id_,
+                    "id": _id,
                     "score": video_brand_safety_data["score"],
                     "label": video_brand_safety_data["label"],
                     "title": sdb_video.get("title"),
                     "thumbnail_image_url": sdb_video.get("thumbnail_image_url"),
                     "transcript": sdb_video.get("transcript"),
-                    "youtube_published_at": sdb_video.get("youtube_published_at"),
+                    "youtube_published_at": sdb_video.get("youtube_published_at", ""),
                     "views": sdb_video.get("views"),
-                    "engage_rate": sdb_video.get("engage_rate")
+                    "engage_rate": sdb_video.get("engage_rate", 0)
                 }
                 flagged_videos.append(video_data)
                 channel_data["total_flagged_videos"] += 1
         flagged_videos.sort(key=lambda video: video["youtube_published_at"], reverse=True)
         return channel_data, flagged_videos
 
-    def _get_sdb_channel_video_data(self, channel_id):
+    def _get_sdb_channel_video_data(self, channel_id: str) -> dict:
         """
         Encapsulate getting sdb channel video data
             On SingleDatabaseApiConnectorException, return it to be handled by view
@@ -134,7 +149,7 @@ class BrandSafetyChannelAPIView(APIView):
             "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
             "sort": "video_id",
             "size": self.MAX_SIZE,
-            "channel_id__terms": channel_id
+            "channel__id_terms": channel_id
         }
         try:
             response = SingleDatabaseApiConnector().get_video_list(params)
@@ -146,8 +161,30 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return sdb_video_data
 
+    def _get_sdb_video_data(self, video_ids: iter) -> dict:
+        """
+        Retrieve sdb video data with given ids
+        :param video_ids: list | tuple of id strings
+        :return: dict
+        """
+        params = {
+            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
+            "sort": "video_id",
+            "size": self.MAX_SIZE,
+            "video_id__terms": ",".join(video_ids)
+        }
+        try:
+            response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
+        except SingleDatabaseApiConnectorException:
+            return SingleDatabaseApiConnectorException
+        sdb_video_data = {
+            video["video_id"]: video
+            for video in response["items"]
+        }
+        return sdb_video_data
+
     @staticmethod
-    def _adapt_response_data(brand_safety_data, paginator, page):
+    def _adapt_response_data(brand_safety_data: dict, paginator: Paginator, page: int) -> dict:
         """
         Adapt brand safety data with pagination
         :param brand_safety_data: channel brand safety data
@@ -170,7 +207,7 @@ class BrandSafetyChannelAPIView(APIView):
         }
         return response
 
-    def _extract_key_words(self, categories):
+    def _extract_key_words(self, categories: dict) -> list:
         """
         Extracts es brand safety category keywords
         :param categories: dict
@@ -182,5 +219,3 @@ class BrandSafetyChannelAPIView(APIView):
                 continue
             keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
         return keywords
-
-

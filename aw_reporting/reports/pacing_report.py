@@ -910,9 +910,17 @@ class PacingReport:
     # ## FLIGHTS ## #
 
     # ## CAMPAIGNS ## #
-    def get_campaigns(self, flight):
+    def get_campaigns(self, flight, status=None):
         queryset = Campaign.objects.filter(
             salesforce_placement__flights=flight)
+
+        # status = "eligible" | "paused" | "ended"
+        if status:
+            if type(status) is str:
+                queryset = queryset.filter(status=status)
+            else:
+                queryset = queryset.filter(status__in=status)
+
         campaigns = queryset.values(
             "id", "name", "goal_allocation",
         ).order_by('name').annotate(start=F("start_date"), end=F("end_date"))
@@ -927,9 +935,13 @@ class PacingReport:
                     campaigns_without_allocation.append(campaign)
                 else:
                     goal_allocation_remaining -= campaign["goal_allocation"]
-            split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
-            for campaign in campaigns_without_allocation:
-                campaign["goal_allocation"] = split_allocation
+            # Do not allocate if there are no campaigns without allocations
+            try:
+                split_allocation = goal_allocation_remaining / len(campaigns_without_allocation)
+                for campaign in campaigns_without_allocation:
+                    campaign["goal_allocation"] = split_allocation
+            except ZeroDivisionError:
+                pass
 
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated
