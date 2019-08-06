@@ -4,6 +4,8 @@ from drf_yasg import openapi
 from datetime import datetime
 from datetime import timedelta
 
+from itertools import zip_longest
+
 from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
@@ -142,7 +144,7 @@ def add_chart_data(channels):
 
         items = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(channel.stats.subscribers_history or []),
             reversed(channel.stats.views_history or [])
         )

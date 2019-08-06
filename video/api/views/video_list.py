@@ -6,6 +6,8 @@ from copy import deepcopy
 from datetime import timedelta
 from datetime import datetime
 
+from itertools import zip_longest
+
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
@@ -51,7 +53,7 @@ def add_chart_data(videos):
 
         chart_data = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(video.stats.views_history or []),
             reversed(video.stats.likes_history or []),
             reversed(video.stats.dislikes_history or []),

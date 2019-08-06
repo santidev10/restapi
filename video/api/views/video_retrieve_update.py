@@ -5,6 +5,8 @@ import re
 from datetime import timedelta
 from datetime import datetime
 
+from itertools import zip_longest
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -39,7 +41,7 @@ def add_chart_data(video):
 
     chart_data = []
     items_count = 0
-    history = zip(
+    history = zip_longest(
         reversed(video["stats"].get("views_history") or []),
         reversed(video["stats"].get("likes_history") or []),
         reversed(video["stats"].get("dislikes_history") or []),
