@@ -86,7 +86,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                                    Sections.CAPTIONS,)
+                                    Sections.CAPTIONS, Sections.ANALYTICS)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
@@ -100,7 +100,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         result = add_extra_field(video.to_dict())
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
-                or not self.request.user.is_staff):
+                or self.request.user.is_staff):
             result[Sections.ANALYTICS] = {}
 
         return Response(result)
