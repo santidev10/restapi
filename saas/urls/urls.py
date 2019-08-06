@@ -13,7 +13,6 @@ from channel.api import urls as channel_api_urls
 from email_reports import urls as email_reports_api_urls
 from highlights.api import urls as highlights_api_urls
 from keywords.api import urls as keyword_api_urls
-from landing.api import urls as landing_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
 from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
@@ -55,9 +54,6 @@ urlpatterns = [
 
     # Singledb api urls
     url(r'^api/v1/', include(singledb_api_urls, namespace="singledb_api_urls")),
-
-    # landing api urls
-    url(r'^api/v1/', include(landing_api_urls, namespace=Namespace.LANDING)),
 
     # Audit api urls
     url(r'^api/v1/', include(audit_tool_api_urls, namespace=Namespace.AUDIT_TOOL)),

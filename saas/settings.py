@@ -14,7 +14,8 @@ import os
 import socket
 from datetime import date
 
-from teamcity import is_running_under_teamcity, teamcity_presence_env_var
+from teamcity import is_running_under_teamcity
+from teamcity import teamcity_presence_env_var
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -52,7 +53,6 @@ PROJECT_APPS = (
     "channel",
     "email_reports",
     "keyword_tool",
-    "landing",
     "segment",
     "userprofile",
     "related_tool",
@@ -337,19 +337,6 @@ from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
-
-# landing page settings
-LANDING_SUBJECT = [
-    "General",
-    "Sales",
-    "Technical Support"
-]
-
-LANDING_CONTACTS = {
-    'default': [
-        'chf.team@sigma.software',
-    ],
-}
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
