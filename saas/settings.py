@@ -475,8 +475,6 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
-DMP_BROKER_URL = os.getenv("DMP_BROKER_URL", CELERY_BROKER_URL)
-
 from es_components.config import *
 
 BRAND_SAFETY_CHANNEL_INDEX = ""

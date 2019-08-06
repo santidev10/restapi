@@ -18,7 +18,6 @@ from channel.models import AuthChannel
 from userprofile.models import UserChannel
 from utils.celery.dmp_celery import send_task_delete_channels
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
-from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission

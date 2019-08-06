@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 
 import requests
@@ -10,6 +9,7 @@ from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
+from utils.utittests.celery import mock_send_task
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -27,6 +27,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         super(ChannelRetrieveUpdateTestCase, cls).setUpClass()
         Permissions.sync_groups()
 
+    @mock_send_task()
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
@@ -45,6 +46,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
             self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @mock_send_task()
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
