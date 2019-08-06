@@ -54,16 +54,12 @@ class ESRetrieveAdapter:
         return item
 
 
-class ESQuerysetResearchAdapter(ESQuerysetAdapter):
+class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
 
     def __init__(self, *args, **kwargs):
-        super(ESQuerysetResearchAdapter, self).__init__(*args, **kwargs)
+        super(ESQuerysetWithBrandSafetyAdapter, self).__init__(*args, **kwargs)
         self.brand_safety_index = None
         self.add_extra_fields_func = None
-
-    def count(self):
-        count = self.manager.search(filters=self.filter_query).count()
-        return count
 
     def brand_safety(self, brand_safety_index):
         self.brand_safety_index = brand_safety_index
@@ -74,7 +70,7 @@ class ESQuerysetResearchAdapter(ESQuerysetAdapter):
         return self
 
     def get_data(self, start=0, end=None):
-        items = super(ESQuerysetResearchAdapter, self).get_data(start, end)
+        items = super(ESQuerysetWithBrandSafetyAdapter, self).get_data(start, end)
         if self.brand_safety_index:
             items = add_brand_safety(items, self.brand_safety_index)
         if self.add_extra_fields_func:

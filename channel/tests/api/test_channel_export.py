@@ -5,16 +5,15 @@ from unittest.mock import patch
 
 import pytz
 from django.test import override_settings
-from elasticsearch_dsl import Double
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from channel.api.urls.names import ChannelPathName
+from channel.tests.api.test_channel_list_endpoint import ChannelBrandSafetyDoc
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
-from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.elasticsearch import ElasticSearchConnector
@@ -225,21 +224,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             filter_count,
             len(data)
         )
-
-
-class ChannelBrandSafetyDoc(BaseDocument):
-    """
-    Temporary solution for testing brand safety.
-    Remove this doc after implementing the Brand Safety feature in the dmp project
-    """
-    overall_score = Double()
-
-    class Index:
-        name = "channel_brand_safety"
-        prefix = "channel_brand_safety_"
-
-    class Meta:
-        doc_type = "channel_brand_safety"
 
 
 def get_data_from_csv_response(response):

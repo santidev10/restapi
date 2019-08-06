@@ -23,7 +23,7 @@ from utils.api.filters import FreeFieldOrderingFilter
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ESRetrieveApiView
 from utils.api.research import ESRetrieveAdapter
 
@@ -139,7 +139,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetResearchAdapter(KeywordManager(sections), max_items=100).\
+        return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections), max_items=100).\
             extra_fields_func((add_aw_stats, add_views_history_chart,))
 
 
