@@ -12,42 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='segmentchannel',
-            name='owner',
-        ),
-        migrations.RemoveField(
-            model_name='segmentkeyword',
-            name='owner',
-        ),
-        migrations.AlterUniqueTogether(
-            name='segmentrelatedchannel',
-            unique_together=set([]),
-        ),
-        migrations.RemoveField(
-            model_name='segmentrelatedchannel',
-            name='segment',
-        ),
-        migrations.AlterUniqueTogether(
-            name='segmentrelatedkeyword',
-            unique_together=set([]),
-        ),
-        migrations.RemoveField(
-            model_name='segmentrelatedkeyword',
-            name='segment',
-        ),
-        migrations.AlterUniqueTogether(
-            name='segmentrelatedvideo',
-            unique_together=set([]),
-        ),
-        migrations.RemoveField(
-            model_name='segmentrelatedvideo',
-            name='segment',
-        ),
-        migrations.RemoveField(
-            model_name='segmentvideo',
-            name='owner',
-        ),
         migrations.DeleteModel(
             name='SegmentChannel',
         ),
