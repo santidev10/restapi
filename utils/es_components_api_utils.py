@@ -1,11 +1,14 @@
 import logging
+from urllib.parse import unquote
 
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
+from saas.settings import ES_MAX_RESULTS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.percentiles import get_percentiles
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -115,8 +118,10 @@ class QueryGenerator:
 
             if value is True or value == "true":
                 query = query.must()
-            else:
+            elif value is False or value == "false":
                 query = query.must_not()
+            else:
+                continue
             filters.append(query.exists().field(field).get())
 
         return filters
@@ -143,13 +148,14 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, max_items=None):
+    def __init__(self, manager, max_items=ES_MAX_RESULTS):
         self.manager = manager
         self.sort = None
         self.filter_query = None
         self.max_items = max_items
         self.slice = None
         self.aggregations = None
+        self.percentiles = None
         self.fields_to_load = None
 
     def count(self):
@@ -193,8 +199,17 @@ class ESQuerysetAdapter:
             properties=self.aggregations,
         )
 
+    def get_percentiles(self):
+        clean_names = [name.split(":")[0] for name in self.percentiles]
+        percentiles = get_percentiles(self.manager, clean_names, add_suffix=":percentiles")
+        return percentiles
+
     def with_aggregations(self, aggregations):
         self.aggregations = aggregations
+        return self
+
+    def with_percentiles(self, percentiles):
+        self.percentiles = percentiles
         return self
 
     def __getitem__(self, item):
@@ -227,13 +242,20 @@ class ESFilterBackend(BaseFilterBackend):
         return dynamic_generator_class(request.query_params)
 
     def _get_aggregations(self, request, queryset, view):
-        aggregations = request.query_params.get("aggregations", "").split(",")
+        aggregations = unquote(request.query_params.get("aggregations", "")).split(",")
         if view.allowed_aggregations is not None:
-            aggregations = [
-                agg for agg in aggregations
-                if agg in view.allowed_aggregations
-            ]
+            aggregations = [agg
+                            for agg in aggregations
+                            if agg in view.allowed_aggregations]
         return aggregations
+
+    def _get_percentiles(self, request, queryset, view):
+        percentiles = unquote(request.query_params.get("aggregations", "")).split(",")
+        if view.allowed_percentiles is not None:
+            percentiles = [agg
+                           for agg in percentiles
+                           if agg in view.allowed_percentiles]
+        return percentiles
 
     def _get_fields(self, request):
         fields = request.query_params.get("fields", "").split(",")
@@ -246,7 +268,12 @@ class ESFilterBackend(BaseFilterBackend):
         query = query_generator.get_search_filters()
         fields = self._get_fields(request)
         aggregations = self._get_aggregations(request, queryset, view)
-        return queryset.filter(query).fields(fields).with_aggregations(aggregations)
+        percentiles = self._get_percentiles(request, queryset, view)
+        result = queryset.filter(query) \
+                         .fields(fields) \
+                         .with_aggregations(aggregations) \
+                         .with_percentiles(percentiles)
+        return result
 
 
 class APIViewMixin:
@@ -254,6 +281,7 @@ class APIViewMixin:
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 
     allowed_aggregations = ()
+    allowed_percentiles = ()
 
     terms_filter = ()
     range_filter = ()
@@ -266,7 +294,10 @@ class PaginatorWithAggregationMixin:
         response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
         object_list = self.page.paginator.object_list
         if isinstance(object_list, ESQuerysetAdapter):
-            response_data["aggregations"] = object_list.get_aggregations() or None
+            aggregations = object_list.get_aggregations() or {}
+            percentiles = object_list.get_percentiles() or {}
+            all_aggregations = dict(**aggregations, **percentiles)
+            response_data["aggregations"] = all_aggregations or None
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data

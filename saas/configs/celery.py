@@ -10,8 +10,11 @@ RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
 RABBITMQ_API_USER = os.getenv("RABBITMQ_API_USER", "guest")
 RABBITMQ_API_PASSWORD = os.getenv("RABBITMQ_API_PASSWORD", "guest")
 
-RABBITMQ_API_URL = "{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
-CELERY_BROKER_URL = "amqp://{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
+RABBITMQ_API_URL = "{host}:{port}/restapi".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
+CELERY_BROKER_URL = "amqp://{host}:{port}/restapi".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
+
+DMP_CELERY_BROKER_URL = "amqp://{host}:{port}/dmp".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
+DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
 
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
@@ -26,6 +29,18 @@ CELERY_BEAT_SCHEDULE = {
     "recreate-demo-data": {
         "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
         "schedule": crontab(hour="0", minute="0"),
+    },
+    "update-videos-percentiles": {
+        "task": "video.tasks.update_videos_percentiles",
+        "schedule": 3600,
+    },
+    "update-channels-percentiles": {
+        "task": "channel.tasks.update_channels_percentiles",
+        "schedule": 3600,
+    },
+    "update-keywords-percentiles": {
+        "task": "keywords.tasks.update_keywords_percentiles",
+        "schedule": 3600,
     },
 }
 CELERY_RESULT_BACKEND = "django-db"

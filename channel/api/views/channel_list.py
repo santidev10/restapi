@@ -1,25 +1,23 @@
 import re
 from copy import deepcopy
-from drf_yasg import openapi
 from datetime import datetime
 from datetime import timedelta
+from itertools import zip_longest
 
-from rest_framework_csv.renderers import CSVStreamingRenderer
+from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
-
-from utils.api.research import ResearchPaginator
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetResearchAdapter
-
-from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
@@ -142,13 +140,13 @@ def add_chart_data(channels):
 
         items = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(channel.stats.subscribers_history or []),
             reversed(channel.stats.views_history or [])
         )
         for subscribers, views in history:
             timestamp = channel.stats.historydate - timedelta(
-                    days=len(channel.stats.subscribers_history) - items_count - 1)
+                days=len(channel.stats.subscribers_history) - items_count - 1)
             timestamp = datetime.combine(timestamp, datetime.max.time())
             items_count += 1
             if any((subscribers, views)):
@@ -187,13 +185,10 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     allowed_aggregations = (
         "ads_stats.average_cpv:max",
         "ads_stats.average_cpv:min",
-        "ads_stats.average_cpv:percentiles",
         "ads_stats.ctr_v:max",
         "ads_stats.ctr_v:min",
-        "ads_stats.ctr_v:percentiles",
         "ads_stats.video_view_rate:max",
         "ads_stats.video_view_rate:min",
-        "ads_stats.video_view_rate:percentiles",
         "ads_stats:exists",
         "analytics.age13_17:max",
         "analytics.age13_17:min",
@@ -226,24 +221,30 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "general_data.top_language",
         "social.facebook_likes:max",
         "social.facebook_likes:min",
-        "social.facebook_likes:percentiles",
         "social.instagram_followers:max",
         "social.instagram_followers:min",
-        "social.instagram_followers:percentiles",
         "social.twitter_followers:max",
         "social.twitter_followers:min",
-        "social.twitter_followers:percentiles",
         "stats.last_30day_subscribers:max",
         "stats.last_30day_subscribers:min",
-        "stats.last_30day_subscribers:percentiles",
         "stats.last_30day_views:max",
         "stats.last_30day_views:min",
-        "stats.last_30day_views:percentiles",
         "stats.subscribers:max",
         "stats.subscribers:min",
-        "stats.subscribers:percentiles",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
+    )
+
+    allowed_percentiles = (
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.video_view_rate:percentiles",
+        "ads_stats.ctr_v:percentiles",
+        "social.facebook_likes:percentiles",
+        "social.instagram_followers:percentiles",
+        "social.twitter_followers:percentiles",
+        "stats.last_30day_subscribers:percentiles",
+        "stats.last_30day_views:percentiles",
+        "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
 
@@ -257,8 +258,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
+
+        result = ESQuerysetResearchAdapter(ChannelManager(sections)) \
             .extra_fields_func((add_chart_data,))
+
+        return result
 
     @staticmethod
     def get_own_channel_ids(user, query_params):

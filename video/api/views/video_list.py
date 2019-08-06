@@ -3,27 +3,27 @@ Video api views module
 """
 import re
 from copy import deepcopy
-from datetime import timedelta
 from datetime import datetime
+from datetime import timedelta
+
+from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.managers.video import VideoManager
 from es_components.constants import Sections
-
-from utils.api.research import ResearchPaginator
+from es_components.managers.video import VideoManager
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetResearchAdapter
-from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
-
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
-                "monetization.is_monetizable", "monetization.channel_preferred", "stats.flags",
+                "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags",)
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
@@ -32,10 +32,10 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
+                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at",
+                "stats.last_day_views")
 
-EXISTS_FILTER = ("ads_stats", "analytics")
-
+EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
@@ -51,7 +51,7 @@ def add_chart_data(videos):
 
         chart_data = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(video.stats.views_history or []),
             reversed(video.stats.likes_history or []),
             reversed(video.stats.dislikes_history or []),
@@ -127,20 +127,23 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
-        "is_flagged:count",
+        "stats.flags:exists",
+        "stats.flags:missing",
         "stats.channel_subscribers:max",
         "stats.channel_subscribers:min",
         "stats.last_day_views:max",
         "stats.last_day_views:min",
         "stats.views:max",
         "stats.views:min",
-        # FIXME: Disabled because of overloading of ES by these aggregations
-        # "ads_stats.average_cpv:percentiles",
-        # "ads_stats.ctr_v:percentiles",
-        # "ads_stats.video_view_rate:percentiles",
-        # "stats.channel_subscribers:percentiles",
-        # "stats.last_day_views:percentiles",
-        # "stats.views:percentiles",
+    )
+
+    allowed_percentiles = (
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.ctr_v:percentiles",
+        "ads_stats.video_view_rate:percentiles",
+        "stats.channel_subscribers:percentiles",
+        "stats.last_day_views:percentiles",
+        "stats.views:percentiles",
     )
 
     def get_queryset(self):
@@ -148,10 +151,16 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
+        flags = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
             self.request.query_params._mutable = True
             self.request.query_params["channel.id"] = [channel_id]
+
+        if flags:
+            self.request.query_params._mutable = True
+            self.request.query_params["stats.flags"] = flags
+            self.terms_filter += ("stats.flags",)
 
         if not self.request.user.has_perm("userprofile.video_list") and \
                 not self.request.user.has_perm("userprofile.view_highlights"):
@@ -163,5 +172,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(VideoManager(sections), max_items=100)\
+        return ESQuerysetResearchAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))

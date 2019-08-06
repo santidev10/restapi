@@ -5,6 +5,8 @@ import re
 from datetime import timedelta
 from datetime import datetime
 
+from itertools import zip_longest
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -39,7 +41,7 @@ def add_chart_data(video):
 
     chart_data = []
     items_count = 0
-    history = zip(
+    history = zip_longest(
         reversed(video["stats"].get("views_history") or []),
         reversed(video["stats"].get("likes_history") or []),
         reversed(video["stats"].get("dislikes_history") or []),
@@ -86,7 +88,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                                    Sections.CAPTIONS,)
+                                    Sections.CAPTIONS, Sections.ANALYTICS)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
@@ -100,7 +102,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         result = add_extra_field(video.to_dict())
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
-                or not self.request.user.is_staff):
-            result[Sections.ANALYTICS] = {}
+                or self.request.user.is_staff):
+            del result[Sections.ANALYTICS]
 
         return Response(result)

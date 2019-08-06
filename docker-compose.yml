@@ -13,6 +13,7 @@ services:
       DB_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
+      DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -72,7 +73,10 @@ services:
       retries: 30
 
   rabbitmq:
-    image: rabbitmq:3.7.8-management
+    image: viewiq/rabbitmq
+    build:
+      context: ./.docker/rabbitmq/
+
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s

@@ -1,17 +1,14 @@
 from django.conf import settings
-
 from rest_framework.generics import RetrieveAPIView
 
 import brand_safety.constants as constants
-
-from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.api_paginator import CustomPageNumberPaginator
-from utils.es_components_api_utils import PaginatorWithAggregationMixin
-from utils.es_components_api_utils import ESFilterBackend
 from userprofile.permissions import PermissionGroupNames
+from utils.api_paginator import CustomPageNumberPaginator
 from utils.brand_safety_view_decorator import add_brand_safety
-
 from utils.es_components_api_utils import ESDictSerializer
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import PaginatorWithAggregationMixin
 
 
 class ESRetrieveAdapter:
@@ -114,3 +111,4 @@ class ESRetrieveApiView(RetrieveAPIView):
 class ResearchPaginator(PaginatorWithAggregationMixin, CustomPageNumberPaginator):
     page_size = 50
     page_size_query_param = "size"
+    max_page_number = 200

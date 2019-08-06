@@ -1,32 +1,27 @@
 import logging
-
+from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
 
-from keywords.api.utils import get_keywords_aw_stats
-from keywords.api.utils import get_keywords_aw_top_bottom_stats
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-
-from copy import deepcopy
-from rest_framework_csv.renderers import CSVStreamingRenderer
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
+from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from es_components.constants import Sections
-from es_components.managers.keyword import KeywordManager
 from es_components.managers.channel import ChannelManager
-
-from utils.api.research import ResearchPaginator
-from utils.api.research import ESBrandSafetyFilterBackend
-
+from es_components.managers.keyword import KeywordManager
+from keywords.api.utils import get_keywords_aw_stats
+from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESRetrieveAdapter
+from utils.api.research import ESRetrieveApiView
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.api.research import ESQuerysetResearchAdapter
-from utils.api.research import ESRetrieveApiView
-from utils.api.research import ESRetrieveAdapter
-
 
 TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
 
@@ -34,14 +29,11 @@ MATCH_PHRASE_FILTER = ("main.id",)
 
 RANGE_FILTER = ("stats.search_volume", "stats.average_cpc", "stats.competition",)
 
-
 logger = logging.getLogger(__name__)
 
 
-
 def add_aw_stats(items):
-    from aw_reporting.models import BASE_STATS, CALCULATED_STATS, \
-        dict_norm_base_stats, dict_add_calculated_stats
+    from aw_reporting.models import dict_norm_base_stats, dict_add_calculated_stats
 
     keywords = set(item.main.id for item in items)
     stats = get_keywords_aw_stats(keywords)
@@ -59,22 +51,23 @@ def add_aw_stats(items):
             item.aw_stats.update(item_top_bottom_stats)
     return items
 
+
 def add_views_history_chart(keywords):
     for keyword in keywords:
         items = []
         items_count = 0
         today = datetime.now()
         if keyword.stats and keyword.stats.views_history:
-                history = reversed(keyword.stats.views_history)
-                for views in history:
-                    timestamp = today - timedelta(days=len(keyword.stats.views_history) - items_count - 1)
-                    timestamp = datetime.combine(timestamp, datetime.max.time())
-                    items_count += 1
-                    if views:
-                        items.append(
-                            {"created_at": timestamp.strftime('%Y-%m-%d'),
-                             "views": views}
-                        )
+            history = reversed(keyword.stats.views_history)
+            for views in history:
+                timestamp = today - timedelta(days=len(keyword.stats.views_history) - items_count - 1)
+                timestamp = datetime.combine(timestamp, datetime.max.time())
+                items_count += 1
+                if views:
+                    items.append(
+                        {"created_at": timestamp.strftime('%Y-%m-%d'),
+                         "views": views}
+                    )
         keyword.views_history_chart = items
     return keywords
 
@@ -117,6 +110,9 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.average_cpc:max",
         "stats.competition:min",
         "stats.competition:max",
+    )
+
+    allowed_percentiles = (
         "stats.search_volume:percentiles",
         "stats.average_cpc:percentiles",
         "stats.competition:percentiles",
@@ -136,7 +132,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetResearchAdapter(KeywordManager(sections), max_items=100).\
+        return ESQuerysetResearchAdapter(KeywordManager(sections)). \
             extra_fields_func((add_aw_stats, add_views_history_chart,))
 
 
@@ -153,6 +149,6 @@ class KeywordRetrieveUpdateApiView(ESRetrieveApiView):
         logging.info("keyword id {}".format(keyword))
         sections = (Sections.MAIN, Sections.STATS,)
 
-        return ESRetrieveAdapter(KeywordManager(sections))\
-            .id(keyword).fields().extra_fields_func((add_aw_stats, add_views_history_chart,))\
+        return ESRetrieveAdapter(KeywordManager(sections)) \
+            .id(keyword).fields().extra_fields_func((add_aw_stats, add_views_history_chart,)) \
             .get_data()
