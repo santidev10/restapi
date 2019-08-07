@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 CACHE_TIMEOUT = 86400
 
+
 def get_percentiles(manager, fields, add_suffix=None):
     redis = get_redis_client()
     percentiles = {}

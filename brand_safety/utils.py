@@ -27,14 +27,14 @@ def get_es_data(item_ids, index_name):
 class BrandSafetyQueryBuilder(object):
     MAX_SIZE = 10000
 
-    def __init__(self, data, overall_score: int = None, related_to: str = None):
+    def __init__(self, data, overall_score: int = None, video_ids: list = None):
         """
         :param data: dict -> Query options
         :param overall_score: int -> Overall score threshold (gte for whitelist, lte for blacklist)
         :param related_to: str -> Youtube ID (Query videos with channel_id=related_to)
         """
         self.overall_score = overall_score
-        self.related_to = related_to
+        self.video_ids = video_ids
         self.list_type = data["list_type"]
         self.segment_type = data["segment_type"]
         self.score_threshold = data.get("score_threshold", 0)
@@ -138,12 +138,10 @@ class BrandSafetyQueryBuilder(object):
             }
             must_statements.append(overall_score_threshold)
 
-        if self.related_to:
-            # Get items related to self.related_to e.g. Get videos with channel_id=related_to
-            related_key = self._get_related_key()
+        if self.video_ids:
             related_to = {
-                "term": {
-                    related_key: {"value": self.related_to}
+                "terms": {
+                    "_id": self.video_ids
                 }
             }
             must_statements.append(related_to)
@@ -200,14 +198,3 @@ class BrandSafetyQueryBuilder(object):
         }
         to_string = [mapping[str(_id)] for _id in youtube_category_ids]
         return to_string
-
-    def _get_related_key(self):
-        """
-        Interface to get key to retrieve related items
-        :return: str
-        """
-        config = {
-            constants.VIDEO: "channel_id"
-        }
-        key = config[self.segment_type]
-        return key

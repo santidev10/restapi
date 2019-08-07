@@ -1,25 +1,22 @@
 import re
 from copy import deepcopy
-from drf_yasg import openapi
 from datetime import datetime
 from datetime import timedelta
+from itertools import zip_longest
 
-from rest_framework_csv.renderers import CSVStreamingRenderer
+from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
-
-from utils.api.research import ResearchPaginator
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
-
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
@@ -63,28 +60,6 @@ CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
         ),
     ),
 )
-
-
-class ChannelListCSVRendered(CSVStreamingRenderer):
-    header = [
-        "title",
-        "url",
-        "country",
-        "category",
-        "emails",
-        "subscribers",
-        "thirty_days_subscribers",
-        "thirty_days_views",
-        "views_per_video",
-        "sentiment",
-        "engage_rate",
-        "last_video_published_at",
-        "brand_safety_score",
-        "video_view_rate",
-        "ctr",
-        "ctr_v",
-        "average_cpv"
-    ]
 
 
 class UserChannelsNotAvailable(Exception):
@@ -142,13 +117,13 @@ def add_chart_data(channels):
 
         items = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(channel.stats.subscribers_history or []),
             reversed(channel.stats.views_history or [])
         )
         for subscribers, views in history:
             timestamp = channel.stats.historydate - timedelta(
-                    days=len(channel.stats.subscribers_history) - items_count - 1)
+                days=len(channel.stats.subscribers_history) - items_count - 1)
             timestamp = datetime.combine(timestamp, datetime.max.time())
             items_count += 1
             if any((subscribers, views)):
@@ -177,6 +152,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_30day_views:asc",
+        "stats.subscribers:asc",
+        "stats.sentiment:asc",
+        "stats.views_per_video:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -261,8 +241,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
 
-        result = ESQuerysetResearchAdapter(ChannelManager(sections), max_items=100)\
-                 .extra_fields_func((add_chart_data,))
+        result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
+            .extra_fields_func((add_chart_data,))
 
         return result
 

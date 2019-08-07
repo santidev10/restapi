@@ -5,6 +5,7 @@ from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
+from saas.settings import ES_MAX_RESULTS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.percentiles import get_percentiles
@@ -71,9 +72,19 @@ class QueryGenerator:
 
                 query = QueryBuilder().build().must().range().field(field)
                 if min:
-                    query = query.gte(float(min))
+                    try:
+                        min = float(min)
+                    except ValueError:
+                        # in case of filtering by date
+                        pass
+                    query = query.gte(min)
                 if max:
-                    query = query.lte(float(max))
+                    try:
+                        max = float(max)
+                    except ValueError:
+                        # in case of filtering by date
+                        pass
+                    query = query.lte(max)
                 filters.append(query.get())
 
         return filters
@@ -117,8 +128,10 @@ class QueryGenerator:
 
             if value is True or value == "true":
                 query = query.must()
-            else:
+            elif value is False or value == "false":
                 query = query.must_not()
+            else:
+                continue
             filters.append(query.exists().field(field).get())
 
         return filters
@@ -145,7 +158,7 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, max_items=None):
+    def __init__(self, manager, max_items=ES_MAX_RESULTS):
         self.manager = manager
         self.sort = None
         self.filter_query = None
