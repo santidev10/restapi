@@ -103,6 +103,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
                 or self.request.user.is_staff):
-            del result[Sections.ANALYTICS]
+            if Sections.ANALYTICS in result.keys():
+                del result[Sections.ANALYTICS]
 
         return Response(result)
