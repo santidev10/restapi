@@ -31,7 +31,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at",
+                "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
