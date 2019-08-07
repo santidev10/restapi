@@ -18,6 +18,7 @@ class CustomPageNumberPaginator:
     page_size_query_param = "size"
     max_page_size = None
     page_size = api_settings.PAGE_SIZE
+    max_page_number = None
 
     def __init__(self):
         self.page = None
@@ -53,7 +54,7 @@ class CustomPageNumberPaginator:
     def paginate_queryset(self, queryset, request, view=None):
         page_size = self.get_page_size(request)
 
-        paginator = PaginatorWithZeroPage(queryset, page_size)
+        paginator = PaginatorWithZeroPage(queryset, page_size, max_page_number=self.max_page_number)
         page_number = request.query_params.get(self.page_query_param, 1)
 
         try:
@@ -65,8 +66,13 @@ class CustomPageNumberPaginator:
 
 
 class PaginatorWithZeroPage(Paginator):
+    def __init__(self, *args, max_page_number=None, **kwargs):
+        super(PaginatorWithZeroPage, self).__init__(*args, **kwargs)
+        self.max_page_number = max_page_number
+
     @cached_property
     def num_pages(self):
         if self.per_page == 0:
             return 0
-        return super(PaginatorWithZeroPage, self).num_pages
+        num_pages = super(PaginatorWithZeroPage, self).num_pages
+        return min(num_pages, self.max_page_number or num_pages)

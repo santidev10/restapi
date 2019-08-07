@@ -3,23 +3,22 @@ Video api views module
 """
 import re
 from copy import deepcopy
-from datetime import timedelta
 from datetime import datetime
+from datetime import timedelta
+from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.managers.video import VideoManager
 from es_components.constants import Sections
-
-from utils.api.research import ResearchPaginator
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
+from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
+from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
@@ -32,10 +31,10 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at")
+                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at",
+                "stats.last_day_views")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
-
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
@@ -51,7 +50,7 @@ def add_chart_data(videos):
 
         chart_data = []
         items_count = 0
-        history = zip(
+        history = zip_longest(
             reversed(video.stats.views_history or []),
             reversed(video.stats.likes_history or []),
             reversed(video.stats.dislikes_history or []),
@@ -172,5 +171,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(VideoManager(sections), max_items=100)\
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))

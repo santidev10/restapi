@@ -1,17 +1,14 @@
 from django.conf import settings
-
 from rest_framework.generics import RetrieveAPIView
 
 import brand_safety.constants as constants
-
-from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.api_paginator import CustomPageNumberPaginator
-from utils.es_components_api_utils import PaginatorWithAggregationMixin
-from utils.es_components_api_utils import ESFilterBackend
 from userprofile.permissions import PermissionGroupNames
+from utils.api_paginator import CustomPageNumberPaginator
 from utils.brand_safety_view_decorator import add_brand_safety
-
 from utils.es_components_api_utils import ESDictSerializer
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import PaginatorWithAggregationMixin
 
 
 class ESRetrieveAdapter:
@@ -54,16 +51,12 @@ class ESRetrieveAdapter:
         return item
 
 
-class ESQuerysetResearchAdapter(ESQuerysetAdapter):
+class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
 
     def __init__(self, *args, **kwargs):
-        super(ESQuerysetResearchAdapter, self).__init__(*args, **kwargs)
+        super(ESQuerysetWithBrandSafetyAdapter, self).__init__(*args, **kwargs)
         self.brand_safety_index = None
         self.add_extra_fields_func = None
-
-    def count(self):
-        count = self.manager.search(filters=self.filter_query).count()
-        return count
 
     def brand_safety(self, brand_safety_index):
         self.brand_safety_index = brand_safety_index
@@ -74,7 +67,7 @@ class ESQuerysetResearchAdapter(ESQuerysetAdapter):
         return self
 
     def get_data(self, start=0, end=None):
-        items = super(ESQuerysetResearchAdapter, self).get_data(start, end)
+        items = super(ESQuerysetWithBrandSafetyAdapter, self).get_data(start, end)
         if self.brand_safety_index:
             items = add_brand_safety(items, self.brand_safety_index)
         if self.add_extra_fields_func:
@@ -114,3 +107,4 @@ class ESRetrieveApiView(RetrieveAPIView):
 class ResearchPaginator(PaginatorWithAggregationMixin, CustomPageNumberPaginator):
     page_size = 50
     page_size_query_param = "size"
+    max_page_number = 200

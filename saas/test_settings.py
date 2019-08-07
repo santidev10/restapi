@@ -17,7 +17,6 @@ MIGRATION_MODULES = {
     "django_celery_results": None,
     "email_reports": None,
     "keyword_tool": None,
-    "landing": None,
     "segment": None,
     "sessions": None,
     "userprofile": None,
