@@ -17,19 +17,19 @@ DMP_CELERY_BROKER_URL = "amqp://{host}:{port}/dmp".format(host=RABBITMQ_HOST, po
 DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
 
 CELERY_TIMEZONE = "UTC"
-CELERY_BEAT_SCHEDULE = {
-    "full-aw-update": {
-        "task": "aw_reporting.update.update_aw_accounts.update_aw_accounts",
-        "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
-    },
-    "update-audiences": {
-        "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
-        "schedule": crontab(day_of_month="1", hour="0", minute="0"),
-    },
-    "recreate-demo-data": {
-        "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
-        "schedule": crontab(hour="0", minute="0"),
-    },
+CELERYBEAT_SCHEDULE = {
+#    "full-aw-update": {
+#        "task": "aw_reporting.update.update_aw_accounts.update_aw_accounts",
+#        "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
+#    },
+#    "update-audiences": {
+#        "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
+#        "schedule": crontab(day_of_month="1", hour="0", minute="0"),
+#    },
+#    "recreate-demo-data": {
+#        "task": "aw_reporting.demo.recreate_demo_data.recreate_demo_data",
+#        "schedule": crontab(hour="0", minute="0"),
+#    },
     "update-videos-percentiles": {
         "task": "video.tasks.update_videos_percentiles",
         "schedule": 3600,
