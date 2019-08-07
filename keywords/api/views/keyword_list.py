@@ -1,0 +1,80 @@
+from copy import deepcopy
+
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAdminUser
+
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import KeywordManager
+from keywords.api.views import add_aw_stats
+from keywords.api.views import add_views_history_chart
+from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
+from utils.api.research import ResearchPaginator
+from utils.es_components_api_utils import APIViewMixin
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
+
+TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
+
+MATCH_PHRASE_FILTER = ("main.id",)
+
+RANGE_FILTER = ("stats.search_volume", "stats.average_cpc", "stats.competition",)
+
+
+class KeywordListApiView(APIViewMixin, ListAPIView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.keyword_list"),
+            IsAdminUser
+        ),
+    )
+    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    pagination_class = ResearchPaginator
+    ordering_fields = (
+        "stats.last_30day_views:desc",
+        "stats.search_volume:desc",
+        "stats.average_cpc:desc",
+        "stats.competition:desc",
+        "stats.last_30day_views:asc",
+        "stats.search_volume:asc",
+        "stats.average_cpc:asc",
+        "stats.competition:asc",
+    )
+
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+
+    allowed_aggregations = (
+        "stats.search_volume:min",
+        "stats.search_volume:max",
+        "stats.average_cpc:min",
+        "stats.average_cpc:max",
+        "stats.competition:min",
+        "stats.competition:max",
+    )
+
+    allowed_percentiles = (
+        "stats.search_volume:percentiles",
+        "stats.average_cpc:percentiles",
+        "stats.competition:percentiles",
+    )
+
+    def get_queryset(self):
+        sections = (Sections.MAIN, Sections.STATS,)
+
+        query_params = deepcopy(self.request.query_params)
+        if query_params.get("from_channel"):
+            channel_id = query_params.get("from_channel")
+            channel = ChannelManager().model.get(channel_id, _source=(f"{Sections.GENERAL_DATA}.video_tags"))
+            keyword_ids = channel.general_data.video_tags
+
+            if keyword_ids:
+                self.request.query_params._mutable = True
+                self.request.query_params["main.id"] = keyword_ids
+                self.terms_filter = self.terms_filter + ("main.id",)
+
+        return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections)) \
+            .extra_fields_func((add_aw_stats, add_views_history_chart,))
