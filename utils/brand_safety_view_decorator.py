@@ -31,9 +31,7 @@ def add_brand_safety_data(view):
                 blacklist_data_type = BlacklistItem.VIDEO_ITEM
             else:
                 return response
-
-            user = args[1].user
-            if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
+            if not request.user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
                 return response
             if response.data.get("items"):
                 _handle_list_view(request, response, index_name, blacklist_data_type)
