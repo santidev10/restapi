@@ -329,7 +329,6 @@ class AuditVideoMeta(models.Model):
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True)
     duration = models.CharField(max_length=30, default=None, null=True)
 
-
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video')

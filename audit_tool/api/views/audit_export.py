@@ -100,37 +100,40 @@ class AuditExportApiView(APIView):
             AuditCategory.objects.filter(category=i['id']).update(category_display=i['snippet']['title'])
 
     def clean_duration(self, duration):
-        delimiters = ["W", "D", "H", "M", "S"]
-        duration = duration[2:]
-        current_num = ""
-        time_duration = timedelta(0)
-        for char in duration:
-            if char in delimiters:
-                if char == "W":
-                    time_duration += timedelta(weeks=int(current_num))
-                elif char == "D":
-                    time_duration += timedelta(days=int(current_num))
-                elif char == "H":
-                    time_duration += timedelta(hours=int(current_num))
-                elif char == "M":
-                    time_duration += timedelta(minutes=int(current_num))
-                elif char == "S":
-                    time_duration += timedelta(seconds=int(current_num))
-                current_num = ""
+        try:
+            delimiters = ["W", "D", "H", "M", "S"]
+            duration = duration[2:]
+            current_num = ""
+            time_duration = timedelta(0)
+            for char in duration:
+                if char in delimiters:
+                    if char == "W":
+                        time_duration += timedelta(weeks=int(current_num))
+                    elif char == "D":
+                        time_duration += timedelta(days=int(current_num))
+                    elif char == "H":
+                        time_duration += timedelta(hours=int(current_num))
+                    elif char == "M":
+                        time_duration += timedelta(minutes=int(current_num))
+                    elif char == "S":
+                        time_duration += timedelta(seconds=int(current_num))
+                    current_num = ""
+                else:
+                    current_num += char
+            if time_duration.days > 0:
+                seconds = time_duration.seconds
+                days = time_duration.days
+                hours = seconds // 3600
+                seconds -= (hours * 3600)
+                minutes = seconds // 60
+                seconds -= (minutes * 60)
+                hours += (days * 24)
+                time_string = "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
             else:
-                current_num += char
-        if time_duration.days > 0:
-            seconds = time_duration.seconds
-            days = time_duration.days
-            hours = seconds // 3600
-            seconds -= (hours * 3600)
-            minutes = seconds // 60
-            seconds -= (minutes * 60)
-            hours += (days * 24)
-            time_string = "{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds))
-        else:
-            time_string = str(time_duration)
-        return time_string
+                time_string = str(time_duration)
+            return time_string
+        except Exception as e:
+            return ""
 
     def export_videos(self, audit, audit_id=None, clean=None):
         clean_string = 'none'
