@@ -392,6 +392,12 @@ class BlacklistItem(models.Model):
     def get(item_ids, item_type, to_dict=False):
         if type(item_ids) is str:
             item_ids = [item_ids]
+        data = []
         items = BlacklistItem.objects.filter(item_type=item_type, item_id_hash__in=[get_hash_name(_id) for _id in item_ids])
-        data = [item.to_dict() if to_dict else item for item in items if item.item_id in item_ids]
+        for item in items:
+            if item.item_id in item_ids:
+                if to_dict:
+                    data.append(item.to_dict())
+                else:
+                    data.append(item)
         return data
