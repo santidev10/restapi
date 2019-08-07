@@ -3,9 +3,9 @@ Keyword api urls module
 """
 from django.conf.urls import url
 
-from keywords.api import KeywordListApiView
+from keywords.api.views import KeywordListApiView
 from keywords.api.views import KeywordListExportApiView
-from keywords.api.views.keyword_retrieve_update import KeywordRetrieveUpdateApiView
+from keywords.api.views import KeywordRetrieveUpdateApiView
 from .names import KeywordPathName
 
 urlpatterns = [

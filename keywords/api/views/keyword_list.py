@@ -6,7 +6,6 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
-from keywords.api.views import add_views_history_chart
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetWithBrandSafetyAdapter
@@ -14,6 +13,7 @@ from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from .utils import add_views_history_chart
 
 TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
 
