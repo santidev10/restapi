@@ -48,7 +48,8 @@ def add_aw_stats(items):
             item.aw_stats = item_stats
 
             item_top_bottom_stats = top_bottom_stats.get(item.main.id)
-            item.aw_stats.update(item_top_bottom_stats)
+            for key, value in item_top_bottom_stats.items():
+                setattr(item.aw_stats, key, value)
     return items
 
 
