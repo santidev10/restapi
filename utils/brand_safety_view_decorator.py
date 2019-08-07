@@ -1,7 +1,6 @@
 from django.conf import settings
 
 from audit_tool.models import BlacklistItem
-from audit_tool.models import get_hash_name
 import brand_safety.constants as constants
 from userprofile.permissions import PermissionGroupNames
 from utils.elasticsearch import ElasticSearchConnector
@@ -86,10 +85,7 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
-        blacklist_items = BlacklistItem.objects.filter(
-            item_type=blacklist_data_type,
-            item_id_hash__in=[get_hash_name(_id) for _id in doc_ids]
-        )
+        blacklist_items = BlacklistItem.get(doc_ids, blacklist_data_type)
         blacklist_items_by_id = {
             item.item_id: item for item in blacklist_items
         }
@@ -103,7 +99,6 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
                 except KeyError:
                     blacklist_data = None
                 item["blacklist_data"] = blacklist_data
-
     except (TypeError, KeyError):
         return
 
@@ -119,6 +114,10 @@ def _handle_single_view(request, response, index_name, blacklist_data_type):
         score = es_data["overall_score"]
         response.data["brand_safety_data"] = get_brand_safety_data(score)
         if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
-            response.data["blacklist_data"] = BlacklistItem.get(doc_id, blacklist_data_type, to_dict=True)
+            try:
+                blacklist_data = BlacklistItem.get(doc_id, blacklist_data_type, to_dict=True)[0]
+            except IndexError:
+                blacklist_data = None
+            response.data["blacklist_data"] = blacklist_data
     except (TypeError, KeyError):
         return
