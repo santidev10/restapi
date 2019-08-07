@@ -105,6 +105,13 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.comments:desc",
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
+        "stats.last_30day_views:asc",
+        "stats.views:asc",
+        "stats.likes:asc",
+        "stats.dislikes:asc",
+        "stats.comments:asc",
+        "stats.sentiment:asc",
+        "general_data.youtube_published_at:asc",
     )
 
     terms_filter = TERMS_FILTER

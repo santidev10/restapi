@@ -152,6 +152,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_30day_views:asc",
+        "stats.subscribers:asc",
+        "stats.sentiment:asc",
+        "stats.views_per_video:asc",
     )
 
     terms_filter = TERMS_FILTER
