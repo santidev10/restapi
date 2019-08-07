@@ -1,1 +1,1 @@
-from keywords.api.views import KeywordListApiView
+from keywords.api.views.keyword_list import KeywordListApiView
