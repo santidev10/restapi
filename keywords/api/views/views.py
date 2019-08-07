@@ -14,7 +14,7 @@ from keywords.api.utils import get_keywords_aw_stats
 from keywords.api.utils import get_keywords_aw_top_bottom_stats
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ESRetrieveAdapter
 from utils.api.research import ESRetrieveApiView
 from utils.api.research import ResearchPaginator
@@ -132,8 +132,8 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetResearchAdapter(KeywordManager(sections)). \
-            extra_fields_func((add_aw_stats, add_views_history_chart,))
+        return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections)) \
+            .extra_fields_func((add_aw_stats, add_views_history_chart,))
 
 
 class KeywordRetrieveUpdateApiView(ESRetrieveApiView):

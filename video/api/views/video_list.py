@@ -5,7 +5,6 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
-
 from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
@@ -15,7 +14,7 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
@@ -172,5 +171,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(VideoManager(sections)) \
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))
