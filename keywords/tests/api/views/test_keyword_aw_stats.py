@@ -49,14 +49,15 @@ class KeywordAWStatsPermissionsApiViewTestCase(KeywordBaseAWStatsTestCase):
     def test_success_permissions(self):
         keyword = "keyword"
         self.create_aw_stats(keyword)
-        required_permissions = ("keyword_details", "settings_my_yt_channels")
+        required_permissions = ("keyword_details", "settings_my_yt_channels", "view_highlights")
         for permission in required_permissions:
-            user = self.create_test_user()
-            user.add_custom_user_permission(permission)
+            with self.subTest(permission):
+                user = self.create_test_user()
+                user.add_custom_user_permission(permission)
 
-            response = self.client.get(self.get_url(args=(keyword,)))
+                response = self.client.get(self.get_url(args=(keyword,)))
 
-            self.assertEqual(HTTP_200_OK, response.status_code)
+                self.assertEqual(HTTP_200_OK, response.status_code)
 
 
 class KeywordAWStatsApiViewTestCase(KeywordBaseAWStatsTestCase):

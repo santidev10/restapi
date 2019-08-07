@@ -14,6 +14,7 @@ class KeywordAWStatsApiView(APIView):
         or_permission_classes(
             user_has_permission("userprofile.keyword_details"),
             user_has_permission("userprofile.settings_my_yt_channels"),
+            user_has_permission("userprofile.view_highlights"),
             IsAdminUser
         ),
     )
