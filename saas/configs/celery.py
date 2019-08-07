@@ -17,7 +17,7 @@ DMP_CELERY_BROKER_URL = "amqp://{host}:{port}/dmp".format(host=RABBITMQ_HOST, po
 DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
 
 CELERY_TIMEZONE = "UTC"
-CELERYBEAT_SCHEDULE = {
+CELERY_BEAT_SCHEDULE = {
 #    "full-aw-update": {
 #        "task": "aw_reporting.update.update_aw_accounts.update_aw_accounts",
 #        "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
