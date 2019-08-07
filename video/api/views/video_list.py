@@ -5,7 +5,6 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from datetime import timedelta
-
 from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
@@ -15,7 +14,7 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
@@ -32,7 +31,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "general.youtube_published_at",
+                "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
@@ -106,6 +105,13 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.comments:desc",
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
+        "stats.last_30day_views:asc",
+        "stats.views:asc",
+        "stats.likes:asc",
+        "stats.dislikes:asc",
+        "stats.comments:asc",
+        "stats.sentiment:asc",
+        "general_data.youtube_published_at:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -172,5 +178,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetResearchAdapter(VideoManager(sections)) \
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))

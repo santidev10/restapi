@@ -72,9 +72,19 @@ class QueryGenerator:
 
                 query = QueryBuilder().build().must().range().field(field)
                 if min:
-                    query = query.gte(float(min))
+                    try:
+                        min = float(min)
+                    except ValueError:
+                        # in case of filtering by date
+                        pass
+                    query = query.gte(min)
                 if max:
-                    query = query.lte(float(max))
+                    try:
+                        max = float(max)
+                    except ValueError:
+                        # in case of filtering by date
+                        pass
+                    query = query.lte(max)
                 filters.append(query.get())
 
         return filters

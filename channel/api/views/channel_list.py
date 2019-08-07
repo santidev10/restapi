@@ -7,13 +7,12 @@ from itertools import zip_longest
 from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
-from rest_framework_csv.renderers import CSVStreamingRenderer
 
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetResearchAdapter
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
@@ -61,28 +60,6 @@ CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
         ),
     ),
 )
-
-
-class ChannelListCSVRendered(CSVStreamingRenderer):
-    header = [
-        "title",
-        "url",
-        "country",
-        "category",
-        "emails",
-        "subscribers",
-        "thirty_days_subscribers",
-        "thirty_days_views",
-        "views_per_video",
-        "sentiment",
-        "engage_rate",
-        "last_video_published_at",
-        "brand_safety_score",
-        "video_view_rate",
-        "ctr",
-        "ctr_v",
-        "average_cpv"
-    ]
 
 
 class UserChannelsNotAvailable(Exception):
@@ -175,6 +152,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_30day_views:asc",
+        "stats.subscribers:asc",
+        "stats.sentiment:asc",
+        "stats.views_per_video:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -259,7 +241,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids:
             sections += (Sections.ANALYTICS,)
 
-        result = ESQuerysetResearchAdapter(ChannelManager(sections)) \
+        result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
             .extra_fields_func((add_chart_data,))
 
         return result
