@@ -7,12 +7,16 @@ logger = logging.getLogger(__name__)
 
 CACHE_TIMEOUT = 86400
 
+
 def get_percentiles(manager, fields, add_suffix=None):
     redis = get_redis_client()
     percentiles = {}
     for field in fields:
         key = get_redis_key(model=manager.model, field=field)
-        value = pickle.loads(redis.get(key))
+        try:
+            value = pickle.loads(redis.get(key))
+        except TypeError:
+            value = None
         if not value:
             continue
         name = key if add_suffix is None else f"{field}{add_suffix}"
@@ -33,4 +37,3 @@ def update_percentiles(manager):
 def get_redis_key(model, field):
     key = f"aggregation_percentiles:{model.__name__}.{field}"
     return key
-
