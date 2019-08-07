@@ -47,7 +47,7 @@ def add_aw_stats(items):
             del item_stats['keyword']
             item.aw_stats = item_stats
 
-            item_top_bottom_stats = top_bottom_stats.get(item['keyword'])
+            item_top_bottom_stats = top_bottom_stats.get(item.main.id)
             item.aw_stats.update(item_top_bottom_stats)
     return items
 
