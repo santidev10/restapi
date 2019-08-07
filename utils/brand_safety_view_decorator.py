@@ -1,5 +1,6 @@
 from django.conf import settings
 
+from audit_tool.models import BlacklistItem
 import brand_safety.constants as constants
 from userprofile.permissions import PermissionGroupNames
 from utils.elasticsearch import ElasticSearchConnector
@@ -15,6 +16,7 @@ def add_brand_safety_data(view):
         # Get result of view handling request first
         response = view(*args, **kwargs)
         try:
+            request = args[1]
             view_name = args[0].__class__.__name__
             # Ensure decorator is being used in appropriate views
             if view_name not in constants.BRAND_SAFETY_DECORATED_VIEWS:
@@ -22,18 +24,18 @@ def add_brand_safety_data(view):
             view_name = view_name.lower()
             if constants.CHANNEL in view_name:
                 index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
+                blacklist_data_type = BlacklistItem.CHANNEL_ITEM
             elif constants.VIDEO in view_name:
                 index_name = settings.BRAND_SAFETY_VIDEO_INDEX
+                blacklist_data_type = BlacklistItem.VIDEO_ITEM
             else:
                 return response
-
-            user = args[1].user
-            if not user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
+            if not request.user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
                 return response
             if response.data.get("items"):
-                _handle_list_view(response, index_name)
+                _handle_list_view(request, response, index_name, blacklist_data_type)
             else:
-                _handle_single_view(response, index_name)
+                _handle_single_view(request, response, index_name, blacklist_data_type)
         except (IndexError, AttributeError):
             pass
         return response
@@ -72,7 +74,7 @@ def get_brand_safety_data(score):
     return data
 
 
-def _handle_list_view(response, index_name):
+def _handle_list_view(request, response, index_name, blacklist_data_type):
     try:
         doc_ids = [item["id"] for item in response.data["items"]]
         es_data = ElasticSearchConnector().search_by_id(
@@ -83,14 +85,25 @@ def _handle_list_view(response, index_name):
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
+        blacklist_items = BlacklistItem.get(doc_ids, blacklist_data_type)
+        blacklist_items_by_id = {
+            item.item_id: item for item in blacklist_items
+        }
         for item in response.data["items"]:
-            score = es_scores.get(item["id"], None)
+            _id = item["id"]
+            score = es_scores.get(_id, None)
             item["brand_safety_data"] = get_brand_safety_data(score)
+            if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
+                try:
+                    blacklist_data = blacklist_items_by_id[_id].to_dict()
+                except KeyError:
+                    blacklist_data = None
+                item["blacklist_data"] = blacklist_data
     except (TypeError, KeyError):
         return
 
 
-def _handle_single_view(response, index_name):
+def _handle_single_view(request, response, index_name, blacklist_data_type):
     try:
         doc_id = response.data["id"]
         es_data = ElasticSearchConnector().search_by_id(
@@ -100,5 +113,11 @@ def _handle_single_view(response, index_name):
         )
         score = es_data["overall_score"]
         response.data["brand_safety_data"] = get_brand_safety_data(score)
+        if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
+            try:
+                blacklist_data = BlacklistItem.get(doc_id, blacklist_data_type, to_dict=True)[0]
+            except IndexError:
+                blacklist_data = None
+            response.data["blacklist_data"] = blacklist_data
     except (TypeError, KeyError):
         return
