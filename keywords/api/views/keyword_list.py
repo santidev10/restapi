@@ -6,7 +6,6 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
-from keywords.api.views import add_aw_stats
 from keywords.api.views import add_views_history_chart
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
@@ -77,4 +76,4 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.terms_filter = self.terms_filter + ("main.id",)
 
         return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections)) \
-            .extra_fields_func((add_aw_stats, add_views_history_chart,))
+            .extra_fields_func((add_views_history_chart,))

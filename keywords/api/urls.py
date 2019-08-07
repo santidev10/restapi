@@ -9,7 +9,7 @@ from keywords.api.views.keyword_retrieve_update import KeywordRetrieveUpdateApiV
 from .names import KeywordPathName
 
 urlpatterns = [
-    url(r'^keywords/$', KeywordListApiView.as_view(), name="keyword_list"),
+    url(r'^keywords/$', KeywordListApiView.as_view(), name=KeywordPathName.KEYWORD_LIST),
     url(r'^keywords/export/$', KeywordListExportApiView.as_view(), name=KeywordPathName.KEYWORD_EXPORT),
-    url(r'^keywords/(?P<pk>.+)/$', KeywordRetrieveUpdateApiView.as_view(), name='keywords'),
+    url(r'^keywords/(?P<pk>.+)/$', KeywordRetrieveUpdateApiView.as_view(), name=KeywordPathName.KEYWORD_ITEM),
 ]

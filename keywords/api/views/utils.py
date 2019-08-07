@@ -20,7 +20,7 @@ def add_aw_stats(items):
             del item_stats['keyword']
             item.aw_stats = item_stats
 
-            item_top_bottom_stats = top_bottom_stats.get(item.main.id)
+            item_top_bottom_stats = top_bottom_stats.get(item.main.id, {})
             for key, value in item_top_bottom_stats.items():
                 setattr(item.aw_stats, key, value)
     return items
