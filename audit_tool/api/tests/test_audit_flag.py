@@ -1,11 +1,4 @@
-from datetime import datetime
-
-from rest_framework.status import HTTP_200_OK
-
-from audit_tool.models import AuditProcessor
 from audit_tool.models import BlacklistItem
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
 from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 
