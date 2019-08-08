@@ -238,7 +238,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
 
-        if self.request.user.is_staff or channels_ids:
+        if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
         result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
