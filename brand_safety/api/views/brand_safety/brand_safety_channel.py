@@ -18,7 +18,6 @@ from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
 from utils.elasticsearch import ElasticSearchConnectorException
 from utils.brand_safety_view_decorator import get_brand_safety_data
-from audit_tool.models import BlacklistItem
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
@@ -110,8 +109,6 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-        if request.user and request.user.is_staff:
-            channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
         return Response(status=HTTP_200_OK, data=response)

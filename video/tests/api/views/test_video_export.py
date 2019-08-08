@@ -143,7 +143,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_missed_values(self):
         self.create_admin_user()
         video = Video(next(int_iterator))
-        VideoManager().upsert([video])
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([video])
 
         response = self._request()
 
@@ -160,7 +160,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         video_id = str(next(int_iterator))
         video = Video(video_id)
-        VideoManager().upsert([video])
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([video])
         brand_safety = VideoBrandSafetyDoc(
             meta={'id': video_id},
             overall_score=12.3
@@ -184,7 +184,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_request_brand_safety_by_batches(self):
         self.create_admin_user()
         videos = [Video(next(int_iterator)) for _ in range(2)]
-        VideoManager().upsert(videos)
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
 
         with patch.object(ElasticSearchConnector, "search_by_id", return_value={}) as es_mock:
             response = self._request()
@@ -194,11 +194,11 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
             es_mock.assert_called_once()
 
-    def test_filter(self):
+    def test_filter_ids(self):
         self.create_admin_user()
         filter_count = 2
         videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
-        VideoManager().upsert(videos)
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
         video_ids = [str(video.main.id) for video in videos]
 
         response = self._request(ids=",".join(video_ids[:filter_count]))
@@ -210,6 +210,18 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             filter_count,
             len(data)
         )
+
+    def test_filter_verified(self):
+        self.create_admin_user()
+        channels = [Video(next(int_iterator)) for _ in range(2)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([channels[0]])
+        VideoManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([channels[1]])
+
+        response = self._request(analytics="true")
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(1, len(data))
 
 
 class VideoBrandSafetyDoc(BaseDocument):

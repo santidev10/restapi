@@ -200,6 +200,22 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
             response.data["items"][0]["brand_safety_data"]
         )
 
+    def test_sorting_30day_views(self):
+        views = [1, 3, 2]
+        keywords = [Channel(next(int_iterator)) for _ in range(len(views))]
+        for keyword, item_views in zip(keywords, views):
+            keyword.populate_stats(last_30day_views=item_views)
+        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(keywords)
+
+        url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
+        response = self.client.get(url)
+
+        response_views = [item["stats"]["last_30day_views"] for item in response.data["items"]]
+        self.assertEqual(
+            list(sorted(views, reverse=True)),
+            response_views
+        )
+
 
 class AllowedAggregations(ExtendedEnum):
     CATEGORY = "general_data.top_category"

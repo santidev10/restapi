@@ -14,6 +14,7 @@ from audit_tool.models import AuditCategory
 from audit_tool.models import AuditCountry
 from audit_tool.api.urls.names import AuditPathName
 from audit_tool.api.views.audit_export import AuditS3Exporter
+from audit_tool.api.views.audit_export import AuditExportApiView
 
 from saas.urls.namespaces import Namespace
 from utils.utittests.reverse import reverse
@@ -99,3 +100,25 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
         except Exception as e:
             raise KeyError("No Audit with id: {} found.".format(self.channel_audit.id))
         self.assertEqual(channel_response.status_code, HTTP_200_OK)
+
+
+    def test_clean_duration(self):
+        clean_duration = AuditExportApiView().clean_duration
+        d1 = "PT23M48S"
+        cleaned_d1 = clean_duration(d1)
+        self.assertEqual(cleaned_d1, "0:23:48")
+        d2 = "PT2W5D1H29M3S"
+        cleaned_d2 = clean_duration(d2)
+        self.assertEqual(cleaned_d2, "457:29:03")
+        d3 = "PT1D5H3M18S"
+        cleaned_d3 = clean_duration(d3)
+        self.assertEqual(cleaned_d3, "29:03:18")
+        d4 = "PT1S"
+        cleaned_d4 = clean_duration(d4)
+        self.assertEqual(cleaned_d4, "0:00:01")
+        d5 = "PT1M59S"
+        cleaned_d5 = clean_duration(d5)
+        self.assertEqual(cleaned_d5, "0:01:59")
+        d6 = "PT23H59M59S"
+        cleaned_d6 = clean_duration(d6)
+        self.assertEqual(cleaned_d6, "23:59:59")

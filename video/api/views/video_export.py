@@ -3,6 +3,7 @@ from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAdminUser
 from rest_framework.serializers import Serializer
 from rest_framework_csv.renderers import CSVStreamingRenderer
@@ -10,12 +11,18 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from utils.api.file_list_api_view import FileListApiView
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.brand_safety_view_decorator import get_brand_safety_items
 from utils.datetime import time_instance
-from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.serializers.fields import ParentDictValueField
+from video.api.views.video_list import EXISTS_FILTER
+from video.api.views.video_list import MATCH_PHRASE_FILTER
+from video.api.views.video_list import RANGE_FILTER
+from video.api.views.video_list import TERMS_FILTER
 
 
 class YTVideoLinkFromID(CharField):
@@ -64,7 +71,7 @@ class VideoCSVRendered(CSVStreamingRenderer):
     ]
 
 
-class VideoListExportApiView(FileListApiView):
+class VideoListExportApiView(APIViewMixin, FileListApiView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.video_list"),
@@ -73,6 +80,11 @@ class VideoListExportApiView(FileListApiView):
     )
     serializer_class = VideoListExportSerializer
     renderer_classes = (VideoCSVRendered,)
+    filter_backends = (OrderingFilter, ESBrandSafetyFilterBackend)
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+    exists_filter = EXISTS_FILTER
 
     @property
     def filename(self):
@@ -80,17 +92,9 @@ class VideoListExportApiView(FileListApiView):
         return "Videos export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
 
     def get_queryset(self):
-        return ESQuerysetAdapter(VideoManager((
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager((
             Sections.MAIN,
             Sections.GENERAL_DATA,
             Sections.STATS,
             Sections.ADS_STATS,
         )))
-
-    def filter_queryset(self, queryset):
-        ids_params = self.request.query_params.get("ids")
-        if ids_params:
-            ids = ids_params.split(",")
-            query_filter = queryset.manager.ids_query(ids)
-            queryset = queryset.filter(query_filter)
-        return queryset

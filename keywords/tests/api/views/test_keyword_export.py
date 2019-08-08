@@ -115,7 +115,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_missed_values(self):
         self.create_admin_user()
         keyword = Keyword(next(int_iterator))
-        KeywordManager().upsert([keyword])
+        KeywordManager(sections=Sections.STATS).upsert([keyword])
 
         response = self._request()
 
@@ -128,11 +128,11 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_filter(self):
+    def test_filter_ids(self):
         self.create_admin_user()
         filter_count = 2
         keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
-        KeywordManager().upsert(keywords)
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
         keyword_ids = [str(keyword.main.id) for keyword in keywords]
 
         response = self._request(ids=",".join(keyword_ids[:filter_count]))
@@ -144,6 +144,19 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             filter_count,
             len(data)
         )
+
+    def test_filter_volume(self):
+        self.create_admin_user()
+        channels = [Keyword(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_stats(search_volume=1)
+        channels[1].populate_stats(search_volume=3)
+        KeywordManager(sections=Sections.STATS).upsert(channels)
+
+        response = self._request(**{"stats.search_volume": "1,2"})
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(1, len(data))
 
 
 def get_data_from_csv_response(response):

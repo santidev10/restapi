@@ -3,17 +3,24 @@ from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAdminUser
 from rest_framework.serializers import Serializer
 from rest_framework_csv.renderers import CSVStreamingRenderer
 
+from channel.api.views.channel_list import EXISTS_FILTER
+from channel.api.views.channel_list import MATCH_PHRASE_FILTER
+from channel.api.views.channel_list import RANGE_FILTER
+from channel.api.views.channel_list import TERMS_FILTER
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from utils.api.fields import CharFieldListBased
 from utils.api.file_list_api_view import FileListApiView
+from utils.api.research import ESBrandSafetyFilterBackend
+from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.brand_safety_view_decorator import get_brand_safety_items
 from utils.datetime import time_instance
-from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.serializers.fields import ParentDictValueField
@@ -75,16 +82,20 @@ class ChannelListExportSerializer(Serializer):
             self.brand_safety_scores = get_brand_safety_items(ids, settings.BRAND_SAFETY_CHANNEL_INDEX)
 
 
-class ChannelListExportApiView(FileListApiView):
+class ChannelListExportApiView(APIViewMixin, FileListApiView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.channel_list"),
             IsAdminUser
         ),
     )
-
+    filter_backends = (OrderingFilter, ESBrandSafetyFilterBackend)
     serializer_class = ChannelListExportSerializer
     renderer_classes = (ChannelCSVRendered,)
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+    exists_filter = EXISTS_FILTER
 
     @property
     def filename(self):
@@ -92,17 +103,10 @@ class ChannelListExportApiView(FileListApiView):
         return "Channels export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
 
     def get_queryset(self):
-        return ESQuerysetAdapter(ChannelManager((
+        return ESQuerysetWithBrandSafetyAdapter(ChannelManager((
             Sections.MAIN,
             Sections.GENERAL_DATA,
             Sections.STATS,
             Sections.ADS_STATS,
+            Sections.ANALYTICS,
         )))
-
-    def filter_queryset(self, queryset):
-        ids_params = self.request.query_params.get("ids")
-        if ids_params:
-            ids = ids_params.split(",")
-            query_filter = queryset.manager.ids_query(ids)
-            queryset = queryset.filter(query_filter)
-        return queryset

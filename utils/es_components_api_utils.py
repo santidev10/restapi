@@ -136,18 +136,24 @@ class QueryGenerator:
 
         return filters
 
-    def get_search_filters(self, ids=None):
+    def __get_filters_by_ids(self):
+        ids_str = self.query_params.get("ids", None)
+        filters = []
+        if ids_str:
+            ids = ids_str.split(",")
+            filters.append(self.es_manager.ids_query(ids))
+        return filters
+
+    def get_search_filters(self):
         filters_term = self.__get_filters_term()
         filters_range = self.__get_filter_range()
         filters_match_phrase = self.__get_filters_match_phrase()
         filters_exists = self.__get_filters_exists()
         forced_filter = [self.es_manager.forced_filters()]
+        ids_filter = self.__get_filters_by_ids()
 
         filters = filters_term + filters_range + filters_match_phrase + \
-                  filters_exists + forced_filter
-
-        if ids:
-            filters.append(self.es_manager.ids_query(ids))
+                  filters_exists + forced_filter + ids_filter
 
         return filters
 
@@ -280,9 +286,9 @@ class ESFilterBackend(BaseFilterBackend):
         aggregations = self._get_aggregations(request, queryset, view)
         percentiles = self._get_percentiles(request, queryset, view)
         result = queryset.filter(query) \
-                         .fields(fields) \
-                         .with_aggregations(aggregations) \
-                         .with_percentiles(percentiles)
+            .fields(fields) \
+            .with_aggregations(aggregations) \
+            .with_percentiles(percentiles)
         return result
 
 

@@ -9,7 +9,7 @@ dmp_celery_app = Celery("update")
 dmp_celery_app.config_from_object("django.conf:settings", namespace="DMP_CELERY")
 logger = logging.getLogger(__name__)
 
-WAIT_RESULTS_TIMEOUT = 300
+WAIT_RESULTS_TIMEOUT = 20
 WAIT_RESULTS_SLEEP_TIME = 1
 
 
