@@ -102,7 +102,8 @@ class AuditExportApiView(APIView):
     def clean_duration(self, duration):
         try:
             delimiters = ["W", "D", "H", "M", "S"]
-            duration = duration[2:]
+            duration = duration.replace("P", "").replace("T", "")
+            # duration = duration[2:]
             current_num = ""
             time_duration = timedelta(0)
             for char in duration:
@@ -133,7 +134,7 @@ class AuditExportApiView(APIView):
                 time_string = str(time_duration)
             return time_string
         except Exception as e:
-            return ""
+            return duration
 
     def export_videos(self, audit, audit_id=None, clean=None):
         clean_string = 'none'
