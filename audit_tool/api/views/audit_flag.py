@@ -57,7 +57,6 @@ class AuditFlagApiView(APIView):
         body = {}
         flag = BlacklistItem.get_or_create(item_id, item_type)
 
-
         if len(flag_categories) > 0:
             flag.blacklist_category = flag_categories
             flag.save()
