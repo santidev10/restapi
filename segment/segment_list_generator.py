@@ -5,7 +5,12 @@ from django.contrib.postgres.fields.jsonb import KeyTransform
 from django.conf import settings
 
 import brand_safety.constants as constants
-from brand_safety.audit_providers.base import AuditProvider
+from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent import PersistentSegmentRelatedVideo
@@ -13,8 +18,7 @@ from segment.models.persistent import PersistentSegmentRelatedChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.utils import get_persistent_segment_connector_config_by_type
-from singledb.connector import SingleDatabaseApiConnector
-from utils.elasticsearch import ElasticSearchConnector
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +61,15 @@ class SegmentListGenerator(object):
         except KeyError:
             self.is_manual = True
         self.list_generator_type = kwargs["list_generator_type"]
-        self.sdb_connector = SingleDatabaseApiConnector()
-        self.es_connector = ElasticSearchConnector()
-        self.audit_provider = AuditProvider()
-
-        self.sdb_data_generator = None
+        self.audit_utils = AuditUtils()
+        self.channel_manager = ChannelManager(
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS),
+            upsert_sections=(Sections.BRAND_SAFETY,)
+        )
+        self.video_manager = VideoManager(
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.CAPTIONS),
+            upsert_sections=(Sections.BRAND_SAFETY,)
+        )
         self.master_blacklist_segment = None
         self.master_whitelist_segment = None
         self.segment_model = None
@@ -90,7 +98,7 @@ class SegmentListGenerator(object):
             self.related_segment_model = PersistentSegmentRelatedChannel
 
             # Config methods
-            self.sdb_data_generator = self._channel_batch_generator
+            self.data_generator = self._data_generator(self.channel_manager, cursor_id=self.cursor_id)
             self.evaluator = self._evaluate_channel
 
             # Config constants
@@ -116,7 +124,7 @@ class SegmentListGenerator(object):
             self.related_segment_model = PersistentSegmentRelatedVideo
 
             # Config methods
-            self.sdb_data_generator = self._video_batch_generator
+            self.data_generator = self._data_generator(self.video_manager, cursor_id=self.cursor_id)
             self.evaluator = self._evaluate_video
 
             # Config constants
@@ -143,7 +151,7 @@ class SegmentListGenerator(object):
         """
         if self.is_manual:
             raise ValueError("SegmentListGenerator was not initialized with an APIScriptTracker instance.")
-        for batch in self.sdb_data_generator(self.cursor_id):
+        for batch in self.data_generator:
             self._process(batch)
         logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
 
@@ -391,57 +399,18 @@ class SegmentListGenerator(object):
         item_ids = [item.related_id for item in items]
         segment_manager.related.filter(related_id__in=item_ids).delete()
 
-    def _channel_batch_generator(self, cursor_id=None):
-        """
-        Yields batch channel ids to audit
-        :param cursor_id: Cursor position to start audit
-        :return: list -> Youtube channel ids
-        """
-        params = {
-            "fields": "channel_id,subscribers,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            "sort": "channel_id",
-            "size": self.CHANNEL_BATCH_LIMIT,
-        }
+    def _data_generator(self, manager, cursor_id=None):
+        cursor_id = cursor_id or ""
         while self.batch_count <= self.CHANNEL_BATCH_COUNTER_LIMIT:
-            params["channel_id__range"] = "{},".format(cursor_id or "")
-            response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
-            channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
-            if not channels:
-                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
-                self.cursor_id = self.script_tracker.cursor_id
+            batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            response = self.channel_manager.search(batch_query, limit=self.CHANNEL_BATCH_LIMIT).execute()
+            results = response["hits"]["hits"]
+            if not results:
+                self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            self._set_defaults(channels)
-            yield channels
-            cursor_id = channels[-1]["channel_id"]
-            # Update script tracker and cursors
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
-            self.cursor_id = self.script_tracker.cursor_id
-            self.batch_count += 1
-
-    def _video_batch_generator(self, cursor_id=None):
-        """
-        Yields batch channel ids to audit
-        :param cursor_id: Cursor position to start audit
-        :return: list -> Youtube channel ids
-        """
-        params = {
-            "fields": "video_id,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            "sort": "video_id",
-            "size": self.VIDEO_BATCH_LIMIT,
-        }
-        while self.batch_count <= self.VIDEO_BATCH_COUNTER_LIMIT:
-            params["video_id__range"] = "{},".format(cursor_id or "")
-            response = self.sdb_connector.get_video_list(params, ignore_sources=True)
-            videos = [item for item in response.get("items", []) if item["video_id"] != cursor_id]
-            if not videos:
-                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
-                self.cursor_id = self.script_tracker.cursor_id
-                break
-            self._set_defaults(videos)
-            yield videos
-            cursor_id = videos[-1]["video_id"]
-            # Update script tracker and cursors
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
+            yield list(results)
+            cursor_id = results[-1]["_id"]
+            self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.batch_count += 1
 
