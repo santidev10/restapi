@@ -1,10 +1,10 @@
-from aw_reporting.api.views.trends.base_global_trends import \
-    get_account_queryset
-from aw_reporting.api.views.trends.base_track_filter_list import \
-    BaseTrackFiltersListApiView
+from aw_reporting.api.views.trends.base_global_trends import get_account_queryset
+from aw_reporting.api.views.trends.base_track_filter_list import BaseTrackFiltersListApiView
 from aw_reporting.calculations.territories import get_salesforce_territories
-from aw_reporting.models import User, Opportunity, goal_type_str, \
-    SalesForceGoalType
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from aw_reporting.models import goal_type_str
 
 
 class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
@@ -24,9 +24,13 @@ class GlobalTrendsFiltersApiView(BaseTrackFiltersListApiView):
             **static_filters
         )
 
-    def _get_filters(self, request):
+    def _get_filters(self, request, **kwargs):
         accounts = self._get_accounts(request)
-        accounts = accounts.filter(campaigns__statistics__isnull=False) \
+        accounts = accounts.exclude(
+            campaigns__impressions=0,
+            campaigns__video_views=0,
+            campaigns__cost=0
+        ) \
             .distinct()
         base_filters = super(GlobalTrendsFiltersApiView, self) \
             ._get_filters(request, accounts)
