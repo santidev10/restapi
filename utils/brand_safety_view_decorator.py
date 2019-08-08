@@ -12,6 +12,7 @@ def add_brand_safety_data(view):
     :param view: View handling request for channel / video datas
     :return: Response with merged ES and singledb data
     """
+
     def wrapper(*args, **kwargs):
         # Get result of view handling request first
         response = view(*args, **kwargs)
@@ -74,14 +75,18 @@ def get_brand_safety_data(score):
     return data
 
 
+def get_brand_safety_items(doc_ids, index_name):
+    return ElasticSearchConnector().search_by_id(
+        index_name,
+        doc_ids,
+        settings.BRAND_SAFETY_TYPE
+    )
+
+
 def _handle_list_view(request, response, index_name, blacklist_data_type):
     try:
-        doc_ids = [item["id"] for item in response.data["items"]]
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            doc_ids,
-            settings.BRAND_SAFETY_TYPE
-        )
+        doc_ids = [item.get("id") or item["main"].get("id") for item in response.data["items"]]
+        es_data = get_brand_safety_items(doc_ids, index_name)
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
@@ -90,12 +95,12 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
             item.item_id: item for item in blacklist_items
         }
         for item in response.data["items"]:
-            _id = item["id"]
-            score = es_scores.get(_id, None)
+            item_id = item.get("id") or item["main"].get("id")
+            score = es_scores.get(item_id, None)
             item["brand_safety_data"] = get_brand_safety_data(score)
             if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
                 try:
-                    blacklist_data = blacklist_items_by_id[_id].to_dict()
+                    blacklist_data = blacklist_items_by_id[item_id].to_dict()
                 except KeyError:
                     blacklist_data = None
                 item["blacklist_data"] = blacklist_data
@@ -105,7 +110,7 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
 
 def _handle_single_view(request, response, index_name, blacklist_data_type):
     try:
-        doc_id = response.data["id"]
+        doc_id = response.data.get("id") or response.data["main"].get("id")
         es_data = ElasticSearchConnector().search_by_id(
             index_name,
             doc_id,
@@ -121,3 +126,22 @@ def _handle_single_view(request, response, index_name, blacklist_data_type):
             response.data["blacklist_data"] = blacklist_data
     except (TypeError, KeyError):
         return
+
+
+def add_brand_safety(items, index_name):
+    try:
+        doc_ids = [item.main.id for item in items]
+        es_data = ElasticSearchConnector().search_by_id(
+            index_name,
+            doc_ids,
+            settings.BRAND_SAFETY_TYPE
+        )
+        es_scores = {
+            _id: data["overall_score"] for _id, data in es_data.items()
+        }
+        for item in items:
+            score = es_scores.get(item.main.id, None)
+            item.brand_safety_data = get_brand_safety_data(score)
+    except (TypeError, KeyError):
+        return
+    return items

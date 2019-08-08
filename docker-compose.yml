@@ -1,4 +1,4 @@
-version: "3"
+version: "2.4"
 
 services:
   api:
@@ -11,15 +11,24 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      ELASTIC_SEARCH_URLS: es
+      ELASTIC_SEARCH_USE_SSL: 0
+      DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
     depends_on:
-      - pg
-      - rabbitmq
-      - redis
+      rabbitmq:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "/wait-for-it.sh -t 1 localhost:5000"]
       interval: 30s
       timeout: 10s
       retries: 3
+
   celery_worker:
     image: viewiq-restapi
     command: ["celery", "-A", "saas", "worker", "-l", "info"]
@@ -32,6 +41,7 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+
   celery_beat:
     image: viewiq-restapi
     command: ["celery", "-A", "saas", "beat", "-l", "info"]
@@ -39,23 +49,6 @@ services:
       - rabbitmq
     environment:
       RABBITMQ_HOST: rabbitmq
-
-  web:
-    image: viewiq-ui
-    build:
-      context: ../ui
-      dockerfile: Dockerfile.dist
-    volumes:
-      - ./.docker/conf.nginx:/etc/nginx/nginx.conf
-    depends_on:
-      - api
-  sdb:
-    image: viewiq-sdb
-    build:
-      context: ../singledb/.
-    depends_on:
-      - cassandra
-      - es
 
   pg:
     image: postgres:9.6
@@ -67,31 +60,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   es:
     image: elasticsearch:6.4.2
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 30s
-      retries: 3
-  cassandra:
-    image: cassandra
-    expose:
-      - "9042"
-    healthcheck:
-      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   rabbitmq:
-    image: rabbitmq:3.7.8-management
-    ports:
-      - "15672:15672"
+    image: viewiq/rabbitmq
+    build:
+      context: ./.docker/rabbitmq/
+
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
       timeout: 10s
       retries: 3
+
   redis:
     image: redis:5.0.4
     healthcheck:

@@ -17,7 +17,6 @@ MIGRATION_MODULES = {
     "django_celery_results": None,
     "email_reports": None,
     "keyword_tool": None,
-    "landing": None,
     "segment": None,
     "sessions": None,
     "userprofile": None,
@@ -31,6 +30,7 @@ AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-test/logos/
 
 CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = True
+DMP_CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
 
 DATABASES = {
@@ -47,9 +47,7 @@ DATABASES = {
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from utils.utittests.sdb_connector_patcher import monkey_patch
-from utils.utittests.es_connector_patcher import es_monkey_patch
 from utils.utittests.aws_ses_patcher import ses_monkey_patch
 
 monkey_patch()
-es_monkey_patch()
 ses_monkey_patch()
