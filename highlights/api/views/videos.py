@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from highlights.api.utils import HighlightsPaginator
+from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESBrandSafetyFilterBackend
 from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.es_components_api_utils import APIViewMixin
@@ -34,7 +35,7 @@ class HighlightVideosListApiView(APIViewMixin, ListAPIView):
         "general_data.category",
         "general_data.language",
     )
-    filter_backends = (ESBrandSafetyFilterBackend,)
+    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
