@@ -17,9 +17,6 @@ from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 
 
-logger = logging.getLogger(__name__)
-
-
 class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
@@ -218,9 +215,8 @@ class BrandSafetyAudit(object):
         """
         cursor_id = cursor_id or ""
         while True:
-            batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gt(cursor_id).get()
-            results = self.channel_manager.search(batch_query, limit=self.CHANNEL_MASTER_BATCH_SIZE).execute()["hits"][
-                "hits"]
+            batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            results = self.channel_manager.search(batch_query, limit=self.CHANNEL_MASTER_BATCH_SIZE).execute()["hits"]["hits"]
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
