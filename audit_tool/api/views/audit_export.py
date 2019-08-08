@@ -103,7 +103,6 @@ class AuditExportApiView(APIView):
         try:
             delimiters = ["W", "D", "H", "M", "S"]
             duration = duration.replace("P", "").replace("T", "")
-            # duration = duration[2:]
             current_num = ""
             time_duration = timedelta(0)
             for char in duration:
