@@ -133,7 +133,7 @@ class AuditExportApiView(APIView):
                 time_string = str(time_duration)
             return time_string
         except Exception as e:
-            return duration
+            return ""
 
     def export_videos(self, audit, audit_id=None, clean=None):
         clean_string = 'none'
