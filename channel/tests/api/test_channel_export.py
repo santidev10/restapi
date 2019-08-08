@@ -157,7 +157,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_missed_values(self):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
-        ChannelManager().upsert([channel])
+        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channel])
 
         response = self._request()
 
@@ -174,7 +174,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         channel_id = str(next(int_iterator))
         channel = Channel(channel_id)
-        ChannelManager().upsert([channel])
+        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channel])
         brand_safety = ChannelBrandSafetyDoc(
             meta={'id': channel_id},
             overall_score=12.3
@@ -198,7 +198,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_request_brand_safety_by_batches(self):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
-        ChannelManager().upsert(channels)
+        ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
 
         with patch.object(ElasticSearchConnector, "search_by_id", return_value={}) as es_mock:
             response = self._request()
@@ -208,11 +208,11 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
             es_mock.assert_called_once()
 
-    def test_filter(self):
+    def test_filter_ids(self):
         self.create_admin_user()
         filter_count = 2
         channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
-        ChannelManager().upsert(channels)
+        ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
         response = self._request(ids=",".join(channel_ids[:filter_count]))
@@ -224,6 +224,18 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             filter_count,
             len(data)
         )
+
+    def test_filter_verified(self):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channels[0]])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([channels[1]])
+
+        response = self._request(analytics="true")
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(1, len(data))
 
 
 def get_data_from_csv_response(response):
