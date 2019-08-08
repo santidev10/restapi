@@ -199,12 +199,13 @@ class Command(BaseCommand):
                 acp.save(update_fields=['clean', 'processed', 'word_hits'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos'):
+            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos') or num_videos < 50:
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])
-                db_video.channel = db_channel
-                db_video.save(update_fields=['channel'])
+                if not db_video.channel or db_video.channel != db_channel:
+                    db_video.channel = db_channel
+                    db_video.save(update_fields=['channel'])
                 AuditVideoProcessor.objects.get_or_create(
                     audit=self.audit,
                     video=db_video

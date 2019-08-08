@@ -106,7 +106,7 @@ class Command(BaseCommand):
             else:
                 pending_videos = pending_videos.select_related("video").order_by("id")
             if done:
-                if self.thread_id == 0:
+                if thread_id == 0:
                     self.audit.completed = timezone.now()
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
@@ -226,7 +226,7 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video_meta.keywords:
+            if not db_video_meta.keywords or not db_video_meta.duration:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video.channel = channel

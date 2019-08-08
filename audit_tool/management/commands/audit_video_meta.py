@@ -172,7 +172,7 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video_meta.name or not db_video.channel:
+            if not db_video_meta.name or not db_video.channel or not db_video_meta.duration:
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
             else:
                 channel_id = db_video.channel.channel_id
