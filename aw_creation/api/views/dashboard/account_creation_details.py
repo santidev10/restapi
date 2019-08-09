@@ -90,7 +90,7 @@ class DashboardAccountCreationDetailsAPIView(APIView):
         if creative:
             ids = [i['creative_id'] for i in creative]
             manager = VideoManager(Sections.GENERAL_DATA)
-            videos = list(manager.get(ids=ids))
+            videos = list(manager.get_or_create(ids=ids))
             creative = [
                 dict(
                     id=video.main.id,
