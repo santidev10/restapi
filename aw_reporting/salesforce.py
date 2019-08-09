@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def sf_auth():
     with open('aw_reporting/salesforce.yaml', 'r') as f:
-        conf = yaml.load(f)
+        conf = yaml.load(f, Loader=yaml.FullLoader)
     res = requests.post(
         'https://login.salesforce.com/services/oauth2/token',
         {

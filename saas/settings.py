@@ -14,9 +14,6 @@ import os
 import socket
 from datetime import date
 
-from teamcity import is_running_under_teamcity
-from teamcity import teamcity_presence_env_var
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -412,15 +409,6 @@ CUSTOM_AUTH_FLAGS = {
     #    "logo_url": "https://s3.amazonaws.com/viewiq-prod/logos/super_user.png",
     # },
 }
-
-
-# patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
-def is_running_under_teamcity():
-    return bool(os.getenv(teamcity_presence_env_var))
-
-
-if is_running_under_teamcity():
-    TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
 AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"

@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from channel.api.urls.names import ChannelPathName
+from es_components.datetime_service import datetime_service
 from saas.urls.namespaces import Namespace
 from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.celery import mock_send_task
@@ -38,7 +39,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         flow().step2_exchange().refresh_token = "^test_refresh_token$"
         flow().step2_exchange().access_token = "^test_access_token$"
-        flow().step2_exchange().token_expiry = datetime.now()
+        flow().step2_exchange().token_expiry = datetime_service.now()
 
         mock_youtube().own_channels.return_value = youtube_own_channel_test_value
 
@@ -68,7 +69,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         flow().step2_exchange().refresh_token = "^test_refresh_token$"
         flow().step2_exchange().access_token = "^test_access_token$"
-        flow().step2_exchange().token_expiry = datetime.now()
+        flow().step2_exchange().token_expiry = datetime_service.now()
 
         mock_youtube().own_channels.return_value = {"items": []}
 
@@ -89,7 +90,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
         flow().step2_exchange().refresh_token = "^test_refresh_token$"
         flow().step2_exchange().access_token = "^test_access_token$"
-        flow().step2_exchange().token_expiry = datetime.now()
+        flow().step2_exchange().token_expiry = datetime_service.now()
 
         mock_youtube().own_channels.return_value = youtube_own_channel_test_value
 
