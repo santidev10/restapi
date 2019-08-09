@@ -122,3 +122,9 @@ class AuditExportAPITestCase(ExtendedAPITestCase):
         d6 = "PT23H59M59S"
         cleaned_d6 = clean_duration(d6)
         self.assertEqual(cleaned_d6, "23:59:59")
+        d7 = "P5W1DT21H34M8S"
+        cleaned_d7 = clean_duration(d7)
+        self.assertEqual(cleaned_d7, "885:34:08")
+        d8 = "P2WT4H24M23S"
+        cleaned_d8 = clean_duration(d8)
+        self.assertEqual(cleaned_d8, "340:24:23")
