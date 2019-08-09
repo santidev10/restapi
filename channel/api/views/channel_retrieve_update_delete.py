@@ -58,13 +58,24 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             return Response(status=HTTP_400_BAD_REQUEST)
 
         channel_id = kwargs.get("pk")
-        channel = self.channel_manager(Sections.CUSTOM_PROPERTIES).get([channel_id])
+        channel = self.channel_manager((Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)).get([channel_id])
 
         if not channel:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
 
         channel = channel[0]
         channel.populate_custom_properties(**data)
+
+        # this solution should be used until task to update social section wouldn't be added to DMP
+        # only custom_properties section can be updated from restapi
+        soical_links = data.get("social_links")
+        if soical_links:
+            social_data = dict(
+                facebook_link=soical_links.get("facebook"),
+                twitter_link=soical_links.get("twitter"),
+                instagram_link=soical_links.get("instagram")
+            )
+            channel.populate_social(**social_data)
 
         self.channel_manager().upsert([channel])
         send_task_channel_general_data_priority((channel.main.id,), wait=True)
