@@ -2,7 +2,10 @@ version: "2.4"
 
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
     image: viewiq-restapi
     environment:
       SINGLE_DATABASE_API_HOST: sdb
