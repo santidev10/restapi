@@ -23,6 +23,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
+        super(AdGroupAPITestCase, self).setUp()
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_media_buying")
 

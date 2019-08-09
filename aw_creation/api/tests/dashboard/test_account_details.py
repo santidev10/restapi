@@ -79,6 +79,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         return self.client.post(url, json.dumps(kwargs), content_type="application/json")
 
     def setUp(self):
+        super(DashboardAccountCreationDetailsAPITestCase, self).setUp()
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_dashboard")
 
