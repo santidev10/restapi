@@ -166,7 +166,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             overall_score=12.3
         )
         brand_safety.save()
-        sleep(.5)
+        sleep(1)
 
         with override_settings(BRAND_SAFETY_VIDEO_INDEX=VideoBrandSafetyDoc._index._name):
             response = self._request()

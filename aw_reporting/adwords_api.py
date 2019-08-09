@@ -11,13 +11,13 @@ API_VERSION = 'v201809'
 
 def load_settings():
     with open('aw_reporting/google_ads.yaml', 'r') as f:
-        conf = yaml.load(f)
+        conf = yaml.load(f, Loader=yaml.FullLoader)
     return conf.get('adwords', {})
 
 
 def load_web_app_settings():
     with open('aw_reporting/ad_words_web.yaml', 'r') as f:
-        conf = yaml.load(f)
+        conf = yaml.load(f, Loader=yaml.FullLoader)
     return conf
 
 

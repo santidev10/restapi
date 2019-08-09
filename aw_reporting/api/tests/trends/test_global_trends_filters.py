@@ -11,7 +11,6 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
-from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
@@ -19,7 +18,6 @@ from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.datetime import now_in_default_tz
 from utils.utittests.int_iterator import int_iterator
 
 
@@ -47,12 +45,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         child_account.save()
         child_account.refresh_from_db()
 
-        campaign = Campaign.objects.create(
+        Campaign.objects.create(
             name="",
-            account=child_account
+            account=child_account,
+            impressions=1,
         )
-        CampaignStatistic.objects.create(campaign=campaign,
-                                         date=now_in_default_tz())
 
         with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
@@ -67,14 +64,12 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
         account = self.create_account(user)
         manager = account.managers.first()
         for i in range(1, 3):
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=i,
                 name="",
                 account=account,
-                impressions=1
+                impressions=1,
             )
-            CampaignStatistic.objects.create(campaign=campaign,
-                                             date=now_in_default_tz())
 
         with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=manager.id):
             response = self.client.get(self.url)
@@ -147,13 +142,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz(),
+                account=test_account,
+                impressions=1,
             )
 
             test_account.managers.add(manager)
@@ -183,13 +176,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz(),
+                account=test_account,
+                impressions=1,
             )
 
             test_account.managers.add(manager)
@@ -221,13 +212,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz(),
+                account=test_account,
+                impressions=1,
             )
             test_account.managers.add(manager)
             test_account.save()
@@ -256,13 +245,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz(),
+                account=test_account,
+                impressions=1,
             )
             test_account.managers.add(manager)
             test_account.save()
@@ -293,13 +280,12 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz())
+                account=test_account,
+                impressions=1,
+            )
             test_account.managers.add(manager)
             test_account.save()
 
@@ -327,13 +313,12 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz())
+                account=test_account,
+                impressions=1,
+            )
             test_account.managers.add(manager)
             test_account.save()
 
@@ -361,13 +346,11 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
             placement = OpPlacement.objects.create(id=_id,
                                                    opportunity=opportunity)
             test_account = Account.objects.create(id=_id)
-            campaign = Campaign.objects.create(
+            Campaign.objects.create(
                 id=_id,
                 salesforce_placement=placement,
-                account=test_account)
-            CampaignStatistic.objects.create(
-                campaign=campaign,
-                date=now_in_default_tz()
+                account=test_account,
+                impressions=1,
             )
 
             test_account.managers.add(manager)
