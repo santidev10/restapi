@@ -25,8 +25,8 @@ from aw_reporting.models import QUARTILE_STATS
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import device_str
 from aw_reporting.models import dict_quartiles_to_rates
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
+from es_components.constants import Sections
+from es_components.managers import VideoManager
 from userprofile.constants import UserSettingsKey
 from utils.db.aggregators import ConcatAggregate
 from utils.permissions import UserHasDashboardPermission
@@ -89,23 +89,16 @@ class DashboardAccountCreationDetailsAPIView(APIView):
             "creative_id").annotate(**annotate).order_by('v')[:3]
         if creative:
             ids = [i['creative_id'] for i in creative]
-            creative = []
-            try:
-                channel_info = SingleDatabaseApiConnector().get_videos_base_info(
-                    ids)
-            except SingleDatabaseApiConnectorException as e:
-                logger.critical(e)
-            else:
-                video_info = {i['id']: i for i in channel_info}
-                for video_id in ids:
-                    info = video_info.get(video_id, {})
-                    creative.append(
-                        dict(
-                            id=video_id,
-                            name=info.get("title"),
-                            thumbnail=info.get('thumbnail_image_url'),
-                        )
-                    )
+            manager = VideoManager(Sections.GENERAL_DATA)
+            videos = list(manager.get_or_create(ids=ids))
+            creative = [
+                dict(
+                    id=video.main.id,
+                    name=video.general_data.title,
+                    thumbnail=video.general_data.thumbnail_image_url,
+                )
+                for video in videos
+            ]
         data.update(creative=creative)
 
         # second section
