@@ -4,7 +4,10 @@ from audit_tool.models import BlacklistItem
 import brand_safety.constants as constants
 from userprofile.permissions import PermissionGroupNames
 from utils.elasticsearch import ElasticSearchConnector
-
+from brand_safety.auditors.utils import AuditUtils
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.constants import Sections
 
 def add_brand_safety_data(view):
     """
@@ -25,17 +28,19 @@ def add_brand_safety_data(view):
             if constants.CHANNEL in view_name:
                 index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
                 blacklist_data_type = BlacklistItem.CHANNEL_ITEM
+                es_manager = ChannelManager(sections=Sections.BRAND_SAFETY)
             elif constants.VIDEO in view_name:
                 index_name = settings.BRAND_SAFETY_VIDEO_INDEX
                 blacklist_data_type = BlacklistItem.VIDEO_ITEM
+                es_manager = VideoManager(sections=Sections.BRAND_SAFETY)
             else:
                 return response
             if not request.user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
                 return response
             if response.data.get("items"):
-                _handle_list_view(request, response, index_name, blacklist_data_type)
+                _handle_list_view(request, response, es_manager, index_name, blacklist_data_type)
             else:
-                _handle_single_view(request, response, index_name, blacklist_data_type)
+                _handle_single_view(request, response, es_manager, index_name, blacklist_data_type)
         except (IndexError, AttributeError):
             pass
         return response
@@ -74,14 +79,17 @@ def get_brand_safety_data(score):
     return data
 
 
-def _handle_list_view(request, response, index_name, blacklist_data_type):
+def _handle_list_view(request, response, es_manager, index_name, blacklist_data_type):
     try:
         doc_ids = [item["id"] for item in response.data["items"]]
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            doc_ids,
-            settings.BRAND_SAFETY_TYPE
-        )
+        es_data = AuditUtils.get_items(doc_ids, es_manager)
+
+
+        # es_data = ElasticSearchConnector().search_by_id(
+        #     index_name,
+        #     doc_ids,
+        #     settings.BRAND_SAFETY_TYPE
+        # )
         es_scores = {
             _id: data["overall_score"] for _id, data in es_data.items()
         }
@@ -103,7 +111,7 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
         return
 
 
-def _handle_single_view(request, response, index_name, blacklist_data_type):
+def _handle_single_view(request, response, es_manager, index_name, blacklist_data_type):
     try:
         doc_id = response.data["id"]
         es_data = ElasticSearchConnector().search_by_id(

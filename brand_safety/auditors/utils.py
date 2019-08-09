@@ -11,8 +11,6 @@ from emoji import UNICODE_EMOJI
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
 from es_components.query_builder import QueryBuilder
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.lang import remove_mentions_hashes_urls
