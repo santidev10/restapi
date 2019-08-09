@@ -5,4 +5,5 @@ Dockerfile*
 .dockerignore
 docker-compose*
 es-components/.git
-media/*
+media
+static
