@@ -58,10 +58,6 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
         self.brand_safety_index = None
         self.add_extra_fields_func = None
 
-    def count(self):
-        count = self.manager.search(filters=self.filter_query).count()
-        return count
-
     def brand_safety(self, brand_safety_index):
         self.brand_safety_index = brand_safety_index
         return self

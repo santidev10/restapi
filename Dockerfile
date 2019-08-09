@@ -15,6 +15,8 @@ COPY ./uwsgi-restapi.ini /etc/uwsgi/restapi.ini
 RUN pip install -r /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.es_componenets.txt
 WORKDIR /app
+RUN chown -R www-data:www-data /app
+USER www-data
 EXPOSE 5000
 CMD ["python","./manage.py", "runserver", "0.0.0.0:5000"]
 
@@ -25,8 +27,9 @@ COPY --chown=www-data:www-data ./ /app
 FROM base as dev
 ENV PYTHONPATH=/app
 COPY ./requirements.dev.txt /tmp/
+USER root
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
 RUN chmod +rx /wait-for-it.sh
 RUN pip install -r /tmp/requirements.dev.txt
-USER www-data
 COPY --chown=www-data:www-data ./ /app
+USER www-data
