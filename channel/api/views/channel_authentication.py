@@ -143,9 +143,10 @@ class ChannelAuthenticationApiView(APIView):
                 user.add_custom_user_group(group_name)
 
             # Get or create auth token instance for user
-            Token.objects.get_or_create(user=user)
 
             send_welcome_email(user, self.request)
+        token, _ = Token.objects.get_or_create(user=user)
+        user = token.user
         return user
 
     def obtain_extra_user_data(self, token, user_id):
