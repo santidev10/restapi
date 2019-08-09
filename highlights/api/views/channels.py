@@ -40,4 +40,4 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)
         if self.request.user.is_staff:
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections), max_items=100)
+        return ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections))

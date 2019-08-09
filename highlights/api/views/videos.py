@@ -44,4 +44,4 @@ class HighlightVideosListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections), max_items=100)
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections))

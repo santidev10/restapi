@@ -1,4 +1,5 @@
 from django.utils import timezone
+from es_components.tests.utils import ESTestCase
 from rest_framework.test import APITestCase
 
 from aw_creation.models import AccountCreation
@@ -6,7 +7,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 
 
-class AnalyticsAccountCreationListAPITestCase(APITestCase):
+class AnalyticsAccountCreationListAPITestCase(APITestCase, ESTestCase):
     def test_account_creation_status_ended(self):
         account = Account.objects.create()
         account_creation = account.account_creation
