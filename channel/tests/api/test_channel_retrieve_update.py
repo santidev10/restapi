@@ -115,6 +115,7 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
             self.assertEqual(response.status_code, HTTP_200_OK)
             self.assertIn("ads_stats", response.data)
 
+    @mock_send_task()
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())

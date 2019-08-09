@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_202_ACCEPTED
 
@@ -35,7 +36,7 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 
 
-class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
+class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase):
     details_keys = {
         "account",
         "average_cpm",
@@ -71,6 +72,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase):
     url = reverse(Name.Analytics.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.ANALYTICS])
 
     def setUp(self):
+        super(AnalyticsAccountCreationListAPITestCase, self).setUp()
         self.user = self.create_test_user()
         self.mcc_account = Account.objects.create(can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
