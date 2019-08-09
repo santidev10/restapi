@@ -386,7 +386,9 @@ class BlacklistItem(models.Model):
                 item_id=item_id,
                 item_id_hash=get_hash_name(item_id),
             )
-        return b_i
+            return b_i
+        else:
+            return b_i[0]
 
     @staticmethod
     def get(item_ids, item_type, to_dict=False):

@@ -1,17 +1,44 @@
-from django.core.urlresolvers import reverse
+from unittest.mock import PropertyMock
+from unittest.mock import patch
+
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
 
-from utils.utittests.test_case import ExtendedAPITestCase
+from es_components.constants import Sections
+from es_components.managers import VideoManager
+from es_components.models import Video
+from es_components.tests.utils import ESTestCase
+from saas.urls.namespaces import Namespace
+from utils.api.research import ResearchPaginator
+from utils.utittests.es_components_patcher import SearchDSLPatcher
+from utils.utittests.int_iterator import int_iterator
+from utils.utittests.reverse import reverse
 from utils.utittests.segment_functionality_mixin import SegmentFunctionalityMixin
+from utils.utittests.test_case import ExtendedAPITestCase
+from video.api.urls.names import Name
 
 
-class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin):
-    def setUp(self):
-        self.url = reverse("video_api_urls:video_list")
+class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCase):
+    def get_url(self, **kwargs):
+        return reverse(Name.VIDEO_LIST, [Namespace.VIDEO], query_params=kwargs)
 
     def test_simple_list_works(self):
         self.create_admin_user()
-        response = self.client.get(self.url)
+        with patch("es_components.managers.video.VideoManager.search",
+                   return_value=SearchDSLPatcher()):
+            response = self.client.get(self.get_url())
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_limit_to_list_limit(self):
+        self.create_admin_user()
+        max_page_number = 1
+        page_size = 1
+        items = [Video(next(int_iterator)) for _ in range(max_page_number * page_size + 1)]
+        VideoManager([Sections.GENERAL_DATA]).upsert(items)
+
+        with patch.object(ResearchPaginator, "max_page_number",
+                          new_callable=PropertyMock(return_value=max_page_number)):
+            response = self.client.get(self.get_url(size=page_size))
+
+            self.assertEqual(max_page_number, response.data["max_page"])
+            self.assertEqual(page_size, len(response.data["items"]))
+            self.assertEqual(len(items), response.data["items_count"])
