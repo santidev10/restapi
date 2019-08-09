@@ -5,7 +5,6 @@ from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
 from es_components.query_builder import QueryBuilder
-from saas.settings import ES_MAX_RESULTS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.percentiles import get_percentiles
@@ -164,11 +163,10 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, max_items=ES_MAX_RESULTS):
+    def __init__(self, manager):
         self.manager = manager
         self.sort = None
         self.filter_query = None
-        self.max_items = max_items
         self.slice = None
         self.aggregations = None
         self.percentiles = None
@@ -176,7 +174,7 @@ class ESQuerysetAdapter:
 
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
-        return min(count, self.max_items or count)
+        return count
 
     def order_by(self, *sorting):
         key, direction = sorting[0].split(":")
@@ -317,7 +315,3 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
-
-
-class ExportMixin:
-    pass

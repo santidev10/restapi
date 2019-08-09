@@ -5,14 +5,18 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK
 
-from aw_creation.models import CampaignCreation, \
-    default_languages, AdGroupCreation, AdCreation
-from aw_reporting.api.tests.base import AwReportingAPITestCase, Account
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
+from aw_creation.models import default_languages
+from aw_reporting.api.tests.base import Account
+from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import BudgetType
+from es_components.tests.utils import ESTestCase
 from utils.utittests.int_iterator import int_iterator
 
 
-class CreationCodeAPITestCase(AwReportingAPITestCase):
+class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):
 
     def test_success_get(self):
         self.create_test_user(auth=False)

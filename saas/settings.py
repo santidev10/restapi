@@ -450,8 +450,6 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
-ES_MAX_RESULTS = 10000
-
 from es_components.config import *
 
 BRAND_SAFETY_CHANNEL_INDEX = ""

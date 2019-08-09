@@ -1,5 +1,6 @@
 import json
-from datetime import date, timedelta
+from datetime import date
+from datetime import timedelta
 from itertools import product
 
 from django.conf import settings
@@ -25,6 +26,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SFAccount
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
@@ -32,7 +34,7 @@ from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
+class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase):
     _keys = {
         "account",
         "average_cpm",

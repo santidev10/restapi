@@ -2,21 +2,26 @@ import json
 from datetime import timedelta
 
 from django.core.urlresolvers import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, \
-    HTTP_403_FORBIDDEN, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 
-from aw_creation.models import AccountCreation, CampaignCreation, \
-    AdGroupCreation, AdCreation
+from aw_creation.models import AccountCreation
+from aw_creation.models import AdCreation
+from aw_creation.models import AdGroupCreation
+from aw_creation.models import CampaignCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Ad
+from es_components.tests.utils import ESTestCase
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.utittests.generic_test import generic_test
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class AdGroupAPITestCase(ExtendedAPITestCase):
+class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):
     def setUp(self):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_media_buying")
