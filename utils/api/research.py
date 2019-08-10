@@ -58,8 +58,6 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
         self.brand_safety_index = None
         self.data_type = None
         self.add_extra_fields_func = None
-        self.request = kwargs.get("request")
-        self.blacklist_data_type = kwargs.get("blacklist_data_type")
 
     def brand_safety(self, brand_safety_index):
         self.brand_safety_index = brand_safety_index
@@ -71,7 +69,7 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
 
     def get_data(self, start=0, end=None):
         items = super(ESQuerysetWithBrandSafetyAdapter, self).get_data(start, end)
-        items = add_brand_safety(self.request, items, self.manager, self.blacklist_data_type)
+        items = add_brand_safety(items, self.manager)
         if self.add_extra_fields_func:
             for func in self.add_extra_fields_func:
                 items = func(items)

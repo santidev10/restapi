@@ -285,5 +285,5 @@ class AuditUtils(object):
         :return: list -> Elasticsearch documents
         """
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(item_ids).get()
-        results = manager.search(query).execute()["hits"]["hits"]
+        results = manager.search(query).execute().hits
         return results

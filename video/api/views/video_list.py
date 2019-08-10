@@ -181,5 +181,5 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections), request=self.request, blacklist_data_type=self.blacklist_data_type) \
+        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
             .extra_fields_func((add_chart_data, add_transcript,))

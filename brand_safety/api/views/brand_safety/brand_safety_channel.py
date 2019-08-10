@@ -52,7 +52,7 @@ class BrandSafetyChannelAPIView(APIView):
         except (ValueError, TypeError, KeyError):
             size = self.MAX_PAGE_SIZE
         try:
-            brand_safety_data = AuditUtils.get_items([channel_id], self.channel_manager)[0]._source.brand_safety
+            brand_safety_data = AuditUtils.get_items([channel_id], self.channel_manager)[0].brand_safety
             channel_response = {
                 "total_videos_scored": brand_safety_data.videos_scored,
                 "total_flagged_videos": 0,

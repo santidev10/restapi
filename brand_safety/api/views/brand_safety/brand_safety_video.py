@@ -29,7 +29,7 @@ class BrandSafetyVideoAPIView(APIView):
         category_mapping = BadWordCategory.get_category_mapping()
         try:
             video_data = AuditUtils.get_items([video_id], self.video_manager)[0]
-            brand_safety_data = video_data._source.brand_safety
+            brand_safety_data = video_data.brand_safety
         except (IndexError, AttributeError):
             raise Http404
         video_score = brand_safety_data.overall_score
