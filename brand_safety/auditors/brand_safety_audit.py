@@ -23,8 +23,8 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    MAX_POOL_COUNT = 4
-    CHANNEL_POOL_BATCH_SIZE = 10
+    MAX_POOL_COUNT = 6
+    CHANNEL_POOL_BATCH_SIZE = 20
     CHANNEL_MASTER_BATCH_SIZE = MAX_POOL_COUNT * CHANNEL_POOL_BATCH_SIZE
     # Hours in which a channel should be updated
     UPDATE_TIME_THRESHOLD = 24 * 7
@@ -221,7 +221,8 @@ class BrandSafetyAudit(object):
         cursor_id = cursor_id or ""
         while True:
             batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            results = self.channel_manager.search(batch_query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("main.id",)).execute()["hits"]["hits"]
+            response = self.channel_manager.search(batch_query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("main.id",)).execute()
+            results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
@@ -245,7 +246,7 @@ class BrandSafetyAudit(object):
         # Exclude channels that do not have data
         for item in channel_batch:
             try:
-                channels[item["_id"]] = self.audit_utils.extract_channel_data(item["_source"])
+                channels[item.main.id] = self.audit_utils.extract_channel_data(item)
             except KeyError:
                 # Ignore channels that we do not have full metadata for
                 continue
