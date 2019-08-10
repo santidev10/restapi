@@ -8,6 +8,7 @@ from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -229,10 +230,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
+    blacklist_data_type = BlacklistItem.CHANNEL_ITEM
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY)
         channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         if channels_ids:
             self.request.query_params._mutable = True
@@ -241,7 +243,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
-        result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
+        result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections), request=self.request, blacklist_data_type=self.blacklist_data_type) \
             .extra_fields_func((add_chart_data,))
 
         return result

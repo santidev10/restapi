@@ -44,7 +44,7 @@ class ESRetrieveAdapter:
     def get_data(self):
         item = self.manager.model.get(self.search_id, _source=self.fields_to_load)
         if self.brand_safety_index:
-            item = add_brand_safety([item], self.brand_safety_index)[0]
+            item = add_brand_safety([item], self.manager)[0]
         if self.add_extra_fields_func:
             for func in self.add_extra_fields_func:
                 item = func([item])[0]
@@ -56,7 +56,10 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
     def __init__(self, *args, **kwargs):
         super(ESQuerysetWithBrandSafetyAdapter, self).__init__(*args, **kwargs)
         self.brand_safety_index = None
+        self.data_type = None
         self.add_extra_fields_func = None
+        self.request = kwargs.get("request")
+        self.blacklist_data_type = kwargs.get("blacklist_data_type")
 
     def brand_safety(self, brand_safety_index):
         self.brand_safety_index = brand_safety_index
@@ -68,8 +71,7 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
 
     def get_data(self, start=0, end=None):
         items = super(ESQuerysetWithBrandSafetyAdapter, self).get_data(start, end)
-        if self.brand_safety_index:
-            items = add_brand_safety(items, self.brand_safety_index)
+        items = add_brand_safety(self.request, items, self.manager, self.blacklist_data_type)
         if self.add_extra_fields_func:
             for func in self.add_extra_fields_func:
                 items = func(items)

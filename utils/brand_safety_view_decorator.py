@@ -4,6 +4,10 @@ from audit_tool.models import BlacklistItem
 import brand_safety.constants as constants
 from userprofile.permissions import PermissionGroupNames
 from utils.elasticsearch import ElasticSearchConnector
+from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 
 
 def add_brand_safety_data(view):
@@ -26,9 +30,11 @@ def add_brand_safety_data(view):
             if constants.CHANNEL in view_name:
                 index_name = settings.BRAND_SAFETY_CHANNEL_INDEX
                 blacklist_data_type = BlacklistItem.CHANNEL_ITEM
+                manager = ChannelManager(sections=Sections.BRAND_SAFETY)
             elif constants.VIDEO in view_name:
                 index_name = settings.BRAND_SAFETY_VIDEO_INDEX
                 blacklist_data_type = BlacklistItem.VIDEO_ITEM
+                manager = VideoManager(sections=Sections.BRAND_SAFETY)
             else:
                 return response
             if not request.user.groups.filter(name=PermissionGroupNames.BRAND_SAFETY_SCORING).exists():
@@ -36,7 +42,7 @@ def add_brand_safety_data(view):
             if response.data.get("items"):
                 _handle_list_view(request, response, index_name, blacklist_data_type)
             else:
-                _handle_single_view(request, response, index_name, blacklist_data_type)
+                _handle_single_view(request, response, manager, blacklist_data_type)
         except (IndexError, AttributeError):
             pass
         return response
@@ -102,46 +108,53 @@ def _handle_list_view(request, response, index_name, blacklist_data_type):
                 try:
                     blacklist_data = blacklist_items_by_id[item_id].to_dict()
                 except KeyError:
-                    blacklist_data = None
+                    blacklist_data = ""
                 item["blacklist_data"] = blacklist_data
     except (TypeError, KeyError):
         return
 
 
-def _handle_single_view(request, response, index_name, blacklist_data_type):
+def _handle_single_view(request, response, manager, blacklist_data_type):
+    doc_id = response.data.get("id") or response.data["main"].get("id")
+    brand_safety_data = AuditUtils.get_items([doc_id], manager)
+    # Catch trying to access index and accessing brand safety attribute
     try:
-        doc_id = response.data.get("id") or response.data["main"].get("id")
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            doc_id,
-            settings.BRAND_SAFETY_TYPE
-        )
-        score = es_data["overall_score"]
-        response.data["brand_safety_data"] = get_brand_safety_data(score)
-        if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
+        brand_safety_score = brand_safety_data[0]._source.brand_safety.overall_score
+    except (IndexError, AttributeError):
+        brand_safety_score = None
+    response.data["brand_safety_data"] = get_brand_safety_data(brand_safety_score)
+    if request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
+        try:
+            blacklist_data = BlacklistItem.get(doc_id, blacklist_data_type, to_dict=True)[0]
+        except IndexError:
+            blacklist_data = ""
+        response.data["blacklist_data"] = blacklist_data
+
+
+def add_brand_safety(request, items, manager, blacklist_item_data_type):
+    doc_ids = [item.meta.id for item in items]
+    blacklist_items = BlacklistItem.get(doc_ids, blacklist_item_data_type)
+    blacklist_items_by_id = {
+        item.item_id: item for item in blacklist_items
+    }
+    try:
+        brand_safety_data = AuditUtils.get_items(doc_ids, manager)
+        brand_safety_scores = {}
+        for doc in brand_safety_data:
             try:
-                blacklist_data = BlacklistItem.get(doc_id, blacklist_data_type, to_dict=True)[0]
-            except IndexError:
-                blacklist_data = None
-            response.data["blacklist_data"] = blacklist_data
-    except (TypeError, KeyError):
-        return
-
-
-def add_brand_safety(items, index_name):
-    try:
-        doc_ids = [item.main.id for item in items]
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            doc_ids,
-            settings.BRAND_SAFETY_TYPE
-        )
-        es_scores = {
-            _id: data["overall_score"] for _id, data in es_data.items()
-        }
+                brand_safety_scores[doc._id] = doc._source.brand_safety.overall_score
+            except AttributeError:
+                continue
         for item in items:
-            score = es_scores.get(item.main.id, None)
+            score = brand_safety_scores.get(item.meta.id, None)
             item.brand_safety_data = get_brand_safety_data(score)
+
+            if request and request.user and (request.user.is_staff or request.user.has_perm("userprofile.flag_audit")):
+                try:
+                    blacklist_data = blacklist_items_by_id[item.meta.id].to_dict()
+                except KeyError:
+                    blacklist_data = ""
+                item.blacklist_data = blacklist_data
     except (TypeError, KeyError):
         return
     return items

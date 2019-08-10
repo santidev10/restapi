@@ -163,7 +163,7 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager):
+    def __init__(self, manager, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None

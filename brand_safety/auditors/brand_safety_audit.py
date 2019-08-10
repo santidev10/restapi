@@ -160,6 +160,9 @@ class BrandSafetyAudit(object):
         """
         channel_audits = []
         for _id, data in channel_video_audits.items():
+            # Don't score channels without videos
+            if data.get("video_audits") is None:
+                continue
             try:
                 audit = self.audit_channel(data)
                 channel_audits.append(audit)
