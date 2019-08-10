@@ -27,7 +27,7 @@ class BrandSafetyAudit(object):
     CHANNEL_POOL_BATCH_SIZE = 10
     CHANNEL_MASTER_BATCH_SIZE = MAX_POOL_COUNT * CHANNEL_POOL_BATCH_SIZE
     # Hours in which a channel should be updated
-    UPDATE_TIME_THRESHOLD = 24 * 7
+    UPDATE_TIME_THRESHOLD = 24 * 0
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
     SLEEP = 2

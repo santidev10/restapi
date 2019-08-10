@@ -5,7 +5,7 @@ from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety_view_decorator import get_brand_safety_data
 
 from channel.tests.api.test_channel_list_endpoint import ChannelBrandSafetyDoc
 from es_components.constants import Sections
@@ -178,26 +178,27 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         self.assertEqual(channels[0].main.id, response.data["items"][0]["main"]["id"])
 
     def test_brand_safety(self):
+        user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        self.user.add_custom_user_permission("channel_list")
-        self.user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         channel_id = str(next(int_iterator))
-        channel = Channel(channel_id)
-        ChannelManager(sections=[Sections.GENERAL_DATA]).upsert([channel])
-        score = 92
-        label = get_brand_safety_label(score)
-        brand_safety = ChannelBrandSafetyDoc(
-            meta={'id': channel_id},
-            overall_score=score
-        )
-        brand_safety.save()
+        channel = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 92
+            }
+        })
         sleep(1)
-
+        score = get_brand_safety_data(channel.brand_safety.overall_score)
+        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
         with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self.client.get(get_url())
+            response = self.client.get(self.url)
         self.assertEqual(
-            {"score": brand_safety.overall_score, "label": label},
-            response.data["items"][0]["brand_safety_data"]
+            score,
+            get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
         )
 
     def test_sorting_30day_views(self):
