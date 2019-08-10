@@ -178,27 +178,28 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
         self.assertEqual(videos[0].main.id, response.data["items"][0]["main"]["id"])
 
     def test_brand_safety(self):
-        user = self.create_test_user()
+        user = self.create_admin_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        user.add_custom_user_permission("channel_list")
+        user.add_custom_user_permission("video_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
-        channel_id = str(next(int_iterator))
-        channel = Channel(**{
+        video_id = str(next(int_iterator))
+        video = Video(**{
             "meta": {
-                "id": channel_id
+                "id": video_id
             },
             "brand_safety": {
                 "overall_score": 92
             }
         })
         sleep(1)
-        score = get_brand_safety_data(channel.brand_safety.overall_score)
-        VideoManager(sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
+        score = get_brand_safety_data(video.brand_safety.overall_score)
+        VideoManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([video])
         with override_settings(BRAND_SAFETY_CHANNEL_INDEX=VideoBrandSafetyDoc._index._name):
-            response = self.client.get(self.url)
+            response = self.client.get(get_url())
         self.assertEqual(
             score,
             get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
+        )
 
     def test_sorting_30day_views(self):
         views = [1, 3, 2]

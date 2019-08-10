@@ -178,24 +178,19 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         self.assertEqual(channels[0].main.id, response.data["items"][0]["main"]["id"])
 
     def test_brand_safety(self):
-        user = self.create_test_user()
+        user = self.create_admin_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("channel_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         channel_id = str(next(int_iterator))
-        channel = Channel(**{
-            "meta": {
-                "id": channel_id
-            },
-            "brand_safety": {
-                "overall_score": 92
-            }
-        })
+        channel = Channel()
+        channel.meta.id = channel_id
+        channel.brand_safety.overall_score = 92
         sleep(1)
         score = get_brand_safety_data(channel.brand_safety.overall_score)
-        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
+        ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
         with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self.client.get(self.url)
+            response = self.client.get(get_url())
         self.assertEqual(
             score,
             get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
