@@ -4,6 +4,7 @@ from urllib.parse import unquote
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
+from audit_tool.models import BlacklistItem
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
@@ -163,7 +164,7 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager):
+    def __init__(self, manager, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -301,6 +302,21 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+
+    @classmethod
+    def add_blacklist_data(cls, channels):
+        doc_ids = [doc.meta.id for doc in channels]
+        blacklist_items = BlacklistItem.get(doc_ids, cls.blacklist_data_type)
+        blacklist_items_by_id = {
+            item.item_id: item for item in blacklist_items
+        }
+        for doc in channels:
+            try:
+                blacklist_data = blacklist_items_by_id[doc.meta.id].to_dict()
+            except KeyError:
+                blacklist_data = ""
+            doc.blacklist_data = blacklist_data
+        return channels
 
 
 class PaginatorWithAggregationMixin:

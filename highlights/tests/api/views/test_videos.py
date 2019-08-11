@@ -13,7 +13,7 @@ from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety_view_decorator import get_brand_safety_data
 from utils.lang import ExtendedEnum
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -178,26 +178,27 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
         self.assertEqual(videos[0].main.id, response.data["items"][0]["main"]["id"])
 
     def test_brand_safety(self):
+        user = self.create_admin_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
-        self.user.add_custom_user_permission("channel_list")
-        self.user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
-        channel_id = str(next(int_iterator))
-        channel = Video(channel_id)
-        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([channel])
-        score = 92
-        label = get_brand_safety_label(score)
-        brand_safety = VideoBrandSafetyDoc(
-            meta={'id': channel_id},
-            overall_score=score
-        )
-        brand_safety.save()
+        user.add_custom_user_permission("video_list")
+        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        video_id = str(next(int_iterator))
+        video = Video(**{
+            "meta": {
+                "id": video_id
+            },
+            "brand_safety": {
+                "overall_score": 92
+            }
+        })
         sleep(1)
-
-        with override_settings(BRAND_SAFETY_VIDEO_INDEX=VideoBrandSafetyDoc._index._name):
+        score = get_brand_safety_data(video.brand_safety.overall_score)
+        VideoManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([video])
+        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=VideoBrandSafetyDoc._index._name):
             response = self.client.get(get_url())
         self.assertEqual(
-            {"score": brand_safety.overall_score, "label": label},
-            response.data["items"][0]["brand_safety_data"]
+            score,
+            get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
         )
 
     def test_sorting_30day_views(self):

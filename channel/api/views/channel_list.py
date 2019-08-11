@@ -8,6 +8,7 @@ from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -112,7 +113,7 @@ def adapt_response_channel_data(response_data, user):
 def add_chart_data(channels):
     """ Generate and add chart data for channel """
     for channel in channels:
-        if not channel.stats:
+        if not hasattr(channel, "stats"):
             continue
 
         items = []
@@ -229,10 +230,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
+    blacklist_data_type = BlacklistItem.CHANNEL_ITEM
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY)
         channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         if channels_ids:
             self.request.query_params._mutable = True
@@ -241,8 +243,13 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
+        if self.request and self.request.user and (self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+            add_extra_fields_funcs = (add_chart_data, self.add_blacklist_data)
+        else:
+            add_extra_fields_funcs = (add_chart_data,)
+
         result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
-            .extra_fields_func((add_chart_data,))
+            .extra_fields_func(add_extra_fields_funcs)
 
         return result
 

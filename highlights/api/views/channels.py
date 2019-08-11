@@ -37,7 +37,7 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY,)
         if self.request.user.is_staff:
             sections += (Sections.ANALYTICS,)
         return ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections))
