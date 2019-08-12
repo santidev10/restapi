@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import TransactionTestCase
+from es_components.tests.utils import ESTestCase
 from pytz import utc
 
 from aw_reporting.models import AWAccountPermission
@@ -17,7 +18,7 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
 
-class PullHourlyAWDataTestCase(TransactionTestCase):
+class PullHourlyAWDataTestCase(TransactionTestCase, ESTestCase):
     def _call_command(self, **kwargs):
         call_command("pull_hourly_aw_data", **kwargs)
 

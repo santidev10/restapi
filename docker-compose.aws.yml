@@ -1,0 +1,34 @@
+version: "2.4"
+
+services:
+  restapi:
+    ports:
+      - "5000:5000"
+    container_name: restapi
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
+    env_file:
+      - chf.restapi.env
+    sysctls:
+      - net.core.somaxconn=1024
+    command: ["uwsgi","--ini", "/etc/uwsgi/restapi.ini"]
+
+  celery_worker:
+    command: ["celery", "-A", "saas", "worker"]
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
+    env_file:
+      - chf.restapi.env
+
+  celery_beat:
+    command: ["celery", "-A", "saas", "beat"]
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
+    env_file:
+      - chf.restapi.env

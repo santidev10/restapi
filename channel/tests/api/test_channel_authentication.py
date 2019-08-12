@@ -1,12 +1,15 @@
+from datetime import datetime
 from unittest.mock import patch
 
 from django.core import mail
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
-import singledb.connector
 from channel.api.urls.names import ChannelPathName
+from es_components.datetime_service import datetime_service
 from saas.urls.namespaces import Namespace
+from utils.aws.ses_emailer import SESEmailer
+from utils.utittests.celery import mock_send_task
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -15,8 +18,11 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     url = reverse(ChannelPathName.CHANNEL_AUTHENTICATION, [Namespace.CHANNEL])
 
+    @mock_send_task()
     @patch("channel.api.views.channel_authentication.requests")
-    def test_success_on_user_duplication(self, requests_mock):
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_success_on_user_duplication(self, mock_youtube, flow, requests_mock, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1602
         On sign in server return server error 500.
@@ -26,46 +32,73 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         """
 
         user = self.create_test_user(True)
+
+        youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
         requests_mock.get.return_value = MockResponse(
             json=dict(email=user.email, image=dict(isDefault=False)))
 
-        response = self.client.post(self.url, dict())
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
+        response = self.client.post(self.url, dict(code="code"))
 
         self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
         data = response.data
         self.assertIn('auth_token', data)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
 
-    @patch("singledb.connector.requests")
-    def test_proxy_errors_from_sdb(self, requests_mock):
+    def test_error_no_code(self):
+        response = self.client.post(self.url, dict())
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_proxy_errors_from_sdb(self, mock_youtube, flow, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1718
         Profile Page > Authorize > 408 error when user try
         to Authenticate YT channel on account which doesn't have It
         """
         test_error = {
-            "code": "channel_not_found",
             "detail": "This account doesn't include any channels. "
                       "Please try to authorize other YT channel"
         }
-        requests_mock.post.return_value = MockResponse(
-            status_code=HTTP_400_BAD_REQUEST, json=test_error
-        )
 
-        with patch("channel.api.views.channel_authentication.Connector",
-                   new=singledb.connector.SingleDatabaseApiConnector_origin):
-            response = self.client.post(self.url, dict(), )
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = {"items": []}
+
+        response = self.client.post(self.url, dict(code="code"))
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, test_error)
 
-    @patch("channel.api.views.channel_authentication.requests")
-    def test_send_welcome_email(self, requests_mock):
+    @mock_send_task()
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_send_welcome_email(self, mock_youtube, flow, *args):
         user_details = {
             "email": "test@test.test",
             "image": {"isDefault": False},
         }
-        requests_mock.get.return_value = MockResponse(json=user_details)
-        response = self.client.post(self.url, dict(), )
-        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-        self.assertEqual(len(mail.outbox), 2)
+        youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
+
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
+        with patch("channel.api.views.channel_authentication.requests.get",
+                   return_value=MockResponse(json=user_details)):
+            response = self.client.post(self.url, dict(code="code"), )
+
+            self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+            welcome_emails = [m for m in mail.outbox
+                              if isinstance(m.subject, SESEmailer) and m.body.startswith("Welcome")]
+            self.assertEqual(len(welcome_emails), 1)

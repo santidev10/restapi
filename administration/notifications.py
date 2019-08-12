@@ -71,6 +71,17 @@ def send_new_channel_authentication_email(user, channel_id, request):
     send_mail(subject, text, sender, to, fail_silently=True)
 
 
+def send_admin_notification(channel_id):
+    sender = settings.SENDER_EMAIL_ADDRESS
+    to = settings.CHANNEL_AUTHENTICATION_NOTIFY_TO
+    subject = "Channel Authentication"
+    message = f"Dear Admin, A new channel {channel_id} " \
+              f"(https://viewiq.com/research/channels/{channel_id}) " \
+              f"has just authenticated on ViewIQ"
+
+    send_mail(subject, message, sender, to, fail_silently=False)
+
+
 def send_html_email(subject, to, text_header, text_content):
     """
     Send email with html
