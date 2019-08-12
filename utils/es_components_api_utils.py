@@ -1,10 +1,8 @@
 import hashlib
 import json
 import logging
-import pickle
 from urllib.parse import unquote
 
-from django.conf import settings
 
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
@@ -15,7 +13,8 @@ from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.percentiles import get_percentiles
-from utils.redis import get_redis_client
+from utils.es_components_cache import CACHE_KEY_PREFIX
+from utils.es_components_cache import cached_method
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -168,50 +167,6 @@ class QueryGenerator:
 class ESDictSerializer(BaseSerializer):
     def to_representation(self, instance):
         return instance.to_dict()
-
-
-CACHE_KEY_PREFIX = "restapi.ESQueryset"
-
-
-def cached_method(timeout):
-    def wrapper(method):
-        if not settings.ES_CACHE_ENABLED:
-            return method
-
-        redis = get_redis_client()
-
-        def get_from_cache(obj, part, options):
-            key, key_json = obj.get_cache_key(part, options)
-            cached = redis.get(key)
-            if cached:
-                cached = pickle.loads(cached)
-                cached = cached.get("data") if cached and key_json == cached.get("key_json") else None
-            return cached
-
-        def set_to_cache(obj, part, options, data):
-            key, key_json = obj.get_cache_key(part, options)
-            serialized_data = pickle.dumps(dict(key_json=key_json, data=data))
-            redis.set(key, serialized_data, timeout)
-
-        def wrapped(obj, *args, **kwargs):
-            options = (args, kwargs)
-            part = method.__name__
-            data = get_from_cache(obj, part=part, options=options)
-            if data is None:
-                data = method(obj, *args, **kwargs)
-                set_to_cache(obj, part=part, options=options, data=data)
-            return data
-
-        return wrapped
-    return wrapper
-
-
-def flush_cache():
-    if settings.ES_CACHE_ENABLED:
-        redis = get_redis_client()
-        keys = redis.keys(f"{CACHE_KEY_PREFIX}.*")
-        if keys:
-            redis.delete(*keys)
 
 
 class ESQuerysetAdapter:

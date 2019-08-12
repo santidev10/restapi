@@ -19,8 +19,8 @@ from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.es_components_api_utils import flush_cache
 from utils.es_components_api_utils import get_fields
+from utils.es_components_cache import flush_cache
 from channel.api.views.channel_list import add_chart_data
 
 
