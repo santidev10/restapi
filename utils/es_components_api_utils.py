@@ -4,6 +4,8 @@ import logging
 import pickle
 from urllib.parse import unquote
 
+from django.conf import settings
+
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
@@ -167,10 +169,15 @@ class ESDictSerializer(BaseSerializer):
     def to_representation(self, instance):
         return instance.to_dict()
 
+
 CACHE_KEY_PREFIX = "restapi.ESQueryset"
+
 
 def cached_method(timeout):
     def wrapper(method):
+        if not settings.ES_CACHE_ENABLED:
+            return method
+
         redis = get_redis_client()
 
         def get_from_cache(obj, part, options):
@@ -198,11 +205,14 @@ def cached_method(timeout):
         return wrapped
     return wrapper
 
+
 def flush_cache():
-    redis = get_redis_client()
-    keys = redis.keys(f"{CACHE_KEY_PREFIX}.*")
-    if keys:
-        redis.delete(*keys)
+    if settings.ES_CACHE_ENABLED:
+        redis = get_redis_client()
+        keys = redis.keys(f"{CACHE_KEY_PREFIX}.*")
+        if keys:
+            redis.delete(*keys)
+
 
 class ESQuerysetAdapter:
     def __init__(self, manager, *args, **kwargs):
