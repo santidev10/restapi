@@ -1,13 +1,20 @@
+import hashlib
+import json
 import logging
 from urllib.parse import unquote
 
+
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import BaseSerializer
 
+from audit_tool.models import BlacklistItem
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.percentiles import get_percentiles
+from utils.es_components_cache import CACHE_KEY_PREFIX
+from utils.es_components_cache import cached_method
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -163,7 +170,7 @@ class ESDictSerializer(BaseSerializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager):
+    def __init__(self, manager, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -172,6 +179,7 @@ class ESQuerysetAdapter:
         self.percentiles = None
         self.fields_to_load = None
 
+    @cached_method(timeout=7200)
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
         return count
@@ -198,20 +206,24 @@ class ESQuerysetAdapter:
         self.fields_to_load = fields or self.manager.sections
         return self
 
+    @cached_method(timeout=900)
     def get_data(self, start=0, end=None):
-        return self.manager.search(
+        data = self.manager.search(
             filters=self.filter_query,
             sort=self.sort,
             offset=start,
             limit=end,
         ) \
             .source(includes=self.fields_to_load).execute().hits
+        return data
 
+    @cached_method(timeout=7200)
     def get_aggregations(self):
-        return self.manager.get_aggregation(
+        aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
             properties=self.aggregations,
         )
+        return aggregations
 
     def get_percentiles(self):
         clean_names = [name.split(":")[0] for name in self.percentiles]
@@ -225,6 +237,18 @@ class ESQuerysetAdapter:
     def with_percentiles(self, percentiles):
         self.percentiles = percentiles
         return self
+
+    def get_cache_key(self, part, options):
+        options = dict(
+            filters=[_filter.to_dict() for _filter in self.filter_query],
+            sort=self.sort,
+            aggregations=self.aggregations,
+            options=options,
+        )
+        key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
+        key_hash = hashlib.md5(key_json.encode()).hexdigest()
+        key = f"{CACHE_KEY_PREFIX}.{part}.{self.manager.model.__name__}.{key_hash}"
+        return key, key_json
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -301,6 +325,21 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+
+    @classmethod
+    def add_blacklist_data(cls, channels):
+        doc_ids = [doc.meta.id for doc in channels]
+        blacklist_items = BlacklistItem.get(doc_ids, cls.blacklist_data_type)
+        blacklist_items_by_id = {
+            item.item_id: item for item in blacklist_items
+        }
+        for doc in channels:
+            try:
+                blacklist_data = blacklist_items_by_id[doc.meta.id].to_dict()
+            except KeyError:
+                blacklist_data = ""
+            doc.blacklist_data = blacklist_data
+        return channels
 
 
 class PaginatorWithAggregationMixin:

@@ -12,7 +12,7 @@ from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
-from brand_safety.audit_providers.standard_brand_safety_provider import StandardBrandSafetyProvider
+from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -193,7 +193,7 @@ class AuditExportApiView(APIView):
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
-        auditor = StandardBrandSafetyProvider()
+        auditor = BrandSafetyAudit()
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -235,9 +235,9 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     default_audio_language = ""
                 all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
-                video_audit_score = auditor.audit_service.audit_video({
-                    "video_id": v.video.video_id,
-                    "video_title": v.name,
+                video_audit_score = auditor.audit_video({
+                    "id": v.video.video_id,
+                    "title": v.name,
                     "description": v.description,
                     "tags": v.keywords,
                 }, full_audit=False)

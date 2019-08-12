@@ -10,6 +10,7 @@ from itertools import zip_longest
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -152,8 +153,10 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:percentiles",
     )
 
+    blacklist_data_type = BlacklistItem.VIDEO_ITEM
+
     def get_queryset(self):
-        sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
+        sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
 
         channel_id = deepcopy(self.request.query_params).get("channel")

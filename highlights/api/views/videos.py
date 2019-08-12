@@ -40,7 +40,7 @@ class HighlightVideosListApiView(APIViewMixin, ListAPIView):
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                    Sections.CAPTIONS,)
+                    Sections.CAPTIONS, Sections.BRAND_SAFETY,)
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
