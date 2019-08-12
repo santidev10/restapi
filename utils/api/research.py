@@ -76,6 +76,14 @@ class ESQuerysetWithBrandSafetyAdapter(ESQuerysetAdapter):
         return items
 
 
+class ESEmptyResponseAdapter(ESQuerysetWithBrandSafetyAdapter):
+    def get_data(self, *args, **kwargs):
+        return []
+
+    def count(self):
+        return 0
+
+
 class ESBrandSafetyFilterBackend(ESFilterBackend):
     def _get_brand_safety_options(self, request, view):
         view_name = view.__class__.__name__
