@@ -450,6 +450,8 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
+ES_CACHE_ENABLED = False
+
 from es_components.config import *
 
 BRAND_SAFETY_CHANNEL_INDEX = ""

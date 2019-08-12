@@ -4,8 +4,6 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveUpdateDestroyAPIView
-
 
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -13,7 +11,6 @@ from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.views import ChannelListApiView
 from channel.models import AuthChannel
 from userprofile.models import UserChannel
 from utils.celery.dmp_celery import send_task_delete_channels
@@ -23,6 +20,7 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import add_brand_safety_data
 from utils.es_components_api_utils import get_fields
+from utils.es_components_cache import flush_cache
 from channel.api.views.channel_list import add_chart_data
 
 
@@ -79,7 +77,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         self.channel_manager().upsert([channel])
         send_task_channel_general_data_priority((channel.main.id,), wait=True)
-
+        flush_cache()
         return self.get(*args, **kwargs)
 
     @add_brand_safety_data
@@ -88,8 +86,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             return self.obtain_youtube_statistics()
 
         channel_id = kwargs.get('pk')
-        allowed_sections_to_load = (Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA,
-                                    Sections.CUSTOM_PROPERTIES, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY,)
+        allowed_sections_to_load = (
+            Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
+            Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY,)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience")\
@@ -137,7 +136,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         if not UserChannel.objects.filter(channel_id=channel_id).exists():
             AuthChannel.objects.filter(channel_id=channel_id).delete()
             send_task_delete_channels(([channel_id],))
-
+        flush_cache()
         return Response()
 
     def get_video_sort_rule(self):
