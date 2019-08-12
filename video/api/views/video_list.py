@@ -7,6 +7,7 @@ from datetime import datetime
 from datetime import timedelta
 from itertools import zip_longest
 
+from rest_framework.fields import SerializerMethodField
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
@@ -14,12 +15,14 @@ from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESDictSerializer
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from utils.serializers.fields import ParentDictValueField
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
@@ -42,12 +45,13 @@ HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_
                   "stats.comments_history", "stats.historydate",)
 
 
-def add_chart_data(videos):
-    """ Generate and add chart data for channel """
-    for video in videos:
+class VideoSerializer(ESDictSerializer):
+    chart_data = SerializerMethodField()
+    transcript = SerializerMethodField()
+
+    def get_chart_data(self, video):
         if not video.stats:
-            video.chart_data = []
-            continue
+            return []
 
         chart_data = []
         items_count = 0
@@ -70,20 +74,35 @@ def add_chart_data(videos):
                      "dislikes": dislikes,
                      "comments": comments}
                 )
-        video.chart_data = chart_data
-    return videos
+        return chart_data
 
-
-def add_transcript(videos):
-    for video in videos:
+    def get_transcript(self, video):
         transcript = None
         if video.captions and video.captions.items:
             for caption in video.captions.items:
                 if caption.language_code == "en":
                     text = caption.text
                     transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
-        video.transcript = transcript
-    return videos
+        return transcript
+
+# todo: duplicates ChannelWithBlackListSerializer
+class VideoWithBlackListSerializer(VideoSerializer):
+    blacklist_data = ParentDictValueField("blacklist_data")
+
+    def __init__(self, instance, *args, **kwargs):
+        super(VideoWithBlackListSerializer, self).__init__(instance, *args, **kwargs)
+        self.blacklist_data = {}
+        if instance:
+            videos = instance if isinstance(instance, list) else [instance]
+            self.blacklist_data = self.fetch_blacklist_items(videos)
+
+    def fetch_blacklist_items(cls, videos):
+        doc_ids = [doc.meta.id for doc in videos]
+        blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.VIDEO_ITEM)
+        blacklist_items_by_id = {
+            item.item_id: item.to_dict() for item in blacklist_items
+        }
+        return blacklist_items_by_id
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -95,7 +114,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         ),
     )
 
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
 
     ordering_fields = (
@@ -155,6 +174,12 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
+    def get_serializer_class(self):
+        if self.request and self.request.user and (
+                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+            return VideoWithBlackListSerializer
+        return VideoSerializer
+
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
@@ -181,5 +206,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
-            .extra_fields_func((add_chart_data, add_transcript,))
+        return ESQuerysetAdapter(VideoManager(sections))

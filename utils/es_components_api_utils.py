@@ -303,21 +303,6 @@ class APIViewMixin:
     match_phrase_filter = ()
     exists_filter = ()
 
-    @classmethod
-    def add_blacklist_data(cls, channels):
-        doc_ids = [doc.meta.id for doc in channels]
-        blacklist_items = BlacklistItem.get(doc_ids, cls.blacklist_data_type)
-        blacklist_items_by_id = {
-            item.item_id: item for item in blacklist_items
-        }
-        for doc in channels:
-            try:
-                blacklist_data = blacklist_items_by_id[doc.meta.id].to_dict()
-            except KeyError:
-                blacklist_data = ""
-            doc.blacklist_data = blacklist_data
-        return channels
-
 
 class PaginatorWithAggregationMixin:
     def _get_response_data(self: CustomPageNumberPaginator, data):

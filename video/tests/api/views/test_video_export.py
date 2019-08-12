@@ -1,11 +1,8 @@
 import csv
 from datetime import datetime
-from time import sleep
 from unittest.mock import patch
 
 import pytz
-from django.test import override_settings
-from elasticsearch_dsl import Double
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -13,7 +10,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from es_components.models import Video
-from es_components.models.base import BaseDocument
+from es_components.models.video import VideoSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.elasticsearch import ElasticSearchConnector
@@ -113,7 +110,11 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             ctr_v=3.4,
             average_cpv=4.5,
         )
-        manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS))
+        video.brand_safety = VideoSectionBrandSafety(
+            overall_score=12,
+        )
+        manager = VideoManager(
+            sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY))
         manager.upsert([video])
 
         response = self._request()
@@ -128,7 +129,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             video.stats.dislikes,
             video.stats.comments,
             video.general_data.youtube_published_at.isoformat().replace("+00:00", "Z"),
-            "",
+            video.brand_safety.overall_score,
             video.ads_stats.video_view_rate,
             video.ads_stats.ctr,
             video.ads_stats.ctr_v,
@@ -156,32 +157,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_brand_safety(self):
-        self.create_admin_user()
-        video_id = str(next(int_iterator))
-        video = Video(video_id)
-        VideoManager(sections=Sections.GENERAL_DATA).upsert([video])
-        brand_safety = VideoBrandSafetyDoc(
-            meta={'id': video_id},
-            overall_score=12.3
-        )
-        brand_safety.save()
-        sleep(1)
-
-        with override_settings(BRAND_SAFETY_VIDEO_INDEX=VideoBrandSafetyDoc._index._name):
-            response = self._request()
-
-            csv_data = get_data_from_csv_response(response)
-            headers = next(csv_data)
-            data = next(csv_data)
-
-        brand_safety_index = headers.index("brand_safety_score")
-        self.assertEqual(
-            str(brand_safety.overall_score),
-            data[brand_safety_index]
-        )
-
-    def test_request_brand_safety_by_batches(self):
+    def test_request_brand_safety_from_the_same_source(self):
         self.create_admin_user()
         videos = [Video(next(int_iterator)) for _ in range(2)]
         VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
@@ -192,7 +168,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             csv_data = get_data_from_csv_response(response)
             list(csv_data)
 
-            es_mock.assert_called_once()
+            es_mock.assert_not_called()
 
     def test_filter_ids(self):
         self.create_admin_user()
@@ -222,21 +198,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
-
-
-class VideoBrandSafetyDoc(BaseDocument):
-    """
-    Temporary solution for testing brand safety.
-    Remove this doc after implementing the Brand Safety feature in the dmp project
-    """
-    overall_score = Double()
-
-    class Index:
-        name = "video_brand_safety"
-        prefix = "video_brand_safety_"
-
-    class Meta:
-        doc_type = "video_brand_safety"
 
 
 def get_data_from_csv_response(response):

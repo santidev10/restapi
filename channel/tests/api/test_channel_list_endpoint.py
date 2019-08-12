@@ -2,15 +2,12 @@ from time import sleep
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group
-from django.test import override_settings
-from elasticsearch_dsl import Double
 from rest_framework.status import HTTP_200_OK
 
 from channel.api.urls.names import ChannelPathName
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
-from es_components.models.base import BaseDocument
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
@@ -48,24 +45,8 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         sleep(1)
         score = get_brand_safety_data(channel.brand_safety.overall_score)
         ChannelManager(sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
-        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self.client.get(self.url)
+        response = self.client.get(self.url)
         self.assertEqual(
             score,
             get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
         )
-
-
-class ChannelBrandSafetyDoc(BaseDocument):
-    """
-    Temporary solution for testing brand safety.
-    Remove this doc after implementing the Brand Safety feature in the dmp project
-    """
-    overall_score = Double()
-
-    class Index:
-        name = "channel_brand_safety"
-        prefix = "channel_brand_safety_"
-
-    class Meta:
-        doc_type = "channel_brand_safety"

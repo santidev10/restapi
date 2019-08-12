@@ -22,6 +22,7 @@ from utils.brand_safety_view_decorator import get_brand_safety_data
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
 
+# fixme: remove
 class BrandSafetyChannelAPIView(APIView):
     permission_required = (
         "userprofile.channel_list",

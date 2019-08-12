@@ -7,13 +7,12 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from .utils import add_views_history_chart
 
 TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
 
@@ -29,7 +28,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
             IsAdminUser
         ),
     )
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
         "stats.last_30day_views:desc",
@@ -77,5 +76,4 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections)) \
-            .extra_fields_func((add_views_history_chart,))
+        return ESQuerysetAdapter(KeywordManager(sections))

@@ -2,23 +2,20 @@
 Video api views module
 """
 import re
-from datetime import timedelta
 from datetime import datetime
-
+from datetime import timedelta
 from itertools import zip_longest
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
-from es_components.managers.video import VideoManager
-from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.es_components_api_utils import get_fields
 
 from es_components.constants import Sections
-
+from es_components.managers.video import VideoManager
+from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
+from utils.es_components_api_utils import get_fields
+from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
@@ -49,7 +46,7 @@ def add_chart_data(video):
     )
     for views, likes, dislikes, comments in history:
         timestamp = video["stats"].get("historydate") - timedelta(
-                days=len(video["stats"].get("views_history")) - items_count - 1)
+            days=len(video["stats"].get("views_history")) - items_count - 1)
         timestamp = datetime.combine(timestamp, datetime.max.time())
         items_count += 1
         if any((views, likes, dislikes, comments)):
@@ -82,7 +79,6 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
             self.__video_manager = VideoManager(sections)
         return self.__video_manager
 
-    @add_brand_safety_data
     def get(self, request, *args, **kwargs):
         video_id = kwargs.get('pk')
 
@@ -101,7 +97,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         result = add_extra_field(video.to_dict())
 
-        if not(video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience") \
+        if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):
             if Sections.ANALYTICS in result.keys():
                 del result[Sections.ANALYTICS]

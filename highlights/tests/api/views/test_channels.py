@@ -1,13 +1,10 @@
 from time import sleep
 
 from django.contrib.auth.models import Group
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.brand_safety_view_decorator import get_brand_safety_data
 
-from channel.tests.api.test_channel_list_endpoint import ChannelBrandSafetyDoc
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
@@ -15,6 +12,7 @@ from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
+from utils.brand_safety_view_decorator import get_brand_safety_data
 from utils.lang import ExtendedEnum
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -189,8 +187,7 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         sleep(1)
         score = get_brand_safety_data(channel.brand_safety.overall_score)
         ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
-        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self.client.get(get_url())
+        response = self.client.get(get_url())
         self.assertEqual(
             score,
             get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
