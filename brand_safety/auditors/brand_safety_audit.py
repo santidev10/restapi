@@ -202,10 +202,13 @@ class BrandSafetyAudit(object):
         :param channels: dict -> channel_id, channel_metadata
         :return:
         """
-        query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
-        results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
+        all_results = []
         mapped = []
-        for video in results:
+        for batch in self.audit_utils.batch(channel_ids, 20):
+            query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
+            results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
+            all_results.extend(results)
+        for video in all_results:
             try:
                 mapped.append(self.audit_utils.extract_video_data(video))
             except AttributeError:
