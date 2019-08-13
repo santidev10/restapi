@@ -948,10 +948,11 @@ class DeliveryChart:
             del item["yt_id"]
             video = videos_map.get(youtube_id)
             item["id"] = youtube_id
-            item["label"] = video.general_data.title
-            item["thumbnail"] = video.general_data.thumbnail_image_url
-            item["duration"] = video.general_data.duration
-            title = video.general_data.title or youtube_id
+            if video.general_data:
+                item["label"] = video.general_data.title
+                item["thumbnail"] = video.general_data.thumbnail_image_url
+                item["duration"] = video.general_data.duration
+            title = video.general_data.title if video.general_data else youtube_id
             result[title].append(item)
 
         return result
