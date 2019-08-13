@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Retrieve and audit comments.'
+    DISCOVERY = "discovery"
+    UPDATE = "update"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -32,8 +34,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        audit_type = "discovery" if kwargs["discovery"] else "update"
-        pid_file = f"{audit_type}_brand_safety.pid"
+        self.audit_type = self.DISCOVERY if kwargs["discovery"] == "True" else self.UPDATE
+        pid_file = f"{self.audit_type}_brand_safety.pid"
         try:
             with PidFile(pid_file, piddir=".") as pid:
                 self.run(*args, **kwargs)
@@ -61,9 +63,10 @@ class Command(BaseCommand):
             raise ValueError("Unsupported manual type: {}".format(manual_type))
 
     def _handle_standard(self, *args, **options):
-        if options["discovery"]:
+        if self.audit_type == self.DISCOVERY:
             api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafetyDiscovery")[0]
+            standard_audit = BrandSafetyAudit(api_tracker=api_tracker, discovery=True)
         else:
             api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafetyUpdate")[0]
-        standard_audit = BrandSafetyAudit(api_tracker=api_tracker, discovery=True)
+            standard_audit = BrandSafetyAudit(api_tracker=api_tracker, discovery=False)
         standard_audit.run()

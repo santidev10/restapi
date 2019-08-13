@@ -5,6 +5,8 @@ import logging
 import multiprocessing as mp
 import time
 
+import pytz
+
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
@@ -23,16 +25,16 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    MAX_POOL_COUNT = 5
-    CHANNEL_POOL_BATCH_SIZE = 2
-    CHANNEL_MASTER_BATCH_SIZE = MAX_POOL_COUNT * CHANNEL_POOL_BATCH_SIZE
+    MAX_POOL_COUNT = None
+    CHANNEL_POOL_BATCH_SIZE = None
+    CHANNEL_MASTER_BATCH_SIZE = None
     # Hours in which a channel should be updated
     UPDATE_TIME_THRESHOLD = 24 * 7
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
     MINIMUM_SUBSCRIBER_COUNT = 20000
     SLEEP = 2
-    channel_batch_counter = 0
+    channel_batch_counter = 1
 
     def __init__(self, *_, **kwargs):
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
@@ -44,18 +46,35 @@ class BrandSafetyAudit(object):
         except KeyError:
             self.is_manual = True
         if kwargs["discovery"]:
-            self._channel_generator = self._channel_generator_discovery
+            self._set_discovery_config()
         else:
-            self._channel_generator = self._channel_generator_update
+            self._set_update_config()
         self.audit_utils = AuditUtils()
         self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.CAPTIONS),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY, Sections.CAPTIONS),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
+
+    def _set_discovery_config(self):
+        self.MAX_POOL_COUNT = 8
+        self.CHANNEL_POOL_BATCH_SIZE = 20
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self._channel_generator = self._channel_generator_discovery
+
+    def _set_update_config(self):
+        self.MAX_POOL_COUNT = 3
+        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self._channel_generator = self._channel_generator_update
+
+    def _set_manual_config(self):
+        self.MAX_POOL_COUNT = 5
+        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
 
     def run(self):
         """
@@ -78,6 +97,7 @@ class BrandSafetyAudit(object):
             video_audits, channel_audits = self._extract_results(results)
             # Index items
             self._index_results(video_audits, channel_audits)
+
             if self.channel_batch_counter % 10 == 0:
                 # Update config in case they have been modified
                 self.audit_utils.update_config()
@@ -182,13 +202,13 @@ class BrandSafetyAudit(object):
         :param channels: dict -> channel_id, channel_metadata
         :return:
         """
-        filters = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
-        results = self.video_manager.search(filters=filters, limit=self.ES_LIMIT).execute()["hits"]["hits"]
+        query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
+        results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
         mapped = []
         for video in results:
             try:
-                mapped.append(self.audit_utils.extract_video_data(video["_source"]))
-            except (KeyError, AttributeError):
+                mapped.append(self.audit_utils.extract_video_data(video))
+            except AttributeError:
                 continue
         return mapped
 
@@ -226,13 +246,14 @@ class BrandSafetyAudit(object):
         cursor_id = cursor_id or ""
         while True:
             query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            query &= QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
             query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
             response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("main.id",)).execute()
             results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            to_update = self._get_channels_to_update(results, check_last_updated=False)
+            to_update = self._get_channels_to_update(results, check_last_updated=True)
             yield to_update
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
@@ -255,7 +276,7 @@ class BrandSafetyAudit(object):
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            to_score = self._get_channels_to_update(results, check_last_updated=True)
+            to_score = self._get_channels_to_update(results, check_last_updated=False)
             yield to_score
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
@@ -270,15 +291,11 @@ class BrandSafetyAudit(object):
         :param channel_batch: list
         :return: list
         """
-        channels = {}
+        channels = {
+            item.main.id: self.audit_utils.extract_channel_data(item)
+            for item in channel_batch
+        }
         channels_to_update = []
-        # Exclude channels that do not have data
-        for item in channel_batch:
-            try:
-                channels[item.main.id] = self.audit_utils.extract_channel_data(item)
-            except KeyError:
-                # Ignore channels that we do not have full metadata for
-                continue
         # Get videos for channels
         videos = self._get_channel_videos(list(channels.keys()))
         videos_by_channel = defaultdict(list)
@@ -290,15 +307,12 @@ class BrandSafetyAudit(object):
         # For each channel retrieved in original query, check if it should be updated
         for _id, data in channels.items():
             should_update = False
-            if check_last_updated or not data["updated_at"] or not data["videos_scored"]:
+            if not check_last_updated or not data["updated_at"] or not data["videos_scored"]:
                 should_update = True
             else:
-                time_elapsed = datetime.today() - datetime.strptime(data["updated_at"], "%Y-%m-%d")
-                elapsed_hours = time_elapsed.seconds // 3600
-
+                hours_elapsed = (datetime.now(pytz.utc) - data["updated_at"]).seconds // 3600
                 # If last time channel was updated is greater than threshold or number of channel's videos has changed, rescore
-                if not data["updated_at"] or elapsed_hours >= self.UPDATE_TIME_THRESHOLD or data["videos_scored"] != \
-                        channel_video_counts[_id]:
+                if hours_elapsed >= self.UPDATE_TIME_THRESHOLD or data["videos_scored"] != channel_video_counts[_id]:
                     should_update = True
 
             if should_update:

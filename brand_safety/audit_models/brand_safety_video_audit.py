@@ -32,9 +32,9 @@ class BrandSafetyVideoAudit(object):
         """
         text = ", ".join([
             data["title"],
-            data["description"],
-            data["tags"] or "",
-            data["transcript"] or "",
+            data.get("description", "") or "",
+            data.get("tags", "") or "",
+            data.get("transcript", "") or "",
         ])
         detected = {
             "has_emoji": self.audit_utils.has_emoji(text),
