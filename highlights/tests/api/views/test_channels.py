@@ -208,6 +208,19 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
             response_views
         )
 
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data")
+        video = Channel(str(next(int_iterator)))
+        ChannelManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = get_url()
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data["items"][0])
+
 
 class AllowedAggregations(ExtendedEnum):
     CATEGORY = "general_data.top_category"
