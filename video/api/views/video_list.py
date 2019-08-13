@@ -1,13 +1,8 @@
 """
 Video api views module
 """
-import re
 from copy import deepcopy
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
 
-from rest_framework.fields import SerializerMethodField
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
@@ -17,12 +12,12 @@ from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
-from utils.es_components_api_utils import ESDictSerializer
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.serializers.fields import ParentDictValueField
+from video.api.serializers.video import VideoSerializer
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
@@ -40,69 +35,8 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
-REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
-
-
-class VideoSerializer(ESDictSerializer):
-    chart_data = SerializerMethodField()
-    transcript = SerializerMethodField()
-
-    def get_chart_data(self, video):
-        if not video.stats:
-            return []
-
-        chart_data = []
-        items_count = 0
-        history = zip_longest(
-            reversed(video.stats.views_history or []),
-            reversed(video.stats.likes_history or []),
-            reversed(video.stats.dislikes_history or []),
-            reversed(video.stats.comments_history or [])
-        )
-        for views, likes, dislikes, comments in history:
-            timestamp = video.stats.historydate - timedelta(
-                days=len(video.stats.views_history) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((views, likes, dislikes, comments)):
-                chart_data.append(
-                    {"created_at": "{}{}".format(str(timestamp), "Z"),
-                     "views": views,
-                     "likes": likes,
-                     "dislikes": dislikes,
-                     "comments": comments}
-                )
-        return chart_data
-
-    def get_transcript(self, video):
-        transcript = None
-        if video.captions and video.captions.items:
-            for caption in video.captions.items:
-                if caption.language_code == "en":
-                    text = caption.text
-                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
-        return transcript
-
-# todo: duplicates ChannelWithBlackListSerializer
-class VideoWithBlackListSerializer(VideoSerializer):
-    blacklist_data = ParentDictValueField("blacklist_data")
-
-    def __init__(self, instance, *args, **kwargs):
-        super(VideoWithBlackListSerializer, self).__init__(instance, *args, **kwargs)
-        self.blacklist_data = {}
-        if instance:
-            videos = instance if isinstance(instance, list) else [instance]
-            self.blacklist_data = self.fetch_blacklist_items(videos)
-
-    def fetch_blacklist_items(cls, videos):
-        doc_ids = [doc.meta.id for doc in videos]
-        blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.VIDEO_ITEM)
-        blacklist_items_by_id = {
-            item.item_id: item.to_dict() for item in blacklist_items
-        }
-        return blacklist_items_by_id
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):

@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.views.channel_list import get_chart_data
+from channel.api.serializers.channel import ChannelSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -118,9 +118,8 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = channel.to_dict()
+        result = ChannelSerializer(channel).data
         result.update({
-            "chart_data": get_chart_data(result),
             "performance": {
                 "average_views": average_views,
                 "videos": [video.to_dict(skip_empty=False) for video in videos],

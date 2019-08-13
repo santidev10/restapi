@@ -12,7 +12,6 @@ from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
-from utils.brand_safety_view_decorator import get_brand_safety_data
 from utils.lang import ExtendedEnum
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -180,17 +179,17 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("channel_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        score = 92
         channel_id = str(next(int_iterator))
         channel = Channel()
         channel.meta.id = channel_id
-        channel.brand_safety.overall_score = 92
+        channel.brand_safety.overall_score = score
         sleep(1)
-        score = get_brand_safety_data(channel.brand_safety.overall_score)
         ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
         response = self.client.get(get_url())
         self.assertEqual(
             score,
-            get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
+            response.data["items"][0]["brand_safety"]["overall_score"]
         )
 
     def test_sorting_30day_views(self):

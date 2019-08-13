@@ -1,10 +1,6 @@
 """
 Video api views module
 """
-import re
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
 
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from rest_framework.response import Response
@@ -16,55 +12,7 @@ from es_components.managers.video import VideoManager
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-
-REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
-
-
-def add_transcript(video):
-    transcript = None
-    if video.get("captions") and video["captions"].get("items"):
-        for caption in video["captions"].get("items"):
-            if caption.get("language_code") == "en":
-                text = caption.get("text")
-                transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
-    video["transcript"] = transcript
-    return video
-
-
-def add_chart_data(video):
-    if not video.get("stats"):
-        video["chart_data"] = []
-        return video
-
-    chart_data = []
-    items_count = 0
-    history = zip_longest(
-        reversed(video["stats"].get("views_history") or []),
-        reversed(video["stats"].get("likes_history") or []),
-        reversed(video["stats"].get("dislikes_history") or []),
-        reversed(video["stats"].get("comments_history") or [])
-    )
-    for views, likes, dislikes, comments in history:
-        timestamp = video["stats"].get("historydate") - timedelta(
-            days=len(video["stats"].get("views_history")) - items_count - 1)
-        timestamp = datetime.combine(timestamp, datetime.max.time())
-        items_count += 1
-        if any((views, likes, dislikes, comments)):
-            chart_data.append(
-                {"created_at": "{}{}".format(str(timestamp), "Z"),
-                 "views": views,
-                 "likes": likes,
-                 "dislikes": dislikes,
-                 "comments": comments}
-            )
-    video["chart_data"] = chart_data
-    return video
-
-
-def add_extra_field(video):
-    video = add_chart_data(video)
-    video = add_transcript(video)
-    return video
+from video.api.serializers.video import VideoSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -95,7 +43,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = add_extra_field(video.to_dict())
+        result = VideoSerializer(video)
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):

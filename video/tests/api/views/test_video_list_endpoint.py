@@ -42,3 +42,16 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
             self.assertEqual(max_page_number, response.data["max_page"])
             self.assertEqual(page_size, len(response.data["items"]))
             self.assertEqual(len(items), response.data["items_count"])
+
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data")
+        video = Video(next(int_iterator))
+        VideoManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = self.get_url()
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data["items"][0])

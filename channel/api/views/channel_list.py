@@ -1,26 +1,20 @@
 from copy import deepcopy
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
 
-from drf_yasg import openapi
-from rest_framework.fields import SerializerMethodField
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from audit_tool.models import BlacklistItem
+from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
-from utils.es_components_api_utils import ESDictSerializer
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.serializers.fields import ParentDictValueField
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
@@ -37,88 +31,9 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
 
 EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
-CHANNEL_ITEM_SCHEMA = openapi.Schema(
-    title="Youtube channel",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        description=openapi.Schema(type=openapi.TYPE_STRING),
-        id=openapi.Schema(type=openapi.TYPE_STRING),
-        subscribers=openapi.Schema(type=openapi.TYPE_STRING),
-        thumbnail_image_url=openapi.Schema(type=openapi.TYPE_STRING),
-        title=openapi.Schema(type=openapi.TYPE_STRING),
-        videos=openapi.Schema(type=openapi.TYPE_STRING),
-        views=openapi.Schema(type=openapi.TYPE_STRING),
-    ),
-)
-CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
-    title="Youtube channel paginated response",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        max_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items_count=openapi.Schema(type=openapi.TYPE_INTEGER),
-        current_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items=openapi.Schema(
-            title="Youtube channel list",
-            type=openapi.TYPE_ARRAY,
-            items=CHANNEL_ITEM_SCHEMA,
-        ),
-    ),
-)
-
 
 class UserChannelsNotAvailable(Exception):
     pass
-
-
-def get_chart_data(channel):
-    if not hasattr(channel, "stats"):
-        return None
-
-    items = []
-    items_count = 0
-    history = zip_longest(
-        reversed(channel.stats.subscribers_history or []),
-        reversed(channel.stats.views_history or [])
-    )
-    for subscribers, views in history:
-        timestamp = channel.stats.historydate - timedelta(
-            days=len(channel.stats.subscribers_history) - items_count - 1)
-        timestamp = datetime.combine(timestamp, datetime.max.time())
-        items_count += 1
-        if any((subscribers, views)):
-            items.append(
-                {"created_at": str(timestamp) + "Z",
-                 "subscribers": subscribers,
-                 "views": views}
-            )
-    return items
-
-
-class ChannelSerializer(ESDictSerializer):
-    chart_data = SerializerMethodField()
-
-    def get_chart_data(self, channel):
-        return get_chart_data(channel)
-
-
-# todo: duplicates VideoWithBlackListSerializer
-class ChannelWithBlackListSerializer(ChannelSerializer):
-    blacklist_data = ParentDictValueField("blacklist_data")
-
-    def __init__(self, instance, *args, **kwargs):
-        super(ChannelWithBlackListSerializer, self).__init__(instance, *args, **kwargs)
-        self.blacklist_data = {}
-        if instance:
-            channels = instance if isinstance(instance, list) else [instance]
-            self.blacklist_data = self.fetch_blacklist_items(channels)
-
-    def fetch_blacklist_items(cls, channels):
-        doc_ids = [doc.meta.id for doc in channels]
-        blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.CHANNEL_ITEM)
-        blacklist_items_by_id = {
-            item.item_id: item.to_dict() for item in blacklist_items
-        }
-        return blacklist_items_by_id
 
 
 class ChannelListApiView(APIViewMixin, ListAPIView):

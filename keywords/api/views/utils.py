@@ -2,12 +2,6 @@ from datetime import datetime
 from datetime import timedelta
 
 
-def add_views_history_chart(keywords):
-    for keyword in keywords:
-        keyword.views_history_chart = get_views_keyword_history_chart(keyword)
-    return keywords
-
-
 def get_views_keyword_history_chart(keyword):
     items = []
     items_count = 0

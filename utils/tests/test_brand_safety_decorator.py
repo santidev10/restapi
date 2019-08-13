@@ -1,8 +1,8 @@
 from django.test import TestCase
 
-from utils.brand_safety_view_decorator import get_brand_safety_label
-from utils.brand_safety_view_decorator import get_brand_safety_data
 import brand_safety.constants as constants
+from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.brand_safety_view_decorator import get_brand_safety_label
 
 
 class BrandSafetyDecoratorTestCase(TestCase):
@@ -99,9 +99,3 @@ class BrandSafetyDecoratorTestCase(TestCase):
         self.assertEqual(get_brand_safety_data(test_7["score"]), test_7)
         self.assertEqual(get_brand_safety_data(test_8["score"]), test_8)
         self.assertEqual(get_brand_safety_data(test_9["score"]), test_9)
-
-
-
-
-
-

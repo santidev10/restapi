@@ -5,14 +5,16 @@ from es_components.constants import Sections
 from es_components.managers import VideoManager
 from highlights.api.utils import HighlightsPaginator
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from video.api.serializers.video import VideoSerializer
 
 
 class HighlightVideosListApiView(APIViewMixin, ListAPIView):
+    serializer_class = VideoSerializer
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_highlights"),

@@ -1,23 +1,24 @@
 import re
+from distutils.util import strtobool
 
-from django.core.paginator import Paginator
-from django.core.paginator import InvalidPage
 from django.core.paginator import EmptyPage
+from django.core.paginator import InvalidPage
+from django.core.paginator import Paginator
 from django.http import Http404
-from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
-from rest_framework.response import Response
+from rest_framework.views import APIView
 
+import brand_safety.constants as constants
 from brand_safety.auditors.utils import AuditUtils
+from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
+from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
-from es_components.constants import SortDirections
-from distutils.util import strtobool
-from brand_safety.models import BadWordCategory
-import brand_safety.constants as constants
 from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.brand_safety_view_decorator import get_brand_safety_label
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
@@ -114,7 +115,7 @@ class BrandSafetyChannelAPIView(APIView):
         by_channel_filter = self.video_manager.by_channel_ids_query(channel_id)
         videos = self.video_manager.search(filters=by_channel_filter,
                                            limit=self.MAX_SIZE,
-                                           sort=[{"main.id": {"order": SortDirections.ASCENDING}}]).\
+                                           sort=[{"main.id": {"order": SortDirections.ASCENDING}}]). \
             source(includes=fields_to_load).execute().hits
         return videos
 
@@ -161,11 +162,12 @@ class BrandSafetyChannelAPIView(APIView):
         :param video:
         :return:
         """
-        brand_safety_score = get_brand_safety_data(video.brand_safety.overall_score)
+        brand_safety_score = video.brand_safety.overall_score
+        brand_safety_label = get_brand_safety_label(brand_safety_score)
         data = {
             "id": video.main.id,
             "score": video.brand_safety.overall_score,
-            "label": brand_safety_score["label"],
+            "label": brand_safety_label,
             "title": video.general_data.title,
             "thumbnail_image_url": video.general_data.thumbnail_image_url,
             "transcript": self.__get_transcript(video.captions),

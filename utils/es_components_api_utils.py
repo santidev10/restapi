@@ -3,18 +3,16 @@ import json
 import logging
 from urllib.parse import unquote
 
-
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
-from rest_framework.serializers import BaseSerializer
+from rest_framework.serializers import Serializer
 
-from audit_tool.models import BlacklistItem
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
-from utils.percentiles import get_percentiles
 from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
+from utils.percentiles import get_percentiles
 
 DEFAULT_PAGE_SIZE = 50
 
@@ -164,9 +162,13 @@ class QueryGenerator:
         return filters
 
 
-class ESDictSerializer(BaseSerializer):
+class ESDictSerializer(Serializer):
     def to_representation(self, instance):
-        return instance.to_dict()
+        extra_data = super(ESDictSerializer, self).to_representation(instance)
+        return {
+            **instance.to_dict(),
+            **extra_data,
+        }
 
 
 class ESQuerysetAdapter:
