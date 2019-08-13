@@ -224,7 +224,7 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
 
         for field in extra_fields:
             with self.subTest(field):
-                self.assertIn(field, response.data)
+                self.assertIn(field, response.data["items"][0])
 
 
 class AllowedAggregations(ExtendedEnum):

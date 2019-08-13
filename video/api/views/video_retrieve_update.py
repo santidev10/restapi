@@ -43,7 +43,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = VideoSerializer(video)
+        result = VideoSerializer(video).data
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):
