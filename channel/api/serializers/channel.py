@@ -16,7 +16,7 @@ class ChannelSerializer(ESDictSerializer):
         return get_chart_data(channel)
 
     def get_brand_safety_data(self, channel):
-        return get_brand_safety_data(channel.brand_safety)
+        return get_brand_safety_data(channel.brand_safety.overall_score)
 
 
 def get_chart_data(channel):
