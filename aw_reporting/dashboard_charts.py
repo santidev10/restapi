@@ -822,13 +822,13 @@ class DeliveryChart:
             for item in raw_stats:
                 youtube_id = item["creative_id"]
                 video = videos_map.get(youtube_id, None)
-                info = unresolved_videos_info.get(youtube_id, None)
                 item["id"] = youtube_id
                 if video:
                     item["thumbnail"] = video.general_data.thumbnail_image_url
                     item["label"] = video.general_data.title
                     item["duration"] = video.general_data.duration
                 else:
+                    info = unresolved_videos_info.get(youtube_id, {})
                     item["thumbnail"] = info.get("thumbnail_image_url")
                     item["label"] = info.get("title")
                     item["duration"] = info.get("duration")
