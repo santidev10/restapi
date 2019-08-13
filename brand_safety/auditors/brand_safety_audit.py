@@ -228,7 +228,7 @@ class BrandSafetyAudit(object):
                 break
             to_update = self._get_channels_to_update(results)
             yield to_update
-            cursor_id = results[-1]["_id"]
+            cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.channel_batch_counter += 1
