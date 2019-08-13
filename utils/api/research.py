@@ -28,6 +28,14 @@ class ESRetrieveAdapter:
         return item
 
 
+class ESEmptyResponseAdapter(ESRetrieveAdapter):
+    def get_data(self, *args, **kwargs):
+        return []
+
+    def count(self):
+        return 0
+
+
 class ResearchPaginator(PaginatorWithAggregationMixin, CustomPageNumberPaginator):
     page_size = 50
     page_size_query_param = "size"

@@ -12,6 +12,7 @@ from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESDictSerializer
@@ -223,7 +224,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY)
-        channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
+        try:
+            channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
+        except UserChannelsNotAvailable:
+            return ESEmptyResponseAdapter(ChannelManager())
+
         if channels_ids:
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids

@@ -16,6 +16,7 @@ from userprofile.models import UserChannel
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_delete_channels
 from utils.es_components_api_utils import get_fields
+from utils.es_components_cache import flush_cache
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
@@ -52,17 +53,20 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             return Response(status=HTTP_400_BAD_REQUEST)
 
         channel_id = kwargs.get("pk")
-        channel = self.channel_manager((Sections.CUSTOM_PROPERTIES, Sections.SOCIAL)).get([channel_id])
+        channel = self.channel_manager((Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)).get([channel_id])
 
         if not channel:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
 
         channel = channel[0]
-        channel.populate_custom_properties(**data)
+        emails = data.pop("emails") if data.get("emails") else None
+        if emails:
+            emails = emails.split(",")
+            channel.populate_custom_properties(emails=emails)
 
         # this solution should be used until task to update social section wouldn't be added to DMP
         # only custom_properties section can be updated from restapi
-        soical_links = data.get("social_links")
+        soical_links = data.pop("social_links") if data.get("social_links") else None
         if soical_links:
             social_data = dict(
                 facebook_link=soical_links.get("facebook"),
@@ -71,9 +75,11 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             )
             channel.populate_social(**social_data)
 
+        channel.populate_custom_properties(**data)
+
         self.channel_manager().upsert([channel])
         send_task_channel_general_data_priority((channel.main.id,), wait=True)
-
+        flush_cache()
         return self.get(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
@@ -81,9 +87,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             return self.obtain_youtube_statistics()
 
         channel_id = kwargs.get('pk')
-        allowed_sections_to_load = (Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA,
-                                    Sections.CUSTOM_PROPERTIES, Sections.STATS, Sections.ADS_STATS,
-                                    Sections.BRAND_SAFETY,)
+        allowed_sections_to_load = (
+            Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
+            Sections.STATS, Sections.ADS_STATS,
+            Sections.BRAND_SAFETY,)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
         if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
@@ -132,7 +139,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         if not UserChannel.objects.filter(channel_id=channel_id).exists():
             AuthChannel.objects.filter(channel_id=channel_id).delete()
             send_task_delete_channels(([channel_id],))
-
+        flush_cache()
         return Response()
 
     def get_video_sort_rule(self):
