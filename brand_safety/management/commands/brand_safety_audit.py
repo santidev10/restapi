@@ -1,7 +1,7 @@
 import logging
 
-from pid.decorator import pidfile
-from pid import PidFileAlreadyLockedError
+from pid import PidFile
+from pid import PidFileError
 
 from django.core.management.base import BaseCommand
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
@@ -22,14 +22,24 @@ class Command(BaseCommand):
             "--ids",
             help="Manual brand safety scoring, should provide ids to update"
         )
+        parser.add_argument(
+            "--discovery",
+            help=
+            """
+                discovery=False, only channels with no brand safety data
+                discovery=True, channels that only need to be updated
+            """
+        )
 
     def handle(self, *args, **kwargs):
+        audit_type = "discovery" if kwargs["discovery"] else "update"
+        pid_file = f"{audit_type}_brand_safety.pid"
         try:
-            self.run(*args, **kwargs)
-        except PidFileAlreadyLockedError:
+            with PidFile(pid_file, piddir=".") as pid:
+                self.run(*args, **kwargs)
+        except PidFileError:
             pass
 
-    @pidfile(piddir=".", pidname="standard_brand_safety.pid")
     def run(self, *args, **options):
         try:
             if options.get("manual"):
@@ -51,6 +61,9 @@ class Command(BaseCommand):
             raise ValueError("Unsupported manual type: {}".format(manual_type))
 
     def _handle_standard(self, *args, **options):
-        api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafety")[0]
-        standard_audit = BrandSafetyAudit(api_tracker=api_tracker)
+        if options["discovery"]:
+            api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafetyDiscovery")[0]
+        else:
+            api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafetyUpdate")[0]
+        standard_audit = BrandSafetyAudit(api_tracker=api_tracker, discovery=True)
         standard_audit.run()
