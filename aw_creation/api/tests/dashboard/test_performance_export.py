@@ -6,6 +6,7 @@ from itertools import cycle
 from itertools import product
 
 from django.test import override_settings
+from es_components.tests.utils import ESTestCase
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -58,7 +59,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.xlsx import get_sheet_from_response
 
 
-class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase):
+class DashboardPerformanceExportAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id):
         return reverse(Name.Dashboard.PERFORMANCE_EXPORT, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id,))

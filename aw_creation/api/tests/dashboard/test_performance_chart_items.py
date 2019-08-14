@@ -8,7 +8,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
 from aw_reporting.dashboard_charts import ALL_DIMENSIONS
 from aw_reporting.dashboard_charts import Dimension
-from aw_reporting.models import AWConnection, CLICKS_STATS
+from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import Ad
@@ -18,6 +18,7 @@ from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CLICKS_STATS
 from aw_reporting.models import Campaign
 from aw_reporting.models import CityStatistic
 from aw_reporting.models import GenderStatistic
@@ -33,13 +34,13 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class PerformanceChartItemsAPITestCase(ExtendedAPITestCase):
+class PerformanceChartItemsAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id, dimension):
         return reverse(Name.Dashboard.PERFORMANCE_CHART_ITEMS, [RootNamespace.AW_CREATION, Namespace.DASHBOARD],
                        args=(account_creation_id, dimension))
