@@ -124,6 +124,21 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
             response.data["aggregations"]["general_data.top_language"]["buckets"]
         )
 
+    def test_language_top_ten(self):
+        language_limit = 10
+        channels = [Channel(id=next(int_iterator)) for _ in range(language_limit + 1)]
+        for i, channel in enumerate(channels):
+            channel.populate_general_data(top_language=f"lang_{i}")
+        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+
+        url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
+        response = self.client.get(url)
+
+        self.assertEqual(
+            language_limit,
+            len(response.data["aggregations"]["general_data.top_language"]["buckets"])
+        )
+
 
 class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
