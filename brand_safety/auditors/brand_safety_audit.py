@@ -60,8 +60,8 @@ class BrandSafetyAudit(object):
         )
 
     def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 8
-        self.CHANNEL_POOL_BATCH_SIZE = 20
+        self.MAX_POOL_COUNT = 5
+        self.CHANNEL_POOL_BATCH_SIZE = 1
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self._channel_generator = self._channel_generator_discovery
 
@@ -97,6 +97,8 @@ class BrandSafetyAudit(object):
             video_audits, channel_audits = self._extract_results(results)
             # Index items
             self._index_results(video_audits, channel_audits)
+            print(f"scored {len(channel_batch)} channels")
+            print(f"scored {len(video_audits)} videos")
 
             if self.channel_batch_counter % 10 == 0:
                 # Update config in case they have been modified
@@ -155,6 +157,10 @@ class BrandSafetyAudit(object):
         if videos is None:
             videos = self._get_channel_videos(channels)
         for video in videos:
+            try:
+                video = video.to_dict()
+            except AttributeError:
+                pass
             try:
                 audit = self.audit_video(video)
                 video_audits.append(audit)
@@ -294,10 +300,13 @@ class BrandSafetyAudit(object):
         :param channel_batch: list
         :return: list
         """
-        channels = {
-            item.main.id: self.audit_utils.extract_channel_data(item)
-            for item in channel_batch
-        }
+        channels = {}
+        for item in channel_batch:
+            try:
+                channels[item.main.id] = self.audit_utils.extract_channel_data(item)
+            except AttributeError:
+                continue
+
         channels_to_update = []
         # Get videos for channels
         videos = self._get_channel_videos(list(channels.keys()))
@@ -319,9 +328,9 @@ class BrandSafetyAudit(object):
                     should_update = True
 
             if should_update:
-                data["videos"] = videos_by_channel.get(_id, [])
+                data["videos"] = list(videos_by_channel.get(_id, []))
                 channels_to_update.append(data)
-        return channels_to_update
+        return list(channels_to_update)
 
     def manual_channel_audit(self, channel_ids: iter):
         """

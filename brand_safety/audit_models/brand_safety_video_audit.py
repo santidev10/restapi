@@ -31,7 +31,7 @@ class BrandSafetyVideoAudit(object):
         :return:
         """
         text = ", ".join([
-            data["title"],
+            data.get("title", "") or "",
             data.get("description", "") or "",
             data.get("tags", "") or "",
             data.get("transcript", "") or "",

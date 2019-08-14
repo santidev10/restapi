@@ -224,12 +224,11 @@ class AuditUtils(object):
 
     @staticmethod
     def extract_channel_data(data):
-        general_data = data["general_data"]
-        main = data["main"]
+        general_data = data.general_data
         mapped = {
-            "id": main["id"],
-            "title": general_data["title"],
-            "description": general_data["description"],
+            "id": data.main.id,
+            "title": getattr(data.general_data, "title", ""),
+            "description": getattr(data.general_data, "description", ""),
             "video_tags": ",".join(getattr(general_data, "video_tags", "")),
             "videos_scored": getattr(data.brand_safety, "videos_scored", 0),
             "updated_at": getattr(data.brand_safety, "updated_at", None)
@@ -238,13 +237,12 @@ class AuditUtils(object):
 
     @staticmethod
     def extract_video_data(data):
-        general_data = data.general_data
         mapped = {
             "id": data.main.id,
             "channel_id": data.channel.id,
-            "title": general_data.title or "",
-            "description": general_data.description or "",
-            "tags": ",".join(general_data.tags or ""),
+            "title": getattr(data.general_data, "title", ""),
+            "description": getattr(data.general_data, "description", ""),
+            "tags": ",".join(getattr(data.general_data, "tags", "") or ""),
         }
         try:
             mapped["transcript"] = data.captions.text

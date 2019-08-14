@@ -35,9 +35,9 @@ class BrandSafetyChannelAudit(object):
         :return:
         """
         text = ", ".join([
-            data["title"],
-            data["description"],
-            data["video_tags"] or "",
+            data.get("title", "") or "",
+            data.get("description", "") or "",
+            data.get("video_tags", "") or "",
             ])
         detected = {
             "has_emoji": self.audit_utils.has_emoji(text),
