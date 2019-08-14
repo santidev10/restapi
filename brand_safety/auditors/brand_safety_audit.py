@@ -66,7 +66,7 @@ class BrandSafetyAudit(object):
         self._channel_generator = self._channel_generator_discovery
 
     def _set_update_config(self):
-        self.MAX_POOL_COUNT = 3
+        self.MAX_POOL_COUNT = 2
         self.CHANNEL_POOL_BATCH_SIZE = 10
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self._channel_generator = self._channel_generator_update
@@ -210,7 +210,7 @@ class BrandSafetyAudit(object):
         """
         all_results = []
         mapped = []
-        for batch in self.audit_utils.batch(channel_ids, 20):
+        for batch in self.audit_utils.batch(channel_ids, 3):
             query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
             results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
             all_results.extend(results)
