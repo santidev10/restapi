@@ -257,7 +257,7 @@ class BrandSafetyAudit(object):
             query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
             query &= QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
             query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
-            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("main.id",)).execute()
+            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
             results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
@@ -280,7 +280,7 @@ class BrandSafetyAudit(object):
             query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
             query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
             query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
-            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("stats.subscribers",)).execute()
+            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
             results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
