@@ -126,10 +126,10 @@ class HighlightVideoAggregationsApiViewTestCase(HighlightVideoBaseApiViewTestCas
 
     def test_language_top_ten(self):
         language_limit = 10
-        for i in range(language_limit + 1):
-            video = Video(id=next(int_iterator))
+        videos = [Video(id=next(int_iterator)) for _ in range(language_limit + 1)]
+        for i, video in enumerate(videos):
             video.populate_general_data(language=f"lang_{i}")
-            VideoManager(Sections.GENERAL_DATA).upsert([video])
+        VideoManager(Sections.GENERAL_DATA).upsert(videos)
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
         response = self.client.get(url)

@@ -16,7 +16,7 @@ from utils.permissions import user_has_permission
 class HighlightsChannelsPaginator(HighlightsPaginator):
     def _get_response_data(self, data):
         response_data = super()._get_response_data(data)
-        language_aggregation = response_data.get("aggregations", {}).get("general_data.top_language")
+        language_aggregation = (response_data.get("aggregations") or {}).get("general_data.top_language")
         if language_aggregation:
             language_aggregation["buckets"] = language_aggregation.get("buckets", [])[:10]
         return response_data

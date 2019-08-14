@@ -126,10 +126,10 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
 
     def test_language_top_ten(self):
         language_limit = 10
-        for i in range(language_limit + 1):
-            channel = Channel(id=next(int_iterator))
+        channels = [Channel(id=next(int_iterator)) for _ in range(language_limit + 1)]
+        for i, channel in enumerate(channels):
             channel.populate_general_data(top_language=f"lang_{i}")
-            ChannelManager(Sections.GENERAL_DATA).upsert([channel])
+        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
         response = self.client.get(url)

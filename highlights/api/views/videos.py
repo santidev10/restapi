@@ -16,7 +16,7 @@ from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSe
 class HighlightsVideosPaginator(HighlightsPaginator):
     def _get_response_data(self, data):
         response_data = super()._get_response_data(data)
-        language_aggregation = response_data.get("aggregations", {}).get("general_data.language")
+        language_aggregation = (response_data.get("aggregations") or {}).get("general_data.language")
         if language_aggregation:
             language_aggregation["buckets"] = language_aggregation.get("buckets", [])[:10]
         return response_data
