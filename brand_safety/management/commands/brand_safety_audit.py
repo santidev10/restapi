@@ -54,7 +54,7 @@ class Command(BaseCommand):
     def _handle_manual(self, *args, **options):
         manual_type = options["manual"]
         manual_ids = options["ids"].strip().split(",")
-        standard_audit = BrandSafetyAudit()
+        standard_audit = BrandSafetyAudit(**options)
         if manual_type == "video":
             standard_audit.manual_video_audit(manual_ids)
         elif manual_type == "channel":

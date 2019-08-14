@@ -342,7 +342,7 @@ class BrandSafetyAudit(object):
         channels = self.audit_utils.get_items(channel_ids, self.channel_manager)
         for item in channels:
             try:
-                mapped = self.audit_utils.extract_channel_data(item["_source"])
+                mapped = self.audit_utils.extract_channel_data(item)
                 mapped["videos"] = self._get_channel_videos([mapped["id"]])
                 to_audit.append(mapped)
             except KeyError:
@@ -365,7 +365,7 @@ class BrandSafetyAudit(object):
         mapped = []
         for item in videos:
             try:
-                mapped.append(self.audit_utils.extract_video_data(item["_source"]))
+                mapped.append(self.audit_utils.extract_video_data(item))
             except KeyError:
                 continue
         video_audits = self.audit_videos(videos=mapped)
