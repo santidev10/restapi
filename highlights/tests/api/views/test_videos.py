@@ -215,7 +215,7 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
 
     def test_extra_fields(self):
         self.create_admin_user()
-        extra_fields = ("brand_safety_data", "chart_data", "transcript")
+        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data")
         video = Video(str(next(int_iterator)))
         VideoManager([Sections.GENERAL_DATA]).upsert([video])
 

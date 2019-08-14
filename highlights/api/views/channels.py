@@ -1,7 +1,7 @@
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from highlights.api.utils import HighlightsPaginator
@@ -14,7 +14,7 @@ from utils.permissions import user_has_permission
 
 
 class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
-    serializer_class = ChannelSerializer
+    serializer_class = ChannelWithBlackListSerializer
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_highlights"),

@@ -210,7 +210,7 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
     def test_extra_fields(self):
         self.create_admin_user()
-        extra_fields = ("brand_safety_data", "chart_data")
+        extra_fields = ("brand_safety_data", "chart_data", "blacklist_data")
         video = Channel(str(next(int_iterator)))
         ChannelManager([Sections.GENERAL_DATA]).upsert([video])
 
