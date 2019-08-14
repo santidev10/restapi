@@ -60,8 +60,8 @@ class BrandSafetyAudit(object):
         )
 
     def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 5
-        self.CHANNEL_POOL_BATCH_SIZE = 1
+        self.MAX_POOL_COUNT = 8
+        self.CHANNEL_POOL_BATCH_SIZE = 20
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self._channel_generator = self._channel_generator_discovery
 
