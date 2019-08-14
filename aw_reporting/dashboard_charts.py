@@ -53,6 +53,8 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
+from es_components.constants import Sections
+from es_components.managers import VideoManager
 from singledb.connector import SingleDatabaseApiConnector
 from singledb.connector import SingleDatabaseApiConnectorException
 from utils.datetime import as_datetime
@@ -808,29 +810,29 @@ class DeliveryChart:
             date=self.params['date']
         )
         if raw_stats:
-            connector = SingleDatabaseApiConnector()
-            try:
-                ids = [s['creative_id'] for s in raw_stats]
-                items = connector.get_videos_base_info(ids)
-            except SingleDatabaseApiConnectorException as e:
-                logger.error(e)
-                videos_info = {}
-            else:
-                videos_info = {i['id']: i for i in items}
+            ids = [s["creative_id"] for s in raw_stats]
+            manager = VideoManager(Sections.GENERAL_DATA)
+            videos_map = {}
+            for video in manager.get(ids=ids, skip_none=True):
+                videos_map[video.main.id] = video
 
-            unresolved_ids = list(set(ids) - set(videos_info.keys()))
-            if unresolved_ids:
-                unresolved_videos_info = resolve_videos_info(unresolved_ids)
-                videos_info = {**videos_info, **unresolved_videos_info}
+            unresolved_ids = list(set(ids) - set(videos_map.keys()))
+            unresolved_videos_info = resolve_videos_info(unresolved_ids) if unresolved_ids else {}
 
             for item in raw_stats:
-                youtube_id = item['creative_id']
-                info = videos_info.get(youtube_id, {})
-                item['id'] = youtube_id
-                item['thumbnail'] = info.get('thumbnail_image_url')
-                item['label'] = info.get('title', youtube_id)
-                item['duration'] = info.get('duration')
-                del item['creative_id']
+                youtube_id = item["creative_id"]
+                video = videos_map.get(youtube_id, None)
+                item["id"] = youtube_id
+                if video:
+                    item["thumbnail"] = video.general_data.thumbnail_image_url
+                    item["label"] = video.general_data.title
+                    item["duration"] = video.general_data.duration
+                else:
+                    info = unresolved_videos_info.get(youtube_id, {})
+                    item["thumbnail"] = info.get("thumbnail_image_url")
+                    item["label"] = info.get("title")
+                    item["duration"] = info.get("duration")
+                del item["creative_id"]
                 result[youtube_id].append(item)
         else:
             group_by = ['ad__creative_name']
@@ -933,27 +935,26 @@ class DeliveryChart:
             YTVideoStatistic.objects.all(),
             'yt_id'
         )
-        connector = SingleDatabaseApiConnector()
-        try:
-            ids = [s['yt_id'] for s in raw_stats]
-            items = connector.get_videos_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            videos_info = {}
-        else:
-            videos_info = {i['id']: i for i in items}
+
+        ids = [i["yt_id"] for i in raw_stats]
+        manager = VideoManager(Sections.GENERAL_DATA)
+        videos_map = {}
+        for video in manager.get_or_create(ids=ids):
+            videos_map[video.main.id] = video
 
         result = defaultdict(list)
         for item in raw_stats:
-            youtube_id = item['yt_id']
-            del item['yt_id']
-            info = videos_info.get(youtube_id, {})
-            item['id'] = youtube_id
-            item['label'] = info.get('title', youtube_id)
-            item['thumbnail'] = info.get('thumbnail_image_url')
-            item['duration'] = info.get('duration')
-            title = info.get('title', youtube_id)
+            youtube_id = item["yt_id"]
+            del item["yt_id"]
+            video = videos_map.get(youtube_id)
+            item["id"] = youtube_id
+            if video.general_data:
+                item["label"] = video.general_data.title
+                item["thumbnail"] = video.general_data.thumbnail_image_url
+                item["duration"] = video.general_data.duration
+            title = video.general_data.title if video.general_data else youtube_id
             result[title].append(item)
+
         return result
 
     def _get_channel_data(self):
