@@ -69,7 +69,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         if query_params.get("from_channel"):
             channel_id = query_params.get("from_channel")
             channel = ChannelManager().model.get(channel_id, _source=(f"{Sections.GENERAL_DATA}.video_tags"))
-            keyword_ids = channel.general_data.video_tags
+            keyword_ids = list(channel.general_data.video_tags)
 
             if keyword_ids:
                 self.request.query_params._mutable = True
