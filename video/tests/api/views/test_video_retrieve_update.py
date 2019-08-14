@@ -1,19 +1,17 @@
-import json
 from unittest.mock import patch
 
-import requests
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_404_NOT_FOUND
 
+from es_components.constants import Sections
+from es_components.managers import VideoManager
+from es_components.models.video import Video
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import Permissions
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.response import MockResponse
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.test_case import ExtendedAPITestCase
 from video.api.urls.names import Name
-from utils.utittests.es_components_patcher import SearchDSLPatcher
-
-from es_components.models.video import Video
 
 
 class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
@@ -42,7 +40,6 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
 
         with patch("es_components.managers.video.VideoManager.model.get",
                    return_value=Video(id=video_id, ads_stats={"clicks_count": 100})):
-
             url = self._get_url(video_id)
             response = self.client.get(url)
 
@@ -55,7 +52,19 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase):
 
         with patch("es_components.managers.video.VideoManager.model.get",
                    return_value=None):
-
             url = self._get_url(missing_video_id)
             response = self.client.get(url)
             self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data", "transcript")
+        video = Video(str(next(int_iterator)))
+        VideoManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = self._get_url(video.main.id)
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data)

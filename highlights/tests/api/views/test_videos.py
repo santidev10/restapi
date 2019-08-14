@@ -1,7 +1,6 @@
 from time import sleep
 
 from django.contrib.auth.models import Group
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -13,12 +12,10 @@ from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
-from utils.brand_safety_view_decorator import get_brand_safety_data
 from utils.lang import ExtendedEnum
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
-from video.tests.api.views.test_video_export import VideoBrandSafetyDoc
 
 
 class HighlightVideoPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
@@ -183,22 +180,21 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
         user.add_custom_user_permission("video_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         video_id = str(next(int_iterator))
+        score = 92
         video = Video(**{
             "meta": {
                 "id": video_id
             },
             "brand_safety": {
-                "overall_score": 92
+                "overall_score": score
             }
         })
         sleep(1)
-        score = get_brand_safety_data(video.brand_safety.overall_score)
         VideoManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([video])
-        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=VideoBrandSafetyDoc._index._name):
-            response = self.client.get(get_url())
+        response = self.client.get(get_url())
         self.assertEqual(
             score,
-            get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
+            response.data["items"][0]["brand_safety"]["overall_score"]
         )
 
     def test_sorting_30day_views(self):
@@ -216,6 +212,19 @@ class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
             list(sorted(views, reverse=True)),
             response_views
         )
+
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data", "transcript", "blacklist_data")
+        video = Video(str(next(int_iterator)))
+        VideoManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = get_url()
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data["items"][0])
 
 
 class AllowedAggregations(ExtendedEnum):
