@@ -11,9 +11,9 @@ import brand_safety.constants as constants
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
-from segment.models.persistent.constants import PersistentSegmentType
 from segment.utils import get_persistent_segment_model_by_type
 from utils.permissions import user_has_permission
+from utils.brand_safety_view_decorator import get_brand_safety_data
 
 
 class PersistentSegmentPreviewAPIView(APIView):
@@ -70,7 +70,12 @@ class PersistentSegmentPreviewAPIView(APIView):
         manager = ChannelManager(self.SECTIONS) if segment_type == constants.CHANNEL else VideoManager(self.SECTIONS)
         query = manager.ids_query(related_ids)
         data = manager.search(query).execute().hits
-        preview_data = [item.to_dict() for item in data]
+        preview_data = []
+        for item in data:
+            score = getattr(item.brand_safety, "overall_score", None)
+            mapped = item.to_dict()
+            mapped["brand_safety_data"] = get_brand_safety_data(score)
+            preview_data.append(mapped)
         result = {
             "items": preview_data,
             "items_count": len(preview_data),
