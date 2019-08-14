@@ -124,6 +124,21 @@ class HighlightVideoAggregationsApiViewTestCase(HighlightVideoBaseApiViewTestCas
             response.data["aggregations"]["general_data.language"]["buckets"]
         )
 
+    def test_language_top_ten(self):
+        language_limit = 10
+        videos = [Video(id=next(int_iterator)) for _ in range(language_limit + 1)]
+        for i, video in enumerate(videos):
+            video.populate_general_data(language=f"lang_{i}")
+        VideoManager(Sections.GENERAL_DATA).upsert(videos)
+
+        url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
+        response = self.client.get(url)
+
+        self.assertEqual(
+            language_limit,
+            len(response.data["aggregations"]["general_data.language"]["buckets"])
+        )
+
 
 class HighlightVideoItemsApiViewTestCase(HighlightVideoBaseApiViewTestCase):
 
