@@ -13,6 +13,15 @@ from utils.permissions import user_has_permission
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 
+class HighlightsVideosPaginator(HighlightsPaginator):
+    def _get_response_data(self, data):
+        response_data = super()._get_response_data(data)
+        language_aggregation = (response_data.get("aggregations") or {}).get("general_data.language")
+        if language_aggregation:
+            language_aggregation["buckets"] = language_aggregation.get("buckets", [])[:10]
+        return response_data
+
+
 class HighlightVideosListApiView(APIViewMixin, ListAPIView):
     serializer_class = VideoWithBlackListSerializer
     permission_classes = (
@@ -22,7 +31,7 @@ class HighlightVideosListApiView(APIViewMixin, ListAPIView):
         ),
     )
 
-    pagination_class = HighlightsPaginator
+    pagination_class = HighlightsVideosPaginator
     ordering_fields = (
         "stats.last_30day_views:desc",
         "stats.last_7day_views:desc",

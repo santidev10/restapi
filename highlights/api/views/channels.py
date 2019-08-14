@@ -13,6 +13,15 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
+class HighlightsChannelsPaginator(HighlightsPaginator):
+    def _get_response_data(self, data):
+        response_data = super()._get_response_data(data)
+        language_aggregation = (response_data.get("aggregations") or {}).get("general_data.top_language")
+        if language_aggregation:
+            language_aggregation["buckets"] = language_aggregation.get("buckets", [])[:10]
+        return response_data
+
+
 class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
     serializer_class = ChannelWithBlackListSerializer
     permission_classes = (
@@ -21,7 +30,7 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
             IsAdminUser
         ),
     )
-    pagination_class = HighlightsPaginator
+    pagination_class = HighlightsChannelsPaginator
     ordering_fields = (
         "stats.last_30day_views:desc",
         "stats.last_7day_views:desc",
