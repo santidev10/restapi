@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
+import brand_safety.constants as constants
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
@@ -24,7 +25,7 @@ class PersistentSegmentPreviewAPIView(APIView):
     )
     MAX_PAGE_SIZE = 10
     DEFAULT_PAGE_SIZE = 5
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS)
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def get(self, request, **kwargs):
         """
@@ -36,17 +37,6 @@ class PersistentSegmentPreviewAPIView(APIView):
         :return:
         """
         segment_type = kwargs["segment_type"]
-        preview_config = {
-            PersistentSegmentType.CHANNEL: {
-                "manager": ChannelManager(self.SECTIONS),
-                "mapper": self._map_channel_data
-            },
-            PersistentSegmentType.VIDEO: {
-                "manager": VideoManager(self.SECTIONS),
-                "mapper": self._map_video_data
-            }
-        }
-        config = preview_config[segment_type]
         page = request.query_params.get("page", 1)
         size = request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
         try:
@@ -77,10 +67,10 @@ class PersistentSegmentPreviewAPIView(APIView):
             preview_page = paginator.page(page)
         related_ids = [item.related_id for item in preview_page.object_list]
 
-        manager = config["manager"]
+        manager = ChannelManager(self.SECTIONS) if segment_type == constants.CHANNEL else VideoManager(self.SECTIONS)
         query = manager.ids_query(related_ids)
         data = manager.search(query).execute().hits
-        preview_data = [config["mapper"](item) for item in data]
+        preview_data = [item.to_dict() for item in data]
         result = {
             "items": preview_data,
             "items_count": len(preview_data),
@@ -88,40 +78,3 @@ class PersistentSegmentPreviewAPIView(APIView):
             "max_page": paginator.num_pages
         }
         return Response(status=HTTP_200_OK, data=result)
-
-    def _map_channel_data(self, data):
-        """
-        Map Elasticsearch video data
-        :param data: Elasticsearch dsl Attrdict
-        :return: dict
-        """
-        mapped = {
-            "id": data.main.id,
-            "title": getattr(data.general_data, "title", ""),
-            "category": getattr(data.general_data, "top_category", ""),
-            "views": getattr(data.stats, "views", ""),
-            "likes": getattr(data.stats, "observed_videos_likes", ""),
-            "dislikes": getattr(data.stats, "observed_videos_dislikes", ""),
-            "language": getattr(data.general_data, "top_language", ""),
-            "thumbnail_image_url": getattr(data.general_data, "thumbnail_image_url", ""),
-        }
-        return mapped
-
-    def _map_video_data(self, data):
-        """
-        Map Elasticsearch channel data
-        :param data: Elasticsearch dsl Attrdict
-        :return: dict
-        """
-        mapped = {
-            "id": data.main.id,
-            "title": getattr(data.general_data, "title", ""),
-            "category": getattr(data.general_data, "category", ""),
-            "views": getattr(data.stats, "views", ""),
-            "likes": getattr(data.stats, "likes", ""),
-            "dislikes": getattr(data.stats, "dislikes", ""),
-            "language": getattr(data.general_data, "language", ""),
-            "thumbnail_image_url": getattr(data.general_data, "thumbnail_image_url", ""),
-        }
-        return mapped
-
