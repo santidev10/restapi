@@ -1,22 +1,18 @@
-import re
 from copy import deepcopy
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
 
-from drf_yasg import openapi
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
-from audit_tool.models import BlacklistItem
+from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESEmptyResponseAdapter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -35,107 +31,9 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
 
 EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
-CHANNEL_ITEM_SCHEMA = openapi.Schema(
-    title="Youtube channel",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        description=openapi.Schema(type=openapi.TYPE_STRING),
-        id=openapi.Schema(type=openapi.TYPE_STRING),
-        subscribers=openapi.Schema(type=openapi.TYPE_STRING),
-        thumbnail_image_url=openapi.Schema(type=openapi.TYPE_STRING),
-        title=openapi.Schema(type=openapi.TYPE_STRING),
-        videos=openapi.Schema(type=openapi.TYPE_STRING),
-        views=openapi.Schema(type=openapi.TYPE_STRING),
-    ),
-)
-CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
-    title="Youtube channel paginated response",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        max_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items_count=openapi.Schema(type=openapi.TYPE_INTEGER),
-        current_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items=openapi.Schema(
-            title="Youtube channel list",
-            type=openapi.TYPE_ARRAY,
-            items=CHANNEL_ITEM_SCHEMA,
-        ),
-    ),
-)
-
 
 class UserChannelsNotAvailable(Exception):
     pass
-
-
-# todo: refactor/remove it
-def adapt_response_channel_data(response_data, user):
-    """
-    Adapt SDB response format
-    """
-    user_channels = set(user.channels.values_list(
-        "channel_id", flat=True))
-    items = response_data.get("items", [])
-    for item in items:
-        if "channel_id" in item:
-            item["id"] = item.get("channel_id", "")
-            item["is_owner"] = item["channel_id"] in user_channels
-            del item["channel_id"]
-        if "country" in item and item["country"] is None:
-            item["country"] = ""
-        if "history_date" in item and item["history_date"]:
-            item["history_date"] = item["history_date"][:10]
-
-        is_own = item.get("is_owner", False)
-        if user.has_perm('userprofile.channel_audience') \
-                or is_own:
-            pass
-        else:
-            item['has_audience'] = False
-            item["verified"] = False
-            item.pop('audience', None)
-            item['brand_safety'] = None
-            item['safety_chart_data'] = None
-            item.pop('traffic_sources', None)
-
-        if not user.is_staff:
-            item.pop("cms__title", None)
-
-        for field in ["youtube_published_at", "updated_at"]:
-            if field in item and item[field]:
-                item[field] = re.sub(
-                    "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+|)$",
-                    "\g<0>Z",
-                    item[field]
-                )
-    return response_data
-
-
-def add_chart_data(channels):
-    """ Generate and add chart data for channel """
-    for channel in channels:
-        if not hasattr(channel, "stats"):
-            continue
-
-        items = []
-        items_count = 0
-        history = zip_longest(
-            reversed(channel.stats.subscribers_history or []),
-            reversed(channel.stats.views_history or [])
-        )
-        for subscribers, views in history:
-            timestamp = channel.stats.historydate - timedelta(
-                days=len(channel.stats.subscribers_history) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((subscribers, views)):
-                items.append(
-                    {"created_at": str(timestamp) + "Z",
-                     "subscribers": subscribers,
-                     "views": views}
-                )
-        channel.chart_data = items
-    return channels
 
 
 class ChannelListApiView(APIViewMixin, ListAPIView):
@@ -146,7 +44,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             IsAdminUser
         ),
     )
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
         "stats.last_30day_subscribers:desc",
@@ -197,8 +95,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "analytics.gender_other:min",
         "analytics:exists",
         "analytics:missing",
-        "custom_properties.emails:exists",
-        "custom_properties.emails:missing",
+        "general_data.emails:exists",
+        "general_data.emails:missing",
         "custom_properties.preferred",
         "general_data.country",
         "general_data.top_category",
@@ -231,7 +129,12 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
     )
-    blacklist_data_type = BlacklistItem.CHANNEL_ITEM
+
+    def get_serializer_class(self):
+        if self.request and self.request.user and (
+                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+            return ChannelWithBlackListSerializer
+        return ChannelSerializer
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
@@ -248,13 +151,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
-        if self.request and self.request.user and (self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
-            add_extra_fields_funcs = (add_chart_data, self.add_blacklist_data)
-        else:
-            add_extra_fields_funcs = (add_chart_data,)
-
-        result = ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections)) \
-            .extra_fields_func(add_extra_fields_funcs)
+        result = ESQuerysetAdapter(ChannelManager(sections))
 
         return result
 

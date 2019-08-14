@@ -1,19 +1,17 @@
 import csv
 from datetime import datetime
-from time import sleep
 from unittest.mock import patch
 
 import pytz
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from channel.api.urls.names import ChannelPathName
-from channel.tests.api.test_channel_list_endpoint import ChannelBrandSafetyDoc
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
+from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.elasticsearch import ElasticSearchConnector
@@ -122,7 +120,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             ctr_v=23.4,
             average_cpv=34.5,
         )
-        manager = ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS))
+        channel.brand_safety = ChannelSectionBrandSafety(overall_score=12)
+        manager = ChannelManager(
+            sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY))
         manager.upsert([channel])
 
         response = self._request()
@@ -142,7 +142,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.stats.sentiment,
             channel.stats.engage_rate,
             channel.stats.last_video_published_at.isoformat().replace("+00:00", "Z"),
-            "",
+            channel.brand_safety.overall_score,
             channel.ads_stats.video_view_rate,
             channel.ads_stats.ctr,
             channel.ads_stats.ctr_v,
@@ -170,32 +170,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_brand_safety(self):
-        self.create_admin_user()
-        channel_id = str(next(int_iterator))
-        channel = Channel(channel_id)
-        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channel])
-        brand_safety = ChannelBrandSafetyDoc(
-            meta={'id': channel_id},
-            overall_score=12.3
-        )
-        brand_safety.save()
-        sleep(1)
-
-        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self._request()
-
-            csv_data = get_data_from_csv_response(response)
-            headers = next(csv_data)
-            data = next(csv_data)
-
-        brand_safety_index = headers.index("brand_safety_score")
-        self.assertEqual(
-            str(brand_safety.overall_score),
-            data[brand_safety_index]
-        )
-
-    def test_request_brand_safety_by_batches(self):
+    def test_request_brand_safety_from_the_same_source(self):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
@@ -206,7 +181,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             csv_data = get_data_from_csv_response(response)
             list(csv_data)
 
-            es_mock.assert_called_once()
+            es_mock.assert_not_called()
 
     def test_filter_ids(self):
         self.create_admin_user()

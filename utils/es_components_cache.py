@@ -15,19 +15,20 @@ CACHE_KEY_PREFIX = "restapi.ESQueryset"
 
 def cached_method(timeout):
     def wrapper(method):
-        if not settings.ES_CACHE_ENABLED:
-            return method
-
         def wrapped(obj, *args, **kwargs):
             options = (args, kwargs)
             part = method.__name__
-            data = get_from_cache(obj, part=part, options=options)
+
+            data = get_from_cache(obj, part=part, options=options) \
+                if settings.ES_CACHE_ENABLED \
+                else None
             if data is None:
                 data = method(obj, *args, **kwargs)
                 set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
             return data
 
         return wrapped
+
     return wrapper
 
 

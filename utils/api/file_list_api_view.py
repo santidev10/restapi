@@ -1,8 +1,6 @@
 from django.http import FileResponse
 from rest_framework.generics import ListAPIView
 
-from utils.utils import chunks_generator
-
 
 class FileListApiView(ListAPIView):
     filename = None
@@ -10,8 +8,8 @@ class FileListApiView(ListAPIView):
 
     def data_generator(self, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        for batch in chunks_generator(queryset, size=self.batch_size):
-            yield from self.get_serializer(list(batch), many=True).data
+        for item in queryset:
+            yield self.get_serializer(item).data
 
     def list(self, request, *args, **kwargs):
         renderer, content_type = self.perform_content_negotiation(request)

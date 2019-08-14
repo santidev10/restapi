@@ -5,24 +5,21 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from channel.api.mixins import ChannelYoutubeStatisticsMixin
+from channel.api.serializers.channel import ChannelSerializer
+from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
-
-from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.models import AuthChannel
 from userprofile.models import UserChannel
-from utils.celery.dmp_celery import send_task_delete_channels
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
+from utils.celery.dmp_celery import send_task_delete_channels
+from utils.es_components_api_utils import get_fields
+from utils.es_components_cache import flush_cache
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.brand_safety_view_decorator import add_brand_safety_data
-from utils.es_components_api_utils import get_fields
-from utils.es_components_cache import flush_cache
-from channel.api.views.channel_list import add_chart_data
-
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -85,7 +82,6 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         flush_cache()
         return self.get(*args, **kwargs)
 
-    @add_brand_safety_data
     def get(self, request, *args, **kwargs):
         if self.request.user.is_staff and self.request.query_params.get("from_youtube") == "1":
             return self.obtain_youtube_statistics()
@@ -93,10 +89,11 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         channel_id = kwargs.get('pk')
         allowed_sections_to_load = (
             Sections.MAIN, Sections.SOCIAL, Sections.GENERAL_DATA, Sections.CUSTOM_PROPERTIES,
-            Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY,)
+            Sections.STATS, Sections.ADS_STATS,
+            Sections.BRAND_SAFETY,)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
-        if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience")\
+        if channel_id in user_channels or self.request.user.has_perm("userprofile.channel_audience") \
                 or self.request.user.is_staff:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
@@ -121,7 +118,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = add_chart_data([channel])[0].to_dict()
+        result = ChannelSerializer(channel).data
         result.update({
             "performance": {
                 "average_views": average_views,
