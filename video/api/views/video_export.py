@@ -1,4 +1,3 @@
-from django.conf import settings
 from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
@@ -11,14 +10,12 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from utils.api.file_list_api_view import FileListApiView
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
-from utils.brand_safety_view_decorator import get_brand_safety_items
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.datetime import time_instance
 from utils.es_components_api_utils import APIViewMixin
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from utils.serializers.fields import ParentDictValueField
 from video.api.views.video_list import EXISTS_FILTER
 from video.api.views.video_list import MATCH_PHRASE_FILTER
 from video.api.views.video_list import RANGE_FILTER
@@ -39,19 +36,11 @@ class VideoListExportSerializer(Serializer):
     dislikes = IntegerField(source="stats.dislikes")
     comments = IntegerField(source="stats.comments")
     youtube_published_at = DateTimeField(source="general_data.youtube_published_at")
-    brand_safety_score = ParentDictValueField("brand_safety_scores", source="main.id", property_key="overall_score")
+    brand_safety_score = IntegerField(source="brand_safety.overall_score")
     video_view_rate = FloatField(source="ads_stats.video_view_rate")
     ctr = FloatField(source="ads_stats.ctr")
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
-
-    def __init__(self, instance, *args, **kwargs):
-        super(VideoListExportSerializer, self).__init__(instance, *args, **kwargs)
-        self.brand_safety_scores = {}
-        if instance:
-            items = instance if isinstance(instance, list) else [instance]
-            ids = [item.main.id for item in items]
-            self.brand_safety_scores = get_brand_safety_items(ids, settings.BRAND_SAFETY_VIDEO_INDEX)
 
 
 class VideoCSVRendered(CSVStreamingRenderer):
@@ -80,7 +69,7 @@ class VideoListExportApiView(APIViewMixin, FileListApiView):
     )
     serializer_class = VideoListExportSerializer
     renderer_classes = (VideoCSVRendered,)
-    filter_backends = (OrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (OrderingFilter, ESFilterBackend)
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
@@ -92,9 +81,10 @@ class VideoListExportApiView(APIViewMixin, FileListApiView):
         return "Videos export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
 
     def get_queryset(self):
-        return ESQuerysetWithBrandSafetyAdapter(VideoManager((
+        return ESQuerysetAdapter(VideoManager((
             Sections.MAIN,
             Sections.GENERAL_DATA,
             Sections.STATS,
             Sections.ADS_STATS,
+            Sections.BRAND_SAFETY,
         )))
