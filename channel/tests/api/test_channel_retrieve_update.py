@@ -6,19 +6,22 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from channel.api.urls.names import ChannelPathName
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.models.channel import Channel
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
 from utils.utittests.celery import mock_send_task
+from utils.utittests.es_components_patcher import SearchDSLPatcher
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.es_components_patcher import SearchDSLPatcher
-
-from es_components.models.channel import Channel
 
 
-class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
+class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, channel_id):
         return reverse(ChannelPathName.CHANNEL, [Namespace.CHANNEL], args=(channel_id,))
 
@@ -40,7 +43,6 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
                    return_value=[Channel(id=channel_id)]), \
              patch("es_components.managers.channel.ChannelManager.model.get",
                    return_value=Channel(id=channel_id)):
-
             url = self._get_url(channel_id)
             response = self.client.put(url, dict())
 
@@ -60,7 +62,6 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
                    return_value=[Channel(id=channel_id)]), \
              patch("es_components.managers.channel.ChannelManager.model.get",
                    return_value=Channel(id=channel_id)):
-
             url = self._get_url(channel_id)
             response = self.client.put(url, dict())
 
@@ -88,7 +89,6 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         with patch("es_components.managers.channel.ChannelManager.model.get",
                    return_value=Channel(id=channel_id)):
-
             url = self._get_url(channel_id)
             response = self.client.get(url)
 
@@ -108,7 +108,6 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         with patch("es_components.managers.channel.ChannelManager.model.get",
                    return_value=Channel(id=channel_id, ads_stats={"clicks_count": 100})):
-
             url = self._get_url(channel_id)
             response = self.client.get(url)
 
@@ -160,3 +159,16 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         self.assertFalse(delete_task.called)
+
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data")
+        channel = Channel(str(next(int_iterator)))
+        ChannelManager([Sections.GENERAL_DATA]).upsert([channel])
+
+        url = self._get_url(channel.main.id)
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data)

@@ -1,18 +1,20 @@
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from highlights.api.utils import HighlightsPaginator
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 
 class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
+    serializer_class = ChannelWithBlackListSerializer
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_highlights"),
@@ -33,11 +35,11 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
         "general_data.top_category",
         "general_data.top_language",
     )
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY,)
         if self.request.user.is_staff:
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(ChannelManager(sections))
+        return ESQuerysetAdapter(ChannelManager(sections))
