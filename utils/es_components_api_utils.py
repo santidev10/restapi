@@ -308,6 +308,10 @@ class ESFilterBackend(BaseFilterBackend):
         return fields
 
     def filter_queryset(self, request, queryset, view):
+        from utils.api.research import ESEmptyResponseAdapter
+
+        if isinstance(queryset, ESEmptyResponseAdapter):
+            return []
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
