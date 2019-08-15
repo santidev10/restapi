@@ -24,13 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentListGenerator(object):
-    CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
-    VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
     CHANNEL_SCORE_FAIL_THRESHOLD = 89
     VIDEO_SCORE_FAIL_THRESHOLD = 89
-    # Size of batch items retrieved from sdb
-    CHANNEL_BATCH_LIMIT = 300
-    VIDEO_BATCH_LIMIT = 600
     # Whitelist / blacklist requirements
     MINIMUM_CHANNEL_SUBSCRIBERS = 1000
     MINIMUM_VIDEO_VIEWS = 1000
@@ -49,7 +44,7 @@ class SegmentListGenerator(object):
     # Whether to sort items by views or subscribers for master segment related items
     RELATED_SEGMENT_SORT_KEY = None
     PK_NAME = None
-    BATCH_LIMIT = None
+    BATCH_LIMIT = 1000
 
     def __init__(self, *_, **kwargs):
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
@@ -60,21 +55,15 @@ class SegmentListGenerator(object):
             self.is_manual = False
         except KeyError:
             self.is_manual = True
+        self.manager = None
         self.list_generator_type = kwargs["list_generator_type"]
         self.audit_utils = AuditUtils()
-        self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS),
-            upsert_sections=(Sections.BRAND_SAFETY,)
-        )
-        self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.CAPTIONS),
-            upsert_sections=(Sections.BRAND_SAFETY,)
-        )
         self.master_blacklist_segment = None
         self.master_whitelist_segment = None
         self.segment_model = None
         self.related_segment_model = None
         self.evaluator = None
+        self.CATEGORY_FIELD = None # category (video) or top_category (channel)
 
         self.batch_count = 0
         self._set_config()
@@ -95,19 +84,25 @@ class SegmentListGenerator(object):
 
             # Config segments and models
             self.segment_model = PersistentSegmentChannel
-            self.related_segment_model = PersistentSegmentRelatedChannel
+
+            self.es_manager = ChannelManager(
+                sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS),
+                upsert_sections=(Sections.SEGMENTS,)
+            )
+
+            self.CATEGORY_FIELD = "top_category"
 
             # Config methods
-            self.data_generator = self._data_generator(self.channel_manager, cursor_id=self.cursor_id)
+            self.data_generator = self._data_generator(cursor_id=self.cursor_id)
             self.evaluator = self._evaluate_channel
 
             # Config constants
+
             self.PK_NAME = "channel_id"
             self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
             self.BLACKLIST_SIZE = self.BLACKLIST_CHANNEL_SIZE
             self.WHITELIST_SIZE = self.WHITELIST_CHANNEL_SIZE
             self.INDEX_NAME = settings.BRAND_SAFETY_CHANNEL_INDEX
-            self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
             self.RELATED_SEGMENT_SORT_KEY = "subscribers"
 
         elif self.list_generator_type == constants.VIDEO:
@@ -121,10 +116,15 @@ class SegmentListGenerator(object):
 
             # Config segments and models
             self.segment_model = PersistentSegmentVideo
-            self.related_segment_model = PersistentSegmentRelatedVideo
+            self.es_manager = VideoManager(
+                sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.CAPTIONS),
+                upsert_sections=(Sections.SEGMENTS,)
+            )
+
+            self.CATEGORY_FIELD = "category"
 
             # Config methods
-            self.data_generator = self._data_generator(self.video_manager, cursor_id=self.cursor_id)
+            self.data_generator = self._data_generator(cursor_id=self.cursor_id)
             self.evaluator = self._evaluate_video
 
             # Config constants
@@ -133,7 +133,6 @@ class SegmentListGenerator(object):
             self.BLACKLIST_SIZE = self.BLACKLIST_VIDEO_SIZE
             self.WHITELIST_SIZE = self.WHITELIST_VIDEO_SIZE
             self.INDEX_NAME = settings.BRAND_SAFETY_VIDEO_INDEX
-            self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
             self.RELATED_SEGMENT_SORT_KEY = "views"
         else:
             raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
@@ -169,18 +168,14 @@ class SegmentListGenerator(object):
             related_to_create.append(self.related_segment_model(segment=new_segment, **data))
         self.related_segment_model.objects.bulk_create(related_to_create)
 
-    def _process(self, sdb_items):
+    def _process(self, items):
         """
         Drives main list generation logic
             Retrieves sdb data and es data, saves to category segments then master segments
         :param sdb_items:
         :return:
         """
-        item_ids = [item[self.PK_NAME] for item in sdb_items]
-        es_items = self._get_es_data(item_ids)
-        # Update sdb data with es brand safety data
-        merged_items = self._merge_data(es_items, sdb_items)
-        sorted_by_category_whitelist = self._sort_by_category(merged_items)
+        sorted_by_category_whitelist = self._sort_by_category(items)
         # Save items into their category segments
         for category, items in sorted_by_category_whitelist.items():
             clean_unclassified = False
@@ -399,16 +394,17 @@ class SegmentListGenerator(object):
         item_ids = [item.related_id for item in items]
         segment_manager.related.filter(related_id__in=item_ids).delete()
 
-    def _data_generator(self, manager, cursor_id=None):
+    def _data_generator(self, cursor_id=None):
         cursor_id = cursor_id or ""
         while self.batch_count <= self.CHANNEL_BATCH_COUNTER_LIMIT:
             batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            response = self.channel_manager.search(batch_query, limit=self.CHANNEL_BATCH_LIMIT).execute()
-            results = response["hits"]["hits"]
+            response = self.manager.search(batch_query, limit=self.BATCH_LIMIT).execute()
+            results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            yield list(results)
+            to_dict = [item.to_dict() for item in results]
+            yield to_dict
             cursor_id = results[-1]["_id"]
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
