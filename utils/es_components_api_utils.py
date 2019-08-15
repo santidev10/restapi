@@ -15,6 +15,7 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 
 DEFAULT_PAGE_SIZE = 50
+UI_STATS_HISTORY_FIELD_LIMIT = 30
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,17 @@ class QueryGenerator:
 class ESDictSerializer(Serializer):
     def to_representation(self, instance):
         extra_data = super(ESDictSerializer, self).to_representation(instance)
+
+        chart_data = extra_data.get("chart_data")
+        if chart_data and isinstance(chart_data, list):
+            chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
+        data = instance.to_dict()
+        stats = data.get("stats", {})
+        for name, value in stats.items():
+            if name.endswith("_history") and isinstance(value, list):
+                value[:] = value[:UI_STATS_HISTORY_FIELD_LIMIT]
         return {
-            **instance.to_dict(),
+            **data,
             **extra_data,
         }
 
@@ -302,6 +312,10 @@ class ESFilterBackend(BaseFilterBackend):
         return fields
 
     def filter_queryset(self, request, queryset, view):
+        from utils.api.research import ESEmptyResponseAdapter
+
+        if isinstance(queryset, ESEmptyResponseAdapter):
+            return []
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)

@@ -55,8 +55,7 @@ from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
+from es_components.managers import ChannelManager
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.db.functions import TruncQuarter
@@ -963,24 +962,23 @@ class DeliveryChart:
             'yt_id',
         )
 
-        connector = SingleDatabaseApiConnector()
-        try:
-            ids = list(set(s['yt_id'] for s in raw_stats))
-            items = connector.get_channels_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            channels_info = {}
-        else:
-            channels_info = {i['id']: i for i in items}
+        ids = [i["yt_id"] for i in raw_stats]
+        manager = ChannelManager(Sections.GENERAL_DATA)
+        channels_map = {}
+        for channel in manager.get_or_create(ids=ids):
+            channels_map[channel.main.id] = channel
 
         result = defaultdict(list)
         for item in raw_stats:
             channel_id = item['yt_id']
             del item['yt_id']
+            channel = channels_map.get(channel_id)
             item['id'] = channel_id
-            info = channels_info.get(channel_id, {})
-            item['thumbnail'] = info.get('thumbnail_image_url')
-            label = info.get("title", channel_id)
+            if channel.general_data:
+                item['thumbnail'] = channel.general_data.thumbnail_image_url
+                label = channel.general_data.title
+            else:
+                label = channel.main.id
             result[label].append(item)
         return result
 
