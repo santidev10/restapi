@@ -6,22 +6,21 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from es_components.constants import Sections
-from es_components.managers import VideoManager
-from es_components.models import Video
+from es_components.managers import KeywordManager
+from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
+from keywords.api.views.keyword_export import KeywordCSVRendered
+from keywords.api.views.keyword_export import KeywordListExportSerializer
 from saas.urls.namespaces import Namespace
-from utils.lang import ExtendedEnum
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
-from video.api.views.video_export import VideoCSVRendered
-from video.api.views.video_export import VideoListExportSerializer
 
 
-class HighlightVideoExportPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
+class HighlightKeywordExportPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_unauthorized(self):
         url = get_url()
@@ -67,10 +66,10 @@ class HighlightVideoExportPermissionsApiViewTestCase(ExtendedAPITestCase, ESTest
         )
 
 
-class HighlightVideoExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
+class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     def setUp(self):
-        super(HighlightVideoExportApiViewTestCase, self).setUp()
+        super(HighlightKeywordExportApiViewTestCase, self).setUp()
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_highlights")
 
@@ -87,22 +86,22 @@ class HighlightVideoExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "Videos export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
+        expected_filename = "Keywords export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
         self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
 
     def test_view_declaration(self):
         """
-        This test checks view declaration. The functional part is tested in video/tests/api/test_video_export.py
+        This test checks view declaration. The functional part is tested in keyword/tests/api/test_keyword_export.py
         """
         resolver = resolve(get_url())
         view_cls = resolver.func.cls
-        self.assertEqual((VideoCSVRendered,), view_cls.renderer_classes)
-        self.assertEqual(VideoListExportSerializer, view_cls.serializer_class)
+        self.assertEqual((KeywordCSVRendered,), view_cls.renderer_classes)
+        self.assertEqual(KeywordListExportSerializer, view_cls.serializer_class)
 
     def test_limit_100(self):
         highlights_limit = 100
-        videos = [Video(next(int_iterator)) for _ in range(highlights_limit + 1)]
-        VideoManager(sections=[Sections.GENERAL_DATA]).upsert(videos)
+        keywords = [Keyword(next(int_iterator)) for _ in range(highlights_limit + 1)]
+        KeywordManager(sections=(Sections.STATS)).upsert(keywords)
 
         response = self._request()
 
@@ -113,10 +112,6 @@ class HighlightVideoExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         )
 
 
-class AllowedSorts(ExtendedEnum):
-    VIEWS_30_DAYS_DESC = "stats.last_30day_views:desc"
-
-
 def get_url(**kwargs):
-    return reverse(HighlightsNames.VIDEOS_EXPORT, [Namespace.HIGHLIGHTS],
+    return reverse(HighlightsNames.KEYWORDS_EXPORT, [Namespace.HIGHLIGHTS],
                    query_params=kwargs or None)

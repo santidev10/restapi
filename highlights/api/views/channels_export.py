@@ -36,4 +36,6 @@ class HighlightChannelsExportApiView(APIViewMixin, FileListApiView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY,)
-        return ESQuerysetAdapter(ChannelManager(sections)).order_by(ORDERING_FIELDS[0]).with_limit(100)
+        return ESQuerysetAdapter(ChannelManager(sections)) \
+            .order_by(ORDERING_FIELDS[0]) \
+            .with_limit(100)

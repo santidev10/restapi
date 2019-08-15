@@ -134,11 +134,6 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         )
 
 
-class AllowedAggregations(ExtendedEnum):
-    CATEGORY = "general_data.top_category"
-    LANGUAGE = "general_data.top_language"
-
-
 class AllowedSorts(ExtendedEnum):
     VIEWS_30_DAYS_DESC = "stats.last_30day_views:desc"
 
