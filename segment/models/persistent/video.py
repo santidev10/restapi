@@ -18,12 +18,17 @@ from .base import PersistentSegmentManager
 from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from .constants import PersistentSegmentCategory
+from segment.api.serializers import PersistentSegmentVideoExportSerializer
+from es_components.managers import VideoManager
+from es_components.constants import Sections
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
-
+    export_serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def calculate_details(self):
         details = self.related.annotate(
@@ -37,6 +42,12 @@ class PersistentSegmentVideo(BasePersistentSegment):
             items_count=Count("id")
         )
         return details
+
+    def get_queryset(self):
+        queryset = ESQuerysetAdapter(VideoManager(sections=self.SECTIONS))
+        queryset.filter(self.get_filter_query())
+        queryset.order_by("views:dsc")
+        return queryset
 
 
 class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):

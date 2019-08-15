@@ -5,13 +5,16 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
+from channel.api.views.channel_export import YTChannelLinkFromID
 from segment.models import PersistentSegmentChannel
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.models import CustomSegment
 from userprofile.models import UserProfile
+from video.api.views.video_export import YTVideoLinkFromID
 
 
 class PersistentSegmentSerializer(ModelSerializer):
@@ -45,6 +48,28 @@ class PersistentSegmentSerializer(ModelSerializer):
         details = obj.details or {}
         statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
         return statistics
+
+
+class PersistentSegmentVideoExportSerializer(Serializer):
+    url = YTVideoLinkFromID(source="main.id")
+    title = CharField(source="general_data.title")
+    category = CharField(source="general_data.category")
+    likes = IntegerField(source="stats.likes")
+    dislikes = IntegerField(source="stats.dislikes")
+    views = IntegerField(source="stats.views")
+    overall_score = IntegerField(source="brand_safety.overall_score")
+
+
+class PersistentSegmentChannelExportSerializer(Serializer):
+    url = YTChannelLinkFromID(source="main.id")
+    title = CharField(source="general_data.title")
+    category = CharField(source="general_data.top_category")
+    subscribers = IntegerField(source="stats.subscribers")
+    likes = IntegerField(source="stats.likes")
+    dislikes = IntegerField(source="stats.dislikes")
+    views = IntegerField(source="stats.views")
+    audited_videos = IntegerField(source="brand_safety.videos_scored")
+    overall_score = IntegerField(source="brand_safety.overall_score")
 
 
 class CustomSegmentSerializer(ModelSerializer):

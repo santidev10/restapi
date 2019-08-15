@@ -13,12 +13,17 @@ from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
 from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
+from es_components.managers import ChannelManager
+from es_components.constants import Sections
+from segment.api.serializers import PersistentSegmentChannelExportSerializer
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
-
+    export_serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def calculate_details(self):
         details = self.related.annotate(
@@ -36,6 +41,12 @@ class PersistentSegmentChannel(BasePersistentSegment):
             items_count=Count("id")
         )
         return details
+
+    def get_queryset(self):
+        queryset = ESQuerysetAdapter(ChannelManager(sections=self.SECTIONS))
+        queryset.filter(self.get_filter_query())
+        queryset.order_by("subscribers:dsc")
+        return queryset
 
 
 class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):

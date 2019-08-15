@@ -24,6 +24,8 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
+from es_components.query_builder import QueryBuilder
+from es_components.constants import SEGMENTS_UUID_FIELD
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,10 @@ class BasePersistentSegment(Timestampable):
         self.export_last_modified = s3_object.get("LastModified")
         return body
 
+    def get_filter_query(self):
+        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid)
+        return query
+
 
 class BasePersistentSegmentRelated(Timestampable):
     # the 'segment' field must be defined in a successor model like next:
@@ -175,6 +181,11 @@ class PersistentSegmentExportContent(object):
 
     def __exit__(self, *args):
         os.remove(self.filename)
+
+    def _data_generator(self, export_serializer, queryset):
+        for item in queryset:
+            data = export_serializer(item).data
+            yield data
 
 
 class PersistentSegmentFileUpload(Model):
