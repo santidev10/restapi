@@ -71,6 +71,12 @@ class CustomSegmentSerializer(ModelSerializer):
             "title_hash",
         )
 
+    def create(self, validated_data):
+        validated_data.update({
+            "uuid": uuid.uuid4()
+        })
+        return CustomSegment.objects.create(**validated_data)
+
     def validate_list_type(self, list_type):
         try:
             data = self.map_to_id(list_type.lower().strip(), item_type="list")

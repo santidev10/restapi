@@ -85,7 +85,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
-        segment = serializer.save(uuid=uuid.uuid4())
+        segment = serializer.save()
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
