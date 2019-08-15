@@ -12,6 +12,20 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
+ORDERING_FIELDS = (
+    "stats.last_30day_views:desc",
+    "stats.last_7day_views:desc",
+    "stats.last_day_views:desc",
+)
+TERMS_FILTERS = (
+    "general_data.top_category",
+    "general_data.top_language",
+)
+ALLOWED_AGGREGATIONS = (
+    "general_data.top_category",
+    "general_data.top_language",
+)
+
 
 class HighlightsChannelsPaginator(HighlightsPaginator):
     def _get_response_data(self, data):
@@ -31,19 +45,9 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
         ),
     )
     pagination_class = HighlightsChannelsPaginator
-    ordering_fields = (
-        "stats.last_30day_views:desc",
-        "stats.last_7day_views:desc",
-        "stats.last_day_views:desc",
-    )
-    terms_filter = (
-        "general_data.top_category",
-        "general_data.top_language",
-    )
-    allowed_aggregations = (
-        "general_data.top_category",
-        "general_data.top_language",
-    )
+    ordering_fields = ORDERING_FIELDS
+    terms_filter = TERMS_FILTERS
+    allowed_aggregations = ALLOWED_AGGREGATIONS
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 
     def get_queryset(self):

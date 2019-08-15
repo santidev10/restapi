@@ -1,14 +1,13 @@
-import csv
-
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
+from audit_tool.models import AuditLanguage
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-from audit_tool.models import AuditLanguage
 from saas.urls.namespaces import Namespace
+from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -68,7 +67,3 @@ class BadWordExportTestCase(ExtendedAPITestCase):
         data = next(csv_data)
         self.assertEqual(data, [bad_word.name, bad_word.category.name,
                                 bad_word.language.language, str(bad_word.negative_score)])
-
-
-def get_data_from_csv_response(response):
-    return csv.reader((row.decode("utf-8") for row in response.streaming_content))
