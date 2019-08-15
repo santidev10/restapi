@@ -271,10 +271,10 @@ class ESQuerysetAdapter:
     def __iter__(self):
         if self.sort:
             yield from self.get_data(end=self.search_limit)
-
-        yield from self.manager.scan(
-            filters=self.filter_query,
-        )
+        else:
+            yield from self.manager.scan(
+                filters=self.filter_query,
+            )
 
 
 class ESFilterBackend(BaseFilterBackend):
