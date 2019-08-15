@@ -20,6 +20,7 @@ from brand_safety.constants import WHITELIST
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
 from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
 from utils.models import Timestampable
@@ -67,6 +68,13 @@ class CustomSegment(Timestampable):
     title_hash = BigIntegerField(default=0, db_index=True)
 
     @property
+    def es_manager(self):
+        if self.segment_type == 0:
+            return VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        else:
+            return ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+
+    @property
     def related_ids(self):
         return self.related.values_list("related_id", flat=True)
 
@@ -92,6 +100,10 @@ class CustomSegment(Timestampable):
             return VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         else:
             return ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+
+    def remove_all_from_segment(self):
+        query = QueryBuilder.build().must().term().field(Sections.SEGMENTS).value(self.uuid).get()
+        self.es_manager.remove_from_segment(query, self.uuid)
 
 
 class CustomSegmentRelated(Model):

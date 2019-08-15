@@ -5,6 +5,7 @@ from django.db.models import DateTimeField
 from django.db.models import OneToOneField
 from django.db.models import Model
 from django.db.models import TextField
+from elasticsearch_dsl import Q
 
 from es_components.config import CHANNEL_INDEX_NAME
 from es_components.config import VIDEO_INDEX_NAME
@@ -42,6 +43,10 @@ class CustomSegmentFileUpload(Model):
             self.batch_limit = 10
         else:
             self.batch_limit = 50
+
+    @property
+    def query_obj(self):
+        return Q(self.query)
 
     @staticmethod
     def enqueue(*_, **kwargs):
@@ -86,6 +91,7 @@ class CustomSegmentFileUpload(Model):
             "url": "https://www.youtube.com/channel/" + item["main"]["id"]
         }
         return mapped
+
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

@@ -10,6 +10,8 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         segment = self.get_object()
+        # Remove segment uuid from all es_documents
+        # segment.es_manager.remove_from_segment(segment.export.query_obj, segment.UUID)
         CustomSegmentExportGenerator().delete_export(segment.owner.id, segment.title)
         return super().delete(request, *args, **kwargs)
 

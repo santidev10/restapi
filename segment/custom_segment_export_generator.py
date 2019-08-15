@@ -3,6 +3,7 @@ import logging
 from django.conf import settings
 from django.utils import timezone
 from elasticsearch_dsl.search import Search
+from elasticsearch_dsl.search import Q
 
 from administration.notifications import generate_html_email
 from brand_safety.constants import CHANNEL
@@ -45,6 +46,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         Either dequeue segment to create and process or updating existing export
         :return:
         """
+        # If export is none, then updating
         if export is None:
             try:
                 export = CustomSegmentFileUpload.dequeue()
@@ -53,9 +55,9 @@ class CustomSegmentExportGenerator(S3Exporter):
         segment = export.segment
         owner = segment.owner
         try:
-            # Update segment and empty related_ids to recreate relevant related_ids
             # Remove all items from this segment
-            # self._remove_all_from_segment(segment.uuid)
+            # And update segment and empty related_ids to recreate relevant related_ids
+            # segment.remove_all_from_segment()
             es_generator = self.es_generator(export, segment)
         except ElasticSearchConnectorException:
             raise
@@ -65,9 +67,8 @@ class CustomSegmentExportGenerator(S3Exporter):
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
 
-        # segment = export.segment
-        # segment.es_manager.add_to_segment(export.query, segment.uuid)
-        #
+        # Add segment UUID to all documents under query
+        # segment.es_manager.add_to_segment(export.query_obj, segment.uuid)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -140,8 +141,3 @@ class CustomSegmentExportGenerator(S3Exporter):
     def delete_export(self, owner_id, segment_title):
         s3_key = self.get_s3_key(owner_id, segment_title)
         self.delete_obj(s3_key)
-
-    def _remove_all_from_segment(self, segment_uuid):
-        query = QueryBuilder.build().must().term().field(Sections.SEGMENTS).value(segment_uuid).get()
-        self.manager.remove_from_segment(query, segment_uuid)
-
