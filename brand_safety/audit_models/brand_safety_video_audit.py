@@ -58,10 +58,10 @@ class BrandSafetyVideoAudit(object):
             # Set the language the audit uses
             self.metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
-        tag_hits = self.audit_utils.audit(self.metadata["tags"], constants.TAGS, keyword_processor)
-        title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, keyword_processor)
-        description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
-        transcript_hits = self.audit_utils.audit(self.metadata["transcript"], constants.TRANSCRIPT, keyword_processor)
+        tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, keyword_processor)
+        title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, keyword_processor)
+        description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION, keyword_processor)
+        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, keyword_processor)
 
         score = self.calculate_brand_safety_score(*tag_hits + title_hits + description_hits + transcript_hits)
         setattr(self, constants.BRAND_SAFETY_SCORE, score)
