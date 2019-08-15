@@ -166,6 +166,10 @@ class QueryGenerator:
 class ESDictSerializer(Serializer):
     def to_representation(self, instance):
         extra_data = super(ESDictSerializer, self).to_representation(instance)
+
+        chart_data = extra_data.get("chart_data")
+        if chart_data and isinstance(chart_data, list):
+            chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
         data = instance.to_dict()
         stats = data.get("stats", {})
         for name, value in stats.items():
