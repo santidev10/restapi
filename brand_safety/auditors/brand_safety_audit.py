@@ -97,8 +97,6 @@ class BrandSafetyAudit(object):
             video_audits, channel_audits = self._extract_results(results)
             # Index items
             self._index_results(video_audits, channel_audits)
-            print(f"scored {len(channel_batch)} channels")
-            print(f"scored {len(video_audits)} videos")
 
             if self.channel_batch_counter % 10 == 0:
                 # Update config in case they have been modified
