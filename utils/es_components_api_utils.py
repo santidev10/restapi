@@ -186,6 +186,7 @@ class ESQuerysetAdapter:
         self.aggregations = None
         self.percentiles = None
         self.fields_to_load = None
+        self.search_limit = None
 
     @cached_method(timeout=7200)
     def count(self):
@@ -212,6 +213,10 @@ class ESQuerysetAdapter:
         ]
 
         self.fields_to_load = fields or self.manager.sections
+        return self
+
+    def with_limit(self, search_limit):
+        self.search_limit = search_limit
         return self
 
     @cached_method(timeout=900)
@@ -261,14 +266,14 @@ class ESQuerysetAdapter:
     def __getitem__(self, item):
         if isinstance(item, slice):
             return self.get_data(item.start, item.stop)
-        if isinstance(item, int):
-            return self.get_data(end=item)
         raise NotImplementedError
 
     def __iter__(self):
-        return self.manager.scan(
+        if self.sort:
+            yield from self.get_data(end=self.search_limit)
+
+        yield from self.manager.scan(
             filters=self.filter_query,
-            sort=self.sort,
         )
 
 
