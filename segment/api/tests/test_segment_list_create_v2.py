@@ -96,6 +96,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
             self._get_url("video"), json.dumps(payload), content_type="application/json"
         )
         data = response.data
+        print(response.data)
         export = CustomSegmentFileUpload.objects.get(segment_id=data["id"])
         self.assertEqual(response.status_code, HTTP_201_CREATED)
         self.assertEqual(export.query["query"]["bool"]["filter"]["bool"]["must"][0]["range"]["views"]["gte"], 1000000)

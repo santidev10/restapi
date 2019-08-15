@@ -3,6 +3,7 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
+import uuid
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -84,7 +85,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
-        segment = serializer.save()
+        segment = serializer.save(uuid=uuid.uuid4())
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)

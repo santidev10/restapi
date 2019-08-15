@@ -7,6 +7,8 @@ from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
+from rest_framework.serializers import UUIDField
+import uuid
 
 from segment.models import PersistentSegmentChannel
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
@@ -66,7 +68,7 @@ class CustomSegmentSerializer(ModelSerializer):
             "segment_type",
             "statistics",
             "title",
-            "title_hash"
+            "title_hash",
         )
 
     def validate_list_type(self, list_type):
