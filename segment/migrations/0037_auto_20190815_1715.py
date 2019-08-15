@@ -6,15 +6,17 @@ from django.db import migrations, models
 import uuid
 
 
-
+# Unable to use default uuid value as during migration, uuid value is calculated only once and will
+# result in an IntegrityError
+# https://docs.djangoproject.com/en/1.11/howto/writing-migrations/#migrations-that-add-unique-fields
 def create_uuid(apps, schema_editor):
     CustomSegment = apps.get_model("segment", "CustomSegment")
     PersistentSegmentChannel = apps.get_model("segment", "PersistentSegmentChannel")
     PersistentSegmentVideo = apps.get_model("segment", "PersistentSegmentVideo")
     segment_models = [CustomSegment, PersistentSegmentChannel, PersistentSegmentVideo]
 
-    for segment_type in segment_models:
-        for segment in segment_type.objects.all():
+    for model in segment_models:
+        for segment in model.objects.all():
             segment.uuid = uuid.uuid4()
             segment.save(update_fields=['uuid'])
 
