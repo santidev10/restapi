@@ -97,6 +97,5 @@ class ChannelListExportApiView(APIViewMixin, FileListApiView):
             Sections.GENERAL_DATA,
             Sections.STATS,
             Sections.ADS_STATS,
-            Sections.ANALYTICS,
             Sections.BRAND_SAFETY,
         )))

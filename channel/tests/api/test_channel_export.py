@@ -15,6 +15,7 @@ from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.elasticsearch import ElasticSearchConnector
+from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
@@ -211,7 +212,3 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
-
-
-def get_data_from_csv_response(response):
-    return csv.reader((row.decode("utf-8") for row in response.streaming_content))
