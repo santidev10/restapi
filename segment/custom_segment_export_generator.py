@@ -2,9 +2,14 @@ import logging
 
 from django.conf import settings
 from django.utils import timezone
+from elasticsearch_dsl.search import Search
 
 from administration.notifications import generate_html_email
 from brand_safety.constants import CHANNEL
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
+from es_components.constants import Sections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
 from utils.elasticsearch import ElasticSearchConnector
@@ -12,6 +17,7 @@ from utils.elasticsearch import ElasticSearchConnectorException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +29,16 @@ class CustomSegmentExportGenerator(S3Exporter):
         self.es_conn = ElasticSearchConnector()
         self.ses = SESEmailer()
         self.updating = updating
-        # List of methods that should be invoked with export data in self.es_generator method before actual export
-        self.generator_operations = [self._update_fields, self._add_related_ids_to_segment]
+
+    def _map_data(self, export, batch):
+        mapper = export.mapper
+        mapped = []
+        for item in batch:
+            try:
+                mapped.append(mapper(item["_source"]))
+            except KeyError:
+                continue
+        return mapped
 
     def generate(self, export=None):
         """
@@ -40,7 +54,8 @@ class CustomSegmentExportGenerator(S3Exporter):
         owner = segment.owner
         try:
             # Update segment and empty related_ids to recreate relevant related_ids
-            segment.related.all().delete()
+            # Remove all items from this segment
+            # self._remove_all_from_segment(segment.uuid)
             es_generator = self.es_generator(export, segment)
         except ElasticSearchConnectorException:
             raise
@@ -49,6 +64,10 @@ class CustomSegmentExportGenerator(S3Exporter):
         export_manager = ExportContextManager(es_generator, export.columns)
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
+
+        # segment = export.segment
+        # segment.es_manager.add_to_segment(export.query, segment.uuid)
+        #
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -103,52 +122,26 @@ class CustomSegmentExportGenerator(S3Exporter):
         :param segment: CustomSegment
         :return:
         """
+        query_body = {
+            "query": export.query,
+        }
         scroll = self.es_conn.scroll(
-            export.query,
+            query_body,
             export.index,
             size=export.batch_size,
             batches=export.batch_limit,
             sort_field=export.sort
         )
         for batch in scroll:
-            for method in self.generator_operations:
-                method(export, batch, sequence=True)
-            segment.add_related_ids([item["_id"] for item in batch])
-            # Yield pertinent es data
-            batch = [item["_source"] for item in batch]
-            yield batch
-
-    def _update_fields(self, export, chunk, sequence=True):
-        """
-        Add or update Elasticsearch document fields for csv export
-        :param export: export obj
-        :param chunk: item(s)
-        :param sequence: Bool to indicate whether chunk is a list or tuple
-        :return: None
-        """
-        url_prefix = "https://www.youtube.com/channel/" if export.segment.segment_type == CHANNEL else "https://www.youtube.com/video/"
-        if sequence:
-            for item in chunk:
-                item["_source"].update({
-                    "youtube_category": item["_source"]["youtube_category"].capitalize(),
-                    "url": url_prefix + item["_id"]
-                })
-
-    def _add_related_ids_to_segment(self, export, chunk, sequence=True):
-        """
-        Add related ids to custom segment
-        :param export: export obj
-        :param chunk: item(s)
-        :param sequence: Bool to indicate whether chunk is a list or tuple
-        :return:
-        """
-        segment = export.segment
-        if not sequence:
-            chunk = tuple(chunk["_id"])
-        else:
-            chunk = [item["_id"] for item in chunk]
-        segment.add_related_ids(chunk)
+            segment.add_to_segment([item["_id"] for item in batch])
+            mapped = self._map_data(export, batch)
+            yield mapped
 
     def delete_export(self, owner_id, segment_title):
         s3_key = self.get_s3_key(owner_id, segment_title)
         self.delete_obj(s3_key)
+
+    def _remove_all_from_segment(self, segment_uuid):
+        query = QueryBuilder.build().must().term().field(Sections.SEGMENTS).value(segment_uuid).get()
+        self.manager.remove_from_segment(query, segment_uuid)
+

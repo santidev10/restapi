@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 
 from elasticsearch import Elasticsearch
@@ -15,9 +17,10 @@ class ElasticSearchConnector(object):
     THREAD_COUNT = 4
 
     def __init__(self, index_name=None):
+        ELASTIC_SEARCH_URLS = os.getenv("ELASTIC_SEARCH_URLS", "").split(",")
+        ELASTIC_SEARCH_URLS = ["https://vpc-chf-elastic-prod-3z4o4k53pvrephzhaqhunzjeyu.us-east-1.es.amazonaws.com"]
         self.index_name = index_name
-
-        self.client = Elasticsearch(settings.ELASTIC_SEARCH_URLS,
+        self.client = Elasticsearch(ELASTIC_SEARCH_URLS,
                                     connection_class=RequestsHttpConnection,
                                     max_retries=self.MAX_RETRIES)
 
@@ -68,7 +71,7 @@ class ElasticSearchConnector(object):
             }
             return es_data
 
-    def scroll(self, query, index=None, doc_type=None, sort_field="overall_score", reverse=True, batches=10, size=2000):
+    def scroll(self, query, index=None, sort_field="overall_score", reverse=True, batches=10, size=2000):
         """
         Generator wrapper for Elasticsearch scroll api
         :param query: Elasticsearch query body
@@ -82,13 +85,11 @@ class ElasticSearchConnector(object):
         """
         self.index_name = index if index is not None else self.index_name
         batch_number = 0
-        doc_type = settings.BRAND_SAFETY_TYPE if doc_type is None else doc_type
         reverse = "desc" if reverse is True else "asc"
         sort = "{sort_field}:{reverse}".format(sort_field=sort_field, reverse=reverse)
         page = self.client.search(
             index=self.index_name,
-            doc_type=doc_type,
-            scroll="1m",
+            scroll="2m",
             size=size,
             body=query,
             sort=sort,

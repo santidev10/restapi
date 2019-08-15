@@ -6,6 +6,8 @@ from django.db.models import OneToOneField
 from django.db.models import Model
 from django.db.models import TextField
 
+from es_components.config import CHANNEL_INDEX_NAME
+from es_components.config import VIDEO_INDEX_NAME
 from segment.models.custom_segment import CustomSegment
 
 
@@ -24,13 +26,15 @@ class CustomSegmentFileUpload(Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.segment.segment_type == 0:
-            self.index = settings.BRAND_SAFETY_VIDEO_INDEX
+            self.index = VIDEO_INDEX_NAME
             self.columns = CustomSegmentFileUpload.VIDEO_COLUMNS
-            self.sort = "views"
+            self.mapper = self._map_video
+            self.sort = "stats.views"
         else:
-            self.index = settings.BRAND_SAFETY_CHANNEL_INDEX
+            self.index = CHANNEL_INDEX_NAME
             self.columns = CustomSegmentFileUpload.CHANNEL_COLUMNS
-            self.sort = "subscribers"
+            self.mapper = self._map_channel
+            self.sort = "stats.subscribers"
 
         # Set max sizes of exports
         self.batch_size = 2000
@@ -60,6 +64,28 @@ class CustomSegmentFileUpload(Model):
         if not dequeue_item:
             raise CustomSegmentFileUploadQueueEmptyException
         return dequeue_item
+
+    def _map_video(self, item):
+        mapped = {
+            "title": item["general_data"].get("title", ""),
+            "language": item["general_data"].get("language", ""),
+            "category": item["general_data"].get("category", ""),
+            "overall_score": item["brand_safety"].get("overall_score", ""),
+            "views": item["stats"].get("views", ""),
+            "url": "https://www.youtube.com/video/" + item["main"]["id"]
+        }
+        return mapped
+
+    def _map_channel(self, item):
+        mapped = {
+            "title": item["general_data"].get("title", ""),
+            "language": item["general_data"].get("top_language", ""),
+            "category": item["general_data"].get("top_category", ""),
+            "overall_score": item["brand_safety"].get("overall_score", ""),
+            "subscribers": item["stats"].get("subscribers", ""),
+            "url": "https://www.youtube.com/channel/" + item["main"]["id"]
+        }
+        return mapped
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):
