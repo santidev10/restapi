@@ -24,6 +24,7 @@ from aw_reporting.models import GeoTarget
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.utittests.int_iterator import int_iterator
@@ -31,7 +32,7 @@ from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
+class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             Name.Analytics.ACCOUNT_DETAILS,
@@ -96,7 +97,7 @@ class AnalyticsAccountCreationDetailsAPITestCase(ExtendedAPITestCase):
     }
 
     def setUp(self):
-
+        super(AnalyticsAccountCreationDetailsAPITestCase, self).setUp()
         self.user = self.create_test_user()
 
     def test_success_get(self):

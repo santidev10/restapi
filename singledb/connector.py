@@ -110,19 +110,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def put_channel(self, query_params, pk, data):
-        """
-        Update channel
-        :param query_params: dict
-        """
-        endpoint = "channels/" + pk + "/"
-        self.set_fields_query_param(query_params,
-                                    DEFAULT_CHANNEL_DETAILS_FIELDS)
-        self.set_sources_query_param(query_params,
-                                     DEFAULT_CHANNEL_DETAILS_SOURCES)
-        response_data = self.execute_put_call(endpoint, query_params, data)
-        return response_data
-
     def get_channel_list(self, query_params, ignore_sources=False):
         """
         Obtain channel list
@@ -183,15 +170,6 @@ class SingleDatabaseApiConnector(object):
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
 
-    def delete_channels(self, query_params, data):
-        """
-        Delete channels
-        :param query_params: dict
-        """
-        endpoint = "channel_set/"
-        response_data = self.execute_delete_call(endpoint, query_params, data)
-        return response_data
-
     def delete_channel_test(self, pk: str):
         """
         Delete channel
@@ -199,28 +177,6 @@ class SingleDatabaseApiConnector(object):
         """
         endpoint = "channels_test/" + pk
         response_data = self.execute_delete_call(endpoint, query_params=dict())
-        return response_data
-
-    def get_video(self, query_params, pk):
-        """
-        Obtain video
-        :param query_params: dict
-        """
-        endpoint = "videos/" + pk
-        self.set_fields_query_param(
-            query_params, DEFAULT_VIDEO_DETAILS_FIELDS)
-        self.set_sources_query_param(
-            query_params, DEFAULT_VIDEO_DETAILS_SOURCES)
-        response_data = self.execute_get_call(endpoint, query_params)
-        return response_data
-
-    def put_video(self, query_params, pk, data):
-        """
-        Update video
-        :param query_params: dict
-        """
-        endpoint = "videos/" + pk + "/"
-        response_data = self.execute_put_call(endpoint, query_params, data)
         return response_data
 
     def get_video_list(self, query_params, ignore_sources=False):
@@ -250,15 +206,6 @@ class SingleDatabaseApiConnector(object):
         :returns generator for videos by sized batches
         """
         return self._get_items_list_full("videos/", "video_id", filters, fields, batch_size)
-
-    def delete_videos(self, query_params, data):
-        """
-        Delete videos
-        :param query_params: dict
-        """
-        endpoint = "video_set/"
-        response_data = self.execute_delete_call(endpoint, query_params, data)
-        return response_data
 
     def store_ids(self, ids):
         """
@@ -291,36 +238,6 @@ class SingleDatabaseApiConnector(object):
             query_params["sources"] = ",".join(default_sources)
         return query_params
 
-    def get_highlights_channels(self, query_params):
-        endpoint = "channels/"
-        max_page = query_params.pop("max_page")
-        self.set_fields_query_param(query_params, DEFAULT_CHANNEL_LIST_FIELDS)
-        response_data = self.execute_get_call(endpoint, query_params)
-        response_max_page = response_data.get("max_page", None)
-        if response_max_page:
-            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
-        return response_data
-
-    def get_highlights_videos(self, query_params):
-        endpoint = "videos/"
-        max_page = query_params.pop("max_page")
-        self.set_fields_query_param(query_params, DEFAULT_VIDEO_LIST_FIELDS)
-        response_data = self.execute_get_call(endpoint, query_params)
-        response_max_page = response_data.get("max_page", None)
-        if response_max_page:
-            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
-        return response_data
-
-    def get_highlights_keywords(self, query_params):
-        endpoint = "keywords/"
-        max_page = query_params.pop("max_page")
-        self.set_fields_query_param(query_params, DEFAULT_KEYWORD_LIST_FIELDS)
-        response_data = self.execute_get_call(endpoint, query_params)
-        response_max_page = response_data.get("max_page", None)
-        if response_max_page:
-            response_data["max_page"] = max_page if response_max_page > max_page else response_max_page
-        return response_data
-
     def get_channels_base_info(self, ids):
         fields = ("channel_id", "title", "thumbnail_image_url")
         ids_hash = self.store_ids(ids)
@@ -344,15 +261,6 @@ class SingleDatabaseApiConnector(object):
         for video in videos:
             video["id"] = video["video_id"]
             yield video
-
-    def auth_channel(self, data):
-        """
-        Authenticate channel
-        :param query_params: dict
-        """
-        endpoint = "channels/authentication/"
-        response_data = self.execute_post_call(endpoint, {}, data)
-        return response_data
 
     def post_channels(self, channels_ids):
         """
@@ -390,13 +298,6 @@ class SingleDatabaseApiConnector(object):
             query_params, DEFAULT_KEYWORD_LIST_SOURCES)
         response_data = self.execute_get_call(endpoint, query_params)
         return response_data
-
-    def unauthorize_channel(self, channel_id):
-        """
-        Remove access token for the channel
-        """
-        endpoint = "channels/" + channel_id + "/unauthorize"
-        return self.execute_put_call(endpoint, {})
 
     def post_brand_safety_results(self, results, doc_type):
         """

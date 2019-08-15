@@ -9,7 +9,7 @@ certifi==2018.10.15
 chardet==3.0.4
 django-celery-results==1.0.1
 django-filter==2.0.0
-Django==1.11.13
+Django==1.11.17
 djangorestframework-csv==2.1.0
 djangorestframework==3.8.2
 docutils==0.14
@@ -43,7 +43,7 @@ pyasn1==0.3.1
 PySocks==1.6.7
 python-dateutil==2.6.0
 pytz==2018.4
-PyYAML==3.12
+PyYAML==5.1
 redis==3.0
 requests==2.19.1
 rsa==3.4.2

@@ -30,7 +30,7 @@ class AdwordsBase:
 
     def load_client_options(self) -> None:
         with open('aw_reporting/ad_words_web.yaml', 'r') as f:
-            self.client_options = yaml.load(f)
+            self.client_options = yaml.load(f, Loader=yaml.FullLoader)
 
     def resolve_clients(self) -> None:
         assert self.accounts is not None

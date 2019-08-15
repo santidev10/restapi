@@ -1,283 +1,172 @@
-import re
 from copy import deepcopy
 
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_404_NOT_FOUND
-from rest_framework.status import HTTP_408_REQUEST_TIMEOUT
-from rest_framework.views import APIView
-from rest_framework_csv.renderers import CSVStreamingRenderer
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAdminUser
 
-from channel.api.mixins import ChannelYoutubeSearchMixin
-from singledb.connector import SingleDatabaseApiConnector as Connector
-from singledb.connector import SingleDatabaseApiConnectorException
-from utils.api.cassandra_export_mixin import CassandraExportMixinApiView
-from utils.brand_safety_view_decorator import add_brand_safety_data
+from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from es_components.constants import Sections
+from es_components.managers.channel import ChannelManager
+from utils.api.filters import FreeFieldOrderingFilter
+from utils.api.research import ESEmptyResponseAdapter
+from utils.api.research import ResearchPaginator
+from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
+
+TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
+                "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
+                "stats.channel_group", "main.id")
+
+MATCH_PHRASE_FILTER = ("general_data.title",)
+
+RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "social.facebook_likes",
+                "stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
+                "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
+                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
+                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
+                "analytics.age55_64", "analytics.age65_")
+
+EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
 
-CHANNEL_ITEM_SCHEMA = openapi.Schema(
-    title="Youtube channel",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        description=openapi.Schema(type=openapi.TYPE_STRING),
-        id=openapi.Schema(type=openapi.TYPE_STRING),
-        subscribers=openapi.Schema(type=openapi.TYPE_STRING),
-        thumbnail_image_url=openapi.Schema(type=openapi.TYPE_STRING),
-        title=openapi.Schema(type=openapi.TYPE_STRING),
-        videos=openapi.Schema(type=openapi.TYPE_STRING),
-        views=openapi.Schema(type=openapi.TYPE_STRING),
-    ),
-)
-CHANNELS_SEARCH_RESPONSE_SCHEMA = openapi.Schema(
-    title="Youtube channel paginated response",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        max_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items_count=openapi.Schema(type=openapi.TYPE_INTEGER),
-        current_page=openapi.Schema(type=openapi.TYPE_INTEGER),
-        items=openapi.Schema(
-            title="Youtube channel list",
-            type=openapi.TYPE_ARRAY,
-            items=CHANNEL_ITEM_SCHEMA,
+class UserChannelsNotAvailable(Exception):
+    pass
+
+
+class ChannelListApiView(APIViewMixin, ListAPIView):
+    permission_classes = (
+        or_permission_classes(
+            user_has_permission("userprofile.channel_list"),
+            user_has_permission("userprofile.settings_my_yt_channels"),
+            IsAdminUser
         ),
-    ),
-)
-
-
-class ChannelListCSVRendered(CSVStreamingRenderer):
-    header = [
-        "title",
-        "url",
-        "country",
-        "category",
-        "emails",
-        "subscribers",
-        "thirty_days_subscribers",
-        "thirty_days_views",
-        "views_per_video",
-        "sentiment",
-        "engage_rate",
-        "last_video_published_at",
-        "brand_safety_score",
-        "video_view_rate",
-        "ctr",
-        "ctr_v",
-        "average_cpv"
-    ]
-
-
-class ChannelListApiView(APIView, CassandraExportMixinApiView, PermissionRequiredMixin, ChannelYoutubeSearchMixin):
-    """
-    Proxy view for channel list
-    """
-    permission_required = (
-        "userprofile.channel_list",
-        "userprofile.settings_my_yt_channels"
     )
-    renderer = ChannelListCSVRendered
-    export_file_title = "channel"
-
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                name="youtube_link",
-                required=False,
-                in_=openapi.IN_QUERY,
-                description="Youtube channel URL",
-                type=openapi.TYPE_STRING,
-            ),
-            openapi.Parameter(
-                name="youtube_keyword",
-                required=False,
-                in_=openapi.IN_QUERY,
-                description="Search string to find Youtube channela",
-                type=openapi.TYPE_STRING,
-            )
-        ],
-        responses={
-            HTTP_200_OK: CHANNELS_SEARCH_RESPONSE_SCHEMA,
-            HTTP_400_BAD_REQUEST: openapi.Response("Wrong request parameters"),
-            HTTP_404_NOT_FOUND: openapi.Response("Channel not found"),
-            HTTP_408_REQUEST_TIMEOUT: openapi.Response("Request timeout"),
-        }
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
+    pagination_class = ResearchPaginator
+    ordering_fields = (
+        "stats.last_30day_subscribers:desc",
+        "stats.last_30day_views:desc",
+        "stats.subscribers:desc",
+        "stats.sentiment:desc",
+        "stats.views_per_video:desc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_30day_views:asc",
+        "stats.subscribers:asc",
+        "stats.sentiment:asc",
+        "stats.views_per_video:asc",
     )
-    @add_brand_safety_data
-    def get(self, request):
-        """
-        Get procedure
-        """
-        # search procedure
-        if request.user.is_staff and any((
-                request.query_params.get("youtube_link"),
-                request.query_params.get("youtube_keyword"))):
-            return self.search_channels()
-        # init procedures
-        empty_response = {
-            "max_page": 1,
-            "items_count": 0,
-            "items": [],
-            "current_page": 1,
-        }
-        # prepare query params
-        query_params = deepcopy(request.query_params)
-        query_params._mutable = True
-        connector = Connector()
-        # own channels
-        user = request.user
-        own_channels = query_params.get("own_channels", "0")
-        user_can_see_own_channels = user.has_perm(
-            "userprofile.settings_my_yt_channels")
-        if own_channels == "1" and user_can_see_own_channels:
-            channels_ids = list(
-                user.channels.values_list("channel_id", flat=True))
-            if not channels_ids:
-                return Response(empty_response)
-            try:
-                ids_hash = connector.store_ids(list(channels_ids))
-            except SingleDatabaseApiConnectorException as e:
-                return Response(data={"error": " ".join(e.args)},
-                                status=HTTP_408_REQUEST_TIMEOUT)
-            query_params.update(ids_hash=ids_hash)
-        elif own_channels == "1" and not user_can_see_own_channels:
-            return Response(empty_response)
 
-        # adapt the request params
-        self.adapt_query_params(query_params)
-        # make call
+    terms_filter = TERMS_FILTER
+    range_filter = RANGE_FILTER
+    match_phrase_filter = MATCH_PHRASE_FILTER
+    exists_filter = EXISTS_FILTER
+
+    allowed_aggregations = (
+        "ads_stats.average_cpv:max",
+        "ads_stats.average_cpv:min",
+        "ads_stats.ctr_v:max",
+        "ads_stats.ctr_v:min",
+        "ads_stats.video_view_rate:max",
+        "ads_stats.video_view_rate:min",
+        "ads_stats:exists",
+        "analytics.age13_17:max",
+        "analytics.age13_17:min",
+        "analytics.age18_24:max",
+        "analytics.age18_24:min",
+        "analytics.age25_34:max",
+        "analytics.age25_34:min",
+        "analytics.age35_44:max",
+        "analytics.age35_44:min",
+        "analytics.age45_54:max",
+        "analytics.age45_54:min",
+        "analytics.age55_64:max",
+        "analytics.age55_64:min",
+        "analytics.age65_:max",
+        "analytics.age65_:min",
+        "analytics.cms_title",
+        "analytics.gender_female:max",
+        "analytics.gender_female:min",
+        "analytics.gender_male:max",
+        "analytics.gender_male:min",
+        "analytics.gender_other:max",
+        "analytics.gender_other:min",
+        "analytics:exists",
+        "analytics:missing",
+        "general_data.emails:exists",
+        "general_data.emails:missing",
+        "custom_properties.preferred",
+        "general_data.country",
+        "general_data.top_category",
+        "general_data.top_language",
+        "social.facebook_likes:max",
+        "social.facebook_likes:min",
+        "social.instagram_followers:max",
+        "social.instagram_followers:min",
+        "social.twitter_followers:max",
+        "social.twitter_followers:min",
+        "stats.last_30day_subscribers:max",
+        "stats.last_30day_subscribers:min",
+        "stats.last_30day_views:max",
+        "stats.last_30day_views:min",
+        "stats.subscribers:max",
+        "stats.subscribers:min",
+        "stats.views_per_video:max",
+        "stats.views_per_video:min",
+    )
+
+    allowed_percentiles = (
+        "ads_stats.average_cpv:percentiles",
+        "ads_stats.video_view_rate:percentiles",
+        "ads_stats.ctr_v:percentiles",
+        "social.facebook_likes:percentiles",
+        "social.instagram_followers:percentiles",
+        "social.twitter_followers:percentiles",
+        "stats.last_30day_subscribers:percentiles",
+        "stats.last_30day_views:percentiles",
+        "stats.subscribers:percentiles",
+        "stats.views_per_video:percentiles",
+    )
+
+    def get_serializer_class(self):
+        if self.request and self.request.user and (
+                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+            return ChannelWithBlackListSerializer
+        return ChannelSerializer
+
+    def get_queryset(self):
+        sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY)
         try:
-            response_data = connector.get_channel_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            return Response(
-                data={"error": " ".join(e.args)},
-                status=HTTP_408_REQUEST_TIMEOUT)
-        # adapt the response data
-        self.adapt_response_data(response_data, request.user)
-        return Response(response_data)
+            channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
+        except UserChannelsNotAvailable:
+            return ESEmptyResponseAdapter(ChannelManager())
+
+        if channels_ids:
+            self.request.query_params._mutable = True
+            self.request.query_params["main.id"] = channels_ids
+
+        if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
+            sections += (Sections.ANALYTICS,)
+
+        result = ESQuerysetAdapter(ChannelManager(sections))
+
+        return result
 
     @staticmethod
-    def adapt_query_params(query_params):
-        """
-        Adapt SDB request format
-        """
+    def get_own_channel_ids(user, query_params):
+        own_channels = int(query_params.get("own_channels", "0"))
+        user_can_see_own_channels = user.has_perm("userprofile.settings_my_yt_channels")
 
-        # filters --->
-        def make_range(name, name_min=None, name_max=None):
-            if name_min is None:
-                name_min = "min_{}".format(name)
-            if name_max is None:
-                name_max = "max_{}".format(name)
-            _range = [
-                query_params.pop(name_min, [None])[0],
-                query_params.pop(name_max, [None])[0],
-            ]
-            _range = [str(v) if v is not None else "" for v in _range]
-            _range = ",".join(_range)
-            if _range != ",":
-                query_params.update(**{"{}__range".format(name): _range})
+        if own_channels and not user_can_see_own_channels:
+            raise UserChannelsNotAvailable
 
-        def make(_type, name, name_in=None):
-            if name_in is None:
-                name_in = name
-            value = query_params.pop(name_in, [None])[0]
-            if value is not None:
-                query_params.update(**{"{}__{}".format(name, _type): value})
+        if own_channels and user_can_see_own_channels:
+            channels_ids = list(user.channels.values_list("channel_id", flat=True))
 
-        # min_subscribers_yt, max_subscribers_yt
-        make_range("subscribers", "min_subscribers_yt", "max_subscribers_yt")
+            if not channels_ids:
+                raise UserChannelsNotAvailable
 
-        # country
-        make("terms", "country")
-
-        # language
-        make("terms", "language")
-
-        # min_thirty_days_subscribers, max_thirty_days_subscribers
-        make_range("thirty_days_subscribers")
-
-        # min_thirty_days_views, max_thirty_days_views
-        make_range("thirty_days_views")
-
-        # min_sentiment, max_sentiment
-        make_range("sentiment")
-
-        # min_engage_rate, max_engage_rate
-        make_range("engage_rate")
-
-        # min_views_per_video, max_views_per_video
-        make_range("views_per_video")
-
-        # min_subscribers_fb, max_subscribers_fb
-        make_range(
-            "facebook_likes", "min_subscribers_fb", "max_subscribers_fb")
-
-        # min_subscribers_tw, max_subscribers_tw
-        make_range(
-            "twitter_followers", "min_subscribers_tw", "max_subscribers_tw")
-
-        # min_subscribers_in, max_subscribers_in
-        make_range(
-            "instagram_followers", "min_subscribers_in", "max_subscribers_in")
-
-        # category
-        category = query_params.pop("category", [None])[0]
-        if category is not None:
-            regexp = "|".join([".*" + c + ".*" for c in category.split(",")])
-            query_params.update(category__regexp=regexp)
-
-        # text_search
-        text_search = query_params.pop("text_search", [None])[0]
-        if text_search:
-            query_params.update(text_search__match_phrase=text_search)
-
-        # channel_group
-        make("term", "channel_group")
-        # <--- filters
-
-    @staticmethod
-    def adapt_response_data(response_data, user):
-        """
-        Adapt SDB response format
-        """
-        user_channels = set(user.channels.values_list(
-            "channel_id", flat=True))
-        items = response_data.get("items", [])
-        for item in items:
-            if "channel_id" in item:
-                item["id"] = item.get("channel_id", "")
-                item["is_owner"] = item["channel_id"] in user_channels
-                del item["channel_id"]
-            if "country" in item and item["country"] is None:
-                item["country"] = ""
-            if "history_date" in item and item["history_date"]:
-                item["history_date"] = item["history_date"][:10]
-
-            is_own = item.get("is_owner", False)
-            if user.has_perm('userprofile.channel_audience') \
-                    or is_own:
-                pass
-            else:
-                item['has_audience'] = False
-                item["verified"] = False
-                item.pop('audience', None)
-                item['brand_safety'] = None
-                item['safety_chart_data'] = None
-                item.pop('traffic_sources', None)
-
-            if not user.is_staff:
-                item.pop("cms__title", None)
-
-            for field in ["youtube_published_at", "updated_at"]:
-                if field in item and item[field]:
-                    item[field] = re.sub(
-                        "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+|)$",
-                        "\g<0>Z",
-                        item[field]
-                    )
-        return response_data
-
-    def _data_filtered_batch_generator(self, filters):
-        return Connector().get_channel_list_full(filters, fields=ChannelListCSVRendered.header, batch_size=1000)
+            return channels_ids

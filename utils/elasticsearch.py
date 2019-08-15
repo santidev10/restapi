@@ -105,5 +105,3 @@ class ElasticSearchConnector(object):
 
 class ElasticSearchConnectorException(Exception):
     pass
-
-

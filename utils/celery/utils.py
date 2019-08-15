@@ -2,7 +2,7 @@ from pyrabbit.api import Client
 
 from django.conf import settings
 
-VHOST = "/"
+VHOST = "restapi"
 
 
 def get_queue_size(queue_name):

@@ -4,11 +4,12 @@ from rest_framework.generics import ListAPIView
 
 class FileListApiView(ListAPIView):
     filename = None
+    batch_size = 1000
 
     def data_generator(self, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        for query in queryset:
-            yield self.get_serializer(query).data
+        for item in queryset:
+            yield self.get_serializer(item).data
 
     def list(self, request, *args, **kwargs):
         renderer, content_type = self.perform_content_negotiation(request)
