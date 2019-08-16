@@ -1,13 +1,10 @@
 from time import sleep
 
 from django.contrib.auth.models import Group
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.brand_safety_view_decorator import get_brand_safety_data
 
-from channel.tests.api.test_channel_list_endpoint import ChannelBrandSafetyDoc
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.models import Channel
@@ -127,6 +124,21 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
             response.data["aggregations"]["general_data.top_language"]["buckets"]
         )
 
+    def test_language_top_ten(self):
+        language_limit = 10
+        channels = [Channel(id=next(int_iterator)) for _ in range(language_limit + 1)]
+        for i, channel in enumerate(channels):
+            channel.populate_general_data(top_language=f"lang_{i}")
+        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+
+        url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
+        response = self.client.get(url)
+
+        self.assertEqual(
+            language_limit,
+            len(response.data["aggregations"]["general_data.top_language"]["buckets"])
+        )
+
 
 class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
@@ -182,26 +194,25 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("channel_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        score = 92
         channel_id = str(next(int_iterator))
         channel = Channel()
         channel.meta.id = channel_id
-        channel.brand_safety.overall_score = 92
+        channel.brand_safety.overall_score = score
         sleep(1)
-        score = get_brand_safety_data(channel.brand_safety.overall_score)
         ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
-        with override_settings(BRAND_SAFETY_CHANNEL_INDEX=ChannelBrandSafetyDoc._index._name):
-            response = self.client.get(get_url())
+        response = self.client.get(get_url())
         self.assertEqual(
             score,
-            get_brand_safety_data(response.data["items"][0]["brand_safety"]["overall_score"])
+            response.data["items"][0]["brand_safety"]["overall_score"]
         )
 
     def test_sorting_30day_views(self):
         views = [1, 3, 2]
-        keywords = [Channel(next(int_iterator)) for _ in range(len(views))]
-        for keyword, item_views in zip(keywords, views):
-            keyword.populate_stats(last_30day_views=item_views)
-        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(keywords)
+        channels = [Channel(next(int_iterator)) for _ in range(len(views))]
+        for channel, item_views in zip(channels, views):
+            channel.populate_stats(last_30day_views=item_views)
+        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(channels)
 
         url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -211,6 +222,19 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
             list(sorted(views, reverse=True)),
             response_views
         )
+
+    def test_extra_fields(self):
+        self.create_admin_user()
+        extra_fields = ("brand_safety_data", "chart_data", "blacklist_data")
+        video = Channel(str(next(int_iterator)))
+        ChannelManager([Sections.GENERAL_DATA]).upsert([video])
+
+        url = get_url()
+        response = self.client.get(url)
+
+        for field in extra_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data["items"][0])
 
 
 class AllowedAggregations(ExtendedEnum):

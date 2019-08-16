@@ -12,10 +12,10 @@ from keywords.api.views.keyword_list import MATCH_PHRASE_FILTER
 from keywords.api.views.keyword_list import RANGE_FILTER
 from keywords.api.views.keyword_list import TERMS_FILTER
 from utils.api.file_list_api_view import FileListApiView
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.datetime import time_instance
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -49,7 +49,7 @@ class KeywordListExportApiView(APIViewMixin, FileListApiView):
     )
     serializer_class = KeywordListExportSerializer
     renderer_classes = (KeywordCSVRendered,)
-    filter_backends = (OrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (OrderingFilter, ESFilterBackend)
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
@@ -61,7 +61,7 @@ class KeywordListExportApiView(APIViewMixin, FileListApiView):
         return "Keywords export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
 
     def get_queryset(self):
-        return ESQuerysetWithBrandSafetyAdapter(KeywordManager((
+        return ESQuerysetAdapter(KeywordManager((
             Sections.MAIN,
             Sections.STATS,
         )))
