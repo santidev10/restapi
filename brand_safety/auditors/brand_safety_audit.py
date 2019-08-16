@@ -380,3 +380,4 @@ class BrandSafetyAudit(object):
             self._index_results(video_audits, [])
             logger.error("Indexed {} videos".format(len(video_audits)))
             results = self.video_manager.search(query, limit=5000).execute().hits
+
