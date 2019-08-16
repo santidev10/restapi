@@ -19,7 +19,7 @@ from .constants import PersistentSegmentCategory
 
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
-    audit_category = ForeignKey(AuditCategory, related_name="video_segment")
+    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True)
 
     objects = PersistentSegmentManager()
 

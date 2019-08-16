@@ -18,7 +18,7 @@ from .constants import PersistentSegmentExportColumn
 
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
-    audit_category = ForeignKey(AuditCategory, related_name="channel_segment")
+    audit_category = ForeignKey(AuditCategory, related_name="channel_segment", null=True)
 
     objects = PersistentSegmentManager()
 
