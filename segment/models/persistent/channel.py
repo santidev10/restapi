@@ -15,8 +15,8 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
-from segment.api.serializers import PersistentSegmentChannelExportSerializer
 from utils.es_components_api_utils import ESQuerysetAdapter
+from segment.api.serializers import PersistentSegmentChannelExportSerializer
 
 
 class PersistentSegmentChannel(BasePersistentSegment):
@@ -44,8 +44,8 @@ class PersistentSegmentChannel(BasePersistentSegment):
 
     def get_queryset(self):
         queryset = ESQuerysetAdapter(ChannelManager(sections=self.SECTIONS))
-        queryset.filter(self.get_filter_query())
-        queryset.order_by("subscribers:dsc")
+        queryset.order_by("stats.subscribers:desc")
+        queryset.filter([self.get_filter_query()])
         return queryset
 
     def get_export_columns(self):

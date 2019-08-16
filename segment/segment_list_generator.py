@@ -36,11 +36,9 @@ class SegmentListGenerator(object):
     VIDEO_SORT_KEY = "views"
     CHANNEL_SORT_KEY = "subscribers"
 
-
     def __init__(self):
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-
 
     def run(self):
         self.process_categories()

@@ -80,18 +80,17 @@ class PersistentSegmentExportColumn:
     DISLIKES = "Dislikes"
     VIEWS = "Views"
     SUBSCRIBERS = "Subscribers"
-    AUDITED_VIDEOS = "Audited Videos"
-    BAD_WORDS = "Bad Words"
-    CHANNEL_ID = "Channel ID"
-    CHANNEL_TITLE = "Channel Title"
-    OVERALL_SCORE = "Overall Score"
+    AUDITED_VIDEOS = "Audited_Videos"
+    BAD_WORDS = "Bad_Words"
+    CHANNEL_ID = "Channel_ID"
+    CHANNEL_TITLE = "Channel_Title"
+    OVERALL_SCORE = "Overall_Score"
 
     CHANNEL_BLACKLIST_CSV_COLUMNS = (
         URL,
         TITLE,
         CATEGORY,
         LANGUAGE,
-        THUMBNAIL,
         SUBSCRIBERS,
         LIKES,
         DISLIKES,
@@ -103,6 +102,7 @@ class PersistentSegmentExportColumn:
     CHANNEL_WHITELIST_CSV_COLUMNS = (
         URL,
         TITLE,
+        LANGUAGE,
         CATEGORY,
         SUBSCRIBERS,
         LIKES,
@@ -139,6 +139,7 @@ class PersistentSegmentExportColumn:
     VIDEO_WHITELIST_CSV_COLUMNS = (
         URL,
         TITLE,
+        LANGUAGE,
         CATEGORY,
         LIKES,
         DISLIKES,

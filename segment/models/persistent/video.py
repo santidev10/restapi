@@ -5,9 +5,6 @@ from django.db.models import BigIntegerField
 from django.db.models import Count
 from django.db.models import ForeignKey
 from django.db.models import Sum
-from django.db.models import CharField
-from django.db.models import DateTimeField
-from django.db.models import Model
 from django.db.models.functions import Cast
 
 from django.contrib.postgres.fields.jsonb import KeyTextTransform

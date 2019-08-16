@@ -9,12 +9,10 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
 
-from channel.api.views.channel_export import YTChannelLinkFromID
-from segment.models import PersistentSegmentChannel
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from segment.models.persistent.constants import PersistentSegmentExportColumn as column
 from segment.models import CustomSegment
 from userprofile.models import UserProfile
-from video.api.views.video_export import YTVideoLinkFromID
 
 
 class PersistentSegmentSerializer(ModelSerializer):
@@ -31,7 +29,7 @@ class PersistentSegmentSerializer(ModelSerializer):
 
     class Meta:
         # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
-        model = PersistentSegmentChannel
+        model = None
         fields = (
             "id",
             "title",
@@ -51,25 +49,50 @@ class PersistentSegmentSerializer(ModelSerializer):
 
 
 class PersistentSegmentVideoExportSerializer(Serializer):
-    url = YTVideoLinkFromID(source="main.id")
-    title = CharField(source="general_data.title")
-    category = CharField(source="general_data.category")
-    likes = IntegerField(source="stats.likes")
-    dislikes = IntegerField(source="stats.dislikes")
-    views = IntegerField(source="stats.views")
-    overall_score = IntegerField(source="brand_safety.overall_score")
+    # Fields map to segment export rows
+    column.URL = SerializerMethodField()
+    column.TITLE = CharField(source="general_data.title", default=None)
+    column.LANGUAGE = CharField(source="general_data.language", default=None)
+    column.CATEGORY = CharField(source="general_data.category", default=None)
+    column.LIKES = IntegerField(source="stats.likes", default=None)
+    column.DISLIKES = IntegerField(source="stats.dislikes", default=None)
+    column.VIEWS = IntegerField(source="stats.views", default=None)
+    column.OVERALL_SCORE = IntegerField(source="brand_safety.overall_score", default=None)
+
+    def get_url(self, obj):
+        return f"https://www.youtube.com/channel/{obj.main.id}/"
 
 
+# class PersistentSegmentChannelExportSerializer(Serializer):
+#     # Fields map to segment export rows
+#     column.URL = SerializerMethodField()
+#     column.TITLE = CharField(source="general_data.title", default=None)
+#     column.LANGUAGE = CharField(source="general_data.language", default=None)
+#     column.CATEGORY = CharField(source="general_data.top_category", default=None)
+#     column.SUBSCRIBERS = IntegerField(source="stats.subscribers", default=None)
+#     column.LIKES = IntegerField(source="stats.likes", default=None)
+#     column.DISLIKES = IntegerField(source="stats.dislikes", default=None)
+#     column.VIEWS = IntegerField(source="stats.views", default=None)
+#     column.AUDITED_VIDEOS = IntegerField(source="brand_safety.videos_scored", default=None)
+#     column.OVERALL_SCORE = IntegerField(source="brand_safety.overall_score", default=None)
+#
+#     def get_url(self, obj):
+#         return f"https://www.youtube.com/video/{obj.main.id}/"
 class PersistentSegmentChannelExportSerializer(Serializer):
-    url = YTChannelLinkFromID(source="main.id")
-    title = CharField(source="general_data.title")
-    category = CharField(source="general_data.top_category")
-    subscribers = IntegerField(source="stats.subscribers")
-    likes = IntegerField(source="stats.likes")
-    dislikes = IntegerField(source="stats.dislikes")
-    views = IntegerField(source="stats.views")
-    audited_videos = IntegerField(source="brand_safety.videos_scored")
-    overall_score = IntegerField(source="brand_safety.overall_score")
+    # Fields map to segment export rows
+    URL = SerializerMethodField("get_url")
+    Title = CharField(source="general_data.title", default=None)
+    Language = CharField(source="general_data.language", default=None)
+    Category = CharField(source="general_data.top_category", default=None)
+    Subscribers = IntegerField(source="stats.subscribers", default=None)
+    Likes = IntegerField(source="stats.likes", default=None)
+    Dislikes = IntegerField(source="stats.dislikes", default=None)
+    Views = IntegerField(source="stats.views", default=None)
+    Audited_Videos = IntegerField(source="brand_safety.videos_scored", default=None)
+    Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)
+
+    def get_url(self, obj):
+        return f"https://www.youtube.com/video/{obj.main.id}/"
 
 
 class CustomSegmentSerializer(ModelSerializer):

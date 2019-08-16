@@ -16,12 +16,9 @@ from django.db.models import TextField
 from django.db.models import BigIntegerField
 from django.db.models import DateTimeField
 from django.db.models import Model
-from django.contrib.postgres.fields.jsonb import KeyTransform
 
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
-from .constants import PersistentSegmentType
-from .constants import PersistentSegmentExportColumn
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from es_components.query_builder import QueryBuilder
@@ -74,23 +71,6 @@ class BasePersistentSegment(Timestampable):
             key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
 
-    # def get_export_columns(self):
-    #     if self.segment_type is None:
-    #         raise ValueError("Undefined segment type")
-    #
-    #     if self.category is None:
-    #         raise ValueError("Undefined segment category")
-    #
-    #     map_by_category = dict(PersistentSegmentExportColumn.CSV_COLUMNS_MAPS_BY_TYPE).get(self.segment_type)
-    #     if map_by_category is None:
-    #         raise ValueError("Unsupported segment type")
-    #
-    #     export_columns = dict(map_by_category).get(self.category)
-    #     if export_columns is None:
-    #         raise ValueError("Unsupported segment category")
-    #
-    #     return export_columns
-
     def _s3(self):
         s3 = boto3.client(
             "s3",
@@ -124,7 +104,8 @@ class BasePersistentSegment(Timestampable):
         return body
 
     def get_filter_query(self):
-        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid)
+        # query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
+        query = QueryBuilder().build().must_not().exists().field("general_data").get()
         return query
 
 
@@ -146,7 +127,7 @@ class BasePersistentSegmentRelated(Timestampable):
 
 
 class PersistentSegmentExportContent(object):
-    CHUNK_SIZE = 100000
+    CHUNK_SIZE = 10
 
     def __init__(self, segment):
         self.segment = segment
@@ -155,10 +136,6 @@ class PersistentSegmentExportContent(object):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
 
         with open(self.filename, mode="w+", newline="") as export_file:
-            # if self.segment.segment_type == PersistentSegmentType.CHANNEL:
-            #     queryset = self.segment.related.annotate(subscribers=KeyTransform("subscribers", "details")).order_by("-subscribers")
-            # else:
-            #     queryset = self.segment.related.annotate(views=KeyTransform("views", "details")).order_by("-views")
             queryset = self.segment.get_queryset()
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
@@ -169,19 +146,15 @@ class PersistentSegmentExportContent(object):
                 limit = (page + 1) * self.CHUNK_SIZE
                 items = queryset[offset:limit]
                 page += 1
-
-                rows = [
-                    {key: value for key, value in item.get_exportable_row().items() if key in field_names}
-                    for item in items
-                ]
+                rows = self.segment.export_serializer(items, many=True).data
                 if not rows:
                     break
-
                 writer.writerows(rows)
         return self.filename
 
     def __exit__(self, *args):
-        os.remove(self.filename)
+        # os.remove(self.filename)
+        pass
 
     def _data_generator(self, export_serializer, queryset):
         for item in queryset:
