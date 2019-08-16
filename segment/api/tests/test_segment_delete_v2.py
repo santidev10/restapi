@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_204_NO_CONTENT
 from rest_framework.status import HTTP_404_NOT_FOUND
+import uuid
 
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
@@ -20,7 +21,7 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_not_found(self):
         self.create_test_user()
-        CustomSegment.objects.create(id=1, list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(id=1, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
         response = self.client.delete(
             self._get_url("video") + "2/"
         )
@@ -28,8 +29,8 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_not_found_not_owned(self):
         user = self.create_test_user()
-        CustomSegment.objects.create(owner=user, id=1, list_type=0, segment_type=0, title="test_1")
-        CustomSegment.objects.create(id=2, list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, list_type=0, segment_type=0, title="test_1")
+        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
         response = self.client.delete(
             self._get_url("video") + "2/"
         )
@@ -37,7 +38,7 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_success(self):
         user = self.create_test_user()
-        segment = CustomSegment.objects.create(id=2, owner=user, list_type=0, segment_type=0, title="test_1")
+        segment = CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="test_1")
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         with patch.object(CustomSegmentExportGenerator, "delete_export", lambda foo, bar, baz: None):
             response = self.client.delete(
