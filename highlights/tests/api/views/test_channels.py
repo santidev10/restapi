@@ -96,6 +96,7 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         category = "Music"
         channel = Channel(id=next(int_iterator))
         channel.populate_general_data(top_category=category)
+        channel.populate_stats(observed_videos_count=10)
         ChannelManager(Sections.GENERAL_DATA).upsert([channel])
 
         url = get_url(size=0, aggregations=AllowedAggregations.CATEGORY.value)
@@ -112,6 +113,8 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         language = "English"
         channel = Channel(id=next(int_iterator))
         channel.populate_general_data(top_language=language)
+        channel.populate_stats(observed_videos_count=10)
+
         ChannelManager(Sections.GENERAL_DATA).upsert([channel])
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
@@ -129,6 +132,8 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         channels = [Channel(id=next(int_iterator)) for _ in range(language_limit + 1)]
         for i, channel in enumerate(channels):
             channel.populate_general_data(top_language=f"lang_{i}")
+            channel.populate_stats(observed_videos_count=10)
+
         ChannelManager(Sections.GENERAL_DATA).upsert(channels)
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
@@ -181,6 +186,7 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         language = "lang"
         channels = [Channel(id=next(int_iterator)) for _ in range(2)]
         channels[0].populate_general_data(top_language=language)
+        channels[0].populate_stats(observed_videos_count=10)
         ChannelManager(Sections.GENERAL_DATA).upsert(channels)
 
         url = get_url(**{AllowedAggregations.LANGUAGE.value: language})
