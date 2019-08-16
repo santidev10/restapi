@@ -9,6 +9,14 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
+ORDERING_FIELDS = (
+    "stats.top_category_last_30day_views:desc",
+    "stats.top_category_last_7day_views:desc",
+    "stats.top_category_last_day_views:desc",
+)
+TERMS_FILTER = ("stats.top_category",)
+ALLOWED_AGGREGATIONS = ("stats.top_category",)
+
 
 class HighlightKeywordsListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
@@ -19,11 +27,7 @@ class HighlightKeywordsListApiView(APIViewMixin, ListAPIView):
     )
     pagination_class = HighlightsPaginator
     queryset = ESQuerysetAdapter(KeywordManager(Sections.STATS))
-    ordering_fields = (
-        "stats.top_category_last_30day_views:desc",
-        "stats.top_category_last_7day_views:desc",
-        "stats.top_category_last_day_views:desc",
-    )
+    ordering_fields = ORDERING_FIELDS
 
-    terms_filter = ("stats.top_category",)
-    allowed_aggregations = ("stats.top_category",)
+    terms_filter = TERMS_FILTER
+    allowed_aggregations = ALLOWED_AGGREGATIONS

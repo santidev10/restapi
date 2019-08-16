@@ -209,10 +209,10 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
 
     def test_sorting_30day_views(self):
         views = [1, 3, 2]
-        keywords = [Channel(next(int_iterator)) for _ in range(len(views))]
-        for keyword, item_views in zip(keywords, views):
-            keyword.populate_stats(last_30day_views=item_views)
-        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(keywords)
+        channels = [Channel(next(int_iterator)) for _ in range(len(views))]
+        for channel, item_views in zip(channels, views):
+            channel.populate_stats(last_30day_views=item_views)
+        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(channels)
 
         url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
