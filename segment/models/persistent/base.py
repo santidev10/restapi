@@ -17,6 +17,7 @@ from django.db.models import BigIntegerField
 from django.db.models import DateTimeField
 from django.db.models import Model
 from django.contrib.postgres.fields.jsonb import KeyTransform
+from django.db.models import UUIDField
 
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
@@ -33,10 +34,12 @@ class PersistentSegmentManager(Manager):
     Extend default persistent segment manager
     """
 
+
 class BasePersistentSegment(Timestampable):
     """
     Base persistent segment model
     """
+    uuid = UUIDField(unique=True)
     title = CharField(max_length=255, null=True, blank=True)
     category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
     is_master = BooleanField(default=False, db_index=True)
