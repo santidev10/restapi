@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from channel.api.urls.names import ChannelPathName
 from es_components.datetime_service import datetime_service
+from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.celery import mock_send_task
@@ -22,6 +23,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create", return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     def test_success_on_user_duplication(self, mock_youtube, flow, requests_mock, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1602
@@ -56,6 +59,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     def test_proxy_errors_from_sdb(self, mock_youtube, flow, *args):
         """
         Bug: https://channelfactory.atlassian.net/browse/SAAS-1718
@@ -81,6 +87,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     @mock_send_task()
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     def test_send_welcome_email(self, mock_youtube, flow, *args):
         user_details = {
             "email": "test@test.test",
