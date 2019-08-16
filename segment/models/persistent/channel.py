@@ -48,6 +48,13 @@ class PersistentSegmentChannel(BasePersistentSegment):
         queryset.order_by("subscribers:dsc")
         return queryset
 
+    def get_export_columns(self):
+        if self.category == "whitelist":
+            export_columns = PersistentSegmentExportColumn.CHANNEL_WHITELIST_CSV_COLUMNS
+        else:
+            export_columns = PersistentSegmentExportColumn.CHANNEL_BLACKLIST_CSV_COLUMNS
+        return export_columns
+
 
 class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
     segment = ForeignKey(PersistentSegmentChannel, related_name="related")

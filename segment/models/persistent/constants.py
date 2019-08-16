@@ -97,7 +97,6 @@ class PersistentSegmentExportColumn:
         DISLIKES,
         VIEWS,
         AUDITED_VIDEOS,
-        BAD_WORDS,
         OVERALL_SCORE
     )
 
@@ -134,7 +133,6 @@ class PersistentSegmentExportColumn:
         LIKES,
         DISLIKES,
         VIEWS,
-        BAD_WORDS,
         OVERALL_SCORE
     )
 

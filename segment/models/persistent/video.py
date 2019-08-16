@@ -49,6 +49,13 @@ class PersistentSegmentVideo(BasePersistentSegment):
         queryset.order_by("views:dsc")
         return queryset
 
+    def get_export_columns(self):
+        if self.category == "whitelist":
+            export_columns = PersistentSegmentExportColumn.VIDEO_WHITELIST_CSV_COLUMNS
+        else:
+            export_columns = PersistentSegmentExportColumn.VIDEO_BLACKLIST_CSV_COLUMNS
+        return export_columns
+
 
 class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
     segment = ForeignKey(PersistentSegmentVideo, related_name="related")

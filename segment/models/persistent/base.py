@@ -74,22 +74,22 @@ class BasePersistentSegment(Timestampable):
             key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
 
-    def get_export_columns(self):
-        if self.segment_type is None:
-            raise ValueError("Undefined segment type")
-
-        if self.category is None:
-            raise ValueError("Undefined segment category")
-
-        map_by_category = dict(PersistentSegmentExportColumn.CSV_COLUMNS_MAPS_BY_TYPE).get(self.segment_type)
-        if map_by_category is None:
-            raise ValueError("Unsupported segment type")
-
-        export_columns = dict(map_by_category).get(self.category)
-        if export_columns is None:
-            raise ValueError("Unsupported segment category")
-
-        return export_columns
+    # def get_export_columns(self):
+    #     if self.segment_type is None:
+    #         raise ValueError("Undefined segment type")
+    #
+    #     if self.category is None:
+    #         raise ValueError("Undefined segment category")
+    #
+    #     map_by_category = dict(PersistentSegmentExportColumn.CSV_COLUMNS_MAPS_BY_TYPE).get(self.segment_type)
+    #     if map_by_category is None:
+    #         raise ValueError("Unsupported segment type")
+    #
+    #     export_columns = dict(map_by_category).get(self.category)
+    #     if export_columns is None:
+    #         raise ValueError("Unsupported segment category")
+    #
+    #     return export_columns
 
     def _s3(self):
         s3 = boto3.client(
@@ -155,10 +155,11 @@ class PersistentSegmentExportContent(object):
         _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
 
         with open(self.filename, mode="w+", newline="") as export_file:
-            if self.segment.segment_type == PersistentSegmentType.CHANNEL:
-                queryset = self.segment.related.annotate(subscribers=KeyTransform("subscribers", "details")).order_by("-subscribers")
-            else:
-                queryset = self.segment.related.annotate(views=KeyTransform("views", "details")).order_by("-views")
+            # if self.segment.segment_type == PersistentSegmentType.CHANNEL:
+            #     queryset = self.segment.related.annotate(subscribers=KeyTransform("subscribers", "details")).order_by("-subscribers")
+            # else:
+            #     queryset = self.segment.related.annotate(views=KeyTransform("views", "details")).order_by("-views")
+            queryset = self.segment.get_queryset()
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    @pidfile(piddir=".", pidname="audit_segments_export.pid")
+    @pidfile(piddir=".", pidname="brand_suitability_export.pid")
     def handle(self, *args, **options):
         logger.info("Start")
         self.finalize_segments(PersistentSegmentChannel.objects.all())
