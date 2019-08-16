@@ -378,5 +378,5 @@ class BrandSafetyAudit(object):
             data = [self.audit_utils.extract_video_data(item) for item in results]
             video_audits = self.audit_videos(videos=data)
             self._index_results(video_audits, [])
-            print("Indexed {} videos".format(len(video_audits)))
+            logger.error("Indexed {} videos".format(len(video_audits)))
             results = self.video_manager.search(query, limit=5000).execute().hits
