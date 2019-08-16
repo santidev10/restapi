@@ -55,6 +55,10 @@ class PersistentSegmentChannel(BasePersistentSegment):
             export_columns = PersistentSegmentExportColumn.CHANNEL_BLACKLIST_CSV_COLUMNS
         return export_columns
 
+    @staticmethod
+    def get_title(category_name, list_type):
+        return f"Channels {category_name} Brand Suitability {list_type.capitalize()}"
+
 
 class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
     segment = ForeignKey(PersistentSegmentChannel, related_name="related")
