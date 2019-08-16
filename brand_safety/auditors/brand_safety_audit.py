@@ -369,3 +369,14 @@ class BrandSafetyAudit(object):
         video_audits = self.audit_videos(videos=mapped)
         self._index_results(video_audits, [])
         return video_audits
+
+    def audit_remaining_videos(self):
+        query = QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get() \
+            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
+        results = self.video_manager.search(query, limit=5000).execute().hits
+        while results:
+            data = [self.audit_utils.extract_video_data(item) for item in results]
+            video_audits = self.audit_videos(videos=data)
+            self._index_results(video_audits, [])
+            print("Indexed {} videos".format(len(video_audits)))
+            results = self.video_manager.search(query, limit=5000).execute().hits

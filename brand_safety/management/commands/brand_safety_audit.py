@@ -32,6 +32,10 @@ class Command(BaseCommand):
                 discovery=True, channels that only need to be updated
             """
         )
+        parser.add_argument(
+            "--videos",
+            help="Score only videos"
+        )
 
     def handle(self, *args, **kwargs):
         self.audit_type = self.DISCOVERY if kwargs["discovery"] == "True" else self.UPDATE
@@ -46,6 +50,8 @@ class Command(BaseCommand):
         try:
             if options.get("manual"):
                 self._handle_manual(*args, **options)
+            elif options.get("videos"):
+                self._handle_videos(*args, **options)
             else:
                 self._handle_standard(*args, **options)
         except Exception as e:
@@ -70,3 +76,7 @@ class Command(BaseCommand):
             api_tracker = APIScriptTracker.objects.get_or_create(name="BrandSafetyUpdate")[0]
             standard_audit = BrandSafetyAudit(api_tracker=api_tracker, discovery=False)
         standard_audit.run()
+
+    def _handle_videos(self, *args, **options):
+        standard_audit = BrandSafetyAudit(discovery=False)
+        standard_audit.audit_remaining_videos()
