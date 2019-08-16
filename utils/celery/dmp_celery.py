@@ -18,9 +18,11 @@ class Queue:
     DELETE_ENTITY = "delete_entity"
     CHANNEL_GENERAL_DATA_PRIORITY = "channel_general_data_priority"
     CHANNEL_STATS_PRIORITY = "channel_stats_priority"
+    CHANNEL_AUTH_PRIORITY = "channel_auth_priority"
 
 
 class Task:
+    CHANNEL_AUTH_PRIORITY = "channel_auth_priority"
     CHANNEL_GENERAL_DATA_PRIORITY = "channel_general_data_priority"
     CHANNEL_STATS_PRIORITY = "channel_stats_priority"
     DELETE_CHANNELS = "delete_channels"
@@ -49,6 +51,10 @@ def send_task_delete_channels(task_args):
 
 def send_task_delete_videos(task_args):
     dmp_celery_app.send_task(Task.DELETE_VIDEOS, task_args, queue=Queue.DELETE_ENTITY)
+
+
+def send_task_channel_auth_priority(task_args):
+    dmp_celery_app.send_task(Task.CHANNEL_AUTH_PRIORITY, task_args, queue=Queue.CHANNEL_AUTH_PRIORITY)
 
 
 def wait_results(future):
