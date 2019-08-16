@@ -112,6 +112,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             last_30day_views=321,
             views_per_video=123.4,
             sentiment=0.23,
+            observed_videos_count=10,
             engage_rate=0.34,
             last_video_published_at=datetime(2018, 2, 3, 4, 5, 6, tzinfo=pytz.utc),
         )
@@ -158,6 +159,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_missed_values(self):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
+        channel.populate_stats(observed_videos_count=10)
         ChannelManager(sections=Sections.GENERAL_DATA).upsert([channel])
 
         response = self._request()
@@ -174,6 +176,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_request_brand_safety_from_the_same_source(self):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
         ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
 
         with patch.object(ElasticSearchConnector, "search_by_id", return_value={}) as es_mock:
@@ -188,7 +192,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         filter_count = 2
         channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
-        ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
         response = self._request(ids=",".join(channel_ids[:filter_count]))
@@ -204,6 +210,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_filter_verified(self):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
         ChannelManager(sections=Sections.GENERAL_DATA).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([channels[1]])
 
