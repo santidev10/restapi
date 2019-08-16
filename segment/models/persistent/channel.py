@@ -8,6 +8,7 @@ from django.db.models import Sum
 from django.db.models.functions import Cast
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
+from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -17,6 +18,7 @@ from .constants import PersistentSegmentExportColumn
 
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
+    audit_category = ForeignKey(AuditCategory, related_name="channel_segment")
 
     objects = PersistentSegmentManager()
 
