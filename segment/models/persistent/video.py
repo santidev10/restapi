@@ -6,9 +6,9 @@ from django.db.models import Count
 from django.db.models import ForeignKey
 from django.db.models import Sum
 from django.db.models.functions import Cast
-
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
+from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -24,6 +24,7 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
     export_serializer = PersistentSegmentVideoExportSerializer
+    audit_category = ForeignKey(AuditCategory, related_name="video_segment")
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 

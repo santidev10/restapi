@@ -17,7 +17,7 @@ ORDERING_FIELDS = (
     "stats.last_7day_views:desc",
     "stats.last_day_views:desc",
 )
-TERMS_FILTERS = (
+TERMS_FILTER = (
     "general_data.top_category",
     "general_data.top_language",
 )
@@ -46,7 +46,7 @@ class HighlightChannelsListApiView(APIViewMixin, ListAPIView):
     )
     pagination_class = HighlightsChannelsPaginator
     ordering_fields = ORDERING_FIELDS
-    terms_filter = TERMS_FILTERS
+    terms_filter = TERMS_FILTER
     allowed_aggregations = ALLOWED_AGGREGATIONS
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 

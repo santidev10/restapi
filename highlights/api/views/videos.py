@@ -22,6 +22,21 @@ class HighlightsVideosPaginator(HighlightsPaginator):
         return response_data
 
 
+ORDERING_FIELDS = (
+    "stats.last_30day_views:desc",
+    "stats.last_7day_views:desc",
+    "stats.last_day_views:desc",
+)
+TERMS_FILTER = (
+    "general_data.category",
+    "general_data.language",
+)
+ALLOWED_AGGREGATIONS = (
+    "general_data.category",
+    "general_data.language",
+)
+
+
 class HighlightVideosListApiView(APIViewMixin, ListAPIView):
     serializer_class = VideoWithBlackListSerializer
     permission_classes = (
@@ -32,20 +47,10 @@ class HighlightVideosListApiView(APIViewMixin, ListAPIView):
     )
 
     pagination_class = HighlightsVideosPaginator
-    ordering_fields = (
-        "stats.last_30day_views:desc",
-        "stats.last_7day_views:desc",
-        "stats.last_day_views:desc",
-    )
+    ordering_fields = ORDERING_FIELDS
 
-    terms_filter = (
-        "general_data.category",
-        "general_data.language",
-    )
-    allowed_aggregations = (
-        "general_data.category",
-        "general_data.language",
-    )
+    terms_filter = TERMS_FILTER
+    allowed_aggregations = ALLOWED_AGGREGATIONS
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
 
     def get_queryset(self):
