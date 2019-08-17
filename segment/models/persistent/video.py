@@ -24,7 +24,7 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
     export_serializer = PersistentSegmentVideoExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="video_segment")
+    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 

@@ -1,15 +1,9 @@
-from collections import defaultdict
 import logging
 
-from django.contrib.postgres.fields.jsonb import KeyTransform
-from django.conf import settings
 import uuid
 
 from audit_tool.models import AuditCategory
-from segment.models.persistent.constants import PersistentSegmentTitles
 import brand_safety.constants as constants
-from brand_safety.auditors.utils import AuditUtils
-from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
@@ -17,11 +11,7 @@ from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent import PersistentSegmentRelatedVideo
-from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
-from segment.utils import get_persistent_segment_connector_config_by_type
 
 
 logger = logging.getLogger(__name__)
@@ -32,134 +22,216 @@ class SegmentListGenerator(object):
     MINIMUM_VIEWS = 10
     MINIMUM_SUBSCRIBERS = 10
     MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 50
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS)
-    WHITELIST_SIZE = 100000
-    BLACKLIST_SIZE = 100000
-    VIDEO_SORT_KEY = "views:desc"
-    CHANNEL_SORT_KEY = {"subscribers": {"order": "desc"}}
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
+    # WHITELIST_SIZE = 100000
+    # BLACKLIST_SIZE = 100000
+    WHITELIST_SIZE = 3
+    BLACKLIST_SIZE = 3
+    SEGMENT_BATCH_SIZE = 1000
+    VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
+    CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
     def __init__(self):
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def run(self):
-        for category in AuditCategory.objects.all():
+        # for category in AuditCategory.objects.all():
             # Generate new entry
-            self._generate_channel_whitelist(category)
+            # self._generate_channel_whitelist(category)
+            # self._generate_video_whitelist(category)
+            # break
 
-    def process_master(self):
-        self._master_whitelist_videos()
-        self._master_blacklist_videos()
-
-        self._master_whitelist_channels()
-        self._master_blacklist_channels()
+        self._generate_master_channel_blacklist()
+        # self._generate_master_channel_whitelist()
+        #
+        # self._generate_master_video_blacklist()
+        # self._generate_master_video_whitelist()
 
     def _generate_channel_whitelist(self, category):
-        # category_id = category.id
-        # category_name = category.category_display
-        # new_category_segment = PersistentSegmentChannel.objects.create(
-        #     uuid=uuid.uuid4(),
-        #     title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
-        #     category=constants.WHITELIST,
-        #     is_master=False
-        # )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                # & QueryBuilder().build().must().term().field("general_data.top_category").value(category_name).get() \
-                # & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
-        search = self.channel_manager._search()
-        search = search.query(query)
-        search = search.sort("subscribers:desc")
-        search = search.params(preserve_order=True)
-        for doc in search.scan():
-            item = doc
-            pass
+        """
+        Generate Channel Category Whitelist
+        :param category:
+        :return:
+        """
+        category_id = category.id
+        category_name = category.category_display
+        # Generate new category segment
+        new_category_segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
+            category=constants.WHITELIST,
+            is_master=False,
+            audit_category_id=category_id
+        )
 
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(category_name).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        # self.channel_manager.add_to_segment(query, new_category_segment.uuid)
-        # # Clean old segments
-        # self._clean_old_segments(category_id, new_category_segment.uuid)
+        self._add_to_segment(new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
+        # Clean old segments
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
         category_name = category.category_display
+        # Generate new category segment
         new_category_segment = PersistentSegmentVideo.objects.create(
             uuid=uuid.uuid4(),
             title=PersistentSegmentVideo.get_title(category_name, constants.WHITELIST),
             category=constants.WHITELIST,
-            is_master=False
+            is_master=False,
+            audit_category_id=category_id
         )
-        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category).get() \
+
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category_name).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self.video_manager.add_to_segment(PersistentSegmentVideo, query)
-        # Truncate list
-        self._truncate_segment(self.video_manager, new_category_segment.uuid, self.WHITELIST_SIZE, self.VIDEO_SORT_KEY)
+        self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        # Clean old segments
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
 
-        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, category_id, new_category_segment.uuid)
+    def _generate_master_video_whitelist(self):
+        """
+        Generate Master Video Whitelist
+        :return:
+        """
+        new_master_video_whitelist = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+            category=constants.WHITELIST,
+            is_master=True,
+            audit_category=None
+        )
 
-    def _clean_old_segments(self, es_manager, model, category_id, new_segment_uuid):
-        # Delete old persistent segments with same audit category and delete from elasticsearch
-        old_segments = model.objects.filter(audit_category_id=category_id).exclude(uuid=new_segment_uuid)
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+
+        self.video_manager.add_to_segment(query, new_master_video_whitelist.uuid)
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
+
+    def _generate_master_video_blacklist(self):
+        """
+        Generate Master Video Blacklist
+        :return:
+        """
+        new_master_video_blacklist = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+            category=constants.BLACKLIST,
+            is_master=True,
+            audit_category=None
+        )
+
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+
+        self.video_manager.add_to_segment(query, new_master_video_blacklist.uuid)
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
+
+    def _generate_master_channel_whitelist(self):
+        """
+        Generate Master Channel Whitelist
+        :return:
+        """
+        new_master_channel_whitelist = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+            category=constants.WHITELIST,
+            is_master=True,
+            audit_category=None
+        )
+
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+
+        self.channel_manager.add_to_segment(query, new_master_channel_whitelist.uuid)
+        self._clean_old_segments(self.video_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
+                                 is_master=True, master_list_type=constants.WHITELIST)
+
+    def _generate_master_channel_blacklist(self):
+        """
+        Generate Master Channel Blacklist
+        :return:
+        """
+        new_master_channel_blacklist = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+            category=constants.WHITELIST,
+            is_master=True,
+            audit_category=None
+        )
+
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+        self.channel_manager.add_to_segment(query, new_master_channel_blacklist.uuid)
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
+                                 is_master=True, master_list_type=constants.BLACKLIST)
+
+    def _add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
+        """
+        Add Elasticsearch items to segment uuid
+        :param segment_uuid:
+        :param es_manager:
+        :param query:
+        :param sort_key:
+        :param limit:
+        :return:
+        """
+        item_counter = 0
+        ids_to_add = []
+        search_with_params = self._generate_search_with_params(es_manager, query, sort_key)
+
+        for doc in search_with_params.scan():
+            ids_to_add.append(doc.main.id)
+            item_counter += 1
+
+            if len(ids_to_add) >= self.SEGMENT_BATCH_SIZE:
+                es_manager.add_to_segment_by_ids(ids_to_add, segment_uuid)
+                ids_to_add.clear()
+
+            if item_counter >= size:
+                es_manager.add_to_segment_by_ids(ids_to_add, segment_uuid)
+                break
+
+    def _generate_search_with_params(self, manager, query, sort):
+        """
+        Generate scan query with sorting
+        :param manager:
+        :param query:
+        :param sort:
+        :return:
+        """
+        search = manager._search()
+        search = search.query(query)
+        search = search.sort(sort)
+        search = search.params(preserve_order=True)
+        return search
+
+    def _clean_old_segments(self, es_manager, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
+        """
+        Delete old category segments and clean documents with old segment uuid
+        :param es_manager:
+        :param model:
+        :param category_id:
+        :param new_segment_uuid:
+        :return:
+        """
+        # Delete old persistent segments with same audit category and delete from Elasticsearch
+        if is_master:
+            old_segments = model.objects.filter(category=master_list_type, is_master=True).exclude(uuid=new_segment_uuid)
+        else:
+            old_segments = model.objects.filter(audit_category_id=category_id).exclude(uuid=new_segment_uuid)
+
         old_uuids = old_segments.values_list("uuid", flat=True)
-        # Delete from documents old segments
+        # Delete old segment uuid's from documents
         for uuid in old_uuids:
             remove_query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(uuid).get()
             es_manager.remove_from_segment(remove_query, uuid)
         old_segments.delete()
-
-    def _master_whitelist_videos(self):
-        master_whitelist_videos = PersistentSegmentChannel.objects.get(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE)
-
-        query = QueryBuilder.build().must().range().filed(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
-
-        self.video_manager.add_to_segment(query, master_whitelist_videos.uuid)
-        self._truncate_segment(self.video_manager, master_whitelist_videos.uuid, self.WHITELIST_SIZE, self.VIDEO_SORT_KEY)
-
-    def _master_blacklist_videos(self):
-        master_blacklist_videos = PersistentSegmentChannel.objects.get(
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE)
-
-        query = QueryBuilder.build().must().range().filed(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
-
-        self.video_manager.add_to_segment(query, master_blacklist_videos.uuid)
-        self._truncate_segment(self.video_manager, master_blacklist_videos.uuid, self.BLACKLIST_SIZE, self.VIDEO_SORT_KEY)
-
-    def _master_whitelist_channels(self):
-        master_whitelist_channels = PersistentSegmentChannel.objects.get(title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE)
-
-        query = QueryBuilder.build().must().range().filed(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
-
-        self.channel_manager.add_to_segment(query, master_whitelist_channels.uuid)
-        self._truncate_segment(self.channel_manager, master_whitelist_channels.uuid, self.WHITELIST_SIZE, self.CHANNEL_SORT_KEY)
-
-    def _master_blacklist_channels(self):
-        master_blacklist_channels = PersistentSegmentChannel.objects.get(title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE)
-
-        query = QueryBuilder.build().must().range().filed(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder.build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
-
-        self.channel_manager.add_to_segment(query, master_blacklist_channels.uuid)
-        self._truncate_segment(self.channel_manager, master_blacklist_channels.uuid, self.BLACKLIST_SIZE, self.CHANNEL_SORT_KEY)
-
-    def _truncate_segment(self, es_manager, segment_uuid, size, sort_key):
-        """
-        Get all items in segment, sort, and get items after size to remove from segment
-        :param segment:
-        :param size:
-        :return:
-        """
-        search_query = QueryBuilder.build().must().terms().field(SEGMENTS_UUID_FIELD).value(segment_uuid).get()
-        docs_to_remove = es_manager.search(search_query, sort=sort_key, offset=size)
-
-        ids_to_remove = [item.main.id for item in docs_to_remove]
-        remove_query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(ids_to_remove).get()
-        es_manager.remove_from_segment(remove_query, segment_uuid)

@@ -23,7 +23,7 @@ from segment.api.serializers import PersistentSegmentChannelExportSerializer
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
     export_serializer = PersistentSegmentChannelExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="channel_segment")
+    audit_category = ForeignKey(AuditCategory, related_name="channel_segment", null=True)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
