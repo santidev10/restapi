@@ -108,8 +108,7 @@ class BasePersistentSegment(Timestampable):
         return body
 
     def get_filter_query(self):
-        # query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
-        query = QueryBuilder().build().must_not().exists().field("general_data").get()
+        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
         return query
 
 
@@ -131,7 +130,7 @@ class BasePersistentSegmentRelated(Timestampable):
 
 
 class PersistentSegmentExportContent(object):
-    CHUNK_SIZE = 10
+    CHUNK_SIZE = 1000
 
     def __init__(self, segment):
         self.segment = segment
@@ -157,8 +156,7 @@ class PersistentSegmentExportContent(object):
         return self.filename
 
     def __exit__(self, *args):
-        # os.remove(self.filename)
-        pass
+        os.remove(self.filename)
 
     def _data_generator(self, export_serializer, queryset):
         for item in queryset:

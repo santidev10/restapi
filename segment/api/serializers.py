@@ -52,34 +52,19 @@ class PersistentSegmentSerializer(ModelSerializer):
 
 class PersistentSegmentVideoExportSerializer(Serializer):
     # Fields map to segment export rows
-    column.URL = SerializerMethodField()
-    column.TITLE = CharField(source="general_data.title", default=None)
-    column.LANGUAGE = CharField(source="general_data.language", default=None)
-    column.CATEGORY = CharField(source="general_data.category", default=None)
-    column.LIKES = IntegerField(source="stats.likes", default=None)
-    column.DISLIKES = IntegerField(source="stats.dislikes", default=None)
-    column.VIEWS = IntegerField(source="stats.views", default=None)
-    column.OVERALL_SCORE = IntegerField(source="brand_safety.overall_score", default=None)
+    URL = SerializerMethodField("get_url")
+    Title = CharField(source="general_data.title", default=None)
+    Language = CharField(source="general_data.language", default=None)
+    Category = CharField(source="general_data.category", default=None)
+    Likes = IntegerField(source="stats.likes", default=None)
+    Dislikes = IntegerField(source="stats.dislikes", default=None)
+    Views = IntegerField(source="stats.views", default=None)
+    Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)
 
     def get_url(self, obj):
-        return f"https://www.youtube.com/channel/{obj.main.id}/"
+        return f"https://www.youtube.com/video/{obj.main.id}/"
 
 
-# class PersistentSegmentChannelExportSerializer(Serializer):
-#     # Fields map to segment export rows
-#     column.URL = SerializerMethodField()
-#     column.TITLE = CharField(source="general_data.title", default=None)
-#     column.LANGUAGE = CharField(source="general_data.language", default=None)
-#     column.CATEGORY = CharField(source="general_data.top_category", default=None)
-#     column.SUBSCRIBERS = IntegerField(source="stats.subscribers", default=None)
-#     column.LIKES = IntegerField(source="stats.likes", default=None)
-#     column.DISLIKES = IntegerField(source="stats.dislikes", default=None)
-#     column.VIEWS = IntegerField(source="stats.views", default=None)
-#     column.AUDITED_VIDEOS = IntegerField(source="brand_safety.videos_scored", default=None)
-#     column.OVERALL_SCORE = IntegerField(source="brand_safety.overall_score", default=None)
-#
-#     def get_url(self, obj):
-#         return f"https://www.youtube.com/video/{obj.main.id}/"
 class PersistentSegmentChannelExportSerializer(Serializer):
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
@@ -94,7 +79,7 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)
 
     def get_url(self, obj):
-        return f"https://www.youtube.com/video/{obj.main.id}/"
+        return f"https://www.youtube.com/channel/{obj.main.id}/"
 
 
 class CustomSegmentSerializer(ModelSerializer):
