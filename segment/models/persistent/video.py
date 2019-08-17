@@ -30,7 +30,7 @@ class PersistentSegmentVideo(BasePersistentSegment):
 
     def calculate_details(self):
         es_manager = VideoManager(sections=self.SECTIONS)
-        search = es_manager.search(query=self.get_segment_items())
+        search = es_manager.search(query=self.get_segment_items_query())
         search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
         search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
         search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
@@ -41,7 +41,7 @@ class PersistentSegmentVideo(BasePersistentSegment):
 
     def get_queryset(self):
         queryset = ESQuerysetAdapter(VideoManager(sections=self.SECTIONS))
-        queryset.filter([self.get_segment_items()])
+        queryset.filter([self.get_segment_items_query()])
         queryset.order_by("stats.views:desc")
         return queryset
 

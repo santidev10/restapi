@@ -30,7 +30,7 @@ class PersistentSegmentChannel(BasePersistentSegment):
 
     def calculate_details(self):
         es_manager = ChannelManager(sections=self.SECTIONS)
-        search = es_manager.search(query=self.get_segment_items())
+        search = es_manager.search(query=self.get_segment_items_query())
         search.aggs.bucket("subscribers", "sum", field=f"{Sections.STATS}.subscribers")
         search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
         search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
@@ -44,7 +44,7 @@ class PersistentSegmentChannel(BasePersistentSegment):
     def get_queryset(self):
         queryset = ESQuerysetAdapter(ChannelManager(sections=self.SECTIONS))
         queryset.order_by("stats.subscribers:desc")
-        queryset.filter([self.get_segment_items()])
+        queryset.filter([self.get_segment_items_query()])
         return queryset
 
     def get_export_columns(self):

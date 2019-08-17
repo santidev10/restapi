@@ -107,7 +107,7 @@ class BasePersistentSegment(Timestampable):
         self.export_last_modified = s3_object.get("LastModified")
         return body
 
-    def get_segment_items(self):
+    def get_segment_items_query(self):
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
         return query
 

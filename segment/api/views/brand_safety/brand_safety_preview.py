@@ -11,7 +11,9 @@ import brand_safety.constants as constants
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
+from es_components.constants import SortDirections
 from segment.utils import get_persistent_segment_model_by_type
+
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import get_brand_safety_data
 
@@ -39,6 +41,14 @@ class PersistentSegmentPreviewAPIView(APIView):
         segment_type = kwargs["segment_type"]
         page = request.query_params.get("page", 1)
         size = request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
+        segment_model = get_persistent_segment_model_by_type(segment_type)
+
+        if segment_type == constants.CHANNEL:
+            es_manager = ChannelManager(self.SECTIONS)
+            sort_key = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
+        else:
+            es_manager = VideoManager(self.SECTIONS)
+            sort_key = {"stats.views": {"order": SortDirections.DESCENDING}}
         try:
             page = int(page)
         except ValueError:
@@ -53,23 +63,19 @@ class PersistentSegmentPreviewAPIView(APIView):
             size = self.DEFAULT_PAGE_SIZE
         elif size >= self.MAX_PAGE_SIZE:
             size = self.MAX_PAGE_SIZE
-        segment_model = get_persistent_segment_model_by_type(segment_type)
         try:
             segment = segment_model.objects.get(id=kwargs["pk"])
         except segment_model.DoesNotExist:
             raise Http404
-        related_items = segment.related.select_related("segment").order_by("related_id")
-        paginator = Paginator(related_items, size)
-        try:
-            preview_page = paginator.page(page)
-        except EmptyPage:
-            page = paginator.num_pages
-            preview_page = paginator.page(page)
-        related_ids = [item.related_id for item in preview_page.object_list]
 
-        manager = ChannelManager(self.SECTIONS) if segment_type == constants.CHANNEL else VideoManager(self.SECTIONS)
-        query = manager.ids_query(related_ids)
-        data = manager.search(query).execute().hits
+        max_items = segment.details["items_count"]
+        max_page = max_items // size
+        if page > max_page:
+            page = max_page
+
+        offset = (page - 1) * size
+        query = segment.get_segment_items_query()
+        data = es_manager.search(query, sort=sort_key, offset=offset, limit=offset + size).execute()
         preview_data = []
         for item in data:
             score = getattr(item.brand_safety, "overall_score", None)
@@ -80,6 +86,6 @@ class PersistentSegmentPreviewAPIView(APIView):
             "items": preview_data,
             "items_count": len(preview_data),
             "current_page": page,
-            "max_page": paginator.num_pages
+            "max_page": max_page
         }
         return Response(status=HTTP_200_OK, data=result)

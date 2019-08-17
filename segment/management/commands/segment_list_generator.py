@@ -1,12 +1,7 @@
 import logging
 
-from pid import PidFile
-from pid import PidFileError
-
 from django.core.management.base import BaseCommand
 from segment.segment_list_generator import SegmentListGenerator
-from audit_tool.models import APIScriptTracker
-import brand_safety.constants as constants
 
 logger = logging.getLogger(__name__)
 

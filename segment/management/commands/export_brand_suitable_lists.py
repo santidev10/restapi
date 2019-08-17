@@ -15,7 +15,7 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="brand_suitability_export.pid")
     def handle(self, *args, **options):
         logger.info("Start")
-        # self.finalize_segments(PersistentSegmentChannel.objects.all())
+        self.finalize_segments(PersistentSegmentChannel.objects.all())
         self.finalize_segments(PersistentSegmentVideo.objects.all())
         logger.info("Finish")
 
@@ -34,4 +34,3 @@ class Command(BaseCommand):
             segment.save()
             logger.info("Saved {}".format(segment.get_s3_key()))
             PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
-            break
