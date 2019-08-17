@@ -30,6 +30,8 @@ class Command(BaseCommand):
             s3_filename = segment.get_s3_key(datetime=now)
             logger.info("Collecting data for {}".format(s3_filename))
             segment.export_to_s3(s3_filename)
+            segment.details = segment.calculate_details()
+            segment.save()
             logger.info("Saved {}".format(segment.get_s3_key()))
             PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
             break

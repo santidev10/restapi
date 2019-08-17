@@ -17,7 +17,6 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
-from es_components.constants import SEGMENTS_UUID_FIELD
 from utils.es_components_api_utils import ESQuerysetAdapter
 from segment.api.serializers import PersistentSegmentChannelExportSerializer
 
@@ -39,6 +38,7 @@ class PersistentSegmentChannel(BasePersistentSegment):
         search.aggs.bucket("audited_videos", "sum", field=f"{Sections.BRAND_SAFETY}.videos_scored")
         result = search.execute()
         details = self.extract_aggregations(result.aggregations.to_dict())
+        details["items_count"] = result.hits.total
         return details
 
     def get_queryset(self):

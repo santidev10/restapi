@@ -29,16 +29,14 @@ class PersistentSegmentVideo(BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def calculate_details(self):
-        details = self.related.annotate(
-            related_likes=Cast(KeyTextTransform("likes", "details"), BigIntegerField()),
-            related_dislikes=Cast(KeyTextTransform("dislikes", "details"), BigIntegerField()),
-            related_views=Cast(KeyTextTransform("views", "details"), BigIntegerField()),
-        ).aggregate(
-            likes=Sum("related_likes"),
-            dislikes=Sum("related_dislikes"),
-            views=Sum("related_views"),
-            items_count=Count("id")
-        )
+        es_manager = VideoManager(sections=self.SECTIONS)
+        search = es_manager.search(query=self.get_segment_items())
+        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
+        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
+        search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
+        result = search.execute()
+        details = self.extract_aggregations(result.aggregations.to_dict())
+        details["items_count"] = result.hits.total
         return details
 
     def get_queryset(self):

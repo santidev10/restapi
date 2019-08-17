@@ -118,7 +118,7 @@ class BasePersistentSegment(Timestampable):
         :return:
         """
         results = {}
-        for key, value in aggregation_result_dict:
+        for key, value in aggregation_result_dict.items():
             results[key] = value["value"]
         return results
 

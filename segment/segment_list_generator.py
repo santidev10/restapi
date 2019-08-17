@@ -15,8 +15,11 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentTitles
 
 
+logger = logging.getLogger(__name__)
+
+
 class SegmentListGenerator(object):
-    MAX_API_CALL_RETRY = 5
+    MAX_API_CALL_RETRY = 20
     RETRY_SLEEP_COEFFICIENT = 2
     SENTIMENT_THRESHOLD = 0.8
     MINIMUM_VIEWS = 1000
@@ -38,11 +41,11 @@ class SegmentListGenerator(object):
             self._generate_channel_whitelist(category)
             self._generate_video_whitelist(category)
 
-        # self._generate_master_channel_blacklist()
-        # self._generate_master_channel_whitelist()
-        #
-        # self._generate_master_video_blacklist()
-        # self._generate_master_video_whitelist()
+        self._generate_master_channel_blacklist()
+        self._generate_master_channel_whitelist()
+
+        self._generate_master_video_blacklist()
+        self._generate_master_video_whitelist()
 
     def _generate_channel_whitelist(self, category):
         """
@@ -60,7 +63,6 @@ class SegmentListGenerator(object):
             is_master=False,
             audit_category_id=category_id
         )
-
         query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(category_name).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
@@ -80,14 +82,12 @@ class SegmentListGenerator(object):
             is_master=False,
             audit_category_id=category_id
         )
-
         query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category_name).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self._retry_on_conflict(self._add_to_segment, new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
-        # self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
 
@@ -103,7 +103,6 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category=None
         )
-
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
@@ -123,7 +122,6 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category=None
         )
-
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
@@ -145,7 +143,6 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category=None
         )
-
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
@@ -166,7 +163,6 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category=None
         )
-
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
@@ -241,19 +237,20 @@ class SegmentListGenerator(object):
         Retry on Document Conflicts
         """
         tries_count = 0
-        while tries_count <= self.MAX_API_CALL_RETRY:
-            try:
-                result = method(*args, **kwargs)
-            except Exception as err:
-                if "ConflictError(409" in str(err):
-                    print("Retrying", err)
-                    tries_count += 1
-                    if tries_count <= self.MAX_API_CALL_RETRY:
-                        sleep_seconds_count = self.MAX_API_CALL_RETRY \
-                                              ** self.RETRY_SLEEP_COEFFICIENT
-                        time.sleep(sleep_seconds_count)
+        try:
+            while tries_count <= self.MAX_API_CALL_RETRY:
+                try:
+                    result = method(*args, **kwargs)
+                except Exception as err:
+                    if "ConflictError(409" in str(err):
+                        tries_count += 1
+                        if tries_count <= self.MAX_API_CALL_RETRY:
+                            sleep_seconds_count = self.MAX_API_CALL_RETRY \
+                                                  ** self.RETRY_SLEEP_COEFFICIENT
+                            time.sleep(sleep_seconds_count)
+                    else:
+                        raise err
                 else:
-                    raise err
-            else:
-                return result
-        raise Exception("Unable to complete request.")
+                    return result
+        except Exception as e:
+            logger.error("Unable to complete request", e)
