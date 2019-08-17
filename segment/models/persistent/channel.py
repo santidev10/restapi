@@ -7,6 +7,7 @@ from django.db.models import ForeignKey
 from django.db.models import Sum
 from django.db.models.functions import Cast
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from elasticsearch_dsl import A
 
 from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
@@ -16,6 +17,7 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
+from es_components.constants import SEGMENTS_UUID_FIELD
 from utils.es_components_api_utils import ESQuerysetAdapter
 from segment.api.serializers import PersistentSegmentChannelExportSerializer
 
@@ -28,26 +30,21 @@ class PersistentSegmentChannel(BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def calculate_details(self):
-        details = self.related.annotate(
-            related_subscribers=Cast(KeyTextTransform("subscribers", "details"), BigIntegerField()),
-            related_likes=Cast(KeyTextTransform("likes", "details"), BigIntegerField()),
-            related_dislikes=Cast(KeyTextTransform("dislikes", "details"), BigIntegerField()),
-            related_views=Cast(KeyTextTransform("views", "details"), BigIntegerField()),
-            related_audited_videos=Cast(KeyTextTransform("audited_videos", "details"), BigIntegerField()),
-        ).aggregate(
-            subscribers=Sum("related_subscribers"),
-            likes=Sum("related_likes"),
-            dislikes=Sum("related_dislikes"),
-            views=Sum("related_views"),
-            audited_videos=Sum("related_audited_videos"),
-            items_count=Count("id")
-        )
+        es_manager = ChannelManager(sections=self.SECTIONS)
+        search = es_manager.search(query=self.get_segment_items())
+        search.aggs.bucket("subscribers", "sum", field=f"{Sections.STATS}.subscribers")
+        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
+        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
+        search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
+        search.aggs.bucket("audited_videos", "sum", field=f"{Sections.BRAND_SAFETY}.videos_scored")
+        result = search.execute()
+        details = self.extract_aggregations(result.aggregations.to_dict())
         return details
 
     def get_queryset(self):
         queryset = ESQuerysetAdapter(ChannelManager(sections=self.SECTIONS))
         queryset.order_by("stats.subscribers:desc")
-        queryset.filter([self.get_filter_query()])
+        queryset.filter([self.get_segment_items()])
         return queryset
 
     def get_export_columns(self):

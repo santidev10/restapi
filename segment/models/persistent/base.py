@@ -107,9 +107,20 @@ class BasePersistentSegment(Timestampable):
         self.export_last_modified = s3_object.get("LastModified")
         return body
 
-    def get_filter_query(self):
+    def get_segment_items(self):
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
         return query
+
+    def extract_aggregations(self, aggregation_result_dict):
+        """
+        Extract value fields of aggregation results
+        :param aggregation_result_dict: { "agg_name" : { value: "a_value" } }
+        :return:
+        """
+        results = {}
+        for key, value in aggregation_result_dict:
+            results[key] = value["value"]
+        return results
 
 
 class BasePersistentSegmentRelated(Timestampable):

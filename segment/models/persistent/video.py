@@ -43,7 +43,7 @@ class PersistentSegmentVideo(BasePersistentSegment):
 
     def get_queryset(self):
         queryset = ESQuerysetAdapter(VideoManager(sections=self.SECTIONS))
-        queryset.filter([self.get_filter_query()])
+        queryset.filter([self.get_segment_items()])
         queryset.order_by("stats.views:desc")
         return queryset
 
