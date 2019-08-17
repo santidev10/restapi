@@ -1,4 +1,5 @@
 import logging
+import time
 
 import uuid
 
@@ -14,20 +15,17 @@ from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentTitles
 
 
-logger = logging.getLogger(__name__)
-
-
 class SegmentListGenerator(object):
-    SENTIMENT_THRESHOLD = 0.2
-    MINIMUM_VIEWS = 10
-    MINIMUM_SUBSCRIBERS = 10
-    MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 50
+    MAX_API_CALL_RETRY = 5
+    RETRY_SLEEP_COEFFICIENT = 2
+    SENTIMENT_THRESHOLD = 0.8
+    MINIMUM_VIEWS = 1000
+    MINIMUM_SUBSCRIBERS = 1000
+    MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 89
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
-    # WHITELIST_SIZE = 100000
-    # BLACKLIST_SIZE = 100000
-    WHITELIST_SIZE = 3
-    BLACKLIST_SIZE = 3
-    SEGMENT_BATCH_SIZE = 1000
+    WHITELIST_SIZE = 100
+    BLACKLIST_SIZE = 100
+    SEGMENT_BATCH_SIZE = 500
     VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
@@ -36,13 +34,11 @@ class SegmentListGenerator(object):
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def run(self):
-        # for category in AuditCategory.objects.all():
-            # Generate new entry
-            # self._generate_channel_whitelist(category)
-            # self._generate_video_whitelist(category)
-            # break
+        for category in AuditCategory.objects.all():
+            self._generate_channel_whitelist(category)
+            self._generate_video_whitelist(category)
 
-        self._generate_master_channel_blacklist()
+        # self._generate_master_channel_blacklist()
         # self._generate_master_channel_whitelist()
         #
         # self._generate_master_video_blacklist()
@@ -69,7 +65,7 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
+        self._retry_on_conflict(self._add_to_segment, new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
 
@@ -90,7 +86,8 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        self._retry_on_conflict(self._add_to_segment, new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        # self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
 
@@ -108,10 +105,10 @@ class SegmentListGenerator(object):
         )
 
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self.video_manager.add_to_segment(query, new_master_video_whitelist.uuid)
+        self._add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
 
     def _generate_master_video_blacklist(self):
@@ -128,11 +125,12 @@ class SegmentListGenerator(object):
         )
 
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self.video_manager.add_to_segment(query, new_master_video_blacklist.uuid)
+        self._add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY,
+                             self.BLACKLIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
 
     def _generate_master_channel_whitelist(self):
@@ -149,10 +147,11 @@ class SegmentListGenerator(object):
         )
 
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self.channel_manager.add_to_segment(query, new_master_channel_whitelist.uuid)
-        self._clean_old_segments(self.video_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
+        self._add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY,
+                             self.WHITELIST_SIZE)
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
                                  is_master=True, master_list_type=constants.WHITELIST)
 
     def _generate_master_channel_blacklist(self):
@@ -163,14 +162,15 @@ class SegmentListGenerator(object):
         new_master_channel_blacklist = PersistentSegmentChannel.objects.create(
             uuid=uuid.uuid4(),
             title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
-            category=constants.WHITELIST,
+            category=constants.BLACKLIST,
             is_master=True,
             audit_category=None
         )
 
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE)
-        self.channel_manager.add_to_segment(query, new_master_channel_blacklist.uuid)
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+
+        self._add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
                                  is_master=True, master_list_type=constants.BLACKLIST)
 
@@ -233,5 +233,27 @@ class SegmentListGenerator(object):
         # Delete old segment uuid's from documents
         for uuid in old_uuids:
             remove_query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(uuid).get()
-            es_manager.remove_from_segment(remove_query, uuid)
+            self._retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid)
         old_segments.delete()
+
+    def _retry_on_conflict(self, method, *args, **kwargs):
+        """
+        Retry on Document Conflicts
+        """
+        tries_count = 0
+        while tries_count <= self.MAX_API_CALL_RETRY:
+            try:
+                result = method(*args, **kwargs)
+            except Exception as err:
+                if "ConflictError(409" in str(err):
+                    print("Retrying", err)
+                    tries_count += 1
+                    if tries_count <= self.MAX_API_CALL_RETRY:
+                        sleep_seconds_count = self.MAX_API_CALL_RETRY \
+                                              ** self.RETRY_SLEEP_COEFFICIENT
+                        time.sleep(sleep_seconds_count)
+                else:
+                    raise err
+            else:
+                return result
+        raise Exception("Unable to complete request.")
