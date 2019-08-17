@@ -15,6 +15,7 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 
 DEFAULT_PAGE_SIZE = 50
+UI_STATS_HISTORY_FIELD_LIMIT = 30
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,17 @@ class QueryGenerator:
 class ESDictSerializer(Serializer):
     def to_representation(self, instance):
         extra_data = super(ESDictSerializer, self).to_representation(instance)
+
+        chart_data = extra_data.get("chart_data")
+        if chart_data and isinstance(chart_data, list):
+            chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
+        data = instance.to_dict()
+        stats = data.get("stats", {})
+        for name, value in stats.items():
+            if name.endswith("_history") and isinstance(value, list):
+                value[:] = value[:UI_STATS_HISTORY_FIELD_LIMIT]
         return {
-            **instance.to_dict(),
+            **data,
             **extra_data,
         }
 
@@ -180,6 +190,7 @@ class ESQuerysetAdapter:
         self.aggregations = None
         self.percentiles = None
         self.fields_to_load = None
+        self.search_limit = None
 
     @cached_method(timeout=7200)
     def count(self):
@@ -206,6 +217,10 @@ class ESQuerysetAdapter:
         ]
 
         self.fields_to_load = fields or self.manager.sections
+        return self
+
+    def with_limit(self, search_limit):
+        self.search_limit = search_limit
         return self
 
     @cached_method(timeout=900)
@@ -255,15 +270,15 @@ class ESQuerysetAdapter:
     def __getitem__(self, item):
         if isinstance(item, slice):
             return self.get_data(item.start, item.stop)
-        if isinstance(item, int):
-            return self.get_data(end=item)
         raise NotImplementedError
 
     def __iter__(self):
-        return self.manager.scan(
-            filters=self.filter_query,
-            sort=self.sort,
-        )
+        if self.sort:
+            yield from self.get_data(end=self.search_limit)
+        else:
+            yield from self.manager.scan(
+                filters=self.filter_query,
+            )
 
 
 class ESFilterBackend(BaseFilterBackend):
@@ -302,6 +317,10 @@ class ESFilterBackend(BaseFilterBackend):
         return fields
 
     def filter_queryset(self, request, queryset, view):
+        from utils.api.research import ESEmptyResponseAdapter
+
+        if isinstance(queryset, ESEmptyResponseAdapter):
+            return []
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)

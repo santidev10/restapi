@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
+from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -30,6 +31,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     )
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
+    serializer_class = KeywordWithViewsHistorySerializer
     ordering_fields = (
         "stats.last_30day_views:desc",
         "stats.top_category_last_30day_views:desc",
