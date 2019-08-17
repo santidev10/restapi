@@ -26,8 +26,8 @@ class SegmentListGenerator(object):
     MINIMUM_SUBSCRIBERS = 1000
     MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 89
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
-    WHITELIST_SIZE = 100
-    BLACKLIST_SIZE = 100
+    WHITELIST_SIZE = 100000
+    BLACKLIST_SIZE = 100000
     SEGMENT_BATCH_SIZE = 500
     VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}

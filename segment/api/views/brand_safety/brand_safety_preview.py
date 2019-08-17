@@ -1,6 +1,3 @@
-
-from django.core.paginator import Paginator
-from django.core.paginator import EmptyPage
 from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -13,7 +10,6 @@ from es_components.managers import VideoManager
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from segment.utils import get_persistent_segment_model_by_type
-
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import get_brand_safety_data
 
