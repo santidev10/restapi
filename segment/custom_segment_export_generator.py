@@ -11,6 +11,7 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 from es_components.constants import Sections
+from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
 from utils.elasticsearch import ElasticSearchConnector
@@ -18,6 +19,7 @@ from utils.elasticsearch import ElasticSearchConnectorException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,10 @@ logger = logging.getLogger(__name__)
 
 class CustomSegmentExportGenerator(S3Exporter):
     bucket_name = settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME
+    VIEWS_SORT = {"views": {"order": SortDirections.DESCENDING}}
+    SUBSCRIBERS_SORT = {"views": {"order": SortDirections.DESCENDING}}
+    CHANNEL_LIMIT = 20000
+    VIDEO_LIMIT = 20000
 
     def __init__(self, updating=False):
         self.es_conn = ElasticSearchConnector()
@@ -54,11 +60,27 @@ class CustomSegmentExportGenerator(S3Exporter):
                 raise
         segment = export.segment
         owner = segment.owner
+        es_manager = segment.get_es_manager()
+        serializer = segment.get_serializer()
+
+        if segment.segment_type == 0:
+            sort_key = self.VIEWS_SORT
+            limit = self.VIDEO_LIMIT
+        else:
+            sort_key = self.SUBSCRIBERS_SORT
+            limit = self.CHANNEL_LIMIT
         try:
             # Remove all items from this segment
             # And update segment and empty related_ids to recreate relevant related_ids
-            # segment.remove_all_from_segment()
-            es_generator = self.es_generator(export, segment)
+            segment.remove_all_from_segment()
+            query = es_manager(
+                query=Q(segment.get_segment_items_query()),
+                sort=sort_key,
+                limit=limit
+            )
+            es_queryset = ESQuerysetAdapter(es_manager)
+            es_queryset.filter(query)
+            es_generator = self.es_generator(es_queryset, serializer)
         except ElasticSearchConnectorException:
             raise
         log_message = "Updating" if self.updating else "Generating"
@@ -116,27 +138,33 @@ class CustomSegmentExportGenerator(S3Exporter):
             return True
         return False
 
-    def es_generator(self, export, segment):
-        """
-        Hook to execute operations before providing data to actual export operation
-        :param export: CustomSegmentFileUpload
-        :param segment: CustomSegment
-        :return:
-        """
-        query_body = {
-            "query": export.query,
-        }
-        scroll = self.es_conn.scroll(
-            query_body,
-            export.index,
-            size=export.batch_size,
-            batches=export.batch_limit,
-            sort_field=export.sort
-        )
-        for batch in scroll:
-            segment.add_to_segment([item["_id"] for item in batch])
-            mapped = self._map_data(export, batch)
-            yield mapped
+    def es_generator(self, queryset, serializer):
+        for item in queryset:
+            data = serializer(item).data
+            yield data
+
+
+    # def es_generator(self, export, segment):
+    #     """
+    #     Hook to execute operations before providing data to actual export operation
+    #     :param export: CustomSegmentFileUpload
+    #     :param segment: CustomSegment
+    #     :return:
+    #     """
+    #     query_body = {
+    #         "query": export.query,
+    #     }
+    #     scroll = self.es_conn.scroll(
+    #         query_body,
+    #         export.index,
+    #         size=export.batch_size,
+    #         batches=export.batch_limit,
+    #         sort_field=export.sort
+    #     )
+    #     for batch in scroll:
+    #         segment.add_to_segment([item["_id"] for item in batch])
+    #         mapped = self._map_data(export, batch)
+    #         yield mapped
 
     def delete_export(self, owner_id, segment_title):
         s3_key = self.get_s3_key(owner_id, segment_title)
