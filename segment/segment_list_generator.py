@@ -182,7 +182,7 @@ class SegmentListGenerator(object):
         """
         item_counter = 0
         ids_to_add = []
-        search_with_params = self._generate_search_with_params(es_manager, query, sort_key)
+        search_with_params = self.generate_search_with_params(es_manager, query, sort_key)
 
         for doc in search_with_params.scan():
             ids_to_add.append(doc.main.id)
@@ -195,8 +195,9 @@ class SegmentListGenerator(object):
             if item_counter >= size:
                 es_manager.add_to_segment_by_ids(ids_to_add, segment_uuid)
                 break
-
-    def _generate_search_with_params(self, manager, query, sort):
+    
+    @staticmethod
+    def generate_search_with_params(manager, query, sort):
         """
         Generate scan query with sorting
         :param manager:
