@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentListGenerator(object):
-    MAX_API_CALL_RETRY = 20
+    MAX_API_CALL_RETRY = 25
     RETRY_SLEEP_COEFFICIENT = 2
     SENTIMENT_THRESHOLD = 0.8
     MINIMUM_VIEWS = 1000
@@ -193,8 +193,8 @@ class SegmentListGenerator(object):
                 ids_to_add.clear()
 
             if item_counter >= size:
-                es_manager.add_to_segment_by_ids(ids_to_add, segment_uuid)
                 break
+        es_manager.add_to_segment_by_ids(ids_to_add, segment_uuid)
     
     @staticmethod
     def generate_search_with_params(manager, query, sort=None):
