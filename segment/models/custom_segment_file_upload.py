@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
@@ -29,12 +28,10 @@ class CustomSegmentFileUpload(Model):
         if self.segment.segment_type == 0:
             self.index = VIDEO_INDEX_NAME
             self.columns = CustomSegmentFileUpload.VIDEO_COLUMNS
-            self.mapper = self._map_video
             self.sort = "stats.views"
         else:
             self.index = CHANNEL_INDEX_NAME
             self.columns = CustomSegmentFileUpload.CHANNEL_COLUMNS
-            self.mapper = self._map_channel
             self.sort = "stats.subscribers"
 
         # Set max sizes of exports
@@ -43,10 +40,6 @@ class CustomSegmentFileUpload(Model):
             self.batch_limit = 10
         else:
             self.batch_limit = 50
-
-    @property
-    def query_obj(self):
-        return Q(self.query)
 
     @staticmethod
     def enqueue(*_, **kwargs):
@@ -69,29 +62,6 @@ class CustomSegmentFileUpload(Model):
         if not dequeue_item:
             raise CustomSegmentFileUploadQueueEmptyException
         return dequeue_item
-
-    def _map_video(self, item):
-        mapped = {
-            "title": item["general_data"].get("title", ""),
-            "language": item["general_data"].get("language", ""),
-            "category": item["general_data"].get("category", ""),
-            "overall_score": item["brand_safety"].get("overall_score", ""),
-            "views": item["stats"].get("views", ""),
-            "url": "https://www.youtube.com/video/" + item["main"]["id"]
-        }
-        return mapped
-
-    def _map_channel(self, item):
-        mapped = {
-            "title": item["general_data"].get("title", ""),
-            "language": item["general_data"].get("top_language", ""),
-            "category": item["general_data"].get("top_category", ""),
-            "overall_score": item["brand_safety"].get("overall_score", ""),
-            "subscribers": item["stats"].get("subscribers", ""),
-            "url": "https://www.youtube.com/channel/" + item["main"]["id"]
-        }
-        return mapped
-
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

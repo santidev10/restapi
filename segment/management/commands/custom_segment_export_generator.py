@@ -9,7 +9,6 @@ from pid import PidFileError
 
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models import CustomSegmentFileUpload
-from segment.models import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
 
 logger = logging.getLogger(__name__)
@@ -48,13 +47,11 @@ class Command(BaseCommand):
             generator.generate(export=export)
 
     def generate(self, *args, **kwargs):
-        # generator = CustomSegmentExportGenerator()
-        # generator.generate()
+        generator = CustomSegmentExportGenerator()
+        generator.generate()
 
-        # while generator.has_next():
-        #     try:
-        #         generator.generate()
-        #     except CustomSegmentFileUploadQueueEmptyException:
-        #         pass
-        segment = CustomSegment.objects.get(id=151)
-        segment.calculate_details()
+        while generator.has_next():
+            try:
+                generator.generate()
+            except CustomSegmentFileUploadQueueEmptyException:
+                pass

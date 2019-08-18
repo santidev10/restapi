@@ -16,7 +16,7 @@ def aggregate_segment_statistics(segment, yt_ids):
     mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
         "ad_group__campaign__account__managers": mcc_acc,
-        "yt_id__in": segment.related_ids,
+        "yt_id__in": yt_ids,
     }
     aggregated = {
         "cost": 0,

@@ -8,8 +8,6 @@ from administration.notifications import generate_html_email
 from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
-from utils.elasticsearch import ElasticSearchConnector
-from utils.elasticsearch import ElasticSearchConnectorException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
@@ -30,7 +28,6 @@ class CustomSegmentExportGenerator(S3Exporter):
         Generate / Update custom segment exports
         :param updating: If updating, then find existing custom segments and regenerate their exports
         """
-        self.es_conn = ElasticSearchConnector()
         self.ses = SESEmailer()
         self.updating = updating
 
@@ -57,12 +54,11 @@ class CustomSegmentExportGenerator(S3Exporter):
             sort_key = self.SUBSCRIBERS_SORT
             limit = self.CHANNEL_LIMIT
         try:
-            # Remove all items from this segment
-            # And update segment and empty related_ids to recreate relevant related_ids
+            # Remove all items from this segment to generate relevant items
             segment.remove_all_from_segment()
             query = Q(export.query)
             es_generator = self.es_generator(es_manager, query, sort_key, limit, serializer)
-        except ElasticSearchConnectorException:
+        except Exception:
             raise
         log_message = "Updating" if self.updating else "Generating"
         logger.error("{} export: {}".format(log_message, segment.title))
@@ -78,14 +74,14 @@ class CustomSegmentExportGenerator(S3Exporter):
     def get_s3_key(owner_id, segment_title):
         return "{owner_id}/{segment_title}.csv".format(owner_id=owner_id, segment_title=segment_title)
 
-    def _finalize_export(self, export, segment, owner, s3_key):
+    def _finalize_export(self, export, segment, owner, s3_key: str):
         """
         Finalize export
-            Different operations depending on if the export is newly created or being upated
-        :param export:
-        :param segment:
-        :param owner:
-        :param s3_key:
+            Different operations depending on if the export is newly created or being updated
+        :param export: CustomSegmentFileUpload
+        :param segment: CustomSegment
+        :param owner: UserProfile
+        :param s3_key: str
         :return:
         """
         now = timezone.now()
@@ -97,7 +93,9 @@ class CustomSegmentExportGenerator(S3Exporter):
             self._send_notification_email(owner.email, segment.title, download_url)
         export.download_url = download_url
         export.save()
-        export.segment.update_statistics()
+
+        segment.statistics = segment.calculate_statistics()
+        segment.save()
         logger.error("Complete: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
