@@ -56,9 +56,9 @@ class BrandSafetyQueryBuilder(object):
         self.es_manager = ChannelManager(sections=self.SECTIONS) if self.segment_type == constants.CHANNEL else VideoManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
 
-    def execute(self):
+    def execute(self, limit=5):
         query = Q(self.query_body)
-        results = self.es_manager.search(query).execute()
+        results = self.es_manager.search(query, limit=limit).execute()
         return results
 
     def _get_segment_options(self) -> dict:

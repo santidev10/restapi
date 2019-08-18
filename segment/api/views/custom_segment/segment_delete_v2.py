@@ -1,6 +1,6 @@
 from rest_framework.generics import DestroyAPIView
 
-from segment.api.serializers import CustomSegmentSerializer
+from segment.api.serializers.serializers import CustomSegmentSerializer
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models import CustomSegment
 

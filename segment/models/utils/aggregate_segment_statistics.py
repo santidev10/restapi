@@ -8,7 +8,7 @@ from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_upd
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
 
-def aggregate_segment_statistics(segment):
+def aggregate_segment_statistics(segment, yt_ids):
     """
     Prepare adwords statistics for segment
     """

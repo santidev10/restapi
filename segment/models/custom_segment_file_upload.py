@@ -13,9 +13,9 @@ from segment.models.custom_segment import CustomSegment
 
 
 class CustomSegmentFileUpload(Model):
-    BASE_COLUMNS = ["url", "title", "language", "youtube_category", "overall_score"]
-    CHANNEL_COLUMNS = BASE_COLUMNS + ["subscribers"]
-    VIDEO_COLUMNS = BASE_COLUMNS + ["views"]
+    BASE_COLUMNS = ["URL", "Title", "Language", "Category", "Overall_Score"]
+    CHANNEL_COLUMNS = BASE_COLUMNS + ["Subscribers"]
+    VIDEO_COLUMNS = BASE_COLUMNS + ["Views"]
 
     completed_at = DateTimeField(null=True, default=None, db_index=True)
     created_at = DateTimeField(auto_now_add=True, db_index=True)

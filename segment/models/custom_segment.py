@@ -23,11 +23,12 @@ from es_components.constants import SEGMENTS_UUID_FIELD
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
-from segment.api.serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers import CustomSegmentVideoExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
 from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
 from utils.models import Timestampable
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +73,11 @@ class CustomSegment(Timestampable):
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
 
-    @property
-    def es_manager(self):
-        if self.segment_type == 0:
-            return VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-        else:
-            return ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+    # Delete segment references from Elasticsearch
+    def delete(self, *args, **kwargs):
+        self.remove_all_from_segment()
+        super().delete(*args, **kwargs)
+        return self
 
     @property
     def related_ids(self):
@@ -89,26 +89,49 @@ class CustomSegment(Timestampable):
         to_create = set(ids) - set(self.related_ids)
         CustomSegmentRelated.objects.bulk_create([CustomSegmentRelated(segment_id=self.id, related_id=_id) for _id in to_create])
 
-    def update_statistics(self):
-        """
-        Process segment statistics fields
-        """
-        end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
-        data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
-        updated_statistics = self.stats_util.get_statistics(self, data)
-        self.statistics.update(updated_statistics)
-        self.save()
-        return "Done"
 
-    def get_es_manager(self):
+    def calculate_details(self):
+        # end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
+        # data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
+        # updated_statistics = self.stats_util.get_statistics(self, data)
+        # self.statistics.update(updated_statistics)
+        # self.save()
+
+        # Query for sorted items
+        # Aggregate on fields
+        # Set top three items
+        # Extract all segment item id's for statistics aggregation
+
+
+        queryset = ESQuerysetAdapter(self.get_es_manager(sections=(Sections.GENERAL_DATA,)))
+        queryset.filter = self.get_segment_items_query()
+        top_three_items = []
+        all_ids = []
+        # Extract
+        for doc in queryset:
+            all_ids.append(doc.main.id)
+            # Check if we data to display for each item in top three
+            if len(top_three_items) < 3 and getattr(doc, "general_data.title", None) and getattr(doc, "general_data.thumbnail_image_url", None):
+                top_three_items.append({
+                    "id": doc.main.id,
+                    "title": doc.general_data.title,
+                    "image_url": doc.general_data.thumbnail_image_url
+                })
+        details = self.stats_util.get_statistics(self, all_ids)
+        return details
+
+    def get_es_manager(self, sections=None):
+        if sections is None:
+            sections = self.SECTIONS
         if self.segment_type == 0:
-            return VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            return VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
         else:
-            return ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            return ChannelManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
 
     def remove_all_from_segment(self):
-        query = QueryBuilder.build().must().term().field(Sections.SEGMENTS).value(self.uuid).get()
-        self.es_manager.remove_from_segment(query, self.uuid)
+        es_manager = self.get_es_manager()
+        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
+        es_manager.remove_from_segment(query, self.uuid)
 
     def get_segment_items_query(self):
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()

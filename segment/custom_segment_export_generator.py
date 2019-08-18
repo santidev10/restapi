@@ -2,15 +2,9 @@ import logging
 
 from django.conf import settings
 from django.utils import timezone
-from elasticsearch_dsl.search import Search
 from elasticsearch_dsl.search import Q
 
 from administration.notifications import generate_html_email
-from brand_safety.constants import CHANNEL
-from es_components.managers import ChannelManager
-from es_components.managers import VideoManager
-from es_components.query_builder import QueryBuilder
-from es_components.constants import Sections
 from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
@@ -19,7 +13,6 @@ from utils.elasticsearch import ElasticSearchConnectorException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
-from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 logger = logging.getLogger(__name__)
@@ -27,25 +20,19 @@ logger = logging.getLogger(__name__)
 
 class CustomSegmentExportGenerator(S3Exporter):
     bucket_name = settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME
-    VIEWS_SORT = {"views": {"order": SortDirections.DESCENDING}}
-    SUBSCRIBERS_SORT = {"views": {"order": SortDirections.DESCENDING}}
+    VIEWS_SORT = {"stats.views": {"order": SortDirections.DESCENDING}}
+    SUBSCRIBERS_SORT = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
     CHANNEL_LIMIT = 20000
     VIDEO_LIMIT = 20000
 
     def __init__(self, updating=False):
+        """
+        Generate / Update custom segment exports
+        :param updating: If updating, then find existing custom segments and regenerate their exports
+        """
         self.es_conn = ElasticSearchConnector()
         self.ses = SESEmailer()
         self.updating = updating
-
-    def _map_data(self, export, batch):
-        mapper = export.mapper
-        mapped = []
-        for item in batch:
-            try:
-                mapped.append(mapper(item["_source"]))
-            except KeyError:
-                continue
-        return mapped
 
     def generate(self, export=None):
         """
@@ -73,14 +60,8 @@ class CustomSegmentExportGenerator(S3Exporter):
             # Remove all items from this segment
             # And update segment and empty related_ids to recreate relevant related_ids
             segment.remove_all_from_segment()
-            query = es_manager(
-                query=Q(segment.get_segment_items_query()),
-                sort=sort_key,
-                limit=limit
-            )
-            es_queryset = ESQuerysetAdapter(es_manager)
-            es_queryset.filter(query)
-            es_generator = self.es_generator(es_queryset, serializer)
+            query = Q(export.query)
+            es_generator = self.es_generator(es_manager, query, sort_key, limit, serializer)
         except ElasticSearchConnectorException:
             raise
         log_message = "Updating" if self.updating else "Generating"
@@ -90,7 +71,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         self.export_to_s3(export_manager, s3_key, get_key=False)
 
         # Add segment UUID to all documents under query
-        # segment.es_manager.add_to_segment(export.query_obj, segment.uuid)
+        es_manager.add_to_segment(export.query_obj, segment.uuid)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -138,34 +119,36 @@ class CustomSegmentExportGenerator(S3Exporter):
             return True
         return False
 
-    def es_generator(self, queryset, serializer):
-        for item in queryset:
-            data = serializer(item).data
+    def es_generator(self, es_manager, query, sort, limit, serializer):
+        """
+        Yield from es_manager.scan method to surpass 10k query limit
+        :param es_manager:
+        :param query: dict -> Query JSON
+        :param sort: dict -> {"stats.subscribers": {"order": "asc}}
+        :param limit: int
+        :param serializer: Export serializer -> CustomSegmentVideoExportSerializer
+        :return:
+        """
+        count = 0
+        search = es_manager._search()
+        search = search.query(query)
+        search = search.sort(sort)
+        search = search.params(preserve_order=True)
+        for doc in search.scan():
+            data = serializer(doc).data
             yield data
 
-
-    # def es_generator(self, export, segment):
-    #     """
-    #     Hook to execute operations before providing data to actual export operation
-    #     :param export: CustomSegmentFileUpload
-    #     :param segment: CustomSegment
-    #     :return:
-    #     """
-    #     query_body = {
-    #         "query": export.query,
-    #     }
-    #     scroll = self.es_conn.scroll(
-    #         query_body,
-    #         export.index,
-    #         size=export.batch_size,
-    #         batches=export.batch_limit,
-    #         sort_field=export.sort
-    #     )
-    #     for batch in scroll:
-    #         segment.add_to_segment([item["_id"] for item in batch])
-    #         mapped = self._map_data(export, batch)
-    #         yield mapped
+            count += 1
+            if count >= limit:
+                break
 
     def delete_export(self, owner_id, segment_title):
+        """
+        Delete csv from s3
+        :param owner_id:
+        :param segment_title:
+        :return:
+        """
         s3_key = self.get_s3_key(owner_id, segment_title)
         self.delete_obj(s3_key)
+

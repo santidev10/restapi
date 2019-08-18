@@ -4,7 +4,7 @@ from rest_framework.generics import ListAPIView
 
 from segment.api.mixins import DynamicPersistentModelViewMixin
 from segment.api.paginator import SegmentPaginator
-from segment.api.serializers import PersistentSegmentSerializer
+from segment.api.serializers.serializers import PersistentSegmentSerializer
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.utils import is_correct_apex_domain

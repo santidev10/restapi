@@ -39,22 +39,12 @@ class CustomSegmentChannelStatistics(object):
         }
         return data
 
-    def get_statistics(self, segment, data):
+    def get_statistics(self, segment, segment_item_ids):
         """
         Prepare segment adwords statistics
         """
         statistics = {
-            "adw_data": aggregate_segment_statistics(segment),
-            "top_three_items": self.get_top_three_items(data),
-            "items_count": segment.related.count()
+            "adw_data": aggregate_segment_statistics(segment, segment_item_ids),
+            "items_count": len(segment_item_ids)
         }
         return statistics
-
-    def get_top_three_items(self, data):
-        top_three_items = [
-            {"id": obj.get("channel_id"),
-             "title": obj.get("title"),
-             "image_url": obj.get("thumbnail_image_url")}
-            for obj in data.get("top_three_channels_data").get("items")
-        ]
-        return top_three_items
