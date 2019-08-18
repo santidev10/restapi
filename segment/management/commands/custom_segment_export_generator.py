@@ -48,8 +48,6 @@ class Command(BaseCommand):
 
     def generate(self, *args, **kwargs):
         generator = CustomSegmentExportGenerator()
-        generator.generate()
-
         while generator.has_next():
             try:
                 generator.generate()

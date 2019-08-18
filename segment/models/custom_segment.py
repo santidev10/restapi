@@ -91,12 +91,10 @@ class CustomSegment(Timestampable):
                     "title": doc.general_data.title,
                     "image_url": doc.general_data.thumbnail_image_url
                 })
-            if len(all_ids) >= 100:
-                break
 
         statistics = {
             "adw_data": aggregate_segment_statistics(self, all_ids),
-            "items_count": len(all_ids),
+            "items_count": result.hits.total,
             "top_three_items": top_three_items
         }
         return statistics
