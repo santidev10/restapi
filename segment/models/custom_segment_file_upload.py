@@ -41,6 +41,14 @@ class CustomSegmentFileUpload(Model):
         else:
             self.batch_limit = 50
 
+    @property
+    def query_obj(self):
+        """
+        Map JSON query to Elasticsearch Q object
+        :return:
+        """
+        return Q(self.query)
+
     @staticmethod
     def enqueue(*_, **kwargs):
         """
