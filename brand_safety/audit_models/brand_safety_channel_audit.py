@@ -88,13 +88,8 @@ class BrandSafetyChannelAudit(object):
                 channel_brand_safety_score.add_category_score(category, score)
             channel_brand_safety_score.add_overall_score(video_brand_safety_score.overall_score)
 
-        try:
-            # Average all scores
-            channel_brand_safety_score.calculate_average_scores()
-        except ZeroDivisionError:
-            # No videos were scored, so just subtract metadata scores from overall_scores
-            channel_brand_safety_score.average_calculated = True
-            channel_brand_safety_score.overall_score = 100
+        # Average all scores
+        channel_brand_safety_score.calculate_average_scores()
 
         # Add brand safety metadata hits to scores, must be called after calculate_average_scores to
         # add weight against channel video averaged scores

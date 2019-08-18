@@ -33,7 +33,7 @@ class AuditUtils(object):
             for category_id in self.bad_word_categories
         }
         self._default_video_score = {
-            category_id: 0
+            category_id: 100
             for category_id in self.bad_word_categories
         }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
