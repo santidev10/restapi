@@ -197,7 +197,7 @@ class SegmentListGenerator(object):
                 break
     
     @staticmethod
-    def generate_search_with_params(manager, query, sort):
+    def generate_search_with_params(manager, query, sort=None):
         """
         Generate scan query with sorting
         :param manager:
@@ -207,7 +207,8 @@ class SegmentListGenerator(object):
         """
         search = manager._search()
         search = search.query(query)
-        search = search.sort(sort)
+        if sort:
+            search = search.sort(sort)
         search = search.params(preserve_order=True)
         return search
 
