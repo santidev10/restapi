@@ -66,9 +66,13 @@ class BrandSafetyChannelScore(object):
         :param num_videos: Number of video Channel owns
         :return: None
         """
-        self.overall_score //= self.videos_scored
-        for category in self.category_scores.keys():
-            self.category_scores[category] //= self.videos_scored
+        if self.videos_scored == 0:
+            # No videos were scored, so just subtract metadata scores from overall_scores
+            self.overall_score = 100
+        else:
+            self.overall_score //= self.videos_scored
+            for category in self.category_scores.keys():
+                self.category_scores[category] //= self.videos_scored
         self.average_calculated = True
 
     def add_metadata_score(self, keyword, category, score):
