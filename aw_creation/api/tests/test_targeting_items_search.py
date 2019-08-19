@@ -1,10 +1,11 @@
 from django.core.urlresolvers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
+from es_components.tests.utils import ESTestCase
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-class TargetingItemsSearchAPITestCase(ExtendedAPITestCase):
+class TargetingItemsSearchAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
