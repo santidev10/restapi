@@ -1,7 +1,6 @@
 """
 BaseSegment models module
 """
-import collections.abc
 import logging
 
 from django.conf import settings
@@ -14,28 +13,38 @@ from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import UUIDField
 
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
-from segment.models.utils.custom_segment_channel_statistics import CustomSegmentChannelStatistics
-from segment.models.utils.custom_segment_video_statistics import CustomSegmentVideoStatistics
+from es_components.constants import Sections
+from es_components.constants import SEGMENTS_UUID_FIELD
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
+from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
 from utils.models import Timestampable
 
-logger = logging.getLogger(__name__)
 
-MAX_ITEMS_GET_FROM_SINGLEDB = 10000
-MAX_ITEMS_DELETE_FROM_DB = 10
+logger = logging.getLogger(__name__)
 
 
 class CustomSegment(Timestampable):
     """
     Base segment model
     """
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.stats_util = CustomSegmentVideoStatistics() if self.segment_type == 0 else CustomSegmentChannelStatistics()
-        self.related_aw_statistics_model = self.stats_util.related_aw_statistics_model
+        if self.segment_type == 0:
+            self.related_aw_statistics_model = YTVideoStatistic
+        else:
+            self.related_aw_statistics_model = YTChannelStatistic
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -60,26 +69,80 @@ class CustomSegment(Timestampable):
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
 
-    @property
-    def related_ids(self):
-        return self.related.values_list("related_id", flat=True)
+    def delete(self, *args, **kwargs):
+        # Delete segment references from Elasticsearch
+        self.remove_all_from_segment()
+        super().delete(*args, **kwargs)
+        return self
 
-    def add_related_ids(self, ids):
-        if not isinstance(ids, collections.abc.Sequence) and isinstance(ids, str):
-            ids = [ids]
-        to_create = set(ids) - set(self.related_ids)
-        CustomSegmentRelated.objects.bulk_create([CustomSegmentRelated(segment_id=self.id, related_id=_id) for _id in to_create])
+    def calculate_statistics(self, items_count):
+        """
+        Aggregate statistics
+        :param items_count: int
+        :return:
+        """
+        es_manager = self.get_es_manager(sections=(Sections.GENERAL_DATA,))
+        query = self.get_segment_items_query()
+        result = es_manager.search(query, limit=settings.MAX_SEGMENT_TO_AGGREGATE).execute()
 
-    def update_statistics(self):
+        top_three_items = []
+        all_ids = []
+        for doc in result.hits:
+            all_ids.append(doc.main.id)
+            # Check if we data to display for each item in top three
+            if len(top_three_items) < 3 and getattr(doc.general_data, "title", None) and getattr(doc.general_data, "thumbnail_image_url", None):
+                top_three_items.append({
+                    "id": doc.main.id,
+                    "title": doc.general_data.title,
+                    "image_url": doc.general_data.thumbnail_image_url
+                })
+
+        statistics = {
+            "adw_data": aggregate_segment_statistics(self, all_ids),
+            "items_count": items_count,
+            "top_three_items": top_three_items
+        }
+        return statistics
+
+    def get_es_manager(self, sections=None):
         """
-        Process segment statistics fields
+        Get Elasticsearch manager based on segment type
+        :param sections:
+        :return:
         """
-        end = None if self.related_ids.count() < settings.MAX_SEGMENT_TO_AGGREGATE else settings.MAX_SEGMENT_TO_AGGREGATE
-        data = self.stats_util.obtain_singledb_data(self.related_ids, end=end)
-        updated_statistics = self.stats_util.get_statistics(self, data)
-        self.statistics.update(updated_statistics)
-        self.save()
-        return "Done"
+        if sections is None:
+            sections = self.SECTIONS
+        if self.segment_type == 0:
+            return VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
+        else:
+            return ChannelManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
+
+    def remove_all_from_segment(self):
+        """
+        Remove all references to segment uuid from Elasticsearch
+        :return:
+        """
+        es_manager = self.get_es_manager()
+        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
+        es_manager.remove_from_segment(query, self.uuid)
+
+    def get_segment_items_query(self):
+        """
+        Get query to get segment documents
+        :return:
+        """
+        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
+        return query
+
+    def get_serializer(self):
+        """
+        Get export serializer
+        :return:
+        """
+        if self.segment_type == 0:
+            return CustomSegmentVideoExportSerializer
+        else:
+            return CustomSegmentChannelExportSerializer
 
 
 class CustomSegmentRelated(Model):

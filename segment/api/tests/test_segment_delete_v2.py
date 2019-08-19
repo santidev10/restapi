@@ -9,8 +9,6 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from segment.custom_segment_export_generator import CustomSegmentExportGenerator
-from userprofile.models import UserProfile
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -36,12 +34,17 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
-    def test_success(self):
+    @patch("segment.models.CustomSegment.remove_all_from_segment")
+    @patch("segment.custom_segment_export_generator.CustomSegmentExportGenerator.delete_export")
+    def test_success(self, mock_delete_export, mock_remove_from_segment):
+        mock_delete_export.return_value = {}
+        mock_remove_from_segment.return_value = {}
+
         user = self.create_test_user()
         segment = CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="test_1")
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
-        with patch.object(CustomSegmentExportGenerator, "delete_export", lambda foo, bar, baz: None):
-            response = self.client.delete(
-                self._get_url("video") + "2/"
-            )
+
+        response = self.client.delete(
+            self._get_url("video") + "2/"
+        )
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)

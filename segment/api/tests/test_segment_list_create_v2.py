@@ -99,7 +99,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data
         export = CustomSegmentFileUpload.objects.get(segment_id=data["id"])
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(export.query["query"]["bool"]["filter"]["bool"]["must"][0]["range"]["views"]["gte"], 1000000)
+        self.assertEqual(export.query["bool"]["filter"]["bool"]["must"][0]["range"]["stats.views"]["gte"], 1000000)
 
     def test_reject_duplicate_title_create(self):
         self.create_test_user()
