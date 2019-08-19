@@ -11,7 +11,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)
-    Language = CharField(source="general_data.language", default=None)
+    Language = CharField(source="brand_safety.language", default=None)
     Category = CharField(source="general_data.category", default=None)
     Likes = IntegerField(source="stats.likes", default=None)
     Dislikes = IntegerField(source="stats.dislikes", default=None)
@@ -26,11 +26,11 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)
-    Language = CharField(source="general_data.language", default=None)
+    Language = CharField(source="brand_safety.language", default=None)
     Category = CharField(source="general_data.top_category", default=None)
     Subscribers = IntegerField(source="stats.subscribers", default=None)
-    Likes = IntegerField(source="stats.likes", default=None)
-    Dislikes = IntegerField(source="stats.dislikes", default=None)
+    Likes = IntegerField(source="stats.observed_videos_likes", default=None)
+    Dislikes = IntegerField(source="stats.observed_videos_dislikes", default=None)
     Views = IntegerField(source="stats.views", default=None)
     Audited_Videos = IntegerField(source="brand_safety.videos_scored", default=None)
     Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)

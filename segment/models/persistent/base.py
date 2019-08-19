@@ -154,16 +154,9 @@ class PersistentSegmentExportContent(object):
             field_names = self.segment.get_export_columns()
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()
-            page = 0
-            while True:
-                offset = page * self.CHUNK_SIZE
-                limit = (page + 1) * self.CHUNK_SIZE
-                items = queryset[offset:limit]
-                page += 1
-                rows = self.segment.export_serializer(items, many=True).data
-                if not rows:
-                    break
-                writer.writerows(rows)
+            for item in queryset:
+                row = self.segment.export_serializer(item).data
+                writer.writerow(row)
         return self.filename
 
     def __exit__(self, *args):

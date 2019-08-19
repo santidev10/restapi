@@ -11,8 +11,8 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
-from utils.es_components_api_utils import ESQuerysetAdapter
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
+from segment.utils import generate_search_with_params
 
 
 class PersistentSegmentChannel(BasePersistentSegment):
@@ -26,8 +26,8 @@ class PersistentSegmentChannel(BasePersistentSegment):
         es_manager = ChannelManager(sections=self.SECTIONS)
         search = es_manager.search(query=self.get_segment_items_query())
         search.aggs.bucket("subscribers", "sum", field=f"{Sections.STATS}.subscribers")
-        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
-        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
+        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.observed_videos_likes")
+        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.observed_videos_dislikes")
         search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
         search.aggs.bucket("audited_videos", "sum", field=f"{Sections.BRAND_SAFETY}.videos_scored")
         result = search.execute()
@@ -35,11 +35,13 @@ class PersistentSegmentChannel(BasePersistentSegment):
         details["items_count"] = result.hits.total
         return details
 
-    def get_queryset(self):
-        queryset = ESQuerysetAdapter(ChannelManager(sections=self.SECTIONS))
-        queryset.order_by("stats.subscribers:desc")
-        queryset.filter([self.get_segment_items_query()])
-        return queryset
+    def get_queryset(self, sections=None):
+        if sections is None:
+            sections = self.SECTIONS
+        sort_key = {"stats.subscribers": {"order": "desc"}}
+        es_manager = ChannelManager(sections=sections)
+        scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
+        return scan
 
     def get_export_columns(self):
         if self.category == "whitelist":

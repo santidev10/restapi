@@ -84,3 +84,19 @@ def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
                 return result
     except Exception:
         raise
+
+
+def generate_search_with_params(manager, query, sort=None):
+    """
+    Generate scan query with sorting
+    :param manager:
+    :param query:
+    :param sort:
+    :return:
+    """
+    search = manager._search()
+    search = search.query(query)
+    if sort:
+        search = search.sort(sort)
+    search = search.params(preserve_order=True)
+    return search

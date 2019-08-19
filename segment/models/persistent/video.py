@@ -10,10 +10,10 @@ from .base import PersistentSegmentManager
 from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from .constants import PersistentSegmentCategory
-from segment.api.serializers import PersistentSegmentVideoExportSerializer
 from es_components.managers import VideoManager
 from es_components.constants import Sections
-from utils.es_components_api_utils import ESQuerysetAdapter
+from segment.api.serializers import PersistentSegmentVideoExportSerializer
+from segment.utils import generate_search_with_params
 
 
 class PersistentSegmentVideo(BasePersistentSegment):
@@ -34,11 +34,13 @@ class PersistentSegmentVideo(BasePersistentSegment):
         details["items_count"] = result.hits.total
         return details
 
-    def get_queryset(self):
-        queryset = ESQuerysetAdapter(VideoManager(sections=self.SECTIONS))
-        queryset.filter([self.get_segment_items_query()])
-        queryset.order_by("stats.views:desc")
-        return queryset
+    def get_queryset(self, sections=None):
+        if sections is None:
+            sections = self.SECTIONS
+        sort_key = {"stats.views": {"order": "desc"}}
+        es_manager = VideoManager(sections=sections)
+        scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
+        return scan
 
     def get_export_columns(self):
         if self.category == "whitelist":

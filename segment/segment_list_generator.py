@@ -16,6 +16,7 @@ from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import retry_on_conflict
+from segment.utils import generate_search_with_params
 
 
 logger = logging.getLogger(__name__)
@@ -192,29 +193,13 @@ class SegmentListGenerator(object):
         :return:
         """
         ids_to_add = []
-        search_with_params = self.generate_search_with_params(es_manager, query, sort_key)
+        search_with_params = generate_search_with_params(es_manager, query, sort_key)
         for doc in search_with_params.scan():
             ids_to_add.append(doc.main.id)
             if len(ids_to_add) >= size:
                 break
         for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
             retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
-
-    @staticmethod
-    def generate_search_with_params(manager, query, sort=None):
-        """
-        Generate scan query with sorting
-        :param manager:
-        :param query:
-        :param sort:
-        :return:
-        """
-        search = manager._search()
-        search = search.query(query)
-        if sort:
-            search = search.sort(sort)
-        search = search.params(preserve_order=True)
-        return search
 
     def _clean_old_segments(self, es_manager, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
         """
