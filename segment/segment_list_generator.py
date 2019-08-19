@@ -1,5 +1,4 @@
 import logging
-import time
 
 import uuid
 
@@ -14,6 +13,9 @@ from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentTitles
+from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from segment.utils import retry_on_conflict
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,8 @@ class SegmentListGenerator(object):
             title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
             category=constants.WHITELIST,
             is_master=False,
-            audit_category_id=category_id
+            audit_category_id=category_id,
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
         query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(category_name).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
@@ -83,7 +86,8 @@ class SegmentListGenerator(object):
             title=PersistentSegmentVideo.get_title(category_name, constants.WHITELIST),
             category=constants.WHITELIST,
             is_master=False,
-            audit_category_id=category_id
+            audit_category_id=category_id,
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
         query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category_name).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
@@ -190,15 +194,11 @@ class SegmentListGenerator(object):
         ids_to_add = []
         search_with_params = self.generate_search_with_params(es_manager, query, sort_key)
         for doc in search_with_params.scan():
-            if len(ids_to_add) % 100 == 0:
-                print("On ", len(ids_to_add))
             ids_to_add.append(doc.main.id)
             if len(ids_to_add) >= size:
                 break
-        batches = 1
         for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
-            print("On batch", batches)
-            self._retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid)
+            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
 
     @staticmethod
     def generate_search_with_params(manager, query, sort=None):
@@ -235,29 +235,5 @@ class SegmentListGenerator(object):
         # Delete old segment uuid's from documents
         for uuid in old_uuids:
             remove_query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(uuid).get()
-            self._retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid)
+            retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         old_segments.delete()
-
-    def _retry_on_conflict(self, method, *args, **kwargs):
-        """
-        Retry on Document Conflicts
-        """
-        tries_count = 0
-        try:
-            while tries_count <= self.MAX_API_CALL_RETRY:
-                try:
-                    result = method(*args, **kwargs)
-                except Exception as err:
-                    if "ConflictError(409" in str(err):
-                        print('retrying', tries_count)
-                        tries_count += 1
-                        if tries_count <= self.MAX_API_CALL_RETRY:
-                            sleep_seconds_count = self.MAX_API_CALL_RETRY \
-                                                  * self.RETRY_SLEEP_COEFFICIENT
-                            time.sleep(sleep_seconds_count)
-                    else:
-                        raise err
-                else:
-                    return result
-        except Exception as e:
-            logger.error("Unable to complete request", e)
