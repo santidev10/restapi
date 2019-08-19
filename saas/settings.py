@@ -337,12 +337,12 @@ MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 CHANNEL_AUTHENTICATION_NOTIFY_TO = [
@@ -350,13 +350,13 @@ CHANNEL_AUTHENTICATION_NOTIFY_TO = [
     "aleksandr.yakovenko@sigma.software",
     "maria.konareva@sigma.software",
     "alexander.bykov@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software"
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
