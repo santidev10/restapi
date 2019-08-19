@@ -5,6 +5,8 @@ import logging
 import multiprocessing as mp
 import time
 
+import pytz
+
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
@@ -23,15 +25,16 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    MAX_POOL_COUNT = 6
-    CHANNEL_POOL_BATCH_SIZE = 20
-    CHANNEL_MASTER_BATCH_SIZE = MAX_POOL_COUNT * CHANNEL_POOL_BATCH_SIZE
+    MAX_POOL_COUNT = None
+    CHANNEL_POOL_BATCH_SIZE = None
+    CHANNEL_MASTER_BATCH_SIZE = None
     # Hours in which a channel should be updated
-    UPDATE_TIME_THRESHOLD = 24 * 7
+    UPDATE_TIME_THRESHOLD = 24 * 3
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
+    MINIMUM_SUBSCRIBER_COUNT = 1000
     SLEEP = 2
-    channel_batch_counter = 0
+    channel_batch_counter = 1
 
     def __init__(self, *_, **kwargs):
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
@@ -42,15 +45,36 @@ class BrandSafetyAudit(object):
             self.is_manual = False
         except KeyError:
             self.is_manual = True
+        if kwargs["discovery"]:
+            self._set_discovery_config()
+        else:
+            self._set_update_config()
         self.audit_utils = AuditUtils()
         self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.CAPTIONS),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY, Sections.CAPTIONS),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
+
+    def _set_discovery_config(self):
+        self.MAX_POOL_COUNT = 8
+        self.CHANNEL_POOL_BATCH_SIZE = 20
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self._channel_generator = self._channel_generator_discovery
+
+    def _set_update_config(self):
+        self.MAX_POOL_COUNT = 2
+        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self._channel_generator = self._channel_generator_update
+
+    def _set_manual_config(self):
+        self.MAX_POOL_COUNT = 5
+        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
 
     def run(self):
         """
@@ -73,9 +97,10 @@ class BrandSafetyAudit(object):
             video_audits, channel_audits = self._extract_results(results)
             # Index items
             self._index_results(video_audits, channel_audits)
-            # Update config in case they have been modified since last batch
-            self.audit_utils.update_config()
-            time.sleep(self.SLEEP)
+
+            if self.channel_batch_counter % 10 == 0:
+                # Update config in case they have been modified
+                self.audit_utils.update_config()
         logger.error("Complete.")
 
     def _process_audits(self, channels: list) -> dict:
@@ -131,6 +156,10 @@ class BrandSafetyAudit(object):
             videos = self._get_channel_videos(channels)
         for video in videos:
             try:
+                video = video.to_dict()
+            except AttributeError:
+                pass
+            try:
                 audit = self.audit_video(video)
                 video_audits.append(audit)
             except KeyError as e:
@@ -177,13 +206,16 @@ class BrandSafetyAudit(object):
         :param channels: dict -> channel_id, channel_metadata
         :return:
         """
-        filters = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
-        results = self.video_manager.search(filters=filters, limit=self.ES_LIMIT).execute()["hits"]["hits"]
+        all_results = []
         mapped = []
-        for video in results:
+        for batch in self.audit_utils.batch(channel_ids, 3):
+            query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
+            results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
+            all_results.extend(results)
+        for video in all_results:
             try:
-                mapped.append(self.audit_utils.extract_video_data(video["_source"]))
-            except (KeyError, AttributeError):
+                mapped.append(self.audit_utils.extract_video_data(video))
+            except AttributeError:
                 continue
         return mapped
 
@@ -212,7 +244,7 @@ class BrandSafetyAudit(object):
         self.channel_manager.upsert(channels)
         self.video_manager.upsert(videos)
 
-    def _channel_generator(self, cursor_id=None):
+    def _channel_generator_update(self, cursor_id=None):
         """
         Yields channels to audit
         :param cursor_id: Cursor position to start audit
@@ -220,20 +252,45 @@ class BrandSafetyAudit(object):
         """
         cursor_id = cursor_id or ""
         while True:
-            batch_query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            response = self.channel_manager.search(batch_query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("main.id",)).execute()
+            query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            query &= QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
+            query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
+            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
             results = response.hits
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            to_update = self._get_channels_to_update(results)
+            to_update = self._get_channels_to_update(results, check_last_updated=True)
             yield to_update
-            cursor_id = results[-1]["_id"]
+            cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.channel_batch_counter += 1
 
-    def _get_channels_to_update(self, channel_batch):
+    def _channel_generator_discovery(self, cursor_id=None):
+        """
+        Get channels to score with no brand safety data
+        :param cursor_id:
+        :return:
+        """
+        cursor_id = cursor_id or ""
+        while True:
+            query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
+            query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
+            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
+            results = response.hits
+            if not results:
+                self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
+                break
+            to_score = self._get_channels_to_update(results, check_last_updated=False)
+            yield to_score
+            cursor_id = results[-1].main.id
+            self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
+            self.cursor_id = self.script_tracker.cursor_id
+            self.channel_batch_counter += 1
+
+    def _get_channels_to_update(self, channel_batch, check_last_updated=False):
         """
         Gets channels to update
             If either the last time the channel has been updated is greater than threshold time or if the number of
@@ -242,14 +299,13 @@ class BrandSafetyAudit(object):
         :return: list
         """
         channels = {}
-        channels_to_update = []
-        # Exclude channels that do not have data
         for item in channel_batch:
             try:
                 channels[item.main.id] = self.audit_utils.extract_channel_data(item)
-            except KeyError:
-                # Ignore channels that we do not have full metadata for
+            except AttributeError:
                 continue
+
+        channels_to_update = []
         # Get videos for channels
         videos = self._get_channel_videos(list(channels.keys()))
         videos_by_channel = defaultdict(list)
@@ -261,21 +317,18 @@ class BrandSafetyAudit(object):
         # For each channel retrieved in original query, check if it should be updated
         for _id, data in channels.items():
             should_update = False
-            if not data["updated_at"] or not data["videos_scored"]:
+            if not check_last_updated or not data["updated_at"] or not data["videos_scored"]:
                 should_update = True
             else:
-                time_elapsed = datetime.today() - datetime.strptime(data["updated_at"], "%Y-%m-%d")
-                elapsed_hours = time_elapsed.seconds // 3600
-
+                hours_elapsed = (datetime.now(pytz.utc) - data["updated_at"]).seconds // 3600
                 # If last time channel was updated is greater than threshold or number of channel's videos has changed, rescore
-                if not data["updated_at"] or elapsed_hours >= self.UPDATE_TIME_THRESHOLD or data["videos_scored"] != \
-                        channel_video_counts[_id]:
+                if hours_elapsed >= self.UPDATE_TIME_THRESHOLD or data["videos_scored"] != channel_video_counts[_id]:
                     should_update = True
 
             if should_update:
-                data["videos"] = videos_by_channel.get(_id, [])
+                data["videos"] = list(videos_by_channel.get(_id, []))
                 channels_to_update.append(data)
-        return channels_to_update
+        return list(channels_to_update)
 
     def manual_channel_audit(self, channel_ids: iter):
         """
@@ -287,7 +340,7 @@ class BrandSafetyAudit(object):
         channels = self.audit_utils.get_items(channel_ids, self.channel_manager)
         for item in channels:
             try:
-                mapped = self.audit_utils.extract_channel_data(item["_source"])
+                mapped = self.audit_utils.extract_channel_data(item)
                 mapped["videos"] = self._get_channel_videos([mapped["id"]])
                 to_audit.append(mapped)
             except KeyError:
@@ -310,9 +363,21 @@ class BrandSafetyAudit(object):
         mapped = []
         for item in videos:
             try:
-                mapped.append(self.audit_utils.extract_video_data(item["_source"]))
+                mapped.append(self.audit_utils.extract_video_data(item))
             except KeyError:
                 continue
         video_audits = self.audit_videos(videos=mapped)
         self._index_results(video_audits, [])
         return video_audits
+
+    def audit_remaining_videos(self):
+        query = QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get() \
+            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
+        results = self.video_manager.search(query, limit=5000).execute().hits
+        while results:
+            data = [self.audit_utils.extract_video_data(item) for item in results]
+            video_audits = self.audit_videos(videos=data)
+            self._index_results(video_audits, [])
+            logger.error("Indexed {} videos".format(len(video_audits)))
+            results = self.video_manager.search(query, limit=5000).execute().hits
+

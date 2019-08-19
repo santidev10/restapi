@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from channel.api.urls.names import ChannelPathName
 from es_components.datetime_service import datetime_service
+from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.celery import mock_send_task
@@ -19,6 +20,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     url = reverse(ChannelPathName.CHANNEL_AUTHENTICATION, [Namespace.CHANNEL])
 
     @mock_send_task()
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
@@ -54,6 +58,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         response = self.client.post(self.url, dict())
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
     def test_proxy_errors_from_sdb(self, mock_youtube, flow, *args):
@@ -79,6 +86,9 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertEqual(response.data, test_error)
 
     @mock_send_task()
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
     def test_send_welcome_email(self, mock_youtube, flow, *args):

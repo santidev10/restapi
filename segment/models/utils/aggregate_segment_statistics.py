@@ -8,7 +8,7 @@ from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_upd
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
 
-def aggregate_segment_statistics(segment):
+def aggregate_segment_statistics(segment, yt_ids):
     """
     Prepare adwords statistics for segment
     """
@@ -16,7 +16,7 @@ def aggregate_segment_statistics(segment):
     mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
         "ad_group__campaign__account__managers": mcc_acc,
-        "yt_id__in": segment.related_ids,
+        "yt_id__in": yt_ids,
     }
     aggregated = {
         "cost": 0,

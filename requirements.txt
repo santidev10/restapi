@@ -56,6 +56,7 @@ suds-jurko==0.6
 teamcity-messages==1.17
 uritemplate==3.0.0
 urllib3==1.23
+uuid==1.30
 vine==1.1.4
 XlsxWriter==0.9.6
 xmltodict==0.11.0

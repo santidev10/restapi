@@ -84,7 +84,7 @@ class CustomSegmentImporter(object):
 
     @staticmethod
     def _finalize(segment):
-        segment.details = segment.calculate_details()
+        segment.details = segment.calculate_statistics()
         segment.save()
         now = timezone.now()
 
