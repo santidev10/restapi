@@ -8,7 +8,6 @@ from utils.utittests.test_case import ExtendedAPITestCase
 class TargetingItemsSearchAPITestCase(ExtendedAPITestCase, ESTestCase):
 
     def setUp(self):
-        self.setUpClass(self.__class__)
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_media_buying")
 
