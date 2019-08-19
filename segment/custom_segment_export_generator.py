@@ -11,6 +11,7 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQue
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+from segment.utils import retry_on_conflict
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ class CustomSegmentExportGenerator(S3Exporter):
     SUBSCRIBERS_SORT = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
     CHANNEL_LIMIT = 20000
     VIDEO_LIMIT = 20000
+    MAX_API_CALL_RETRY = 30
+    RETRY_SLEEP_COEFFICIENT = 1.5
 
     def __init__(self, updating=False):
         """
@@ -55,7 +58,7 @@ class CustomSegmentExportGenerator(S3Exporter):
             limit = self.CHANNEL_LIMIT
         try:
             # Remove all items from this segment to generate relevant items
-            segment.remove_all_from_segment()
+            retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
             query = Q(export.query)
             es_generator = self.es_generator(es_manager, query, sort_key, limit, serializer)
         except Exception:
@@ -67,7 +70,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         self.export_to_s3(export_manager, s3_key, get_key=False)
 
         # Add segment UUID to all documents under query
-        es_manager.add_to_segment(export.query_obj, segment.uuid)
+        retry_on_conflict(es_manager.add_to_segment, export.query_obj, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -149,4 +152,3 @@ class CustomSegmentExportGenerator(S3Exporter):
         """
         s3_key = self.get_s3_key(owner_id, segment_title)
         self.delete_obj(s3_key)
-
