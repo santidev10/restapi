@@ -54,4 +54,4 @@ class VideoSerializer(ESDictSerializer):
         return get_brand_safety_data(channel.brand_safety.overall_score)
 
 
-REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\r\n|\n|\r|\,|)\d+\:\d+\:\d+[.,]\d+(\s+-->\s+\d+\:\d+\:\d+[.,]\d+|))"
