@@ -75,7 +75,9 @@ from aw_reporting.models import dict_norm_base_stats
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
+from segment.models import CustomSegment
 from segment.models import CustomSegmentRelated
+from segment.utils import generate_search_with_params
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -360,12 +362,25 @@ class YoutubeVideoFromUrlApiView(YoutubeVideoSearchApiView):
 class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
-    def get_related_ids(self, ids):
-        ids = CustomSegmentRelated.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
+    def post(self, request, segment_type, **_):
+        all_related_items = []
+        ids = request.data
+        for segment_id in ids:
+            segment = CustomSegment.objects.get(id=segment_id)
+            es_manager = segment.get_es_manager(sections=(Sections.MAIN, Sections.GENERAL_DATA))
+            query = segment.get_segment_items_query()
+            scan = generate_search_with_params(es_manager, query).scan()
+
+            related_ids = [
+                {
+                    "criteria": item.main.id,
+                    "id": item.main.id,
+                    "name": item.general_data.title,
+                    "thumnail": item.general_data.thumbnail_image_url
+                } for item in scan
+            ]
+            all_related_items.extend(related_ids)
+        return Response(status=HTTP_200_OK, data=all_related_items)
 
 
 class TargetingItemsSearchApiView(APIView):

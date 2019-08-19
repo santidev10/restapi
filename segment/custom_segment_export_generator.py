@@ -2,35 +2,44 @@ import logging
 
 from django.conf import settings
 from django.utils import timezone
+from elasticsearch_dsl.search import Q
 
 from administration.notifications import generate_html_email
-from brand_safety.constants import CHANNEL
+from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
-from utils.elasticsearch import ElasticSearchConnector
-from utils.elasticsearch import ElasticSearchConnectorException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+from segment.utils import retry_on_conflict
+
 
 logger = logging.getLogger(__name__)
 
 
 class CustomSegmentExportGenerator(S3Exporter):
     bucket_name = settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME
+    VIEWS_SORT = {"stats.views": {"order": SortDirections.DESCENDING}}
+    SUBSCRIBERS_SORT = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
+    CHANNEL_LIMIT = 20000
+    VIDEO_LIMIT = 20000
+    MAX_API_CALL_RETRY = 30
+    RETRY_SLEEP_COEFFICIENT = 1.5
 
     def __init__(self, updating=False):
-        self.es_conn = ElasticSearchConnector()
+        """
+        Generate / Update custom segment exports
+        :param updating: If updating, then find existing custom segments and regenerate their exports
+        """
         self.ses = SESEmailer()
         self.updating = updating
-        # List of methods that should be invoked with export data in self.es_generator method before actual export
-        self.generator_operations = [self._update_fields, self._add_related_ids_to_segment]
 
     def generate(self, export=None):
         """
         Either dequeue segment to create and process or updating existing export
         :return:
         """
+        # If export is none, then updating
         if export is None:
             try:
                 export = CustomSegmentFileUpload.dequeue()
@@ -38,31 +47,44 @@ class CustomSegmentExportGenerator(S3Exporter):
                 raise
         segment = export.segment
         owner = segment.owner
+        es_manager = segment.get_es_manager()
+        serializer = segment.get_serializer()
+
+        if segment.segment_type == 0:
+            sort_key = self.VIEWS_SORT
+            limit = self.VIDEO_LIMIT
+        else:
+            sort_key = self.SUBSCRIBERS_SORT
+            limit = self.CHANNEL_LIMIT
         try:
-            # Update segment and empty related_ids to recreate relevant related_ids
-            segment.related.all().delete()
-            es_generator = self.es_generator(export, segment)
-        except ElasticSearchConnectorException:
+            # Remove all items from this segment to generate relevant items
+            retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+            query = Q(export.query)
+            es_generator = self.es_generator(es_manager, query, sort_key, limit, serializer)
+        except Exception:
             raise
         log_message = "Updating" if self.updating else "Generating"
         logger.error("{} export: {}".format(log_message, segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
+
+        # Add segment UUID to all documents under query
+        retry_on_conflict(es_manager.add_to_segment, export.query_obj, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
     def get_s3_key(owner_id, segment_title):
         return "{owner_id}/{segment_title}.csv".format(owner_id=owner_id, segment_title=segment_title)
 
-    def _finalize_export(self, export, segment, owner, s3_key):
+    def _finalize_export(self, export, segment, owner, s3_key: str):
         """
         Finalize export
-            Different operations depending on if the export is newly created or being upated
-        :param export:
-        :param segment:
-        :param owner:
-        :param s3_key:
+            Different operations depending on if the export is newly created or being updated
+        :param export: CustomSegmentFileUpload
+        :param segment: CustomSegment
+        :param owner: UserProfile
+        :param s3_key: str
         :return:
         """
         now = timezone.now()
@@ -74,7 +96,11 @@ class CustomSegmentExportGenerator(S3Exporter):
             self._send_notification_email(owner.email, segment.title, download_url)
         export.download_url = download_url
         export.save()
-        export.segment.update_statistics()
+
+        result = segment.get_es_manager().search(export.query_obj, limit=0).execute()
+        items_count = result.hits.total
+        segment.statistics = segment.calculate_statistics(items_count)
+        segment.save()
         logger.error("Complete: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
@@ -82,7 +108,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         text_header = "Your Custom Target List {} is ready".format(segment_title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
         html_email = generate_html_email(text_header, text_content)
-    
+
         self.ses.send_email(email, subject, html_email)
 
     @staticmethod
@@ -96,59 +122,35 @@ class CustomSegmentExportGenerator(S3Exporter):
             return True
         return False
 
-    def es_generator(self, export, segment):
+    def es_generator(self, es_manager, query, sort, limit, serializer):
         """
-        Hook to execute operations before providing data to actual export operation
-        :param export: CustomSegmentFileUpload
-        :param segment: CustomSegment
+        Yield from es_manager.scan method to surpass 10k query limit
+        :param es_manager:
+        :param query: dict -> Query JSON
+        :param sort: dict -> {"stats.subscribers": {"order": "asc}}
+        :param limit: int
+        :param serializer: Export serializer -> CustomSegmentVideoExportSerializer
         :return:
         """
-        scroll = self.es_conn.scroll(
-            export.query,
-            export.index,
-            size=export.batch_size,
-            batches=export.batch_limit,
-            sort_field=export.sort
-        )
-        for batch in scroll:
-            for method in self.generator_operations:
-                method(export, batch, sequence=True)
-            segment.add_related_ids([item["_id"] for item in batch])
-            # Yield pertinent es data
-            batch = [item["_source"] for item in batch]
-            yield batch
+        count = 0
+        search = es_manager._search()
+        search = search.query(query)
+        search = search.sort(sort)
+        search = search.params(preserve_order=True)
+        for doc in search.scan():
+            data = serializer(doc).data
+            yield data
 
-    def _update_fields(self, export, chunk, sequence=True):
-        """
-        Add or update Elasticsearch document fields for csv export
-        :param export: export obj
-        :param chunk: item(s)
-        :param sequence: Bool to indicate whether chunk is a list or tuple
-        :return: None
-        """
-        url_prefix = "https://www.youtube.com/channel/" if export.segment.segment_type == CHANNEL else "https://www.youtube.com/video/"
-        if sequence:
-            for item in chunk:
-                item["_source"].update({
-                    "youtube_category": item["_source"]["youtube_category"].capitalize(),
-                    "url": url_prefix + item["_id"]
-                })
-
-    def _add_related_ids_to_segment(self, export, chunk, sequence=True):
-        """
-        Add related ids to custom segment
-        :param export: export obj
-        :param chunk: item(s)
-        :param sequence: Bool to indicate whether chunk is a list or tuple
-        :return:
-        """
-        segment = export.segment
-        if not sequence:
-            chunk = tuple(chunk["_id"])
-        else:
-            chunk = [item["_id"] for item in chunk]
-        segment.add_related_ids(chunk)
+            count += 1
+            if count >= limit:
+                break
 
     def delete_export(self, owner_id, segment_title):
+        """
+        Delete csv from s3
+        :param owner_id:
+        :param segment_title:
+        :return:
+        """
         s3_key = self.get_s3_key(owner_id, segment_title)
         self.delete_obj(s3_key)
