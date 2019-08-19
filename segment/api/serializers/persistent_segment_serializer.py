@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
-from segment.models.persistent.base import BasePersistentSegment
+from segment.models.persistent.video import PersistentSegmentVideo
 
 
 class PersistentSegmentSerializer(ModelSerializer):
@@ -17,8 +17,8 @@ class PersistentSegmentSerializer(ModelSerializer):
     )
 
     class Meta:
-        # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
-        model = BasePersistentSegment
+        # fixme: replace PersistentSegmentVideo with None. It's a workaround to fix documentation generation
+        model = PersistentSegmentVideo
         fields = (
             "id",
             "title",
