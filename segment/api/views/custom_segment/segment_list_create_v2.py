@@ -121,4 +121,3 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         except ValueError:
             raise ValidationError("The number: {} is not valid.".format(value))
         return to_num
-

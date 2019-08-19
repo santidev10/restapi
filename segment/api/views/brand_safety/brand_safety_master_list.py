@@ -3,7 +3,7 @@ from django.db.models import Value
 from rest_framework.generics import ListAPIView
 
 from segment.api.paginator import SegmentPaginator
-from segment.api.serializers import PersistentSegmentSerializer
+from segment.api.serializers.serializers import PersistentSegmentSerializer
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentTitles
