@@ -96,7 +96,8 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         category = "Music"
         channel = Channel(id=next(int_iterator))
         channel.populate_general_data(top_category=category)
-        ChannelManager(Sections.GENERAL_DATA).upsert([channel])
+        channel.populate_stats(observed_videos_count=10)
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert([channel])
 
         url = get_url(size=0, aggregations=AllowedAggregations.CATEGORY.value)
         response = self.client.get(url)
@@ -112,7 +113,9 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         language = "English"
         channel = Channel(id=next(int_iterator))
         channel.populate_general_data(top_language=language)
-        ChannelManager(Sections.GENERAL_DATA).upsert([channel])
+        channel.populate_stats(observed_videos_count=10)
+
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert([channel])
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
         response = self.client.get(url)
@@ -129,7 +132,9 @@ class HighlightChannelAggregationsApiViewTestCase(HighlightChannelBaseApiViewTes
         channels = [Channel(id=next(int_iterator)) for _ in range(language_limit + 1)]
         for i, channel in enumerate(channels):
             channel.populate_general_data(top_language=f"lang_{i}")
-        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+            channel.populate_stats(observed_videos_count=10)
+
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         url = get_url(size=0, aggregations=AllowedAggregations.LANGUAGE.value)
         response = self.client.get(url)
@@ -152,7 +157,9 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
     def test_items_page_size(self):
         page_size = 20
         channels = [Channel(id=next(int_iterator)) for _ in range(page_size + 1)]
-        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -167,7 +174,9 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         page_size = 20
         total_items = page_size * max_page + 1
         channels = [Channel(id=next(int_iterator)) for _ in range(total_items)]
-        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         url = get_url(page=1, sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
         response = self.client.get(url)
@@ -181,7 +190,8 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         language = "lang"
         channels = [Channel(id=next(int_iterator)) for _ in range(2)]
         channels[0].populate_general_data(top_language=language)
-        ChannelManager(Sections.GENERAL_DATA).upsert(channels)
+        channels[0].populate_stats(observed_videos_count=10)
+        ChannelManager((Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         url = get_url(**{AllowedAggregations.LANGUAGE.value: language})
         response = self.client.get(url)
@@ -200,7 +210,8 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         channel.meta.id = channel_id
         channel.brand_safety.overall_score = score
         sleep(1)
-        ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
+        channel.populate_stats(observed_videos_count=10)
+        ChannelManager(upsert_sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS]).upsert([channel])
         response = self.client.get(get_url())
         self.assertEqual(
             score,
@@ -212,6 +223,7 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
         channels = [Channel(next(int_iterator)) for _ in range(len(views))]
         for channel, item_views in zip(channels, views):
             channel.populate_stats(last_30day_views=item_views)
+            channel.populate_stats(observed_videos_count=10)
         ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(channels)
 
         url = get_url(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
@@ -226,8 +238,9 @@ class HighlightChannelItemsApiViewTestCase(HighlightChannelBaseApiViewTestCase):
     def test_extra_fields(self):
         self.create_admin_user()
         extra_fields = ("brand_safety_data", "chart_data", "blacklist_data")
-        video = Channel(str(next(int_iterator)))
-        ChannelManager([Sections.GENERAL_DATA]).upsert([video])
+        channel = Channel(str(next(int_iterator)))
+        channel.populate_stats(observed_videos_count=10)
+        ChannelManager([Sections.GENERAL_DATA, Sections.STATS]).upsert([channel])
 
         url = get_url()
         response = self.client.get(url)

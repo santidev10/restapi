@@ -72,6 +72,9 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.constants import Sections
 from segment.models import CustomSegmentRelated
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
@@ -379,42 +382,32 @@ class TargetingItemsSearchApiView(APIView):
 
     @staticmethod
     def search_video_items(query):
-        words = [s.lower() for s in re.split(r'\s+', query)]
-        fields = ("video_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), text_search__term=words,
-                            sort="views:desc")
-        connector = SingleDatabaseApiConnector()
-        try:
-            response_data = connector.get_video_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            items = []
-        else:
-            items = [
-                dict(id=i['video_id'], criteria=i['video_id'], name=i['title'],
-                     thumbnail=i['thumbnail_image_url'])
-                for i in response_data["items"]
-            ]
+        manager = VideoManager(sections=(Sections.GENERAL_DATA,))
+        videos = manager.search(
+            limit=10,
+            query={"match": {"general_data.title": query}},
+            sort=[{"stats.views": {"order": "desc"}}]
+        ).execute()
+        items = [
+            dict(id=video.main.id, criteria=video.main.id, name=video.general_data.title,
+                 thumbnail=video.general_data.thumbnail_image_url)
+            for video in videos
+        ]
         return items
 
     @staticmethod
     def search_channel_items(query):
-        words = [s.lower() for s in re.split(r'\s+', query)]
-        fields = ("channel_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), text_search__term=words,
-                            sort="subscribers:desc")
-        connector = SingleDatabaseApiConnector()
-        try:
-            response_data = connector.get_channel_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            items = []
-        else:
-            items = [
-                dict(id=i['channel_id'], criteria=i['channel_id'],
-                     name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response_data["items"]
-            ]
+        manager = ChannelManager(sections=(Sections.GENERAL_DATA,))
+        channels = manager.search(
+            limit=10,
+            query={"match": {f"{Sections.GENERAL_DATA}.title": query.lower()}},
+            sort=[{f"{Sections.STATS}.subscribers": {"order": "desc"}}]
+        ).execute()
+        items = [
+            dict(id=channel.main.id, criteria=channel.main.id, name=channel.general_data.title,
+                 thumbnail=channel.general_data.thumbnail_image_url)
+            for channel in channels
+        ]
         return items
 
     @staticmethod
