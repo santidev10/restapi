@@ -1,12 +1,7 @@
 """
 PersistentSegmentVideo models module
 """
-from django.db.models import BigIntegerField
-from django.db.models import Count
 from django.db.models import ForeignKey
-from django.db.models import Sum
-from django.db.models.functions import Cast
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 
 from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment

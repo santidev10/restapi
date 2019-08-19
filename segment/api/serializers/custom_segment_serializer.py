@@ -1,85 +1,14 @@
-"""
-Segment api serializers module
-"""
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import Serializer
-from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
-from rest_framework.serializers import UUIDField
 import uuid
 
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from segment.models.persistent.constants import PersistentSegmentExportColumn as column
+
 from segment.models import CustomSegment
 from userprofile.models import UserProfile
-
-
-class PersistentSegmentSerializer(ModelSerializer):
-    statistics = SerializerMethodField()
-
-    statistics_fields = (
-        "subscribers",
-        "likes",
-        "dislikes",
-        "views",
-        "audited_videos",
-        "items_count",
-    )
-
-    class Meta:
-        # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
-        model = None
-        fields = (
-            "id",
-            "title",
-            "segment_type",
-            "statistics",
-            "thumbnail_image_url",
-            "created_at",
-            "updated_at",
-            "category",
-            "is_master"
-        )
-
-    def get_statistics(self, obj):
-        details = obj.details or {}
-        statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
-        return statistics
-
-
-class PersistentSegmentVideoExportSerializer(Serializer):
-    # Fields map to segment export rows
-    URL = SerializerMethodField("get_url")
-    Title = CharField(source="general_data.title", default=None)
-    Language = CharField(source="general_data.language", default=None)
-    Category = CharField(source="general_data.category", default=None)
-    Likes = IntegerField(source="stats.likes", default=None)
-    Dislikes = IntegerField(source="stats.dislikes", default=None)
-    Views = IntegerField(source="stats.views", default=None)
-    Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)
-
-    def get_url(self, obj):
-        return f"https://www.youtube.com/video/{obj.main.id}/"
-
-
-class PersistentSegmentChannelExportSerializer(Serializer):
-    # Fields map to segment export rows
-    URL = SerializerMethodField("get_url")
-    Title = CharField(source="general_data.title", default=None)
-    Language = CharField(source="general_data.language", default=None)
-    Category = CharField(source="general_data.top_category", default=None)
-    Subscribers = IntegerField(source="stats.subscribers", default=None)
-    Likes = IntegerField(source="stats.likes", default=None)
-    Dislikes = IntegerField(source="stats.dislikes", default=None)
-    Views = IntegerField(source="stats.views", default=None)
-    Audited_Videos = IntegerField(source="brand_safety.videos_scored", default=None)
-    Overall_Score = IntegerField(source="brand_safety.overall_score", default=None)
-
-    def get_url(self, obj):
-        return f"https://www.youtube.com/channel/{obj.main.id}/"
 
 
 class CustomSegmentSerializer(ModelSerializer):

@@ -1,13 +1,7 @@
 """
 PersistentSegmentChannel models module
 """
-from django.db.models import BigIntegerField
-from django.db.models import Count
 from django.db.models import ForeignKey
-from django.db.models import Sum
-from django.db.models.functions import Cast
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
-from elasticsearch_dsl import A
 
 from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
@@ -18,7 +12,7 @@ from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
 from utils.es_components_api_utils import ESQuerysetAdapter
-from segment.api.serializers import PersistentSegmentChannelExportSerializer
+from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
 
 
 class PersistentSegmentChannel(BasePersistentSegment):

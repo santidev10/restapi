@@ -3,11 +3,10 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
-import uuid
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
-from segment.api.serializers import CustomSegmentSerializer
+from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
