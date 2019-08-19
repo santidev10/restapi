@@ -21,10 +21,10 @@ class PersistentSegmentVideo(BasePersistentSegment):
     export_serializer = PersistentSegmentVideoExportSerializer
     audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True)
     objects = PersistentSegmentManager()
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
     def calculate_details(self):
-        es_manager = VideoManager(sections=self.SECTIONS)
+        es_manager = self.get_es_manager()
         search = es_manager.search(query=self.get_segment_items_query())
         search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
         search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
@@ -34,11 +34,17 @@ class PersistentSegmentVideo(BasePersistentSegment):
         details["items_count"] = result.hits.total
         return details
 
+    def get_es_manager(self, sections=None):
+        if sections is None:
+            sections = self.SECTIONS
+        es_manager = VideoManager(sections=sections)
+        return es_manager
+
     def get_queryset(self, sections=None):
         if sections is None:
             sections = self.SECTIONS
         sort_key = {"stats.views": {"order": "desc"}}
-        es_manager = VideoManager(sections=sections)
+        es_manager = self.get_es_manager(sections=sections)
         scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
         return scan
 

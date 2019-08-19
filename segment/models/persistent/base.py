@@ -62,6 +62,15 @@ class BasePersistentSegment(Timestampable):
     def calculate_details(self):
         raise NotImplementedError
 
+    def get_es_manager(self):
+        raise NotImplementedError
+
+    def delete(self, *args, **kwargs):
+        # Delete segment references from Elasticsearch
+        self.remove_all_from_segment()
+        super().delete(*args, **kwargs)
+        return self
+
     def get_s3_key(self, from_db=False, datetime=None):
         try:
             # Get latest filename from db to retrieve from s3
@@ -121,6 +130,15 @@ class BasePersistentSegment(Timestampable):
         for key, value in aggregation_result_dict.items():
             results[key] = value["value"]
         return results
+
+    def remove_all_from_segment(self):
+        """
+        Remove all references to segment uuid from Elasticsearch
+        :return:
+        """
+        es_manager = self.get_es_manager()
+        query = self.get_segment_items_query()
+        es_manager.remove_from_segment(query, self.uuid)
 
 
 class BasePersistentSegmentRelated(Timestampable):
