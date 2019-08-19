@@ -160,7 +160,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
         channel.populate_stats(observed_videos_count=10)
-        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channel])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channel])
 
         response = self._request()
 
@@ -212,8 +212,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
             channel.populate_stats(observed_videos_count=10)
-        ChannelManager(sections=Sections.GENERAL_DATA).upsert([channels[0]])
-        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([channels[1]])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS, Sections.STATS)).upsert([channels[1]])
 
         response = self._request(analytics="true")
         csv_data = get_data_from_csv_response(response)
