@@ -6,7 +6,7 @@ from rest_framework.serializers import SerializerMethodField
 class CustomSegmentChannelExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
-    Language = CharField(source="general_data.top_language")
+    Language = CharField(source="brand_safety.language")
     Category = CharField(source="general_data.top_category")
     Subscribers = CharField(source="stats.subscribers")
     Overall_Score = CharField(source="brand_safety.overall_score")
@@ -18,7 +18,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
 class CustomSegmentVideoExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
-    Language = CharField(source="general_data.language")
+    Language = CharField(source="brand_safety.language")
     Category = CharField(source="general_data.category")
     Views = CharField(source="stats.views")
     Overall_Score = CharField(source="brand_safety.overall_score")
