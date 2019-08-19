@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    @pidfile(piddir=".", pidname="audit_segments_export.pid")
+    @pidfile(piddir=".", pidname="brand_suitability_export.pid")
     def handle(self, *args, **options):
         logger.info("Start")
         self.finalize_segments(PersistentSegmentChannel.objects.all())
@@ -28,7 +28,10 @@ class Command(BaseCommand):
         for segment in segments:
             now = timezone.now()
             s3_filename = segment.get_s3_key(datetime=now)
-            logger.info("Collecting data for {}".format(s3_filename))
+            logger.error("Collecting data for {}".format(s3_filename))
             segment.export_to_s3(s3_filename)
-            logger.info("Saved {}".format(segment.get_s3_key()))
+            segment.details = segment.calculate_details()
+            segment.save()
+            now = timezone.now()
+            logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
             PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
