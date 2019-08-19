@@ -16,6 +16,8 @@ from administration.notifications import send_admin_notification
 from administration.notifications import send_new_channel_authentication_email
 from administration.notifications import send_welcome_email
 from channel.models import AuthChannel
+from es_components.constants import Sections
+from es_components.managers.channel import ChannelManager
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
@@ -57,12 +59,13 @@ class ChannelAuthenticationApiView(APIView):
             if not credentials.refresh_token:
                 return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "No auth token"})
 
-            AuthChannel.objects.create(channel_id=channel_id,
-                                       refresh_token=credentials.refresh_token,
-                                       access_token=credentials.access_token,
-                                       client_id=settings.GOOGLE_APP_AUD,
-                                       client_secret=settings.GOOGLE_APP_SECRET,
-                                       access_token_expire_at=credentials.token_expiry)
+            channel = AuthChannel.objects.create(channel_id=channel_id,
+                                                 refresh_token=credentials.refresh_token,
+                                                 access_token=credentials.access_token,
+                                                 client_id=settings.GOOGLE_APP_AUD,
+                                                 client_secret=settings.GOOGLE_APP_SECRET,
+                                                 access_token_expire_at=credentials.token_expiry)
+            self.create_auth_channel(channel)
             send_admin_notification(channel_id)
 
         user = self.get_or_create_user(credentials.access_token)
@@ -78,6 +81,12 @@ class ChannelAuthenticationApiView(APIView):
         flush_cache()
         return Response(status=HTTP_202_ACCEPTED,
                         data={"auth_token": user.auth_token.key, "is_active": user.is_active})
+
+    def create_auth_channel(self, auth_channel):
+        manager = ChannelManager(Sections.AUTH)
+        channel = manager.get_or_create([auth_channel.channel_id])[0]
+        channel.populate_auth(updated_at=auth_channel.updated_at, created_at=auth_channel.created_at)
+        manager.upsert([channel])
 
     def send_update_channel_tasks(self, channel_id):
         send_task_channel_general_data_priority((channel_id,), wait=True)

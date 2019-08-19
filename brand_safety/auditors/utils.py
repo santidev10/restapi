@@ -33,7 +33,7 @@ class AuditUtils(object):
             for category_id in self.bad_word_categories
         }
         self._default_video_score = {
-            category_id: 0
+            category_id: 100
             for category_id in self.bad_word_categories
         }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
@@ -224,43 +224,29 @@ class AuditUtils(object):
 
     @staticmethod
     def extract_channel_data(data):
-        general_data = data["general_data"]
-        main = data["main"]
+        general_data = data.general_data
         mapped = {
-            "id": main["id"],
-            "title": general_data["title"],
-            "description": general_data["description"],
+            "id": data.main.id,
+            "title": getattr(data.general_data, "title", ""),
+            "description": getattr(data.general_data, "description", ""),
+            "video_tags": ",".join(getattr(general_data, "video_tags", "")),
+            "videos_scored": getattr(data.brand_safety, "videos_scored", 0),
+            "updated_at": getattr(data.brand_safety, "updated_at", None)
         }
-        try:
-            mapped["video_tags"] = ",".join(general_data["video_tags"])
-        except (TypeError, KeyError):
-            mapped["video_tags"] = ""
-        try:
-            mapped["videos_scored"] = data["brand_safety"]["videos_scored"]
-            mapped["updated_at"] = data["brand_safety"]["updated_at"]
-        except KeyError:
-            mapped["videos_scored"] = 0
-            mapped["updated_at"] = None
         return mapped
 
     @staticmethod
     def extract_video_data(data):
-        channel = data["channel"]
-        general_data = data["general_data"]
-        main = data["main"]
         mapped = {
-            "id": main["id"],
-            "title": general_data["title"],
-            "description": general_data["description"],
-            "channel_id": channel["id"]
+            "id": data.main.id,
+            "channel_id": data.channel.id,
+            "title": getattr(data.general_data, "title", ""),
+            "description": getattr(data.general_data, "description", ""),
+            "tags": ",".join(getattr(data.general_data, "tags", "") or ""),
         }
         try:
-            mapped["tags"] = ",".join(general_data["tags"])
-        except (TypeError, KeyError):
-            mapped["tags"] = ""
-        try:
-            mapped["transcript"] = data["captions"]["text"]
-        except KeyError:
+            mapped["transcript"] = data.captions.text
+        except AttributeError:
             mapped["transcript"] = ""
         return mapped
 

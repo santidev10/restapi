@@ -103,7 +103,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         views = [1, 3, 2]
         channels = [Channel(next(int_iterator)) for _ in range(len(views))]
         for channel, item_views in zip(channels, views):
-            channel.populate_stats(last_30day_views=item_views)
+            channel.populate_stats(last_30day_views=item_views, observed_videos_count=10)
         ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(channels)
 
         response = self._request(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
@@ -123,7 +123,10 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_limit_100(self):
         highlights_limit = 100
         channels = [Channel(next(int_iterator)) for _ in range(highlights_limit + 1)]
-        ChannelManager(sections=[Sections.GENERAL_DATA]).upsert(channels)
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         response = self._request()
 
