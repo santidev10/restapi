@@ -27,7 +27,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
 class CustomSegmentVideoExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
-    Language = CharField(source="brand_safety.language")
+    Language = SerializerMethodField("get_language")
     Category = CharField(source="general_data.category")
     Views = CharField(source="stats.views")
     Overall_Score = CharField(source="brand_safety.overall_score")

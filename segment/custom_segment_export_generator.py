@@ -5,6 +5,7 @@ from django.utils import timezone
 from elasticsearch_dsl.search import Q
 
 from administration.notifications import generate_html_email
+from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
@@ -23,8 +24,9 @@ class CustomSegmentExportGenerator(S3Exporter):
     SUBSCRIBERS_SORT = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
     CHANNEL_LIMIT = 20000
     VIDEO_LIMIT = 20000
-    MAX_API_CALL_RETRY = 30
-    RETRY_SLEEP_COEFFICIENT = 1.5
+    MAX_API_CALL_RETRY = 20
+    RETRY_SLEEP_COEFFICIENT = 1.1
+    UPDATE_BATCH_SIZE = 1000
 
     def __init__(self, updating=False):
         """
@@ -33,6 +35,8 @@ class CustomSegmentExportGenerator(S3Exporter):
         """
         self.ses = SESEmailer()
         self.updating = updating
+        self.segment_item_ids = []
+        self.limit = None
 
     def generate(self, export=None):
         """
@@ -52,15 +56,15 @@ class CustomSegmentExportGenerator(S3Exporter):
 
         if segment.segment_type == 0:
             sort_key = self.VIEWS_SORT
-            limit = self.VIDEO_LIMIT
+            self.limit = self.VIDEO_LIMIT
         else:
             sort_key = self.SUBSCRIBERS_SORT
-            limit = self.CHANNEL_LIMIT
+            self.limit = self.CHANNEL_LIMIT
         try:
             # Remove all items from this segment to generate relevant items
             retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
             query = Q(export.query)
-            es_generator = self.es_generator(es_manager, query, sort_key, limit, serializer)
+            es_generator = self.es_generator(es_manager, query, sort_key, self.limit, serializer)
         except Exception:
             raise
         log_message = "Updating" if self.updating else "Generating"
@@ -69,8 +73,9 @@ class CustomSegmentExportGenerator(S3Exporter):
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
 
-        # Add segment UUID to all documents under query
-        retry_on_conflict(es_manager.add_to_segment, export.query_obj, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+        # Add segment UUID to documents
+        for batch in AuditUtils.batch(self.segment_item_ids, self.UPDATE_BATCH_SIZE):
+            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -98,7 +103,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         export.save()
 
         result = segment.get_es_manager().search(export.query_obj, limit=0).execute()
-        items_count = result.hits.total
+        items_count = result.hits.total if result.hits.total < self.limit else self.limit
         segment.statistics = segment.calculate_statistics(items_count)
         segment.save()
         logger.error("Complete: {}".format(segment.title))
@@ -138,6 +143,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         search = search.sort(sort)
         search = search.params(preserve_order=True)
         for doc in search.scan():
+            self.segment_item_ids.append(doc.main.id)
             data = serializer(doc).data
             yield data
 
