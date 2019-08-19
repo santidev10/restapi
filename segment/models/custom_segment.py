@@ -27,6 +27,7 @@ from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
+from segment.utils import retry_on_conflict
 from utils.models import Timestampable
 
 
@@ -38,6 +39,8 @@ class CustomSegment(Timestampable):
     Base segment model
     """
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+    REMOVE_FROM_SEGMENT_RETRY = 15
+    RETRY_SLEEP_COEFF = 1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,7 +74,7 @@ class CustomSegment(Timestampable):
 
     def delete(self, *args, **kwargs):
         # Delete segment references from Elasticsearch
-        self.remove_all_from_segment()
+        retry_on_conflict(self.remove_all_from_segment, retry_amount=self.REMOVE_FROM_SEGMENT_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFF)
         super().delete(*args, **kwargs)
         return self
 
