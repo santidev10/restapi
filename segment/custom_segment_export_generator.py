@@ -97,7 +97,9 @@ class CustomSegmentExportGenerator(S3Exporter):
         export.download_url = download_url
         export.save()
 
-        segment.statistics = segment.calculate_statistics()
+        result = segment.get_es_manager().search(export.query_obj, limit=0).execute()
+        items_count = result.hits.total
+        segment.statistics = segment.calculate_statistics(items_count)
         segment.save()
         logger.error("Complete: {}".format(segment.title))
 
@@ -106,7 +108,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         text_header = "Your Custom Target List {} is ready".format(segment_title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
         html_email = generate_html_email(text_header, text_content)
-    
+
         self.ses.send_email(email, subject, html_email)
 
     @staticmethod

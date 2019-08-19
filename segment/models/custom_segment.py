@@ -75,7 +75,12 @@ class CustomSegment(Timestampable):
         super().delete(*args, **kwargs)
         return self
 
-    def calculate_statistics(self):
+    def calculate_statistics(self, items_count):
+        """
+        Aggregate statistics
+        :param items_count: int
+        :return:
+        """
         es_manager = self.get_es_manager(sections=(Sections.GENERAL_DATA,))
         query = self.get_segment_items_query()
         result = es_manager.search(query, limit=settings.MAX_SEGMENT_TO_AGGREGATE).execute()
@@ -94,7 +99,7 @@ class CustomSegment(Timestampable):
 
         statistics = {
             "adw_data": aggregate_segment_statistics(self, all_ids),
-            "items_count": result.hits.total,
+            "items_count": items_count,
             "top_three_items": top_three_items
         }
         return statistics
