@@ -35,9 +35,9 @@ class BrandSafetyChannelAudit(object):
         :return:
         """
         text = ", ".join([
-            data["title"],
-            data["description"],
-            data["video_tags"] or "",
+            data.get("title", "") or "",
+            data.get("description", "") or "",
+            data.get("video_tags", "") or "",
             ])
         detected = {
             "has_emoji": self.audit_utils.has_emoji(text),
@@ -88,13 +88,9 @@ class BrandSafetyChannelAudit(object):
                 channel_brand_safety_score.add_category_score(category, score)
             channel_brand_safety_score.add_overall_score(video_brand_safety_score.overall_score)
 
-        try:
-            # Average all scores
-            channel_brand_safety_score.calculate_average_scores()
-        except ZeroDivisionError:
-            # No videos were scored
-            channel_brand_safety_score.average_calculated = True
-            pass
+        # Average all scores
+        channel_brand_safety_score.calculate_average_scores()
+
         # Add brand safety metadata hits to scores, must be called after calculate_average_scores to
         # add weight against channel video averaged scores
         for word in channel_metadata_hits:

@@ -43,7 +43,8 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             }
         })
         sleep(1)
-        ChannelManager(sections=[Sections.GENERAL_DATA, Sections.BRAND_SAFETY]).upsert([channel])
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([channel])
         response = self.client.get(self.url)
         self.assertEqual(
             score,
@@ -54,7 +55,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         extra_fields = ("brand_safety_data", "chart_data", "blacklist_data")
         channel = Channel(str(next(int_iterator)))
-        ChannelManager([Sections.GENERAL_DATA]).upsert([channel])
+        ChannelManager([Sections.GENERAL_DATA, Sections.CMS, Sections.AUTH]).upsert([channel])
 
         response = self.client.get(self.url)
 
