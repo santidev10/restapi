@@ -17,7 +17,7 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
-                "custom_properties.preferred", "analytics.verified", "analytics.cms_title",
+                "custom_properties.preferred", "analytics.verified", "cms.cms_title",
                 "stats.channel_group", "main.id")
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
@@ -86,7 +86,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "analytics.age55_64:min",
         "analytics.age65_:max",
         "analytics.age65_:min",
-        "analytics.cms_title",
+        "cms.cms_title",
         "analytics.gender_female:max",
         "analytics.gender_female:min",
         "analytics.gender_male:max",
@@ -138,7 +138,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY)
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS)
         try:
             channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         except UserChannelsNotAvailable:
