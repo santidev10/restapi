@@ -20,7 +20,7 @@ from video.api.serializers.video import VideoSerializer
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
-                "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
+                "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags",)
 
@@ -80,9 +80,9 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "ads_stats.ctr_v:min",
         "ads_stats.video_view_rate:max",
         "ads_stats.video_view_rate:min",
-        "analytics.cms_title",
         "analytics:exists",
         "analytics:missing",
+        "cms.cms_title",
         "general_data.category",
         "general_data.language",
         "general_data.youtube_published_at:max",
@@ -116,7 +116,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
-                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
+                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
         flags = deepcopy(self.request.query_params).get("flags")
