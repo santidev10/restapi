@@ -71,7 +71,6 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'utils.index_middleware.IndexMiddleware',
     'userprofile.middleware.ApexUserCheck',
 ]
 
