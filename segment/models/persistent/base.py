@@ -13,10 +13,8 @@ from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import Manager
 from django.db.models import TextField
-from django.db.models import BigIntegerField
 from django.db.models import DateTimeField
 from django.db.models import Model
-from django.contrib.postgres.fields.jsonb import KeyTransform
 from django.db.models import UUIDField
 
 from utils.models import Timestampable
@@ -75,7 +73,7 @@ class BasePersistentSegment(Timestampable):
         try:
             # Get latest filename from db to retrieve from s3
             if from_db is True:
-                latest_filename = PersistentSegmentFileUpload.objects.filter(segment_id=self.id).order_by("-created_at")[0].filename
+                latest_filename = PersistentSegmentFileUpload.objects.filter(segment_uuid=self.uuid).order_by("-created_at")[0].filename
                 return latest_filename
             else:
                 # Get new filename to upload using date string
@@ -187,6 +185,6 @@ class PersistentSegmentExportContent(object):
 
 
 class PersistentSegmentFileUpload(Model):
-    segment_id = BigIntegerField()
+    segment_uuid = UUIDField(unique=True)
     created_at = DateTimeField(db_index=True)
     filename = CharField(max_length=200, unique=True)
