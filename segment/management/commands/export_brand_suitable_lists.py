@@ -34,4 +34,4 @@ class Command(BaseCommand):
             segment.save()
             now = timezone.now()
             logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
-            PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+            PersistentSegmentFileUpload.objects.create(segment_id=segment.uuid, filename=s3_filename, created_at=now)

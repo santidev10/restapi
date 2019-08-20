@@ -90,5 +90,5 @@ class CustomSegmentImporter(object):
 
         s3_filename = segment.get_s3_key(datetime=now)
         segment.export_to_s3(s3_filename)
-        PersistentSegmentFileUpload.objects.create(segment_id=segment.id, filename=s3_filename, created_at=now)
+        PersistentSegmentFileUpload.objects.create(segment_id=segment.uuid, filename=s3_filename, created_at=now)
         logger.error("Imported segment: {}".format(segment.title))
