@@ -1,7 +1,11 @@
 from django.conf import settings
+from elasticsearch_dsl import Q
 
 from audit_tool.models import AuditCategory
 import brand_safety.constants as constants
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 from utils.elasticsearch import ElasticSearchConnector
 from utils.elasticsearch import ElasticSearchConnectorException
 
@@ -25,7 +29,9 @@ def get_es_data(item_ids, index_name):
 
 
 class BrandSafetyQueryBuilder(object):
+    MAX_RETRIES = 1000
     MAX_SIZE = 10000
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
     def __init__(self, data, overall_score: int = None, video_ids: list = None):
         """
@@ -37,25 +43,23 @@ class BrandSafetyQueryBuilder(object):
         self.video_ids = video_ids
         self.list_type = data["list_type"]
         self.segment_type = data["segment_type"]
+        # Score threshold for brand safety categories
         self.score_threshold = data.get("score_threshold", 0)
+        # For blacklists, FE will send 1,2, or 3 for score threshold. Should be mapped from 1-100 scale
         self.score_threshold = self.score_threshold if self.list_type == "whitelist" else self._map_blacklist_severity(self.score_threshold)
         self.languages = data.get("languages", [])
         self.minimum_option = data.get("minimum_option", 0)
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
         self.options = self._get_segment_options()
+
+        self.es_manager = ChannelManager(sections=self.SECTIONS) if self.segment_type == constants.CHANNEL else VideoManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
 
-    def execute(self):
-        try:
-            result = ElasticSearchConnector(index_name=self.options["index"]).search(
-                doc_type=settings.BRAND_SAFETY_TYPE,
-                body=self.query_body,
-                size=self.MAX_SIZE,
-            )
-        except ElasticSearchConnectorException:
-            raise ElasticSearchConnectorException
-        return result
+    def execute(self, limit=5):
+        query = Q(self.query_body)
+        results = self.es_manager.search(query, limit=limit).execute()
+        return results
 
     def _get_segment_options(self) -> dict:
         """
@@ -66,12 +70,14 @@ class BrandSafetyQueryBuilder(object):
         """
         options = {
             "channel": {
-                "index": settings.BRAND_SAFETY_CHANNEL_INDEX,
-                "minimum_option": "subscribers"
+                "index": constants.CHANNELS_INDEX,
+                "minimum_option": "stats.subscribers",
+                "youtube_category_field": "general_data.top_category"
             },
             "video": {
-                "index": settings.BRAND_SAFETY_VIDEO_INDEX,
-                "minimum_option": "views"
+                "index": constants.VIDEOS_INDEX,
+                "minimum_option": "stats.views",
+                "youtube_category_field": "general_data.category"
             },
             "range_param": {
                 constants.BLACKLIST: "lte",
@@ -82,6 +88,7 @@ class BrandSafetyQueryBuilder(object):
             "index": options[self.segment_type]["index"],
             "minimum_option": options[self.segment_type]["minimum_option"],
             "range_param": options["range_param"][self.list_type],
+            "youtube_category_field": options[self.segment_type]["youtube_category_field"]
         }
         return config
 
@@ -92,49 +99,50 @@ class BrandSafetyQueryBuilder(object):
         :return: dict
         """
         query_body = {
-            "query": {
-                "bool": {
-                    "filter": {
-                        "bool": {
-                            "must": [
-                                {
-                                    # Minimum option (views | subscribers)
-                                    "range": {}
-                                },
-                                {
-                                    "bool": {
-                                        # language
-                                        "should": []
-                                    }
-                                },
-                                {
-                                    "bool": {
-                                        # youtube_category
-                                        "should": []
-                                    }
-                                },
-                                {
-                                    "nested": {
-                                        "path": "categories",
-                                        "query": {
-                                            "bool": {
-                                                "filter": []
-                                            }
-                                        }
-                                    }
+            "bool": {
+                "filter": {
+                    "bool": {
+                        "must": [
+                            {
+                                # Minimum option (views | subscribers)
+                                "range": {
+
                                 }
-                            ]
-                        }
+                            },
+                            {
+                                "bool": {
+                                    # language
+                                    "should": []
+                                }
+                            },
+                            {
+                                "bool": {
+                                    # youtube_category
+                                    "should": []
+                                }
+                            },
+                            {
+                                # brand safety categories
+                                "bool": {
+                                    "filter": []
+                                }
+                            },
+                            {
+                                "exists": {
+                                    "field": "brand_safety"
+                                }
+                            }
+                        ]
                     }
                 }
             }
         }
-        must_statements = query_body["query"]["bool"]["filter"]["bool"]["must"]
+        must_statements = query_body["bool"]["filter"]["bool"]["must"]
         if self.overall_score:
             # Get items with overall score <= or >= self.overall score depending on self.segment_type
             threshold_operator = "gte" if self.list_type == constants.WHITELIST else "lte"
             overall_score_threshold = {
-                "range": {"overall_score": {threshold_operator: self.overall_score}}
+                "range": {"brand_safety.overall_score": {threshold_operator: self.overall_score}}
             }
             must_statements.append(overall_score_threshold)
 
@@ -146,29 +154,29 @@ class BrandSafetyQueryBuilder(object):
             }
             must_statements.append(related_to)
         # Set refs for easier access
-        minimum_option = query_body["query"]["bool"]["filter"]["bool"]["must"][0]["range"]
-        language_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][1]["bool"]["should"]
-        youtube_categories_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][2]["bool"]["should"]
-        category_score_filters = query_body["query"]["bool"]["filter"]["bool"]["must"][3]["nested"]["query"]["bool"]["filter"]
+        minimum_option = must_statements[0]["range"]
+        language_filters = must_statements[1]["bool"]["should"]
+        youtube_categories_filters = must_statements[2]["bool"]["should"]
+        category_score_filters = must_statements[3]["bool"]["filter"]
 
         # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
-        category_score_params = [
-            {"range": {"categories.{}.category_score".format(category): {self.options["range_param"]: self.score_threshold}}}
+        category_score_filter_params = [
+            {"range": {"brand_safety.categories.{}.category_score".format(category): {self.options["range_param"]: self.score_threshold}}}
             for category in self.brand_safety_categories
         ]
-        youtube_categories = [
-            {"term": {"youtube_category": category}}
-            for category in self.youtube_categories
-        ]
-        languages = [
-            {"term": {"language": language}}
+        language_filter_params = [
+            {"term": {"brand_safety.language": language}}
             for language in self.languages
+        ]
+        youtube_category_filter_params = [
+            {"term": {self.options["youtube_category_field"]: category}}
+            for category in self.youtube_categories
         ]
 
         # Add filters to refs
-        category_score_filters.extend(category_score_params)
-        language_filters.extend(languages)
-        youtube_categories_filters.extend(youtube_categories)
+        category_score_filters.extend(category_score_filter_params)
+        language_filters.extend(language_filter_params)
+        youtube_categories_filters.extend(youtube_category_filter_params)
 
         # Sets range query in must clause
         # e.g. { "range": { "subscribers": { "gte": 1000 } }
@@ -194,7 +202,7 @@ class BrandSafetyQueryBuilder(object):
     @staticmethod
     def map_youtube_categories(youtube_category_ids):
         mapping = {
-            _id: category.lower() for _id, category in AuditCategory.get_all().items()
+            _id: category for _id, category in AuditCategory.get_all().items()
         }
         to_string = [mapping[str(_id)] for _id in youtube_category_ids]
         return to_string

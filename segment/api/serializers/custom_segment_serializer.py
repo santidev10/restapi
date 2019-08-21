@@ -1,50 +1,14 @@
-"""
-Segment api serializers module
-"""
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
-from rest_framework.serializers import SerializerMethodField
 from rest_framework.serializers import ValidationError
+import uuid
 
-from segment.models import PersistentSegmentChannel
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+
 from segment.models import CustomSegment
 from userprofile.models import UserProfile
-
-
-class PersistentSegmentSerializer(ModelSerializer):
-    statistics = SerializerMethodField()
-
-    statistics_fields = (
-        "subscribers",
-        "likes",
-        "dislikes",
-        "views",
-        "audited_videos",
-        "items_count",
-    )
-
-    class Meta:
-        # fixme: replace PersistentSegmentChannel with None. It's a workaround to fix documentation generation
-        model = PersistentSegmentChannel
-        fields = (
-            "id",
-            "title",
-            "segment_type",
-            "statistics",
-            "thumbnail_image_url",
-            "created_at",
-            "updated_at",
-            "category",
-            "is_master"
-        )
-
-    def get_statistics(self, obj):
-        details = obj.details or {}
-        statistics = {field: details[field] for field in self.statistics_fields if field in details.keys()}
-        return statistics
 
 
 class CustomSegmentSerializer(ModelSerializer):
@@ -66,8 +30,14 @@ class CustomSegmentSerializer(ModelSerializer):
             "segment_type",
             "statistics",
             "title",
-            "title_hash"
+            "title_hash",
         )
+
+    def create(self, validated_data):
+        validated_data.update({
+            "uuid": uuid.uuid4()
+        })
+        return CustomSegment.objects.create(**validated_data)
 
     def validate_list_type(self, list_type):
         try:

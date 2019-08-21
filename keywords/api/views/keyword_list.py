@@ -6,14 +6,14 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
+from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-from .utils import add_views_history_chart
 
 TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
 
@@ -29,14 +29,17 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
             IsAdminUser
         ),
     )
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
+    serializer_class = KeywordWithViewsHistorySerializer
     ordering_fields = (
         "stats.last_30day_views:desc",
+        "stats.top_category_last_30day_views:desc",
         "stats.search_volume:desc",
         "stats.average_cpc:desc",
         "stats.competition:desc",
         "stats.last_30day_views:asc",
+        "stats.top_category_last_30day_views:asc",
         "stats.search_volume:asc",
         "stats.average_cpc:asc",
         "stats.competition:asc",
@@ -68,12 +71,11 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         if query_params.get("from_channel"):
             channel_id = query_params.get("from_channel")
             channel = ChannelManager().model.get(channel_id, _source=(f"{Sections.GENERAL_DATA}.video_tags"))
-            keyword_ids = channel.general_data.video_tags
+            keyword_ids = list(channel.general_data.video_tags)
 
             if keyword_ids:
                 self.request.query_params._mutable = True
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetWithBrandSafetyAdapter(KeywordManager(sections)) \
-            .extra_fields_func((add_views_history_chart,))
+        return ESQuerysetAdapter(KeywordManager(sections))

@@ -1,7 +1,9 @@
 import logging
 
 import yaml
-from googleads import adwords, oauth2
+from googleads import adwords
+from googleads import oauth2
+from googleads.common import ZeepServiceProxy
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
@@ -43,6 +45,7 @@ def _get_client(developer_token, client_id, client_secret, user_agent,
         oauth2_client,
         user_agent=user_agent,
         client_customer_id=client_customer_id,
+        cache=ZeepServiceProxy.NO_CACHE,
     )
     return client_obj
 

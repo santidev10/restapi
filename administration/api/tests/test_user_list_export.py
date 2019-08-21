@@ -1,4 +1,3 @@
-import csv
 from datetime import datetime
 
 import pytz
@@ -7,8 +6,8 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from administration.api.urls.names import AdministrationPathName
-from administration.api.views.user_list_export import UserListCSVRendered
 from administration.api.views.user_list_export import UserExportColumn
+from administration.api.views.user_list_export import UserListCSVRendered
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -16,6 +15,7 @@ from aw_reporting.models import Account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserChannel
 from userprofile.models import UserProfile
+from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
@@ -54,7 +54,6 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
             response = self._request()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
-
 
     def test_headers(self):
         self.create_admin_user()
@@ -199,10 +198,6 @@ class UserListExportAPITestCase(ExtendedAPITestCase):
         user_last_names = [get_value(row, UserExportColumn.LAST_NAME) for row in rows]
         expected_last_names = [user.last_name for user in sorted_users]
         self.assertEqual(user_last_names, expected_last_names)
-
-
-def get_data_from_csv_response(response):
-    return csv.reader((row.decode("utf-8") for row in response.streaming_content))
 
 
 def get_data_rows(response):

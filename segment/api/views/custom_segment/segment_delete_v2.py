@@ -1,6 +1,6 @@
 from rest_framework.generics import DestroyAPIView
 
-from segment.api.serializers import CustomSegmentSerializer
+from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models import CustomSegment
 
@@ -16,4 +16,3 @@ class SegmentDeleteApiViewV2(DestroyAPIView):
     def get_queryset(self):
         queryset = CustomSegment.objects.filter(owner=self.request.user, id=self.kwargs["pk"])
         return queryset
-
