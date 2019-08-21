@@ -54,6 +54,7 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
       ELASTIC_SEARCH_URLS: es
+      DO_SALESFORCE_UPDATE: 0
 
   pg:
     image: postgres:9.6

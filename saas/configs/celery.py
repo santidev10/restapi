@@ -24,7 +24,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     "full-sf-update": {
         "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
-        "schedule": crontab(hour="*", minute="18"),
+        "schedule": crontab(hour="*", minute="0"),
+        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
     "update-audiences": {
         "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
