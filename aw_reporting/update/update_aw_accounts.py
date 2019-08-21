@@ -46,7 +46,7 @@ def update_aw_accounts(account_ids=None, start=None, end=None, start_date=None, 
     return job()
 
 
-@celery_app.task
+@celery_app.task()
 def pre_process_finished(**kwargs):
     job = chain(
         group_chorded(update_accounts_group(is_mcc=True, **kwargs)),

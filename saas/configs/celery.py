@@ -1,4 +1,5 @@
 import os
+import re
 
 from celery.schedules import crontab
 
@@ -20,6 +21,10 @@ CELERY_BEAT_SCHEDULE = {
     "full-aw-update": {
         "task": "aw_reporting.update.update_aw_accounts.update_aw_accounts",
         "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
+    },
+    "full-sf-update": {
+        "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
+        "schedule": crontab(hour="*", minute="18"),
     },
     "update-audiences": {
         "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
@@ -46,3 +51,20 @@ CELERY_RESULT_BACKEND = "django-db"
 
 # Suggestion from this thread https://github.com/celery/celery/issues/4226
 CELERY_BROKER_POOL_LIMIT = None
+
+
+class Queue:
+    DEFAULT = "celery"
+    REPORTS = "reports"
+    DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
+
+
+CELERY_ROUTES_PREPARED = [
+    ("aw_reporting.update.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
+    ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
+    ("*", {"queue": Queue.DEFAULT}),
+]
+# dirty fix for celery. fixes AttributeError
+re._pattern_type = re.Pattern
+
+CELERY_TASK_ROUTES = (CELERY_ROUTES_PREPARED,)

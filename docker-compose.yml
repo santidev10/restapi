@@ -34,7 +34,7 @@ services:
 
   celery_worker:
     image: viewiq-restapi
-    command: ["celery", "-A", "saas", "worker", "-l", "info"]
+    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic"]
     depends_on:
       - rabbitmq
       - pg
@@ -44,6 +44,7 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      ELASTIC_SEARCH_URLS: es
 
   celery_beat:
     image: viewiq-restapi
@@ -52,6 +53,7 @@ services:
       - rabbitmq
     environment:
       RABBITMQ_HOST: rabbitmq
+      ELASTIC_SEARCH_URLS: es
 
   pg:
     image: postgres:9.6
