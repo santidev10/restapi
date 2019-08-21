@@ -23,7 +23,7 @@ __all__ = ["update_aw_accounts"]
 
 logger = logging.getLogger(__name__)
 
-LOCK_FILE_NAME = "update_aw_accounts"
+LOCK_NAME = "update_aw_accounts"
 
 
 @celery_app.task
@@ -39,7 +39,7 @@ def update_aw_accounts(account_ids=None, start=None, end=None, start_date=None, 
         end_date=end_date
     )
     job = chain(
-        lock.si(lock_name=LOCK_FILE_NAME, countdown=60, max_retries=60),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60),
         pre_process.si(),
         pre_process_finished.si(**kwargs),
     )
@@ -61,7 +61,7 @@ def mcc_update_finished(**kwargs):
     job = chain(
         group_chorded(update_accounts_group(**kwargs)),
         post_process.si(),
-        unlock.si(lock_name=LOCK_FILE_NAME),
+        unlock.si(lock_name=LOCK_NAME),
     )
     return job()
 

@@ -22,6 +22,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "aw_reporting.update.update_aw_accounts.update_aw_accounts",
         "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
     },
+    "hourly-aw_update": {
+        "task": "aw_reporting.update.update_aw_accounts_hourly_stats.update_aw_accounts_hourly_stats",
+        "schedule": crontab(hour="*", minute="0"),
+    },
     "full-sf-update": {
         "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
         "schedule": crontab(hour="*", minute="0"),
