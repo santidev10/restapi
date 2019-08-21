@@ -14,7 +14,6 @@ from es_components.models import Channel
 from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from utils.elasticsearch import ElasticSearchConnector
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
@@ -172,21 +171,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             ["" for _ in range(len(values))],
             values
         )
-
-    def test_request_brand_safety_from_the_same_source(self):
-        self.create_admin_user()
-        channels = [Channel(next(int_iterator)) for _ in range(2)]
-        for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
-        ChannelManager(sections=Sections.GENERAL_DATA).upsert(channels)
-
-        with patch.object(ElasticSearchConnector, "search_by_id", return_value={}) as es_mock:
-            response = self._request()
-
-            csv_data = get_data_from_csv_response(response)
-            list(csv_data)
-
-            es_mock.assert_not_called()
 
     def test_filter_ids(self):
         self.create_admin_user()

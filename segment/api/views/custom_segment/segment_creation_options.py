@@ -1,13 +1,11 @@
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
-from utils.elasticsearch import ElasticSearchConnectorException
 from segment.api.views import SegmentListCreateApiViewV2
 
 
@@ -22,16 +20,12 @@ class SegmentCreationOptionsApiView(APIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(err))
         data["segment_type"] = kwargs["segment_type"]
         query_builder = BrandSafetyQueryBuilder(data)
-        try:
-            result = query_builder.execute()
-            data = {
-                "items": result.hits.total or 0,
-                "options": self._get_options()
-            }
-            status = HTTP_200_OK
-        except ElasticSearchConnectorException:
-            data = "Unable to connect to Elasticsearch."
-            status = HTTP_502_BAD_GATEWAY
+        result = query_builder.execute()
+        data = {
+            "items": result.hits.total or 0,
+            "options": self._get_options()
+        }
+        status = HTTP_200_OK
         return Response(status=status, data=data)
 
     def _map_query_params(self, query_params):
