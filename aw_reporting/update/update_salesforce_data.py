@@ -156,8 +156,9 @@ def update_opportunities(sc, opportunity_ids, debug_update):
 
         if update:
             try:
-                r = 204 if debug_update else sc.sf.Opportunity.update(
-                    opportunity.id, update)
+                r = 204 \
+                    if debug_update \
+                    else sc.sf.Opportunity.update(opportunity.id, update)
             except Exception as e:
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
@@ -185,10 +186,9 @@ def update_placements(sc, opportunity_ids, debug_update):
         if placement.ad_words_placement != aw_pl:
             update = {'Adwords_Placement_IQ__c': aw_pl}
             try:
-                r = 204 if debug_update else sc.sf.Placement__c.update(
-                    placement.id,
-                    update,
-                )
+                r = 204 \
+                    if debug_update \
+                    else sc.sf.Placement__c.update(placement.id, update,)
             except Exception as e:
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
@@ -230,8 +230,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
 
         if update:
             try:
-                r = 204 if debug_update else sc.sf.Flight__c.update(
-                    flight.id, update)
+                r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
@@ -257,8 +256,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
     for flight in service_flights_to_update:
         update = dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0)
         try:
-            r = 204 if debug_update else sc.sf.Flight__c.update(
-                flight.id, update)
+            r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
         except Exception as e:
             logger.critical("Unhandled exception: %s" % str(e))
         else:

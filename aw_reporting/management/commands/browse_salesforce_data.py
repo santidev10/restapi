@@ -40,7 +40,7 @@ class Command(BaseCommand):
         parser.add_argument("--opp", dest="opportunities", action="append", help="Opportunity ids for updating")
 
     def handle(self, *args, **options):
-        update_salesforce_data.apply_async(
+        signature = update_salesforce_data.si(
             do_get=not options.get("no_get", False),
             do_update=not options.get("no_update", False),
             debug_update=options.get("debug_update", False),
@@ -50,3 +50,4 @@ class Command(BaseCommand):
             skip_placements=options.get("no_placements", False),
             skip_opportunities=options.get("no_opportunities", False),
         )
+        signature.apply_async()

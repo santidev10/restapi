@@ -1,6 +1,8 @@
+from contextlib import contextmanager
 from datetime import date
 from datetime import timedelta
-from unittest.mock import MagicMock, ANY
+from unittest.mock import ANY
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from django.conf import settings
@@ -28,7 +30,7 @@ from utils.utittests.patch_now import patch_now
 
 
 def call_command(*args, **kwargs):
-    with patch("aw_reporting.management.commands.browse_salesforce_data.logger.exception") as exception_mock:
+    with patch("aw_reporting.update.update_salesforce_data.logger.exception") as exception_mock:
         django_call_command(*args, **kwargs)
         if exception_mock.called:
             raise exception_mock.call_args[0][0]
@@ -61,8 +63,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.return_value = 204
         sf_mock().sf.Placement__c.update.return_value = 204
 
-        with patch("aw_reporting.management.commands"
-                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
             call_command("browse_salesforce_data", no_get="1")
 
@@ -96,8 +97,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.return_value = 204
         sf_mock().sf.Placement__c.update.return_value = 204
 
-        with patch("aw_reporting.management.commands"
-                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
             call_command("browse_salesforce_data", no_get="1")
 
@@ -139,9 +139,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
                 Name="",
             )
         ])
-        with patch(
-                "aw_reporting.management.commands.browse_salesforce_data.SConnection",
-                return_value=sf_mock):
+        with patch_salesforce_connector(return_value=sf_mock):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(Opportunity.objects.all().count(), 1)
@@ -206,7 +204,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
@@ -290,7 +288,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
 
@@ -397,7 +395,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             ),
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        with patch_salesforce_connector(return_value=sf_mock):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(len(mail.outbox), 0)
@@ -447,7 +445,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
         test_email = "test@mail.com"
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
@@ -507,7 +505,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         ])
 
         test_email = "test@mail.com"
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
             call_command("browse_salesforce_data", no_update="1")
@@ -606,7 +604,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             ),
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock):
+        with patch_salesforce_connector(return_value=sf_mock):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(len(mail.outbox), 0)
@@ -671,7 +669,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
             call_command("browse_salesforce_data", no_update="1")
 
@@ -740,7 +738,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
             )
         ])
 
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", return_value=sf_mock), \
+        with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
             call_command("browse_salesforce_data", no_update="1")
 
@@ -776,9 +774,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
                 Placement__c=placement_id,
             )
         ])
-        with patch(
-                "aw_reporting.management.commands.browse_salesforce_data.SConnection",
-                return_value=sf_mock):
+        with patch_salesforce_connector(return_value=sf_mock):
             call_command("browse_salesforce_data", no_update="1")
 
         self.assertEqual(Flight.objects.all().count(), 1)
@@ -821,8 +817,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.return_value = 204
         sf_mock().sf.Placement__c.update.return_value = 204
 
-        with patch("aw_reporting.management.commands"
-                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
             call_command("browse_salesforce_data", no_get="1")
 
@@ -868,8 +863,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         sf_mock().sf.Flight__c.update.return_value = 204
         sf_mock().sf.Placement__c.update.return_value = 204
 
-        with patch("aw_reporting.management.commands"
-                   ".browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
             call_command("browse_salesforce_data", no_get="1")
 
@@ -893,14 +887,14 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         not_updated_since = end + timedelta(days=update_delay_days + 1)
         flight.refresh_from_db()
         sf_mock = MagicMock()
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(update_until), \
              self.subTest("Update"):
             call_command("browse_salesforce_data", no_get="1")
             sf_mock().sf.Flight__c.update.assert_called_once_with(flight.id, ANY)
 
         sf_mock = MagicMock()
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection", new=sf_mock), \
+        with patch_salesforce_connector(new=sf_mock), \
              patch_now(not_updated_since), \
              self.subTest("Not update"):
             call_command("browse_salesforce_data", no_get="1")
@@ -910,7 +904,7 @@ class BrowseSalesforceDataTestCase(TransactionTestCase):
         recreate_demo_data()
         demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
         flights_count = demo_flights_qs.count()
-        with patch("aw_reporting.management.commands.browse_salesforce_data.SConnection"):
+        with patch_salesforce_connector():
             call_command("browse_salesforce_data")
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
@@ -999,3 +993,9 @@ def flight_data(**kwargs):
         **default_values,
         **kwargs,
     }
+
+
+@contextmanager
+def patch_salesforce_connector(**kwargs):
+    with patch("aw_reporting.update.update_salesforce_data.SConnection", **kwargs) as mock:
+        yield mock
