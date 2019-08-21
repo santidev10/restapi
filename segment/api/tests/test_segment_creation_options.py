@@ -1,3 +1,4 @@
+import types
 from unittest.mock import patch
 
 from django.core.urlresolvers import reverse
@@ -18,21 +19,14 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
     @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success(self, es_mock):
         self.create_test_user()
-        es_mock.return_value = {
-            "took": 5,
-            "timed_out": False,
-            "_shards": {
-                "total": 5,
-                "successful": 5,
-                "skipped": 0,
-                "failed": 0
-            },
-            "hits": {
-                "total": 602411,
-                "max_score": None,
-                "hits": []
-            }
-        }
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 602411
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
         query_prams = QueryDict(
             "brand_safety_categories=1,2,3&languages=es&list_type=whitelist&score_threshold=50&minimum_option="
         ).urlencode()

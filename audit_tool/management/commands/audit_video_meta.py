@@ -39,7 +39,7 @@ class Command(BaseCommand):
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics&id={id}"
+                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -172,7 +172,7 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video_meta.name or not db_video.channel:
+            if not db_video_meta.name or not db_video.channel or not db_video_meta.duration:
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
             else:
                 channel_id = db_video.channel.channel_id
@@ -285,6 +285,15 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            if 'defaultAudioLanguage' in i['snippet']:
+                try:
+                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                except Exception as e:
+                    pass
+            try:
+                db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)

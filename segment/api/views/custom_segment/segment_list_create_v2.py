@@ -6,7 +6,7 @@ from rest_framework.status import HTTP_201_CREATED
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
-from segment.api.serializers import CustomSegmentSerializer
+from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
@@ -121,4 +121,3 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         except ValueError:
             raise ValidationError("The number: {} is not valid.".format(value))
         return to_num
-

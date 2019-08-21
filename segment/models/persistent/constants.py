@@ -21,35 +21,35 @@ class PersistentSegmentTitles:
     VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE = "Videos Master Blacklist"
     VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE = "Videos Master Whitelist"
 
-    CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Channels"
-    CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Channels"
+    CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Channels"
+    CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Channels"
 
-    VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Videos"
-    VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Videos"
+    VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE = "Brand Suitability Master Blacklist Videos"
+    VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE = "Brand Suitability Master Whitelist Videos"
 
     ALL_MASTER_SEGMENT_TITLES = (
         CHANNELS_MASTER_BLACKLIST_SEGMENT_TITLE,
         CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
         VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE,
         VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE,
-        CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-        CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-        VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-        VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE
+        CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE
     )
 
     MASTER_BLACKLIST_SEGMENT_TITLES = (
         CHANNELS_MASTER_BLACKLIST_SEGMENT_TITLE,
         VIDEOS_MASTER_BLACKLIST_SEGMENT_TITLE,
-        CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-        VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE
+        CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE
     )
 
     MASTER_WHITELIST_SEGMENT_TITLES = (
         CHANNELS_MASTER_WHITELIST_SEGMENT_TITLE,
         VIDEOS_MASTER_WHITELIST_SEGMENT_TITLE,
-        CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-        VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE
+        CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+        VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE
     )
 
     TITLES_MAP = (
@@ -80,30 +80,29 @@ class PersistentSegmentExportColumn:
     DISLIKES = "Dislikes"
     VIEWS = "Views"
     SUBSCRIBERS = "Subscribers"
-    AUDITED_VIDEOS = "Audited Videos"
-    BAD_WORDS = "Bad Words"
-    CHANNEL_ID = "Channel ID"
-    CHANNEL_TITLE = "Channel Title"
-    OVERALL_SCORE = "Overall Score"
+    AUDITED_VIDEOS = "Audited_Videos"
+    BAD_WORDS = "Bad_Words"
+    CHANNEL_ID = "Channel_ID"
+    CHANNEL_TITLE = "Channel_Title"
+    OVERALL_SCORE = "Overall_Score"
 
     CHANNEL_BLACKLIST_CSV_COLUMNS = (
         URL,
         TITLE,
         CATEGORY,
         LANGUAGE,
-        THUMBNAIL,
         SUBSCRIBERS,
         LIKES,
         DISLIKES,
         VIEWS,
         AUDITED_VIDEOS,
-        BAD_WORDS,
         OVERALL_SCORE
     )
 
     CHANNEL_WHITELIST_CSV_COLUMNS = (
         URL,
         TITLE,
+        LANGUAGE,
         CATEGORY,
         SUBSCRIBERS,
         LIKES,
@@ -134,13 +133,13 @@ class PersistentSegmentExportColumn:
         LIKES,
         DISLIKES,
         VIEWS,
-        BAD_WORDS,
         OVERALL_SCORE
     )
 
     VIDEO_WHITELIST_CSV_COLUMNS = (
         URL,
         TITLE,
+        LANGUAGE,
         CATEGORY,
         LIKES,
         DISLIKES,
@@ -228,3 +227,27 @@ PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS = (
     "title_bad_words",
     "title_bad_statuses",
 )
+
+CATEGORY_THUMBNAIL_IMAGE_URLS = {
+    "Film & Animation": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/FilmAnimation.jpg",
+    "Autos & Vehicles": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/AutoVehicles.jpg",
+    "Music": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Music.jpg",
+    "Pets & Animals": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/PetsAnimals.png",
+    "Sports": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Sports.jpg",
+    "Travel & Events": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/TravelEvents.jpg",
+    "Gaming": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Gaming.jpg",
+    "People & Blogs": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/PeopleBlogs.jpg",
+    "Comedy": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Comedy.jpg",
+    "Entertainment": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Entertainment.jpg",
+    "News & Politics": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/NewsPolitics.jpg",
+    "Howto & Style": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/HowtoStyle.jpg",
+    "Education": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Education.jpg",
+    "Science & Technology": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/ScienceTechnology.jpg",
+    "Nonprofits & Activism": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/NonprofitActivism.jpg",
+    "Movies": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Movies.png",
+    "Shows": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Shows.jpg",
+    "Trailers": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Trailers.jpg",
+    "American Idol": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/AmericanIdol.jpg",
+    "Game Of Thrones": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/GameOfThrones.jpg",
+    "Stranger Things": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/StrangerThings.jpg",
+}

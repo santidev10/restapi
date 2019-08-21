@@ -14,8 +14,6 @@ import os
 import socket
 from datetime import date
 
-from teamcity import is_running_under_teamcity, teamcity_presence_env_var
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -52,10 +50,10 @@ PROJECT_APPS = (
     "channel",
     "email_reports",
     "keyword_tool",
-    "landing",
     "segment",
     "userprofile",
-    "related_tool"
+    "related_tool",
+    "highlights",
 )
 
 THIRD_PARTY_APPS = (
@@ -73,7 +71,6 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'utils.index_middleware.IndexMiddleware',
     'userprofile.middleware.ApexUserCheck',
 ]
 
@@ -161,6 +158,15 @@ DEFAULT_TIMEZONE = 'America/Los_Angeles'
 AUTH_USER_MODEL = "userprofile.UserProfile"
 USER_DEFAULT_LOGO = "viewiq"
 GOOGLE_APP_AUD = "832846444492-9j4sj19tkkrd3tpg7s8j5910l7kprg45.apps.googleusercontent.com"
+GOOGLE_APP_SECRET = "<secret>"
+GOOGLE_APP_OAUTH2_SCOPES = [
+    "profile",
+    "email",
+    "https://www.googleapis.com/auth/yt-analytics-monetary.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+    "https://www.googleapis.com/auth/youtubepartner"]
+GOOGLE_APP_OAUTH2_REDIRECT_URL = "postmessage"
+GOOGLE_APP_OAUTH2_ORIGIN = "http://localhost"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -328,32 +334,28 @@ from .configs.celery import *
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
-# landing page settings
-LANDING_SUBJECT = [
-    "General",
-    "Sales",
-    "Technical Support"
-]
-
-LANDING_CONTACTS = {
-    'default': [
-        'chf.team@sigma.software',
-    ],
-}
-
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
+]
+
+CHANNEL_AUTHENTICATION_NOTIFY_TO = [
+    "yuriy.matso@channelfactory.com",
+    "aleksandr.yakovenko@sigma.software",
+    "maria.konareva@sigma.software",
+    "alexander.bykov@sigma.software",
+    "sean.maguire@channelfactory.com",
+    "andrii.dobrovolskyi@sigma.software"
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
     "maria.konareva@sigma.software",
-    "anna.chumak@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
@@ -407,15 +409,6 @@ CUSTOM_AUTH_FLAGS = {
     # },
 }
 
-
-# patch checking if TC. Hopefully it will be included into teamcity-messages > 1.21
-def is_running_under_teamcity():
-    return bool(os.getenv(teamcity_presence_env_var))
-
-
-if is_running_under_teamcity():
-    TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
-
 AMAZON_S3_BUCKET_NAME = "viewiq-dev"
 AMAZON_S3_REPORTS_BUCKET_NAME = "viewiq-reports-local"
 AMAZON_S3_AUDITS_FILES_BUCKET_NAME = "viewiq-audit-files"
@@ -456,11 +449,14 @@ USE_LEGACY_BRAND_SAFETY = True
 
 CELERY_ENABLED = True
 
-ELASTIC_SEARCH_URLS = [""]
+ES_CACHE_ENABLED = False
+
+from es_components.config import *
+
 BRAND_SAFETY_CHANNEL_INDEX = ""
 BRAND_SAFETY_VIDEO_INDEX = ""
 BRAND_SAFETY_TYPE = ""
-ELASTIC_SEARCH_REQUEST_TIMEOUT = 10
+ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
 
 try:
     from .local_settings import *

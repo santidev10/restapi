@@ -72,9 +72,12 @@ from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import base_stats_aggregator
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.constants import Sections
+from segment.models import CustomSegment
 from segment.models import CustomSegmentRelated
-from segment.models import SegmentChannel
-from segment.models import SegmentVideo
+from segment.utils import generate_search_with_params
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -360,28 +363,24 @@ class ItemsFromSegmentIdsApiView(APIView):
     permission_classes = (MediaBuyingAddOnPermission,)
 
     def post(self, request, segment_type, **_):
-        item_ids = self.get_related_ids(request.data)
-        items = [dict(criteria=uid) for uid in item_ids]
-        add_targeting_list_items_info(items, segment_type)
-        if segment_type in (SegmentChannel.segment_type, SegmentVideo.segment_type):
-            return Response(data=[item for item in items if item["id"] is not None])
-        return Response(data=items)
+        all_related_items = []
+        ids = request.data
+        for segment_id in ids:
+            segment = CustomSegment.objects.get(id=segment_id)
+            es_manager = segment.get_es_manager(sections=(Sections.MAIN, Sections.GENERAL_DATA))
+            query = segment.get_segment_items_query()
+            scan = generate_search_with_params(es_manager, query).scan()
 
-    def get_related_ids(self, ids):
-        ids = CustomSegmentRelated.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
-
-    @staticmethod
-    def get_keyword_item_ids(ids):
-        from segment.models import SegmentRelatedKeyword
-        ids = SegmentRelatedKeyword.objects.filter(
-            segment_id__in=ids
-        ).values_list("related_id", flat=True).order_by(
-            "related_id").distinct()
-        return ids
+            related_ids = [
+                {
+                    "criteria": item.main.id,
+                    "id": item.main.id,
+                    "name": item.general_data.title,
+                    "thumnail": item.general_data.thumbnail_image_url
+                } for item in scan
+            ]
+            all_related_items.extend(related_ids)
+        return Response(status=HTTP_200_OK, data=all_related_items)
 
 
 class TargetingItemsSearchApiView(APIView):
@@ -398,42 +397,32 @@ class TargetingItemsSearchApiView(APIView):
 
     @staticmethod
     def search_video_items(query):
-        words = [s.lower() for s in re.split(r'\s+', query)]
-        fields = ("video_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), text_search__term=words,
-                            sort="views:desc")
-        connector = SingleDatabaseApiConnector()
-        try:
-            response_data = connector.get_video_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            items = []
-        else:
-            items = [
-                dict(id=i['video_id'], criteria=i['video_id'], name=i['title'],
-                     thumbnail=i['thumbnail_image_url'])
-                for i in response_data["items"]
-            ]
+        manager = VideoManager(sections=(Sections.GENERAL_DATA,))
+        videos = manager.search(
+            limit=10,
+            query={"match": {"general_data.title": query}},
+            sort=[{"stats.views": {"order": "desc"}}]
+        ).execute()
+        items = [
+            dict(id=video.main.id, criteria=video.main.id, name=video.general_data.title,
+                 thumbnail=video.general_data.thumbnail_image_url)
+            for video in videos
+        ]
         return items
 
     @staticmethod
     def search_channel_items(query):
-        words = [s.lower() for s in re.split(r'\s+', query)]
-        fields = ("channel_id", "title", "thumbnail_image_url")
-        query_params = dict(fields=",".join(fields), text_search__term=words,
-                            sort="subscribers:desc")
-        connector = SingleDatabaseApiConnector()
-        try:
-            response_data = connector.get_channel_list(query_params)
-        except SingleDatabaseApiConnectorException as e:
-            logger.error(e)
-            items = []
-        else:
-            items = [
-                dict(id=i['channel_id'], criteria=i['channel_id'],
-                     name=i['title'], thumbnail=i['thumbnail_image_url'])
-                for i in response_data["items"]
-            ]
+        manager = ChannelManager(sections=(Sections.GENERAL_DATA,))
+        channels = manager.search(
+            limit=10,
+            query={"match": {f"{Sections.GENERAL_DATA}.title": query.lower()}},
+            sort=[{f"{Sections.STATS}.subscribers": {"order": "desc"}}]
+        ).execute()
+        items = [
+            dict(id=channel.main.id, criteria=channel.main.id, name=channel.general_data.title,
+                 thumbnail=channel.general_data.thumbnail_image_url)
+            for channel in channels
+        ]
         return items
 
     @staticmethod
@@ -1746,31 +1735,6 @@ class PerformanceTargetingItemAPIView(UpdateAPIView):
             ad_group_creation=ad_group_creation, type=targeting_type,
         )
         return obj
-
-
-class UserListsImportMixin:
-    @staticmethod
-    def get_lists_items_ids(ids, list_type):
-        from segment.utils import get_segment_model_by_type
-        from keyword_tool.models import KeywordsList
-
-        if list_type == "keyword":
-            item_ids = KeywordsList.objects.filter(
-                id__in=ids, keywords__text__isnull=False
-            ).values_list(
-                "keywords__text", flat=True
-            ).order_by("keywords__text").distinct()
-        else:
-            manager = get_segment_model_by_type(list_type).objects
-            item_ids = manager.filter(id__in=ids,
-                                      related__related_id__isnull=False) \
-                .values_list('related__related_id', flat=True) \
-                .order_by('related__related_id') \
-                .distinct()
-        return item_ids
-
-
-# tools
 
 
 class TopicToolListApiView(ListAPIView):

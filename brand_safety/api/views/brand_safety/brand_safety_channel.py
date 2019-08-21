@@ -1,23 +1,27 @@
-from django.conf import settings
-from django.core.paginator import Paginator
-from django.core.paginator import InvalidPage
+import re
+from distutils.util import strtobool
+
 from django.core.paginator import EmptyPage
+from django.core.paginator import InvalidPage
+from django.core.paginator import Paginator
 from django.http import Http404
-from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
-from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from distutils.util import strtobool
-from brand_safety.utils import get_es_data
-from brand_safety.utils import BrandSafetyQueryBuilder
-from brand_safety.models import BadWordCategory
 import brand_safety.constants as constants
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
-from utils.elasticsearch import ElasticSearchConnectorException
+from brand_safety.auditors.utils import AuditUtils
+from brand_safety.models import BadWordCategory
+from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
 from utils.brand_safety_view_decorator import get_brand_safety_data
-from audit_tool.models import BlacklistItem
+from utils.brand_safety_view_decorator import get_brand_safety_label
+
+REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
+
 
 class BrandSafetyChannelAPIView(APIView):
     permission_required = (
@@ -27,6 +31,8 @@ class BrandSafetyChannelAPIView(APIView):
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
     MAX_PAGE_SIZE = 24
+    channel_manager = ChannelManager(sections=Sections.BRAND_SAFETY)
+    video_manager = VideoManager(sections=Sections.BRAND_SAFETY)
 
     def get(self, request, **kwargs):
         """
@@ -46,45 +52,34 @@ class BrandSafetyChannelAPIView(APIView):
                 size = self.MAX_PAGE_SIZE
         except (ValueError, TypeError, KeyError):
             size = self.MAX_PAGE_SIZE
-
-        channel_es_data = get_es_data(channel_id, settings.BRAND_SAFETY_CHANNEL_INDEX)
-        if channel_es_data is ElasticSearchConnectorException:
-            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
-        if not channel_es_data:
+        try:
+            brand_safety_data = AuditUtils.get_items([channel_id], self.channel_manager)[0].brand_safety
+            channel_response = {
+                "total_videos_scored": brand_safety_data.videos_scored,
+                "total_flagged_videos": 0,
+                "flagged_words": self._extract_key_words(brand_safety_data.categories.to_dict())
+            }
+            channel_response.update(get_brand_safety_data(brand_safety_data.overall_score))
+        except (IndexError, AttributeError):
+            channel_response = None
+        if not channel_response:
             raise Http404
-
-        # Retrieve channel flagged videos
-        query_params = {
-            "list_type": "whitelist",
-            "segment_type": "video",
-        }
-        query_builder = BrandSafetyQueryBuilder(
-            query_params,
-            overall_score=self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD,
-            related_to=channel_id
-        )
-        result = query_builder.execute()
-        if result is ElasticSearchConnectorException:
-            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
-        if not channel_es_data:
-            raise Http404
-
-        # Extract data from es response
-        video_es_data = {
-            video["_id"]: video["_source"] for video in result["hits"]["hits"]
-        }
-        video_sdb_data = self._get_sdb_video_data(video_es_data.keys())
-        if video_sdb_data is SingleDatabaseApiConnectorException:
+        try:
+            videos = self._get_channel_video_data(channel_id)
+        except Exception as e:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
-        channel_brand_safety_data = {
-            "total_videos_scored": channel_es_data["videos_scored"],
-            "total_flagged_videos": 0,
-            "flagged_words": self._extract_key_words(channel_es_data["categories"])
-        }
-        channel_brand_safety_data.update(get_brand_safety_data(channel_es_data["overall_score"]))
-        # Merge es brand safety with sdb video data
-        channel_brand_safety_data, flagged_videos = self._adapt_channel_video_es_sdb_data(channel_brand_safety_data, video_es_data, video_sdb_data)
+        flagged_videos = []
+        for video in videos:
+            try:
+                video_overall_score = video.brand_safety.overall_score
+                if video_overall_score is None:
+                    continue
+                if video_overall_score <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
+                    flagged_videos.append(self._extract_video_data(video))
+            except AttributeError:
+                continue
+        channel_response["total_flagged_videos"] = len(flagged_videos)
         # Sort video responses if parameter is passed in
         sort_options = ["youtube_published_at", "score", "views", "engage_rate"]
         sorting = query_params['sort'] if "sort" in query_params else None
@@ -99,89 +94,29 @@ class BrandSafetyChannelAPIView(APIView):
             reverse = not ascending
         if sorting in sort_options:
             flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
-        if request.user and request.user.is_staff:
-            channel_brand_safety_data["blacklist_data"] = BlacklistItem.get(channel_id, BlacklistItem.CHANNEL_ITEM, to_dict=True)
         paginator = Paginator(flagged_videos, size)
-        response = self._adapt_response_data(channel_brand_safety_data, paginator, page)
+        response = self._adapt_response_data(channel_response, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
 
-    def _adapt_channel_video_es_sdb_data(self, channel_data: dict, video_es_data: dict, video_sdb_data: dict) -> tuple:
-        """
-        Encapsulate merging of channel and video es/sdb data
-        :param es_data: dict
-        :param sdb_data: dict
-        :return: tuple -> channel brand safety data, flagged videos
-        """
-        flagged_videos = []
-        # Merge video brand safety wtih video sdb data
-        for _id, data in video_es_data.items():
-            if data["overall_score"] <= self.BRAND_SAFETY_SCORE_FLAG_THRESHOLD:
-                # In some instances video data will not be in both Elasticsearch and sdb
-                try:
-                    sdb_video = video_sdb_data[_id]
-                except KeyError:
-                    continue
-                video_brand_safety_data = get_brand_safety_data(data["overall_score"])
-                video_data = {
-                    "id": _id,
-                    "score": video_brand_safety_data["score"],
-                    "label": video_brand_safety_data["label"],
-                    "title": sdb_video.get("title"),
-                    "thumbnail_image_url": sdb_video.get("thumbnail_image_url"),
-                    "transcript": sdb_video.get("transcript"),
-                    "youtube_published_at": sdb_video.get("youtube_published_at", ""),
-                    "views": sdb_video.get("views"),
-                    "engage_rate": sdb_video.get("engage_rate", 0)
-                }
-                flagged_videos.append(video_data)
-                channel_data["total_flagged_videos"] += 1
-        flagged_videos.sort(key=lambda video: video["youtube_published_at"], reverse=True)
-        return channel_data, flagged_videos
+    def __get_transcript(self, captions):
+        if captions and captions.items:
+            for caption in captions.items:
+                text = caption.text
+                if caption.language_code == "en" and text:
+                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+                    return transcript
 
-    def _get_sdb_channel_video_data(self, channel_id: str) -> dict:
-        """
-        Encapsulate getting sdb channel video data
-            On SingleDatabaseApiConnectorException, return it to be handled by view
-        :param channel_id: str
-        :return: dict or SingleDatabaseApiConnectorException
-        """
-        params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
-            "sort": "video_id",
-            "size": self.MAX_SIZE,
-            "channel__id_terms": channel_id
-        }
-        try:
-            response = SingleDatabaseApiConnector().get_video_list(params)
-        except SingleDatabaseApiConnectorException:
-            return SingleDatabaseApiConnectorException
-        sdb_video_data = {
-            video["video_id"]: video
-            for video in response["items"]
-        }
-        return sdb_video_data
+    def _get_channel_video_data(self, channel_id):
+        fields_to_load = ("main.id", "general_data.title", "general_data.thumbnail_image_url",
+                          "general_data.youtube_published_at", "stats.views", "stats.engage_rate",
+                          "captions", "brand_safety.overall_score")
 
-    def _get_sdb_video_data(self, video_ids: iter) -> dict:
-        """
-        Retrieve sdb video data with given ids
-        :param video_ids: list | tuple of id strings
-        :return: dict
-        """
-        params = {
-            "fields": "video_id,title,transcript,thumbnail_image_url,youtube_published_at,views,engage_rate",
-            "sort": "video_id",
-            "size": self.MAX_SIZE,
-            "video_id__terms": ",".join(video_ids)
-        }
-        try:
-            response = SingleDatabaseApiConnector().get_video_list(params, ignore_sources=True)
-        except SingleDatabaseApiConnectorException:
-            return SingleDatabaseApiConnectorException
-        sdb_video_data = {
-            video["video_id"]: video
-            for video in response["items"]
-        }
-        return sdb_video_data
+        by_channel_filter = self.video_manager.by_channel_ids_query(channel_id)
+        videos = self.video_manager.search(filters=by_channel_filter,
+                                           limit=self.MAX_SIZE,
+                                           sort=[{"main.id": {"order": SortDirections.ASCENDING}}]). \
+            source(includes=fields_to_load).execute().hits
+        return videos
 
     @staticmethod
     def _adapt_response_data(brand_safety_data: dict, paginator: Paginator, page: int) -> dict:
@@ -219,3 +154,24 @@ class BrandSafetyChannelAPIView(APIView):
                 continue
             keywords.extend([item["keyword"] for item in keyword_data["keywords"]])
         return keywords
+
+    def _extract_video_data(self, video):
+        """
+        Extract video brand safety data
+        :param video:
+        :return:
+        """
+        brand_safety_score = video.brand_safety.overall_score
+        brand_safety_label = get_brand_safety_label(brand_safety_score)
+        data = {
+            "id": video.main.id,
+            "score": video.brand_safety.overall_score,
+            "label": brand_safety_label,
+            "title": video.general_data.title,
+            "thumbnail_image_url": video.general_data.thumbnail_image_url,
+            "transcript": self.__get_transcript(video.captions),
+            "youtube_published_at": video.general_data.youtube_published_at,
+            "views": video.stats.views,
+            "engage_rate": video.stats.engage_rate
+        }
+        return data

@@ -1,7 +1,9 @@
 import logging
 
 import yaml
-from googleads import adwords, oauth2
+from googleads import adwords
+from googleads import oauth2
+from googleads.common import ZeepServiceProxy
 from oauth2client.client import HttpAccessTokenRefreshError
 from suds import WebFault
 
@@ -11,13 +13,13 @@ API_VERSION = 'v201809'
 
 def load_settings():
     with open('aw_reporting/google_ads.yaml', 'r') as f:
-        conf = yaml.load(f)
+        conf = yaml.load(f, Loader=yaml.FullLoader)
     return conf.get('adwords', {})
 
 
 def load_web_app_settings():
     with open('aw_reporting/ad_words_web.yaml', 'r') as f:
-        conf = yaml.load(f)
+        conf = yaml.load(f, Loader=yaml.FullLoader)
     return conf
 
 
@@ -43,6 +45,7 @@ def _get_client(developer_token, client_id, client_secret, user_agent,
         oauth2_client,
         user_agent=user_agent,
         client_customer_id=client_customer_id,
+        cache=ZeepServiceProxy.NO_CACHE,
     )
     return client_obj
 

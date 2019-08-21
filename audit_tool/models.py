@@ -3,8 +3,6 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import IntegrityError
 from django.db import models
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
 from django.db.models import ForeignKey
 from django.db.models import Q
 from django.contrib.postgres.fields import JSONField
@@ -75,27 +73,6 @@ class ChannelAuditIgnore(AuditIgnoreModel):
 
 class VideoAuditIgnore(AuditIgnoreModel):
     pass
-
-
-class TopicAudit(BaseModel):
-    title = models.CharField(max_length=255, unique=True)
-    is_running = models.BooleanField(blank=True, default=True, db_index=True)
-    from_beginning = models.BooleanField(blank=True, default=False)
-    start_cursor = models.BigIntegerField(default=0)
-    completed_at = models.DateTimeField(blank=True, null=True, default=None)
-    channel_segment = ForeignKey(PersistentSegmentChannel, related_name='related_topic_channel')
-    video_segment = ForeignKey(PersistentSegmentVideo, related_name='related_topic_video')
-
-    class Meta:
-        index_together = ['is_running', 'from_beginning']
-
-
-class Keyword(models.Model):
-    keyword = models.CharField(max_length=255)
-    topic = ForeignKey(TopicAudit, related_name='keywords')
-
-    class Meta:
-        unique_together = ['keyword', 'topic']
 
 
 class APIScriptTracker(models.Model):
@@ -207,7 +184,8 @@ class AuditProcessor(models.Model):
             'max_dislikes': self.params.get('max_dislikes'),
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
-            'resumed': self.params.get('resumed')
+            'resumed': self.params.get('resumed'),
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -318,13 +296,15 @@ class AuditVideoMeta(models.Model):
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language')
     category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True)
+    duration = models.CharField(max_length=30, default=None, null=True)
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True)
@@ -383,13 +363,20 @@ class BlacklistItem(models.Model):
                 item_id=item_id,
                 item_id_hash=get_hash_name(item_id),
             )
-        return b_i
+            return b_i
+        else:
+            return b_i[0]
 
     @staticmethod
-    def get(item_id, item_type, to_dict=False):
-        for a in BlacklistItem.objects.filter(item_type=item_type, item_id_hash=get_hash_name(item_id)):
-            if a.item_id == item_id:
+    def get(item_ids, item_type, to_dict=False):
+        if type(item_ids) is str:
+            item_ids = [item_ids]
+        data = []
+        items = BlacklistItem.objects.filter(item_type=item_type, item_id_hash__in=[get_hash_name(_id) for _id in item_ids])
+        for item in items:
+            if item.item_id in item_ids:
                 if to_dict:
-                    return a.to_dict()
+                    data.append(item.to_dict())
                 else:
-                    return a
+                    data.append(item)
+        return data

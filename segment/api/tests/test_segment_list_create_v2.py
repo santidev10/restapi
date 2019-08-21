@@ -5,6 +5,7 @@ from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
+import uuid
 
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
@@ -98,7 +99,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data
         export = CustomSegmentFileUpload.objects.get(segment_id=data["id"])
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(export.query["query"]["bool"]["filter"]["bool"]["must"][0]["range"]["views"]["gte"], 1000000)
+        self.assertEqual(export.query["bool"]["filter"]["bool"]["must"][0]["range"]["stats.views"]["gte"], 1000000)
 
     def test_reject_duplicate_title_create(self):
         self.create_test_user()
@@ -127,8 +128,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_owner_filter_list(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(list_type=0, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         expected_segments_count = 1
@@ -138,8 +139,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_list_type_filter_list(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         expected_segments_count = 1
@@ -152,8 +153,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_created_list_descending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
@@ -166,8 +167,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_created_ascending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
@@ -180,8 +181,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_items_descending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentRelated.objects.create(
             related_id="test",
             segment=seg_1
@@ -198,8 +199,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_items_ascending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="2")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
         CustomSegmentRelated.objects.create(
             related_id="test",
             segment=seg_1
@@ -216,8 +217,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_title_descending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="First")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="Second")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="Second")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
@@ -230,8 +231,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_title_ascending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="First")
-        seg_2 = CustomSegment.objects.create(owner=user, list_type=1, segment_type=0, title="Second")
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="First")
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="Second")
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
@@ -244,7 +245,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_default_thumbnail_images_list(self):
         user = self.create_test_user()
-        segment = CustomSegment.objects.create(owner=user, list_type=0, segment_type=0, title="1")
+        segment = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
         CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("video"))
         data = response.data

@@ -25,7 +25,7 @@ class SegmentCreationOptionsApiView(APIView):
         try:
             result = query_builder.execute()
             data = {
-                "items": result["hits"]["total"],
+                "items": result.hits.total or 0,
                 "options": self._get_options()
             }
             status = HTTP_200_OK

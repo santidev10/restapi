@@ -6,11 +6,6 @@ from .brand_safety.brand_safety_preview import PersistentSegmentPreviewAPIView
 from .brand_safety.brand_safety_retrieve import PersistentSegmentRetrieveApiView
 from .custom_segment.segment_export import SegmentExport
 from .custom_segment.segment_delete_v2 import SegmentDeleteApiViewV2
-from .custom_segment.segment_duplicate import SegmentDuplicateApiView
-from .custom_segment.segment_list_create import SegmentListCreateApiView
-from .custom_segment.segment_retrieve_update_delete import SegmentRetrieveUpdateDeleteApiView
-from .custom_segment.segment_share import SegmentShareApiView
-from .custom_segment.segment_suggested_channel import SegmentSuggestedChannelApiView
 from .custom_segment.segment_list_create_v2 import SegmentListCreateApiViewV2
 from .custom_segment.segment_creation_options import SegmentCreationOptionsApiView
 

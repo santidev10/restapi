@@ -48,7 +48,7 @@ class Command(BaseCommand):
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics&id={id}"
+                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -106,7 +106,7 @@ class Command(BaseCommand):
             else:
                 pending_videos = pending_videos.select_related("video").order_by("id")
             if done:
-                if self.thread_id == 0:
+                if thread_id == 0:
                     self.audit.completed = timezone.now()
                     self.audit.pause = 0
                     self.audit.save(update_fields=['completed', 'pause'])
@@ -208,6 +208,7 @@ class Command(BaseCommand):
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
                 self.audit.completed = timezone.now()
+                self.audit.pause = 0
                 self.audit.save()
                 raise Exception("problem with relevance language.")
         try:
@@ -225,7 +226,7 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video_meta.keywords:
+            if not db_video_meta.keywords or not db_video_meta.duration:
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video.channel = channel
@@ -253,7 +254,7 @@ class Command(BaseCommand):
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if db_video_meta.language and db_video_meta.language.language not in self.language:
+            if not db_video_meta.language or db_video_meta.language.language not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
@@ -359,6 +360,15 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            if 'defaultAudioLanguage' in i['snippet']:
+                try:
+                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                except Exception as e:
+                    pass
+            try:
+                db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)

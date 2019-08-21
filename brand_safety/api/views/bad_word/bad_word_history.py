@@ -15,6 +15,8 @@ class BadWordHistoryApiView(ListAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = BadWordHistorySerializer
 
+    NUM_ENTRIES = 500
+
     def do_filters(self, queryset):
         days = self.request.query_params.get('days')
         if days:
@@ -37,4 +39,4 @@ class BadWordHistoryApiView(ListAPIView):
             entry['name'] = entry.pop('tag__name')
             entry['id'] = entry.pop('tag__id')
             entry['action'] = BadWordHistory.ACTIONS[entry['action']]
-        return Response(data=history, status=HTTP_200_OK)
+        return Response(data=history[:self.NUM_ENTRIES], status=HTTP_200_OK)
