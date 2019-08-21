@@ -4,7 +4,6 @@ from functools import partial
 
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.core.management import call_command
 from django.test import override_settings
 from django.utils import timezone
 from lxml import etree
@@ -20,8 +19,9 @@ from aw_reporting.models import User
 from aw_reporting.models import UserRole
 from email_reports.models import SavedEmail
 from email_reports.reports.daily_campaign_report import OpportunityManager
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from email_reports.tasks import send_daily_email_reports
 from utils.utittests.patch_now import patch_now
+from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):
@@ -49,7 +49,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="",
                                 salesforce_placement=placement)
 
-        call_command("send_daily_email_reports", reports="DailyCampaignReport")
+        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
@@ -86,7 +86,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement)
 
-        call_command("send_daily_email_reports", reports="DailyCampaignReport")
+        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 0)
         self.assertEqual(SavedEmail.objects.count(), 0)
@@ -137,8 +137,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                          cost=test_cost_2)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -185,8 +184,7 @@ class SendDailyEmailsTestCase(APITestCase):
             .format(host=test_host, account_id=account.id)
 
         with patch_now(now), override_settings(HOST=test_host):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         email_id = SavedEmail.objects.all().first().id
         browser_link = "{host}/api/v1/email_report_web_view/{report_id}/" \
@@ -220,8 +218,7 @@ class SendDailyEmailsTestCase(APITestCase):
         )
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -247,8 +244,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                    goal_type_id=SalesForceGoalType.CPV)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -277,8 +273,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                    goal_type_id=SalesForceGoalType.CPM)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -311,8 +306,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                    goal_type_id=SalesForceGoalType.CPM)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -338,8 +332,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                    goal_type_id=SalesForceGoalType.HARD_COST)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -399,8 +392,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                          cost=test_cost_2)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -468,8 +460,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                          cost=test_cost_2)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -536,8 +527,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                          cost=test_cost_2)
 
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport")
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -572,9 +562,9 @@ class SendDailyEmailsTestCase(APITestCase):
             end=now + timedelta(days=2),
             probability=100)
         with patch_now(now):
-            call_command("send_daily_email_reports",
-                         reports="DailyCampaignReport",
-                         roles=OpportunityManager.ACCOUNT_MANAGER)
+            send_daily_email_reports(reports=["DailyCampaignReport"],
+                                     roles=OpportunityManager.ACCOUNT_MANAGER,
+                                     debug=False)
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         self.assertEqual(email.to, [am.email])
@@ -606,7 +596,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="",
                                 salesforce_placement=placement)
 
-        call_command("send_daily_email_reports", reports="DailyCampaignReport")
+        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -614,6 +604,7 @@ class SendDailyEmailsTestCase(APITestCase):
         receivers_mails = (r[1] if isinstance(r, tuple) else r
                            for r in receivers)
         self.assertNotIn(sm.email, receivers_mails)
+
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]

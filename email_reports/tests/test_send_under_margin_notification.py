@@ -1,18 +1,21 @@
 from datetime import timedelta
 
 from django.core import mail
-from django.core.management import call_command
 from django.utils import timezone
 
-from aw_reporting.models import User, Opportunity, OpPlacement, \
-    SalesForceGoalType, Flight, Account, Campaign, CampaignStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from email_reports.tasks import send_daily_email_reports
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):
-
-    def setUp(self):
-        pass
 
     def test_send_minimum_email(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -48,7 +51,7 @@ class SendDailyEmailsTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=flight.start,
                                          **stats)
 
-        call_command("send_daily_email_reports", reports="CampaignUnderMargin")
+        send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         expected_subject = "URGENT CAMPAIGN UNDER MARGIN: {}".format(
@@ -94,7 +97,7 @@ class SendDailyEmailsTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=flight.start,
                                          **stats)
 
-        call_command("send_daily_email_reports", reports="CampaignUnderMargin")
+        send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]

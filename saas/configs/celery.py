@@ -31,6 +31,32 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="*", minute="0"),
         "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
+    "daily_email_notifications": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing", "CampaignOverPacing"],
+            debug=True,
+        ),
+    },
+    "weekday-campaign-reports": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
+        "kwargs": dict(
+            reports=["DailyCampaignReport"],
+            roles="Account Manager",
+            debug=True,
+        ),
+    },
+    "weekend-campaign-reports": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30", day_of_week="Sun,Sat"),
+        "kwargs": dict(
+            reports=["DailyCampaignReport"],
+            roles="Account Manager,Ad Ops Manager",
+            debug=True,
+        ),
+    },
     "update-audiences": {
         "task": "aw_reporting.update.tasks.update_audiences.update_audiences_from_aw",
         "schedule": crontab(day_of_month="1", hour="0", minute="0"),
@@ -62,11 +88,13 @@ class Queue:
     DEFAULT = "celery"
     REPORTS = "reports"
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
+    EMAIL_REPORTS = "email_reports"
 
 
 CELERY_ROUTES_PREPARED = [
     ("aw_reporting.update.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
+    ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
