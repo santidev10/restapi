@@ -2,9 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from django.core.management import call_command
 from django.test import TransactionTestCase
-from es_components.tests.utils import ESTestCase
 from pytz import utc
 
 from aw_reporting.models import AWAccountPermission
@@ -13,14 +11,13 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import Device
 from aw_reporting.models import device_str
+from aw_reporting.update.update_aw_accounts_hourly_stats import update_aw_accounts_hourly_stats
 from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
 
-class PullHourlyAWDataTestCase(TransactionTestCase, ESTestCase):
-    def _call_command(self, **kwargs):
-        call_command("pull_hourly_aw_data", **kwargs)
+class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
@@ -79,7 +76,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase, ESTestCase):
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command()
+            update_aw_accounts_hourly_stats()
 
         self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
 
@@ -100,7 +97,7 @@ class PullHourlyAWDataTestCase(TransactionTestCase, ESTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(empty=True)
+            update_aw_accounts_hourly_stats()
 
         account.refresh_from_db()
         self.assertIsNone(account.update_time)
@@ -114,6 +111,6 @@ class PullHourlyAWDataTestCase(TransactionTestCase, ESTestCase):
         downloader_mock.return_value = build_csv_byte_stream([], [])
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command()
+            update_aw_accounts_hourly_stats()
 
         downloader_mock.assert_not_called()

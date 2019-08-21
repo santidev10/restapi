@@ -38,7 +38,7 @@ WRITE_START = datetime(2016, 9, 1).date()
 
 
 @celery_app.task
-def update_salesforce_data(do_get=True, do_update=False, debug_update=False, opportunity_ids=None, force_update=False,
+def update_salesforce_data(do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
                            skip_flights=False, skip_placements=False, skip_opportunities=False):
     today = now_in_default_tz().date()
     sc = None

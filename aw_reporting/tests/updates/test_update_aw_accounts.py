@@ -6,7 +6,6 @@ from unittest.mock import ANY
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
-from django.core.management import call_command
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
@@ -58,6 +57,7 @@ from aw_reporting.models import device_str
 from aw_reporting.update.tasks.get_interests import AudienceAWType
 from aw_reporting.update.tasks.utils.constants import MIN_FETCH_DATE
 from aw_reporting.update.tasks.utils.max_ready_date import max_ready_date
+from aw_reporting.update.update_aw_accounts import update_aw_accounts
 from utils.exception import ExceptionWithArgs
 from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.generic_test import generic_test
@@ -66,12 +66,7 @@ from utils.utittests.patch_now import patch_now
 from utils.utittests.redis_mock import MockRedis
 
 
-class PullAWDataTestCase(TransactionTestCase):
-    def _call_command(self, empty=False, **kwargs):
-        if empty:
-            kwargs["start"] = "get_ad_groups_and_stats"
-            kwargs["end"] = "get_campaigns"
-        call_command("pull_aw_data", **kwargs)
+class UpdateAwAccountsTestCase(TransactionTestCase):
 
     def _create_account(self, manager_update_time=None, tz="UTC", account_update_time=None, **kwargs):
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
@@ -185,7 +180,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(end="get_campaigns")
+            update_aw_accounts(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.cost, sum(costs))
@@ -294,7 +289,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(start="get_ad_groups_and_stats",
+            update_aw_accounts(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
         ad_group.refresh_from_db()
@@ -343,7 +338,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(start="get_geo_targeting",
+            update_aw_accounts(start="get_geo_targeting",
                                end="get_geo_targeting")
 
         campaign.refresh_from_db()
@@ -392,7 +387,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(end="get_campaigns")
+            update_aw_accounts(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.placement_code, test_code)
@@ -450,7 +445,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(start="get_parents", end="get_parents")
+            update_aw_accounts(start="get_parents", end="get_parents")
 
         campaign.refresh_from_db()
         ad_group.refresh_from_db()
@@ -497,9 +492,8 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data",
-                         start="get_interests",
-                         end="get_interests")
+            update_aw_accounts(start="get_interests",
+                               end="get_interests")
 
         self.assertEqual(Audience.objects.all().count(), 1)
         self.assertEqual(Audience.objects.first().type,
@@ -544,9 +538,8 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data",
-                         start="get_parents",
-                         end="get_parents")
+            update_aw_accounts(start="get_parents",
+                               end="get_parents")
 
         self.assertEqual(ParentStatistic.objects.all().count(), 1)
 
@@ -598,7 +591,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_ads", end="get_ads")
+            update_aw_accounts(start="get_ads", end="get_ads")
 
         def is_disapproved(ad_id):
             return Ad.objects.get(id=ad_id).is_disapproved
@@ -651,7 +644,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            call_command("pull_aw_data", start="get_ads", end="get_ads")
+            update_aw_accounts(start="get_ads", end="get_ads")
 
         self.assertEqual(Ad.objects.all().count(), 1)
         self.assertIsNotNone(Ad.objects.get(id=valid_ad_id))
@@ -705,7 +698,7 @@ class PullAWDataTestCase(TransactionTestCase):
         YTVideoStatistic.objects.create(date=today, ad_group=ad_group, yt_id="")
 
         with patch_now(now):
-            call_command("pull_aw_data", start="get_ads", end="get_videos")
+            update_aw_accounts(start="get_ads", end="get_videos")
 
         campaign.refresh_from_db()
         ad_group.refresh_from_db()
@@ -726,7 +719,7 @@ class PullAWDataTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(campaign=campaign, **common_values)
 
         with patch_now(now):
-            call_command("pull_aw_data", start="get_ads", end="get_videos")
+            update_aw_accounts(start="get_ads", end="get_videos")
 
         campaign.refresh_from_db()
         ad_group.refresh_from_db()
@@ -757,7 +750,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(start="get_ad_groups_and_stats",
+            update_aw_accounts(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
         downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
@@ -797,7 +790,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client",
                    return_value=aw_client_mock):
-            self._call_command(start="get_ad_groups_and_stats",
+            update_aw_accounts(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
         downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
@@ -837,7 +830,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = test_stream
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(start="get_ad_groups_and_stats",
+            update_aw_accounts(start="get_ad_groups_and_stats",
                                end="get_ad_groups_and_stats")
 
         downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
@@ -871,7 +864,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now_utc), \
              patch("aw_reporting.aw_data_loader.get_web_app_client"):
-            self._call_command(empty=True)
+            update_aw_accounts(start="get_ad_groups_and_stats", end="get_campaigns")
 
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
@@ -894,7 +887,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(end="get_cities")  # all but geo
+            update_aw_accounts(end="get_cities")  # all but geo
 
         account.refresh_from_db()
         self.assertEqual(account.update_time.astimezone(utc), now)
@@ -924,7 +917,7 @@ class PullAWDataTestCase(TransactionTestCase):
         mocked_client.GetService().getCustomers.return_value = test_response
         with override_settings(IS_TEST=False), \
              patch("aw_reporting.adwords_api.get_client", return_value=mocked_client):
-            self._call_command(start="get_ads", end="get_campaigns")
+            update_aw_accounts(start="get_ads", end="get_campaigns")
 
         self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
@@ -947,7 +940,7 @@ class PullAWDataTestCase(TransactionTestCase):
         service_mock = aw_client_mock.GetService()
         service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(start="get_ads", end="get_campaigns")
+            update_aw_accounts(start="get_ads", end="get_campaigns")
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
@@ -967,7 +960,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.timezone.now", return_value=now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(start="get_topics", end="get_topics")
+            update_aw_accounts(start="get_topics", end="get_topics")
 
         account.refresh_from_db()
 
@@ -979,7 +972,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.return_value = build_csv_byte_stream([], [])
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command()
+            update_aw_accounts()
 
         downloader_mock.assert_not_called()
 
@@ -994,7 +987,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.side_effect = exception
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command()
+            update_aw_accounts()
 
         account.refresh_from_db()
         self.assertFalse(account.is_active)
@@ -1009,8 +1002,8 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.side_effect = exception
 
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
-                patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0):
-            self._call_command()
+             patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0):
+            update_aw_accounts()
 
     def test_emails_error(self):
         test_account_id = "test_account_id"
@@ -1027,7 +1020,7 @@ class PullAWDataTestCase(TransactionTestCase):
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
              patch("aw_reporting.adwords_reports.MAX_ACCESS_AD_WORDS_TRIES", 0), \
              patch.object(logger, "exception") as exception_mock:
-            self._call_command(account_ids=test_account_id)
+            update_aw_accounts(account_ids=[test_account_id])
 
         exception_mock.assert_called_with(FakeExceptionWithArgs(test_account_id))
 
@@ -1074,7 +1067,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(end="get_campaigns")
+            update_aw_accounts(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertAlmostEqual(campaign.budget, test_budget)
@@ -1123,7 +1116,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = test_stream_statistic
         with patch_now(now), \
              patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(end="get_campaigns")
+            update_aw_accounts(end="get_campaigns")
 
         campaign.refresh_from_db()
         self.assertAlmostEqual(campaign.budget, test_budget)
@@ -1162,7 +1155,7 @@ class PullAWDataTestCase(TransactionTestCase):
         service_mock = aw_client_mock.GetService()
         service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock):
-            self._call_command(start="get_ads", end="get_campaigns")
+            update_aw_accounts(start="get_ads", end="get_campaigns")
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(len(Account.objects.get(id=test_account_id).name), name_limit)
@@ -1196,6 +1189,7 @@ class PullAWDataTestCase(TransactionTestCase):
             yield Error("test")
             while True:
                 yield None
+
         error_generator = errors()
 
         def mock_db_execute(inst, query, params=None):
@@ -1214,7 +1208,7 @@ class PullAWDataTestCase(TransactionTestCase):
         downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
         with patch("aw_reporting.aw_data_loader.get_web_app_client", return_value=aw_client_mock), \
              patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute):
-            self._call_command(end="get_campaigns")
+            update_aw_accounts(end="get_campaigns")
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 
     def test_update_account_struck_fields(self):
@@ -1229,7 +1223,7 @@ class PullAWDataTestCase(TransactionTestCase):
         TopicStatistic.objects.create(ad_group=ad_group, date=any_date, topic=Topic.objects.create())
         KeywordStatistic.objects.create(ad_group=ad_group, date=any_date, keyword="keyword")
 
-        self._call_command(account_ids=str(account.id), start="get_ad_groups_and_stats", end="get_campaigns")
+        update_aw_accounts(account_ids=[str(account.id)], start="get_ad_groups_and_stats", end="get_campaigns")
         account.refresh_from_db()
         self.assertGreater(account.ad_count, 0)
         self.assertGreater(account.channel_count, 0)
