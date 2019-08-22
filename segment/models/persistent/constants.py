@@ -127,9 +127,8 @@ class PersistentSegmentExportColumn:
     VIDEO_BLACKLIST_CSV_COLUMNS = (
         URL,
         TITLE,
-        CATEGORY,
         LANGUAGE,
-        THUMBNAIL,
+        CATEGORY,
         LIKES,
         DISLIKES,
         VIEWS,
