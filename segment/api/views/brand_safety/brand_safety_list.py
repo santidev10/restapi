@@ -26,7 +26,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             queryset = super().get_queryset()\
                 .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
                 .annotate(items_count=KeyTextTransform("items_count", "details"))\
-                .exclude(Q(items_count__lte=0) & Q(is_master=False))
+                .exclude(Q(items_count__lte=0))
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
@@ -50,4 +50,3 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
                 data["items"].append(item)
         response.data = data
         return super().finalize_response(request, response, *args, **kwargs)
-
