@@ -40,6 +40,7 @@ WRITE_START = datetime(2016, 9, 1).date()
 @celery_app.task
 def update_salesforce_data(do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
                            skip_flights=False, skip_placements=False, skip_opportunities=False):
+    logger.info("Salesforce update started")
     today = now_in_default_tz().date()
     sc = None
     if do_get:
@@ -53,6 +54,7 @@ def update_salesforce_data(do_get=True, do_update=True, debug_update=False, oppo
                        debug_update=debug_update, skip_flights=skip_flights)
 
     match_using_placement_numbers()
+    logger.info("Salesforce update finished")
 
 
 def perform_get(sc):
@@ -69,7 +71,7 @@ def perform_get(sc):
         (Flight, 'get_flights'),
         (Activity, 'get_activities'),
     ]:
-        logger.info("Getting %s items" % model.__name__)
+        logger.debug("Getting %s items" % model.__name__)
         existed_ids = model.objects.all().values_list('id', flat=True)
         persistent_ids = list(model.persistent_items().values_list('id', flat=True)) \
             if issubclass(model, PersistentEntityModelMixin) \
@@ -109,14 +111,14 @@ def perform_get(sc):
                 )
         if insert_list:
             model.objects.safe_bulk_create(insert_list)
-            logger.info('   Inserted new %d items' % len(insert_list))
-        logger.info('   Updated %d items' % update)
+            logger.debug('   Inserted new %d items' % len(insert_list))
+        logger.debug('   Updated %d items' % update)
 
         # delete items
         deleted_ids = set(existed_ids) - set(item_ids) - set(persistent_ids)
         if deleted_ids:
             model.objects.filter(pk__in=deleted_ids).delete()
-            logger.info('   Deleted %d items' % len(deleted_ids))
+            logger.debug('   Deleted %d items' % len(deleted_ids))
 
         # save parent ids
         if method == 'get_opportunities':
@@ -163,7 +165,7 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
-                    logger.info(
+                    logger.debug(
                         'Opportunity %s was updated: %s' % (
                             opportunity.id, str(update)
                         )
@@ -193,7 +195,7 @@ def update_placements(sc, opportunity_ids, debug_update):
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
-                    logger.info(
+                    logger.debug(
                         'Placement %s %s was updated: %s' % (
                             placement.id, placement.name, str(update)
                         )
@@ -261,7 +263,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             logger.critical("Unhandled exception: %s" % str(e))
         else:
             if r == 204:
-                logger.info(
+                logger.debug(
                     'Flight %s %s %s was updated: %s' % (
                         flight.id, str(flight.start),
                         str(flight.placement.goal_type_id), str(update)
@@ -307,4 +309,4 @@ def match_using_placement_numbers():
     count = campaigns.update(salesforce_placement_id=F("placement_id"))
     from django.conf import settings
     if not settings.IS_TEST:
-        logger.info("Matched %d Campaigns" % count)
+        logger.debug("Matched %d Campaigns" % count)
