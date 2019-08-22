@@ -262,7 +262,7 @@ LOGGING = {
         },
         "aw_reporting.update": {
             "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
-            "level": "DEBUG",
+            "level": "INFO",
         },
         "celery": {
             "handlers": ["file_celery"],
@@ -446,8 +446,6 @@ TEMPDIR = "/tmp"
 MAX_SEGMENT_TO_AGGREGATE = 10000
 
 USE_LEGACY_BRAND_SAFETY = True
-
-CELERY_ENABLED = True
 
 ES_CACHE_ENABLED = False
 

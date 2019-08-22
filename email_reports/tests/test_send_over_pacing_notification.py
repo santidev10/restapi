@@ -2,18 +2,21 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core import mail
-from django.core.management import call_command
 
-from aw_reporting.models import SalesForceGoalType, User, Opportunity, \
-    OpPlacement, Flight, Account, Campaign, CampaignStatistic
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import User
+from email_reports.tasks import send_daily_email_reports
 from utils.datetime import now_in_default_tz
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):
-
-    def setUp(self):
-        pass
 
     def test_send_minimum_email(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -55,7 +58,7 @@ class SendDailyEmailsTestCase(APITestCase):
         CampaignStatistic.objects.create(campaign=campaign, date=flight.start,
                                          **stats)
 
-        call_command("send_daily_email_reports", reports="CampaignOverPacing")
+        send_daily_email_reports(reports=["CampaignOverPacing"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject,

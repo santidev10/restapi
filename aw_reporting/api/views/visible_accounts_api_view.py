@@ -11,12 +11,11 @@ from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.models import Account, campaign_type_str
+from aw_reporting.models import Account
+from aw_reporting.models import campaign_type_str
 from aw_reporting.settings import AdwordsAccountSettings
 from userprofile.constants import UserSettingsKey
 from userprofile.models import UserProfile
-from utils.cache import cache_reset
-from utils.cache import cached_view_decorator as cached_view
 
 
 class AdWordsTopManagerSerializer(ModelSerializer):
@@ -69,7 +68,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                     visible=ct not in hidden_types,
                 )
                 for ct in campaign_types
-                ]
+            ]
 
         return Response(data=data)
 
@@ -83,7 +82,6 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                                    output_field=BooleanField())) \
             .order_by("-is_demo", "name")
 
-    @cached_view
     def put(self, request):
         user_id = self.request.query_params.get('user_id')
         user = self.get_user_by_id(user_id)
@@ -110,7 +108,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
                         k for k, v in
                         account['campaign_types_visibility'].items()
                         if not v
-                        ]
+                    ]
 
             update = dict(visible_accounts=list(sorted(visible_accounts)),
                           hidden_campaign_types=hidden_types)
@@ -118,7 +116,6 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             user.aw_settings = settings_obj
             user.save()
 
-        cache_reset()
         return self.get(request)
 
 
@@ -136,7 +133,6 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
         user_aw_settings = user.get_aw_settings()
         return Response(data=user_aw_settings)
 
-    @cached_view
     def put(self, request):
         # get user settings
         user_id = self.request.query_params.get('user_id')

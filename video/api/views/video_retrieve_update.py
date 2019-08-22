@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from elasticsearch.exceptions import NotFoundError
+
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
@@ -35,11 +37,13 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                                     Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
-
-        video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
+        try:
+            video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
+        except NotFoundError:
+             return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
 
         if not video:
-            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
+            return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
