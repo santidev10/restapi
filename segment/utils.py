@@ -1,10 +1,11 @@
-from segment.custom_segment_export_generator import CustomSegmentExportGenerator
-from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+import time
+
 from segment.models.persistent.base import BasePersistentSegment
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS
 from segment.models.persistent.constants import PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS
 from singledb.connector import SingleDatabaseApiConnector as Connector
 import brand_safety.constants as constants
+
 
 class ModelDoesNotExist(Exception):
     pass
@@ -62,8 +63,40 @@ def get_persistent_segment_connector_config_by_type(segment_type, related_ids):
     return config
 
 
-def update_exports():
-    export_generator = CustomSegmentExportGenerator(updating=True)
-    to_update = CustomSegmentFileUpload.objects.filter(completed_at__isnull=False)
-    for export in to_update:
-        export_generator.generate(export=export)
+def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
+    """
+    Retry on Document Conflicts
+    """
+    tries_count = 0
+    try:
+        while tries_count <= retry_amount:
+            try:
+                result = method(*args, **kwargs)
+            except Exception as err:
+                if "ConflictError(409" in str(err):
+                    tries_count += 1
+                    if tries_count <= retry_amount:
+                        sleep_seconds_count = retry_amount ** sleep_coeff
+                        time.sleep(sleep_seconds_count)
+                else:
+                    raise err
+            else:
+                return result
+    except Exception:
+        raise
+
+
+def generate_search_with_params(manager, query, sort=None):
+    """
+    Generate scan query with sorting
+    :param manager:
+    :param query:
+    :param sort:
+    :return:
+    """
+    search = manager._search()
+    search = search.query(query)
+    if sort:
+        search = search.sort(sort)
+    search = search.params(preserve_order=True)
+    return search

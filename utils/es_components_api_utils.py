@@ -1,16 +1,21 @@
+import hashlib
+import json
 import logging
 from urllib.parse import unquote
 
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
-from rest_framework.serializers import BaseSerializer
+from rest_framework.serializers import Serializer
 
 from es_components.query_builder import QueryBuilder
-from saas.settings import ES_MAX_RESULTS
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.es_components_cache import CACHE_KEY_PREFIX
+from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 
 DEFAULT_PAGE_SIZE = 50
+UI_STATS_HISTORY_FIELD_LIMIT = 30
 
 logger = logging.getLogger(__name__)
 
@@ -158,25 +163,39 @@ class QueryGenerator:
         return filters
 
 
-class ESDictSerializer(BaseSerializer):
+class ESDictSerializer(Serializer):
     def to_representation(self, instance):
-        return instance.to_dict()
+        extra_data = super(ESDictSerializer, self).to_representation(instance)
+
+        chart_data = extra_data.get("chart_data")
+        if chart_data and isinstance(chart_data, list):
+            chart_data[:] = chart_data[-UI_STATS_HISTORY_FIELD_LIMIT:]
+        data = instance.to_dict()
+        stats = data.get("stats", {})
+        for name, value in stats.items():
+            if name.endswith("_history") and isinstance(value, list):
+                value[:] = value[:UI_STATS_HISTORY_FIELD_LIMIT]
+        return {
+            **data,
+            **extra_data,
+        }
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, max_items=ES_MAX_RESULTS):
+    def __init__(self, manager, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
-        self.max_items = max_items
         self.slice = None
         self.aggregations = None
         self.percentiles = None
         self.fields_to_load = None
+        self.search_limit = None
 
+    @cached_method(timeout=7200)
     def count(self):
         count = self.manager.search(filters=self.filter_query).count()
-        return min(count, self.max_items or count)
+        return count
 
     def order_by(self, *sorting):
         key, direction = sorting[0].split(":")
@@ -200,20 +219,28 @@ class ESQuerysetAdapter:
         self.fields_to_load = fields or self.manager.sections
         return self
 
+    def with_limit(self, search_limit):
+        self.search_limit = search_limit
+        return self
+
+    @cached_method(timeout=900)
     def get_data(self, start=0, end=None):
-        return self.manager.search(
+        data = self.manager.search(
             filters=self.filter_query,
             sort=self.sort,
             offset=start,
             limit=end,
         ) \
             .source(includes=self.fields_to_load).execute().hits
+        return data
 
+    @cached_method(timeout=7200)
     def get_aggregations(self):
-        return self.manager.get_aggregation(
+        aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
             properties=self.aggregations,
         )
+        return aggregations
 
     def get_percentiles(self):
         clean_names = [name.split(":")[0] for name in self.percentiles]
@@ -228,18 +255,30 @@ class ESQuerysetAdapter:
         self.percentiles = percentiles
         return self
 
+    def get_cache_key(self, part, options):
+        options = dict(
+            filters=[_filter.to_dict() for _filter in self.filter_query],
+            sort=self.sort,
+            aggregations=self.aggregations,
+            options=options,
+        )
+        key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
+        key_hash = hashlib.md5(key_json.encode()).hexdigest()
+        key = f"{CACHE_KEY_PREFIX}.{part}.{self.manager.model.__name__}.{key_hash}"
+        return key, key_json
+
     def __getitem__(self, item):
         if isinstance(item, slice):
             return self.get_data(item.start, item.stop)
-        if isinstance(item, int):
-            return self.get_data(end=item)
         raise NotImplementedError
 
     def __iter__(self):
-        return self.manager.scan(
-            filters=self.filter_query,
-            sort=self.sort,
-        )
+        if self.sort:
+            yield from self.get_data(end=self.search_limit)
+        else:
+            yield from self.manager.scan(
+                filters=self.filter_query,
+            )
 
 
 class ESFilterBackend(BaseFilterBackend):
@@ -278,6 +317,10 @@ class ESFilterBackend(BaseFilterBackend):
         return fields
 
     def filter_queryset(self, request, queryset, view):
+        from utils.api.research import ESEmptyResponseAdapter
+
+        if isinstance(queryset, ESEmptyResponseAdapter):
+            return []
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
@@ -317,7 +360,3 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
-
-
-class ExportMixin:
-    pass

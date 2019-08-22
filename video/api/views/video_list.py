@@ -1,27 +1,26 @@
 """
 Video api views module
 """
-import re
 from copy import deepcopy
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
 
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
+from audit_tool.models import BlacklistItem
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
-from utils.api.research import ESBrandSafetyFilterBackend
-from utils.api.research import ESQuerysetWithBrandSafetyAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from video.api.serializers.video import VideoSerializer
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
-                "analytics.verified", "analytics.cms_title", "channel.id", "channel.title",
+                "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags",)
 
@@ -36,53 +35,8 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
-REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
-
-
-def add_chart_data(videos):
-    """ Generate and add chart data for channel """
-    for video in videos:
-        if not video.stats:
-            video.chart_data = []
-            continue
-
-        chart_data = []
-        items_count = 0
-        history = zip_longest(
-            reversed(video.stats.views_history or []),
-            reversed(video.stats.likes_history or []),
-            reversed(video.stats.dislikes_history or []),
-            reversed(video.stats.comments_history or [])
-        )
-        for views, likes, dislikes, comments in history:
-            timestamp = video.stats.historydate - timedelta(
-                days=len(video.stats.views_history) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((views, likes, dislikes, comments)):
-                chart_data.append(
-                    {"created_at": "{}{}".format(str(timestamp), "Z"),
-                     "views": views,
-                     "likes": likes,
-                     "dislikes": dislikes,
-                     "comments": comments}
-                )
-        video.chart_data = chart_data
-    return videos
-
-
-def add_transcript(videos):
-    for video in videos:
-        transcript = None
-        if video.captions and video.captions.items:
-            for caption in video.captions.items:
-                if caption.language_code == "en":
-                    text = caption.text
-                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
-        video.transcript = transcript
-    return videos
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -94,7 +48,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         ),
     )
 
-    filter_backends = (FreeFieldOrderingFilter, ESBrandSafetyFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
     pagination_class = ResearchPaginator
 
     ordering_fields = (
@@ -126,9 +80,9 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "ads_stats.ctr_v:min",
         "ads_stats.video_view_rate:max",
         "ads_stats.video_view_rate:min",
-        "analytics.cms_title",
         "analytics:exists",
         "analytics:missing",
+        "cms.cms_title",
         "general_data.category",
         "general_data.language",
         "general_data.youtube_published_at:max",
@@ -152,9 +106,17 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:percentiles",
     )
 
+    blacklist_data_type = BlacklistItem.VIDEO_ITEM
+
+    def get_serializer_class(self):
+        if self.request and self.request.user and (
+                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+            return VideoWithBlackListSerializer
+        return VideoSerializer
+
     def get_queryset(self):
-        sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
-                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS,)
+        sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
+                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
         flags = deepcopy(self.request.query_params).get("flags")
@@ -178,5 +140,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetWithBrandSafetyAdapter(VideoManager(sections)) \
-            .extra_fields_func((add_chart_data, add_transcript,))
+        return ESQuerysetAdapter(VideoManager(sections))

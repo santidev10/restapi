@@ -1,477 +1,224 @@
-from collections import defaultdict
 import logging
 
-from django.contrib.postgres.fields.jsonb import KeyTransform
-from django.conf import settings
+import uuid
 
+from audit_tool.models import AuditCategory
 import brand_safety.constants as constants
-from brand_safety.audit_providers.base import AuditProvider
+from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
+from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent import PersistentSegmentRelatedVideo
-from segment.models.persistent import PersistentSegmentRelatedChannel
-from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.models.persistent.constants import PersistentSegmentTitles
-from segment.utils import get_persistent_segment_connector_config_by_type
-from singledb.connector import SingleDatabaseApiConnector
-from utils.elasticsearch import ElasticSearchConnector
+from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from segment.utils import retry_on_conflict
+from segment.utils import generate_search_with_params
+
 
 logger = logging.getLogger(__name__)
 
 
 class SegmentListGenerator(object):
-    CHANNEL_SDB_PARAM_FIELDS = "channel_id,title,thumbnail_image_url,category,subscribers,likes,dislikes,views,language"
-    VIDEO_SDB_PARAM_FIELDS = "video_id,title,tags,thumbnail_image_url,category,likes,dislikes,views,language,transcript"
-    CHANNEL_SCORE_FAIL_THRESHOLD = 89
-    VIDEO_SCORE_FAIL_THRESHOLD = 89
-    # Size of batch items retrieved from sdb
-    CHANNEL_BATCH_LIMIT = 300
-    VIDEO_BATCH_LIMIT = 600
-    # Whitelist / blacklist requirements
-    MINIMUM_CHANNEL_SUBSCRIBERS = 1000
-    MINIMUM_VIDEO_VIEWS = 1000
-    VIDEO_DISLIKE_RATIO_THRESHOLD = 0.2
-    # Safe counter to break from video and channel generators
-    CHANNEL_BATCH_COUNTER_LIMIT = 500
-    VIDEO_BATCH_COUNTER_LIMIT = 500
-    # Size of lists types
-    WHITELIST_CHANNEL_SIZE = 100000
-    BLACKLIST_CHANNEL_SIZE = 100000
-    WHITELIST_VIDEO_SIZE = 100000
-    BLACKLIST_VIDEO_SIZE = 100000
-    # Actual list sizes used during runtime set by _set_config method
-    BLACKLIST_SIZE = None
-    WHITELIST_SIZE = None
-    # Whether to sort items by views or subscribers for master segment related items
-    RELATED_SEGMENT_SORT_KEY = None
-    PK_NAME = None
-    BATCH_LIMIT = None
+    MAX_API_CALL_RETRY = 15
+    RETRY_SLEEP_COEFFICIENT = 2
+    SENTIMENT_THRESHOLD = 0.8
+    MINIMUM_VIEWS = 1000
+    MINIMUM_SUBSCRIBERS = 1000
+    MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 89
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
+    WHITELIST_SIZE = 100000
+    BLACKLIST_SIZE = 100000
+    SEGMENT_BATCH_SIZE = 2000
+    VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
+    CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
-    def __init__(self, *_, **kwargs):
-        # If initialized with an APIScriptTracker instance, then expected to run full brand safety
-        # else main run method should not be called since it relies on an APIScriptTracker instance
-        try:
-            self.script_tracker = kwargs["script_tracker"]
-            self.cursor_id = self.script_tracker.cursor_id
-            self.is_manual = False
-        except KeyError:
-            self.is_manual = True
-        self.list_generator_type = kwargs["list_generator_type"]
-        self.sdb_connector = SingleDatabaseApiConnector()
-        self.es_connector = ElasticSearchConnector()
-        self.audit_provider = AuditProvider()
-
-        self.sdb_data_generator = None
-        self.master_blacklist_segment = None
-        self.master_whitelist_segment = None
-        self.segment_model = None
-        self.related_segment_model = None
-        self.evaluator = None
-
-        self.batch_count = 0
-        self._set_config()
-
-    def _set_config(self):
-        """
-        Set configuration for script depending on list generation type, either channel or video
-        :return:
-        """
-        if self.list_generator_type == constants.CHANNEL:
-            if not self.is_manual:
-                self.master_blacklist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-                    category="blacklist")
-                self.master_whitelist_segment, _ = PersistentSegmentChannel.objects.get_or_create(
-                    title=PersistentSegmentTitles.CHANNELS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-                    category="whitelist")
-
-            # Config segments and models
-            self.segment_model = PersistentSegmentChannel
-            self.related_segment_model = PersistentSegmentRelatedChannel
-
-            # Config methods
-            self.sdb_data_generator = self._channel_batch_generator
-            self.evaluator = self._evaluate_channel
-
-            # Config constants
-            self.PK_NAME = "channel_id"
-            self.SCORE_FAIL_THRESHOLD = self.CHANNEL_SCORE_FAIL_THRESHOLD
-            self.BLACKLIST_SIZE = self.BLACKLIST_CHANNEL_SIZE
-            self.WHITELIST_SIZE = self.WHITELIST_CHANNEL_SIZE
-            self.INDEX_NAME = settings.BRAND_SAFETY_CHANNEL_INDEX
-            self.BATCH_LIMIT = self.CHANNEL_BATCH_LIMIT
-            self.RELATED_SEGMENT_SORT_KEY = "subscribers"
-
-        elif self.list_generator_type == constants.VIDEO:
-            if not self.is_manual:
-                self.master_blacklist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_BLACKLIST_SEGMENT_TITLE,
-                    category="blacklist")
-                self.master_whitelist_segment, _ = PersistentSegmentVideo.objects.get_or_create(
-                    title=PersistentSegmentTitles.VIDEOS_BRAND_SAFETY_MASTER_WHITELIST_SEGMENT_TITLE,
-                    category="whitelist")
-
-            # Config segments and models
-            self.segment_model = PersistentSegmentVideo
-            self.related_segment_model = PersistentSegmentRelatedVideo
-
-            # Config methods
-            self.sdb_data_generator = self._video_batch_generator
-            self.evaluator = self._evaluate_video
-
-            # Config constants
-            self.PK_NAME = "video_id"
-            self.SCORE_FAIL_THRESHOLD = self.VIDEO_SCORE_FAIL_THRESHOLD
-            self.BLACKLIST_SIZE = self.BLACKLIST_VIDEO_SIZE
-            self.WHITELIST_SIZE = self.WHITELIST_VIDEO_SIZE
-            self.INDEX_NAME = settings.BRAND_SAFETY_VIDEO_INDEX
-            self.BATCH_LIMIT = self.VIDEO_BATCH_LIMIT
-            self.RELATED_SEGMENT_SORT_KEY = "views"
-        else:
-            raise ValueError("Unsupported list generation type: {}".format(self.list_generator_type))
-
-        self.unclassified_whitelist_manager = self.segment_model.objects.get(
-            title=self.get_segment_title(self.segment_model.segment_type, "Unclassified",
-                                         PersistentSegmentCategory.WHITELIST)
-        )
+    def __init__(self):
+        self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def run(self):
-        """
-        If initialized with an APIScriptTracker instance, then expected to run full brand safety
-                else main run method should not be called since it relies on an APIScriptTracker instance
-        :return: None
-        """
-        if self.is_manual:
-            raise ValueError("SegmentListGenerator was not initialized with an APIScriptTracker instance.")
-        for batch in self.sdb_data_generator(self.cursor_id):
-            self._process(batch)
-        logger.error("Complete. Cursor at: {}".format(self.script_tracker.cursor_id))
+        for category in AuditCategory.objects.all():
+            self._generate_channel_whitelist(category)
+            self._generate_video_whitelist(category)
 
-    def manual(self, items, segment_title, data_mapping):
-        new_segment = self.segment_model.objects.create(
-            title=segment_title,
-            category=PersistentSegmentCategory.WHITELIST,
+        self._generate_master_channel_blacklist()
+        self._generate_master_channel_whitelist()
+
+        self._generate_master_video_blacklist()
+        self._generate_master_video_whitelist()
+
+    def _generate_channel_whitelist(self, category):
+        """
+        Generate Channel Category Whitelist
+        :param category:
+        :return:
+        """
+        category_id = category.id
+        category_name = category.category_display
+        logger.error(f"Processing channel: {category_name}")
+        # Generate new category segment
+        new_category_segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
+            category=constants.WHITELIST,
             is_master=False,
+            audit_category_id=category_id,
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
-        related_to_create = []
-        for item in items:
-            data = {
-                related_key: item[data_key] for related_key, data_key in item.items()
-            }
-            related_to_create.append(self.related_segment_model(segment=new_segment, **data))
-        self.related_segment_model.objects.bulk_create(related_to_create)
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(category_name).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-    def _process(self, sdb_items):
-        """
-        Drives main list generation logic
-            Retrieves sdb data and es data, saves to category segments then master segments
-        :param sdb_items:
-        :return:
-        """
-        item_ids = [item[self.PK_NAME] for item in sdb_items]
-        es_items = self._get_es_data(item_ids)
-        # Update sdb data with es brand safety data
-        merged_items = self._merge_data(es_items, sdb_items)
-        sorted_by_category_whitelist = self._sort_by_category(merged_items)
-        # Save items into their category segments
-        for category, items in sorted_by_category_whitelist.items():
-            clean_unclassified = False
-            # For categories, only need to save to whitelists
-            segment_title = self.get_segment_title(self.segment_model.segment_type, category, PersistentSegmentCategory.WHITELIST)
-            try:
-                whitelist_segment_manager = self.segment_model.objects.get(title=segment_title)
-                # Whitelist found, remove items in current category from Unclassified
-                clean_unclassified = True
-            except self.segment_model.DoesNotExist:
-                logger.error("Unable to get segment: {}".format(segment_title))
-                logger.error("In unclassified: {}".format(
-                    ["{}, {}".format(item[self.PK_NAME], item["category"]) for item in items]))
-                whitelist_segment_manager = self.unclassified_whitelist_manager
-            to_create = self.instantiate_related_items(items, whitelist_segment_manager)
-            if clean_unclassified:
-                self._clean(self.unclassified_whitelist_manager, to_create)
-            self._clean(whitelist_segment_manager, to_create)
-            self.related_segment_model.objects.bulk_create(to_create)
-            self._truncate_list(whitelist_segment_manager, self.WHITELIST_SIZE)
-        self._save_master_results(merged_items)
+        self._add_to_segment(new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
+        # Clean old segments
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
 
-    def _sort_whitelist_blacklist(self, items):
-        whitelist = []
-        blacklist = []
-        for item in items:
-            passed = self.evaluator(item)
-            if passed is True:
-                whitelist.append(item)
-            elif passed is False:
-                blacklist.append(item)
-            else:
-                # If value of passed is not True nor False, then should not be added to any list
-                pass
-        return whitelist, blacklist
-
-    def _evaluate_channel(self, channel):
-        """
-        Method to evaluate if a channel should be placed on a whitelist or blacklist
-        :param channel: dict
-        :return: bool
-        """
-        passed = None
-        if channel.get("overall_score", 0) <= self.CHANNEL_SCORE_FAIL_THRESHOLD and channel.get("subscribers", 0) >= self.MINIMUM_CHANNEL_SUBSCRIBERS:
-            passed = False
-        else:
-            if channel.get("subscribers", 0) >= self.MINIMUM_CHANNEL_SUBSCRIBERS:
-                passed = True
-        return passed
-
-    def _evaluate_video(self, video):
-        """
-        Method to evaluate if a channel should be placed on a whitelist or blacklist
-        :param video: dict
-        :return: bool
-        """
-        passed = None
-        if video.get("overall_score", 0) <= self.VIDEO_SCORE_FAIL_THRESHOLD and video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS:
-            passed = False
-        else:
-            try:
-                likes = int(video.get("likes", 0))
-                dislikes = int(video.get("dislikes", 0))
-                dislike_ratio = dislikes / (likes + dislikes)
-            except (ValueError, ZeroDivisionError):
-                dislike_ratio = 1
-            if video.get("views", 0) >= self.MINIMUM_VIDEO_VIEWS and dislike_ratio < self.VIDEO_DISLIKE_RATIO_THRESHOLD:
-                passed = True
-        return passed
-
-    def _merge_data(self, es_data, sdb_items):
-        """
-        Update sdb data with es brand safety data
-        :param es_data: dict
-        :param sdb_items: list
-        :return: list
-        """
-        for item in sdb_items:
-            item_id = item[self.PK_NAME]
-            es_item = es_data.get(item_id)
-            if es_item is None:
-                continue
-            keywords = self._extract_keywords(es_item)
-            item[constants.BRAND_SAFETY_HITS] = keywords
-            item["overall_score"] = es_item["overall_score"]
-            try:
-                item["audited_videos"] = es_item["videos_scored"]
-            except KeyError:
-                pass
-        return sdb_items
-
-    def _sort_by_category(self, items):
-        """
-        Sort objects by their category
-        :param items: sdb data
-        :return: list
-        """
-        items_by_category = defaultdict(list)
-        for item in items:
-            category = item["category"].strip()
-            whitelist_pass = self.evaluator(item)
-            if whitelist_pass is True:
-                items_by_category[category].append(item)
-        return items_by_category
-
-    def _save_master_results(self, items):
-        """
-        Save Video and Channel audits based on their brand safety results to their respective persistent segments
-        :param kwargs: Persistent segments to save to
-        :return: None
-        """
-        # Sort audits by brand safety results and truncate master lists
-        whitelist_items, blacklist_items = self._sort_whitelist_blacklist(items)
-        blacklist_to_create = self.instantiate_related_items(blacklist_items, self.master_blacklist_segment)
-        self._clean(self.master_blacklist_segment, blacklist_to_create)
-        self.related_segment_model.objects.bulk_create(blacklist_to_create)
-        self._truncate_list(self.master_blacklist_segment, self.BLACKLIST_SIZE)
-
-        whitelist_to_create = self.instantiate_related_items(whitelist_items, self.master_whitelist_segment)
-        self._clean(self.master_whitelist_segment, whitelist_to_create)
-        self.related_segment_model.objects.bulk_create(whitelist_to_create)
-        self._truncate_list(self.master_whitelist_segment, self.WHITELIST_SIZE)
-
-    @staticmethod
-    def get_segment_title(segment_type, category, segment_category):
-        """
-        Return formatted Persistent segment title
-        :param segment_type: channel or video
-        :param category: Item category e.g. Politics
-        :param segment_category: whitelist or blacklist
-        :return:
-        """
-        categorized_segment_title = "{}s {} Brand Suitability {}".format(
-            segment_type.capitalize(),
-            category,
-            segment_category.capitalize(),
+    def _generate_video_whitelist(self, category):
+        category_id = category.id
+        category_name = category.category_display
+        logger.error(f"Processing video: {category_name}")
+        # Generate new category segment
+        new_category_segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentVideo.get_title(category_name, constants.WHITELIST),
+            category=constants.WHITELIST,
+            is_master=False,
+            audit_category_id=category_id,
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
-        return categorized_segment_title
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category_name).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-    def instantiate_related_items(self, items, segment_manager):
-        """
-        Instantiate related objects
-        :param items: sdb data merged with es data
-        :param segment_manager: target persistent segment
-        :return: list
-        """
-        to_create = []
-        for item in items:
-            # Ignore items that do not have brand safety data
-            if item.get("overall_score") is None:
-                continue
-            related_obj = self.related_segment_model(
-                related_id=item[self.PK_NAME],
-                segment=segment_manager,
-                title=item["title"],
-                category=item["category"],
-                thumbnail_image_url=item["thumbnail_image_url"],
-                details={
-                    "language": item["language"],
-                    "likes": item["likes"],
-                    "dislikes": item["dislikes"],
-                    "views": item["views"],
-                    "bad_words": item.get(constants.BRAND_SAFETY_HITS, []),
-                    "overall_score": item.get("overall_score", "Unavailable")
-                }
-            )
-            if segment_manager.segment_type == constants.CHANNEL:
-                related_obj.details["subscribers"] = item["subscribers"]
-                related_obj.details["audited_videos"] = item.get("audited_videos")
-            to_create.append(related_obj)
-        return to_create
+        self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        # Clean old segments
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
 
-    def _get_es_data(self, item_ids):
+    def _generate_master_video_whitelist(self):
         """
-        Wrapper to encapsulate es data retrieval
-        :param item_ids:
+        Generate Master Video Whitelist
         :return:
         """
-        response = self.es_connector.search_by_id(self.INDEX_NAME, item_ids, settings.BRAND_SAFETY_TYPE)
-        return response
+        logger.error("Processing Master Video Whitelist")
+        new_master_video_whitelist = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+            category=constants.WHITELIST,
+            is_master=True,
+            audit_category=None
+        )
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-    def _get_sdb_data(self, item_ids, item_type):
-        """
-        Wrapper to retrieve sdb data
-        :param item_ids: channel / video ids
-        :param item_type: channel / video
-        :return: dict
-        """
-        config = get_persistent_segment_connector_config_by_type(item_type, item_ids)
-        config["fields"] = self.CHANNEL_SDB_PARAM_FIELDS if item_type == constants.CHANNEL else self.VIDEO_SDB_PARAM_FIELDS
-        connector_method = config.pop("method")
-        response = connector_method(config)
-        sdb_data = {
-            item[item_type + "_id"]: item for item in response.get("items")
-        }
-        return sdb_data
+        self._add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
 
-    def _extract_keywords(self, es_doc):
+    def _generate_master_video_blacklist(self):
         """
-        Extract nested keyword hits from es brand safety data
-        :param es_doc:
-        :return: list
+        Generate Master Video Blacklist
+        :return:
         """
-        all_keywords = set()
-        for category_data in es_doc["categories"].values():
-            keywords = [word["keyword"] for word in category_data["keywords"]]
-            all_keywords.update(keywords)
-        return list(all_keywords)
+        logger.error("Processing Master Video Blacklist")
+        new_master_video_blacklist = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+            category=constants.BLACKLIST,
+            is_master=True,
+            audit_category=None
+        )
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-    def _clean(self, segment_manager, items):
-        """
-        Clean related segment model for duplicate ids
-        :param items: list -> PersistentSegmentRelated items
-        :return: None
-        """
-        item_ids = [item.related_id for item in items]
-        segment_manager.related.filter(related_id__in=item_ids).delete()
+        self._add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY,
+                             self.BLACKLIST_SIZE)
+        self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
 
-    def _channel_batch_generator(self, cursor_id=None):
+    def _generate_master_channel_whitelist(self):
         """
-        Yields batch channel ids to audit
-        :param cursor_id: Cursor position to start audit
-        :return: list -> Youtube channel ids
+        Generate Master Channel Whitelist
+        :return:
         """
-        params = {
-            "fields": "channel_id,subscribers,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            "sort": "channel_id",
-            "size": self.CHANNEL_BATCH_LIMIT,
-        }
-        while self.batch_count <= self.CHANNEL_BATCH_COUNTER_LIMIT:
-            params["channel_id__range"] = "{},".format(cursor_id or "")
-            response = self.sdb_connector.get_channel_list(params, ignore_sources=True)
-            channels = [item for item in response.get("items", []) if item["channel_id"] != cursor_id]
-            if not channels:
-                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
-                self.cursor_id = self.script_tracker.cursor_id
+        logger.error("Processing Master Channel Whitelist")
+        new_master_channel_whitelist = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+            category=constants.WHITELIST,
+            is_master=True,
+            audit_category=None
+        )
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+
+        self._add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY,
+                             self.WHITELIST_SIZE)
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
+                                 is_master=True, master_list_type=constants.WHITELIST)
+
+    def _generate_master_channel_blacklist(self):
+        """
+        Generate Master Channel Blacklist
+        :return:
+        """
+        logger.error("Processing Master Channel Blacklist")
+        new_master_channel_blacklist = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+            category=constants.BLACKLIST,
+            is_master=True,
+            audit_category=None
+        )
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+
+        self._add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
+                                 is_master=True, master_list_type=constants.BLACKLIST)
+
+    def _add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
+        """
+        Add Elasticsearch items to segment uuid
+        :param segment_uuid:
+        :param es_manager:
+        :param query:
+        :param sort_key:
+        :param limit:
+        :return:
+        """
+        ids_to_add = []
+        search_with_params = generate_search_with_params(es_manager, query, sort_key)
+        for doc in search_with_params.scan():
+            ids_to_add.append(doc.main.id)
+            if len(ids_to_add) >= size:
                 break
-            self._set_defaults(channels)
-            yield channels
-            cursor_id = channels[-1]["channel_id"]
-            # Update script tracker and cursors
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
-            self.cursor_id = self.script_tracker.cursor_id
-            self.batch_count += 1
+        for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
+            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
 
-    def _video_batch_generator(self, cursor_id=None):
+    def _clean_old_segments(self, es_manager, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
         """
-        Yields batch channel ids to audit
-        :param cursor_id: Cursor position to start audit
-        :return: list -> Youtube channel ids
+        Delete old category segments and clean documents with old segment uuid
+        :param es_manager:
+        :param model:
+        :param category_id:
+        :param new_segment_uuid:
+        :return:
         """
-        params = {
-            "fields": "video_id,title,category,thumbnail_image_url,language,likes,dislikes,views",
-            "sort": "video_id",
-            "size": self.VIDEO_BATCH_LIMIT,
-        }
-        while self.batch_count <= self.VIDEO_BATCH_COUNTER_LIMIT:
-            params["video_id__range"] = "{},".format(cursor_id or "")
-            response = self.sdb_connector.get_video_list(params, ignore_sources=True)
-            videos = [item for item in response.get("items", []) if item["video_id"] != cursor_id]
-            if not videos:
-                self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, None, integer=False)
-                self.cursor_id = self.script_tracker.cursor_id
-                break
-            self._set_defaults(videos)
-            yield videos
-            cursor_id = videos[-1]["video_id"]
-            # Update script tracker and cursors
-            self.script_tracker = self.audit_provider.set_cursor(self.script_tracker, cursor_id, integer=False)
-            self.cursor_id = self.script_tracker.cursor_id
-            self.batch_count += 1
+        # Delete old persistent segments with same audit category and delete from Elasticsearch
+        if is_master:
+            old_segments = model.objects.filter(category=master_list_type, is_master=True).exclude(uuid=new_segment_uuid)
+        else:
+            old_segments = model.objects.filter(audit_category_id=category_id).exclude(uuid=new_segment_uuid)
 
-    def _truncate_list(self, segment, size):
-        """
-        Truncate master segments
-        :param segment: PersistentSegment model
-        :return: None
-        """
-        sort_key = self.RELATED_SEGMENT_SORT_KEY
-        annotate_config = {
-            constants.CHANNEL: {
-                "subscribers": KeyTransform(sort_key, "details")
-            },
-            constants.VIDEO: {
-                "views": KeyTransform(sort_key, "details")
-            }
-        }
-        annotation = annotate_config[segment.segment_type]
-        related_ids_to_truncate = segment.related.annotate(**annotation).order_by("-{}".format(sort_key)).values_list("related_id", flat=True)[size:]
-        segment.related.filter(related_id__in=list(related_ids_to_truncate)).delete()
-
-    def _set_defaults(self, items):
-        """
-        Set default values for items
-        :param items: list
-        :return: None
-        """
-        for item in items:
-            if not item.get("category"):
-                item["category"] = "Unclassified"
-            if not item.get("language"):
-                item["language"] = "Unknown"
+        old_uuids = old_segments.values_list("uuid", flat=True)
+        # Delete old segment uuid's from documents
+        for uuid in old_uuids:
+            remove_query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(uuid).get()
+            retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+        old_segments.delete()

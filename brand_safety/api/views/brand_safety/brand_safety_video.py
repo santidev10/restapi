@@ -1,18 +1,16 @@
 from collections import defaultdict
 
-from django.conf import settings
 from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_502_BAD_GATEWAY
 from rest_framework.views import APIView
 
-from brand_safety.utils import get_es_data
+from brand_safety.auditors.utils import AuditUtils
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
-import brand_safety.constants as constants
+from es_components.constants import Sections
+from es_components.managers.video import VideoManager
 from utils.brand_safety_view_decorator import get_brand_safety_label
-from utils.elasticsearch import ElasticSearchConnectorException
 
 
 class BrandSafetyVideoAPIView(APIView):
@@ -20,6 +18,7 @@ class BrandSafetyVideoAPIView(APIView):
         "userprofile.channel_list",
         "userprofile.settings_my_yt_channels"
     )
+    video_manager = VideoManager(sections=Sections.BRAND_SAFETY)
     MAX_SIZE = 10000
 
     def get(self, request, **kwargs):
@@ -28,12 +27,12 @@ class BrandSafetyVideoAPIView(APIView):
         """
         video_id = kwargs["pk"]
         category_mapping = BadWordCategory.get_category_mapping()
-        video_es_data = get_es_data(video_id, settings.BRAND_SAFETY_VIDEO_INDEX)
-        if isinstance(video_es_data, ElasticSearchConnectorException):
-            return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
-        if not video_es_data:
+        try:
+            video_data = AuditUtils.get_items([video_id], self.video_manager)[0]
+            brand_safety_data = video_data.brand_safety
+        except (IndexError, AttributeError):
             raise Http404
-        video_score = video_es_data["overall_score"]
+        video_score = brand_safety_data.overall_score
         video_brand_safety_data = {
             "score": video_score,
             "label": get_brand_safety_label(video_score),
@@ -42,7 +41,8 @@ class BrandSafetyVideoAPIView(APIView):
         }
         # Map category ids to category names and aggregate all keywords for each category
         all_keywords = set()
-        for category_id, data in video_es_data["categories"].items():
+        categories = brand_safety_data.categories.to_dict()
+        for category_id, data in categories.items():
             if str(category_id) in BadWordCategory.EXCLUDED:
                 continue
             # Handle category ids that may have been removed

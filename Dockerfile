@@ -1,4 +1,4 @@
-FROM python:3.7 as prod
+FROM python:3.7 as base
 WORKDIR /usr/lib/uwsgi/plugins/
 RUN apt update && \
 	apt install -y \
@@ -14,15 +14,22 @@ COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
 COPY ./uwsgi-restapi.ini /etc/uwsgi/restapi.ini
 RUN pip install -r /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.es_componenets.txt
-COPY --chown=www-data:www-data ./ /app
 WORKDIR /app
+RUN chown -R www-data:www-data /app
+USER www-data
 EXPOSE 5000
 CMD ["python","./manage.py", "runserver", "0.0.0.0:5000"]
 
-FROM prod as dev
+FROM base as prod
+COPY --chown=www-data:www-data ./ /app
+
+
+FROM base as dev
 ENV PYTHONPATH=/app
 COPY ./requirements.dev.txt /tmp/
+USER root
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
 RUN chmod +rx /wait-for-it.sh
 RUN pip install -r /tmp/requirements.dev.txt
+COPY --chown=www-data:www-data ./ /app
 USER www-data

@@ -1,18 +1,20 @@
-from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
 from django.db.models import OneToOneField
 from django.db.models import Model
 from django.db.models import TextField
+from elasticsearch_dsl import Q
 
+from es_components.config import CHANNEL_INDEX_NAME
+from es_components.config import VIDEO_INDEX_NAME
 from segment.models.custom_segment import CustomSegment
 
 
 class CustomSegmentFileUpload(Model):
-    BASE_COLUMNS = ["url", "title", "language", "youtube_category", "overall_score"]
-    CHANNEL_COLUMNS = BASE_COLUMNS + ["subscribers"]
-    VIDEO_COLUMNS = BASE_COLUMNS + ["views"]
+    BASE_COLUMNS = ["URL", "Title", "Language", "Category", "Overall_Score"]
+    CHANNEL_COLUMNS = BASE_COLUMNS + ["Subscribers"]
+    VIDEO_COLUMNS = BASE_COLUMNS + ["Views"]
 
     completed_at = DateTimeField(null=True, default=None, db_index=True)
     created_at = DateTimeField(auto_now_add=True, db_index=True)
@@ -24,13 +26,13 @@ class CustomSegmentFileUpload(Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.segment.segment_type == 0:
-            self.index = settings.BRAND_SAFETY_VIDEO_INDEX
+            self.index = VIDEO_INDEX_NAME
             self.columns = CustomSegmentFileUpload.VIDEO_COLUMNS
-            self.sort = "views"
+            self.sort = "stats.views"
         else:
-            self.index = settings.BRAND_SAFETY_CHANNEL_INDEX
+            self.index = CHANNEL_INDEX_NAME
             self.columns = CustomSegmentFileUpload.CHANNEL_COLUMNS
-            self.sort = "subscribers"
+            self.sort = "stats.subscribers"
 
         # Set max sizes of exports
         self.batch_size = 2000
@@ -38,6 +40,14 @@ class CustomSegmentFileUpload(Model):
             self.batch_limit = 10
         else:
             self.batch_limit = 50
+
+    @property
+    def query_obj(self):
+        """
+        Map JSON query to Elasticsearch Q object
+        :return:
+        """
+        return Q(self.query)
 
     @staticmethod
     def enqueue(*_, **kwargs):
