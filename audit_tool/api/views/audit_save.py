@@ -113,7 +113,7 @@ class AuditSaveApiView(APIView):
             params['inclusion'] = self.load_keywords(inclusion_file)
         # Load Keywords from Exclusion File
         if exclusion_file:
-            params['exclusion'] = self.load_keywords(exclusion_file)
+            params['exclusion'], params['exclusion_category'] = self.load_keywords_and_categories(exclusion_file)
         if category:
             c = []
             for a in json.loads(category):
@@ -138,6 +138,7 @@ class AuditSaveApiView(APIView):
                 audit.params['inclusion'] = params['inclusion']
             if exclusion_file:
                 audit.params['exclusion'] = params['exclusion']
+                audit.params['exclusion_category'] = params['exclusion_category']
             if name:
                 audit.params['name'] = name
                 audit.name = name.lower()
@@ -183,6 +184,26 @@ class AuditSaveApiView(APIView):
             if word:
                 keywords.append(word)
         return keywords
+
+    def load_keywords_and_categories(self, uploaded_file):
+        file = uploaded_file.read().decode('utf-8-sig')
+        keywords = []
+        categories = []
+        io_string = StringIO(file)
+        reader = csv.reader(io_string, delimiter=";", quotechar="|")
+        for row in reader:
+            try:
+                word = row[0].lower().strip()
+            except Exception as e:
+                continue
+            try:
+                category = row[1].lower().strip()
+            except Exception as e:
+                category = ""
+            if word:
+                keywords.append(word)
+                categories.append(category)
+        return keywords, categories
 
 
 class AuditFileS3Exporter(S3Exporter):
