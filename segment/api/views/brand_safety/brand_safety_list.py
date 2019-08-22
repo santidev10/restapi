@@ -1,4 +1,6 @@
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.db.models.functions import Cast
+from django.db.models import IntegerField
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
 
@@ -25,8 +27,8 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
         else:
             queryset = super().get_queryset()\
                 .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
-                .annotate(items_count=KeyTextTransform("items_count", "details"))\
-                .exclude(Q(items_count__lte=0))
+                .annotate(items_count=Cast(KeyTextTransform("items_count", "details"), IntegerField()))\
+                .exclude(items_count__lt=100)
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
