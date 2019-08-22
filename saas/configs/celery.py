@@ -36,7 +36,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
             reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing", "CampaignOverPacing"],
-            debug=True,
+            debug=os.getenv("EMAIL_NOTIFICATIONS_DEBUG", "1") == "1",
         ),
     },
     "weekday-campaign-reports": {
