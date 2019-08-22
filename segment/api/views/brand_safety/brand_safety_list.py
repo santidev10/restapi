@@ -25,10 +25,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
         if is_correct_apex_domain(request_origin):
             queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
         else:
-            queryset = super().get_queryset()\
-                .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
-                .annotate(items_count=Cast(KeyTextTransform("items_count", "details"), IntegerField()))\
-                .exclude(Q(items_count__isnull=True) | Q(items_count__lt=100))
+            queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
@@ -38,6 +35,8 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             "items": []
         }
         for item in response.data.get("items", []):
+            if not item.get("statistics") or item["statistics"].get("items_count", 0) < 100:
+                continue
             if item["category"] == PersistentSegmentCategory.WHITELIST and item["is_master"] is True:
                 data["master_whitelist"] = item
             elif item["category"] == PersistentSegmentCategory.BLACKLIST and item["is_master"] is True:
