@@ -447,8 +447,6 @@ MAX_SEGMENT_TO_AGGREGATE = 10000
 
 USE_LEGACY_BRAND_SAFETY = True
 
-CELERY_ENABLED = True
-
 ES_CACHE_ENABLED = False
 
 from es_components.config import *

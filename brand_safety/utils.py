@@ -1,31 +1,10 @@
-from django.conf import settings
 from elasticsearch_dsl import Q
 
-from audit_tool.models import AuditCategory
 import brand_safety.constants as constants
+from audit_tool.models import AuditCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from utils.elasticsearch import ElasticSearchConnector
-from utils.elasticsearch import ElasticSearchConnectorException
-
-
-def get_es_data(item_ids, index_name):
-    """
-    Encapsulate getting es data to catch ElasticSearchConnectorException
-        On ElasticSearchConnectorException, return it to be handled by view
-    :param item_ids: str or list
-    :param index_name: str
-    :return: dict or ElasticSearchConnectorException
-    """
-    try:
-        es_data = ElasticSearchConnector().search_by_id(
-            index_name,
-            item_ids,
-            settings.BRAND_SAFETY_TYPE)
-        return es_data
-    except ElasticSearchConnectorException:
-        return ElasticSearchConnectorException
 
 
 class BrandSafetyQueryBuilder(object):

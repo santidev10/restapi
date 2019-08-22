@@ -28,8 +28,6 @@ FROM base as dev
 ENV PYTHONPATH=/app
 COPY ./requirements.dev.txt /tmp/
 USER root
-ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
-RUN chmod +rx /wait-for-it.sh
 RUN pip install -r /tmp/requirements.dev.txt
 COPY --chown=www-data:www-data ./ /app
 USER www-data
