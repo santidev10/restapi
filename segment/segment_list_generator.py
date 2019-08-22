@@ -239,5 +239,5 @@ class SegmentListGenerator(object):
         segment.details = segment.calculate_details()
         segment.save()
         now = timezone.now()
-        PersistentSegmentFileUpload.objects.create(segment_id=segment.uuid, filename=s3_filename, created_at=now)
+        PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)
         logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
