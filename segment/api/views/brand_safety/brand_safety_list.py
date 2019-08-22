@@ -28,7 +28,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             queryset = super().get_queryset()\
                 .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
                 .annotate(items_count=Cast(KeyTextTransform("items_count", "details"), IntegerField()))\
-                .exclude(items_count__lt=100)
+                .exclude(Q(items_count__isnull=True) | Q(items_count__lt=100))
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
