@@ -262,7 +262,7 @@ LOGGING = {
         },
         "aw_reporting.update": {
             "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
-            "level": "DEBUG",
+            "level": "INFO",
         },
         "celery": {
             "handlers": ["file_celery"],
