@@ -1,8 +1,10 @@
-from django.conf.urls import url, include
+from django.conf.urls import include
+from django.conf.urls import url
 
 from aw_creation.api import views
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
+from utils.api.urls import APP_NAME
 from .urls_analytics import urlpatterns as analytics_urls
 from .urls_dashboard import urlpatterns as dashboard_urls
 
@@ -25,8 +27,8 @@ urlpatterns = [
         views.CreationOptionsApiView.as_view(),
         name="creation_options"),
 
-    url(r'analytics/', include(analytics_urls, namespace=Namespace.ANALYTICS)),
-    url(r'dashboard/', include(dashboard_urls, namespace=Namespace.DASHBOARD)),
+    url(r'analytics/', include((analytics_urls, APP_NAME), namespace=Namespace.ANALYTICS)),
+    url(r'dashboard/', include((dashboard_urls, APP_NAME), namespace=Namespace.DASHBOARD)),
 
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',

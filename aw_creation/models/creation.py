@@ -95,7 +95,7 @@ class AccountCreation(UniqueCreationItem):
 
     account = models.OneToOneField(
         Account, related_name='account_creation',
-        null=True, blank=True,
+        null=True, blank=True, on_delete=models.CASCADE,
     )
     is_paused = models.BooleanField(default=False)
     is_ended = models.BooleanField(default=False)
@@ -192,11 +192,11 @@ class CampaignCreation(UniqueCreationItem):
     objects = CampaignCreationQueryset.as_manager()
 
     account_creation = models.ForeignKey(
-        AccountCreation, related_name="campaign_creations",
+        AccountCreation, related_name="campaign_creations", on_delete=models.CASCADE,
     )
     campaign = models.ForeignKey(
         "aw_reporting.Campaign", related_name='campaign_creation',
-        null=True, blank=True,
+        null=True, blank=True, on_delete=models.CASCADE,
     )
 
     # fields
@@ -500,11 +500,11 @@ class AdGroupCreation(UniqueCreationItem):
 
     max_rate = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     campaign_creation = models.ForeignKey(
-        CampaignCreation, related_name="ad_group_creations",
+        CampaignCreation, related_name="ad_group_creations", on_delete=models.CASCADE,
     )
     ad_group = models.ForeignKey(
         "aw_reporting.AdGroup", related_name='ad_group_creation',
-        null=True, blank=True,
+        null=True, blank=True, on_delete=models.CASCADE,
     )
 
     IN_STREAM_TYPE = 'TRUE_VIEW_IN_STREAM'
@@ -702,10 +702,10 @@ class AdCreation(UniqueCreationItem):
     objects = AdCreationQueryset.as_manager()
 
     ad_group_creation = models.ForeignKey(
-        AdGroupCreation, related_name="ad_creations",
+        AdGroupCreation, related_name="ad_creations", on_delete=models.CASCADE,
     )
     ad = models.ForeignKey(
-        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True,
+        "aw_reporting.Ad", related_name='ad_creation', null=True, blank=True, on_delete=models.CASCADE,
     )
     video_url = models.URLField(validators=[VideoUrlValidator], default="")
     companion_banner = models.ImageField(upload_to='img/custom_video_thumbs', blank=True, null=True)
@@ -869,8 +869,9 @@ class LocationRule(models.Model):
     campaign_creation = models.ForeignKey(
         CampaignCreation,
         related_name="location_rules",
+        on_delete=models.CASCADE,
     )
-    geo_target = models.ForeignKey('aw_reporting.GeoTarget', null=True)
+    geo_target = models.ForeignKey('aw_reporting.GeoTarget', null=True, on_delete=models.CASCADE)
     latitude = models.DecimalField(max_digits=11, decimal_places=8,
                                    null=True, blank=True)
     longitude = models.DecimalField(max_digits=11, decimal_places=8,
@@ -904,6 +905,7 @@ class FrequencyCap(models.Model):
     campaign_creation = models.ForeignKey(
         CampaignCreation,
         related_name="frequency_capping",
+        on_delete=models.CASCADE,
     )
     IMPRESSION_TYPE = "IMPRESSION"
     VIDEO_VIEW_TYPE = "VIDEO_VIEW"
@@ -944,6 +946,7 @@ class AdScheduleRule(models.Model):
     campaign_creation = models.ForeignKey(
         CampaignCreation,
         related_name="ad_schedule_rules",
+        on_delete=models.CASCADE,
     )
     day = models.PositiveSmallIntegerField()
     from_hour = models.PositiveSmallIntegerField()

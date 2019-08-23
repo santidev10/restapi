@@ -50,8 +50,8 @@ class BadWord(models.Model):
     DEFAULT_LANGUAGE = "en"
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=80, db_index=True)
-    category = models.ForeignKey(BadWordCategory, db_index=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None, related_name="bad_words")
+    category = models.ForeignKey(BadWordCategory, db_index=True, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None, related_name="bad_words", on_delete=models.CASCADE)
     negative_score = models.IntegerField(default=1, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, default=None, db_index=True)

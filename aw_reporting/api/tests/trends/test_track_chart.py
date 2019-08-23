@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, date
 from urllib.parse import urlencode
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.analytics_charts import TrendId, Indicator, Breakdown

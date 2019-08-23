@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name

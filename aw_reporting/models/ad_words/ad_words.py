@@ -37,7 +37,7 @@ class VideoCreative(BaseStatisticModel):
 class GeoTarget(models.Model):
     name = models.CharField(max_length=100)
     canonical_name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', null=True)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
     country_code = models.CharField(max_length=2)
     target_type = models.CharField(max_length=50)
     status = models.CharField(max_length=20)
@@ -47,7 +47,7 @@ class GeoTarget(models.Model):
 
 
 class Topic(models.Model):
-    parent = models.ForeignKey('self', null=True, related_name='children')
+    parent = models.ForeignKey('self', null=True, related_name='children', on_delete=models.CASCADE)
     name = models.CharField(max_length=150, db_index=True)
 
     def __str__(self):
@@ -55,7 +55,7 @@ class Topic(models.Model):
 
 
 class Audience(BaseModel):
-    parent = models.ForeignKey('self', null=True, related_name='children')
+    parent = models.ForeignKey('self', null=True, related_name='children', on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
     type = models.CharField(max_length=25, db_index=True)
 
@@ -78,7 +78,7 @@ class RemarkList(BaseModel):
 
 class CampaignAgeRangeTargeting(models.Model):
     age_range_id = models.SmallIntegerField()
-    campaign = models.ForeignKey(Campaign, related_name="age_range_targeting")
+    campaign = models.ForeignKey(Campaign, related_name="age_range_targeting", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (("age_range_id", "campaign"),)
@@ -86,15 +86,15 @@ class CampaignAgeRangeTargeting(models.Model):
 
 class CampaignGenderTargeting(models.Model):
     gender_id = models.SmallIntegerField()
-    campaign = models.ForeignKey(Campaign, related_name="gender_targeting")
+    campaign = models.ForeignKey(Campaign, related_name="gender_targeting", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (("gender_id", "campaign"),)
 
 
 class CampaignLocationTargeting(models.Model):
-    location = models.ForeignKey(GeoTarget)
-    campaign = models.ForeignKey(Campaign, related_name="location_targeting")
+    location = models.ForeignKey(GeoTarget, on_delete=models.CASCADE)
+    campaign = models.ForeignKey(Campaign, related_name="location_targeting", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (("location", "campaign"),)

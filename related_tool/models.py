@@ -7,4 +7,4 @@ class RelatedVideo(models.Model):
     title = models.CharField(max_length=225)
     description = models.TextField()
     scanned = models.BooleanField(default=False, db_index=True)
-    source = models.ForeignKey('self', blank=True, null=True)
+    source = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)

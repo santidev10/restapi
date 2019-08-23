@@ -1,5 +1,6 @@
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
+from saas.urls.namespaces import Namespace
 
 from utils.documentation import PathName
 from utils.documentation import schema_view
@@ -29,7 +30,7 @@ class DocumentationApiTestCase(ExtendedAPITestCase):
         self.factory = RequestFactory()
 
     def _request(self, path_name, args, view, user=None):
-        url = reverse(path_name, [], args=args)
+        url = reverse(path_name, [Namespace.DOCUMENTATION], args=args)
         request = self.factory.get(url)
         if user is not None:
             request.user = user

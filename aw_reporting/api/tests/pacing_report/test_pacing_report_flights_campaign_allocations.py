@@ -1,6 +1,6 @@
 import json
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_401_UNAUTHORIZED, \
     HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
