@@ -11,6 +11,7 @@ from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Model
+from django.db.models import CASCADE
 from django.db.models import UUIDField
 
 from aw_reporting.models import YTChannelStatistic
@@ -150,7 +151,7 @@ class CustomSegment(Timestampable):
 
 class CustomSegmentRelated(Model):
     related_id = CharField(max_length=100)
-    segment = ForeignKey(CustomSegment, related_name="related")
+    segment = ForeignKey(CustomSegment, related_name="related", on_delete=CASCADE)
 
     class Meta:
         unique_together = (('segment', 'related_id'),)

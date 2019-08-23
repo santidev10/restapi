@@ -2,6 +2,7 @@
 PersistentSegmentVideo models module
 """
 from django.db.models import ForeignKey
+from django.db.models import CASCADE
 
 from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
@@ -19,7 +20,7 @@ from segment.utils import generate_search_with_params
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
     export_serializer = PersistentSegmentVideoExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True)
+    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True, on_delete=CASCADE)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
@@ -61,7 +62,7 @@ class PersistentSegmentVideo(BasePersistentSegment):
 
 
 class PersistentSegmentRelatedVideo(BasePersistentSegmentRelated):
-    segment = ForeignKey(PersistentSegmentVideo, related_name="related")
+    segment = ForeignKey(PersistentSegmentVideo, related_name="related", on_delete=CASCADE)
 
     def get_url(self):
         return "https://www.youtube.com/video/{}".format(self.related_id)

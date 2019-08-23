@@ -2,6 +2,7 @@
 PersistentSegmentChannel models module
 """
 from django.db.models import ForeignKey
+from django.db.models import CASCADE
 
 from audit_tool.models import AuditCategory
 from .base import BasePersistentSegment
@@ -18,7 +19,7 @@ from segment.utils import generate_search_with_params
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
     export_serializer = PersistentSegmentChannelExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="channel_segment", null=True)
+    audit_category = ForeignKey(AuditCategory, related_name="channel_segment", null=True, on_delete=CASCADE)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
@@ -62,7 +63,7 @@ class PersistentSegmentChannel(BasePersistentSegment):
 
 
 class PersistentSegmentRelatedChannel(BasePersistentSegmentRelated):
-    segment = ForeignKey(PersistentSegmentChannel, related_name="related")
+    segment = ForeignKey(PersistentSegmentChannel, related_name="related", on_delete=CASCADE)
 
     def get_url(self):
         return "https://www.youtube.com/channel/{}".format(self.related_id)

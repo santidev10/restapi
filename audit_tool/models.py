@@ -92,9 +92,9 @@ class YoutubeUser(models.Model):
 
 class Comment(models.Model):
     comment_id = models.CharField(max_length=50, unique=True)
-    user = ForeignKey(YoutubeUser, related_name='user_comments')
-    video = ForeignKey(CommentVideo, related_name='video_comments')
-    parent = ForeignKey('self', blank=True, null=True)
+    user = ForeignKey(YoutubeUser, related_name='user_comments', on_delete=models.CASCADE)
+    video = ForeignKey(CommentVideo, related_name='video_comments', on_delete=models.CASCADE)
+    parent = ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
     text = models.TextField()
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(blank=True, null=True)
@@ -255,23 +255,23 @@ class AuditChannel(models.Model):
             return AuditChannel.objects.get(channel_id=channel_id)
 
 class AuditChannelMeta(models.Model):
-    channel = models.OneToOneField(AuditChannel)
+    channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_language')
-    default_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_default_language')
-    country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_language', on_delete=models.CASCADE)
+    default_language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='ac_default_language', on_delete=models.CASCADE)
+    country = models.ForeignKey(AuditCountry, db_index=True, default=None, null=True, on_delete=models.CASCADE)
     subscribers = models.BigIntegerField(default=0, db_index=True)
     view_count = models.BigIntegerField(default=0, db_index=True)
     video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
-    last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True)
+    last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True, on_delete=models.CASCADE)
 
 class AuditVideo(models.Model):
-    channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True)
+    channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
     video_id = models.CharField(max_length=50, unique=True)
     video_id_hash = models.BigIntegerField(default=0, db_index=True)
 
@@ -292,24 +292,24 @@ class AuditVideo(models.Model):
             return AuditVideo.objects.get(video_id=video_id)
 
 class AuditVideoMeta(models.Model):
-    video = models.OneToOneField(AuditVideo)
+    video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, null=True, default=None)
     description = models.TextField(default=None, null=True)
     keywords = models.TextField(default=None, null=True)
-    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language')
-    category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True)
+    language = models.ForeignKey(AuditLanguage, db_index=True, default=None, null=True, related_name='av_language', on_delete=models.CASCADE)
+    category = models.ForeignKey(AuditCategory, db_index=True, default=None, null=True, on_delete=models.CASCADE)
     views = models.BigIntegerField(default=0, db_index=True)
     likes = models.BigIntegerField(default=0, db_index=True)
     dislikes = models.BigIntegerField(default=0, db_index=True)
     emoji = models.BooleanField(default=False, db_index=True)
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
-    default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True)
+    default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
 
 class AuditVideoProcessor(models.Model):
-    audit = models.ForeignKey(AuditProcessor, db_index=True)
-    video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video')
-    video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source')
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
+    video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True, related_name='avp_video_source', on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default={}, null=True)
@@ -318,9 +318,9 @@ class AuditVideoProcessor(models.Model):
         unique_together = ("audit", "video")
 
 class AuditChannelProcessor(models.Model):
-    audit = models.ForeignKey(AuditProcessor, db_index=True)
-    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel')
-    channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, related_name='avp_channel_source')
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel', on_delete=models.CASCADE)
+    channel_source = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, related_name='avp_channel_source', on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default={}, null=True)
@@ -329,7 +329,7 @@ class AuditChannelProcessor(models.Model):
         unique_together = ("audit", "channel")
 
 class AuditExporter(models.Model):
-    audit = models.ForeignKey(AuditProcessor, db_index=True)
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     clean = models.NullBooleanField(default=None, db_index=True)
     completed = models.DateTimeField(default=None, null=True, db_index=True)
