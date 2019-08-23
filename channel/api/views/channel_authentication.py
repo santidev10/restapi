@@ -67,6 +67,14 @@ class ChannelAuthenticationApiView(APIView):
                                                  access_token_expire_at=credentials.token_expiry)
             self.create_auth_channel(channel)
             send_admin_notification(channel_id)
+        else:
+            auth_channel = AuthChannel.objects.get(channel_id=channel_id)
+            if auth_channel.token_revocation:
+                auth_channel.access_token = credentials.access_token
+                auth_channel.refresh_token = credentials.refresh_token
+                auth_channel.access_token_expire_at = credentials.token_expiry
+                auth_channel.token_revocation = None
+                auth_channel.save()
 
         user = self.get_or_create_user(credentials.access_token)
 
