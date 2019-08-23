@@ -24,7 +24,7 @@ class BadWordExportApiView(FileListApiView):
     renderer_classes = (BadWordCSVRendered,)
     queryset = BadWord.objects.all().order_by("name")
     filename = "Bad Words.csv"
-    MIN_SEARCH_LENGTH = 3
+    MIN_SEARCH_LENGTH = 2
 
     def do_filters(self, queryset):
         filters = {}
