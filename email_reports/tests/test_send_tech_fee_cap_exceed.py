@@ -2,12 +2,16 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core import mail
-from django.core.management import call_command
 from django.utils import timezone
 
-from aw_reporting.models import User, Opportunity, \
-    OpPlacement, Flight, Campaign, Account
+from aw_reporting.models import Account
+from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from email_reports.tasks import send_daily_email_reports
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -41,7 +45,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement, **stats)
 
-        call_command("send_daily_email_reports", reports="TechFeeCapExceeded")
+        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False)
 
         self.assertEqual(len(mail.outbox), 0)
 
@@ -73,7 +77,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement, **stats)
 
-        call_command("send_daily_email_reports", reports="TechFeeCapExceeded")
+        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
@@ -114,7 +118,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement, **stats)
 
-        call_command("send_daily_email_reports", reports="TechFeeCapExceeded")
+        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False)
 
         self.assertEqual(len(mail.outbox), 0)
 
@@ -145,7 +149,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement, **stats)
 
-        call_command("send_daily_email_reports", reports="TechFeeCapExceeded")
+        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
@@ -190,7 +194,7 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement, **stats)
 
-        call_command("send_daily_email_reports", reports="TechFeeCapExceeded")
+        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]

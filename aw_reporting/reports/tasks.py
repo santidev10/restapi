@@ -7,7 +7,7 @@ from saas import celery_app
 from userprofile.models import UserProfile
 
 
-@celery_app.task(queue='reports')
+@celery_app.task
 def export_pacing_report(get, user_pk, report_name, url_to_export, user_emails):
     user = UserProfile.objects.get(pk=user_pk)
 

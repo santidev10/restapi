@@ -1,28 +1,13 @@
 import logging
-import traceback
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from email_reports.reports import CampaignUnderPacing, CampaignOverPacing, \
-    DailyCampaignReport, CampaignUnderMargin, TechFeeCapExceeded
+from email_reports.tasks import send_daily_email_reports
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    email_report_classes = (
-        DailyCampaignReport,
-        CampaignUnderMargin,
-        TechFeeCapExceeded,
-        CampaignUnderPacing,
-        CampaignOverPacing,
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.host = settings.HOST
-
     def add_arguments(self, parser):
         parser.add_argument(
             '--debug',
@@ -30,11 +15,6 @@ class Command(BaseCommand):
             help='Add prefix to debug emails to which the notification is sent',
             type=bool,
             default=False,
-        )
-        parser.add_argument(
-            '--host',
-            dest='host',
-            help='Replace the host to show the saved emails',
         )
         parser.add_argument(
             '--reports',
@@ -75,27 +55,25 @@ class Command(BaseCommand):
             help='Replace margin_bound; default is .10 (10%)',
             type=str,
         )
+        parser.add_argument(
+            "--detach",
+            "-d",
+            dest="detach",
+            action="store_true",
+            help="Run in background"
+        )
 
     def handle(self, *args, **options):
-
-        reports = list(filter(None, options.get('reports').split(',')))
-        debug = options.get('debug')
-        if options.get('host'):
-            self.host = options.get('host')
-
         kwargs = dict(
+            reports=list(filter(None, options.get('reports').split(','))),
+            debug=options.get('debug'),
             margin_bound=options.get('margin_bound'),
             days_to_end=options.get('days_to_end'),
             fake_tech_fee_cap=options.get('fake_tech_fee_cap'),
             roles=options.get('roles'),
         )
 
-        for report_class in self.email_report_classes:
-            if reports and report_class.__name__ not in reports:
-                continue
-            try:
-                report = report_class(self.host, debug, **kwargs)
-                report.send()
-            except Exception as e:
-                logger.critical('Worker got error: %s' % str(e))
-                logger.critical(traceback.format_exc())
+        if options.get("detach"):
+            send_daily_email_reports.delay(**kwargs)
+        else:
+            send_daily_email_reports(**kwargs)
