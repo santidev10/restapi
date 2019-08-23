@@ -24,9 +24,18 @@ class BadWordExportApiView(FileListApiView):
     renderer_classes = (BadWordCSVRendered,)
     queryset = BadWord.objects.all().order_by("name")
     filename = "Bad Words.csv"
+    MIN_SEARCH_LENGTH = 2
 
     def do_filters(self, queryset):
         filters = {}
+
+        search = self.request.query_params.get("search")
+        if search:
+            if len(search) < self.MIN_SEARCH_LENGTH:
+                raise ValidationError("Search term must be at least {} characters.".format(self.MIN_SEARCH_LENGTH))
+            filters["name__icontains"] = search
+            queryset = queryset.filter(**filters)
+            return queryset
 
         category = self.request.query_params.get("category")
         if category:
