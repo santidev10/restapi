@@ -9,20 +9,10 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.views import APIView
-from drf_yasg.utils import swagger_auto_schema
+
 from userprofile.api.serializers import UserSerializer
 from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
-from drf_yasg import openapi
-
-LOGIN_REQUEST_SCHEMA = openapi.Schema(
-    title="Login request",
-    type=openapi.TYPE_OBJECT,
-    properties=dict(
-        username=openapi.Schema(type=openapi.TYPE_STRING),
-        password=openapi.Schema(type=openapi.TYPE_STRING),
-    ),
-)
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",
@@ -105,7 +95,7 @@ class UserAuthApiView(APIView):
         """
         Logout user
         """
-        if not request.user.is_authenticated():
+        if not request.user.is_authenticated:
             return Response(status=HTTP_401_UNAUTHORIZED)
         Token.objects.get(user=request.user).delete()
         return Response()
