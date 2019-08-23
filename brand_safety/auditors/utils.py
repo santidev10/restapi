@@ -28,11 +28,11 @@ class AuditUtils(object):
         """
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
-        self._default_channel_score = {
-            category_id: 100
+        self._default_zero_score = {
+            category_id: 0
             for category_id in self.bad_word_categories
         }
-        self._default_video_score = {
+        self._default_full_score = {
             category_id: 100
             for category_id in self.bad_word_categories
         }
@@ -49,12 +49,12 @@ class AuditUtils(object):
         return self._emoji_regex
 
     @property
-    def default_channel_score(self):
-        return self._default_channel_score.copy()
+    def default_zero_score(self):
+        return self._default_zero_score.copy()
 
     @property
-    def default_video_score(self):
-        return self._default_video_score.copy()
+    def default_full_score(self):
+        return self._default_full_score.copy()
 
     @property
     def score_mapping(self):
@@ -221,34 +221,6 @@ class AuditUtils(object):
         bad_words = BadWord.objects \
             .values_list("name", flat=True)
         return bad_words
-
-    @staticmethod
-    def extract_channel_data(data):
-        general_data = data.general_data
-        mapped = {
-            "id": data.main.id,
-            "title": getattr(data.general_data, "title", ""),
-            "description": getattr(data.general_data, "description", ""),
-            "video_tags": ",".join(getattr(general_data, "video_tags", "")),
-            "videos_scored": getattr(data.brand_safety, "videos_scored", 0),
-            "updated_at": getattr(data.brand_safety, "updated_at", None)
-        }
-        return mapped
-
-    @staticmethod
-    def extract_video_data(data):
-        mapped = {
-            "id": data.main.id,
-            "channel_id": data.channel.id,
-            "title": getattr(data.general_data, "title", ""),
-            "description": getattr(data.general_data, "description", ""),
-            "tags": ",".join(getattr(data.general_data, "tags", "") or ""),
-        }
-        try:
-            mapped["transcript"] = data.captions.text
-        except AttributeError:
-            mapped["transcript"] = ""
-        return mapped
 
     @staticmethod
     def get_language(text):

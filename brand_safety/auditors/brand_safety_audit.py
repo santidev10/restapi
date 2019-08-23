@@ -7,9 +7,13 @@ import time
 
 import pytz
 
+from audit_tool.models import BlacklistItem
 from brand_safety.constants import BRAND_SAFETY_SCORE
+from brand_safety.constants import BLACKLIST_DATA
 from brand_safety.audit_models.brand_safety_channel_audit import BrandSafetyChannelAudit
 from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoAudit
+from brand_safety.auditors.serializers import BrandSafetyChannelSerializer
+from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
 from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
@@ -46,8 +50,10 @@ class BrandSafetyAudit(object):
         except KeyError:
             self.is_manual = True
         if kwargs["discovery"]:
+            self.discovery = True
             self._set_discovery_config()
         else:
+            self.discovery = False
             self._set_update_config()
         self.audit_utils = AuditUtils()
         self.channel_manager = ChannelManager(
@@ -60,16 +66,14 @@ class BrandSafetyAudit(object):
         )
 
     def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 8
-        self.CHANNEL_POOL_BATCH_SIZE = 20
+        self.MAX_POOL_COUNT = 1
+        self.CHANNEL_POOL_BATCH_SIZE = 1
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self._channel_generator = self._channel_generator_discovery
 
     def _set_update_config(self):
         self.MAX_POOL_COUNT = 2
         self.CHANNEL_POOL_BATCH_SIZE = 10
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self._channel_generator = self._channel_generator_update
 
     def _set_manual_config(self):
         self.MAX_POOL_COUNT = 5
@@ -91,8 +95,9 @@ class BrandSafetyAudit(object):
             # _channel_generator will stop when no items are retrieved from Elasticsearch
             if not channel_batch:
                 continue
-            results = pool.map(self._process_audits,
-                               self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
+            results = self._process_audits(channel_batch)
+            # results = pool.map(self._process_audits,
+            #                    self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
             # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
             # Index items
@@ -113,16 +118,23 @@ class BrandSafetyAudit(object):
             "video_audits": [],
             "channel_audits": []
         }
+        channel_ids = [item["id"] for item in channels]
+        channel_blacklist_data_ref = {
+            item.item_id: item.blacklist_category
+            for item in BlacklistItem.get(channel_ids, 1)
+        }
         for channel in channels:
             video_audits = self.audit_videos(videos=channel["videos"])
             channel["video_audits"] = video_audits
-            channel_audit = self.audit_channel(channel)
+
+            channel_blacklist_data = channel_blacklist_data_ref.get(channel["id"], {})
+            channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
 
             results["video_audits"].extend(video_audits)
             results["channel_audits"].append(channel_audit)
         return results
 
-    def audit_video(self, video_data: dict, full_audit=True) -> BrandSafetyVideoAudit:
+    def audit_video(self, video_data: dict, blacklist_data=None, full_audit=True) -> BrandSafetyVideoAudit:
         """
         Audit single video
         :param video_data: dict -> Data to audit
@@ -130,10 +142,16 @@ class BrandSafetyAudit(object):
             Optional keys: description, tags, transcript
         :return:
         """
+        if blacklist_data is None:
+            try:
+                blacklist_data = BlacklistItem.get(video_data["id"], 0)[0].catgories
+            except (IndexError, AttributeError):
+                pass
         # Every audit should have language_processors in config
         audit = BrandSafetyVideoAudit(
             video_data,
-            self.audit_utils
+            self.audit_utils,
+            blacklist_data
         )
         audit.run()
         if not full_audit:
@@ -142,6 +160,8 @@ class BrandSafetyAudit(object):
 
     def audit_videos(self, channels=None, videos=None):
         """
+        Audits videos with blacklist data
+            Videos with blacklist data will their blacklisted category scores set to zero
         :param channels: list (dict) -> Channels to audit videos for
         :param videos: list (dict) -> Data to provide to BrandSafetyVideoAudit
         :return: list (int | BrandSafetyVideoAudit) ->
@@ -154,20 +174,28 @@ class BrandSafetyAudit(object):
             raise ValueError("You must either provide video data to audit or channels to retrieve video data for.")
         if videos is None:
             videos = self._get_channel_videos(channels)
+
+        video_ids = [item["id"] for item in videos]
+        blacklist_data_ref = {
+            item.item_id: item.blacklist_category
+            for item in BlacklistItem.get(video_ids, 0)
+        }
+
         for video in videos:
             try:
                 video = video.to_dict()
             except AttributeError:
                 pass
             try:
-                audit = self.audit_video(video)
+                blacklist_data = blacklist_data_ref.get(video["id"])
+                audit = self.audit_video(video, blacklist_data=blacklist_data)
                 video_audits.append(audit)
             except KeyError as e:
                 # Ignore videos without full data
                 continue
         return video_audits
 
-    def audit_channel(self, channel_data, full_audit=True):
+    def audit_channel(self, channel_data, full_audit=True, blacklist_data=None):
         """
         Audit single channel
         :param channel_data: dict -> Data to audit
@@ -175,7 +203,12 @@ class BrandSafetyAudit(object):
             Optional keys: description, video_tags
         :return:
         """
-        audit = BrandSafetyChannelAudit(channel_data, self.audit_utils)
+        if blacklist_data is None:
+            try:
+                blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
+            except (IndexError, AttributeError):
+                pass
+        audit = BrandSafetyChannelAudit(channel_data, self.audit_utils, blacklist_data)
         audit.run()
         if not full_audit:
             audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
@@ -184,7 +217,7 @@ class BrandSafetyAudit(object):
     def audit_channels(self, channel_video_audits: dict = None) -> list:
         """
         Audits Channels by retrieving channel data and using sorted Video audit objects by channel id
-        :param channel_video_audits: BrandSafetyVideoAudit objects
+        :param channel_video_audits: key: Channel id, value: BrandSafetyVideoAudit objects
         :return: list -> BrandSafetyChannelAudit Audit objects
         """
         channel_audits = []
@@ -207,17 +240,12 @@ class BrandSafetyAudit(object):
         :return:
         """
         all_results = []
-        mapped = []
         for batch in self.audit_utils.batch(channel_ids, 3):
             query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
             results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
             all_results.extend(results)
-        for video in all_results:
-            try:
-                mapped.append(self.audit_utils.extract_video_data(video))
-            except AttributeError:
-                continue
-        return mapped
+        data = BrandSafetyVideoSerializer(all_results, many=True).data
+        return data
 
     def _extract_results(self, results: list):
         """
@@ -244,30 +272,7 @@ class BrandSafetyAudit(object):
         self.channel_manager.upsert(channels)
         self.video_manager.upsert(videos)
 
-    def _channel_generator_update(self, cursor_id=None):
-        """
-        Yields channels to audit
-        :param cursor_id: Cursor position to start audit
-        :return: list -> Elasticsearch channel documents
-        """
-        cursor_id = cursor_id or ""
-        while True:
-            query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            query &= QueryBuilder().build().must().exists().field(Sections.BRAND_SAFETY).get()
-            query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
-            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
-            results = response.hits
-            if not results:
-                self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
-                break
-            to_update = self._get_channels_to_update(results, check_last_updated=True)
-            yield to_update
-            cursor_id = results[-1].main.id
-            self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
-            self.cursor_id = self.script_tracker.cursor_id
-            self.channel_batch_counter += 1
-
-    def _channel_generator_discovery(self, cursor_id=None):
+    def _channel_generator(self, cursor_id):
         """
         Get channels to score with no brand safety data
         :param cursor_id:
@@ -275,16 +280,25 @@ class BrandSafetyAudit(object):
         """
         cursor_id = cursor_id or ""
         while True:
-            query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
-            query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.MINIMUM_SUBSCRIBER_COUNT).get()
+            query = QueryBuilder().build().must().term().field(MAIN_ID_FIELD).value("UCSyBSyLk4ZvXd2Fj-tLojag").get()
+            # query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+            # query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
+            # query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
+            #     self.MINIMUM_SUBSCRIBER_COUNT).get()
             response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
             results = response.hits
+
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-            to_score = self._get_channels_to_update(results, check_last_updated=False)
-            yield to_score
+
+            channels = BrandSafetyChannelSerializer(results, many=True).data
+            if not self.discovery:
+                channels = self._get_channels_to_update(channels, check_last_updated=True)
+            else:
+                channels = self._get_channels_to_update(channels, check_last_updated=False)
+            yield channels
+
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
@@ -298,18 +312,16 @@ class BrandSafetyAudit(object):
         :param channel_batch: list
         :return: list
         """
-        channels = {}
-        for item in channel_batch:
-            try:
-                channels[item.main.id] = self.audit_utils.extract_channel_data(item)
-            except AttributeError:
-                continue
-
+        channels = {
+            item["id"]: item for item in channel_batch
+        }
         channels_to_update = []
         # Get videos for channels
         videos = self._get_channel_videos(list(channels.keys()))
         videos_by_channel = defaultdict(list)
         for video in videos:
+            if not video.get("channel_id"):
+                continue
             videos_by_channel[video["channel_id"]].append(video)
         # Get counts of videos for each channel
         channel_video_counts = Counter([item["channel_id"] for item in videos if item.get("channel_id")])
@@ -339,12 +351,8 @@ class BrandSafetyAudit(object):
         to_audit = []
         channels = self.audit_utils.get_items(channel_ids, self.channel_manager)
         for item in channels:
-            try:
-                mapped = self.audit_utils.extract_channel_data(item)
-                mapped["videos"] = self._get_channel_videos([mapped["id"]])
-                to_audit.append(mapped)
-            except KeyError:
-                continue
+            data = BrandSafetyChannelSerializer(item).data
+            data["videos"] = self._get_channel_videos([data["id"]])
         pool = mp.Pool(processes=self.MAX_POOL_COUNT)
         results = pool.map(self._process_audits, self.audit_utils.batch(to_audit, self.CHANNEL_POOL_BATCH_SIZE))
 
@@ -360,13 +368,8 @@ class BrandSafetyAudit(object):
         :return: BrandSafetyVideoAudit objects
         """
         videos = self.audit_utils.get_items(video_ids, self.video_manager)
-        mapped = []
-        for item in videos:
-            try:
-                mapped.append(self.audit_utils.extract_video_data(item))
-            except KeyError:
-                continue
-        video_audits = self.audit_videos(videos=mapped)
+        data = BrandSafetyVideoSerializer(videos, many=True).data
+        video_audits = self.audit_videos(videos=data)
         self._index_results(video_audits, [])
         return video_audits
 
@@ -375,9 +378,20 @@ class BrandSafetyAudit(object):
             & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
         results = self.video_manager.search(query, limit=5000).execute().hits
         while results:
-            data = [self.audit_utils.extract_video_data(item) for item in results]
+            data = BrandSafetyVideoSerializer(results, many=True).data
             video_audits = self.audit_videos(videos=data)
             self._index_results(video_audits, [])
             logger.error("Indexed {} videos".format(len(video_audits)))
             results = self.video_manager.search(query, limit=5000).execute().hits
 
+    def _set_blacklist_data(self, items, blacklist_type=0):
+        """
+        Mutates each item by adding BlacklistItem data
+        :param item_ids: list - > Channel or Video ids
+        :param blacklist_type: 0 = Video, 1 = Channel
+        :return:
+        """
+        item_ids = [item["id"] for item in items]
+        blacklist_items = BlacklistItem.get(item_ids, blacklist_type, to_dict=True)
+        for item in items:
+            item[BLACKLIST_DATA] = blacklist_items.get(item["id"], None)
