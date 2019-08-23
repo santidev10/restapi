@@ -119,13 +119,12 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                 return Response(status=HTTP_400_BAD_REQUEST, data=dict(
                     error="You cannot disapprove a running account"))
         if "name" in data and data["name"] != instance.name and instance.account:
-            connections = AWConnection.objects.filter(
+            connection = AWConnection.objects.filter(
                 mcc_permissions__account=instance.account.managers.all(),
                 user_relations__user=request.user,
                 revoked_access=False,
-            ).values("mcc_permissions__account_id", "refresh_token")
-            if connections:
-                connection = connections[0]
+            ).values("mcc_permissions__account_id", "refresh_token").first()
+            if connection:
                 _, error = handle_aw_api_errors(
                     update_customer_account,
                     connection['mcc_permissions__account_id'],
