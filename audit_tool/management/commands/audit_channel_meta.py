@@ -177,6 +177,9 @@ class Command(BaseCommand):
         num_videos = self.num_videos
         if not self.audit.params.get('do_videos'):
             num_videos = 1
+        per_page = num_videos
+        if per_page > 50:
+            per_page = 50
         while has_more:
             page = page + 1
             if page_token:
@@ -187,7 +190,7 @@ class Command(BaseCommand):
                 key=self.DATA_API_KEY,
                 id=db_channel.channel_id,
                 page_token=pt,
-                num_videos=num_videos,
+                num_videos=per_page,
             )
             r = requests.get(url)
             data = r.json()
@@ -199,7 +202,7 @@ class Command(BaseCommand):
                 acp.save(update_fields=['clean', 'processed', 'word_hits'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos') or num_videos < 50:
+            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos') or per_page < 50:
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])
