@@ -219,7 +219,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
 
 class UserChannel(Timestampable):
     channel_id = models.CharField(max_length=30)
-    user = models.ForeignKey(UserProfile, related_name="channels")
+    user = models.ForeignKey(UserProfile, related_name="channels", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ("channel_id", "user")

@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core import mail
@@ -62,7 +64,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         user = get_user_model().objects.create(email="test_status@example.com")
         update_url = reverse(AdministrationPathName.USER_DETAILS, [Namespace.ADMIN], args=(user.id,))
         payload = {"status": None}
-        response = self.client.put(update_url, data=payload)
+        response = self.client.put(update_url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_status_invalid(self):
@@ -116,7 +118,8 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
         test_user.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["is_staff"], True)
-        self.assertEqual(set(test_user.groups.values_list("name", flat=True)), set(Group.objects.all().values_list("name", flat=True)))
+        self.assertEqual(set(test_user.groups.values_list("name", flat=True)),
+                         set(Group.objects.all().values_list("name", flat=True)))
 
     def test_set_admin_success_revoke(self):
         self.create_admin_user()

@@ -39,7 +39,7 @@ class SFAccount(BaseModel, PersistentEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200)
-    parent = models.ForeignKey('self', null=True)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
 
     @classmethod
     def get_data(cls, data):
@@ -73,7 +73,7 @@ class User(BaseModel):
     photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
     is_active = models.BooleanField(default=False)
-    role = models.ForeignKey(UserRole, null=True, related_name="users")
+    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE)
 
     @property
     def photo_name(self):
@@ -205,8 +205,8 @@ class Opportunity(models.Model, PersistentEntityModelMixin):
     notes = models.TextField(null=True, blank=True)
 
     brand = models.CharField(max_length=255, null=True)
-    agency = models.ForeignKey(Contact, null=True)
-    account = models.ForeignKey(SFAccount, null=True)
+    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE)
+    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE)
 
     iq_category_id = models.SmallIntegerField(null=True)
     iq_region_id = models.SmallIntegerField(null=True)
@@ -372,7 +372,7 @@ class Opportunity(models.Model, PersistentEntityModelMixin):
 class OpPlacement(BaseModel, PersistentEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    opportunity = models.ForeignKey(Opportunity, related_name='placements')
+    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     goal_type_id = models.SmallIntegerField(null=True)
     ordered_units = models.IntegerField(null=True)
@@ -463,7 +463,7 @@ class OpPlacement(BaseModel, PersistentEntityModelMixin):
 class Flight(BaseModel, PersistentEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    placement = models.ForeignKey(OpPlacement, related_name='flights')
+    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
     start = models.DateField(null=True)
@@ -550,15 +550,15 @@ class Flight(BaseModel, PersistentEntityModelMixin):
 
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    owner = models.ForeignKey(User, related_name='activities')
+    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=10, db_index=True)
     date = models.DateField()
 
     opportunity = models.ForeignKey(
-        Opportunity, related_name='activities', null=True)
+        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE)
     account = models.ForeignKey(
-        SFAccount, related_name='activities', null=True)
+        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE)
 
     EMAIL_TYPE = "email"
     MEETING_TYPE = "meeting"
