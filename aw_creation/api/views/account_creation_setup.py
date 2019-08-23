@@ -120,7 +120,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
                     error="You cannot disapprove a running account"))
         if "name" in data and data["name"] != instance.name and instance.account:
             connection = AWConnection.objects.filter(
-                mcc_permissions__account=instance.account.managers.all(),
+                mcc_permissions__account__in=instance.account.managers.all(),
                 user_relations__user=request.user,
                 revoked_access=False,
             ).values("mcc_permissions__account_id", "refresh_token").first()
