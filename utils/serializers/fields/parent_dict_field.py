@@ -12,7 +12,10 @@ class ParentDictValueField(Field):
     def get_attribute(self, instance):
         parent_dict = getattr(self.parent, self.dict_key, {})
         key = super(ParentDictValueField, self).get_attribute(instance)
-        return parent_dict.get(key, {}).get(self.property_key or self.field_name)
+        attr = parent_dict.get(key, {})
+        if not attr:
+            attr = attr.get(self.property_key or self.field_name)
+        return attr
 
     def to_representation(self, value):
         return value

@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from elasticsearch.exceptions import NotFoundError
 
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -126,7 +126,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelSerializer(channel).data
+        result = ChannelWithBlackListSerializer(channel).data
         result.update({
             "performance": {
                 "average_views": average_views,
