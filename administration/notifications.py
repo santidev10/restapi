@@ -138,7 +138,7 @@ class SlackAWUpdateLoggingHandler(Handler):
         payload = {
             "attachments": [
                 {
-                    "pretext": "AdWords update on host: {}".format(settings.HOST),
+                    "pretext": "Update on host: {}".format(settings.HOST),
                     "text": log_entry,
                     "color": slack_message_color,
                 }
