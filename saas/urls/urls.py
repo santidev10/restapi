@@ -62,5 +62,5 @@ urlpatterns = [
 
     url(r'^api/v2/', include((segment_v2_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V2)),
 
-    url(r'^docs/', include((documentation_api_urls, APP_NAME)))
+    url(r'^docs/', include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION))
 ]

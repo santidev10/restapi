@@ -1,14 +1,13 @@
 from unittest import mock
 
-from django.urls import reverse
 from django.test import override_settings
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from utils.utittests.test_case import ExtendedAPITestCase
-
 
 CUSTOM_AUTH_FLAGS = {
     "test.user@testuser.com": {
@@ -85,7 +84,6 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
         """ Test error check for APEX client with invalid HTTP_REFERER """
         with mock.patch('userprofile.api.views.user_profile.UserProfileApiView.get') \
                 as user_profile_view:
-
             test_email = "test.apex_user@testuser.com"
             self.create_test_user(email=test_email)
 
@@ -95,5 +93,3 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
 
             self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
             self.assertEqual(user_profile_view.call_count, 0)
-
-
