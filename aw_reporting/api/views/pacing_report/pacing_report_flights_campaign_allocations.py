@@ -35,13 +35,11 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
 
         :return: (list) All flights
         """
-        instance = self.get_object()
-        # validation
-        campaign_ids = Campaign.objects.filter(
-            salesforce_placement=instance.placement
-        ).values_list('id', flat=True)
+        flight = self.get_object()
+        report = PacingReport()
+        # Ad operations require that for pacing reports, only running campaigns should be used
+        campaign_ids = report.get_campaigns(flight, status="eligible").values_list("id", flat=True)
         expected_keys = set(campaign_ids)
-
         try:
             flight_updated_budget = request.data.pop('flight_budget')
         except KeyError:
@@ -76,7 +74,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
             )
 
         Flight.objects.filter(
-            id=instance.id
+            id=flight.id
         ).update(
             budget=flight_updated_budget
         )

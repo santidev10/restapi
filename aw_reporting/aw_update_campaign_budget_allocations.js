@@ -1,4 +1,4 @@
-var IQ_API_HOST = 'https://rc-viewiq.channelfactory.com/api/v1/';
+var IQ_API_HOST = 'https://viewiq.channelfactory.com/api/v1/';
 var CHANGED_ACCOUNTS = 'pacing_report/flights/campaigns/budgets/updated/';
 var CAMPAIGNS_SYNCED = 'pacing_report/status/'
 
@@ -10,9 +10,10 @@ function main() {
 
   if (Object.keys(updatedBudgets) <= 0) {
     Logger.log('No campaign budgets to update.')
-
     return
   }
+
+  Logger.log(updatedBudgets)
 
   var accountIds = Object.keys(updatedBudgets);
 
@@ -21,15 +22,21 @@ function main() {
       .withIds(accountIds)
   	  .get();
 
-  processAllAccounts(accountIterator, updatedBudgets);
+  // Only process accounts when not running in preview mode
+  if (!AdsApp.getExecutionInfo().isPreview()) {
+    processAllAccounts(accountIterator, updatedBudgets);
+  }
 
   var campaignIds = []
   accountIds.forEach(function(accountId) {
   	campaignIds = campaignIds.concat(Object.keys(updatedBudgets[accountId]));
   });
 
-  response = updateSyncTimes(campaignIds);
-  Logger.log(response);
+  // Only update sync_times when not running in preview mode
+  if (!AdsApp.getExecutionInfo().isPreview()) {
+    response = updateSyncTimes(campaignIds);
+	  Logger.log(response);
+  }
 }
 
 function processAllAccounts(iterator, updatedBudgets) {
@@ -111,7 +118,8 @@ function updateSyncTimes(campaignIds) {
     'payload': JSON.stringify({ campaignIds: campaignIds }),
    	'contentType': 'application/json'
   };
-  var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED + '/', options);
+
+  var resp = UrlFetchApp.fetch(IQ_API_HOST + CAMPAIGNS_SYNCED, options);
   var message;
 
   if (resp.getResponseCode() == 200) {
