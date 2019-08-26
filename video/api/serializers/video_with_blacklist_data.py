@@ -18,6 +18,8 @@ class VideoWithBlackListSerializer(VideoSerializer):
         doc_ids = [doc.meta.id for doc in videos]
         blacklist_items = BlacklistItem.get(doc_ids, BlacklistItem.VIDEO_ITEM)
         blacklist_items_by_id = {
-            item.item_id: item.to_dict() for item in blacklist_items
+            item.item_id: {
+                "blacklist_data": item.to_dict()
+            } for item in blacklist_items
         }
         return blacklist_items_by_id
