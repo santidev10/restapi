@@ -182,4 +182,4 @@ class KeywordsList(BaseModel):
 
 
 class ViralKeywords(BaseModel):
-    keyword = models.ForeignKey(KeyWord, related_name='viral_keyword')
+    keyword = models.ForeignKey(KeyWord, related_name='viral_keyword', on_delete=models.CASCADE)

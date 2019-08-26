@@ -17,7 +17,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
 
     id = models.CharField(max_length=15, primary_key=True)
     name = models.CharField(max_length=250)
-    account = models.ForeignKey(Account, null=True, related_name='campaigns')
+    account = models.ForeignKey(Account, null=True, related_name='campaigns', on_delete=models.CASCADE)
 
     start_date = models.DateField(null=True, db_index=True)
     end_date = models.DateField(null=True)

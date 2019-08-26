@@ -11,4 +11,3 @@ def segmented_audit_next_channels_batch():
     logger.info("Started segmented audit for the next batch of channels")
     channels_count, videos_count = audit.run()
     logger.info("Done (channels_count={}, videos_count={})".format(channels_count, videos_count))
-

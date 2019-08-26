@@ -16,7 +16,16 @@ services:
     command: ["uwsgi","--ini", "/etc/uwsgi/restapi.ini"]
 
   celery_worker:
-    command: ["celery", "-A", "saas", "worker"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports"]
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
+    env_file:
+      - chf.restapi.env
+
+  celery_worker_delivery:
+    command: ["celery", "-A", "saas", "worker", "-Q", "delivery_statistic"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     restart: always
     volumes:

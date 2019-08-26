@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 import pytz
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Sum
 from django.http import QueryDict
 from django.utils import timezone

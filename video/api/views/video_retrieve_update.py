@@ -7,12 +7,14 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from elasticsearch.exceptions import NotFoundError
+
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from video.api.serializers.video import VideoSerializer
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -35,15 +37,17 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
                                     Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
-
-        video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
+        try:
+            video = self.video_manager(allowed_sections_to_load).model.get(video_id, _source=fields_to_load)
+        except NotFoundError:
+             return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
 
         if not video:
-            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
+            return Response(data={"error": "Video not found"}, status=HTTP_404_NOT_FOUND)
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = VideoSerializer(video).data
+        result = VideoWithBlackListSerializer(video).data
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):

@@ -5,8 +5,10 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
 
+from elasticsearch.exceptions import NotFoundError
+
 from channel.api.mixins import ChannelYoutubeStatisticsMixin
-from channel.api.serializers.channel import ChannelSerializer
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.constants import SortDirections
@@ -53,7 +55,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             return Response(status=HTTP_400_BAD_REQUEST)
 
         channel_id = kwargs.get("pk")
-        channel = self.channel_manager((Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)).get([channel_id])
+        try:
+            channel = self.channel_manager((Sections.CUSTOM_PROPERTIES, Sections.SOCIAL,)).get([channel_id])
+        except NotFoundError:
+            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
 
         if not channel:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
@@ -99,7 +104,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
-        channel = self.channel_manager().model.get(channel_id, _source=fields_to_load)
+        try:
+            channel = self.channel_manager().model.get(channel_id, _source=fields_to_load)
+        except NotFoundError:
+            return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
 
         if not channel:
             return Response(data={"error": "Channel not found"}, status=HTTP_404_NOT_FOUND)
@@ -118,7 +126,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 sum([video.stats.views or 0 for video in videos]) / len(videos)
             )
 
-        result = ChannelSerializer(channel).data
+        result = ChannelWithBlackListSerializer(channel).data
         result.update({
             "performance": {
                 "average_views": average_views,

@@ -5,7 +5,7 @@ from datetime import timedelta
 from itertools import product
 
 import pytz
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK

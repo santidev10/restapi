@@ -64,12 +64,11 @@ THIRD_PARTY_APPS = (
 )
 INSTALLED_APPS = INSTALLED_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'userprofile.middleware.ApexUserCheck',
 ]
@@ -262,7 +261,7 @@ LOGGING = {
         },
         "aw_reporting.update": {
             "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
-            "level": "DEBUG",
+            "level": "INFO",
         },
         "celery": {
             "handlers": ["file_celery"],
@@ -446,8 +445,6 @@ TEMPDIR = "/tmp"
 MAX_SEGMENT_TO_AGGREGATE = 10000
 
 USE_LEGACY_BRAND_SAFETY = True
-
-CELERY_ENABLED = True
 
 ES_CACHE_ENABLED = False
 

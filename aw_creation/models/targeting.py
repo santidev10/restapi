@@ -7,7 +7,7 @@ from .creation import AdGroupCreation
 class TargetingItem(models.Model):
     criteria = models.CharField(max_length=150)
     ad_group_creation = models.ForeignKey(
-        AdGroupCreation, related_name="targeting_items"
+        AdGroupCreation, related_name="targeting_items", on_delete=models.CASCADE,
     )
     CHANNEL_TYPE = TargetingType.CHANNEL.value
     VIDEO_TYPE = TargetingType.VIDEO.value

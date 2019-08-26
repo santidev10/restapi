@@ -1,7 +1,6 @@
 import json
 
 
-# @singleton
 class SingleDatabaseApiConnectorPatcher:
     """
     We can use the class to patch SingleDatabaseApiConnector in tests
