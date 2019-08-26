@@ -14,7 +14,7 @@ from es_components.managers.video import VideoManager
 from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
-from video.api.serializers.video import VideoSerializer
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -47,7 +47,7 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
-        result = VideoSerializer(video).data
+        result = VideoWithBlackListSerializer(video).data
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):
