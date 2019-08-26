@@ -1,13 +1,14 @@
-from audit_tool.models import BlacklistItem
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from brand_safety.models import BadWordCategory
-from rest_framework.exceptions import ValidationError
-from utils.permissions import user_has_permission
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.status import  HTTP_200_OK
+from rest_framework.views import APIView
+
+from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.auditors.utils import AuditUtils
+from brand_safety.models import BadWordCategory
+from audit_tool.models import BlacklistItem
+from utils.permissions import user_has_permission
 
 
 class AuditFlagApiView(APIView):
@@ -72,3 +73,12 @@ class AuditFlagApiView(APIView):
         }
 
         return Response(data=body, status=HTTP_200_OK)
+
+    def _rescore_video(self):
+        # Immediately rescore video and send score back in response
+        pass
+
+    def _rescore_channel(self):
+        # Queue up channel for rescore with all videos
+        # Delete channel bs score from elasticsearch
+        pass
