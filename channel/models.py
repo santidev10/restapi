@@ -11,6 +11,7 @@ class AuthChannel(Timestampable):
     client_id = models.CharField(max_length=255)
     client_secret = models.CharField(max_length=255)
     access_token_expire_at = models.DateTimeField(null=True)
+    token_revocation = models.DateTimeField(null=True)
 
     class Meta:
         db_table = "auth_channel"
