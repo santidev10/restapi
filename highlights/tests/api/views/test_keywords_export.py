@@ -101,13 +101,35 @@ class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_limit_100(self):
         highlights_limit = 100
         keywords = [Keyword(next(int_iterator)) for _ in range(highlights_limit + 1)]
-        KeywordManager(sections=(Sections.STATS)).upsert(keywords)
+        KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
 
         response = self._request()
 
         data = list(get_data_from_csv_response(response))[1:]
         self.assertEqual(
             highlights_limit,
+            len(data)
+        )
+
+    def test_export_by_ids(self):
+        keywords = [Keyword(next(int_iterator)) for _ in range(2)]
+        KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
+
+        response = self._request(**{"main.id": keywords[0].main.id})
+        data = list(get_data_from_csv_response(response))[1:]
+        self.assertEqual(
+            1,
+            len(data)
+        )
+
+    def test_export_by_ids_deprecated(self):
+        keywords = [Keyword(next(int_iterator)) for _ in range(2)]
+        KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
+
+        response = self._request(**{"ids": keywords[0].main.id})
+        data = list(get_data_from_csv_response(response))[1:]
+        self.assertEqual(
+            1,
             len(data)
         )
 

@@ -112,6 +112,28 @@ class HighlightVideoExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
+    def test_export_by_ids(self):
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+        VideoManager(sections=(Sections.GENERAL_DATA,)).upsert(videos)
+
+        response = self._request(**{"main.id": videos[0].main.id})
+        data = list(get_data_from_csv_response(response))[1:]
+        self.assertEqual(
+            1,
+            len(data)
+        )
+
+    def test_export_by_ids_deprecated(self):
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+        VideoManager(sections=(Sections.GENERAL_DATA,)).upsert(videos)
+
+        response = self._request(**{"ids": videos[0].main.id})
+        data = list(get_data_from_csv_response(response))[1:]
+        self.assertEqual(
+            1,
+            len(data)
+        )
+
 
 class AllowedSorts(ExtendedEnum):
     VIEWS_30_DAYS_DESC = "stats.last_30day_views:desc"
