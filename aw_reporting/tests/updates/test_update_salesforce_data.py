@@ -901,6 +901,19 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             update_salesforce_data()
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
+    def test_no_demo_data_update(self):
+        recreate_demo_data()
+        with patch_salesforce_connector() as connector:
+            salesforce = connector().sf
+            update_salesforce_data()
+
+        with self.subTest("Opportunity"):
+            salesforce.Opportunity.update.assert_not_called()
+        with self.subTest("Placement"):
+            salesforce.Placement__c.update.assert_not_called()
+        with self.subTest("Flights"):
+            salesforce.Flight__c.update.assert_not_called()
+
 
 class MockSalesforceConnection(Connection):
     def __init__(self):
