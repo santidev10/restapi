@@ -142,6 +142,10 @@ class QueryGenerator:
         return filters
 
     def __get_filters_by_ids(self):
+        """
+        DEPRECATED
+        Use __get_filters_term with "main.id" term
+        """
         ids_str = self.query_params.get("ids", None)
         filters = []
         if ids_str:
