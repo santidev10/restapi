@@ -99,9 +99,9 @@ class BrandSafetyAudit(object):
             # _channel_generator will stop when no items are retrieved from Elasticsearch
             if not channel_batch:
                 continue
-            # results = pool.map(self._process_audits,
-            #                    self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
-            results = [self._process_audits(channel_batch)]
+            results = pool.map(self._process_audits,
+                               self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
+
             # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
             # Index items
@@ -376,7 +376,7 @@ class BrandSafetyAudit(object):
         self._index_results(video_audits, [])
         return video_audits
 
-    def audit_remaining_videos(self):
+    def audit_all_videos(self):
         query = QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get() \
             & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
         results = self.video_manager.search(query, limit=5000).execute().hits

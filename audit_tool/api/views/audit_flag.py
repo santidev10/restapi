@@ -5,7 +5,8 @@ from rest_framework.status import  HTTP_200_OK
 from rest_framework.views import APIView
 
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-from brand_safety.auditors.utils import AuditUtils
+from brand_safety.models import BrandSafetyFlag
+from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from utils.permissions import user_has_permission
@@ -57,8 +58,16 @@ class AuditFlagApiView(APIView):
 
         body = {}
         flag = BlacklistItem.get_or_create(item_id, item_type)
+        auditor = BrandSafetyAudit(discovery=False)
 
-        # If video, rescore
+        # If video, audit immediately and send overall_score in response
+        if item_type == 0:
+            video_audit = auditor.manual_video_audit([item_id])
+            data = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+            body["overall_score"] = data
+        else:
+            # Enqueue channel to be audited
+            BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
 
         if len(flag_categories) > 0:
             flag.blacklist_category = flag_categories
@@ -75,12 +84,3 @@ class AuditFlagApiView(APIView):
         }
 
         return Response(data=body, status=HTTP_200_OK)
-
-    def _rescore_video(self):
-        # Immediately rescore video and send score back in response
-        pass
-
-    def _rescore_channel(self):
-        # Queue up channel for rescore with all videos
-        # Delete channel bs score from elasticsearch
-        pass
