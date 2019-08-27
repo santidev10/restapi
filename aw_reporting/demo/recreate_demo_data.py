@@ -90,14 +90,15 @@ def remove_data():
 
 
 def create_data():
+    dates = generate_dates()
     account = create_account()
     opportunity = create_sf_opportunity()
-    campaigns = create_campaigns(account, opportunity)
-    create_flights(campaigns)
+    campaigns = create_campaigns(account, opportunity, dates)
+    create_flights(campaigns, dates)
     ad_groups = create_ad_groups(campaigns)
     ads = create_ads(ad_groups)
 
-    create_statistic(accounts=[account], campaigns=campaigns, ad_groups=ad_groups, ads=ads)
+    create_statistic(accounts=[account], campaigns=campaigns, ad_groups=ad_groups, ads=ads, dates=dates)
     create_creation_entities(accounts=[account], campaigns=campaigns, ad_groups=ad_groups, ads=ads)
 
 
@@ -120,7 +121,8 @@ def create_sf_opportunity():
     return opportunity
 
 
-def create_campaigns(account, opportunity):
+def create_campaigns(account, opportunity, dates):
+    start, end = min(dates), max(dates)
     campaigns = [
         Campaign(
             id="demo{}".format(i + 1),
@@ -130,6 +132,8 @@ def create_campaigns(account, opportunity):
             salesforce_placement=OpPlacement.objects.create(
                 id=next(int_iterator),
                 opportunity=opportunity,
+                start=start,
+                end=end,
                 **stats["salesforce"]
             ),
         )
@@ -139,7 +143,8 @@ def create_campaigns(account, opportunity):
     return campaigns
 
 
-def create_flights(campaigns):
+def create_flights(campaigns, dates):
+    start, end = min(dates), max(dates)
     placements = [campaign.salesforce_placement for campaign in campaigns]
     flights = [
         Flight(
@@ -147,6 +152,8 @@ def create_flights(campaigns):
             placement=placement,
             total_cost=placement.total_cost,
             ordered_units=placement.ordered_units,
+            start=start,
+            end=end,
         )
         for i, placement in enumerate(placements)
     ]
@@ -192,8 +199,7 @@ def generate_ads(ad_group):
     ]
 
 
-def create_statistic(accounts, campaigns, ad_groups, ads):
-    dates = generate_dates()
+def create_statistic(accounts, campaigns, ad_groups, ads, dates):
     create_campaigns_statistic(campaigns, dates)
     create_ad_groups_statistic(ad_groups, dates)
     create_ad_statistic(ads, dates)

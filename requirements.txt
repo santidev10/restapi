@@ -13,6 +13,7 @@ certifi==2018.10.15
 chardet==3.0.4
 coreapi==2.3.3
 coreschema==0.0.4
+cryptography==2.7
 defusedxml==0.6.0
 django-celery-results==1.0.1
 django-filter==2.0.0
