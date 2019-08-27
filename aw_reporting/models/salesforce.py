@@ -15,7 +15,7 @@ from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
-from utils.db.models.persistent_entities import PersistentEntityModelMixin
+from utils.db.models.persistent_entities import DemoEntityModelMixin
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Category(BaseModel):
         return dict(id=data['value'])
 
 
-class SFAccount(BaseModel, PersistentEntityModelMixin):
+class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200)
@@ -133,7 +133,7 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .filter(campaign_count__gt=0)
 
 
-class Opportunity(models.Model, PersistentEntityModelMixin):
+class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
@@ -369,7 +369,7 @@ class Opportunity(models.Model, PersistentEntityModelMixin):
         ordering = ('-start',)
 
 
-class OpPlacement(BaseModel, PersistentEntityModelMixin):
+class OpPlacement(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
@@ -460,7 +460,7 @@ class OpPlacement(BaseModel, PersistentEntityModelMixin):
             return self.ordered_units
 
 
-class Flight(BaseModel, PersistentEntityModelMixin):
+class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE)
