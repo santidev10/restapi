@@ -17,8 +17,8 @@ class BrandSafetyVideoAudit(object):
         self.score_mapping = audit_utils.score_mapping
         self.default_category_scores = audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
-        self.blacklist_data = blacklist_data or {}
         self._set_metadata(data)
+        self.blacklist_data = blacklist_data or {}
 
     @property
     def pk(self):

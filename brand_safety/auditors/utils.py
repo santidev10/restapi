@@ -29,11 +29,11 @@ class AuditUtils(object):
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
         self._default_zero_score = {
-            category_id: 0
+            str(category_id): 0
             for category_id in self.bad_word_categories
         }
         self._default_full_score = {
-            category_id: 100
+            str(category_id): 100
             for category_id in self.bad_word_categories
         }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
@@ -206,7 +206,7 @@ class AuditUtils(object):
         score_mapping = defaultdict(dict)
         for word in BadWord.objects.all():
             score_mapping[word.name] = {
-                "category": word.category_id,
+                "category": str(word.category_id),
                 "score": word.negative_score
             }
         return score_mapping

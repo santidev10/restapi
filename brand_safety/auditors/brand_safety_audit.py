@@ -1,6 +1,3 @@
-from collections import Counter
-from collections import defaultdict
-from datetime import datetime
 import logging
 import multiprocessing as mp
 import time
@@ -43,6 +40,11 @@ class BrandSafetyAudit(object):
     def __init__(self, *_, **kwargs):
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
         # else main run method should not be called since it relies on an APIScriptTracker instance
+        self.query_creator = None
+
+        # Blacklist data for current batch being processed, set by _get_channel_batch_data
+        self.blacklist_data_ref = {}
+
         try:
             self.script_tracker = kwargs["api_tracker"]
             self.cursor_id = self.script_tracker.cursor_id
@@ -69,11 +71,13 @@ class BrandSafetyAudit(object):
         self.MAX_POOL_COUNT = 1
         self.CHANNEL_POOL_BATCH_SIZE = 1
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self.query_creator = self._create_discovery_query
 
     def _set_update_config(self):
-        self.MAX_POOL_COUNT = 2
-        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.MAX_POOL_COUNT = 5
+        self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+        self.query_creator = self._create_update_query
 
     def _set_manual_config(self):
         self.MAX_POOL_COUNT = 5
@@ -95,9 +99,9 @@ class BrandSafetyAudit(object):
             # _channel_generator will stop when no items are retrieved from Elasticsearch
             if not channel_batch:
                 continue
-            results = self._process_audits(channel_batch)
             # results = pool.map(self._process_audits,
             #                    self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
+            results = [self._process_audits(channel_batch)]
             # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
             # Index items
@@ -118,16 +122,11 @@ class BrandSafetyAudit(object):
             "video_audits": [],
             "channel_audits": []
         }
-        channel_ids = [item["id"] for item in channels]
-        channel_blacklist_data_ref = {
-            item.item_id: item.blacklist_category
-            for item in BlacklistItem.get(channel_ids, 1)
-        }
         for channel in channels:
-            video_audits = self.audit_videos(videos=channel["videos"])
+            video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
             channel["video_audits"] = video_audits
 
-            channel_blacklist_data = channel_blacklist_data_ref.get(channel["id"], {})
+            channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {})
             channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
 
             results["video_audits"].extend(video_audits)
@@ -144,7 +143,7 @@ class BrandSafetyAudit(object):
         """
         if blacklist_data is None:
             try:
-                blacklist_data = BlacklistItem.get(video_data["id"], 0)[0].catgories
+                blacklist_data = BlacklistItem.get(video_data["id"], 0)[0].categories
             except (IndexError, AttributeError):
                 pass
         # Every audit should have language_processors in config
@@ -158,7 +157,7 @@ class BrandSafetyAudit(object):
             audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
         return audit
 
-    def audit_videos(self, channels=None, videos=None):
+    def audit_videos(self, channels=None, videos=None, get_blacklist_data=False):
         """
         Audits videos with blacklist data
             Videos with blacklist data will their blacklisted category scores set to zero
@@ -174,20 +173,19 @@ class BrandSafetyAudit(object):
             raise ValueError("You must either provide video data to audit or channels to retrieve video data for.")
         if videos is None:
             videos = self._get_channel_videos(channels)
-
-        video_ids = [item["id"] for item in videos]
-        blacklist_data_ref = {
-            item.item_id: item.blacklist_category
-            for item in BlacklistItem.get(video_ids, 0)
-        }
-
+        if get_blacklist_data:
+            video_ids = [item["id"] for item in videos]
+            self.blacklist_data_ref = {
+                item.item_id: item.blacklist_category
+                for item in BlacklistItem.get(video_ids, 0)
+            }
         for video in videos:
             try:
                 video = video.to_dict()
             except AttributeError:
                 pass
             try:
-                blacklist_data = blacklist_data_ref.get(video["id"])
+                blacklist_data = self.blacklist_data_ref.get(video["id"], {})
                 audit = self.audit_video(video, blacklist_data=blacklist_data)
                 video_audits.append(audit)
             except KeyError as e:
@@ -195,7 +193,7 @@ class BrandSafetyAudit(object):
                 continue
         return video_audits
 
-    def audit_channel(self, channel_data, full_audit=True, blacklist_data=None):
+    def audit_channel(self, channel_data, blacklist_data=None, full_audit=True):
         """
         Audit single channel
         :param channel_data: dict -> Data to audit
@@ -280,67 +278,69 @@ class BrandSafetyAudit(object):
         """
         cursor_id = cursor_id or ""
         while True:
-            query = QueryBuilder().build().must().term().field(MAIN_ID_FIELD).value("UCSyBSyLk4ZvXd2Fj-tLojag").get()
-            # query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-            # query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
-            # query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
-            #     self.MINIMUM_SUBSCRIBER_COUNT).get()
+            query = self.query_creator(cursor_id)
             response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
-            results = response.hits
-
+            results = [item for item in response.hits if item.main.id != cursor_id]
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-
             channels = BrandSafetyChannelSerializer(results, many=True).data
-            if not self.discovery:
-                channels = self._get_channels_to_update(channels, check_last_updated=True)
-            else:
-                channels = self._get_channels_to_update(channels, check_last_updated=False)
-            yield channels
+            data = self._get_channel_batch_data(channels)
+            yield data
 
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
             self.channel_batch_counter += 1
 
-    def _get_channels_to_update(self, channel_batch, check_last_updated=False):
+    def _create_update_query(self, cursor_id):
+        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
+            self.MINIMUM_SUBSCRIBER_COUNT).get()
+        query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte("now-7d/d").get()
+        return query
+
+    def _create_discovery_query(self, cursor_id):
+        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
+        query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
+            self.MINIMUM_SUBSCRIBER_COUNT).get()
+        return query
+
+    def _get_channel_batch_data(self, channel_batch):
         """
-        Gets channels to update
-            If either the last time the channel has been updated is greater than threshold time or if the number of
-            videos has changed since the last time the channel was scored, it should be updated
+        Adds video data to serialized channels
         :param channel_batch: list
         :return: list
         """
-        channels = {
-            item["id"]: item for item in channel_batch
-        }
-        channels_to_update = []
+        channel_ids = []
+        video_ids = []
+        channel_data = {}
+
+        for channel in channel_batch:
+            c_id = channel["id"]
+            channel["videos"] = []
+            channel_ids.append(c_id)
+            channel_data[c_id] = channel
+
         # Get videos for channels
-        videos = self._get_channel_videos(list(channels.keys()))
-        videos_by_channel = defaultdict(list)
+        videos = self._get_channel_videos(list(channel_data.keys()))
         for video in videos:
-            if not video.get("channel_id"):
-                continue
-            videos_by_channel[video["channel_id"]].append(video)
-        # Get counts of videos for each channel
-        channel_video_counts = Counter([item["channel_id"] for item in videos if item.get("channel_id")])
+            try:
+                channel_id = video["channel_id"]
+                channel_data[channel_id]["videos"].append(video)
+                video_ids.append(video["id"])
+            except KeyError:
+                logger.error(f"Missed video: {video}")
 
-        # For each channel retrieved in original query, check if it should be updated
-        for _id, data in channels.items():
-            should_update = False
-            if not check_last_updated or not data["updated_at"] or not data["videos_scored"]:
-                should_update = True
-            else:
-                hours_elapsed = (datetime.now(pytz.utc) - data["updated_at"]).seconds // 3600
-                # If last time channel was updated is greater than threshold or number of channel's videos has changed, rescore
-                if hours_elapsed >= self.UPDATE_TIME_THRESHOLD or data["videos_scored"] != channel_video_counts[_id]:
-                    should_update = True
+        # Set reference to blacklist items for all processes to share
+        blacklist_videos = BlacklistItem.get(video_ids, 0)
+        blacklist_channels = BlacklistItem.get(channel_ids, 1)
 
-            if should_update:
-                data["videos"] = list(videos_by_channel.get(_id, []))
-                channels_to_update.append(data)
-        return list(channels_to_update)
+        for item in blacklist_channels + blacklist_videos:
+            self.blacklist_data_ref[item.item_id] = item.blacklist_category
+
+        return list(channel_data.values())
 
     def manual_channel_audit(self, channel_ids: iter):
         """
@@ -348,13 +348,16 @@ class BrandSafetyAudit(object):
         :param channel_ids: list | tuple
         :return: None
         """
-        to_audit = []
         channels = self.audit_utils.get_items(channel_ids, self.channel_manager)
-        for item in channels:
-            data = BrandSafetyChannelSerializer(item).data
-            data["videos"] = self._get_channel_videos([data["id"]])
-        pool = mp.Pool(processes=self.MAX_POOL_COUNT)
-        results = pool.map(self._process_audits, self.audit_utils.batch(to_audit, self.CHANNEL_POOL_BATCH_SIZE))
+        serialized = BrandSafetyChannelSerializer(channels, many=True).data
+        channel_data = self._get_channel_batch_data(serialized)
+
+        if len(channel_data) > 20:
+            pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+            results = pool.map(self._process_audits, self.audit_utils.batch(channel_data, self.CHANNEL_POOL_BATCH_SIZE))
+        else:
+            # Nest results for _extract_results method
+            results = [self._process_audits(channel_data)]
 
         # Extract nested results from each process and index into es
         video_audits, channel_audits = self._extract_results(results)
@@ -369,7 +372,7 @@ class BrandSafetyAudit(object):
         """
         videos = self.audit_utils.get_items(video_ids, self.video_manager)
         data = BrandSafetyVideoSerializer(videos, many=True).data
-        video_audits = self.audit_videos(videos=data)
+        video_audits = self.audit_videos(videos=data, get_blacklist_data=True)
         self._index_results(video_audits, [])
         return video_audits
 
