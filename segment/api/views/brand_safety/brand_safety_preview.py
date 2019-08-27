@@ -5,13 +5,14 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 import brand_safety.constants as constants
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
 from es_components.constants import SortDirections
 from segment.utils import get_persistent_segment_model_by_type
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 from utils.permissions import user_has_permission
-from utils.brand_safety_view_decorator import get_brand_safety_data
 
 
 class PersistentSegmentPreviewAPIView(APIView):
@@ -42,9 +43,11 @@ class PersistentSegmentPreviewAPIView(APIView):
         if segment_type == constants.CHANNEL:
             es_manager = ChannelManager(self.SECTIONS)
             sort_key = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
+            serializer = ChannelWithBlackListSerializer
         else:
             es_manager = VideoManager(self.SECTIONS)
             sort_key = {"stats.views": {"order": SortDirections.DESCENDING}}
+            serializer = VideoWithBlackListSerializer
         try:
             page = int(page)
         except ValueError:
@@ -65,22 +68,17 @@ class PersistentSegmentPreviewAPIView(APIView):
             raise Http404
 
         max_items = segment.details["items_count"]
-        max_page = max_items // size
+        max_page = (max_items // size) or 1
         if page > max_page:
             page = max_page
 
         offset = (page - 1) * size
         query = segment.get_segment_items_query()
-        data = es_manager.search(query, sort=sort_key, offset=offset, limit=offset + size).execute()
-        preview_data = []
-        for item in data:
-            score = getattr(item.brand_safety, "overall_score", None)
-            mapped = item.to_dict()
-            mapped["brand_safety_data"] = get_brand_safety_data(score)
-            preview_data.append(mapped)
+        result = es_manager.search(query, sort=sort_key, offset=offset, limit=offset + size).execute()
+        data = serializer(result.hits._l_, many=True).data
         result = {
-            "items": preview_data,
-            "items_count": len(preview_data),
+            "items": data,
+            "items_count": len(data),
             "current_page": page,
             "max_page": max_page
         }

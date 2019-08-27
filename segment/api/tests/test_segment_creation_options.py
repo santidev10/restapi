@@ -1,7 +1,7 @@
 import types
 from unittest.mock import patch
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST

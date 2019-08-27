@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 
 from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreation, TargetingItem

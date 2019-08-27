@@ -5,6 +5,7 @@ class ConcatAggregate(Aggregate):
     function = 'array_agg'
     name = 'Concat'
     template = '%(function)s(%(distinct)s%(expressions)s)'
+    allow_distinct = True
 
     def __init__(self, expression, distinct=False, **extra):
         super(ConcatAggregate, self).__init__(

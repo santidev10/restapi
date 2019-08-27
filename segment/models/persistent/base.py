@@ -42,7 +42,7 @@ class BasePersistentSegment(Timestampable):
     category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
     is_master = BooleanField(default=False, db_index=True)
 
-    details = JSONField(default=dict())
+    details = JSONField(default=dict)
 
     related = None  # abstract property
     segment_type = None  # abstract property
@@ -147,7 +147,7 @@ class BasePersistentSegmentRelated(Timestampable):
     title = TextField(default="")
     thumbnail_image_url = TextField(default="")
 
-    details = JSONField(default=dict())
+    details = JSONField(default=dict)
 
     class Meta:
         abstract = True

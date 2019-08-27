@@ -794,6 +794,6 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
                    new=lambda *_: "uid_from_aw"):
-            response = self.client.put(url, data)
+            response = self.client.put(url, json.dumps(data), content_type="application/json")
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

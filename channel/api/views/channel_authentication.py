@@ -121,7 +121,7 @@ class ChannelAuthenticationApiView(APIView):
         """
         # If user is logged in we simply return it
         user = self.request.user
-        if user and user.is_authenticated():
+        if user and user.is_authenticated:
             self.set_user_avatar(user, access_token)
             return user
 

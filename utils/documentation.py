@@ -49,8 +49,8 @@ class PathName:
 
 urlpatterns = [
     url(r"^$", RedirectView.as_view(pattern_name="login")),
-    url(r"^login/$", auth_views.login, dict(template_name="login.html"), name="login"),
-    url(r"^logout/$", auth_views.logout, dict(next_page="login"), name="logout"),
+    url(r"^login/$", auth_views.LoginView, dict(template_name="login.html"), name="login"),
+    url(r"^logout/$", auth_views.LogoutView, dict(next_page="login"), name="logout"),
     url(r"^swagger(?P<format>\.json|\.yaml)$", schema_view.without_ui(cache_timeout=0), name=PathName.SCHEMA),
     url(r"^swagger/$", schema_view.with_ui("swagger", cache_timeout=0), name=PathName.SWAGGER),
     url(r"^redoc/$", schema_view.with_ui("redoc", cache_timeout=0), name=PathName.REDOC),

@@ -1,6 +1,6 @@
 from urllib.parse import urlencode
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
