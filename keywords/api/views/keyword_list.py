@@ -15,8 +15,7 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
-TERMS_FILTER = ("stats.is_viral", "stats.top_category",)
-
+TERMS_FILTER = ("main.id", "stats.is_viral", "stats.top_category",)
 MATCH_PHRASE_FILTER = ("main.id",)
 
 RANGE_FILTER = ("stats.search_volume", "stats.average_cpc", "stats.competition",)
