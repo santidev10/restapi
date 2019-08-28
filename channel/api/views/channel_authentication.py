@@ -95,7 +95,15 @@ class ChannelAuthenticationApiView(APIView):
         channel.populate_auth(updated_at=auth_channel.updated_at, created_at=auth_channel.created_at)
         manager.upsert([channel])
 
+    def channel_remove_flag_deleted(self, channel_id):
+        manager = ChannelManager(Sections.DELETED)
+        channel = manager.get_or_create([channel_id])[0]
+        if channel.deleted is not None:
+            channel.deleted = None
+            manager.upsert([channel], ignore_updating_timestamp=True)
+
     def send_update_channel_tasks(self, channel_id):
+        self.channel_remove_flag_deleted(channel_id)
         send_task_channel_general_data_priority((channel_id,), wait=True)
         send_task_channel_stats_priority((channel_id,))
 
