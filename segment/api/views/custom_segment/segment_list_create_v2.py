@@ -1,4 +1,6 @@
-from django.db.models import Count
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.db.models import IntegerField
+from django.db.models.functions import Cast
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
@@ -49,7 +51,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             if sort_by not in self.ALLOWED_SORTS:
                 raise ValidationError("Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
             if sort_by == "items":
-                queryset = queryset.annotate(items=Count("related"))
+                queryset = queryset.annotate(items=Cast(KeyTextTransform("items_count", "statistics"), IntegerField()))
             if self.request.query_params.get("ascending"):
                 sort_by = "{}".format(sort_by)
             else:
