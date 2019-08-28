@@ -1,8 +1,5 @@
 import logging
 import multiprocessing as mp
-import time
-
-import pytz
 
 from audit_tool.models import BlacklistItem
 from brand_safety.constants import BRAND_SAFETY_SCORE
@@ -68,20 +65,20 @@ class BrandSafetyAudit(object):
         )
 
     def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 1
-        self.CHANNEL_POOL_BATCH_SIZE = 1
+        self.MAX_POOL_COUNT = 2
+        self.CHANNEL_POOL_BATCH_SIZE = 10
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_discovery_query
 
     def _set_update_config(self):
-        self.MAX_POOL_COUNT = 5
-        self.CHANNEL_POOL_BATCH_SIZE = 5
+        self.MAX_POOL_COUNT = 6
+        self.CHANNEL_POOL_BATCH_SIZE = 15
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_update_query
 
     def _set_manual_config(self):
-        self.MAX_POOL_COUNT = 5
-        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.MAX_POOL_COUNT = 2
+        self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
 
     def run(self):
@@ -108,7 +105,7 @@ class BrandSafetyAudit(object):
             self._index_results(video_audits, channel_audits)
 
             if self.channel_batch_counter % 10 == 0:
-                # Update config in case they have been modified
+                # Update config in case it has been modified
                 self.audit_utils.update_config()
         logger.error("Complete.")
 
@@ -364,7 +361,7 @@ class BrandSafetyAudit(object):
         self._index_results(video_audits, channel_audits)
         return channel_audits
 
-    def manual_video_audit(self, video_ids: iter):
+    def manual_video_audit(self, video_ids: iter, blacklist_data=None):
         """
         Score specific videos
         :param video_ids: list | tuple -> Youtube video id strings
@@ -372,7 +369,12 @@ class BrandSafetyAudit(object):
         """
         videos = self.audit_utils.get_items(video_ids, self.video_manager)
         data = BrandSafetyVideoSerializer(videos, many=True).data
-        video_audits = self.audit_videos(videos=data, get_blacklist_data=True)
+
+        if blacklist_data:
+            self.blacklist_data_ref = blacklist_data
+            video_audits = self.audit_videos(videos=data, get_blacklist_data=False)
+        else:
+            video_audits = self.audit_videos(videos=data, get_blacklist_data=True)
         self._index_results(video_audits, [])
         return video_audits
 

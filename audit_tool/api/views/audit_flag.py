@@ -58,24 +58,26 @@ class AuditFlagApiView(APIView):
 
         body = {}
         flag = BlacklistItem.get_or_create(item_id, item_type)
-        auditor = BrandSafetyAudit(discovery=False)
-
-        # If video, audit immediately and send overall_score in response
-        if item_type == 0:
-            video_audit = auditor.manual_video_audit([item_id])
-            data = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
-            body["overall_score"] = data
-        else:
-            # Enqueue channel to be audited
-            BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
 
         if len(flag_categories) > 0:
             flag.blacklist_category = flag_categories
             flag.save()
             body["action"] = "BlackListItem created/modified."
+            blacklist_data = {flag.item_id: flag.blacklist_category}
         else:
             flag.delete()
             body["action"] = "BlackListItem deleted."
+            blacklist_data = {}
+
+        # If video, audit immediately and send overall_score in response
+        if item_type == 0:
+            auditor = BrandSafetyAudit(discovery=False)
+            video_audit = auditor.manual_video_audit([item_id], blacklist_data=blacklist_data)[0]
+            data = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+            body["overall_score"] = data
+        else:
+            # Enqueue channel to be audited
+            BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
 
         body["BlackListItemDetails"] = {
             "item_type": flag.item_type,

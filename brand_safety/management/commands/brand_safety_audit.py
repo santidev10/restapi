@@ -1,12 +1,14 @@
 import logging
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from pid import PidFile
 from pid import PidFileError
 
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.constants import CHANNEL
+from brand_safety.constants import VIDEO
 from brand_safety.models import BrandSafetyFlag
+from brand_safety.models import BrandSafetyFlagQueueEmptyException
 from audit_tool.models import APIScriptTracker
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,7 @@ class Command(BaseCommand):
     UPDATE = "update"
     VIDEOS = "videos"
     TYPES = (QUEUE, MANUAL, DISCOVERY, UPDATE, VIDEOS)
+    MANUAL_TYPES = (CHANNEL, VIDEO)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -68,21 +71,19 @@ class Command(BaseCommand):
 
     def _handle_queue(self, *args, **kwargs):
         """
-        Dequeue channel and video items from BrandSafetyFlag and audit
+        Dequeue channel items from BrandSafetyFlag and audit
         :param args:
         :param kwargs:
         :return:
         """
         auditor = BrandSafetyAudit(discovery=False)
-        video_dequeue_qs = BrandSafetyFlag.dequeue(0)
-        video_dequeue_ids = [item.item_id for item in video_dequeue_qs]
-        auditor.manual_video_audit(video_dequeue_ids)
-        video_dequeue_qs.update(completed_at=timezone.now())
-
-        channel_dequeue_qs = BrandSafetyFlag.dequeue(1)
-        channel_dequeue_ids = [item.item_id for item in channel_dequeue_qs]
-        auditor.manual_channel_audit(channel_dequeue_ids)
-        channel_dequeue_qs.update(completed_at=timezone.now())
+        try:
+            channel_dequeue_qs = BrandSafetyFlag.dequeue(1, dequeue_limit=10)
+            channel_dequeue_ids = [item.item_id for item in channel_dequeue_qs]
+            auditor.manual_channel_audit(channel_dequeue_ids)
+            BrandSafetyFlag.objects.filter(item_id__in=channel_dequeue_ids, item_type=1).delete()
+        except BrandSafetyFlagQueueEmptyException:
+            pass
 
     def _handle_manual(self, *args, **options):
         """
@@ -93,13 +94,16 @@ class Command(BaseCommand):
         """
         manual_type = options["manual"]
         manual_ids = options["ids"].strip().split(",")
-        auditor = BrandSafetyAudit(**options)
-        if manual_type == "video":
-            auditor.manual_video_audit(manual_ids)
-        elif manual_type == "channel":
-            auditor.manual_channel_audit(manual_ids)
-        else:
-            raise ValueError("Unsupported manual type: {}".format(manual_type))
+        auditor = BrandSafetyAudit(discovery=False)
+        config = {
+            CHANNEL: auditor.manual_channel_audit,
+            VIDEO: auditor.manual_video_audit
+        }
+        try:
+            manual_auditor = config[manual_type]
+            manual_auditor(manual_ids)
+        except KeyError:
+            raise ValueError(f"Invalid manual type: {manual_type}")
 
     def _handle_discovery(self, *args, **options):
         """
