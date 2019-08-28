@@ -12,3 +12,4 @@ class Namespace:
     AUDIT_TOOL = "audit_tool_api_urls"
     HIGHLIGHTS = "highlights_api_urls"
     DOCUMENTATION = "documentation"
+    HEALTHCHECK = "healthcheck"
