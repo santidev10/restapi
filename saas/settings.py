@@ -49,11 +49,12 @@ PROJECT_APPS = (
     "brand_safety",
     "channel",
     "email_reports",
+    "healthcheck",
+    "highlights",
     "keyword_tool",
+    "related_tool",
     "segment",
     "userprofile",
-    "related_tool",
-    "highlights",
 )
 
 THIRD_PARTY_APPS = (
