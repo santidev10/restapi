@@ -1,5 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
+from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 
 
@@ -106,10 +107,10 @@ class BrandSafetyChannelAudit(object):
                 pass
 
         # If blacklist data available, then set overall score and blacklisted category score to 0
-        if self.blacklist_data:
-            channel_brand_safety_score.overall_score = 0
-            for category_id in self.blacklist_data.keys():
-                channel_brand_safety_score.category_scores[category_id] = 0
+        for category_id in self.blacklist_data.keys():
+            channel_brand_safety_score.category_scores[category_id] = 0
+            if category_id not in BadWordCategory.EXCLUDED:
+                channel_brand_safety_score.overall_score = 0
 
         return channel_brand_safety_score
 
