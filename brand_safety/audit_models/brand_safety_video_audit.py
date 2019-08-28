@@ -83,9 +83,11 @@ class BrandSafetyVideoAudit(object):
             except KeyError:
                 pass
 
-        # If blacklist data available, then set blacklisted category score to 0
-        for category_id in self.blacklist_data.keys():
-            brand_safety_score.category_scores[category_id] = 0
+        # If blacklist data available, then set overall score and blacklisted category score to 0
+        if self.blacklist_data:
+            brand_safety_score.overall_score = 0
+            for category_id in self.blacklist_data.keys():
+                brand_safety_score.category_scores[category_id] = 0
 
         return brand_safety_score
 
