@@ -12,12 +12,13 @@ class BrandSafetyVideoAudit(object):
         "transcript": 1
     }
 
-    def __init__(self, data, audit_utils):
+    def __init__(self, data, audit_utils, blacklist_data=None):
         self.audit_utils = audit_utils
         self.score_mapping = audit_utils.score_mapping
-        self.default_category_scores = audit_utils.default_video_score
+        self.default_category_scores = audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
         self._set_metadata(data)
+        self.blacklist_data = blacklist_data or {}
 
     @property
     def pk(self):
@@ -81,6 +82,11 @@ class BrandSafetyVideoAudit(object):
                 brand_safety_score.add_keyword_score(word.name, keyword_category, calculated_score)
             except KeyError:
                 pass
+
+        # If blacklist data available, then set blacklisted category score to 0
+        for category_id in self.blacklist_data.keys():
+            brand_safety_score.category_scores[category_id] = 0
+
         return brand_safety_score
 
     def instantiate_es(self):

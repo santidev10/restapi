@@ -87,3 +87,4 @@ HIGH_RISK = "HIGH RISK"
 
 CHANNELS_INDEX = "channels"
 VIDEOS_INDEX = "videos"
+BLACKLIST_DATA = "blacklist_data"
