@@ -27,7 +27,7 @@ class BrandSafetyAudit(object):
     CHANNEL_POOL_BATCH_SIZE = None
     CHANNEL_MASTER_BATCH_SIZE = None
     # Hours in which a channel should be updated
-    UPDATE_TIME_THRESHOLD = 24 * 3
+    UPDATE_TIME_THRESHOLD = "now-7d/d"
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
     MINIMUM_SUBSCRIBER_COUNT = 1000
@@ -294,7 +294,7 @@ class BrandSafetyAudit(object):
         query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
-        query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte("now-7d/d").get()
+        query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(self.UPDATE_TIME_THRESHOLD).get()
         return query
 
     def _create_discovery_query(self, cursor_id):
