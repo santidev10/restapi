@@ -18,6 +18,7 @@ from administration.notifications import send_welcome_email
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
@@ -96,11 +97,20 @@ class ChannelAuthenticationApiView(APIView):
         manager.upsert([channel])
 
     def channel_remove_flag_deleted(self, channel_id):
-        manager = ChannelManager(Sections.DELETED)
-        channel = manager.get_or_create([channel_id])[0]
-        if channel.deleted is not None:
-            channel.deleted = None
-            manager.upsert([channel], ignore_updating_timestamp=True)
+        manager = ChannelManager()
+        channel = manager.get([channel_id]).pop()
+        if channel and channel.deleted is not None:
+            manager.remove_sections(
+                manager.ids_query([channel_id]),
+                [Sections.DELETED]
+            )
+
+            video_manager = VideoManager()
+
+            manager.remove_sections(
+                video_manager.by_channel_ids_query(channel_id),
+                [Sections.DELETED]
+            )
 
     def send_update_channel_tasks(self, channel_id):
         self.channel_remove_flag_deleted(channel_id)
