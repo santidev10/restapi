@@ -119,8 +119,8 @@ class Command(BaseCommand):
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
-        start = thread_id * 100
-        for video in pending_videos[start:start+100]:
+        start = thread_id * 50
+        for video in pending_videos[start:start+50]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
