@@ -39,7 +39,7 @@ class BrandSafetyFlag(Model):
         else:
             manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
             model = Channel
-        AuditUtils.reset_brand_safety_score(enqueue_item.item_id, model=model, manager=manager)
+        AuditUtils.reset_brand_safety_scores(enqueue_item.item_id, model=model, manager=manager)
         return enqueue_item
 
     @staticmethod
