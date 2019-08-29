@@ -78,6 +78,7 @@ class AuditFlagApiView(APIView):
         else:
             # Enqueue channel to be audited
             BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
+            body["overall_score"] = None
 
         body["BlackListItemDetails"] = {
             "item_type": flag.item_type,
