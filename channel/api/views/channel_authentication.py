@@ -97,9 +97,10 @@ class ChannelAuthenticationApiView(APIView):
         manager.upsert([channel])
 
     def channel_remove_flag_deleted(self, channel_id):
-        manager = ChannelManager()
+        manager = ChannelManager(Sections.DELETED)
         channel = manager.get([channel_id]).pop()
-        if channel and channel.deleted is not None:
+
+        if channel and channel.deleted:
             manager.remove_sections(
                 manager.ids_query([channel_id]),
                 [Sections.DELETED]
