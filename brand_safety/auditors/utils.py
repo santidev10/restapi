@@ -248,7 +248,7 @@ class AuditUtils(object):
         return results
 
     @staticmethod
-    def reset_brand_safety_score(item_ids, model=None, manager=None):
+    def reset_brand_safety_scores(item_ids, model=None, manager=None):
         """
         Reset brand safety score
         :param item_ids: list -> Channel or video ids
