@@ -181,12 +181,8 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
 
     def test_sort_by_items_descending(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2")
-        CustomSegmentRelated.objects.create(
-            related_id="test",
-            segment=seg_1
-        )
+        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1", statistics={"items_count": 2})
+        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=1, segment_type=0, title="2", statistics={"items_count": 1})
         CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
         CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
         query_prams = QueryDict(
