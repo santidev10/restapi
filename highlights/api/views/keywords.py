@@ -14,7 +14,10 @@ ORDERING_FIELDS = (
     "stats.top_category_last_7day_views:desc",
     "stats.top_category_last_day_views:desc",
 )
-TERMS_FILTER = ("stats.top_category",)
+TERMS_FILTER = (
+    "main.id",
+    "stats.top_category",
+)
 ALLOWED_AGGREGATIONS = ("stats.top_category",)
 
 

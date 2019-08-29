@@ -163,6 +163,23 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
         video_ids = [str(video.main.id) for video in videos]
 
+        response = self._request(**{"main.id": ",".join(video_ids[:filter_count])})
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    def test_filter_ids_deprecated(self):
+        self.create_admin_user()
+        filter_count = 2
+        videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
+        video_ids = [str(video.main.id) for video in videos]
+
         response = self._request(ids=",".join(video_ids[:filter_count]))
 
         csv_data = get_data_from_csv_response(response)

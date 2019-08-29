@@ -28,6 +28,7 @@ ORDERING_FIELDS = (
     "stats.last_day_views:desc",
 )
 TERMS_FILTER = (
+    "main.id",
     "general_data.category",
     "general_data.language",
 )
