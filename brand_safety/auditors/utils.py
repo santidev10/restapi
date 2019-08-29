@@ -11,6 +11,7 @@ from emoji import UNICODE_EMOJI
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.lang import remove_mentions_hashes_urls
@@ -245,3 +246,28 @@ class AuditUtils(object):
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(item_ids).get()
         results = manager.search(query).execute().hits
         return results
+
+    @staticmethod
+    def reset_brand_safety_scores(item_ids, model=None, manager=None):
+        """
+        Reset brand safety score
+        :param item_ids: list -> Channel or video ids
+        :param manager: ES Manager instantiated with upsert: brand safety section
+        :return:
+        """
+        if type(item_ids) is str:
+            item_ids = [item_ids]
+        if Sections.BRAND_SAFETY not in manager.upsert_sections:
+            raise ValueError(f"Manager must include section: f{Sections.BRAND_SAFETY} in upsert section.")
+        updated = [
+            model(**{
+                "meta": {"id": _id},
+                "brand_safety": {
+                    "overall_score": None,
+                    "videos_scored": None,
+                    "language": None,
+                    "categories": None
+                }
+            }) for _id in item_ids
+        ]
+        manager.upsert(updated)
