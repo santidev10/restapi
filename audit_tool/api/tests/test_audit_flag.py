@@ -46,6 +46,8 @@ class AuditFlagAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["BlackListItemDetails"]["item_id"], self.channel_black_list_item.item_id)
         self.assertEqual(response.data["BlackListItemDetails"]["blacklist_category"],
                          {str(self.flag_category_1.id): 100})
+        self.assertEqual(response.data["brand_safety_data"]["score"], None)
+        self.assertEqual(response.data["brand_safety_data"]["label"], None)
 
     def test_delete_existing_video_blacklist_item(self, manual_video_audit_mock):
         query_url = "{}?item_type={}&item_id={}" \
@@ -67,5 +69,5 @@ class AuditFlagAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["BlackListItemDetails"]["item_id"], "def")
         self.assertEqual(response.data["BlackListItemDetails"]["blacklist_category"],
                          {"1": 100, "2": 100})
-        self.assertIsNotNone(response.data.get("overall_score"))
-        self.assertEqual(response.data["overall_score"], 100)
+        self.assertEqual(response.data["brand_safety_data"]["score"], 100)
+        self.assertEqual(response.data["brand_safety_data"]["label"], "SAFE")
