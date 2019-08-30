@@ -52,13 +52,15 @@ class BrandSafetyChannelAPIView(APIView):
         except (ValueError, TypeError, KeyError):
             size = self.MAX_PAGE_SIZE
 
-        channel_data = AuditUtils.get_items([channel_id], self.channel_manager)[0]
+        try:
+            channel_data = AuditUtils.get_items([channel_id], self.channel_manager)[0]
+        except IndexError:
+            channel_data = None
         channel_response = {
             "total_videos_scored": 0,
             "total_flagged_videos": 0,
-            "flagged_words": 0,
+            "flagged_words": [],
         }
-
         try:
             # Add brand safety data to channel response
             channel_response.update({
@@ -66,11 +68,10 @@ class BrandSafetyChannelAPIView(APIView):
                 "flagged_words": self._extract_key_words(channel_data.brand_safety.categories.to_dict()),
                 **get_brand_safety_data(channel_data.brand_safety.overall_score)
             })
-        except (IndexError, AttributeError):
+        except AttributeError:
             # No channel brand safety, add empty data
             channel_response.update({
-                "total_videos_scored": channel_data.stats.total_videos_count or 0,
-                "flagged_words": 0,
+                "total_videos_scored": (channel_data.stats.total_videos_count or 0) if channel_data else 0,
                 **get_brand_safety_data(None)
             })
         try:

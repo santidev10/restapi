@@ -31,7 +31,8 @@ def cached_method(timeout):
 
             if not data:
                 data = method(obj, *args, **kwargs)
-                if settings.ES_CACHE_ENABLED:
+
+            if settings.ES_CACHE_ENABLED and data:
                     set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
 
             # Reset ES_CACHE_ENABLED
