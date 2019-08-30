@@ -20,6 +20,7 @@ def cached_method(timeout):
             options = (args, kwargs)
             part = method.__name__
 
+            default_es_cache_setting = settings.ES_CACHE_ENABLED
             # If items are in brand safety rescore queue, then do not get cached data
             if part == "get_data" and BrandSafetyFlag.objects.exists():
                 settings.ES_CACHE_ENABLED = False
@@ -34,7 +35,7 @@ def cached_method(timeout):
                     set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
 
             # Reset ES_CACHE_ENABLED
-            settings.ES_CACHE_ENABLED = True
+            settings.ES_CACHE_ENABLED = default_es_cache_setting
             return data
 
         return wrapped
