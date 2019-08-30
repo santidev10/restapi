@@ -4,7 +4,6 @@ from distutils.util import strtobool
 from django.core.paginator import EmptyPage
 from django.core.paginator import InvalidPage
 from django.core.paginator import Paginator
-from django.http import Http404
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_502_BAD_GATEWAY
@@ -31,8 +30,8 @@ class BrandSafetyChannelAPIView(APIView):
     MAX_SIZE = 10000
     BRAND_SAFETY_SCORE_FLAG_THRESHOLD = 89
     MAX_PAGE_SIZE = 24
-    channel_manager = ChannelManager(sections=Sections.BRAND_SAFETY)
-    video_manager = VideoManager(sections=Sections.BRAND_SAFETY)
+    channel_manager = ChannelManager(sections=(Sections.STATS, Sections.BRAND_SAFETY))
+    video_manager = VideoManager(sections=(Sections.BRAND_SAFETY,))
 
     def get(self, request, **kwargs):
         """
@@ -52,23 +51,35 @@ class BrandSafetyChannelAPIView(APIView):
                 size = self.MAX_PAGE_SIZE
         except (ValueError, TypeError, KeyError):
             size = self.MAX_PAGE_SIZE
+
         try:
-            brand_safety_data = AuditUtils.get_items([channel_id], self.channel_manager)[0].brand_safety
-            channel_response = {
-                "total_videos_scored": brand_safety_data.videos_scored,
-                "total_flagged_videos": 0,
-                "flagged_words": self._extract_key_words(brand_safety_data.categories.to_dict())
-            }
-            channel_response.update(get_brand_safety_data(brand_safety_data.overall_score))
-        except (IndexError, AttributeError):
-            channel_response = None
-        if not channel_response:
-            raise Http404
+            channel_data = AuditUtils.get_items([channel_id], self.channel_manager)[0]
+        except IndexError:
+            channel_data = None
+        channel_response = {
+            "total_videos_scored": 0,
+            "total_flagged_videos": 0,
+            "flagged_words": [],
+        }
+        try:
+            # Add brand safety data to channel response
+            channel_response.update({
+                "total_videos_scored": channel_data.brand_safety.videos_scored,
+                "flagged_words": self._extract_key_words(channel_data.brand_safety.categories.to_dict()),
+                **get_brand_safety_data(channel_data.brand_safety.overall_score)
+            })
+        except AttributeError:
+            # No channel brand safety, add empty data
+            channel_response.update({
+                "total_videos_scored": (channel_data.stats.total_videos_count or 0) if channel_data else 0,
+                **get_brand_safety_data(None)
+            })
         try:
             videos = self._get_channel_video_data(channel_id)
         except Exception as e:
             return Response(status=HTTP_502_BAD_GATEWAY, data=constants.UNAVAILABLE_MESSAGE)
 
+        # Add flagged videos to channel brand safety
         flagged_videos = []
         for video in videos:
             try:

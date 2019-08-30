@@ -1,5 +1,4 @@
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_404_NOT_FOUND
 
 from brand_safety.api.urls.names import BrandSafetyPathName
 from es_components.constants import Sections
@@ -44,7 +43,14 @@ class BrandSafetyChannelApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             kwargs={"pk": "test"}
         )
         response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["brand_safety"]["total_videos_scored"], 0)
+        self.assertEqual(response.data["brand_safety"]["total_flagged_videos"], 0)
+        self.assertEqual(response.data["brand_safety"]["score"], None)
+        self.assertEqual(response.data["brand_safety"]["label"], None)
+        self.assertEqual(response.data["current_page"], 1)
+        self.assertEqual(response.data["items_count"], 0)
+        self.assertEqual(response.data["max_page"], 1)
 
     def test_brand_safety_channel_with_threshold(self):
         self.create_test_user()
