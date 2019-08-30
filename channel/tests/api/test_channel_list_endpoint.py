@@ -62,3 +62,21 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         for field in extra_fields:
             with self.subTest(field):
                 self.assertIn(field, response.data["items"][0])
+
+    def test_similar_channels(self):
+        self.create_admin_user()
+
+        channel = Channel("test_channel")
+        default_similar_channels = [Channel(str(i)) for i in range(20)]
+
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH]).upsert(default_similar_channels)
+
+        channel.populate_similar_channels(
+            default=[channel.main.id for channel in default_similar_channels]
+        )
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.SIMILAR_CHANNELS]).upsert([channel])
+
+        response = self.client.get(self.url + "?similar_to=test_channel")
+
+        self.assertEqual(len(response.data.get('items')), len(default_similar_channels))
+
