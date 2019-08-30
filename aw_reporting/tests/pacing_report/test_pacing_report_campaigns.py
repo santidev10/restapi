@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.utils import timezone
 
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
@@ -31,6 +32,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         campaign_2 = Campaign.objects.create(id="2", name="B", account=account,
                                              salesforce_placement=placement, **stats_2)
         CampaignStatistic.objects.create(campaign=campaign_2, date=start, **stats_2)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         campaigns = report.get_campaigns(flight)

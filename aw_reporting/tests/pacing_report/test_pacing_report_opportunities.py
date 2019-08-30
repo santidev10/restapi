@@ -4,6 +4,7 @@ from datetime import time
 from datetime import timedelta
 
 import pytz
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.conf import settings
 from django.utils import timezone
 
@@ -46,7 +47,8 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             cost=1, video_views=100,  # cpv 0.01
             clicks=10, impressions=1000,
         )
-        campaign = Campaign.objects.create(id="1", name="",
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(id="1", name="", account=account,
                                            salesforce_placement=placement,
                                            **campaign_1_delivery)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign,
@@ -64,11 +66,12 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             cost=1, video_views=10,  # cpv 0.1
             clicks=2, impressions=100,
         )
-        campaign2 = Campaign.objects.create(id="2", name="",
+        campaign2 = Campaign.objects.create(id="2", name="", account=account,
                                             salesforce_placement=placement2,
                                             **campaign_2_delivery)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign2,
                                          **campaign_2_delivery)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         opportunities = report.get_opportunities({})
@@ -166,6 +169,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             start=today + timedelta(days=12), end=today + timedelta(days=24),
             cost=100, total_cost=opportunity.budget / 3,
         )
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         with patch_now(now):
@@ -227,6 +231,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             start=today - timedelta(days=2), end=today + timedelta(days=7),
             ordered_units=10000,
         )
+        recalculate_de_norm_fields_for_account(account.id)
 
         with patch_now(now):
             report = PacingReport()
@@ -300,6 +305,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         account = Account.objects.create(update_time=test_last_update, timezone=test_timezone_str)
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units)
+        recalculate_de_norm_fields_for_account(account.id)
 
         start_time = datetime.combine(start, time.min).replace(tzinfo=test_timezone)
         end_time = datetime.combine(end + timedelta(days=1), time.min).replace(tzinfo=test_timezone)
@@ -334,6 +340,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
         account = Account.objects.create()
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units, cost=cost)
+        recalculate_de_norm_fields_for_account(account.id)
 
         client_cost = delivered_units * placement.ordered_rate / 1000
         expected_margin = 1 - cost / client_cost
@@ -403,6 +410,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             video_views=delivered_2,
             cost=cost_2,
         )
+        recalculate_de_norm_fields_for_account(account.id)
         client_cost_1, client_cost_2 = delivered_1 * ordered_rate, delivered_2 * ordered_rate
         self.assertGreater(client_cost_1, total_cost_1)
         self.assertLess(client_cost_2, total_cost_2)

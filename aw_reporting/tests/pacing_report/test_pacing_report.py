@@ -2,6 +2,8 @@ import pytz
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.utils import timezone
 
 from aw_reporting.models import Account
@@ -14,6 +16,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -83,6 +86,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
             id="1", account=account, name="", salesforce_placement=placement, video_views=102,
         )
         CampaignStatistic.objects.create(date=start, campaign=campaign, video_views=102)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         opportunities = report.get_opportunities(dict(period="custom", start=start, end=end))
@@ -122,11 +126,13 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         campaign = Campaign.objects.create(
             id="1", name="", salesforce_placement=placement,
+            account=Account.objects.create(id=next(int_iterator)),
             video_views=204,
             cost=10.2,
         )
         # 204 = x2 ordered_units - over delivery
         CampaignStatistic.objects.create(campaign=campaign, date=start, video_views=204, cost=10.2, )
+        recalculate_de_norm_fields_for_account(campaign.account_id)
 
         report = PacingReport()
         opportunities = report.get_opportunities(dict(period="custom", start=start, end=end))
@@ -237,6 +243,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         )
         CampaignStatistic.objects.create(campaign=campaign, date=today, video_views=1, impressions=10)
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=1, video_views=0, impressions=10)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
 
@@ -248,6 +255,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # normal rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=2, video_views=24, impressions=80)
+        recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
         self.assertEqual(campaigns[0]['video_view_rate'], 0.25)
@@ -255,6 +263,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # high rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=3, video_views=5, impressions=0)
+        recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
         self.assertEqual(campaigns[0]['video_view_rate'], 0.30)
@@ -279,6 +288,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         account = Account.objects.create(id="1", name="")
         campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement, account=account)
         CampaignStatistic.objects.create(campaign=campaign, date=today, clicks=1, impressions=400)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
 
@@ -290,6 +300,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # normal rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=2, clicks=1)
+        recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
         self.assertEqual(campaigns[0]['ctr'], 0.005)
@@ -297,6 +308,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
 
         # high rate
         CampaignStatistic.objects.create(campaign=campaign, date=today, device_id=3, clicks=1)
+        recalculate_de_norm_fields_for_account(account.id)
         campaigns = report.get_campaigns(flight)
         self.assertEqual(len(campaigns), 1)
         self.assertEqual(campaigns[0]['ctr'], 0.0075)
@@ -330,6 +342,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         campaign = Campaign.objects.create(id="1", account=account,
                                            salesforce_placement=placement, video_views=700)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         opportunities = report.get_opportunities({})
@@ -366,6 +379,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         campaign = Campaign.objects.create(id="1", salesforce_placement=placement, video_views=700,
                                            account=account)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=700)
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         placements = report.get_placements(opportunity)
