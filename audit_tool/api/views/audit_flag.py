@@ -10,6 +10,7 @@ from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from utils.permissions import user_has_permission
+from utils.brand_safety_view_decorator import get_brand_safety_data
 
 
 class AuditFlagApiView(APIView):
@@ -73,11 +74,12 @@ class AuditFlagApiView(APIView):
         if item_type == 0:
             auditor = BrandSafetyAudit(discovery=False)
             video_audit = auditor.manual_video_audit([item_id], blacklist_data=blacklist_data)[0]
-            data = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
-            body["overall_score"] = data
+            overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+            body["brand_safety_data"] = get_brand_safety_data(overall_score)
         else:
             # Enqueue channel to be audited
             BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
+            body["brand_safety_data"] = get_brand_safety_data(None)
 
         body["BlackListItemDetails"] = {
             "item_type": flag.item_type,

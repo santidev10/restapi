@@ -4,6 +4,13 @@ from django.db.models import IntegerField
 from django.db.models import Model
 from django.db.utils import IntegrityError
 
+from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.models import Channel
+from es_components.models import Video
+
 
 class BrandSafetyFlag(Model):
     VIDEO_ITEM = 0
@@ -16,7 +23,7 @@ class BrandSafetyFlag(Model):
     @staticmethod
     def enqueue(*_, **kwargs):
         """
-        Create new BrandSafetyFlag entry
+        Create new BrandSafetyFlag entry and reset its brand safety score
         :param _:
         :param kwargs: Model field values
         :return: BrandSafetyFlag
@@ -26,6 +33,13 @@ class BrandSafetyFlag(Model):
         except IntegrityError:
             # Item is already in queue
             enqueue_item = BrandSafetyFlag.objects.get(**kwargs)
+        if enqueue_item.item_type == 0:
+            manager = VideoManager(upsert_sections=(Sections.BRAND_SAFETY,))
+            model = Video
+        else:
+            manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
+            model = Channel
+        AuditUtils.reset_brand_safety_scores(enqueue_item.item_id, model=model, manager=manager)
         return enqueue_item
 
     @staticmethod

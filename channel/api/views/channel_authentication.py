@@ -18,6 +18,7 @@ from administration.notifications import send_welcome_email
 from channel.models import AuthChannel
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
@@ -95,7 +96,25 @@ class ChannelAuthenticationApiView(APIView):
         channel.populate_auth(updated_at=auth_channel.updated_at, created_at=auth_channel.created_at)
         manager.upsert([channel])
 
+    def channel_remove_flag_deleted(self, channel_id):
+        manager = ChannelManager(Sections.DELETED)
+        channel = manager.get([channel_id]).pop()
+
+        if channel and channel.deleted:
+            manager.remove_sections(
+                manager.ids_query([channel_id]),
+                [Sections.DELETED]
+            )
+
+            video_manager = VideoManager()
+
+            manager.remove_sections(
+                video_manager.by_channel_ids_query(channel_id),
+                [Sections.DELETED]
+            )
+
     def send_update_channel_tasks(self, channel_id):
+        self.channel_remove_flag_deleted(channel_id)
         send_task_channel_general_data_priority((channel_id,), wait=True)
         send_task_channel_stats_priority((channel_id,))
 
