@@ -4,7 +4,6 @@ from datetime import time
 from datetime import timedelta
 
 import pytz
-from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.conf import settings
 from django.utils import timezone
 
@@ -17,6 +16,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now

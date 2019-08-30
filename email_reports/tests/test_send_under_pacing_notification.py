@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.conf import settings
 from django.core import mail
 
@@ -61,6 +62,7 @@ class SendDailyEmailsTestCase(APITestCase):
                                            **stats)
         CampaignStatistic.objects.create(campaign=campaign, date=start,
                                          **stats)
+        recalculate_de_norm_fields_for_account(account.id)
 
         send_daily_email_reports(reports=["CampaignUnderPacing"], debug=False)
 

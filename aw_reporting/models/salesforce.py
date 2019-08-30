@@ -494,16 +494,19 @@ class Flight(BaseModel, DemoEntityModelMixin):
     @property
     def stats(self):
         if self._stats is None:
-            self._stats = dict(
-                video_views=self.statistic.video_views,
-                impressions=self.statistic.impressions,
-                cost=self.statistic.sum_cost,
-            )
+            try:
+                self._stats = dict(
+                    video_views=self.statistic.video_views,
+                    impressions=self.statistic.impressions,
+                    cost=self.statistic.sum_cost,
+                )
+            except FlightStatistic.DoesNotExist:
+                self._stats = dict(video_views=0, impressions=0, cost=0)
         return self._stats
 
     @property
     def delivered_cost(self):
-        return self.stats['sum_cost']
+        return self.stats['cost']
 
     @property
     def delivered_units(self):
