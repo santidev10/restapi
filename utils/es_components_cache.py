@@ -3,6 +3,7 @@ import pickle
 
 from django.conf import settings
 
+from brand_safety.models.brand_safety_flag import BrandSafetyFlag
 from utils.redis import get_redis_client
 
 DEFAULT_PAGE_SIZE = 50
@@ -19,12 +20,21 @@ def cached_method(timeout):
             options = (args, kwargs)
             part = method.__name__
 
+            # If items are in brand safety rescore queue, then do not get cached data
+            if part == "get_data" and BrandSafetyFlag.objects.exists():
+                settings.ES_CACHE_ENABLED = False
+
             data = get_from_cache(obj, part=part, options=options) \
                 if settings.ES_CACHE_ENABLED \
                 else None
-            if data is None:
+
+            if not data:
                 data = method(obj, *args, **kwargs)
-                set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
+                if settings.ES_CACHE_ENABLED:
+                    set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
+
+            # Reset ES_CACHE_ENABLED
+            settings.ES_CACHE_ENABLED = True
             return data
 
         return wrapped
