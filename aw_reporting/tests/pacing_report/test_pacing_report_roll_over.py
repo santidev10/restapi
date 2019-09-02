@@ -5,7 +5,9 @@ from django.utils import timezone
 from aw_reporting.models import Opportunity, OpPlacement, SalesForceGoalType, \
     Flight, Account, Campaign, CampaignStatistic
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
@@ -75,6 +77,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
         CampaignStatistic.objects.create(
             date=prev_end, campaign=campaign, video_views=1530,  # 1020 over delivery
         )
+        recalculate_de_norm_fields_for_account(account.id)
         report = PacingReport()
         # test flight
         flights = report.get_flights(placement)
@@ -120,6 +123,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
             date=flight.start - timedelta(days=1),
             campaign=campaign, video_views=1020,  # over delivery
         )
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
 
@@ -186,6 +190,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
             placement=placement,
             ordered_units=0,  # this doesn't matter
         )
+        recalculate_de_norm_fields_for_account(account.id)
 
         report = PacingReport()
         flights = report.get_flights(placement)
@@ -226,7 +231,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
         )
-        campaign = Campaign.objects.create(id="1", name="", salesforce_placement=placement)
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(id="1", name="", account=account, salesforce_placement=placement)
         jan_start = today.replace(month=1)
         jan_end = jan_start.replace(day=31)
         jan = Flight.objects.create(id="1", name="", placement=placement, ordered_units=1000,
@@ -240,6 +246,7 @@ class PacingReportTestCase(ExtendedAPITestCase):
                                     start=feb_start, end=feb_end)
         CampaignStatistic.objects.create(date=feb_start + timedelta(days=10), campaign=campaign, video_views=220)
         CampaignStatistic.objects.create(date=feb_end, campaign=campaign, video_views=300)
+        recalculate_de_norm_fields_for_account(account.id)
 
         march_start = today.replace(month=3)
         march_end = march_start.replace(day=30)

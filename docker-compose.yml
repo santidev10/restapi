@@ -17,6 +17,8 @@ services:
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
+      APM_ENABLED: 1
+      ELASTIC_APM_SERVER_URL: http://apm-server:8200
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -27,8 +29,8 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --silent localhost:5000 || exit 1"]
-      interval: 5s
+      test: ["CMD-SHELL", "curl --silent localhost:5000/api/healthcheck/status/ || exit 1"]
+      interval: 30s
       timeout: 3s
       retries: 30
 
@@ -96,3 +98,62 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # APM
+  apm-es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-6.6.1}
+    environment:
+      - cluster.name=docker-cluster
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-6.6.1}
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+      retries: 10
+      interval: 20s
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-6.6.1}
+    command: >
+      apm-server -e
+        -E apm-server.frontend.enabled=true
+        -E apm-server.frontend.rate_limit=100000
+        -E apm-server.host=0.0.0.0:8200
+        -E apm-server.read_timeout=1m
+        -E apm-server.shutdown_timeout=2m
+        -E apm-server.write_timeout=1m
+        -E setup.kibana.host=kibana:5601
+        -E setup.template.settings.index.number_of_replicas=0
+        -E xpack.monitoring.elasticsearch=true
+        -E output.elasticsearch.enabled=${APM_SERVER_ELASTICSEARCH_OUTPUT_ENABLED:-true}
+        -E output.elasticsearch.hosts=apm-es:9200
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    depends_on:
+      - apm-es
+    healthcheck:
+      test: ["CMD", "curl", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://apm-server:8200/"]
+      retries: 10
+      interval: 10s
+  apm-kibana:
+    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-6.6.1}
+    environment:
+      SERVER_NAME: kibana.example.org
+      ELASTICSEARCH_URL: http://apm-es:9200
+    healthcheck:
+      test: ["CMD", "curl", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://apm-kibana:5601/"]
+      retries: 10
+      interval: 10s
+    depends_on:
+      - apm-es

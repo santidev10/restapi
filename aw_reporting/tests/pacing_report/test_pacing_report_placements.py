@@ -15,6 +15,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import settings
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
 from utils.utittests.patch_now import patch_now
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -223,6 +224,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         account = Account.objects.create(update_time=test_last_update, timezone=test_timezone_str)
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units)
+        recalculate_de_norm_fields_for_account(account.id)
 
         start_time = datetime.combine(start, time.min).replace(tzinfo=test_timezone)
         end_time = datetime.combine(end + timedelta(days=1), time.min).replace(tzinfo=test_timezone)
@@ -257,6 +259,7 @@ class PacingReportPlacementsTestCase(ExtendedAPITestCase):
         account = Account.objects.create()
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=test_now, campaign=campaign, impressions=delivered_units, cost=cost)
+        recalculate_de_norm_fields_for_account(account.id)
 
         client_cost = delivered_units * placement.ordered_rate / 1000
         expected_margin = 1 - cost / client_cost

@@ -5,10 +5,14 @@ from functools import reduce
 from django.conf import settings
 from django.db.models import Case
 from django.db.models import Count
+from django.db.models import F
+from django.db.models import FloatField
 from django.db.models import IntegerField
 from django.db.models import Max
 from django.db.models import Min
+from django.db.models import Q
 from django.db.models import Sum
+from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
 
@@ -19,7 +23,11 @@ from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import Flight
+from aw_reporting.models import FlightStatistic
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
+from aw_reporting.models.salesforce_constants import DynamicPlacementType
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.lang import flatten
 from utils.lang import pick_dict
 
@@ -33,7 +41,8 @@ MODELS_WITH_ACCOUNT_ID_REF = (
 
 def recalculate_de_norm_fields_for_account(account_id):
     _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id)
-    _recalculate_de_norm_fields_for_account_statisics(account_id)
+    _recalculate_de_norm_fields_for_account_statistics(account_id)
+    _recalculate_de_norm_fields_for_account_flights(account_id)
 
 
 def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
@@ -133,7 +142,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             model.objects.filter(id=uid).update(**updates)
 
 
-def _recalculate_de_norm_fields_for_account_statisics(account_id):
+def _recalculate_de_norm_fields_for_account_statistics(account_id):
     formulas = dict(
         ad_count=Count("campaigns__ad_groups__ads", distinct=True),
         channel_count=Count("campaigns__ad_groups__channel_statistics__yt_id", distinct=True),
@@ -220,3 +229,79 @@ def _get_sum_statistic_map(queryset):
         for stats in sum_statistic
     }
     return sum_statistic_map
+
+
+FLIGHTS_DELIVERY_ANNOTATE = dict(
+    delivery=Sum(
+        Case(
+            When(
+                placement__dynamic_placement__in=[
+                    DynamicPlacementType.BUDGET,
+                    DynamicPlacementType.RATE_AND_TECH_FEE],
+                then=F("placement__adwords_campaigns__statistics__cost"),
+            ),
+            When(
+                placement__goal_type_id=Value(SalesForceGoalType.CPM),
+                then=F("placement__adwords_campaigns__statistics__impressions"),
+            ),
+            When(
+                placement__goal_type_id=Value(SalesForceGoalType.CPV),
+                then=F("placement__adwords_campaigns__statistics__video_views"),
+            ),
+            output_field=FloatField(),
+        ),
+    ),
+    impressions=Sum("placement__adwords_campaigns__statistics__impressions"),
+    video_impressions=Sum(
+        Case(
+            When(
+                placement__adwords_campaigns__video_views__gt=Value(0),
+                then=F("placement__adwords_campaigns__statistics__impressions"),
+            ),
+        ),
+    ),
+    video_clicks=Sum(
+        Case(
+            When(
+                placement__adwords_campaigns__video_views__gt=Value(0),
+                then=F("placement__adwords_campaigns__statistics__clicks"),
+            ),
+        ),
+    ),
+    video_cost=Sum(
+        Case(
+            When(
+                placement__adwords_campaigns__video_views__gt=Value(0),
+                then=F("placement__adwords_campaigns__statistics__cost"),
+            ),
+        ),
+    ),
+    video_views=Sum("placement__adwords_campaigns__statistics__video_views"),
+    clicks=Sum("placement__adwords_campaigns__statistics__clicks"),
+    sum_cost=Sum(
+        Case(
+            When(
+                ~Q(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE),
+                then=F("placement__adwords_campaigns__statistics__cost"),
+            ),
+        ),
+    ),
+)
+
+
+def _recalculate_de_norm_fields_for_account_flights(account_id):
+    flights = Flight.objects.filter(
+        placement__adwords_campaigns__account_id=account_id,
+        placement__adwords_campaigns__statistics__date__gte=F("start"),
+        placement__adwords_campaigns__statistics__date__lte=F("end"),
+    )
+    flights_annotated = flights.annotate(**FLIGHTS_DELIVERY_ANNOTATE)
+    for flight in flights_annotated.values():
+        defaults = {
+            key: flight.get(key) or 0
+            for key in FLIGHTS_DELIVERY_ANNOTATE.keys()
+        }
+        FlightStatistic.objects.update_or_create(
+            flight_id=flight["id"],
+            defaults=defaults
+        )
