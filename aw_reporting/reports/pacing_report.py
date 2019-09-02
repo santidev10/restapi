@@ -31,6 +31,7 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import goal_type_str
+from aw_reporting.update.recalculate_de_norm_fields import FLIGHTS_DELIVERY_ANNOTATE
 from aw_reporting.utils import get_dates_range
 from utils.datetime import now_in_default_tz
 
@@ -124,7 +125,7 @@ class PacingReport:
         raw_data = queryset.values(*placement_fields)
         return raw_data
 
-    def get_flights_data(self, **filters):
+    def get_flights_data(self, force_recalculate=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
@@ -133,7 +134,9 @@ class PacingReport:
         campaign_id_key = "placement__adwords_campaigns__id"
         group_by = ("id", campaign_id_key)
 
-        annotate = self.get_flights_delivery_annotate()
+        annotate = self.get_flights_delivery_annotate() \
+            if not force_recalculate \
+            else FLIGHTS_DELIVERY_ANNOTATE
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -847,7 +850,7 @@ class PacingReport:
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated
         all_placement_flights = self.get_flights_data(
-            placement=flight.placement)
+            placement=flight.placement, force_recalculate=True)
         flights_data = [f for f in all_placement_flights if
                         f["id"] == flight.id]
         populate_daily_delivery_data(flights_data)
