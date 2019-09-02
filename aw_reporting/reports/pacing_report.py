@@ -134,9 +134,14 @@ class PacingReport:
         campaign_id_key = "placement__adwords_campaigns__id"
         group_by = ("id", campaign_id_key)
 
-        annotate = self.get_flights_delivery_annotate() \
-            if not force_recalculate \
-            else FLIGHTS_DELIVERY_ANNOTATE
+        annotate = self.get_flights_delivery_annotate()
+
+        if force_recalculate:
+            queryset = queryset.filter(
+                placement__adwords_campaigns__statistics__date__gte=F("start"),
+                placement__adwords_campaigns__statistics__date__lte=F("end"),
+            )
+            annotate = FLIGHTS_DELIVERY_ANNOTATE
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
