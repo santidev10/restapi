@@ -26,12 +26,12 @@ class Command(BaseCommand):
             help="Segment thumbnail to create"
         )
         parser.add_argument(
-            "--path",
-            help="Import list of Youtube ids"
-        )
-        parser.add_argument(
             "--audit_category",
             help="Integer id of AuditCategory item"
+        )
+        parser.add_argument(
+            "--path",
+            help="Import list of Youtube ids"
         )
 
     def handle(self, *args, **options):

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class PersistentSegmentImporter(object):
     ALLOWED_DATA_TYPES = (constants.CHANNEL, constants.VIDEO)
     ALLOWED_SEGMENT_CATEGORIES = ("whitelist", "blacklist", "apex")
-    EXPORT_ATTEMPT_LIMIT = 20
+    EXPORT_ATTEMPT_LIMIT = 15
     EXPORT_ATTEMPT_SLEEP = 5
 
     def __init__(self, *args, **kwargs):
@@ -35,7 +35,7 @@ class PersistentSegmentImporter(object):
         self.segment_category = self.format(kwargs["segment_type"])
         self.segment_thumbnail = kwargs["thumbnail"] or S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
         self.segment_title = kwargs["title"]
-        self.audit_category = kwargs["audit_category"] or None
+        self.audit_category = kwargs["audit_category"]
 
         self._setup()
 
@@ -91,7 +91,9 @@ class PersistentSegmentImporter(object):
 
         exported = False
         # Wait until all items have been added to segment
-        for _ in range(self.EXPORT_ATTEMPT_LIMIT):
+        attempts = 1
+        while attempts <= self.EXPORT_ATTEMPT_LIMIT:
+            logger.error(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
             query = self.segment.get_segment_items_query()
             es_manager = self.segment.get_es_manager()
             segment_items_count = es_manager.search(query, limit=0).execute().hits.total
@@ -102,7 +104,9 @@ class PersistentSegmentImporter(object):
                 exported = True
                 break
             else:
-                time.sleep(self.EXPORT_ATTEMPT_SLEEP)
+                time.sleep(attempts ** self.EXPORT_ATTEMPT_SLEEP)
+                attempts += 1
+
         # If all items are not added to segment after retries, manually verify if segment is ready for export
         if not exported:
             raise Exception(f"Unable to add all items to segment with uuid: {self.segment.uuid}. Export failed.")
