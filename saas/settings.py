@@ -405,7 +405,7 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 
 CF_AD_OPS_DIRECTORS = [
-    ('Kim, John', "george.ritter@channelfactory.com"),
+    ('Ritter, George', "george.ritter@channelfactory.com"),
 ]
 
 CUSTOM_AUTH_FLAGS = {
