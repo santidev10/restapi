@@ -78,7 +78,7 @@ class SegmentListGenerator(object):
         self._add_to_segment(new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
-        self._export_to_s3(new_category_segment)
+        self.export_to_s3(new_category_segment)
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
@@ -101,7 +101,7 @@ class SegmentListGenerator(object):
         self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
-        self._export_to_s3(new_category_segment)
+        self.export_to_s3(new_category_segment)
 
     def _generate_master_video_whitelist(self):
         """
@@ -122,7 +122,7 @@ class SegmentListGenerator(object):
 
         self._add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
-        self._export_to_s3(new_master_video_whitelist)
+        self.export_to_s3(new_master_video_whitelist)
 
     def _generate_master_video_blacklist(self):
         """
@@ -145,7 +145,7 @@ class SegmentListGenerator(object):
         self._add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY,
                              self.BLACKLIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
-        self._export_to_s3(new_master_video_blacklist)
+        self.export_to_s3(new_master_video_blacklist)
 
     def _generate_master_channel_whitelist(self):
         """
@@ -167,7 +167,7 @@ class SegmentListGenerator(object):
                              self.WHITELIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
                                  is_master=True, master_list_type=constants.WHITELIST)
-        self._export_to_s3(new_master_channel_whitelist)
+        self.export_to_s3(new_master_channel_whitelist)
 
     def _generate_master_channel_blacklist(self):
         """
@@ -188,7 +188,7 @@ class SegmentListGenerator(object):
         self._add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
                                  is_master=True, master_list_type=constants.BLACKLIST)
-        self._export_to_s3(new_master_channel_blacklist)
+        self.export_to_s3(new_master_channel_blacklist)
 
     def _add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
         """
@@ -231,7 +231,8 @@ class SegmentListGenerator(object):
             retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         old_segments.delete()
 
-    def _export_to_s3(self, segment):
+    @staticmethod
+    def export_to_s3(segment):
         now = timezone.now()
         s3_filename = segment.get_s3_key(datetime=now)
         logger.error("Collecting data for {}".format(s3_filename))
