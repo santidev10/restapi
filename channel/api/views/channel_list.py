@@ -60,12 +60,12 @@ class ChannelESFilterBackend(ESFilterBackend):
     def filter_queryset(self, request, queryset, view):
         try:
             similar_channels_ids = self.__get_similar_channels(deepcopy(request.query_params))
-        except ChannelsNotFound:
-            return ESEmptyResponseAdapter(ChannelManager())
 
-        if similar_channels_ids:
-            request.query_params._mutable = True
-            request.query_params["main.id"] = list(similar_channels_ids)
+            if similar_channels_ids:
+                request.query_params._mutable = True
+                request.query_params["main.id"] = list(similar_channels_ids)
+        except ChannelsNotFound:
+            queryset = ESEmptyResponseAdapter(ChannelManager())
 
         result = super(ChannelESFilterBackend, self).filter_queryset(request, queryset, view)
         return result

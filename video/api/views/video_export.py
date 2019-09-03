@@ -10,10 +10,10 @@ from rest_framework_csv.renderers import CSVStreamingRenderer
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from utils.api.file_list_api_view import FileListApiView
-from utils.es_components_api_utils import ESFilterBackend
-from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.datetime import time_instance
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import ESPOSTFilterBackend
+from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from video.api.views.video_list import EXISTS_FILTER
@@ -69,7 +69,7 @@ class VideoListExportApiView(APIViewMixin, FileListApiView):
     )
     serializer_class = VideoListExportSerializer
     renderer_classes = (VideoCSVRendered,)
-    filter_backends = (OrderingFilter, ESFilterBackend)
+    filter_backends = (OrderingFilter, ESPOSTFilterBackend)
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
@@ -88,3 +88,6 @@ class VideoListExportApiView(APIViewMixin, FileListApiView):
             Sections.ADS_STATS,
             Sections.BRAND_SAFETY,
         )))
+
+    def post(self, request):
+        return self.list(request)

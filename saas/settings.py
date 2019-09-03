@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import socket
 from datetime import date
+import importlib
+
+APM_ENABLED = os.getenv("APM_ENABLED", "0") == "1"
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -368,6 +371,10 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "sean.maguire@channelfactory.com",
 ]
 
+ES_MONITORING_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software"
+]
+
 SALESFORCE_UPDATES_ADDRESSES = []
 SALESFORCE_UPDATE_DELAY_DAYS = 5
 
@@ -398,7 +405,7 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 
 CF_AD_OPS_DIRECTORS = [
-    ('Kim, John', "john.kim@channelfactory.com"),
+    ('Ritter, George', "george.ritter@channelfactory.com"),
 ]
 
 CUSTOM_AUTH_FLAGS = {
@@ -455,6 +462,17 @@ BRAND_SAFETY_CHANNEL_INDEX = ""
 BRAND_SAFETY_VIDEO_INDEX = ""
 BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
+
+if APM_ENABLED:
+    ELASTIC_APM = {
+        "SERVICE_NAME": "viewiq-api",
+        # Use if APM Server requires a token
+        "SECRET_TOKEN": "",
+        "SERVER_URL": "http://apm-server:8200",
+        "DEBUG": True,
+    }
+    MIDDLEWARE = ['elasticapm.contrib.django.middleware.TracingMiddleware'] + MIDDLEWARE
+    INSTALLED_APPS = INSTALLED_APPS + ('elasticapm.contrib.django',)
 
 try:
     from .local_settings import *

@@ -494,23 +494,14 @@ class Flight(BaseModel, DemoEntityModelMixin):
     @property
     def stats(self):
         if self._stats is None:
-            filters = {}
-            if self.start:
-                filters['statistics__date__gte'] = self.start
-            if self.end:
-                filters['statistics__date__lte'] = self.end
-
-            stat_query_set = self.placement.adwords_campaigns.all()
-
-            if filters:
-                stat_query_set = stat_query_set.filter(**filters)
-
-            campaign_stats = stat_query_set.aggregate(
-                video_views=models.Sum('statistics__video_views'),
-                impressions=models.Sum('statistics__impressions'),
-                cost=models.Sum('statistics__cost'),
-            )
-            self._stats = campaign_stats
+            try:
+                self._stats = dict(
+                    video_views=self.statistic.video_views,
+                    impressions=self.statistic.impressions,
+                    cost=self.statistic.sum_cost,
+                )
+            except FlightStatistic.DoesNotExist:
+                self._stats = dict(video_views=0, impressions=0, cost=0)
         return self._stats
 
     @property
@@ -546,6 +537,18 @@ class Flight(BaseModel, DemoEntityModelMixin):
             pacing=data[Fields.PACING]
         )
         return res
+
+
+class FlightStatistic(BaseModel):
+    flight = models.OneToOneField(Flight, related_name="statistic", on_delete=models.CASCADE, )
+    delivery = models.IntegerField(default=0)
+    impressions = models.IntegerField(default=0)
+    video_impressions = models.IntegerField(default=0)
+    video_clicks = models.IntegerField(default=0)
+    video_cost = models.FloatField(default=0)
+    video_views = models.IntegerField(default=0)
+    clicks = models.IntegerField(default=0)
+    sum_cost = models.FloatField(default=0)
 
 
 class Activity(BaseModel):
