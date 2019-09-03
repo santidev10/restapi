@@ -1,6 +1,3 @@
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
-from django.db.models.functions import Cast
-from django.db.models import IntegerField
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
 

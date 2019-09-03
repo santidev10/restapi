@@ -1,14 +1,12 @@
 import logging
 from django.core.management import BaseCommand
 
-from segment.custom_segment_importer import CustomSegmentImporter
-
+from segment.persistent_segment_importer import PersistentSegmentImporter
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    update_threshold = 7
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -16,7 +14,7 @@ class Command(BaseCommand):
             help="channel or video"
         )
         parser.add_argument(
-            "--segment_category",
+            "--segment_type",
             help="whitelist, blacklist, apex"
         )
         parser.add_argument(
@@ -31,7 +29,11 @@ class Command(BaseCommand):
             "--path",
             help="Import list of Youtube ids"
         )
+        parser.add_argument(
+            "--audit_category",
+            help="Integer id of AuditCategory item"
+        )
 
     def handle(self, *args, **options):
-        importer = CustomSegmentImporter(*args, **options)
+        importer = PersistentSegmentImporter(*args, **options)
         importer.run()
