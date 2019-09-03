@@ -7,6 +7,7 @@ from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
 from email_reports.reports import DailyCampaignReport
+from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
 from saas import celery_app
 
@@ -46,4 +47,5 @@ EMAIL_REPORT_CLASSES = (
     TechFeeCapExceeded,
     CampaignUnderPacing,
     CampaignOverPacing,
+    ESMonitoringEmailReport,
 )
