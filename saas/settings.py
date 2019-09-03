@@ -368,6 +368,10 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "sean.maguire@channelfactory.com",
 ]
 
+ES_MONITORING_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software"
+]
+
 SALESFORCE_UPDATES_ADDRESSES = []
 SALESFORCE_UPDATE_DELAY_DAYS = 5
 

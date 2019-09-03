@@ -35,7 +35,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing", "CampaignOverPacing"],
+            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
+                     "CampaignOverPacing", "ESMonitoringEmailReport"],
             debug=os.getenv("EMAIL_NOTIFICATIONS_DEBUG", "1") == "1",
         ),
     },
