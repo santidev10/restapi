@@ -190,7 +190,7 @@ class AuditSaveApiView(APIView):
         keywords = []
         categories = []
         io_string = StringIO(file)
-        reader = csv.reader(io_string, delimiter=";", quotechar="|")
+        reader = csv.reader(io_string, delimiter=",", quotechar="|")
         for row in reader:
             try:
                 word = row[0].lower().strip()
@@ -204,7 +204,6 @@ class AuditSaveApiView(APIView):
                 keywords.append(word)
                 categories.append(category)
         return keywords, categories
-
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME

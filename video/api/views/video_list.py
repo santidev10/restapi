@@ -22,7 +22,7 @@ from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSe
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
-                "channel.id", "general_data.tags",)
+                "channel.id", "general_data.tags", "main.id",)
 
 MATCH_PHRASE_FILTER = ("general_data.title",)
 

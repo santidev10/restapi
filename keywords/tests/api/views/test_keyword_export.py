@@ -1,4 +1,3 @@
-import csv
 from datetime import datetime
 
 from rest_framework.status import HTTP_200_OK
@@ -131,6 +130,23 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_filter_ids(self):
         self.create_admin_user()
+        filter_count = 1
+        keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
+        keyword_ids = [str(keyword.main.id) for keyword in keywords]
+
+        response = self._request(**{"main.id": ",".join(keyword_ids[:filter_count])})
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    def test_filter_ids_deprecated(self):
+        self.create_admin_user()
         filter_count = 2
         keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
         KeywordManager(sections=Sections.STATS).upsert(keywords)
@@ -158,5 +174,3 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
-
-
