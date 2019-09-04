@@ -363,7 +363,7 @@ class AuditExportApiView(APIView):
             try:
                 hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
             except Exception as e:
-                pass
+                hit_words[cid.channel.channel_id] = None
             if not hit_words[cid.channel.channel_id]:
                 hit_words[cid.channel.channel_id] = []
             videos = AuditVideoProcessor.objects.filter(
