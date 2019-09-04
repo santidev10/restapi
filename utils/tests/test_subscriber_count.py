@@ -9,8 +9,10 @@ class SubscriberCountTestCase(TestCase):
         subs_string_3 = 0
         subs_string_4 = "122.4M"
         subs_string_5 = "1.2b"
+        subs_string_6 = "98m"
         self.assertEqual(convert_subscriber_count(subs_string_1), 13450)
         self.assertEqual(convert_subscriber_count(subs_string_2), 839)
         self.assertEqual(convert_subscriber_count(subs_string_3), 0)
         self.assertEqual(convert_subscriber_count(subs_string_4), 122400000)
         self.assertEqual(convert_subscriber_count(subs_string_5), 1200000000)
+        self.assertEqual(convert_subscriber_count(subs_string_6), 98000000)
