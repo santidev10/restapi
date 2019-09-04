@@ -363,7 +363,7 @@ class AuditExportApiView(APIView):
             try:
                 hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
             except Exception as e:
-                hit_words[cid.channel.channel_id] = []
+                hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
                 audit_id=audit_id,
                 video__channel_id=cid.channel_id
@@ -375,7 +375,7 @@ class AuditExportApiView(APIView):
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
                         if bad_word not in hit_words[cid.channel.channel_id]:
-                            hit_words[cid.channel.channel_id].append(bad_word)
+                            hit_words[cid.channel.channel_id].add(bad_word)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
