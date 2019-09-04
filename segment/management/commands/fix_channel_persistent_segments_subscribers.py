@@ -4,6 +4,7 @@ import logging
 from segment.models.persistent import PersistentSegmentRelatedChannel
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
+from utils.utils import convert_subscriber_count
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class Command(BaseCommand):
     def get_subscribers(youtube, channel_ids):
         response = youtube.obtain_channels(channels_ids=",".join(channel_ids), part="statistics")
         items = response.get("items", [])
-        info = [(item.get("id", None), int(item.get("statistics", {}).get("subscriberCount", 0))) for item in items]
+        info = [(item.get("id", None), convert_subscriber_count(item.get("statistics", {}).get("subscriberCount", 0))) for item in items]
         return info
 
     @staticmethod

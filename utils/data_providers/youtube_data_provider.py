@@ -3,6 +3,7 @@ import time
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 from .base import DataProviderMixin
+from utils.utils import convert_subscriber_count
 
 
 class YoutubeDataProvider(DataProviderMixin):
@@ -86,7 +87,7 @@ class YoutubeDataProvider(DataProviderMixin):
         """
         for video in videos:
             video["statistics"] = video.get("statistics", {})
-            video["statistics"]["channelSubscriberCount"] = channel["statistics"].get("subscriberCount")
+            video["statistics"]["channelSubscriberCount"] = convert_subscriber_count(channel["statistics"].get("subscriberCount"))
             video["snippet"]["country"] = channel["snippet"].get("country", "Unknown")
 
     def get_channel_id_for_username(self, username):
@@ -123,8 +124,8 @@ class YoutubeDataProvider(DataProviderMixin):
             }
             for video in items:
                 channel_id = video["snippet"]["channelId"]
-                video["statistics"]["channelSubscriberCount"] = video_channel_statistics_ref.get(channel_id, {}).get(
-                    "subscriberCount", 0)
+                video["statistics"]["channelSubscriberCount"] = convert_subscriber_count(video_channel_statistics_ref.get(channel_id, {}).get(
+                    "subscriberCount", 0))
                 all_videos.append(video)
         return all_videos
 

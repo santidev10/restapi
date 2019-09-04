@@ -18,6 +18,7 @@ import re
 import requests
 from utils.lang import fasttext_lang
 from utils.lang import remove_mentions_hashes_urls
+from utils.utils import convert_subscriber_count
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class AuditUK():
                 lang = self.calc_language(description)
                 self.channels[i['id']].append(lang)
             self.channels[i['id']].append(country)
-            self.channels[i['id']].append(i['statistics'].get('subscriberCount'))
+            self.channels[i['id']].append(convert_subscriber_count(i['statistics'].get('subscriberCount')))
             self.channels[i['id']].append(i['statistics'].get('viewCount'))
             self.channels[i['id']].append(i['statistics'].get('videoCount'))
 

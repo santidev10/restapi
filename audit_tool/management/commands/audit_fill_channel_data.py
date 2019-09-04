@@ -11,6 +11,7 @@ from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideoMeta
+from utils.utils import convert_subscriber_count
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -114,7 +115,7 @@ class Command(BaseCommand):
                 country = i['brandingSettings']['channel'].get('country')
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
-                db_channel_meta.subscribers = int(i['statistics']['subscriberCount'])
+                db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
                 try:
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])
                 except Exception as e:

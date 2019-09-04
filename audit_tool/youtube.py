@@ -7,6 +7,7 @@ from django.conf import settings
 
 from audit_tool.dmo import VideosChunkDMO
 from utils.utils import chunks_generator
+from utils.utils import convert_subscriber_count
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class Youtube:
                     dmo["items"] = [
                         {
                             "id": i.get("id"),
-                            "subscribers": i.get("statistics", {}).get("subscriberCount")
+                            "subscribers": convert_subscriber_count(i.get("statistics", {}).get("subscriberCount"))
                         } for i in data.get("items", [])
                     ]
                 except Exception as e:
