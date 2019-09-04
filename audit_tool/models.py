@@ -141,7 +141,7 @@ class AuditProcessor(models.Model):
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
-        if num_days:
+        if num_days > 0:
             all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
         if search:
             all = all.filter(name__icontains=search.lower())
