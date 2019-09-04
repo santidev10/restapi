@@ -65,7 +65,7 @@ class CustomSegmentSerializer(ModelSerializer):
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
-            raise ValueError("A {} segment with the title: {} already exists.".format(self.map_to_str(segment_type, item_type="segment"), title))
+            raise ValueError("A {} target list with the title: {} already exists.".format(self.map_to_str(segment_type, item_type="segment"), title))
         return title
 
     def to_representation(self, instance):
