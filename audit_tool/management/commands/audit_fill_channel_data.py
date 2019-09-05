@@ -5,11 +5,11 @@ import logging
 from django.conf import settings
 import requests
 from emoji import UNICODE_EMOJI
-from django.db.models import Q
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from utils.utils import convert_subscriber_count
 logger = logging.getLogger(__name__)
@@ -56,9 +56,10 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True)
+        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True).order_by("-id")
         for c in channels[:5000]:
-            videos = AuditVideoMeta.objects.filter(video__channel_id=c.channel_id).order_by("-publish_date")
+            db_videos = AuditVideo.objects.filter(channel=c.channel).values_list('id', flat=True)
+            videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")
             try:
                 c.last_uploaded = videos[0].publish_date
                 c.last_uploaded_view_count = videos[0].views
