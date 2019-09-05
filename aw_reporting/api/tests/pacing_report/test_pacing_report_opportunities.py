@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 import pytz
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django.http import QueryDict
 from django.urls import reverse
 from django.utils import timezone
@@ -1679,3 +1680,45 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items"][0]["margin"], -100)
+
+    def test_no_duplicate_stats_on_several_flights(self):
+        flight_count = 2
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(flight_count)]
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        account = Account.objects.create(id=next(int_iterator))
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        for dt in dates:
+            Flight.objects.create(id=next(int_iterator), start=dt, end=dt, placement=placement)
+            campaign = Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=placement,
+                                               start_date=dt, end_date=dt)
+            CampaignStatistic.objects.create(campaign=campaign, date=dt, impressions=1)
+
+        recalculate_de_norm_fields_for_account(account.id)
+        stats = FlightStatistic.objects.filter(flight__placement__opportunity=opportunity) \
+            .aggregate(impressions=Sum("impressions"))
+
+        response = self.client.get(self.url)
+        self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])
+
+    def test_no_duplicate_stats_on_single_flight(self):
+        campaign_count = 2
+        any_date = date(2019, 1, 1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        account = Account.objects.create(id=next(int_iterator))
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=placement)
+        for _ in range(campaign_count):
+            campaign = Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=placement,
+                                               start_date=any_date, end_date=any_date)
+            CampaignStatistic.objects.create(campaign=campaign, date=any_date, impressions=1)
+
+        recalculate_de_norm_fields_for_account(account.id)
+        stats = FlightStatistic.objects.filter(flight__placement__opportunity=opportunity) \
+            .aggregate(impressions=Sum("impressions"))
+
+        response = self.client.get(self.url)
+        self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])
