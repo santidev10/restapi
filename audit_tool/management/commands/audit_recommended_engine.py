@@ -104,7 +104,7 @@ class Command(BaseCommand):
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 done =  True
             else:
-                pending_videos = pending_videos.select_related("video").order_by("id")
+                pending_videos = pending_videos.order_by("id")
             if done:
                 if thread_id == 0:
                     self.audit.completed = timezone.now()

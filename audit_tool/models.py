@@ -249,19 +249,20 @@ class AuditChannel(models.Model):
     processed = models.BooleanField(default=False, db_index=True)
 
     @staticmethod
-    def get_or_create(channel_id):
+    def get_or_create(channel_id, create=True):
         channel_id_hash = get_hash_name(channel_id)
         res = AuditChannel.objects.filter(channel_id_hash=channel_id_hash)
         for r in res:
             if r.channel_id == channel_id:
                 return r
-        try:
-            return AuditChannel.objects.create(
-                channel_id=channel_id,
-                channel_id_hash=channel_id_hash
-            )
-        except IntegrityError as e:
-            return AuditChannel.objects.get(channel_id=channel_id)
+        if create:
+            try:
+                return AuditChannel.objects.create(
+                    channel_id=channel_id,
+                    channel_id_hash=channel_id_hash
+                )
+            except IntegrityError as e:
+                return AuditChannel.objects.get(channel_id=channel_id)
 
 
 class AuditChannelMeta(models.Model):
