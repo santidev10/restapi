@@ -126,6 +126,7 @@ class PacingReport:
         return raw_data
 
     def get_flights_data(self, force_recalculate=False, **filters):
+        # FIXME: Hot fix 4.1.1
         force_recalculate = True
         queryset = Flight.objects.filter(
             start__isnull=False,

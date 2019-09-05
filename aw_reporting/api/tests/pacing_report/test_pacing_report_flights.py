@@ -17,7 +17,6 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
-from aw_reporting.models import FlightStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
@@ -1057,12 +1056,14 @@ class PacingReportFlightsTestCase(APITestCase):
             goal_type_id=SalesForceGoalType.CPM,
             dynamic_placement=DynamicPlacementType.BUDGET)
         account = Account.objects.create(update_time=today_time, timezone="UTC")
-        Campaign.objects.create(account=account, salesforce_placement=placement)
-        flight = Flight.objects.create(placement=placement,
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        Flight.objects.create(placement=placement,
                                        total_cost=total_cost,
                                        start=start, end=end)
-        FlightStatistic.objects.create(flight=flight,
-                                       delivery=aw_cost)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=start,
+                                         cost=aw_cost)
+        recalculate_de_norm_fields_for_account(account.id)
 
         url = self._get_url(placement.id)
         response = self.client.get(url)
