@@ -4,12 +4,14 @@ from django.core.management.base import BaseCommand
 from pid import PidFile
 from pid import PidFileError
 
+from audit_tool.models import APIScriptTracker
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.models import BrandSafetyFlag
 from brand_safety.models import BrandSafetyFlagQueueEmptyException
-from audit_tool.models import APIScriptTracker
+from utils.es_components_cache import flush_cache
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +83,7 @@ class Command(BaseCommand):
             channel_dequeue_qs = BrandSafetyFlag.dequeue(1, dequeue_limit=10)
             channel_dequeue_ids = [item.item_id for item in channel_dequeue_qs]
             auditor.manual_channel_audit(channel_dequeue_ids)
+            flush_cache()
             BrandSafetyFlag.objects.filter(item_id__in=channel_dequeue_ids, item_type=1).delete()
         except BrandSafetyFlagQueueEmptyException:
             pass

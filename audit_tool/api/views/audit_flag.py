@@ -11,6 +11,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from utils.permissions import user_has_permission
 from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.es_components_cache import flush_cache
 
 
 class AuditFlagApiView(APIView):
@@ -78,6 +79,7 @@ class AuditFlagApiView(APIView):
             body["brand_safety_data"] = get_brand_safety_data(overall_score)
         else:
             # Enqueue channel to be audited
+            flush_cache()
             BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
             body["brand_safety_data"] = get_brand_safety_data(None)
 
