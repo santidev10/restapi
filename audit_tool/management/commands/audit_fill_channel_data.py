@@ -37,7 +37,7 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='audit_fill_channels{}.pid'.format(self.thread_id)) as p:
             count = 0
-            pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
+            pending_channels = AuditChannelMeta.objects.filter(channel__processed=False)#.select_related("channel")
             if pending_channels.count() == 0:
                 logger.info("No channels to fill.")
                 self.fill_recent_video_timestamp()
