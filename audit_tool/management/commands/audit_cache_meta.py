@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 import logging
+from django.db.models import Q
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideoProcessor
@@ -21,11 +22,10 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="audit_cache_meta.pid")
     def handle(self, *args, **options):
         count = 0
-        audits = AuditProcessor.objects.all().order_by("-id")
+        audits = AuditProcessor.objects.filter(Q(completed__isnull=True) | Q(completed__gt=(timezone.now() - datetime.timedelta(hours=1))) ).order_by("-id")
         for audit in audits:
-            if not audit.completed or audit.completed > timezone.now() - datetime.timedelta(hours=1):
-                count+=1
-                self.do_audit_meta(audit)
+            count+=1
+            self.do_audit_meta(audit)
         logger.info("Done {} audits.".format(count))
 
     def do_audit_meta(self, audit):
