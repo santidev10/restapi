@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST, \
     HTTP_503_SERVICE_UNAVAILABLE
 
 from utils.youtube_api import YoutubeAPIConnector, YoutubeAPIConnectorException
+from utils.utils import convert_subscriber_count
 
 
 class ChannelYoutubeSearchMixin(object):
@@ -122,7 +123,7 @@ class ChannelYoutubeSearchMixin(object):
             title = channel_snippet.get("title", "No title available")
             views = channel_statistics.get("viewCount")
             videos = channel_statistics.get("videoCount")
-            subscribers = channel_statistics.get("subscriberCount")
+            subscribers = convert_subscriber_count(channel_statistics.get("subscriberCount"))
             items.append({
                 "id": youtube_id,
                 "thumbnail_image_url": thumbnail_image_url,
@@ -282,7 +283,7 @@ class ChannelYoutubeStatisticsMixin(object):
         youtube_link = "https://www.youtube.com/channel/{}".format(channel_id)
         description = snippet.get("description", "No description available")
         content_owner = content_details.get("googlePlusUserId")
-        subscribers = int(statistics.get("subscriberCount", 0))
+        subscribers = convert_subscriber_count(statistics.get("subscriberCount", 0))
         videos_count = int(statistics.get("videoCount", 0))
         country = snippet.get("country")
         response_data = {

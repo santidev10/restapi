@@ -1,4 +1,3 @@
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
 
@@ -23,10 +22,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
         if is_correct_apex_domain(request_origin):
             queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
         else:
-            queryset = super().get_queryset()\
-                .filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))\
-                .annotate(items_count=KeyTextTransform("items_count", "details"))\
-                .exclude(Q(items_count__lte=0) & Q(is_master=False))
+            queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.WHITELIST) | Q(is_master=True))
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
@@ -36,6 +32,8 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             "items": []
         }
         for item in response.data.get("items", []):
+            if not item.get("statistics") or item["statistics"].get("items_count", 0) < 100:
+                continue
             if item["category"] == PersistentSegmentCategory.WHITELIST and item["is_master"] is True:
                 data["master_whitelist"] = item
             elif item["category"] == PersistentSegmentCategory.BLACKLIST and item["is_master"] is True:
@@ -50,4 +48,3 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
                 data["items"].append(item)
         response.data = data
         return super().finalize_response(request, response, *args, **kwargs)
-

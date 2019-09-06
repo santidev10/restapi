@@ -1,4 +1,4 @@
-import csv
+import json
 from datetime import datetime
 
 from rest_framework.status import HTTP_200_OK
@@ -19,12 +19,15 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
-    def _request(self, **query_params):
-        url = reverse(
+    def _get_url(self, **query_params):
+        return reverse(
             KeywordPathName.KEYWORD_EXPORT,
             [Namespace.KEYWORD],
             query_params=query_params,
         )
+
+    def _request(self, **query_params):
+        url = self._get_url(**query_params)
         return self.client.get(url)
 
     def test_not_auth(self):
@@ -131,6 +134,23 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_filter_ids(self):
         self.create_admin_user()
+        filter_count = 1
+        keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
+        keyword_ids = [str(keyword.main.id) for keyword in keywords]
+
+        response = self._request(**{"main.id": ",".join(keyword_ids[:filter_count])})
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    def test_filter_ids_deprecated(self):
+        self.create_admin_user()
         filter_count = 2
         keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
         KeywordManager(sections=Sections.STATS).upsert(keywords)
@@ -148,10 +168,10 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     def test_filter_volume(self):
         self.create_admin_user()
-        channels = [Keyword(next(int_iterator)) for _ in range(2)]
-        channels[0].populate_stats(search_volume=1)
-        channels[1].populate_stats(search_volume=3)
-        KeywordManager(sections=Sections.STATS).upsert(channels)
+        keywords = [Keyword(next(int_iterator)) for _ in range(2)]
+        keywords[0].populate_stats(search_volume=1)
+        keywords[1].populate_stats(search_volume=3)
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
 
         response = self._request(**{"stats.search_volume": "1,2"})
         csv_data = get_data_from_csv_response(response)
@@ -159,4 +179,19 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(1, len(data))
 
+    def test_filter_ids_post_body(self):
+        self.create_admin_user()
+        filter_count = 2
+        keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
+        keyword_ids = [str(keyword.main.id) for keyword in keywords]
 
+        url = self._get_url()
+        payload = {
+            "main.id": keyword_ids[:filter_count]
+        }
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(filter_count, len(data))

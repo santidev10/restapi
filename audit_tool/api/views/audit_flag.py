@@ -1,13 +1,17 @@
-from audit_tool.models import BlacklistItem
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from brand_safety.models import BadWordCategory
-from rest_framework.exceptions import ValidationError
-from utils.permissions import user_has_permission
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from rest_framework.status import  HTTP_200_OK
+from rest_framework.views import APIView
+
+from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from brand_safety.models import BrandSafetyFlag
+from brand_safety.constants import BRAND_SAFETY_SCORE
+from brand_safety.models import BadWordCategory
+from audit_tool.models import BlacklistItem
+from utils.permissions import user_has_permission
+from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.es_components_cache import flush_cache
 
 
 class AuditFlagApiView(APIView):
@@ -61,9 +65,23 @@ class AuditFlagApiView(APIView):
             flag.blacklist_category = flag_categories
             flag.save()
             body["action"] = "BlackListItem created/modified."
+            blacklist_data = {flag.item_id: flag.blacklist_category}
         else:
             flag.delete()
             body["action"] = "BlackListItem deleted."
+            blacklist_data = {}
+
+        # If video, audit immediately and send overall_score in response
+        if item_type == 0:
+            auditor = BrandSafetyAudit(discovery=False)
+            video_audit = auditor.manual_video_audit([item_id], blacklist_data=blacklist_data)[0]
+            overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+            body["brand_safety_data"] = get_brand_safety_data(overall_score)
+        else:
+            # Enqueue channel to be audited
+            flush_cache()
+            BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
+            body["brand_safety_data"] = get_brand_safety_data(None)
 
         body["BlackListItemDetails"] = {
             "item_type": flag.item_type,

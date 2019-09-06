@@ -3,15 +3,15 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from itertools import product
 from urllib.parse import urlencode
 
 import pytz
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
 from django.db.models import Sum
 from django.http import QueryDict
+from django.urls import reverse
 from django.utils import timezone
+from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
@@ -21,6 +21,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Category
 from aw_reporting.models import Flight
+from aw_reporting.models import FlightStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
@@ -29,6 +30,7 @@ from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import PacingReportChartId
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
@@ -408,12 +410,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE)
         Flight.objects.create(placement=placement, total_cost=510, cost=123,
                               start=start, end=end)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(campaign=campaign, cost=123,
-                                         video_views=3214, date=start)
-        stats = CampaignStatistic.objects.filter(campaign=campaign) \
-            .aggregate(cost=Sum("cost"), views=Sum("video_views"))
-        cpv = stats["cost"] / stats["views"]
+        sum_cost, video_views = 123, 3214
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
+        CampaignStatistic.objects.create(campaign=campaign, cost=sum_cost,
+                                         video_views=video_views, date=start)
+        recalculate_de_norm_fields_for_account(account.id)
+        cpv = sum_cost / video_views
         expected_margin = tech_fee / (cpv + tech_fee) * 100
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -438,12 +441,15 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Flight.objects.create(placement=placement,
                               start=today,
                               end=today)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today,
                                          campaign=campaign,
                                          video_views=35,
                                          impressions=100)
+        recalculate_de_norm_fields_for_account(account.id)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data["items"][0]
@@ -460,11 +466,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             goal_type_id=SalesForceGoalType.HARD_COST,
             opportunity=opportunity, total_cost=1)
-        Flight.objects.create(placement=placement,
-                              start=today, end=today,
-                              total_cost=1)
-        Campaign.objects.create(
-            salesforce_placement=placement, cost=0)
+        flight = Flight.objects.create(placement=placement,
+                                       start=today, end=today,
+                                       total_cost=1)
+        FlightStatistic.objects.create(flight=flight, sum_cost=0)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data["items"][0]
@@ -479,11 +484,15 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         placement = OpPlacement.objects.create(
             goal_type_id=SalesForceGoalType.CPM,
             opportunity=opportunity, total_cost=0)
-        Flight.objects.create(placement=placement, start=today, end=today)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
+        flight = Flight.objects.create(placement=placement, start=today, end=today)
+
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today,
                                          cost=1)
+        recalculate_de_norm_fields_for_account(account.id)
+
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data["items"][0]
@@ -516,13 +525,15 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                               cost=placement_hc_cost)
         Flight.objects.create(id="2", placement=placement_cpv,
                               start=today, end=today, total_cost=1000)
+        account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(
-            id="2", salesforce_placement=placement_cpv,
+            id="2", account=account, salesforce_placement=placement_cpv,
             cost=campaign_cost)
         CampaignStatistic.objects.create(date=today,
                                          campaign=campaign,
                                          cost=campaign_cost,
                                          video_views=campaign_cpv_video_views)
+        recalculate_de_norm_fields_for_account(account.id)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         opp_data = response.data["items"][0]
@@ -695,6 +706,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(account.id)
+
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -733,12 +746,20 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account,
+                                           salesforce_placement=placement,
                                            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(account.id)
+        # FlightStatistic.objects.create(flight=flight,
+        #                                sum_cost=aw_cost,
+        #                                video_views=views,
+        #                                impressions=impressions
+        #                                )
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -808,13 +829,15 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             start=second_start, end=end, ordered_units=100,
         )
 
+        account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(id="1", name="",
+                                           account=account,
                                            salesforce_placement=placement)
         for i in range(3):
             CampaignStatistic.objects.create(campaign=campaign,
                                              date=start + timedelta(days=i),
                                              video_views=102, cost=51)
-
+        recalculate_de_norm_fields_for_account(account.id)
         with patch_now(today):
             response = self.client.get(self.url)
         opportunities = response.data["items"]
@@ -864,7 +887,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="1", name="", placement=placement_cpv, start=start, end=end,
             ordered_units=500,
         )
+        account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(id="1", name="",
+                                           account=account,
                                            salesforce_placement=placement_cpv)
         for i in range(3):
             CampaignStatistic.objects.create(campaign=campaign,
@@ -880,12 +905,13 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             ordered_units=5000,
         )
         campaign = Campaign.objects.create(id="2", name="",
+                                           account=account,
                                            salesforce_placement=placement_cpm)
         for i in range(3):
             CampaignStatistic.objects.create(campaign=campaign,
                                              date=start + timedelta(days=i),
                                              impressions=1020, cost=3)
-
+        recalculate_de_norm_fields_for_account(account.id)
         with patch_now(today):
             response = self.client.get(self.url)
         opportunities = response.data["items"]
@@ -1109,12 +1135,14 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         def create_opportunity(uid, goal_type_id, create_statistic=True):
             opportunity = Opportunity.objects.create(id=uid, probability=100)
+            account = Account.objects.create(id=next(int_iterator))
             placement = OpPlacement.objects.create(id=uid,
                                                    opportunity=opportunity,
                                                    goal_type_id=goal_type_id)
             Flight.objects.create(id=uid, placement=placement, start=any_date,
                                   end=any_date)
             campaign = Campaign.objects.create(id=uid,
+                                               account=account,
                                                salesforce_placement=placement,
                                                video_views=1)
             if create_statistic:
@@ -1123,15 +1151,14 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  clicks=clicks,
                                                  video_views=views,
                                                  impressions=impressions)
+            recalculate_de_norm_fields_for_account(account.id)
             opportunity.refresh_from_db()
             return opportunity
 
         cpv_opportunity = create_opportunity(1, SalesForceGoalType.CPV)
         cpm_opportunity = create_opportunity(2, SalesForceGoalType.CPM)
-        cpv_opportunity_no_statistic = create_opportunity(
-            3, SalesForceGoalType.CPV, False)
-        cpm_opportunity_no_statistic = create_opportunity(
-            4, SalesForceGoalType.CPM, False)
+        cpv_opportunity_no_statistic = create_opportunity(3, SalesForceGoalType.CPV, False)
+        cpm_opportunity_no_statistic = create_opportunity(4, SalesForceGoalType.CPM, False)
 
         response = self.client.get(self.url)
 
@@ -1180,10 +1207,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                total_cost=total_costs[1])
         self.assertGreater(flight_exclude.start, today)
         self.assertGreater(aw_cost, flight_include.total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         CampaignStatistic.objects.create(date=today,
                                          campaign=campaign,
                                          cost=aw_cost)
+        recalculate_de_norm_fields_for_account(account.id)
         expected_margin = (1 - aw_cost / flight_include.total_cost) * 100
 
         with patch_now(today):
@@ -1293,6 +1322,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         CampaignStatistic.objects.create(
             date=start, campaign=campaign_cpv,
             video_views=units_delivered, cost=our_cost)
+        recalculate_de_norm_fields_for_account(account.id)
         expected_pacing = (units_delivered / units_by_yesterday) * 100
         with patch_now(today):
             response = self.client.get(self.url)
@@ -1666,7 +1696,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
     def test_hard_cost_placement_margin_zero_total_cost(self):
         today = timezone.now()
         opportunity = Opportunity.objects.create(
-            id="1", name="1", start=today - timedelta(days=3),probability=100,
+            id="1", name="1", start=today - timedelta(days=3), probability=100,
             end=today + timedelta(days=3))
         hard_cost_placement = OpPlacement.objects.create(
             id="2", name="Hard cost placement", opportunity=opportunity,
@@ -1680,3 +1710,45 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items"][0]["margin"], -100)
+
+    def test_no_duplicate_stats_on_several_flights(self):
+        flight_count = 2
+        dates = [date(2019, 1, 1) + timedelta(days=i) for i in range(flight_count)]
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        account = Account.objects.create(id=next(int_iterator))
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        for dt in dates:
+            Flight.objects.create(id=next(int_iterator), start=dt, end=dt, placement=placement)
+            campaign = Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=placement,
+                                               start_date=dt, end_date=dt)
+            CampaignStatistic.objects.create(campaign=campaign, date=dt, impressions=1)
+
+        recalculate_de_norm_fields_for_account(account.id)
+        stats = FlightStatistic.objects.filter(flight__placement__opportunity=opportunity) \
+            .aggregate(impressions=Sum("impressions"))
+
+        response = self.client.get(self.url)
+        self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])
+
+    def test_no_duplicate_stats_on_single_flight(self):
+        campaign_count = 2
+        any_date = date(2019, 1, 1)
+        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        account = Account.objects.create(id=next(int_iterator))
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator), opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=placement)
+        for _ in range(campaign_count):
+            campaign = Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=placement,
+                                               start_date=any_date, end_date=any_date)
+            CampaignStatistic.objects.create(campaign=campaign, date=any_date, impressions=1)
+
+        recalculate_de_norm_fields_for_account(account.id)
+        stats = FlightStatistic.objects.filter(flight__placement__opportunity=opportunity) \
+            .aggregate(impressions=Sum("impressions"))
+
+        response = self.client.get(self.url)
+        self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])

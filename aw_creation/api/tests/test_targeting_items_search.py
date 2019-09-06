@@ -1,5 +1,5 @@
 from time import sleep
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
 from es_components.tests.utils import ESTestCase

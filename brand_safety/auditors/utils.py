@@ -11,6 +11,7 @@ from emoji import UNICODE_EMOJI
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
+from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.lang import remove_mentions_hashes_urls
@@ -28,12 +29,12 @@ class AuditUtils(object):
         """
         self.bad_word_categories = BadWordCategory.objects.values_list("id", flat=True)
         # Initial category brand safety scores for videos and channels, since ignoring certain categories (e.g. Kid's Content)
-        self._default_channel_score = {
-            category_id: 100
+        self._default_zero_score = {
+            str(category_id): 0
             for category_id in self.bad_word_categories
         }
-        self._default_video_score = {
-            category_id: 100
+        self._default_full_score = {
+            str(category_id): 100
             for category_id in self.bad_word_categories
         }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
@@ -49,12 +50,12 @@ class AuditUtils(object):
         return self._emoji_regex
 
     @property
-    def default_channel_score(self):
-        return self._default_channel_score.copy()
+    def default_zero_score(self):
+        return self._default_zero_score.copy()
 
     @property
-    def default_video_score(self):
-        return self._default_video_score.copy()
+    def default_full_score(self):
+        return self._default_full_score.copy()
 
     @property
     def score_mapping(self):
@@ -206,7 +207,7 @@ class AuditUtils(object):
         score_mapping = defaultdict(dict)
         for word in BadWord.objects.all():
             score_mapping[word.name] = {
-                "category": word.category_id,
+                "category": str(word.category_id),
                 "score": word.negative_score
             }
         return score_mapping
@@ -221,34 +222,6 @@ class AuditUtils(object):
         bad_words = BadWord.objects \
             .values_list("name", flat=True)
         return bad_words
-
-    @staticmethod
-    def extract_channel_data(data):
-        general_data = data.general_data
-        mapped = {
-            "id": data.main.id,
-            "title": getattr(data.general_data, "title", ""),
-            "description": getattr(data.general_data, "description", ""),
-            "video_tags": ",".join(getattr(general_data, "video_tags", "")),
-            "videos_scored": getattr(data.brand_safety, "videos_scored", 0),
-            "updated_at": getattr(data.brand_safety, "updated_at", None)
-        }
-        return mapped
-
-    @staticmethod
-    def extract_video_data(data):
-        mapped = {
-            "id": data.main.id,
-            "channel_id": data.channel.id,
-            "title": getattr(data.general_data, "title", ""),
-            "description": getattr(data.general_data, "description", ""),
-            "tags": ",".join(getattr(data.general_data, "tags", "") or ""),
-        }
-        try:
-            mapped["transcript"] = data.captions.text
-        except AttributeError:
-            mapped["transcript"] = ""
-        return mapped
 
     @staticmethod
     def get_language(text):
@@ -273,3 +246,28 @@ class AuditUtils(object):
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(item_ids).get()
         results = manager.search(query).execute().hits
         return results
+
+    @staticmethod
+    def reset_brand_safety_scores(item_ids, model=None, manager=None):
+        """
+        Reset brand safety score
+        :param item_ids: list -> Channel or video ids
+        :param manager: ES Manager instantiated with upsert: brand safety section
+        :return:
+        """
+        if type(item_ids) is str:
+            item_ids = [item_ids]
+        if Sections.BRAND_SAFETY not in manager.upsert_sections:
+            raise ValueError(f"Manager must include section: f{Sections.BRAND_SAFETY} in upsert section.")
+        updated = [
+            model(**{
+                "meta": {"id": _id},
+                "brand_safety": {
+                    "overall_score": None,
+                    "videos_scored": None,
+                    "language": None,
+                    "categories": None
+                }
+            }) for _id in item_ids
+        ]
+        manager.upsert(updated)

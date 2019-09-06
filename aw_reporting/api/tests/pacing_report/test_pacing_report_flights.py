@@ -2,11 +2,12 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from itertools import product
 
 import pytz
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from django.db.models import Sum
 from django.utils import timezone
+from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -310,7 +311,6 @@ class PacingReportFlightsTestCase(APITestCase):
     def test_pacing_report_dynamic_placement_plan_stats(self):
         start_1, end_1 = date(2017, 1, 1), date(2017, 1, 31)
         start_2, end_2 = date(2017, 2, 1), date(2017, 3, 31)
-        now = datetime.combine(end_2, datetime.min.time())
         opportunity = Opportunity.objects.create(
             id="1", name="1", start=start_1, end=end_1,
         )
@@ -321,7 +321,8 @@ class PacingReportFlightsTestCase(APITestCase):
             dynamic_placement=DynamicPlacementType.BUDGET,
             total_cost=1234
         )
-        campaign = Campaign.objects.create(salesforce_placement=placement)
+        account = Account.objects.create(id=next(int_iterator))
+        campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         daily_cost = 10
         daily_views = 40
         daily_impressions = 200
@@ -347,6 +348,7 @@ class PacingReportFlightsTestCase(APITestCase):
             .aggregate(cost=Sum("cost"), views=Sum("video_views"),
                        impressions=Sum("impressions"), clicks=Sum("clicks"))
         cost = flight_1_statistic["cost"]
+        recalculate_de_norm_fields_for_account(account.id)
 
         url = self._get_url(placement.id)
         response = self.client.get(url)
@@ -403,6 +405,7 @@ class PacingReportFlightsTestCase(APITestCase):
             campaign=campaign, date__gte=start_1, date__lte=end_1) \
             .aggregate(cost=Sum("cost"), views=Sum("video_views"),
                        impressions=Sum("impressions"), clicks=Sum("clicks"))
+        recalculate_de_norm_fields_for_account(account.id)
         cost = flight_1_statistic["cost"]
         views = flight_1_statistic["views"]
         impressions = flight_1_statistic["impressions"]
@@ -853,6 +856,8 @@ class PacingReportFlightsTestCase(APITestCase):
                                          clicks=clicks,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(account.id)
+
         url = self._get_url(placement.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1053,11 +1058,12 @@ class PacingReportFlightsTestCase(APITestCase):
         account = Account.objects.create(update_time=today_time, timezone="UTC")
         campaign = Campaign.objects.create(account=account, salesforce_placement=placement)
         Flight.objects.create(placement=placement,
-                              total_cost=total_cost,
-                              start=start, end=end)
+                                       total_cost=total_cost,
+                                       start=start, end=end)
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=start,
                                          cost=aw_cost)
+        recalculate_de_norm_fields_for_account(account.id)
 
         url = self._get_url(placement.id)
         response = self.client.get(url)

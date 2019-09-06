@@ -1,5 +1,5 @@
+import json
 from datetime import datetime
-from unittest.mock import patch
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -21,12 +21,15 @@ from video.api.urls.names import Name
 
 
 class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
-    def _request(self, **query_params):
-        url = reverse(
+    def _get_url(self, **query_params):
+        return reverse(
             Name.VIDEO_EXPORT,
             [Namespace.VIDEO],
             query_params=query_params,
         )
+
+    def _request(self, **query_params):
+        url = self._get_url(**query_params)
         return self.client.get(url)
 
     def test_not_auth(self):
@@ -163,6 +166,23 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
         video_ids = [str(video.main.id) for video in videos]
 
+        response = self._request(**{"main.id": ",".join(video_ids[:filter_count])})
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    def test_filter_ids_deprecated(self):
+        self.create_admin_user()
+        filter_count = 2
+        videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
+        video_ids = [str(video.main.id) for video in videos]
+
         response = self._request(ids=",".join(video_ids[:filter_count]))
 
         csv_data = get_data_from_csv_response(response)
@@ -184,3 +204,20 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    def test_filter_ids_post_body(self):
+        self.create_admin_user()
+        filter_count = 2
+        videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
+        video_ids = [str(video.main.id) for video in videos]
+
+        url = self._get_url()
+        payload = {
+            "main.id": video_ids[:filter_count]
+        }
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(filter_count, len(data))

@@ -45,3 +45,22 @@ def get_all_class_constants(cls):
         for name, value in cls.__dict__.items()
         if not name.startswith("_")
     ])
+
+
+def convert_subscriber_count(string):
+    try:
+        subscribers = int(string)
+    except Exception as e:
+        try:
+            units = string[-1].lower()
+            string = string[:-1]
+            subs_float = float(string)
+            if units == "k":
+                subscribers = int(subs_float * 1000)
+            elif units == "m":
+                subscribers = int(subs_float * 1000000)
+            elif units == "b":
+                subscribers = int(subs_float * 1000000000)
+        except Exception as e:
+            return 0
+    return subscribers

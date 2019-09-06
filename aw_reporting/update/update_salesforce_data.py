@@ -26,7 +26,7 @@ from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from saas import celery_app
 from utils.datetime import now_in_default_tz
-from utils.db.models.persistent_entities import PersistentEntityModelMixin
+from utils.db.models.persistent_entities import DemoEntityModelMixin
 from utils.lang import almost_equal
 
 __all__ = [
@@ -73,8 +73,8 @@ def perform_get(sc):
     ]:
         logger.debug("Getting %s items" % model.__name__)
         existed_ids = model.objects.all().values_list('id', flat=True)
-        persistent_ids = list(model.persistent_items().values_list('id', flat=True)) \
-            if issubclass(model, PersistentEntityModelMixin) \
+        demo_ids = list(model.demo_items().values_list('id', flat=True)) \
+            if issubclass(model, DemoEntityModelMixin) \
             else []
 
         item_ids = []
@@ -115,7 +115,7 @@ def perform_get(sc):
         logger.debug('   Updated %d items' % update)
 
         # delete items
-        deleted_ids = set(existed_ids) - set(item_ids) - set(persistent_ids)
+        deleted_ids = set(existed_ids) - set(item_ids) - set(demo_ids)
         if deleted_ids:
             model.objects.filter(pk__in=deleted_ids).delete()
             logger.debug('   Deleted %d items' % len(deleted_ids))
@@ -142,7 +142,9 @@ def perform_update(sc, today, opportunity_ids, force_update, skip_placements, sk
 
 def update_opportunities(sc, opportunity_ids, debug_update):
     opp_filter = Q(number__in=opportunity_ids) if opportunity_ids else Q()
-    for opportunity in Opportunity.objects.filter(opp_filter):
+    opportunities = Opportunity.objects.filter(opp_filter) \
+        .difference(Opportunity.demo_items())
+    for opportunity in opportunities:
         update = {}
         ids = Campaign.objects.filter(
             salesforce_placement__opportunity=opportunity).values_list(
@@ -180,9 +182,11 @@ def update_opportunities(sc, opportunity_ids, debug_update):
 
 def update_placements(sc, opportunity_ids, debug_update):
     opp_filter = Q(opportunity__number__in=opportunity_ids) if opportunity_ids else Q()
-    for placement in OpPlacement.objects.filter(opp_filter) \
-            .filter(adwords_campaigns__isnull=False) \
-            .distinct():
+    placements = OpPlacement.objects.filter(opp_filter) \
+        .filter(adwords_campaigns__isnull=False) \
+        .difference(OpPlacement.demo_items()) \
+        .distinct()
+    for placement in placements:
 
         aw_pl = placement.adwords_campaigns.order_by('id').first().name
         if placement.ad_words_placement != aw_pl:
@@ -190,7 +194,7 @@ def update_placements(sc, opportunity_ids, debug_update):
             try:
                 r = 204 \
                     if debug_update \
-                    else sc.sf.Placement__c.update(placement.id, update,)
+                    else sc.sf.Placement__c.update(placement.id, update, )
             except Exception as e:
                 logger.critical("Unhandled exception: %s" % str(e))
             else:
@@ -295,6 +299,7 @@ def flights_to_update_qs(force_update, today):
         .exclude(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
         .filter(type_filters) \
         .filter(date_filters) \
+        .difference(Flight.demo_items()) \
         .prefetch_related("placement") \
         .distinct()
     return flights

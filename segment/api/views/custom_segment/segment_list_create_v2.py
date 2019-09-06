@@ -1,8 +1,11 @@
-from django.db.models import Count
+from django.contrib.postgres.fields.jsonb import KeyTextTransform
+from django.db.models import IntegerField
+from django.db.models.functions import Cast
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -48,7 +51,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             if sort_by not in self.ALLOWED_SORTS:
                 raise ValidationError("Allowed sorts: {}".format(", ".join(self.ALLOWED_SORTS)))
             if sort_by == "items":
-                queryset = queryset.annotate(items=Count("related"))
+                queryset = queryset.annotate(items=Cast(KeyTextTransform("items_count", "statistics"), IntegerField()))
             if self.request.query_params.get("ascending"):
                 sort_by = "{}".format(sort_by)
             else:
@@ -82,9 +85,12 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         validated_data = self._validate_data(data, request, kwargs)
         data.update(validated_data)
 
-        serializer = self.serializer_class(data=data)
-        serializer.is_valid(raise_exception=True)
-        segment = serializer.save()
+        try:
+            serializer = self.serializer_class(data=data)
+            serializer.is_valid()
+            segment = serializer.save()
+        except ValueError as e:
+            return Response(status=HTTP_400_BAD_REQUEST, data=str(e))
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)

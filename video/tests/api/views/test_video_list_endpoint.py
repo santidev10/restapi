@@ -55,3 +55,14 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         for field in extra_fields:
             with self.subTest(field):
                 self.assertIn(field, response.data["items"][0])
+
+    def test_filter_by_ids(self):
+        self.create_admin_user()
+        items_to_filter = 2
+        videos = [Video(next(int_iterator)) for _ in range(items_to_filter + 1)]
+        VideoManager([Sections.GENERAL_DATA]).upsert(videos)
+
+        url = self.get_url(**{"main.id": ",".join([str(video.main.id) for video in videos[:items_to_filter]])})
+        response = self.client.get(url)
+
+        self.assertEqual(items_to_filter, len(response.data["items"]))

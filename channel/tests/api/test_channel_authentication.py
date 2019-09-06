@@ -22,6 +22,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
     @mock_send_task()
     @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
            return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
+           return_value=[Channel("channel_id")])
     @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.requests")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
@@ -60,6 +62,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
     @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
            return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
+           return_value=[Channel("channel_id")])
     @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
     @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
@@ -87,6 +91,8 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
 
     @mock_send_task()
     @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
            return_value=[Channel("channel_id")])
     @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
     @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")

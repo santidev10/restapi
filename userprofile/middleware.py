@@ -1,6 +1,7 @@
 from re import sub
 
 from django.conf import settings
+from django.utils.deprecation import MiddlewareMixin
 from rest_framework.authtoken.models import Token
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -10,7 +11,7 @@ from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
 
 
-class ApexUserCheck:
+class ApexUserCheck(MiddlewareMixin):
 
     def process_request(self, request):
         header_token = request.META.get("HTTP_AUTHORIZATION", None)

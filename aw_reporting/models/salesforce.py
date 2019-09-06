@@ -15,7 +15,7 @@ from aw_reporting.models.salesforce_constants import SalesforceFields
 from aw_reporting.models.salesforce_constants import goal_type_str
 from aw_reporting.models.signals.init_signals import init_signals
 from userprofile.managers import UserRelatedManagerMixin
-from utils.db.models.persistent_entities import PersistentEntityModelMixin
+from utils.db.models.persistent_entities import DemoEntityModelMixin
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ class Category(BaseModel):
         return dict(id=data['value'])
 
 
-class SFAccount(BaseModel, PersistentEntityModelMixin):
+class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200)
-    parent = models.ForeignKey('self', null=True)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
 
     @classmethod
     def get_data(cls, data):
@@ -73,7 +73,7 @@ class User(BaseModel):
     photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
     is_active = models.BooleanField(default=False)
-    role = models.ForeignKey(UserRole, null=True, related_name="users")
+    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE)
 
     @property
     def photo_name(self):
@@ -133,7 +133,7 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .filter(campaign_count__gt=0)
 
 
-class Opportunity(models.Model, PersistentEntityModelMixin):
+class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
@@ -205,8 +205,8 @@ class Opportunity(models.Model, PersistentEntityModelMixin):
     notes = models.TextField(null=True, blank=True)
 
     brand = models.CharField(max_length=255, null=True)
-    agency = models.ForeignKey(Contact, null=True)
-    account = models.ForeignKey(SFAccount, null=True)
+    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE)
+    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE)
 
     iq_category_id = models.SmallIntegerField(null=True)
     iq_region_id = models.SmallIntegerField(null=True)
@@ -369,10 +369,10 @@ class Opportunity(models.Model, PersistentEntityModelMixin):
         ordering = ('-start',)
 
 
-class OpPlacement(BaseModel, PersistentEntityModelMixin):
+class OpPlacement(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    opportunity = models.ForeignKey(Opportunity, related_name='placements')
+    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     goal_type_id = models.SmallIntegerField(null=True)
     ordered_units = models.IntegerField(null=True)
@@ -460,10 +460,10 @@ class OpPlacement(BaseModel, PersistentEntityModelMixin):
             return self.ordered_units
 
 
-class Flight(BaseModel, PersistentEntityModelMixin):
+class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    placement = models.ForeignKey(OpPlacement, related_name='flights')
+    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
     start = models.DateField(null=True)
@@ -494,23 +494,14 @@ class Flight(BaseModel, PersistentEntityModelMixin):
     @property
     def stats(self):
         if self._stats is None:
-            filters = {}
-            if self.start:
-                filters['statistics__date__gte'] = self.start
-            if self.end:
-                filters['statistics__date__lte'] = self.end
-
-            stat_query_set = self.placement.adwords_campaigns.all()
-
-            if filters:
-                stat_query_set = stat_query_set.filter(**filters)
-
-            campaign_stats = stat_query_set.aggregate(
-                video_views=models.Sum('statistics__video_views'),
-                impressions=models.Sum('statistics__impressions'),
-                cost=models.Sum('statistics__cost'),
-            )
-            self._stats = campaign_stats
+            try:
+                self._stats = dict(
+                    video_views=self.statistic.video_views,
+                    impressions=self.statistic.impressions,
+                    cost=self.statistic.sum_cost,
+                )
+            except FlightStatistic.DoesNotExist:
+                self._stats = dict(video_views=0, impressions=0, cost=0)
         return self._stats
 
     @property
@@ -548,17 +539,29 @@ class Flight(BaseModel, PersistentEntityModelMixin):
         return res
 
 
+class FlightStatistic(BaseModel):
+    flight = models.OneToOneField(Flight, related_name="statistic", on_delete=models.CASCADE, )
+    delivery = models.IntegerField(default=0)
+    impressions = models.IntegerField(default=0)
+    video_impressions = models.IntegerField(default=0)
+    video_clicks = models.IntegerField(default=0)
+    video_cost = models.FloatField(default=0)
+    video_views = models.IntegerField(default=0)
+    clicks = models.IntegerField(default=0)
+    sum_cost = models.FloatField(default=0)
+
+
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    owner = models.ForeignKey(User, related_name='activities')
+    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=10, db_index=True)
     date = models.DateField()
 
     opportunity = models.ForeignKey(
-        Opportunity, related_name='activities', null=True)
+        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE)
     account = models.ForeignKey(
-        SFAccount, related_name='activities', null=True)
+        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE)
 
     EMAIL_TYPE = "email"
     MEETING_TYPE = "meeting"

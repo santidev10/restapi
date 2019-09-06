@@ -169,11 +169,11 @@ class BrandSafetyQueryBuilder(object):
         :return: int
         """
         if score_threshold == 1:
-            threshold = 89
+            threshold = 69
         elif score_threshold == 2:
-            threshold = 75
+            threshold = 79
         elif score_threshold == 3:
-            threshold = 50
+            threshold = 89
         else:
             threshold = 100
         return threshold

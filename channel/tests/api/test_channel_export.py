@@ -1,6 +1,5 @@
-import csv
+import json
 from datetime import datetime
-from unittest.mock import patch
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -22,12 +21,15 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
-    def _request(self, **query_params):
-        url = reverse(
+    def _get_url(self, **query_params):
+        return reverse(
             ChannelPathName.CHANNEL_LIST_EXPORT,
             [Namespace.CHANNEL],
             query_params=query_params,
         )
+
+    def _request(self, **query_params):
+        url = self._get_url(**query_params)
         return self.client.get(url)
 
     def test_not_auth(self):
@@ -204,3 +206,22 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    def test_filter_ids_post_body(self):
+        self.create_admin_user()
+        filter_count = 2
+        channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
+        channel_ids = [str(channel.main.id) for channel in channels]
+
+        url = self._get_url()
+        payload = {
+            "main.id": channel_ids[:filter_count]
+        }
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(filter_count, len(data))

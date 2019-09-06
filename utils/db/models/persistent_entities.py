@@ -1,8 +1,8 @@
-class PersistentEntityModelMixin:
+class DemoEntityModelMixin:
     _is_demo_expressions = None
 
     @classmethod
-    def persistent_items(cls):
+    def demo_items(cls):
         return cls._get_demo_items()
 
     @classmethod

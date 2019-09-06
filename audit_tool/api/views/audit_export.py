@@ -183,6 +183,13 @@ class AuditExportApiView(APIView):
             "Video Count",
             "Brand Safety Score",
         ]
+        if clean is False:
+            try:
+                bad_word_categories = set(audit.params['exclusion_category'])
+                if len(bad_word_categories) > 0:
+                    cols.extend(bad_word_categories)
+            except Exception as e:
+                pass
         video_ids = []
         hit_words = {}
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
@@ -266,6 +273,28 @@ class AuditExportApiView(APIView):
                     video_count if video_count else "",
                     video_audit_score,
                 ]
+                if clean is False:
+                    try:
+                        if len(bad_word_categories) > 0:
+                            bad_word_category_dict = {}
+                            bad_words = unique_hit_words.split(",")
+                            for word in bad_words:
+                                try:
+                                    word_index = audit.params['exclusion'].index(word)
+                                    category = audit.params['exclusion_category'][word_index]
+                                    if category in bad_word_category_dict:
+                                        bad_word_category_dict[category].append(word)
+                                    else:
+                                        bad_word_category_dict[category] = [word]
+                                except Exception as e:
+                                    pass
+                            for category in bad_word_categories:
+                                if category in bad_word_category_dict:
+                                    data.append(len(bad_word_category_dict[category]))
+                                else:
+                                    data.append(0)
+                    except Exception as e:
+                        pass
                 wr.writerow(data)
             myfile.buffer.seek(0)
 
@@ -315,6 +344,12 @@ class AuditExportApiView(APIView):
             "Unique Bad Words",
             "Bad Words",
         ]
+        try:
+            bad_word_categories = set(audit.params['exclusion_category'])
+            if len(bad_word_categories) > 0:
+                cols.extend(bad_word_categories)
+        except Exception as e:
+            pass
         channel_ids = []
         hit_words = {}
         video_count = {}
@@ -325,9 +360,10 @@ class AuditExportApiView(APIView):
         bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
-            hit_words[cid.channel.channel_id] = cid.word_hits.get('exclusion')
-            if not hit_words[cid.channel.channel_id]:
-                hit_words[cid.channel.channel_id] = []
+            try:
+                hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+            except Exception as e:
+                hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
                 audit_id=audit_id,
                 video__channel_id=cid.channel_id
@@ -339,7 +375,7 @@ class AuditExportApiView(APIView):
                 if video.word_hits.get('exclusion'):
                     for bad_word in video.word_hits.get('exclusion'):
                         if bad_word not in hit_words[cid.channel.channel_id]:
-                            hit_words[cid.channel.channel_id].append(bad_word)
+                            hit_words[cid.channel.channel_id].add(bad_word)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
@@ -373,6 +409,27 @@ class AuditExportApiView(APIView):
                     len(hit_words[v.channel.channel_id]),
                     ','.join(hit_words[v.channel.channel_id])
                 ]
+                try:
+                    if len(bad_word_categories) > 0:
+                        bad_word_category_dict = {}
+                        bad_words = hit_words[v.channel.channel_id]
+                        for word in bad_words:
+                            try:
+                                word_index = audit.params['exclusion'].index(word)
+                                category = audit.params['exclusion_category'][word_index]
+                                if category in bad_word_category_dict:
+                                    bad_word_category_dict[category].append(word)
+                                else:
+                                    bad_word_category_dict[category] = [word]
+                            except Exception as e:
+                                pass
+                        for category in bad_word_categories:
+                            if category in bad_word_category_dict:
+                                data.append(len(bad_word_category_dict[category]))
+                            else:
+                                data.append(0)
+                except Exception as e:
+                    pass
                 wr.writerow(data)
             myfile.buffer.seek(0)
 
@@ -388,15 +445,14 @@ class AuditExportApiView(APIView):
 
     def get_hit_words(self, hit_words, v_id, clean=None):
         hits = hit_words.get(v_id)
-        uniques = []
+        uniques = set()
         words_to_use = 'exclusion'
         if clean is None or clean==True:
             words_to_use = 'inclusion'
         if hits:
             if hits.get(words_to_use):
                 for word in hits[words_to_use]:
-                    if word not in uniques:
-                        uniques.append(word)
+                    uniques.add(word)
                 return len(hits[words_to_use]), ','.join(uniques)
         return "", ""
 

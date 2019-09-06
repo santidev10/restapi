@@ -1,7 +1,7 @@
 import json
 from datetime import timedelta, datetime, date
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 

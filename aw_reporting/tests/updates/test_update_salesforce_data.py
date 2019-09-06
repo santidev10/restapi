@@ -12,6 +12,7 @@ from django.test import override_settings
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
+from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
@@ -23,6 +24,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.update.update_salesforce_data import update_salesforce_data
 from email_reports.reports.base import BaseEmailReport
 from utils.utittests.int_iterator import int_iterator
@@ -75,6 +77,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
                                        placement=placement,
                                        start=start, end=end)
         campaign = Campaign.objects.create(
+            account=Account.objects.create(id=next(int_iterator)),
             salesforce_placement=placement
         )
         CampaignStatistic.objects.create(
@@ -84,6 +87,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             impressions=999,
             video_views=delivered_units
         )
+        recalculate_de_norm_fields_for_account(campaign.account_id)
         flight.refresh_from_db()
 
         sf_mock = MagicMock()
@@ -791,6 +795,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         )
 
         campaign = Campaign.objects.create(
+            account=Account.objects.create(id=next(int_iterator)),
             salesforce_placement=placement
         )
         CampaignStatistic.objects.create(
@@ -799,6 +804,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             cost=999,
             impressions=999,
         )
+        recalculate_de_norm_fields_for_account(campaign.account_id)
         with patch_now(today):
             pacing_report = PacingReport()
             flights_data = pacing_report.get_flights_data(id=flight.id)
@@ -835,6 +841,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         )
 
         campaign = Campaign.objects.create(
+            account=Account.objects.create(id=next(int_iterator)),
             salesforce_placement=placement
         )
         CampaignStatistic.objects.create(
@@ -843,6 +850,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             cost=999,
             impressions=999,
         )
+        recalculate_de_norm_fields_for_account(campaign.account_id)
         with patch_now(today):
             pacing_report = PacingReport()
             flights_data = pacing_report.get_flights_data(id=flight.id)
@@ -900,6 +908,19 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         with patch_salesforce_connector():
             update_salesforce_data()
         self.assertEqual(demo_flights_qs.count(), flights_count)
+
+    def test_no_demo_data_update(self):
+        recreate_demo_data()
+        with patch_salesforce_connector() as connector:
+            salesforce = connector().sf
+            update_salesforce_data()
+
+        with self.subTest("Opportunity"):
+            salesforce.Opportunity.update.assert_not_called()
+        with self.subTest("Placement"):
+            salesforce.Placement__c.update.assert_not_called()
+        with self.subTest("Flights"):
+            salesforce.Flight__c.update.assert_not_called()
 
 
 class MockSalesforceConnection(Connection):

@@ -32,8 +32,43 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
 EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
 
+class ChannelsNotFound(Exception):
+    pass
+
+
 class UserChannelsNotAvailable(Exception):
     pass
+
+
+class ChannelESFilterBackend(ESFilterBackend):
+    def __get_similar_channels(self, query_params):
+        similar_to = query_params.get("similar_to", None)
+        if similar_to:
+            channel = ChannelManager(Sections.SIMILAR_CHANNELS).get([similar_to]).pop()
+
+            if not (channel and channel.similar_channels):
+                raise ChannelsNotFound
+
+            cluster = query_params.get("similar_cluster", "default")
+            similar_channels_ids = getattr(channel.similar_channels, cluster)
+
+            if not similar_channels_ids:
+                raise ChannelsNotFound
+
+            return similar_channels_ids
+
+    def filter_queryset(self, request, queryset, view):
+        try:
+            similar_channels_ids = self.__get_similar_channels(deepcopy(request.query_params))
+
+            if similar_channels_ids:
+                request.query_params._mutable = True
+                request.query_params["main.id"] = list(similar_channels_ids)
+        except ChannelsNotFound:
+            queryset = ESEmptyResponseAdapter(ChannelManager())
+
+        result = super(ChannelESFilterBackend, self).filter_queryset(request, queryset, view)
+        return result
 
 
 class ChannelListApiView(APIViewMixin, ListAPIView):
@@ -44,7 +79,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             IsAdminUser
         ),
     )
-    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
+    filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
         "stats.last_30day_subscribers:desc",

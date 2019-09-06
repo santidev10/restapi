@@ -142,6 +142,10 @@ class QueryGenerator:
         return filters
 
     def __get_filters_by_ids(self):
+        """
+        DEPRECATED
+        Use __get_filters_term with "main.id" term
+        """
         ids_str = self.query_params.get("ids", None)
         filters = []
         if ids_str:
@@ -282,6 +286,9 @@ class ESQuerysetAdapter:
 
 
 class ESFilterBackend(BaseFilterBackend):
+    def _get_query_params(self, request):
+        return request.query_params.dict()
+
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(
             "DynamicGenerator",
@@ -294,10 +301,12 @@ class ESFilterBackend(BaseFilterBackend):
                 exists_filter=view.exists_filter,
             )
         )
-        return dynamic_generator_class(request.query_params)
+        query_params = self._get_query_params(request)
+        return dynamic_generator_class(query_params)
 
     def _get_aggregations(self, request, queryset, view):
-        aggregations = unquote(request.query_params.get("aggregations", "")).split(",")
+        query_params = self._get_query_params(request)
+        aggregations = unquote(query_params.get("aggregations", "")).split(",")
         if view.allowed_aggregations is not None:
             aggregations = [agg
                             for agg in aggregations
@@ -305,7 +314,8 @@ class ESFilterBackend(BaseFilterBackend):
         return aggregations
 
     def _get_percentiles(self, request, queryset, view):
-        percentiles = unquote(request.query_params.get("aggregations", "")).split(",")
+        query_params = self._get_query_params(request)
+        percentiles = unquote(query_params.get("aggregations", "")).split(",")
         if view.allowed_percentiles is not None:
             percentiles = [agg
                            for agg in percentiles
@@ -313,7 +323,8 @@ class ESFilterBackend(BaseFilterBackend):
         return percentiles
 
     def _get_fields(self, request):
-        fields = request.query_params.get("fields", "").split(",")
+        query_params = self._get_query_params(request)
+        fields = query_params.get("fields", "").split(",")
         return fields
 
     def filter_queryset(self, request, queryset, view):
@@ -333,6 +344,14 @@ class ESFilterBackend(BaseFilterBackend):
             .with_aggregations(aggregations) \
             .with_percentiles(percentiles)
         return result
+
+
+class ESPOSTFilterBackend(ESFilterBackend):
+    def _get_query_params(self, request):
+        query_params = super()._get_query_params(request)
+        if request.method == "POST":
+            query_params.update(request.data)
+        return query_params
 
 
 class APIViewMixin:

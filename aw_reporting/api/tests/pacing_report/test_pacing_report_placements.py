@@ -2,12 +2,12 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-from itertools import product
 
 import pytz
-from django.core.urlresolvers import reverse
 from django.db.models import Sum
+from django.urls import reverse
 from django.utils import timezone
+from itertools import product
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
@@ -24,6 +24,7 @@ from aw_reporting.models import SalesForceGoalTypes
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import DefaultRate
 from aw_reporting.reports.pacing_report import PacingReportChartId
+from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
@@ -348,6 +349,8 @@ class PacingReportPlacementsTestCase(APITestCase):
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(account.id)
+
         url = self._get_url(opportunity.id)
         with patch_now(today):
             response = self.client.get(url)
@@ -412,6 +415,8 @@ class PacingReportPlacementsTestCase(APITestCase):
                                          clicks=clicks,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(account.id)
+
         url = self._get_url(opportunity.id)
         with patch_now(today):
             response = self.client.get(url)
@@ -663,12 +668,16 @@ class PacingReportPlacementsTestCase(APITestCase):
         )
         Flight.objects.create(placement=placement, start=start, end=end,
                               total_cost=total_cost)
-        campaign = Campaign.objects.create(salesforce_placement=placement,
-                                           video_views=1)
+        campaign = Campaign.objects.create(
+            account=Account.objects.create(id=next(int_iterator)),
+            salesforce_placement=placement,
+            video_views=1)
         CampaignStatistic.objects.create(date=today, campaign=campaign,
                                          cost=aw_cost,
                                          video_views=views,
                                          impressions=impressions)
+        recalculate_de_norm_fields_for_account(campaign.account_id)
+
         url = self._get_url(opportunity.id)
         with patch_now(today):
             response = self.client.get(url)

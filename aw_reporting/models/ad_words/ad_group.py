@@ -15,7 +15,7 @@ class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True)
     type = models.CharField(max_length=25, default="")
-    campaign = models.ForeignKey(Campaign, related_name='ad_groups')
+    campaign = models.ForeignKey(Campaign, related_name='ad_groups', on_delete=models.CASCADE)
     engagements = models.IntegerField(default=0)
     active_view_impressions = models.IntegerField(default=0)
     cpv_bid = models.PositiveIntegerField(null=True)

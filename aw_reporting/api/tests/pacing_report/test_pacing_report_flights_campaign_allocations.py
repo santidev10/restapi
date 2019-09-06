@@ -1,6 +1,6 @@
 import json
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework.status import HTTP_401_UNAUTHORIZED, \
     HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED
 
@@ -84,9 +84,9 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1)
 
         campaign_1 = Campaign.objects.create(
-            id=1, salesforce_placement=placement, account=account)
+            id=1, salesforce_placement=placement, account=account, status="eligible")
         campaign_2 = Campaign.objects.create(
-            id=2, salesforce_placement=placement, account=account)
+            id=2, salesforce_placement=placement, account=account, status="eligible")
 
         allocation_1, allocation_2 = 70, 30
         put_data = {
@@ -110,13 +110,13 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1)
 
         campaign_1 = Campaign.objects.create(
-            id=1, salesforce_placement=placement, account=account)
+            id=1, salesforce_placement=placement, account=account, status="eligible")
         campaign_2 = Campaign.objects.create(
-            id=2, salesforce_placement=placement, account=account)
+            id=2, salesforce_placement=placement, account=account, status="eligible")
         campaign_3 = Campaign.objects.create(
-            id=3, salesforce_placement=placement, account=account)
+            id=3, salesforce_placement=placement, account=account, status="eligible")
         campaign_4 = Campaign.objects.create(
-            id=4, salesforce_placement=placement, account=account)
+            id=4, salesforce_placement=placement, account=account, status="eligible")
 
         allocation_1, allocation_2, allocation_3, allocation_4 = 70, 20, 5, 5
         put_data = {
@@ -168,9 +168,9 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1)
 
         campaign_1 = Campaign.objects.create(
-            id=1, salesforce_placement=placement, account=account)
+            id=1, salesforce_placement=placement, account=account, status="eligible")
         campaign_2 = Campaign.objects.create(
-            id=2, salesforce_placement=placement, account=account)
+            id=2, salesforce_placement=placement, account=account, status="eligible")
 
         allocation_1, allocation_2 = 70, 31
         put_data = {

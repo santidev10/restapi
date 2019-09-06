@@ -1,5 +1,6 @@
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_channel_score import BrandSafetyChannelScore
+from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 
 
@@ -15,13 +16,16 @@ class BrandSafetyChannelAudit(object):
         "transcript": 1
     }
 
-    def __init__(self, channel_data, audit_utils):
+    def __init__(self, channel_data, audit_utils, blacklist_data):
         self.video_audits = channel_data["video_audits"]
         self.audit_utils = audit_utils
         self.score_mapping = audit_utils.score_mapping
-        self.default_category_scores = audit_utils.default_channel_score
+        # If channel has video audits, then channel should start with default_zero_score to find average category scores
+        # Else, channel should start with full_score since no average can be calculated and will be used to subtract metadata scores
+        self.default_category_scores = audit_utils.default_zero_score if len(self.video_audits) > 0 else audit_utils.default_full_score
         self.language_processors = audit_utils.bad_word_processors_by_language
         self._set_metadata(channel_data)
+        self.blacklist_data = blacklist_data
 
     @property
     def pk(self):
@@ -101,6 +105,13 @@ class BrandSafetyChannelAudit(object):
                 channel_brand_safety_score.add_metadata_score(word.name, keyword_category, keyword_score)
             except KeyError:
                 pass
+
+        # If blacklist data available, then set overall score and blacklisted category score to 0
+        for category_id in self.blacklist_data.keys():
+            channel_brand_safety_score.category_scores[category_id] = 0
+            if category_id not in BadWordCategory.EXCLUDED:
+                channel_brand_safety_score.overall_score = 0
+
         return channel_brand_safety_score
 
     def instantiate_es(self):
