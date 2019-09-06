@@ -23,7 +23,7 @@ class Command(BaseCommand):
         count = 0
         audits = AuditProcessor.objects.all().order_by("-id")
         for audit in audits:
-            if not audit.completed or audit.completed > timezone.now() - datetime.timedelta(hours=2):
+            if not audit.completed or audit.completed > timezone.now() - datetime.timedelta(hours=1):
                 count+=1
                 self.do_audit_meta(audit)
         logger.info("Done {} audits.".format(count))
