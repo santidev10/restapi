@@ -61,7 +61,7 @@ class Command(BaseCommand):
                 raise Exception("no audits to process at present")
             self.process_audit()
 
-    def process_audit(self, num=50000):
+    def process_audit(self, num=2500):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -97,7 +97,7 @@ class Command(BaseCommand):
             else:
                 raise Exception("not first thread but audit is done")
         videos = {}
-        pending_videos = pending_videos.select_related("video")
+        #pending_videos = pending_videos.select_related("video")
         start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
