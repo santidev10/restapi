@@ -54,6 +54,7 @@ class Command(BaseCommand):
         if not self.thread_id:
             self.thread_id = 0
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
+            self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
             except Exception as e:
@@ -61,7 +62,12 @@ class Command(BaseCommand):
                 raise Exception("no audits to process at present")
             self.process_audit()
 
-    def process_audit(self, num=50000):
+    def check_thread_limit_reached(self):
+        if self.thread_id > 4:
+            if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).exists():
+                raise Exception("Can not run more video processors while recommendation engine is running")
+
+    def process_audit(self, num=2500):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -97,7 +103,7 @@ class Command(BaseCommand):
             else:
                 raise Exception("not first thread but audit is done")
         videos = {}
-        pending_videos = pending_videos.select_related("video")
+        #pending_videos = pending_videos.select_related("video")
         start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
@@ -109,7 +115,7 @@ class Command(BaseCommand):
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
-        raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+        raise Exception("Audit {}.  thread {}".format(self.audit.id, self.thread_id))
 
     def process_seed_file(self, seed_file):
         try:
