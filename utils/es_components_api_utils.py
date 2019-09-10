@@ -379,3 +379,39 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
+
+
+
+class ExportDataGenerator:
+    serializer_class = ESDictSerializer
+    terms_filter = ()
+    range_filter = ()
+    match_phrase_filter = ()
+    exists_filter = ()
+    queryset = None
+
+    def __init__(self, query_params, headers):
+        self.query_params = query_params
+        self.headers = headers
+
+    def _get_query_generator(self):
+        dynamic_generator_class = type(
+            "DynamicGenerator",
+            (QueryGenerator,),
+            dict(
+                es_manager=self.queryset.manager,
+                terms_filter=self.terms_filter,
+                range_filter=self.range_filter,
+                match_phrase_filter=self.match_phrase_filter,
+                exists_filter=self.exists_filter,
+            )
+        )
+        return dynamic_generator_class(self.query_params)
+
+    def __iter__(self):
+        self.queryset.filter(
+            self._get_query_generator().get_search_filters()
+        )
+        yield self.headers
+        for item in self.queryset:
+            yield self.serializer_class(item).data
