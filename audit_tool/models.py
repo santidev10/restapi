@@ -359,6 +359,10 @@ class AuditExporter(models.Model):
     final = models.BooleanField(default=False, db_index=True)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
 
+class AuditProcessorCache(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    count = models.BigIntegerField(default=0, db_index=True)
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0
