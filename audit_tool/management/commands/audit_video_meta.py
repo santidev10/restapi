@@ -103,7 +103,6 @@ class Command(BaseCommand):
             else:
                 raise Exception("not first thread but audit is done")
         videos = {}
-        #pending_videos = pending_videos.select_related("video")
         start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
