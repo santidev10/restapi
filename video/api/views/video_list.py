@@ -53,6 +53,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     ordering_fields = (
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
         "stats.views:desc",
         "stats.likes:desc",
         "stats.dislikes:desc",
@@ -60,6 +62,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
         "stats.views:asc",
         "stats.likes:asc",
         "stats.dislikes:asc",
