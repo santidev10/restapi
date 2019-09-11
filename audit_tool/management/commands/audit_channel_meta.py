@@ -88,7 +88,7 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 raise Exception("not first thread but audit is done")
-        pending_channels = pending_channels.filter(channel__processed=True)#.select_related("channel")
+        pending_channels = pending_channels.filter(channel__processed=True)
         start = self.thread_id * num
         counter = 0
         for channel in pending_channels[start:start+num]:

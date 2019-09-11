@@ -53,6 +53,8 @@ class Command(BaseCommand):
             #     meta['count'] = AuditChannelProcessor.objects.filter(audit=audit, processed__isnull=False).count()
         audit.cached_data = meta
         audit.save(update_fields=['cached_data'])
+        if count == 0:
+            AuditProcessorCache.objects.filter(audit=audit).delete()
         AuditProcessorCache.objects.create(
             audit=audit,
             count=count

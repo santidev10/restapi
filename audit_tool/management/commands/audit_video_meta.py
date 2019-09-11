@@ -67,7 +67,7 @@ class Command(BaseCommand):
             if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).exists():
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
-    def process_audit(self, num=2500):
+    def process_audit(self, num=750):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -103,7 +103,6 @@ class Command(BaseCommand):
             else:
                 raise Exception("not first thread but audit is done")
         videos = {}
-        #pending_videos = pending_videos.select_related("video")
         start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
