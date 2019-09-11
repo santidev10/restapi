@@ -31,7 +31,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
-                "stats.last_day_views")
+                "stats.last_day_views", "brand_safety.overall_score")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
@@ -99,6 +99,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.last_day_views:min",
         "stats.views:max",
         "stats.views:min",
+        "brand_safety.overall_score:max",
+        "brand_safety.overall_score:min"
     )
 
     allowed_percentiles = (
