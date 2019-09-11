@@ -190,7 +190,8 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
-            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
+            'has_history': self.has_history()
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -199,6 +200,11 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def has_history(self):
+        if self.started and not self.completed < timezone.now() - timedelta(hours=1):
+            return True
+        return False
 
     def get_related_audits(self):
         d = []
