@@ -23,6 +23,10 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
+    WORKING_HOURS_POOL_MULTIPLIER = 1
+    OFF_HOURS_POOL_MULTIPLIER = 2
+    # Dynamically set in run method for each batch
+    POOL_MULTIPLIER = WORKING_HOURS_POOL_MULTIPLIER
     MAX_POOL_COUNT = None
     CHANNEL_POOL_BATCH_SIZE = None
     CHANNEL_MASTER_BATCH_SIZE = None
@@ -35,6 +39,8 @@ class BrandSafetyAudit(object):
     channel_batch_counter = 1
 
     def __init__(self, *_, **kwargs):
+        self.audit_utils = AuditUtils()
+
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
         # else main run method should not be called since it relies on an APIScriptTracker instance
         self.query_creator = None
@@ -50,11 +56,12 @@ class BrandSafetyAudit(object):
             self.is_manual = True
         if kwargs["discovery"]:
             self.discovery = True
-            self._set_discovery_config()
+            self.config_setter = self._set_discovery_config
         else:
             self.discovery = False
-            self._set_update_config()
-        self.audit_utils = AuditUtils()
+            self.config_setter = self._set_update_config
+        # Set inital config
+        self.config_setter()
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
             upsert_sections=(Sections.BRAND_SAFETY,)
@@ -65,19 +72,19 @@ class BrandSafetyAudit(object):
         )
 
     def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 2
+        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
         self.CHANNEL_POOL_BATCH_SIZE = 10
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_discovery_query
 
     def _set_update_config(self):
-        self.MAX_POOL_COUNT = 6
+        self.MAX_POOL_COUNT = 4 * self.POOL_MULTIPLIER
         self.CHANNEL_POOL_BATCH_SIZE = 15
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_update_query
 
     def _set_manual_config(self):
-        self.MAX_POOL_COUNT = 2
+        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
         self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
 
@@ -90,14 +97,19 @@ class BrandSafetyAudit(object):
         """
         if self.is_manual:
             raise ValueError("Provider was not initialized with an APIScriptTracker instance.")
-        pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+
         for channel_batch in self._channel_generator(self.cursor_id):
             # Some batches may be empty if none of the channels retrieved have full data to be audited
             # _channel_generator will stop when no items are retrieved from Elasticsearch
             if not channel_batch:
                 continue
-            results = pool.map(self._process_audits,
-                               self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
+
+            # Dynamically set config / pool count for each batch
+            self.POOL_MULTIPLIER = self.WORKING_HOURS_POOL_MULTIPLIER if self.audit_utils.is_working_hours() else self.OFF_HOURS_POOL_MULTIPLIER
+            self.config_setter()
+
+            pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+            results = pool.map(self._process_audits, self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
 
             # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
@@ -281,6 +293,9 @@ class BrandSafetyAudit(object):
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
+
+            results = results[:2]
+
             channels = BrandSafetyChannelSerializer(results, many=True).data
             data = self._get_channel_batch_data(channels)
             yield data
@@ -362,7 +377,7 @@ class BrandSafetyAudit(object):
         return channel_audits
 
     def manual_video_audit(self, video_ids: iter, blacklist_data=None):
-        """
+        """_process_audits
         Score specific videos
         :param video_ids: list | tuple -> Youtube video id strings
         :return: BrandSafetyVideoAudit objects
