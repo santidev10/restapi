@@ -34,7 +34,23 @@ class ESMonitoringTestCase(TestCase, ESTestCase):
         email = mail.outbox[0]
         text_body = email.body
 
-        self.assertIn("ElasticSearch Monitoring Report", text_body)
-        self.assertIn("channels", text_body)
-        self.assertIn("videos", text_body)
-        self.assertIn("keywords", text_body)
+        self.assertIsNotNone(email.alternatives[0][0])
+
+        self.assertIn("Channel (total: 10)", text_body)
+        self.assertIn("Video (total: 10)", text_body)
+        self.assertIn("Keyword (total: 10)", text_body)
+
+    @patch("email_reports.reports.es_monitoring_report.settings.ES_MONITORING_EMAIL_ADDRESSES", ["test@test.test"])
+    def test_send_email_no_docs_found(self):
+        send_daily_email_reports(reports=["ESMonitoringEmailReport"], debug=False)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        text_body = email.body
+
+        self.assertIsNotNone(email.alternatives[0][0])
+
+        self.assertIn("No new sections in the last 3 days", text_body)
+        self.assertIn("Channel (total: 0)", text_body)
+        self.assertIn("Video (total: 0)", text_body)
+        self.assertIn("Keyword (total: 0)", text_body)
