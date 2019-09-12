@@ -41,7 +41,7 @@ class ESMonitoringEmailReport(BaseEmailReport):
         managers = [
             ChannelManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.ANALYTICS]),
             VideoManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                          Sections.ANALYTICS, Sections.CAPTIONS]),
+                          Sections.ANALYTICS, Sections.CAPTIONS, Sections.CMS, Sections.AUTH]),
             KeywordManager(Sections.STATS)
         ]
 
