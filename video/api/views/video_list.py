@@ -70,6 +70,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.comments:asc",
         "stats.sentiment:asc",
         "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc"
     )
 
     terms_filter = TERMS_FILTER
@@ -100,7 +102,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:max",
         "stats.views:min",
         "brand_safety.overall_score:max",
-        "brand_safety.overall_score:min"
+        "brand_safety.overall_score:min",
     )
 
     allowed_percentiles = (
@@ -110,6 +112,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
+        "brand_safety.overall_score:percentiles",
     )
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
