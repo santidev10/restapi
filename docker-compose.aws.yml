@@ -41,3 +41,17 @@ services:
       - ./local_settings.py:/app/saas/local_settings.py
     env_file:
       - chf.restapi.env
+
+  filebeat:
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/filebeat:${aws_env}
+    restart: always
+    volumes:
+      - "filebeat_data:/usr/share/filebeat/data:rw"
+      - "/var/lib/docker/containers:/usr/share/filebeat/dockerlogs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    env_file:
+      - chf.restapi.env
+
+
+volumes:
+  filebeat_data:
