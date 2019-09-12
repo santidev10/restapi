@@ -84,7 +84,6 @@ services:
     image: viewiq/rabbitmq
     build:
       context: ./.docker/rabbitmq/
-
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
@@ -98,6 +97,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  flower:
+    image: iserko/docker-celery-flower
+    environment:
+      CELERY_BROKER_URL: amqp://rabbitmq
+
+  kibana:
+    image: kibana:6.4.2
+    environment:
+      ELASTICSEARCH_URL: http://es:9200
+
+  filebeat:
+    environment:
+      LOG_ES_HOSTS: "es:9200"
+    image: viewiq/filebeat
+    build:
+      context: ./.docker/filebeat/
+    volumes:
+      - "filebeat_data:/usr/share/filebeat/data:rw"
+      - "/var/lib/docker/containers:/usr/share/filebeat/dockerlogs:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
 
   # APM
   apm-es:
@@ -157,3 +177,6 @@ services:
       interval: 10s
     depends_on:
       - apm-es
+
+volumes:
+  filebeat_data:
