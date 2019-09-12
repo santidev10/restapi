@@ -202,23 +202,36 @@ class BrandSafetyAudit(object):
                 continue
         return video_audits
 
-    def audit_channel(self, channel_data, blacklist_data=None, full_audit=True):
+    def audit_channel(self, channel_data, blacklist_data=None, full_audit=True, rescore=True):
         """
         Audit single channel
-        :param channel_data: dict -> Data to audit
+        :param channel_data:
+                if rescore:
+                    dict -> Data to audit
+                if not rescore:
+                    str -> channel id to retrieve
             Required keys: channel_id, title
             Optional keys: description, video_tags
         :return:
         """
-        if blacklist_data is None:
+        if not rescore:
+            # Retrieve existing data from Elasticsearch
+            response = self.audit_utils.get_items([channel_data], self.channel_manager)
             try:
-                blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
+                audit = response[0].brand_safety.overall_score
             except (IndexError, AttributeError):
-                pass
-        audit = BrandSafetyChannelAudit(channel_data, self.audit_utils, blacklist_data)
-        audit.run()
-        if not full_audit:
-            audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
+                # Channel not scored
+                audit = None
+        else:
+            if blacklist_data is None:
+                try:
+                    blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
+                except (IndexError, AttributeError):
+                    pass
+            audit = BrandSafetyChannelAudit(channel_data, self.audit_utils, blacklist_data)
+            audit.run()
+            if not full_audit:
+                audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
         return audit
 
     def audit_channels(self, channel_video_audits: dict = None) -> list:
@@ -293,9 +306,7 @@ class BrandSafetyAudit(object):
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
-
-            results = results[:2]
-
+                
             channels = BrandSafetyChannelSerializer(results, many=True).data
             data = self._get_channel_batch_data(channels)
             yield data
