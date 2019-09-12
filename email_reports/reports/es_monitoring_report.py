@@ -39,9 +39,10 @@ class ESMonitoringEmailReport(BaseEmailReport):
 
     def _collect_report(self):
         managers = [
-            ChannelManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.ANALYTICS]),
+            ChannelManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.ANALYTICS,
+                            Sections.AUTH, Sections.CMS]),
             VideoManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                          Sections.ANALYTICS, Sections.CAPTIONS, Sections.CMS, Sections.AUTH]),
+                          Sections.ANALYTICS, Sections.CAPTIONS, Sections.CMS]),
             KeywordManager(Sections.STATS)
         ]
 
