@@ -1,6 +1,10 @@
+import re
+
 from rest_framework.serializers import CharField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+
+from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -29,8 +33,17 @@ class BrandSafetyVideoSerializer(Serializer):
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
     tags = SerializerMethodField()
-    transcript = CharField(source="captions.transcript", default="")
+    transcript = SerializerMethodField()
 
     def get_tags(self, obj):
         tags = ",".join(getattr(obj.general_data, "tags", []))
         return tags
+
+    def get_transcript(self, video):
+        transcript = None
+        if video.captions and video.captions.items:
+            for caption in video.captions.items:
+                if caption.language_code == "en":
+                    text = caption.text
+                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+        return transcript

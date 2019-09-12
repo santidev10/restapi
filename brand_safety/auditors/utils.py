@@ -1,7 +1,11 @@
 from collections import defaultdict
 from collections import namedtuple
 import csv
+from datetime import datetime
+from datetime import timezone
 import re
+
+import pytz
 
 from flashtext import KeywordProcessor
 from django.conf import settings
@@ -75,6 +79,21 @@ class AuditUtils(object):
             for hit in keyword_processor.extract_keywords(text)
         ]
         return hits
+
+    @staticmethod
+    def is_working_hours(start=5, end=17):
+        """
+        Check if current hour is within working hours
+        :param start:
+        :param end:
+        :return:
+        """
+        pst_tz = pytz.timezone("US/Pacific")
+        utc_dt = datetime.now(timezone.utc)
+        pst_now_hour = utc_dt.astimezone(pst_tz).hour
+        if start <= pst_now_hour <= end:
+            return True
+        return False
 
     def update_config(self):
         self._score_mapping = self.get_brand_safety_score_mapping()

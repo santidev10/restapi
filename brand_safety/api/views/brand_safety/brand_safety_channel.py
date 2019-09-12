@@ -104,7 +104,11 @@ class BrandSafetyChannelAPIView(APIView):
         if ascending:
             reverse = not ascending
         if sorting in sort_options:
-            flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
+            # Video sorting value may be None. Move videos with None values to end of list
+            if reverse:
+                flagged_videos.sort(key=lambda video: (video[sorting] is not None, video[sorting]), reverse=reverse)
+            else:
+                flagged_videos.sort(key=lambda video: (video[sorting] is None, video[sorting]), reverse=reverse)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_response, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
