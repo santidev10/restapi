@@ -115,8 +115,6 @@ services:
     environment:
       ES_JAVA_OPTS: "-Xmx256m -Xms256m"
       LOGSTASH_ES_HOST: es
-    ports:
-      - "12201:12201/udp"
     depends_on:
       es:
         condition: service_healthy
