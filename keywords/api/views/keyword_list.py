@@ -42,6 +42,8 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.search_volume:asc",
         "stats.average_cpc:asc",
         "stats.competition:asc",
+        "stats.views:desc",
+        "stats.views:asc",
     )
 
     terms_filter = TERMS_FILTER
