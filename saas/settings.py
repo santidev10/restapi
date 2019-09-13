@@ -225,7 +225,7 @@ LOGGING = {
     },
     "formatters": {
         "main_formatter": {
-            "format": "%(asctime)s %(levelname)s: %(message)s",
+            "format": "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d > %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "detail_formatter": {
