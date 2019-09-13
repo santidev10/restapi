@@ -105,6 +105,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.views_per_video:asc",
         "general_data.youtube_published_at:desc",
         "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -180,6 +182,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.last_30day_views:percentiles",
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
+        "brand_safety.overall_score:percentiles",
     )
 
     def get_serializer_class(self):

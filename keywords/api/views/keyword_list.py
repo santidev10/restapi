@@ -37,12 +37,12 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.search_volume:desc",
         "stats.average_cpc:desc",
         "stats.competition:desc",
+        "stats.views:desc",
         "stats.last_30day_views:asc",
         "stats.top_category_last_30day_views:asc",
         "stats.search_volume:asc",
         "stats.average_cpc:asc",
         "stats.competition:asc",
-        "stats.views:desc",
         "stats.views:asc",
     )
 
