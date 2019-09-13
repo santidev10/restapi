@@ -108,16 +108,18 @@ services:
     environment:
       ELASTICSEARCH_URL: http://es:9200
 
-  filebeat:
-    environment:
-      LOG_ES_HOSTS: "es:9200"
-    image: viewiq/filebeat
+  logstash:
+    image: viewiq/logstash
     build:
-      context: ./.docker/filebeat/
-    volumes:
-      - "filebeat_data:/usr/share/filebeat/data:rw"
-      - "/var/lib/docker/containers:/usr/share/filebeat/dockerlogs:ro"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      context: ./.docker/logstash
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      LOGSTASH_ES_HOST: es
+    ports:
+      - "12201:12201/udp"
+    depends_on:
+      es:
+        condition: service_healthy
 
   # APM
   apm-es:
@@ -177,6 +179,3 @@ services:
       interval: 10s
     depends_on:
       - apm-es
-
-volumes:
-  filebeat_data:
