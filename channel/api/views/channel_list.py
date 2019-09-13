@@ -99,7 +99,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
         "brand_safety.overall_score:desc",
-        "brand_safety.overall_score:asc"
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
