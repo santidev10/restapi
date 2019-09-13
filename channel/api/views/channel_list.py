@@ -27,7 +27,8 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score")
+                "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
+                "general_data.youtube_published_at",)
 
 EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
@@ -102,6 +103,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
+        "general_data.youtube_published_at:desc",
+        "general_data.youtube_published_at:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -162,6 +165,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.views_per_video:min",
         "brand_safety.overall_score:max",
         "brand_safety.overall_score:min",
+        "general_data.youtube_published_at:max",
+        "general_data.youtube_published_at:min",
     )
 
     allowed_percentiles = (
