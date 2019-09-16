@@ -25,6 +25,8 @@ from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from saas import celery_app
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 from utils.datetime import now_in_default_tz
 from utils.db.models.persistent_entities import DemoEntityModelMixin
 from utils.lang import almost_equal
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 WRITE_START = datetime(2016, 9, 1).date()
 
 
-@celery_app.task
+@celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
 def update_salesforce_data(do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
                            skip_flights=False, skip_placements=False, skip_opportunities=False):
     logger.info("Salesforce update started")

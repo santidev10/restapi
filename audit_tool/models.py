@@ -190,7 +190,8 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
-            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
+            'has_history': self.has_history()
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
@@ -199,6 +200,11 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def has_history(self):
+        if self.started and not self.completed < timezone.now() - timedelta(hours=1):
+            return True
+        return False
 
     def get_related_audits(self):
         d = []
@@ -359,6 +365,10 @@ class AuditExporter(models.Model):
     final = models.BooleanField(default=False, db_index=True)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
 
+class AuditProcessorCache(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    count = models.BigIntegerField(default=0, db_index=True)
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0

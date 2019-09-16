@@ -27,7 +27,7 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_")
+                "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score")
 
 EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
 
@@ -84,14 +84,22 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     ordering_fields = (
         "stats.last_30day_subscribers:desc",
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
+        "stats.views:desc",
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
         "stats.last_30day_subscribers:asc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
+        "stats.views:asc",
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -150,6 +158,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:min",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
+        "brand_safety.overall_score:max",
+        "brand_safety.overall_score:min",
     )
 
     allowed_percentiles = (
@@ -163,6 +173,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.last_30day_views:percentiles",
         "stats.subscribers:percentiles",
         "stats.views_per_video:percentiles",
+        "brand_safety.overall_score:percentiles",
     )
 
     def get_serializer_class(self):

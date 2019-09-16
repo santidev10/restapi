@@ -31,7 +31,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
                 "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
-                "stats.last_day_views")
+                "stats.last_day_views", "brand_safety.overall_score")
 
 EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
 
@@ -53,6 +53,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     ordering_fields = (
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
         "stats.views:desc",
         "stats.likes:desc",
         "stats.dislikes:desc",
@@ -60,12 +62,16 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
         "stats.views:asc",
         "stats.likes:asc",
         "stats.dislikes:asc",
         "stats.comments:asc",
         "stats.sentiment:asc",
         "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -95,6 +101,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.last_day_views:min",
         "stats.views:max",
         "stats.views:min",
+        "brand_safety.overall_score:max",
+        "brand_safety.overall_score:min",
     )
 
     allowed_percentiles = (
@@ -104,6 +112,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
+        "brand_safety.overall_score:percentiles",
     )
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
