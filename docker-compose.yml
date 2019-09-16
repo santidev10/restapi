@@ -14,6 +14,9 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      DB_AUDIT_HOST: pg_audit
+      DB_AUDIT_USER: postgres
+      DB_AUDIT_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
@@ -23,6 +26,8 @@ services:
       rabbitmq:
         condition: service_healthy
       pg:
+        condition: service_healthy
+      pg_audit:
         condition: service_healthy
       es:
         condition: service_healthy
@@ -62,6 +67,17 @@ services:
     image: postgres:9.6
     environment:
       POSTGRES_DB: saas
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pg_audit:
+    image: postgres:9.6
+    environment:
+      POSTGRES_DB: audit
       POSTGRES_PASSWORD: password
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]

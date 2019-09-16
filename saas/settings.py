@@ -120,8 +120,19 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
-    }
+    },
+    'audit': {
+        # default values are for the TC only
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('DB_AUDIT_NAME', 'audit'),
+        'USER': os.getenv('DB_AUDIT_USER', 'admin_saas'),
+        'PASSWORD': os.getenv('DB_AUDIT_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
+        'HOST': os.getenv('DB_AUDIT_HOST', 'localhost'),
+        'PORT': os.getenv('DB_AUDIT_PORT', ''),  # Set to empty string for default.
+    },
+
 }
+DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators

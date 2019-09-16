@@ -39,8 +39,8 @@ class Migration(migrations.Migration):
                 ('is_running', models.BooleanField(db_index=True, default=True)),
                 ('from_beginning', models.BooleanField(default=False)),
                 ('completed_at', models.DateField(blank=True, default=None, null=True)),
-                ('channel_segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related_topic_channel', to='segment.PersistentSegmentChannel')),
-                ('video_segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related_topic_video', to='segment.PersistentSegmentVideo')),
+                # ('channel_segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related_topic_channel', to='segment.PersistentSegmentChannel')),
+                # ('video_segment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='related_topic_video', to='segment.PersistentSegmentVideo')),
             ],
         ),
         migrations.AddField(

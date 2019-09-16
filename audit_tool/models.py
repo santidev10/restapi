@@ -363,7 +363,8 @@ class AuditExporter(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
-    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+    owner_email = models.EmailField(null=True, blank=True)
+    # owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
 
 class AuditProcessorCache(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)

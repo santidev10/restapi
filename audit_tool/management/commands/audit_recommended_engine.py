@@ -113,7 +113,7 @@ class Command(BaseCommand):
                     print("Audit completed, all videos processed")
                     a = AuditExporter.objects.create(
                         audit=self.audit,
-                        owner=None,
+                        owner_email=None,
                         clean=True,
                     )
                     raise Exception("Audit completed, all videos processed")

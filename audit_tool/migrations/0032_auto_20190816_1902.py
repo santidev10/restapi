@@ -24,14 +24,14 @@ class Migration(migrations.Migration):
             name='topicaudit',
             index_together=set([]),
         ),
-        migrations.RemoveField(
-            model_name='topicaudit',
-            name='channel_segment',
-        ),
-        migrations.RemoveField(
-            model_name='topicaudit',
-            name='video_segment',
-        ),
+        # migrations.RemoveField(
+        #     model_name='topicaudit',
+        #     name='channel_segment',
+        # ),
+        # migrations.RemoveField(
+        #     model_name='topicaudit',
+        #     name='video_segment',
+        # ),
         migrations.DeleteModel(
             name='Keyword',
         ),
