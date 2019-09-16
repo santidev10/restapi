@@ -14,6 +14,8 @@ from aw_reporting.adwords_api import get_all_customers
 from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.update.update_aw_account import update_aw_account
 from saas import celery_app
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 LOCK_NAME = "update_aw_accounts"
 
 
-@celery_app.task
+@celery_app.task(expires=TaskExpiration.FULL_AW_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_UPDATE)
 def update_aw_accounts(account_ids=None, start=None, end=None, start_date=None, end_date=None):
     now = now_in_default_tz(utc)
     today = now.date()

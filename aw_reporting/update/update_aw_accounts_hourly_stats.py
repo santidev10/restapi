@@ -14,6 +14,8 @@ from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
 from aw_reporting.update.tasks.load_hourly_stats import load_hourly_stats
 from saas import celery_app
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -28,7 +30,7 @@ logger = logging.getLogger(__name__)
 LOCK_NAME = "update_aw_accounts_hourly_stats"
 
 
-@celery_app.task
+@celery_app.task(expires=TaskExpiration.HOURLY_AW_UPDATE, soft_time_limit=TaskTimeout.HOURLY_AW_UPDATE)
 def update_aw_accounts_hourly_stats():
     now = timezone.now()
     ongoing_filter = (Q(min_start__lte=now) | Q(min_start__isnull=True)) \
