@@ -343,6 +343,7 @@ class AuditExportApiView(APIView):
             "Num Bad Videos",
             "Unique Bad Words",
             "Bad Words",
+            "Brand Safety Score",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -377,6 +378,7 @@ class AuditExportApiView(APIView):
                         if bad_word not in hit_words[cid.channel.channel_id]:
                             hit_words[cid.channel.channel_id].add(bad_word)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
+        auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'a+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -393,6 +395,7 @@ class AuditExportApiView(APIView):
                     last_category = v.last_uploaded_category.category_display
                 except Exception as e:
                     last_category = ""
+                channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
                 data = [
                     v.name,
                     "https://www.youtube.com/channel/" + v.channel.channel_id,
@@ -407,7 +410,8 @@ class AuditExportApiView(APIView):
                     last_category,
                     bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
-                    ','.join(hit_words[v.channel.channel_id])
+                    ','.join(hit_words[v.channel.channel_id]),
+                    channel_brand_safety_score
                 ]
                 try:
                     if len(bad_word_categories) > 0:
