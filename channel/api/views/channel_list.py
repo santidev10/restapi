@@ -150,6 +150,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "social.instagram_followers:min",
         "social.twitter_followers:max",
         "social.twitter_followers:min",
+        "stats.channel_group",
         "stats.last_30day_subscribers:max",
         "stats.last_30day_subscribers:min",
         "stats.last_30day_views:max",
