@@ -202,6 +202,20 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if channels_ids:
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
+            self.request.query_params._mutable = False
+
+        if "brand_safety" in self.request.query_params:
+            self.request.query_params._mutable = True
+            label = self.request.query_params["brand_safety"]
+            if label == "safe":
+                self.request.query_params["brand_safety.overall_score"] = "90,100"
+            elif label == "low risk":
+                self.request.query_params["brand_safety.overall_score"] = "80,89"
+            elif label == "risky":
+                self.request.query_params["brand_safety.overall_score"] = "70,79"
+            elif label == "high risk":
+                self.request.query_params["brand_safety.overall_score"] = "0,69"
+            self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
