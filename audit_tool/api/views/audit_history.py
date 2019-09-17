@@ -21,7 +21,7 @@ class AuditHistoryApiView(APIView):
                 history = AuditProcessorCache.objects.filter(audit=audit).order_by("id")
                 res = {
                     'results': [],
-                    'elapsed_time': ''
+                    'elapsed_time': 'N/A'
                 }
                 for h in history:
                     if not first_time:
