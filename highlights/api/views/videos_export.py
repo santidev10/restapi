@@ -1,7 +1,7 @@
 from rest_framework.permissions import IsAdminUser
 
-from video.api.views.video_export import VideoCSVRendered
-from video.api.views.video_export import VideoListExportSerializer
+# from video.api.views.video_export import VideoCSVRendered
+from video.api.serializers.video_export import VideoListExportSerializer
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from highlights.api.views.videos import ORDERING_FIELDS
@@ -24,7 +24,8 @@ class HighlightVideosExportApiView(APIViewMixin, FileListApiView):
         ),
     )
     serializer_class = VideoListExportSerializer
-    renderer_classes = (VideoCSVRendered,)
+    renderer_classes = ()
+    # renderer_classes = (VideoCSVRendered,)
     ordering_fields = ORDERING_FIELDS
     terms_filter = TERMS_FILTER
     filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)

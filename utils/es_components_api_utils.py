@@ -390,9 +390,8 @@ class ExportDataGenerator:
     exists_filter = ()
     queryset = None
 
-    def __init__(self, query_params, headers):
+    def __init__(self, query_params):
         self.query_params = query_params
-        self.headers = headers
 
     def _get_query_generator(self):
         dynamic_generator_class = type(
@@ -412,6 +411,5 @@ class ExportDataGenerator:
         self.queryset.filter(
             self._get_query_generator().get_search_filters()
         )
-        yield self.headers
         for item in self.queryset:
             yield self.serializer_class(item).data

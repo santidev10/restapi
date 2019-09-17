@@ -1,9 +1,11 @@
 import json
 import hashlib
 
+from celery import chain
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.response import Response
 
 from utils.es_components_api_utils import APIViewMixin
 
@@ -18,9 +20,18 @@ class S3ExportApiView(APIViewMixin):
 
     def post(self, request):
         query_params = request.query_params.dict()
-        export_name = self.generate_report_hash(query_params, request.user.pk)
-        self.generate_export_task.delay(query_params, export_name, request.user.emails)
-        return
+        user_emails = query_params.get("emails", f"{request.user.email}").split(",")
+        export_name = self.generate_report_hash(query_params, user_emails)
+
+        self.generate_export_task.delay(query_params, export_name, user_emails)
+
+        return Response(
+            data={
+                "message": "File is in queue for preparing. After it is finished exporting, "
+                           "you will receive message via email.",
+                "export_name": export_name
+            },
+            status=HTTP_200_OK)
 
     def get(self, request, export_name, *args, **kwargs):
         try:
