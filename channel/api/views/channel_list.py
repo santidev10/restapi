@@ -207,7 +207,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                label = self.request.query_params["brand_safety"]
+                label = self.request.query_params["brand_safety"].lower()
                 if label == "safe":
                     self.request.query_params["brand_safety.overall_score"] = "90,100"
                 elif label == "low risk":
