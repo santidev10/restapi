@@ -134,5 +134,6 @@ class UserActionListCreateApiView(ListCreateAPIView):
         """
         Prepare queryset
         """
-        queryset = UserAction.objects.all()
-        return self.do_sorts(self.do_filters(queryset)).prefetch_related("user")
+        queryset = UserAction.objects.all() \
+            .prefetch_related("user")
+        return self.do_sorts(self.do_filters(queryset))
