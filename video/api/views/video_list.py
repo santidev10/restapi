@@ -103,6 +103,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:min",
         "brand_safety.overall_score:max",
         "brand_safety.overall_score:min",
+        "brand_safety",
     )
 
     allowed_percentiles = (
@@ -112,7 +113,6 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
-        "brand_safety.overall_score:percentiles",
     )
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
