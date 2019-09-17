@@ -48,6 +48,8 @@ def get_all_class_constants(cls):
 
 
 def convert_subscriber_count(string):
+    if string is None:
+        return None
     try:
         subscribers = int(string)
     except Exception as e:

@@ -13,6 +13,7 @@ class SubscriberCountTestCase(TestCase):
         subs_string_7 = "13.4k"
         subs_string_8 = "13.4m"
         subs_string_9 = "13.4b"
+        subs_string_10 = None
         self.assertEqual(convert_subscriber_count(subs_string_1), 13450)
         self.assertEqual(convert_subscriber_count(subs_string_2), 839)
         self.assertEqual(convert_subscriber_count(subs_string_3), 0)
@@ -22,3 +23,4 @@ class SubscriberCountTestCase(TestCase):
         self.assertEqual(convert_subscriber_count(subs_string_7), 13400)
         self.assertEqual(convert_subscriber_count(subs_string_8), 13400000)
         self.assertEqual(convert_subscriber_count(subs_string_9), 13400000000)
+        self.assertEqual(convert_subscriber_count(subs_string_10), None)
