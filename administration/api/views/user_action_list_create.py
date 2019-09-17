@@ -7,7 +7,8 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
 
-from administration.api.serializers import UserActionRetrieveSerializer, UserActionCreateSerializer
+from administration.api.serializers import UserActionCreateSerializer
+from administration.api.serializers import UserActionRetrieveSerializer
 from administration.models import UserAction
 from utils.api_paginator import CustomPageNumberPaginator
 
@@ -17,6 +18,7 @@ class UserActionPaginator(CustomPageNumberPaginator):
     Paginator for user action list
     """
     page_size = 20
+
 
 class UserActionListCreateApiView(ListCreateAPIView):
     """
@@ -133,4 +135,4 @@ class UserActionListCreateApiView(ListCreateAPIView):
         Prepare queryset
         """
         queryset = UserAction.objects.all()
-        return self.do_sorts(self.do_filters(queryset))
+        return self.do_sorts(self.do_filters(queryset)).prefetch_related("user")
