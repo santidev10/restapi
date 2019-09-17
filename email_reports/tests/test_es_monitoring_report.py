@@ -50,7 +50,8 @@ class ESMonitoringTestCase(TestCase, ESTestCase):
 
         self.assertIsNotNone(email.alternatives[0][0])
 
-        self.assertIn("No new sections in the last 3 days", text_body)
+        self.assertIn("No new stats sections in the last 3 days", text_body)
+        self.assertIn("No new general_data sections in the last 3 days", text_body)
         self.assertIn("Channel (total: 0)", text_body)
         self.assertIn("Video (total: 0)", text_body)
         self.assertIn("Keyword (total: 0)", text_body)

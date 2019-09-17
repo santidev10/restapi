@@ -6,13 +6,15 @@ from django.db import Error
 from aw_reporting.aw_data_loader import AWDataLoader
 from aw_reporting.models import Account
 from saas import celery_app
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 from utils.exception import ignore_on_error
 from utils.exception import retry
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.FULL_AW_ACCOUNT_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_ACCOUNT_UPDATE)
 @ignore_on_error(logger=logger)
 @retry(count=10, delay=20, exceptions=(Error, ))
 def update_aw_account(account_id, today_str: str, start, end, index, count, start_date_str=None, end_date_str=None):
