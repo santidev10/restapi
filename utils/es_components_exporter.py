@@ -7,7 +7,7 @@ S3_EXPORT_KEY_PATTERN = "exported_files/{name}.csv"
 
 
 class ESDataS3Exporter(S3Exporter):
-    bucket_name = settings.AMAZON_S3_BUCKET_NAME
+    bucket_name = settings.AMAZON_S3_REPORTS_BUCKET_NAME
     export_content_type = "application/CSV"
 
     @staticmethod
