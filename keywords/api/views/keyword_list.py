@@ -6,6 +6,9 @@ from rest_framework.permissions import IsAdminUser
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import KeywordManager
+from keywords.constants import TERMS_FILTER
+from keywords.constants import RANGE_FILTER
+from keywords.constants import MATCH_PHRASE_FILTER
 from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
@@ -14,11 +17,6 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
-TERMS_FILTER = ("main.id", "stats.is_viral", "stats.top_category",)
-MATCH_PHRASE_FILTER = ("main.id",)
-
-RANGE_FILTER = ("stats.search_volume", "stats.average_cpc", "stats.competition",)
 
 
 class KeywordListApiView(APIViewMixin, ListAPIView):

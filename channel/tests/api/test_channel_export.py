@@ -1,5 +1,5 @@
-import json
 from datetime import datetime
+from unittest import mock
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -15,28 +15,33 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
+from utils.utittests.s3_mock import mock_s3
 
-class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
+EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
+
+
+class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, **query_params):
         return reverse(
-            ChannelPathName.CHANNEL_LIST_EXPORT,
+            ChannelPathName.CHANNEL_LIST_PREPARE_EXPORT,
             [Namespace.CHANNEL],
             query_params=query_params,
         )
 
     def _request(self, **query_params):
         url = self._get_url(**query_params)
-        return self.client.get(url)
+        return self.client.post(url)
 
+    @mock_s3
     def test_not_auth(self):
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
+    @mock_s3
     def test_no_permissions(self):
         self.create_test_user()
 
@@ -44,6 +49,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    @mock_s3
     def test_success_admin(self):
         self.create_admin_user()
 
@@ -51,6 +57,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @mock_s3
     def test_success_allowed_user(self):
         user = self.create_test_user()
         user.add_custom_user_permission("channel_list")
@@ -59,21 +66,34 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_success_csv_response(self):
-        test_datetime = datetime(2020, 3, 4, 5, 6, 7)
+
+class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
+    def _get_url(self, export_name):
+        return reverse(
+            ChannelPathName.CHANNEL_LIST_EXPORT,
+            [Namespace.CHANNEL],
+            args=(export_name,),
+        )
+
+    def _request(self, export_name=EXPORT_FILE_HASH):
+        url = self._get_url(export_name)
+        return self.client.get(url)
+
+    def _request_collect_file(self, **query_params):
+        collect_file_url = reverse(
+            ChannelPathName.CHANNEL_LIST_PREPARE_EXPORT,
+            [Namespace.CHANNEL],
+            query_params=query_params,
+        )
+        self.client.post(collect_file_url)
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_headers(self, *args):
         self.create_admin_user()
 
-        with patch_now(test_datetime):
-            response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "Channels export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
-        self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
-
-    def test_headers(self):
-        self.create_admin_user()
-
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -98,7 +118,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "average_cpv",
         ])
 
-    def test_response(self):
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_response(self, *args):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
         channel.populate_general_data(
@@ -128,6 +151,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY))
         manager.upsert([channel])
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -157,12 +181,16 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             expected_values_str
         )
 
-    def test_missed_values(self):
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_missed_values(self, *args):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
         channel.populate_stats(observed_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channel])
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -174,7 +202,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_filter_ids(self):
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids(self, *args):
         self.create_admin_user()
         filter_count = 2
         channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
@@ -183,7 +214,8 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
-        response = self._request(ids=",".join(channel_ids[:filter_count]))
+        self._request_collect_file(ids=",".join(channel_ids[:filter_count]))
+        response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
@@ -193,7 +225,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_filter_verified(self):
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_verified(self, *args):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
@@ -201,27 +236,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS, Sections.STATS)).upsert([channels[1]])
 
-        response = self._request(analytics="true")
+        self._request_collect_file(analytics="true")
+        response = self._request()
+
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
-
-    def test_filter_ids_post_body(self):
-        self.create_admin_user()
-        filter_count = 2
-        channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
-        for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
-        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
-        channel_ids = [str(channel.main.id) for channel in channels]
-
-        url = self._get_url()
-        payload = {
-            "main.id": channel_ids[:filter_count]
-        }
-        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)[1:]
-
-        self.assertEqual(filter_count, len(data))
