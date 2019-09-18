@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 
 from celery.schedules import crontab
 
@@ -104,3 +105,17 @@ CELERY_ROUTES_PREPARED = [
 re._pattern_type = re.Pattern
 
 CELERY_TASK_ROUTES = (CELERY_ROUTES_PREPARED,)
+
+
+class TaskExpiration:
+    FULL_AW_UPDATE = timedelta(hours=8).total_seconds()
+    FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
+    HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
+    FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+
+
+class TaskTimeout:
+    FULL_AW_UPDATE = timedelta(hours=8).total_seconds()
+    FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
+    HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
+    FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
