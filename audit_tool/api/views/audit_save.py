@@ -94,6 +94,11 @@ class AuditSaveApiView(APIView):
             'min_views': min_views,
             'max_dislikes': max_dislikes,
             'num_videos': num_videos,
+            'files': {
+                'inclusion': None,
+                'exclusion': None,
+                'source': None
+            }
         }
         if not audit_id:
             if source_file is None:
@@ -107,13 +112,16 @@ class AuditSaveApiView(APIView):
             # Put Source File on S3
             if source_file:
                 params['seed_file'] = self.put_source_file_on_s3(source_file)
+                params['files']['source'] = source_file.name
 
         # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
+            params['files']['inclusion'] = inclusion_file.name
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'], params['exclusion_category'] = self.load_keywords_and_categories(exclusion_file)
+            params['files']['exclusion'] = exclusion_file.name
         if category:
             c = []
             for a in json.loads(category):
@@ -136,8 +144,10 @@ class AuditSaveApiView(APIView):
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
                 audit.params['inclusion'] = params['inclusion']
+                audit.params['files']['inclusion'] = params['files']['inclusion']
             if exclusion_file:
                 audit.params['exclusion'] = params['exclusion']
+                audit.params['files']['exclusion'] = params['files']['exclusion']
                 audit.params['exclusion_category'] = params['exclusion_category']
             if name:
                 audit.params['name'] = name
