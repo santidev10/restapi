@@ -201,7 +201,7 @@ class AuditExportApiView(APIView):
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        with open(file_name, 'a+', newline='') as myfile:
+        with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -379,7 +379,7 @@ class AuditExportApiView(APIView):
                             hit_words[cid.channel.channel_id].add(bad_word)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        with open(file_name, 'a+', newline='') as myfile:
+        with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:

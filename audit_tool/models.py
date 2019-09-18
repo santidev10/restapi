@@ -202,7 +202,7 @@ class AuditProcessor(models.Model):
         return d
 
     def has_history(self):
-        if self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
+        if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
             return True
         return False
 
