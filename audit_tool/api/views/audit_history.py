@@ -28,7 +28,7 @@ class AuditHistoryApiView(APIView):
                         first_time = h.created
                     last_time = h.created
                     res['results'].append({
-                        'date': h.created.strftime("%Y-%m-%d %H:%M:%S"),
+                        'date': h.created.strftime("%m/%d %H:%M"),
                         'count': h.count,
                     })
                 try:
