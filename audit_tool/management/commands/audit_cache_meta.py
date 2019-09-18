@@ -55,7 +55,17 @@ class Command(BaseCommand):
         audit.save(update_fields=['cached_data'])
         if count == 0:
             AuditProcessorCache.objects.filter(audit=audit).delete()
-        AuditProcessorCache.objects.create(
-            audit=audit,
-            count=count
-        )
+        do_cache = False
+        if not audit.completed:
+            do_cache = True
+        else:
+            try:
+                if count > AuditProcessorCache.objects.filter(audit=audit).order_by("-id")[0].count:
+                    do_cache = True
+            except Exception as e:
+                pass
+        if do_cache:
+            AuditProcessorCache.objects.create(
+                audit=audit,
+                count=count
+            )
