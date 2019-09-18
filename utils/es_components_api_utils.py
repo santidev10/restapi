@@ -277,7 +277,7 @@ class ESQuerysetAdapter:
         raise NotImplementedError
 
     def __iter__(self):
-        if self.sort:
+        if self.sort or self.search_limit:
             yield from self.get_data(end=self.search_limit)
         else:
             yield from self.manager.scan(

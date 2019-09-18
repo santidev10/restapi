@@ -15,9 +15,8 @@ def build_csv_byte_stream(headers, rows):
 
 
 def get_data_from_csv_response(response):
-    content = ()
+    content = ""
     for row in response.streaming_content:
-        row_data = tuple([data for data in row.decode("utf-8").split("\n") if data])
-        if row_data:
-            content += row_data
-    return csv.reader(content)
+        content += row.decode("utf-8")
+    csv_content = tuple([data for data in content.split("\n") if data])
+    return csv.reader(csv_content)

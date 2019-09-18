@@ -4,29 +4,29 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 
 from es_components.constants import Sections
-from es_components.managers import VideoManager
+from es_components.managers import ChannelManager
 from utils.es_components_api_utils import ExportDataGenerator
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_exporter import ESDataS3Exporter
 from utils.aws.export_context_manager import ExportContextManager
-from video.constants import TERMS_FILTER
-from video.constants import MATCH_PHRASE_FILTER
-from video.constants import RANGE_FILTER
-from video.constants import EXISTS_FILTER
-from video.constants import VIDEO_CSV_HEADERS
-from video.api.serializers.video_export import VideoListExportSerializer
-from video.api.urls.names import Name
+from channel.constants import TERMS_FILTER
+from channel.constants import MATCH_PHRASE_FILTER
+from channel.constants import RANGE_FILTER
+from channel.constants import EXISTS_FILTER
+from channel.constants import CHANNEL_CSV_HEADERS
+from channel.api.serializers.channel_export import ChannelListExportSerializer
+from channel.api.urls.names import ChannelPathName
 from saas.urls.namespaces import Namespace
 
 
 
-class VideoListDataGenerator(ExportDataGenerator):
-    serializer_class = VideoListExportSerializer
+class ChannelListDataGenerator(ExportDataGenerator):
+    serializer_class = ChannelListExportSerializer
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    queryset = ESQuerysetAdapter(VideoManager((
+    queryset = ESQuerysetAdapter(ChannelManager((
         Sections.MAIN,
         Sections.GENERAL_DATA,
         Sections.STATS,
@@ -36,17 +36,20 @@ class VideoListDataGenerator(ExportDataGenerator):
 
 
 @celery_app.task
-def export_videos_data(query_params, export_name, user_emails):
+def export_channels_data(query_params, export_name, user_emails):
     content_exporter = ExportContextManager(
-        VideoListDataGenerator(query_params),
-        VIDEO_CSV_HEADERS
+        ChannelListDataGenerator(query_params),
+        CHANNEL_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
 
-    url_to_export = reverse("{}:{}".format(Namespace.VIDEO,  Name.VIDEO_EXPORT), args=(export_name,))
+    url_to_export = reverse(
+        "{}:{}".format(Namespace.CHANNEL,  ChannelPathName.CHANNEL_LIST_EXPORT),
+        args=(export_name,)
+    )
 
     # prepare E-mail
-    subject = "Export Videos"
+    subject = "Export Channels"
     body = f"File is ready for downloading.\n" \
            f"Please, go to {url_to_export} to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"

@@ -4,49 +4,48 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 
 from es_components.constants import Sections
-from es_components.managers import VideoManager
+from es_components.managers import KeywordManager
 from utils.es_components_api_utils import ExportDataGenerator
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.es_components_exporter import ESDataS3Exporter
 from utils.aws.export_context_manager import ExportContextManager
-from video.constants import TERMS_FILTER
-from video.constants import MATCH_PHRASE_FILTER
-from video.constants import RANGE_FILTER
-from video.constants import EXISTS_FILTER
-from video.constants import VIDEO_CSV_HEADERS
-from video.api.serializers.video_export import VideoListExportSerializer
-from video.api.urls.names import Name
+
+from highlights.api.urls.names import HighlightsNames
+from highlights.api.views.keywords import ORDERING_FIELDS
+from highlights.api.views.keywords import TERMS_FILTER
+from keywords.constants import KEYWORD_CSV_HEADERS
+from keywords.api.serializers.keyword_export import KeywordListExportSerializer
+
 from saas.urls.namespaces import Namespace
 
 
 
-class VideoListDataGenerator(ExportDataGenerator):
-    serializer_class = VideoListExportSerializer
+class HighlightsKeywordListDataGenerator(ExportDataGenerator):
+    serializer_class = KeywordListExportSerializer
     terms_filter = TERMS_FILTER
-    range_filter = RANGE_FILTER
-    match_phrase_filter = MATCH_PHRASE_FILTER
-    exists_filter = EXISTS_FILTER
-    queryset = ESQuerysetAdapter(VideoManager((
-        Sections.MAIN,
-        Sections.GENERAL_DATA,
+    ordering_fields = ORDERING_FIELDS
+    queryset = ESQuerysetAdapter(KeywordManager((
         Sections.STATS,
-        Sections.ADS_STATS,
-        Sections.BRAND_SAFETY,
-    )))
+    )))\
+        .order_by(ORDERING_FIELDS[0])\
+        .with_limit(100)
 
 
 @celery_app.task
-def export_videos_data(query_params, export_name, user_emails):
+def export_keywords_data(query_params, export_name, user_emails):
     content_exporter = ExportContextManager(
-        VideoListDataGenerator(query_params),
-        VIDEO_CSV_HEADERS
+        HighlightsKeywordListDataGenerator(query_params),
+        KEYWORD_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
 
-    url_to_export = reverse("{}:{}".format(Namespace.VIDEO,  Name.VIDEO_EXPORT), args=(export_name,))
+    url_to_export = reverse(
+        "{}:{}".format(Namespace.HIGHLIGHTS,  HighlightsNames.KEYWORDS_EXPORT),
+        args=(export_name,)
+    )
 
     # prepare E-mail
-    subject = "Export Videos"
+    subject = "Export Keywords"
     body = f"File is ready for downloading.\n" \
            f"Please, go to {url_to_export} to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"
