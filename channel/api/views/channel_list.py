@@ -81,6 +81,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
+        "general_data.youtube_published_at:desc",
+        "general_data.youtube_published_at:asc"
     )
 
     terms_filter = TERMS_FILTER
@@ -139,6 +141,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:min",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
+        "brand_safety",
+        "stats.channel_group"
     )
 
     allowed_percentiles = (
