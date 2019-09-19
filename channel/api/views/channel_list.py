@@ -71,20 +71,30 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
-        "stats.last_30day_subscribers:desc",
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
+        "stats.views:desc",
+        "stats.last_30day_subscribers:desc",
+        "stats.last_7day_subscribers:desc",
+        "stats.last_day_subscribers:desc",
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
-        "stats.last_30day_subscribers:asc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
+        "stats.views:asc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_7day_subscribers:asc",
+        "stats.last_day_subscribers:asc",
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
         "general_data.youtube_published_at:desc",
         "general_data.youtube_published_at:asc",
         "brand_safety.overall_score:desc",
-        "brand_safety.overall_score:asc"
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER

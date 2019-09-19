@@ -39,21 +39,29 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     ordering_fields = (
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
         "stats.views:desc",
         "stats.likes:desc",
         "stats.dislikes:desc",
+        "stats.last_7day_comments:desc",
+        "stats.last_day_comments:desc",
         "stats.comments:desc",
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
         "stats.views:asc",
         "stats.likes:asc",
         "stats.dislikes:asc",
+        "stats.last_7day_comments:asc",
+        "stats.last_day_comments:asc",
         "stats.comments:asc",
         "stats.sentiment:asc",
         "general_data.youtube_published_at:asc",
         "brand_safety.overall_score:desc",
-        "brand_safety.overall_score:asc"
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
