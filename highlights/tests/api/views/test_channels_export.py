@@ -92,6 +92,18 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     @mock.patch("highlights.api.views.channels_export.HighlightChannelsExportApiView.generate_report_hash",
+                    return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_highlights")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("view_highlights")
+        response = self._request_export()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("highlights.api.views.channels_export.HighlightChannelsExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_success_csv_response(self, *args):
         test_datetime = datetime(2020, 3, 4, 5, 6, 7)

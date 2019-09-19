@@ -6,6 +6,7 @@ from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.response import Response
+from rest_framework import permissions
 
 from utils.es_components_api_utils import APIViewMixin
 

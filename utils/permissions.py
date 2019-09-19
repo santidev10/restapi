@@ -85,3 +85,10 @@ def user_has_permission(perm):
     """
     return type("UserHasPermission", (UserHasPermissionBase,),
                 dict(permission=perm))
+
+
+class ExportDataAllowed(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
