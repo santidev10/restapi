@@ -296,7 +296,6 @@ class AuditExportApiView(APIView):
                     except Exception as e:
                         pass
                 wr.writerow(data)
-            myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -435,7 +434,6 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
                 wr.writerow(data)
-            myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
