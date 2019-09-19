@@ -78,4 +78,12 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
+        if query_params.get("stats.is_viral"):
+            if query_params.get("stats.is_viral") == "Viral":
+                self.request.query_params._mutable = True
+                self.request.query_params["stats.is_viral"] = "true"
+            elif query_params.get("stats.is_viral") == "All":
+                self.request.query_params._mutable = True
+                self.request.query_params["stats.is_viral"] = ""
+
         return ESQuerysetAdapter(KeywordManager(sections))
