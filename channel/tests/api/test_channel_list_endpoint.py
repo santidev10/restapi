@@ -66,21 +66,40 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 "overall_score": score
             }
         })
+        channel_2 = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 98
+            }
+        })
+        channel_3 = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 0
+            }
+        })
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel])
-        high_risk_url = self.url + "?brand_safety.overall_score=%2C69"
-        risky_url = self.url + "?brand_safety.overall_score=70%2C79"
-        low_risk_url = self.url + "?brand_safety.overall_score=80%2C89"
-        safe_url = self.url + "?brand_safety.overall_score=90%2C100"
+        high_risk_url = self.url + "?brand_safety=High%20Risk"
+        risky_url = self.url + "?brand_safety=Risky"
+        low_risk_url = self.url + "?brand_safety=Low%20Risk"
+        safe_url = self.url + "?brand_safety=Safe"
+        high_risk_and_safe_url = high_risk_url + "%20Safe"
         high_risk_response = self.client.get(high_risk_url)
         risky_response = self.client.get(risky_url)
         low_risk_response = self.client.get(low_risk_url)
         safe_response = self.client.get(safe_url)
-        self.assertEqual(len(high_risk_response.data["items"]), 0)
+        high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
+        self.assertEqual(len(high_risk_response.data["items"]), 1)
         self.assertEqual(len(risky_response.data["items"]), 0)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
-        self.assertEqual(len(safe_response.data["items"]), 0)
+        self.assertEqual(len(safe_response.data["items"]), 1)
+        self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
         self.assertEqual(
             score,
             low_risk_response.data["items"][0]["brand_safety"]["overall_score"]
