@@ -57,13 +57,12 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         user.add_custom_user_permission("channel_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         channel_id = str(next(int_iterator))
-        score = 89
         channel = Channel(**{
             "meta": {
                 "id": channel_id
             },
             "brand_safety": {
-                "overall_score": score
+                "overall_score": 89
             }
         })
         channel_2 = Channel(**{
@@ -96,12 +95,13 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         safe_response = self.client.get(safe_url)
         high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
         self.assertEqual(len(high_risk_response.data["items"]), 1)
+        self.assertEqual(risky_response.data['items'], {})
         self.assertEqual(len(risky_response.data["items"]), 0)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
         self.assertEqual(len(safe_response.data["items"]), 1)
         self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
         self.assertEqual(
-            score,
+            89,
             low_risk_response.data["items"][0]["brand_safety"]["overall_score"]
         )
 
