@@ -48,7 +48,7 @@ def export_keywords_data(query_params, export_name, user_emails):
     # prepare E-mail
     subject = "Export Keywords"
     body = f"File is ready for downloading.\n" \
-           f"Please, go to {url_to_export} to download the report.\n" \
+           f"Please, go to {settings.HOST + url_to_export} to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"
 
     # E-mail

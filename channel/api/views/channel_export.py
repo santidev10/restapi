@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAdminUser
 
 from channel.tasks.export_data import export_channels_data
 from utils.es_components_exporter import ESDataS3ExportApiView
+from utils.permissions import ExportDataAllowed
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -10,6 +11,7 @@ from utils.permissions import user_has_permission
 class ChannelListExportApiView(ESDataS3ExportApiView, APIView):
     permission_classes = (
         or_permission_classes(
+            ExportDataAllowed,
             user_has_permission("userprofile.channel_list"),
             IsAdminUser
         ),

@@ -32,7 +32,7 @@ class AuditHistoryApiView(APIView):
                         'count': h.count,
                     })
                 try:
-                    res['elapsed_time'] = str(last_time - first_time).split(".")[0]
+                    res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
                 except Exception as e:
                     pass
                 return Response(res)
