@@ -82,7 +82,9 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
         "general_data.youtube_published_at:desc",
-        "general_data.youtube_published_at:asc"
+        "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc"
     )
 
     terms_filter = TERMS_FILTER
@@ -188,15 +190,16 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                label = self.request.query_params["brand_safety"].lower()
-                if label == "safe":
-                    self.request.query_params["brand_safety.overall_score"] = "90,100"
-                elif label == "low risk":
-                    self.request.query_params["brand_safety.overall_score"] = "80,89"
-                elif label == "risky":
-                    self.request.query_params["brand_safety.overall_score"] = "70,79"
-                elif label == "high risk":
-                    self.request.query_params["brand_safety.overall_score"] = "0,69"
+                self.request.query_params["brand_safety.overall_score"] = []
+                labels = self.request.query_params["brand_safety"].lower().split(",")
+                if "high risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("0,69")
+                if "risky" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("70,79")
+                if "low risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("80,89")
+                if "safe" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("90,100")
                 self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
