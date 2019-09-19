@@ -6,6 +6,7 @@ from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.response import Response
+from rest_framework import permissions
 
 from utils.es_components_api_utils import APIViewMixin
 
@@ -20,6 +21,8 @@ class S3ExportApiView(APIViewMixin):
 
     def post(self, request):
         query_params = request.query_params.dict()
+        query_params.update(request.data)
+
         user_emails = query_params.get("emails", f"{request.user.email}").split(",")
         export_name = self.generate_report_hash(query_params, user_emails)
 
