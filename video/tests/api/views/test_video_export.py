@@ -137,6 +137,18 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("video_list")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("video_list")
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
     def test_missed_values(self, *args):
         self.create_admin_user()
         video = Video(next(int_iterator))

@@ -90,6 +90,18 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     @mock_s3
     @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                    return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("keyword_list")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("keyword_list")
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_success_csv_response(self, *args):
         test_datetime = datetime(2020, 3, 4, 5, 6, 7)
