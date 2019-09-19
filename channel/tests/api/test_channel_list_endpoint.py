@@ -104,7 +104,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
-        ChannelManager(sections=sections).upsert([channel])
+        ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
         high_risk_url = self.url + "?brand_safety=High%20Risk"
         risky_url = self.url + "?brand_safety=Risky"
         low_risk_url = self.url + "?brand_safety=Low%20Risk"
