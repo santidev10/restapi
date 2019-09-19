@@ -57,6 +57,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         user.add_custom_user_permission("channel_list")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         channel_id = str(next(int_iterator))
+        channel_id_2 = str(next(int_iterator))
+        channel_id_3 = str(next(int_iterator))
+        channel_id_4 = str(next(int_iterator))
+        channel_id_5 = str(next(int_iterator))
+
         channel = Channel(**{
             "meta": {
                 "id": channel_id
@@ -67,7 +72,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         channel_2 = Channel(**{
             "meta": {
-                "id": channel_id
+                "id": channel_id_2
             },
             "brand_safety": {
                 "overall_score": 98
@@ -75,7 +80,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         channel_3 = Channel(**{
             "meta": {
-                "id": channel_id
+                "id": channel_id_3
             },
             "brand_safety": {
                 "overall_score": 0
@@ -83,7 +88,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         channel_4 = Channel(**{
             "meta": {
-                "id": channel_id
+                "id": channel_id_4
             },
             "brand_safety": {
                 "overall_score": 75
@@ -91,7 +96,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         })
         channel_5 = Channel(**{
             "meta": {
-                "id": channel_id
+                "id": channel_id_5
             },
             "brand_safety": {
                 "overall_score": 79
