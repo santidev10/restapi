@@ -21,6 +21,8 @@ class S3ExportApiView(APIViewMixin):
 
     def post(self, request):
         query_params = request.query_params.dict()
+        query_params.update(request.data)
+
         user_emails = query_params.get("emails", f"{request.user.email}").split(",")
         export_name = self.generate_report_hash(query_params, user_emails)
 

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from unittest import mock
 
@@ -75,16 +76,19 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             args=(export_name,),
         )
 
+    def _get_collect_file_url(self, **query_params):
+        return reverse(
+            ChannelPathName.CHANNEL_LIST_PREPARE_EXPORT,
+            [Namespace.CHANNEL],
+            query_params=query_params,
+        )
+
     def _request(self, export_name=EXPORT_FILE_HASH):
         url = self._get_url(export_name)
         return self.client.get(url)
 
     def _request_collect_file(self, **query_params):
-        collect_file_url = reverse(
-            ChannelPathName.CHANNEL_LIST_PREPARE_EXPORT,
-            [Namespace.CHANNEL],
-            query_params=query_params,
-        )
+        collect_file_url = self._get_collect_file_url(**query_params)
         self.client.post(collect_file_url)
 
     @mock_s3
@@ -227,6 +231,30 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel_ids = [str(channel.main.id) for channel in channels]
 
         self._request_collect_file(ids=",".join(channel_ids[:filter_count]))
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids_in_payload(self, *args):
+        self.create_admin_user()
+        filter_count = 2
+        channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
+        channel_ids = [str(channel.main.id) for channel in channels]
+
+        payload = {"main.id": channel_ids[:filter_count]}
+        self.client.post(self._get_collect_file_url(), data=json.dumps(payload), content_type="application/json")
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
