@@ -107,7 +107,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flags = deepcopy(self.request.query_params).get("flags")
+        flags = deepcopy(self.request.query_params).get("flags") or deepcopy(self.request.query_params).get("stats.flags")
 
         if channel_id:
             self.request.query_params._mutable = True
@@ -116,9 +116,11 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
         if flags:
             self.request.query_params._mutable = True
+            flags = flags.lower().replace(" ", "_")
             self.request.query_params["stats.flags"] = flags
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
+
 
         if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
             if "brand_safety" in self.request.query_params:
