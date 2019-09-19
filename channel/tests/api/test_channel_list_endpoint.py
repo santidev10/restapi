@@ -81,6 +81,22 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
                 "overall_score": 0
             }
         })
+        channel_4 = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 75
+            }
+        })
+        channel_5 = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 79
+            }
+        })
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel])
@@ -96,7 +112,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
         self.assertEqual(len(high_risk_response.data["items"]), 1)
         self.assertEqual(risky_response.data['items'], {})
-        self.assertEqual(len(risky_response.data["items"]), 0)
+        self.assertEqual(len(risky_response.data["items"]), 2)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
         self.assertEqual(len(safe_response.data["items"]), 1)
         self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
