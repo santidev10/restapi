@@ -4,6 +4,7 @@ from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditProcessorCache
 from utils.permissions import user_has_permission
+import pytz
 
 class AuditHistoryApiView(APIView):
     permission_classes = (
@@ -28,7 +29,7 @@ class AuditHistoryApiView(APIView):
                         first_time = h.created
                     last_time = h.created
                     res['results'].append({
-                        'date': h.created.strftime("%m/%d %H:%M"),
+                        'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
                         'count': h.count,
                     })
                 try:
