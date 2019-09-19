@@ -63,6 +63,8 @@ class QueryGenerator:
         self.query_params = query_params
 
     def add_should_filters(self, ranges, filters, field):
+        if ranges is None:
+            return
         queries = []
         for range in ranges:
             if range:
@@ -110,7 +112,7 @@ class QueryGenerator:
                     if not (min or max):
                         continue
 
-                    query = QueryBuilder().build().should().range().field(field)
+                    query = QueryBuilder().build().must().range().field(field)
                     if min:
                         try:
                             min = float(min)
