@@ -61,7 +61,7 @@ class S3ExportApiView(APIViewMixin):
 
 
     def _get_url_to_export(self, export_name):
-        raise self.s3_exporter.generate_temporary_url(export_name)
+        return self.s3_exporter.generate_temporary_url(export_name)
 
     @staticmethod
     def generate_report_hash(filters, user_pk):
