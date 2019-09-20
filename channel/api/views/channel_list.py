@@ -19,6 +19,7 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from userprofile.permissions import PermissionGroupNames
 
 
 class ChannelsNotFound(Exception):
@@ -71,18 +72,30 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
-        "stats.last_30day_subscribers:desc",
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
+        "stats.views:desc",
+        "stats.last_30day_subscribers:desc",
+        "stats.last_7day_subscribers:desc",
+        "stats.last_day_subscribers:desc",
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
-        "stats.last_30day_subscribers:asc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
+        "stats.views:asc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_7day_subscribers:asc",
+        "stats.last_day_subscribers:asc",
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
         "general_data.youtube_published_at:desc",
-        "general_data.youtube_published_at:asc"
+        "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -172,23 +185,33 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         except UserChannelsNotAvailable:
             return ESEmptyResponseAdapter(ChannelManager())
 
+        channel_group = deepcopy(self.request.query_params).get("stats.channel_group")
+
+        if channel_group:
+            self.request.query_params._mutable = True
+            channel_group = channel_group.lower().split(" ")[0]
+            self.request.query_params["stats.channel_group"] = channel_group
+            self.request.query_params._mutable = False
+
         if channels_ids:
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                label = self.request.query_params["brand_safety"].lower()
-                if label == "safe":
-                    self.request.query_params["brand_safety.overall_score"] = "90,100"
-                elif label == "low risk":
-                    self.request.query_params["brand_safety.overall_score"] = "80,89"
-                elif label == "risky":
-                    self.request.query_params["brand_safety.overall_score"] = "70,79"
-                elif label == "high risk":
-                    self.request.query_params["brand_safety.overall_score"] = "0,69"
+                self.request.query_params["brand_safety.overall_score"] = []
+                labels = self.request.query_params["brand_safety"].lower().split(",")
+                if "high risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("0,69")
+                if "risky" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("70,79")
+                if "low risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("80,89")
+                if "safe" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("90,100")
                 self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):

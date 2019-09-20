@@ -62,20 +62,18 @@ class QueryGenerator:
     def __init__(self, query_params):
         self.query_params = query_params
 
-    def __get_filter_range(self):
-        filters = []
-
-        for field in self.range_filter:
-
-            range = self.query_params.get(field, None)
-
+    def add_should_filters(self, ranges, filters, field):
+        if ranges is None:
+            return
+        queries = []
+        for range in ranges:
             if range:
                 min, max = range.split(",")
 
                 if not (min or max):
                     continue
 
-                query = QueryBuilder().build().must().range().field(field)
+                query = QueryBuilder().build().should().range().field(field)
                 if min:
                     try:
                         min = float(min)
@@ -90,7 +88,46 @@ class QueryGenerator:
                         # in case of filtering by date
                         pass
                     query = query.lte(max)
-                filters.append(query.get())
+                queries.append(query)
+        combined_query = None
+        for query in queries:
+            query_obj = query.get()
+            if not combined_query:
+                combined_query = query_obj
+            else:
+                combined_query |= query_obj
+        filters.append(combined_query)
+
+    def __get_filter_range(self):
+        filters = []
+
+        for field in self.range_filter:
+            if field == "brand_safety.overall_score":
+                self.add_should_filters(self.query_params.get(field, None), filters, field)
+            else:
+                range = self.query_params.get(field, None)
+                if range:
+                    min, max = range.split(",")
+
+                    if not (min or max):
+                        continue
+
+                    query = QueryBuilder().build().must().range().field(field)
+                    if min:
+                        try:
+                            min = float(min)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.gte(min)
+                    if max:
+                        try:
+                            max = float(max)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.lte(max)
+                    filters.append(query.get())
 
         return filters
 
