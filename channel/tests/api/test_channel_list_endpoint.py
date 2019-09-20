@@ -52,9 +52,10 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         )
 
     def test_brand_safety_filter(self):
-        user = self.create_admin_user()
+        user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
         user.add_custom_user_permission("channel_list")
+        user.add_custom_user_permission("userprofile.scoring_brand_safety")
         user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
         channel_id = str(next(int_iterator))
         channel_id_2 = str(next(int_iterator))
