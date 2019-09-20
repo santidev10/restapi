@@ -19,6 +19,7 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from userprofile.permissions import PermissionGroupNames
 
 
 class ChannelsNotFound(Exception):
@@ -197,7 +198,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             self.request.query_params["main.id"] = channels_ids
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
                 self.request.query_params["brand_safety.overall_score"] = []
