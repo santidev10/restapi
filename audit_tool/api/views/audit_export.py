@@ -320,9 +320,9 @@ class AuditExportApiView(APIView):
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
-                audit=audit,
-                clean=clean,
-                final=True
+            audit=audit,
+            clean=clean,
+            final=True
         )
         if exports.count() > 0:
             return exports[0].file_name, _
