@@ -23,6 +23,7 @@ from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
 from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
+from userprofile.permissions import PermissionGroupNames
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -131,7 +132,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
                 self.request.query_params["brand_safety.overall_score"] = []
