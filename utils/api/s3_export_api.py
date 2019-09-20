@@ -1,12 +1,10 @@
 import json
 import hashlib
 
-from celery import chain
 from django.http import Http404
 from django.http import StreamingHttpResponse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.response import Response
-from rest_framework import permissions
 
 from utils.es_components_api_utils import APIViewMixin
 
@@ -23,10 +21,17 @@ class S3ExportApiView(APIViewMixin):
         query_params = request.query_params.dict()
         query_params.update(request.data)
 
-        user_emails = query_params.get("emails", f"{request.user.email}").split(",")
-        export_name = self.generate_report_hash(query_params, user_emails)
+        export_name = self.generate_report_hash(query_params, request.user.pk)
+        export_url = self._get_url_to_export(export_name)
 
-        self.generate_export_task.delay(query_params, export_name, user_emails)
+        if self.s3_exporter.exists(export_name):
+            return Response(
+                data={
+                    "export_url": export_url,
+                }
+            )
+
+        self.generate_export_task.delay(query_params, export_name, [request.user.email], export_url)
 
         return Response(
             data={
@@ -53,6 +58,10 @@ class S3ExportApiView(APIViewMixin):
     @staticmethod
     def get_filename(name):
         return f"{name}.csv"
+
+
+    def _get_url_to_export(self, export_name):
+        return self.s3_exporter.generate_temporary_url(export_name)
 
     @staticmethod
     def generate_report_hash(filters, user_pk):

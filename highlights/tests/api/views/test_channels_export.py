@@ -74,6 +74,18 @@ class HighlightChannelExportPermissionsApiViewTestCase(ExtendedAPITestCase, ESTe
             response.status_code,
         )
 
+    @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        url = get_collect_file_url()
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self.client.post(url)
+        self.assertIsNotNone(response2.data.get("export_url"))
+
 
 class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 

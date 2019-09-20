@@ -59,6 +59,16 @@ class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self._request()
+        self.assertIsNotNone(response2.data.get("export_url"))
+
+    @mock_s3
     def test_success_allowed_user(self):
         user = self.create_test_user()
         user.add_custom_user_permission("channel_list")
