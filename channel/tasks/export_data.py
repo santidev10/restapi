@@ -1,5 +1,4 @@
 from saas import celery_app
-from django.urls import reverse
 from django.conf import settings
 from django.core.mail import EmailMessage
 
@@ -15,8 +14,6 @@ from channel.constants import RANGE_FILTER
 from channel.constants import EXISTS_FILTER
 from channel.constants import CHANNEL_CSV_HEADERS
 from channel.api.serializers.channel_export import ChannelListExportSerializer
-from channel.api.urls.names import ChannelPathName
-from saas.urls.namespaces import Namespace
 
 
 
@@ -36,22 +33,17 @@ class ChannelListDataGenerator(ExportDataGenerator):
 
 
 @celery_app.task
-def export_channels_data(query_params, export_name, user_emails):
+def export_channels_data(query_params, export_name, user_emails, export_url):
     content_exporter = ExportContextManager(
         ChannelListDataGenerator(query_params),
         CHANNEL_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
 
-    url_to_export = reverse(
-        "{}:{}".format(Namespace.CHANNEL,  ChannelPathName.CHANNEL_LIST_EXPORT),
-        args=(export_name,)
-    )
-
     # prepare E-mail
     subject = "Export Channels"
     body = f"File is ready for downloading.\n" \
-           f"Please, go to {settings.HOST + url_to_export} to download the report.\n" \
+           f"Please, go to {export_url} to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"
 
     # E-mail
