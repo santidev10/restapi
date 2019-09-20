@@ -113,6 +113,16 @@ class VideoListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(EXPECT_MESSSAGE, response.data.get("message"))
 
+    @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self._request()
+        self.assertIsNotNone(response2.data.get("export_url"))
+
 
 class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, export_name):

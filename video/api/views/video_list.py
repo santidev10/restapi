@@ -23,6 +23,7 @@ from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
 from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
+from userprofile.permissions import PermissionGroupNames
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -39,19 +40,29 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     ordering_fields = (
         "stats.last_30day_views:desc",
+        "stats.last_7day_views:desc",
+        "stats.last_day_views:desc",
         "stats.views:desc",
         "stats.likes:desc",
         "stats.dislikes:desc",
+        "stats.last_7day_comments:desc",
+        "stats.last_day_comments:desc",
         "stats.comments:desc",
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
         "stats.last_30day_views:asc",
+        "stats.last_7day_views:asc",
+        "stats.last_day_views:asc",
         "stats.views:asc",
         "stats.likes:asc",
         "stats.dislikes:asc",
+        "stats.last_7day_comments:asc",
+        "stats.last_day_comments:asc",
         "stats.comments:asc",
         "stats.sentiment:asc",
         "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -107,7 +118,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flags = deepcopy(self.request.query_params).get("flags")
+        flags = deepcopy(self.request.query_params).get("flags") or deepcopy(self.request.query_params).get("stats.flags")
 
         if channel_id:
             self.request.query_params._mutable = True
@@ -116,22 +127,25 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
         if flags:
             self.request.query_params._mutable = True
+            flags = flags.lower().replace(" ", "_")
             self.request.query_params["stats.flags"] = flags
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety"):
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                label = self.request.query_params["brand_safety"].lower()
-                if label == "safe":
-                    self.request.query_params["brand_safety.overall_score"] = "90,100"
-                elif label == "low risk":
-                    self.request.query_params["brand_safety.overall_score"] = "80,89"
-                elif label == "risky":
-                    self.request.query_params["brand_safety.overall_score"] = "70,79"
-                elif label == "high risk":
-                    self.request.query_params["brand_safety.overall_score"] = "0,69"
+                self.request.query_params["brand_safety.overall_score"] = []
+                labels = self.request.query_params["brand_safety"].lower().split(",")
+                if "high risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("0,69")
+                if "risky" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("70,79")
+                if "low risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("80,89")
+                if "safe" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("90,100")
                 self.request.query_params._mutable = False
 
         if not self.request.user.has_perm("userprofile.video_list") and \

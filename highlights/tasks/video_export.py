@@ -37,22 +37,17 @@ class HighlightsVideoListDataGenerator(ExportDataGenerator):
 
 
 @celery_app.task
-def export_videos_data(query_params, export_name, user_emails):
+def export_videos_data(query_params, export_name, user_emails, export_url):
     content_exporter = ExportContextManager(
         HighlightsVideoListDataGenerator(query_params),
         VIDEO_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
 
-    url_to_export = reverse(
-        "{}:{}".format(Namespace.HIGHLIGHTS,  HighlightsNames.VIDEOS_EXPORT),
-        args=(export_name,)
-    )
-
     # prepare E-mail
     subject = "Export Videos"
     body = f"File is ready for downloading.\n" \
-           f"Please, go to {settings.HOST + url_to_export} to download the report.\n" \
+           f"Please, go to {export_url} to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"
 
     # E-mail
