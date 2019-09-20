@@ -115,6 +115,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         low_risk_response = self.client.get(low_risk_url)
         safe_response = self.client.get(safe_url)
         high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
+        self.assertEqual(high_risk_response.data, {})
         self.assertEqual(len(high_risk_response.data["items"]), 1)
         self.assertEqual(len(risky_response.data["items"]), 2)
         self.assertEqual(len(low_risk_response.data["items"]), 1)
