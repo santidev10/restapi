@@ -344,6 +344,9 @@ class ESFilterBackend(BaseFilterBackend):
     def _get_aggregations(self, request, queryset, view):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
+        if "flags" in aggregations:
+            flags_index = aggregations.index("flags")
+            aggregations[flags_index] = "stats.flags"
         if view.allowed_aggregations is not None:
             aggregations = [agg
                             for agg in aggregations

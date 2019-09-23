@@ -314,7 +314,7 @@ class AuditVideo(models.Model):
 
 
 class AuditVideoTranscript(models.Model):
-    video = models.ForeignKey(AuditVideo)
+    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
 
     @staticmethod
