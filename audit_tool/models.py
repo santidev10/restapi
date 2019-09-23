@@ -312,12 +312,13 @@ class AuditVideo(models.Model):
         except IntegrityError as e:
             return AuditVideo.objects.get(video_id=video_id)
 
+
 class AuditVideoTranscript(models.Model):
     video = models.ForeignKey(AuditVideo)
     transcript = models.TextField(default=None, null=True)
 
     @staticmethod
-    def get_or_create(self, video_id, transcript=None):
+    def get_or_create(video_id, transcript=None):
         v = AuditVideo.objects.get_or_create(video_id)
         t, _ = AuditVideoTranscript.objects.get_or_create(video=v)
         if transcript:
