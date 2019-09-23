@@ -118,7 +118,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
-        flags = deepcopy(self.request.query_params).get("flags") or deepcopy(self.request.query_params).get("stats.flags")
+        flags = deepcopy(self.request.query_params).get("flags")
 
         if channel_id:
             self.request.query_params._mutable = True
