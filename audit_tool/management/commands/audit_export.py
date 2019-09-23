@@ -57,5 +57,5 @@ class Command(BaseCommand):
                    .format(file_url)
         export_owner = self.export.owner
         if export_owner:
-            recipients = [self.export_owner.email]
+            recipients = [export_owner.email]
         self.emailer.send_email(recipients, subject, body)
