@@ -32,6 +32,8 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     ordering_fields = (
         "stats.last_30day_views:desc",
         "stats.top_category_last_30day_views:desc",
+        "stats.top_category_last_7day_views:desc",
+        "stats.top_category_last_day_views:desc",
         "stats.search_volume:desc",
         "stats.average_cpc:desc",
         "stats.competition:desc",
@@ -42,6 +44,8 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.average_cpc:asc",
         "stats.competition:asc",
         "stats.views:asc",
+        "stats.top_category_last_7day_views:asc",
+        "stats.top_category_last_day_views:asc",
     )
 
     terms_filter = TERMS_FILTER
