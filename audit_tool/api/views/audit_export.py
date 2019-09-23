@@ -73,7 +73,7 @@ class AuditExportApiView(APIView):
                 a = AuditExporter.objects.create(
                     audit=audit,
                     clean=clean,
-                    owner_email=request.user.email
+                    owner_id=request.user.id
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',

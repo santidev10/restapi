@@ -2,14 +2,15 @@ import hashlib
 from datetime import datetime
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
+from django.db.models import IntegerField
 from django.db.models import Q
-from django.db.models import SET_NULL
 from django.utils import timezone
+
+from django.contrib.auth import get_user_model
 
 
 def get_hash_name(s):
@@ -363,7 +364,17 @@ class AuditExporter(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
-    owner_email = models.EmailField(null=True, blank=True)
+    owner_id = IntegerField(null=True, blank=True)
+
+    @property
+    def owner(self):
+        if self.owner_id:
+            return get_user_model().objects.get(id=self.owner_id)
+
+    @owner.setter
+    def owner(self, owner):
+        if owner:
+            self.owner_id = owner.id
 
 
 class AuditProcessorCache(models.Model):

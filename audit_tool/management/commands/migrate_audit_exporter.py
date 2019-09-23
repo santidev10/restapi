@@ -24,12 +24,8 @@ def migrate(file_path):
 
         for row in csv.reader(csv_file):
             id, created, clean, completed, file_name, final, audit_id, owner_id = row
-            try:
-                owner_email = get_user_model().objects.get(id=int(owner_id))
-            except get_user_model.DoesNotExist:
-                owner_email = None
             AuditExporter.objects.create(
                 id=int(id), created=created, clean=clean, completed=completed, file_name=file_name, final=final,
-                audit_id=int(audit_id), owner_email=owner_email
+                audit_id=int(audit_id), owner_id=int(owner_id)
             )
 

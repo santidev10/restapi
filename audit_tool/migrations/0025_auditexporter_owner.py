@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='auditexporter',
-            name='owner_email',
-            field=models.EmailField(null=True, blank=True),
+            name='owner_id',
+            field=models.IntegerField(null=True, blank=True),
         ),
     ]
