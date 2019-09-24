@@ -1,0 +1,2 @@
+from .opportunity_targeting_report import OpportunityTargetingReport
+from .opportunity_targeting_report_recipient import OpportunityTargetingReportRecipient

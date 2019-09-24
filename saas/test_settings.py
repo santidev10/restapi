@@ -18,6 +18,7 @@ MIGRATION_MODULES = {
     "administration": None,
     "audit_tool": None,
     "auth": None,
+    "ads_analyzer": None,
     "authtoken": None,
     "aw_creation": None,
     "aw_reporting": None,
