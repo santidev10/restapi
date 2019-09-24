@@ -61,9 +61,3 @@ services:
       options:
         gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
         tag: restapi_celery_beat
-
-  logstash:
-    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/logstash:${aws_env}
-    restart: always
-    env_file:
-      - chf.restapi.env
