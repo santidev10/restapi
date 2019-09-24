@@ -12,20 +12,14 @@ from utils.aws.export_context_manager import ExportContextManager
 
 from keywords.constants import TERMS_FILTER
 from keywords.constants import RANGE_FILTER
-from keywords.constants import MATCH_PHRASE_FILTER
 from keywords.constants import KEYWORD_CSV_HEADERS
-from keywords.api.names import KeywordPathName
 from keywords.api.serializers.keyword_export import KeywordListExportSerializer
-
-from saas.urls.namespaces import Namespace
-
 
 
 class KeywordListDataGenerator(ExportDataGenerator):
     serializer_class = KeywordListExportSerializer
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
-    match_phrase_filter = MATCH_PHRASE_FILTER
     queryset = ESQuerysetAdapter(KeywordManager((
         Sections.MAIN,
         Sections.STATS,
