@@ -18,25 +18,12 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from video.api.serializers.video import VideoSerializer
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
-
-TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
-                "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
-                "monetization.is_monetizable", "monetization.channel_preferred",
-                "channel.id", "general_data.tags", "main.id",)
-
-MATCH_PHRASE_FILTER = ("general_data.title",)
-
-RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
-                "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
-                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
-                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
-                "stats.last_day_views", "brand_safety.overall_score")
-
-EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
-
-HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
-                  "stats.comments_history", "stats.historydate",)
+from video.constants import TERMS_FILTER
+from video.constants import MATCH_PHRASE_FILTER
+from video.constants import RANGE_FILTER
+from video.constants import EXISTS_FILTER
+from video.constants import HISTORY_FIELDS
+from userprofile.permissions import PermissionGroupNames
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -58,6 +45,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:desc",
         "stats.likes:desc",
         "stats.dislikes:desc",
+        "stats.last_7day_comments:desc",
+        "stats.last_day_comments:desc",
         "stats.comments:desc",
         "stats.sentiment:desc",
         "general_data.youtube_published_at:desc",
@@ -67,9 +56,13 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:asc",
         "stats.likes:asc",
         "stats.dislikes:asc",
+        "stats.last_7day_comments:asc",
+        "stats.last_day_comments:asc",
         "stats.comments:asc",
         "stats.sentiment:asc",
         "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -99,8 +92,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.last_day_views:min",
         "stats.views:max",
         "stats.views:min",
-        "brand_safety.overall_score:max",
-        "brand_safety.overall_score:min"
+        "brand_safety",
+        "stats.flags"
     )
 
     allowed_percentiles = (
@@ -130,11 +123,30 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if channel_id:
             self.request.query_params._mutable = True
             self.request.query_params["channel.id"] = [channel_id]
+            self.request.query_params._mutable = False
 
         if flags:
             self.request.query_params._mutable = True
+            flags = flags.lower().replace(" ", "_")
             self.request.query_params["stats.flags"] = flags
             self.terms_filter += ("stats.flags",)
+            self.request.query_params._mutable = False
+
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
+            if "brand_safety" in self.request.query_params:
+                self.request.query_params._mutable = True
+                self.request.query_params["brand_safety.overall_score"] = []
+                labels = self.request.query_params["brand_safety"].lower().split(",")
+                if "high risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("0,69")
+                if "risky" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("70,79")
+                if "low risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("80,89")
+                if "safe" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("90,100")
+                self.request.query_params._mutable = False
 
         if not self.request.user.has_perm("userprofile.video_list") and \
                 not self.request.user.has_perm("userprofile.view_highlights"):

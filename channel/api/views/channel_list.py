@@ -5,6 +5,10 @@ from rest_framework.permissions import IsAdminUser
 
 from channel.api.serializers.channel import ChannelSerializer
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from channel.constants import TERMS_FILTER
+from channel.constants import MATCH_PHRASE_FILTER
+from channel.constants import RANGE_FILTER
+from channel.constants import EXISTS_FILTER
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -15,21 +19,7 @@ from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
-TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
-                "custom_properties.preferred", "analytics.verified", "cms.cms_title",
-                "stats.channel_group", "main.id")
-
-MATCH_PHRASE_FILTER = ("general_data.title",)
-
-RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "social.facebook_likes",
-                "stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
-                "stats.last_30day_subscribers", "stats.subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
-                "ads_stats.video_view_rate", "analytics.age13_17", "analytics.age18_24",
-                "analytics.age25_34", "analytics.age35_44", "analytics.age45_54",
-                "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score")
-
-EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
+from userprofile.permissions import PermissionGroupNames
 
 
 class ChannelsNotFound(Exception):
@@ -82,22 +72,30 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     filter_backends = (FreeFieldOrderingFilter, ChannelESFilterBackend)
     pagination_class = ResearchPaginator
     ordering_fields = (
-        "stats.last_30day_subscribers:desc",
         "stats.last_30day_views:desc",
         "stats.last_7day_views:desc",
         "stats.last_day_views:desc",
         "stats.views:desc",
+        "stats.last_30day_subscribers:desc",
+        "stats.last_7day_subscribers:desc",
+        "stats.last_day_subscribers:desc",
         "stats.subscribers:desc",
         "stats.sentiment:desc",
         "stats.views_per_video:desc",
-        "stats.last_30day_subscribers:asc",
         "stats.last_30day_views:asc",
         "stats.last_7day_views:asc",
         "stats.last_day_views:asc",
         "stats.views:asc",
+        "stats.last_30day_subscribers:asc",
+        "stats.last_7day_subscribers:asc",
+        "stats.last_day_subscribers:asc",
         "stats.subscribers:asc",
         "stats.sentiment:asc",
         "stats.views_per_video:asc",
+        "general_data.youtube_published_at:desc",
+        "general_data.youtube_published_at:asc",
+        "brand_safety.overall_score:desc",
+        "brand_safety.overall_score:asc",
     )
 
     terms_filter = TERMS_FILTER
@@ -156,8 +154,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.subscribers:min",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
-        "brand_safety.overall_score:max",
-        "brand_safety.overall_score:min",
+        "brand_safety",
+        "stats.channel_group"
     )
 
     allowed_percentiles = (
@@ -187,9 +185,34 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         except UserChannelsNotAvailable:
             return ESEmptyResponseAdapter(ChannelManager())
 
+        channel_group = deepcopy(self.request.query_params).get("stats.channel_group")
+
+        if channel_group:
+            self.request.query_params._mutable = True
+            channel_group = channel_group.lower().split(" ")[0]
+            self.request.query_params["stats.channel_group"] = channel_group
+            self.request.query_params._mutable = False
+
         if channels_ids:
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
+            self.request.query_params._mutable = False
+
+        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
+            if "brand_safety" in self.request.query_params:
+                self.request.query_params._mutable = True
+                self.request.query_params["brand_safety.overall_score"] = []
+                labels = self.request.query_params["brand_safety"].lower().split(",")
+                if "high risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("0,69")
+                if "risky" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("70,79")
+                if "low risk" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("80,89")
+                if "safe" in labels:
+                    self.request.query_params["brand_safety.overall_score"].append("90,100")
+                self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)

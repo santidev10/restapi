@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 
 from celery.schedules import crontab
 
@@ -88,6 +89,7 @@ CELERY_BROKER_POOL_LIMIT = None
 class Queue:
     DEFAULT = "celery"
     REPORTS = "reports"
+    EXPORT = "export"
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
 
@@ -96,9 +98,24 @@ CELERY_ROUTES_PREPARED = [
     ("aw_reporting.update.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
+    ("*export*", {"queue": Queue.EXPORT}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
 re._pattern_type = re.Pattern
 
 CELERY_TASK_ROUTES = (CELERY_ROUTES_PREPARED,)
+
+
+class TaskExpiration:
+    FULL_AW_UPDATE = timedelta(hours=8).total_seconds()
+    FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
+    HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
+    FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+
+
+class TaskTimeout:
+    FULL_AW_UPDATE = timedelta(hours=8).total_seconds()
+    FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
+    HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
+    FULL_SF_UPDATE = timedelta(hours=1).total_seconds()

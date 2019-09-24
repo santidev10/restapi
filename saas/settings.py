@@ -42,6 +42,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.staticfiles',
+    'django.contrib.humanize'
 )
 
 PROJECT_APPS = (
@@ -204,6 +205,7 @@ LOGGING = {
             "formatter": "detail_formatter",
         },
         "slack_aw_update": {
+            "level": os.getenv("LOG_LEVEL_SLACK", "WARNING"),
             "class": "administration.notifications.SlackAWUpdateLoggingHandler",
             "filters": [
                 "audience_not_found_warning_filter",

@@ -202,7 +202,7 @@ class AuditProcessor(models.Model):
         return d
 
     def has_history(self):
-        if self.started and not self.completed < timezone.now() - timedelta(hours=1):
+        if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
             return True
         return False
 
@@ -312,6 +312,18 @@ class AuditVideo(models.Model):
         except IntegrityError as e:
             return AuditVideo.objects.get(video_id=video_id)
 
+class AuditVideoTranscript(models.Model):
+    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+    transcript = models.TextField(default=None, null=True)
+
+    @staticmethod
+    def get_or_create(self, video_id, transcript=None):
+        v = AuditVideo.objects.get_or_create(video_id)
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v)
+        if transcript:
+            t.transcript = transcript
+            t.save(update_fields=['transcript'])
+        return t
 
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)

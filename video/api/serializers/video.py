@@ -46,7 +46,7 @@ class VideoSerializer(ESDictSerializer):
         if video.captions and video.captions.items:
             for caption in video.captions.items:
                 if caption.language_code == "en":
-                    text = caption.text
+                    text = caption.text or ""
                     transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         return transcript
 
