@@ -23,13 +23,26 @@ class Command(BaseCommand):
         chunk_size = 5000
         with PidFile(piddir='.', pidname='pull_transcripts.pid') as p:
             unparsed_vids = self.get_unparsed_vids()
+            parsed_vids = set()
+            counter = 0
+            transcripts_counter = 0
             for vid in unparsed_vids:
                 vid_id = vid.main.id
-                transcript_soup = self.get_video_transcript(vid)
+                if vid_id in parsed_vids:
+                    continue
+                else:
+                    parsed_vids.add(vid_id)
+                transcript_soup = self.get_video_soup(vid)
                 transcript_text = transcript_soup.text
+                if transcript_text != "":
+                    transcripts_counter += 1
                 AuditVideoTranscript.get_or_create(vid_id, transcript_soup)
                 # todo: Store transcript_text on Elastic Search Video Model in custom_transcript field, creating a new
                 #  VideoCustomTranscript model object, and update custom_transcript.transcript_checked to be True.
+                counter += 1
+                print("Parsed video with id: {}".format(vid_id))
+                print("Number of videos parsed: {}".format(counter))
+                print("Number of transcripts retrieved: {}".format(transcripts_counter))
                 delay = random.choice(range(10, 16))
                 time.sleep(delay)
 
