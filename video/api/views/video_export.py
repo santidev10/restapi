@@ -11,7 +11,7 @@ from utils.permissions import user_has_permission
 from utils.permissions import ExportDataAllowed
 from video.api.urls.names import Name
 from saas.urls.namespaces import Namespace
-from userprofile.permissions import PermissionGroupNames
+from utils.permissions import BrandSafetyDataVisible
 
 
 class VideoListExportApiView(ESDataS3ExportApiView, APIView):
@@ -25,8 +25,7 @@ class VideoListExportApiView(ESDataS3ExportApiView, APIView):
     generate_export_task = export_videos_data
 
     def _get_query_params(self, request):
-        if not (request.user.is_staff or request.user.has_perm("userprofile.scoring_brand_safety") or
-                request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)):
+        if not BrandSafetyDataVisible().has_permission(request):
 
             if "brand_safety" in request.query_params:
                 request.query_params._mutable = True
