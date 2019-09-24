@@ -20,6 +20,32 @@ UI_STATS_HISTORY_FIELD_LIMIT = 30
 logger = logging.getLogger(__name__)
 
 
+
+class BrandSafetyParamAdapter:
+    scores = {
+        "high risk": "0,69",
+        "risky": "70,79",
+        "low risk": "80,89",
+        "safe": "90,100"
+
+    }
+    parameter = "brand_safety"
+    parameter_full_name = "brand_safety.overall_score"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter)
+        if parameter:
+            brand_safety_overall_score = []
+            labels = query_params[self.parameter].lower().split(",")
+            for label in labels:
+                score = self.scores.get(label)
+                if score:
+                    brand_safety_overall_score.append(score)
+            query_params[self.parameter_full_name] = brand_safety_overall_score
+        return query_params
+
+
+
 def get_limits(query_params, default_page_size=None, max_page_number=None):
     size = int(query_params.get("size", default_page_size or DEFAULT_PAGE_SIZE))
     page = int(query_params.get("page", 1))
@@ -58,9 +84,10 @@ class QueryGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = (BrandSafetyParamAdapter,)
 
     def __init__(self, query_params):
-        self.query_params = query_params
+        self.query_params = self._adapt_query_params(query_params)
 
     def add_should_filters(self, ranges, filters, field):
         if ranges is None:
@@ -189,6 +216,12 @@ class QueryGenerator:
             ids = ids_str.split(",")
             filters.append(self.es_manager.ids_query(ids))
         return filters
+
+    def _adapt_query_params(self, query_params):
+        for adapter in self.params_adapters:
+            query_params = adapter().adapt(query_params)
+        return query_params
+
 
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
@@ -323,8 +356,10 @@ class ESQuerysetAdapter:
 
 
 class ESFilterBackend(BaseFilterBackend):
+
     def _get_query_params(self, request):
         return request.query_params.dict()
+
 
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(

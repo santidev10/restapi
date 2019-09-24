@@ -198,20 +198,12 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
             self.request.query_params["main.id"] = channels_ids
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
-                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
+        if not (self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or
+                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)):
+
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                self.request.query_params["brand_safety.overall_score"] = []
-                labels = self.request.query_params["brand_safety"].lower().split(",")
-                if "high risk" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("0,69")
-                if "risky" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("70,79")
-                if "low risk" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("80,89")
-                if "safe" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("90,100")
+                self.request.query_params["brand_safety"] = None
                 self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
