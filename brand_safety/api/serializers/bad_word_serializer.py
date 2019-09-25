@@ -1,6 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import ValidationError
 from rest_framework.serializers import CharField
+from distutils.util import strtobool
 
 from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
@@ -46,8 +47,21 @@ class BadWordSerializer(ModelSerializer):
             raise ValidationError("Unable to process language: {}".format(value))
         return language
 
+    def validate_meta_scoring(self, value):
+        try:
+            meta_scoring = strtobool(value)
+        except (ValueError, TypeError):
+            raise ValidationError("Unable to process meta_scoring: {}".format(value))
+        return meta_scoring
+
+    def validate_comment_scoring(self, value):
+        try:
+            comment_scoring = strtobool(value)
+        except (ValueError, TypeError):
+            raise ValidationError("Unable to process comment_scoring: {}".format(value))
+        return comment_scoring
+
     class Meta:
         model = BadWord
-        fields = ("id", "name", "category", "negative_score", "language")
-
+        fields = ("id", "name", "category", "negative_score", "language", "meta_scoring", "comment_scoring")
 
