@@ -139,7 +139,7 @@ class YoutubeDataProvider(DataProviderMixin):
                 response = method(*args, **kwargs)
                 return response
             except YoutubeAPIConnectorException as e:
-                print("SDB error", e)
+                print("Error", e)
                 print("Retrying {} of {}".format(retries, self.max_retries))
                 time.sleep(self.retry_coeff ** retries * self.retry_sleep)
                 retries += 1

@@ -8,7 +8,6 @@ services:
       target: dev
     image: viewiq-restapi
     environment:
-      SINGLE_DATABASE_API_HOST: sdb
       ALLOWED_HOSTS: api
       RABBITMQ_HOST: rabbitmq
       DB_HOST: pg

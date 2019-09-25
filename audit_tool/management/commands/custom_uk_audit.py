@@ -1,19 +1,8 @@
 import csv
 import logging
-from io import BytesIO
-from typing import Dict
-from typing import List
 
-import xlsxwriter
 from django.conf import settings
-from django.core.management import BaseCommand
-from django.http import QueryDict
 
-from audit_tool.dmo import VideoDMO
-from audit_tool.keywords import Keywords
-from audit_tool.youtube import Youtube
-from brand_safety.models import BadWord
-from singledb.connector import SingleDatabaseApiConnector
 import re
 import requests
 from utils.lang import fasttext_lang

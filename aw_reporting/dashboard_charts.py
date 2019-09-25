@@ -813,24 +813,21 @@ class DeliveryChart:
             manager = VideoManager(Sections.GENERAL_DATA)
             videos_map = {}
             for video in manager.get(ids=ids, skip_none=True):
-                videos_map[video.main.id] = video
+                videos_map[video.main.id] = video.to_dict()
 
             unresolved_ids = list(set(ids) - set(videos_map.keys()))
             unresolved_videos_info = resolve_videos_info(unresolved_ids) if unresolved_ids else {}
 
+            videos_map = {**videos_map, **unresolved_videos_info}
+
             for item in raw_stats:
                 youtube_id = item["creative_id"]
-                video = videos_map.get(youtube_id, None)
+                video = videos_map.get(youtube_id, {})
                 item["id"] = youtube_id
-                if video:
-                    item["thumbnail"] = video.general_data.thumbnail_image_url
-                    item["label"] = video.general_data.title
-                    item["duration"] = video.general_data.duration
-                else:
-                    info = unresolved_videos_info.get(youtube_id, {})
-                    item["thumbnail"] = info.get("thumbnail_image_url")
-                    item["label"] = info.get("title")
-                    item["duration"] = info.get("duration")
+
+                item["thumbnail"] = video.get("general_data", {}).get("thumbnail_image_url")
+                item["label"] = video.get("general_data", {}).get("title")
+                item["duration"] = video.get("general_data", {}).get("duration")
                 del item["creative_id"]
                 result[youtube_id].append(item)
         else:

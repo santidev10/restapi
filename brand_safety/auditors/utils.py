@@ -4,7 +4,6 @@ import csv
 import re
 
 from flashtext import KeywordProcessor
-from django.conf import settings
 from django.db.models import F
 from emoji import UNICODE_EMOJI
 
@@ -13,7 +12,6 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
 
@@ -85,12 +83,7 @@ class AuditUtils(object):
         Get and comple brand safety tags
         :return:
         """
-        if settings.USE_LEGACY_BRAND_SAFETY:
-            connector = Connector()
-            bad_words = connector.get_bad_words_list({})
-            bad_words_names = [item["name"] for item in bad_words]
-        else:
-            bad_words_names = BadWord.objects.values_list("name", flat=True)
+        bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
         brand_safety_regexp = self.compile_regexp(bad_words_names)
 

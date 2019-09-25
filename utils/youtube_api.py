@@ -15,6 +15,7 @@ from oauth2client.client import GoogleCredentials
 
 from django.conf import settings
 from django.core.cache import cache
+
 logger = logging.getLogger(__name__)
 
 GOOGLE_CREDENTIALS_TOKEN_URI = "https://accounts.google.com/o/oauth2/token"
@@ -308,10 +309,18 @@ def resolve_videos_info(ids: List[int],
                 iso_duration = item.get("contentDetails", {}).get("duration")
                 duration = isodate.parse_duration(iso_duration).total_seconds() if iso_duration else 0
 
+                # info = dict(
+                #     title=title,
+                #     thumbnail_image_url=thumbnail_image_url,
+                #     duration=duration,
+                # )
+
                 info = dict(
-                    title=title,
-                    thumbnail_image_url=thumbnail_image_url,
-                    duration=duration,
+                    general_data=dict(
+                        title=title,
+                        thumbnail_image_url=thumbnail_image_url,
+                        duration=duration,
+                    )
                 )
 
                 cache.set(cache_key_template.format(video_id), info, cache_timeout)

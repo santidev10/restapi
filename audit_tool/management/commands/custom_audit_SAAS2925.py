@@ -138,7 +138,7 @@ class Command(BaseCommand):
     def parse_videos_by_keywords(videos: List[VideoDMO]) -> None:
         logger.info("Parsing {} video(s)".format(len(videos)))
         keywords = Keywords()
-        keywords.load_from_sdb()
+        keywords.load_from_db()
         keywords.compile_regexp()
         texts = [video.get_text() for video in videos]
         found = keywords.parse_all(texts)
