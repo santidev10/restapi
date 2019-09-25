@@ -194,6 +194,12 @@ class AuditProcessor(models.Model):
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history()
         }
+        files = self.params.get('files')
+        if files:
+            d['source_file'] = files.get('source')
+            d['exclusion_file'] = files.get('exclusion')
+            d['inclusion_file'] = files.get('inclusion')
+
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
