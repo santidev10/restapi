@@ -2,7 +2,7 @@ import os
 
 
 APP_NAMES = ['audit_tool', 'brand_safety']
-DB_NAME = os.getenv('DB_AUDIT_NAME', 'audit')
+DB_NAME = os.getenv('AUDIT_DB_NAME', 'audit')
 
 
 class AuditDBRouter:

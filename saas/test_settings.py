@@ -42,27 +42,6 @@ CELERY_TASK_ALWAYS_EAGER = True
 DMP_CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
 
-DATABASES = {
-    'default': {
-        # default values are for the TC only
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('DB_NAME', 'saas'),
-        'USER': os.getenv('DB_USER', 'admin_saas'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
-    },
-    'audit': {
-        # default values are for the TC only
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('DB_AUDIT_NAME', 'audit'),
-        'USER': os.getenv('DB_AUDIT_USER', 'admin_saas'),
-        'PASSWORD': os.getenv('DB_AUDIT_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
-        'HOST': os.getenv('DB_AUDIT_HOST', 'localhost'),
-        'PORT': os.getenv('DB_AUDIT_PORT', ''),  # Set to empty string for default.
-    },
-
-}
 SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from utils.utittests.sdb_connector_patcher import monkey_patch

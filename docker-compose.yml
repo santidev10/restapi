@@ -14,9 +14,9 @@ services:
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_AUDIT_HOST: pg_audit
-      DB_AUDIT_USER: postgres
-      DB_AUDIT_PASSWORD: password
+      AUDIT_DB_HOST: pg_audit
+      AUDIT_DB_USER: postgres
+      AUDIT_DB_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
