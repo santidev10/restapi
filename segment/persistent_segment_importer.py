@@ -35,7 +35,7 @@ class PersistentSegmentImporter(object):
         self.segment_category = self.format(kwargs["segment_type"])
         self.segment_thumbnail = kwargs["thumbnail"] or S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
         self.segment_title = kwargs["title"]
-        self.audit_category = kwargs["audit_category"]
+        self.audit_category_id = kwargs["audit_category"]
 
         self._setup()
 
@@ -48,11 +48,10 @@ class PersistentSegmentImporter(object):
             raise ValueError("Allowed segment categories: {}".format(self.ALLOWED_SEGMENT_CATEGORIES))
 
         # If an audit category is provided, try retrieving it
-        if self.audit_category:
-            try:
-                self.audit_category = AuditCategory.objects.get(id=int(self.audit_category))
-            except AuditCategory.DoesNotExist:
-                raise ValueError(f"Audit category does not exist: {self.audit_category}")
+        if self.audit_category_id:
+            self.audit_category_id = int(self.audit_category_id)
+            if not AuditCategory.objects.filter(id=self.audit_category_id).exists():
+                raise ValueError(f"Audit category does not exist: {self.audit_category_id}")
 
         # Set es_manager
         if self.data_type == constants.VIDEO:
@@ -77,7 +76,7 @@ class PersistentSegmentImporter(object):
                 title=self.segment_title,
                 category=self.segment_category,
                 thumbnail_image_url=self.segment_thumbnail,
-                audit_category=self.audit_category,
+                audit_category_id=self.audit_category_id,
                 uuid=uuid.uuid4(),
                 is_master=False,
             )

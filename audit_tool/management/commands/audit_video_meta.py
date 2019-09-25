@@ -97,7 +97,7 @@ class Command(BaseCommand):
                         self.audit.save(update_fields=['audit_type'])
                 a = AuditExporter.objects.create(
                     audit=self.audit,
-                    owner=None
+                    owner_id=None
                 )
                 raise Exception("Audit completed, all videos processed")
             else:

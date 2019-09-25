@@ -19,7 +19,6 @@ from segment.utils import generate_search_with_params
 class PersistentSegmentChannel(BasePersistentSegment):
     segment_type = PersistentSegmentType.CHANNEL
     export_serializer = PersistentSegmentChannelExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="channel_segment", null=True, on_delete=CASCADE)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
