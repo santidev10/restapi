@@ -195,9 +195,9 @@ class AuditProcessor(models.Model):
         }
         files = self.params.get('files')
         if files:
-            d['source_file'] = files['source']
-            d['exclusion_file'] = files['exclusion']
-            d['inclusion_file'] = files['inclusion']
+            d['source_file'] = files.get('source')
+            d['exclusion_file'] = files.get('exclusion')
+            d['inclusion_file'] = files.get('inclusion')
 
         if self.params.get('error'):
             d['error'] = self.params['error']
