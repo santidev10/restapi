@@ -191,11 +191,14 @@ class AuditProcessor(models.Model):
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
-            'has_history': self.has_history(),
-            'source_file': self.params.get('files').get('source'),
-            'exclusion_file': self.params.get('files').get('exclusion'),
-            'inclusion_file': self.params.get('files').get('inclusion')
+            'has_history': self.has_history()
         }
+        files = self.params.get('files')
+        if files:
+            d['source_file'] = files['source']
+            d['exclusion_file'] = files['exclusion']
+            d['inclusion_file'] = files['inclusion']
+
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
