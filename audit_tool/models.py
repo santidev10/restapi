@@ -191,7 +191,10 @@ class AuditProcessor(models.Model):
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
-            'has_history': self.has_history()
+            'has_history': self.has_history(),
+            'source_file': self.params.get('source'),
+            'exclusion_file': self.params.get('exclusion'),
+            'inclusion_file': self.params.get('inclusion')
         }
         if self.params.get('error'):
             d['error'] = self.params['error']
