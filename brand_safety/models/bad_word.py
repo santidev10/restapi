@@ -55,6 +55,8 @@ class BadWord(models.Model):
     negative_score = models.IntegerField(default=1, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, default=None, db_index=True)
+    meta_scoring = models.BooleanField(default=True)
+    comment_scoring = models.BooleanField(default=False)
 
     objects = BadWordManager(active_only=True)
     all_objects = BadWordManager(active_only=False)
