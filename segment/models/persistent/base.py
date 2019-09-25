@@ -15,8 +15,10 @@ from django.db.models import Manager
 from django.db.models import TextField
 from django.db.models import DateTimeField
 from django.db.models import Model
+from django.db.models import IntegerField
 from django.db.models import UUIDField
 
+from audit_tool.models import AuditCategory
 from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
@@ -40,6 +42,7 @@ class BasePersistentSegment(Timestampable):
     uuid = UUIDField(unique=True)
     title = CharField(max_length=255, null=True, blank=True)
     category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
+    audit_category_id = IntegerField(null=True, blank=True)
     is_master = BooleanField(default=False, db_index=True)
 
     details = JSONField(default=dict)
@@ -56,6 +59,16 @@ class BasePersistentSegment(Timestampable):
     class Meta:
         abstract = True
         ordering = ["pk"]
+
+    @property
+    def audit_category(self):
+        if self.audit_category_id:
+            return AuditCategory.objects.get(id=self.audit_category_id)
+
+    @audit_category.setter
+    def audit_category(self, audit_category):
+        if audit_category and audit_category.id:
+            self.audit_category_id = audit_category.id
 
     def calculate_details(self):
         raise NotImplementedError
