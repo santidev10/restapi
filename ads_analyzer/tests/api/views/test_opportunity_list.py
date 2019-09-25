@@ -1,5 +1,6 @@
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from aw_reporting.models import Opportunity
@@ -20,6 +21,21 @@ class OpportunityListPermissionsAPIViewTestCase(OpportunityTargetingReportBaseAP
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_permissions(self):
+        self.create_test_user()
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_user_with_permissions(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_opportunity_list")
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_allow_for_admin(self):
         self.create_admin_user()

@@ -5,6 +5,7 @@ from unittest.mock import ANY
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models.opportunity_targeting_report import OpportunityTargetingReport
@@ -16,21 +17,45 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
-    def _request(self, data):
+    def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
+        data = data or dict()
         return self.client.put(url, json.dumps(data), content_type="application/json")
 
 
 class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIViewTestCase):
+    def _request(self, *args, **kwargs):
+        data = dict(
+            opportunity_id=Opportunity.objects.create(id=next(int_iterator)).id,
+            date_from="2019-01-01",
+            date_to="2019-01-01",
+        )
+        return super()._request(data)
+
     def test_unauthorized(self):
-        response = self._request(dict())
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_permissions(self):
+        self.create_test_user()
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_user_with_permissions(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("create_opportunity_report")
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_allow_for_admin(self):
         self.create_admin_user()
 
-        response = self._request(dict())
+        response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -39,33 +64,19 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
     def setUp(self) -> None:
         self.create_admin_user()
 
-    def test_required_opportunity(self):
-        response = self._request(dict(
-            date_from="2019-01-01",
-            date_to="2019-01-01",
-        ))
+    def test_validate_required(self):
+        required_fields = (
+            "opportunity_id",
+            "date_from",
+            "date_to",
+        )
+
+        response = self._request(dict())
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_required_date_from(self):
-        opportunity = Opportunity.objects.create(id=next(int_iterator))
-
-        response = self._request(dict(
-            opportunity_id=opportunity.id,
-            date_to="2019-01-01",
-        ))
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_required_date_to(self):
-        opportunity = Opportunity.objects.create(id=next(int_iterator))
-
-        response = self._request(dict(
-            opportunity_id=opportunity.id,
-            date_from="2019-01-01",
-        ))
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        for field in required_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data)
 
     def test_invalid_opportunity(self):
         response = self._request(dict(
