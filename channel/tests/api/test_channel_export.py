@@ -293,3 +293,45 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_brand_safety(self, *args):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+            channel.populate_brand_safety(overall_score=50)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
+
+        self._request_collect_file(brand_safety="High Risk")
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_brand_safety_not_allowed(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        for channel in channels:
+            channel.populate_stats(observed_videos_count=10)
+            channel.populate_brand_safety(overall_score=50)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
+
+        self._request_collect_file(brand_safety="High Risk")
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(2, len(data))

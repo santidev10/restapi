@@ -24,6 +24,7 @@ import boto3
 from botocore.client import Config
 from utils.permissions import user_has_permission
 
+
 class AuditExportApiView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
@@ -72,7 +73,7 @@ class AuditExportApiView(APIView):
                 a = AuditExporter.objects.create(
                     audit=audit,
                     clean=clean,
-                    owner=request.user
+                    owner_id=request.user.id
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',
