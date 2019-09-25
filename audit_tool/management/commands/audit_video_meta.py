@@ -54,7 +54,7 @@ class Command(BaseCommand):
         if not self.thread_id:
             self.thread_id = 0
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
-            self.check_thread_limit_reached()
+            #self.check_thread_limit_reached()
             try:
                 self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
             except Exception as e:

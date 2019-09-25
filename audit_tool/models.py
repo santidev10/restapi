@@ -191,6 +191,7 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
+            'stopped': self.params.get('stopped'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history()
         }
