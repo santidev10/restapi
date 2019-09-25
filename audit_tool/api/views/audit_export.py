@@ -321,9 +321,9 @@ class AuditExportApiView(APIView):
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
-                audit=audit,
-                clean=clean,
-                final=True
+            audit=audit,
+            clean=clean,
+            final=True
         )
         if exports.count() > 0:
             return exports[0].file_name, _
@@ -341,8 +341,8 @@ class AuditExportApiView(APIView):
             "Last Video Views",
             "Last Video Category",
             "Num Bad Videos",
-            "Unique Bad Words",
-            "Bad Words",
+            "Unique {} Words".format("Bad" if clean is False else "Good"),
+            "{} Words".format("Bad" if clean is False else "Good"),
             "Brand Safety Score",
         ]
         try:
@@ -362,7 +362,10 @@ class AuditExportApiView(APIView):
         for cid in channels:
             channel_ids.append(cid.channel_id)
             try:
-                hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+                if clean is False:
+                    hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+                else:
+                    hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
             except Exception as e:
                 hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
