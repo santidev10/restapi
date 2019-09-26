@@ -4,6 +4,8 @@ from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditProcessorCache
 from utils.permissions import user_has_permission
+from datetime import timedelta
+from django.utils import timezone
 import pytz
 
 class AuditHistoryApiView(APIView):
@@ -14,12 +16,16 @@ class AuditHistoryApiView(APIView):
     def get(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
+        hours = query_params["hours"] if "hours" in query_params else None
         if audit_id:
             last_time = None
             first_time = None
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
-                history = AuditProcessorCache.objects.filter(audit=audit).order_by("id")
+                history = AuditProcessorCache.objects.filter(audit=audit)
+                if hours:
+                    history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
+                history = history.order_by("id")
                 res = {
                     'results': [],
                     'elapsed_time': 'N/A'
