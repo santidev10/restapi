@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import CASCADE
 
@@ -9,6 +10,7 @@ class OpportunityTargetingReport(models.Model):
     date_from = models.DateField(null=False)
     date_to = models.DateField(null=False)
     external_link = models.URLField(default=None, null=True)
+    recipients = models.ManyToManyField(get_user_model())
 
     class Meta:
         constraints = [

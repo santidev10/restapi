@@ -20,13 +20,13 @@ class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
     def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
         data = data or dict()
-        return self.client.put(url, json.dumps(data), content_type="application/json")
+        return self.client.put(url, json.dumps(data, default=str), content_type="application/json")
 
 
 class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIViewTestCase):
     def _request(self, *args, **kwargs):
         data = dict(
-            opportunity_id=Opportunity.objects.create(id=next(int_iterator)).id,
+            opportunity=Opportunity.objects.create(id=next(int_iterator)).id,
             date_from="2019-01-01",
             date_to="2019-01-01",
         )
@@ -66,7 +66,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     def test_validate_required(self):
         required_fields = (
-            "opportunity_id",
+            "opportunity",
             "date_from",
             "date_to",
         )
@@ -80,7 +80,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
     def test_invalid_opportunity(self):
         response = self._request(dict(
-            opportunity_id="missed_id",
+            opportunity="missed_id",
             date_from="2019-01-01",
             date_to="2019-01-01",
         ))
@@ -91,14 +91,14 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
         reports_queryset = OpportunityTargetingReport.objects.filter(
-            opportunity_id=opportunity,
+            opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
         )
         self.assertEqual(0, reports_queryset.count())
 
         response = self._request(dict(
-            opportunity_id=opportunity.id,
+            opportunity=opportunity.id,
             date_from=date_from,
             date_to=date_to,
         ))
@@ -111,20 +111,20 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
 
         self._request(dict(
-            opportunity_id=opportunity.id,
+            opportunity=opportunity.id,
             date_from=date_from,
             date_to=date_to,
         ))
 
-        report = OpportunityTargetingReport.objects.get(opportunity_id=opportunity)
+        report = OpportunityTargetingReport.objects.get(opportunity=opportunity)
         self.assertEqual(1, report.recipients.count())
 
     def test_report_does_not_exist(self):
-        opportunity = Opportunity.objects.create(id=next(int_iterator))
+        opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
 
         response = self._request(dict(
-            opportunity_id=opportunity.id,
+            opportunity=opportunity.id,
             date_from=date_from,
             date_to=date_to,
         ))
@@ -148,15 +148,15 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         response = self._request(dict(
-            opportunity_id=opportunity.id,
+            opportunity=opportunity.id,
             date_from=date_from,
             date_to=date_to,
         ))
 
         self.assertEqual(
             dict(
-                status="ready",
-                message=ANY,
+                status="created",
+                message="Processing.  You will receive an email when your export is ready.",
             ),
             response.json()
         )
@@ -173,7 +173,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         response = self._request(dict(
-            opportunity_id=opportunity.id,
+            opportunity=opportunity.id,
             date_from=date_from,
             date_to=date_to,
         ))
