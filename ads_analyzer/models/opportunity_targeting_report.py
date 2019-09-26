@@ -6,13 +6,22 @@ from django.dispatch import receiver
 
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
+from utils.lang import ExtendedEnum
+
+
+class ReportStatus(ExtendedEnum):
+    IN_PROGRESS = "in_progress"
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
 class OpportunityTargetingReport(models.Model):
     opportunity = models.ForeignKey(Opportunity, null=False, on_delete=CASCADE)
     date_from = models.DateField(null=False)
     date_to = models.DateField(null=False)
-    external_link = models.URLField(default=None, null=True)
+    s3_file_key = models.CharField(max_length=128, default=None, null=True)
+    status = models.CharField(max_length=32, default=ReportStatus.IN_PROGRESS.value,
+                              null=False, choices=ReportStatus.choices())
     recipients = models.ManyToManyField(get_user_model())
 
     class Meta:
@@ -25,8 +34,8 @@ class OpportunityTargetingReport(models.Model):
 def save_account_receiver(sender, instance, created, **_):
     if created:
         report = instance
-        create_opportunity_targeting_report.apply_async(
+        create_opportunity_targeting_report.si(
             opportunity_id=report.opportunity_id,
-            date_from=report.date_from.isoformat(),
-            date_to=report.date_to.isoformat(),
-        )
+            date_from_str=report.date_from.isoformat(),
+            date_to_str=report.date_to.isoformat(),
+        ).apply_async()

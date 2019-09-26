@@ -1,8 +1,9 @@
 import json
+from asyncio import sleep
 from datetime import date
 from unittest.mock import ANY
-from unittest.mock import patch
 
+from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -10,21 +11,27 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models.opportunity_targeting_report import OpportunityTargetingReport
+from ads_analyzer.models.opportunity_targeting_report import ReportStatus
+from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
+from saas import celery_app
 from saas.urls.namespaces import Namespace
+from utils.utittests.celery import mock_send_task
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
+from utils.utittests.s3_mock import mock_s3
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
+@override_settings(CELERY_TASK_ALWAYS_EAGER=False)
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
     def setUp(self) -> None:
-        self.report_processing_mock = patch.object(create_opportunity_targeting_report, "apply_async")
+        self.report_processing_mock = mock_send_task()
         self.report_processing_mock.__enter__()
 
     def tearDown(self) -> None:
-        self.report_processing_mock.__exit__()
+        self.report_processing_mock.__exit__(None, None, None)
 
     def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
@@ -154,7 +161,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=None
+            status=ReportStatus.IN_PROGRESS.value
         )
 
         response = self._request(dict(
@@ -171,15 +178,17 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             response.json()
         )
 
+    @mock_s3
     def test_report_exists_and_ready(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
-        external_link = "http://some_url.com"
+        file_key = "test_file"
         OpportunityTargetingReport.objects.create(
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=external_link
+            status=ReportStatus.SUCCESS.value,
+            s3_file_key=file_key
         )
 
         response = self._request(dict(
@@ -187,12 +196,11 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_from=date_from,
             date_to=date_to,
         ))
-
         self.assertEqual(
             dict(
                 status="ready",
-                report_link=external_link,
                 message=ANY,
+                report_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key)
             ),
             response.json()
         )
@@ -201,7 +209,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
         opportunity.refresh_from_db()
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
-        create_opportunity_targeting_report.apply_async.reset_mock()
+        celery_app.send_task.reset_mock()
 
         self._request(dict(
             opportunity=opportunity.id,
@@ -209,10 +217,16 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_to=date_to,
         ))
 
-        create_opportunity_targeting_report.apply_async.assert_called_with(
+        calls = celery_app.send_task.mock_calls
+        self.assertEqual(1, len(calls))
+        expected_kwargs = dict(
             opportunity_id=opportunity.id,
-            date_from=str(date_from),
-            date_to=str(date_to),
+            date_from_str=str(date_from),
+            date_to_str=str(date_to),
+        )
+        self.assertEqual(
+            (create_opportunity_targeting_report.name, (), expected_kwargs),
+            calls[0][1]
         )
 
     def test_does_not_creates_task_if_exist_in_progress(self):
@@ -223,9 +237,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=None
         )
-        create_opportunity_targeting_report.apply_async.reset_mock()
+        celery_app.send_task.reset_mock()
 
         self._request(dict(
             opportunity=opportunity.id,
@@ -233,7 +246,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_to=date_to,
         ))
 
-        create_opportunity_targeting_report.apply_async.assert_not_called()
+        celery_app.send_task.assert_not_called()
 
     def test_does_not_creates_task_if_exist_ready(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
@@ -243,9 +256,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link="http:some-link.com"
         )
-        create_opportunity_targeting_report.apply_async.reset_mock()
+        celery_app.send_task.reset_mock()
 
         self._request(dict(
             opportunity=opportunity.id,
@@ -253,4 +265,4 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_to=date_to,
         ))
 
-        create_opportunity_targeting_report.apply_async.assert_not_called()
+        celery_app.send_task.assert_not_called()
