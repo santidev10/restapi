@@ -153,6 +153,7 @@ class VideoCreativeStatistic(DailyStatisticModel):
 
 # Hourly stats
 class CampaignHourlyStatistic(models.Model):
+    id = models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")
     date = models.DateField()
     hour = models.PositiveSmallIntegerField()
     campaign = models.ForeignKey(Campaign,
