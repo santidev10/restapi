@@ -4,6 +4,7 @@ from django.test import TransactionTestCase
 from openpyxl import load_workbook
 
 from ads_analyzer.models import OpportunityTargetingReport
+from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
@@ -31,7 +32,7 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
         report.refresh_from_db()
         s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(opportunity.id, str(date_from), str(date_to))
         self.assertEqual(s3_key, report.s3_file_key)
-        self.assertIsNotNone(report.s3_file_key)
+        self.assertEqual(ReportStatus.SUCCESS.value, report.status)
 
     @mock_s3
     def test_empty_report_content(self):

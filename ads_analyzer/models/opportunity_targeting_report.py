@@ -4,7 +4,6 @@ from django.db.models import CASCADE
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
 from utils.lang import ExtendedEnum
 
@@ -33,6 +32,7 @@ class OpportunityTargetingReport(models.Model):
 @receiver(post_save, sender=OpportunityTargetingReport, dispatch_uid="save_opportunity_report_receiver")
 def save_account_receiver(sender, instance, created, **_):
     if created:
+        from ads_analyzer.tasks import create_opportunity_targeting_report
         report = instance
         create_opportunity_targeting_report.si(
             opportunity_id=report.opportunity_id,
