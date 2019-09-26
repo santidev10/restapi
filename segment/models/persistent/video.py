@@ -20,7 +20,6 @@ from segment.utils import generate_search_with_params
 class PersistentSegmentVideo(BasePersistentSegment):
     segment_type = PersistentSegmentType.VIDEO
     export_serializer = PersistentSegmentVideoExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True, on_delete=CASCADE)
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 

@@ -43,8 +43,9 @@ class Command(BaseCommand):
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
-            start = self.thread_id * 20000
-            for channel in pending_channels.order_by("-id")[start:start+20000]:
+            num = 2000
+            start = self.thread_id * num
+            for channel in pending_channels.order_by("-id")[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
                 if len(channels) == 50:
@@ -56,7 +57,7 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True).order_by("-id")
+        channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_category__isnull=True).order_by("-id")
         for c in channels[:5000]:
             db_videos = AuditVideo.objects.filter(channel=c.channel).values_list('id', flat=True)
             videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")

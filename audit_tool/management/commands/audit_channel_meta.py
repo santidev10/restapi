@@ -57,7 +57,7 @@ class Command(BaseCommand):
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
 
-    def process_audit(self, num=2500):
+    def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         self.num_videos = self.audit.params.get('num_videos')

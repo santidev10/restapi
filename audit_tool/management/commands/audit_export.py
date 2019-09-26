@@ -55,6 +55,7 @@ class Command(BaseCommand):
                    .format(self.audit.params['name'], "{:,}".format(count)) \
                + "<a href='{}'>here</a> to download. Link will expire in 7 days." \
                    .format(file_url)
-        if self.export.owner and self.export.owner.email:
-            recipients = [self.export.owner.email]
+        export_owner = self.export.owner
+        if export_owner:
+            recipients = [export_owner.email]
         self.emailer.send_email(recipients, subject, body)
