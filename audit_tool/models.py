@@ -315,12 +315,17 @@ class AuditVideo(models.Model):
 
 class AuditVideoTranscript(models.Model):
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=1, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
 
+    class Meta:
+        unique_together = ("video", "language")
+
     @staticmethod
-    def get_or_create(video_id, transcript=None):
+    def get_or_create(video_id, language='en', transcript=None):
         v = AuditVideo.objects.get_or_create(video_id)
-        t, _ = AuditVideoTranscript.objects.get_or_create(video=v)
+        lang = AuditLanguage.objects.get_or_create(language=language)
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
         if transcript:
             t.transcript = transcript
             t.save(update_fields=['transcript'])
