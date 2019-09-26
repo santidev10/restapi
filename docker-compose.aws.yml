@@ -14,15 +14,25 @@ services:
     sysctls:
       - net.core.somaxconn=1024
     command: ["uwsgi","--ini", "/etc/uwsgi/restapi.ini"]
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
+        tag: restapi
 
   celery_worker:
-    command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports", "-c", "8"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports,export", "-c", "8"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     restart: always
     volumes:
       - ./local_settings.py:/app/saas/local_settings.py
     env_file:
       - chf.restapi.env
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
+        tag: restapi_celery_worker
 
   celery_worker_delivery:
     command: ["celery", "-A", "saas", "worker", "-Q", "delivery_statistic", "-c", "8"]
@@ -32,6 +42,11 @@ services:
       - ./local_settings.py:/app/saas/local_settings.py
     env_file:
       - chf.restapi.env
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
+        tag: restapi_celery_worker_delivery
 
   celery_beat:
     command: ["celery", "-A", "saas", "beat"]
@@ -41,3 +56,8 @@ services:
       - ./local_settings.py:/app/saas/local_settings.py
     env_file:
       - chf.restapi.env
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
+        tag: restapi_celery_beat

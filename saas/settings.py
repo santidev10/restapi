@@ -120,8 +120,19 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
-    }
+    },
+    'audit': {
+        # default values are for the TC only
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('AUDIT_DB_NAME', 'audit'),
+        'USER': os.getenv('AUDIT_DB_USER', 'admin_saas'),
+        'PASSWORD': os.getenv('AUDIT_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
+        'HOST': os.getenv('AUDIT_DB_HOST', 'localhost'),
+        'PORT': os.getenv('AUDIT_DB_PORT', ''),  # Set to empty string for default.
+    },
+
 }
+DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -184,9 +195,6 @@ REST_FRAMEWORK = {
     )
 }
 
-LOGS_DIRECTORY = 'logs'
-
-DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
 try:
     ip = socket.gethostbyname(hostname)
@@ -194,62 +202,21 @@ except Exception as e:
     ip = socket.getfqdn(hostname)
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'main_formatter',
-            'filters': ['require_debug_true']
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "formatter": "main_formatter",
         },
-        'file': {
-            'filename': os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'when': 'midnight',
-            'interval': 1,
-            'backupCount': 14,
-            'formatter': 'main_formatter',
-        },
-        'file_googleads': {
-            'filename': os.path.join(LOGS_DIRECTORY, "googleads.log"),
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'when': 'midnight',
-            'interval': 1,
-            'backupCount': 14,
-            'formatter': 'main_formatter',
-        },
-        'file_updates': {
-            'filename': os.path.join(LOGS_DIRECTORY, "aw_update.log"),
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'when': 'midnight',
-            'interval': 1,
-            'backupCount': 14,
-            'formatter': 'main_formatter',
-        },
-        'file_celery': {
-            'filename': os.path.join(LOGS_DIRECTORY, "celery_info.log"),
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'when': 'midnight',
-            'interval': 1,
-            'backupCount': 14,
-            'formatter': 'main_formatter',
-        },
-        'file_topic_audit': {
-            'filename': os.path.join(LOGS_DIRECTORY, "topic_audit.log"),
-            'class': 'logging.handlers.TimedRotatingFileHandler',
-            'when': 'midnight',
-            'interval': 1,
-            'backupCount': 14,
-            'formatter': 'main_formatter',
-        },
-        'mail_admins': {
-            'level': 'ERROR',
-            'filters': ['require_debug_false'],
-            'class': 'django.utils.log.AdminEmailHandler',
-            'formatter': 'detail_formatter',
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+            "formatter": "detail_formatter",
         },
         "slack_aw_update": {
-            "level": "INFO",
+            "level": os.getenv("LOG_LEVEL_SLACK", "WARNING"),
             "class": "administration.notifications.SlackAWUpdateLoggingHandler",
             "filters": [
                 "audience_not_found_warning_filter",
@@ -259,52 +226,37 @@ LOGGING = {
             ],
         }
     },
-    'loggers': {
-        "googleads": {
-            "handlers": ["file_googleads"],
-            "level": "WARNING",
-        },
+    "loggers": {
         "aw_reporting.update": {
-            "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
+            "handlers": ["slack_aw_update"],
             "level": "INFO",
         },
-        "celery": {
-            "handlers": ["file_celery"],
-            "level": "INFO",
-        },
-        "topic_audit": {
-            "handlers": ['file_topic_audit'],
-            "level": "INFO"
-        },
-        '': {
-            'handlers': ['console', 'file', "mail_admins"],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
+        "": {
+            "handlers": ["stdout", "mail_admins"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "ERROR"),
         },
     },
-    'formatters': {
-        'main_formatter': {
-            'format': '%(asctime)s %(levelname)s: %(message)s',
-            'datefmt': "%Y-%m-%d %H:%M:%S",
+    "formatters": {
+        "main_formatter": {
+            "format": "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d > %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        'detail_formatter': {
-            'format': 'HOST: {host}\nCWD: {cwd}\nIP: {ip}\n%(asctime)s '
-                      '%(levelname)s %(filename)s line %(lineno)d: %(message)s'
-                      ''.format(host=hostname,
+        "detail_formatter": {
+            "format": "HOST: {host}\nCWD: {cwd}\nIP: {ip}\n%(asctime)s "
+                      "%(levelname)s %(filename)s line %(lineno)d: %(message)s"
+                      "".format(host=hostname,
                                 cwd=os.getcwd(),
                                 ip=ip),
-            'datefmt': "%Y-%m-%d %H:%M:%S",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
         },
         "hide_all": {
-            '()': 'django.utils.log.CallbackFilter',
-            'callback': lambda r: 0,
+            "()": "django.utils.log.CallbackFilter",
+            "callback": lambda r: 0,
         },
         "audience_not_found_warning_filter": {
             "()": "administration.notifications.AudienceNotFoundWarningLoggingFilter",

@@ -20,6 +20,32 @@ UI_STATS_HISTORY_FIELD_LIMIT = 30
 logger = logging.getLogger(__name__)
 
 
+
+class BrandSafetyParamAdapter:
+    scores = {
+        "high risk": "0,69",
+        "risky": "70,79",
+        "low risk": "80,89",
+        "safe": "90,100"
+
+    }
+    parameter = "brand_safety"
+    parameter_full_name = "brand_safety.overall_score"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter)
+        if parameter:
+            brand_safety_overall_score = []
+            labels = query_params[self.parameter].lower().split(",")
+            for label in labels:
+                score = self.scores.get(label)
+                if score:
+                    brand_safety_overall_score.append(score)
+            query_params[self.parameter_full_name] = brand_safety_overall_score
+        return query_params
+
+
+
 def get_limits(query_params, default_page_size=None, max_page_number=None):
     size = int(query_params.get("size", default_page_size or DEFAULT_PAGE_SIZE))
     page = int(query_params.get("page", 1))
@@ -58,24 +84,23 @@ class QueryGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = (BrandSafetyParamAdapter,)
 
     def __init__(self, query_params):
-        self.query_params = query_params
+        self.query_params = self._adapt_query_params(query_params)
 
-    def __get_filter_range(self):
-        filters = []
-
-        for field in self.range_filter:
-
-            range = self.query_params.get(field, None)
-
+    def add_should_filters(self, ranges, filters, field):
+        if ranges is None:
+            return
+        queries = []
+        for range in ranges:
             if range:
                 min, max = range.split(",")
 
                 if not (min or max):
                     continue
 
-                query = QueryBuilder().build().must().range().field(field)
+                query = QueryBuilder().build().should().range().field(field)
                 if min:
                     try:
                         min = float(min)
@@ -90,7 +115,46 @@ class QueryGenerator:
                         # in case of filtering by date
                         pass
                     query = query.lte(max)
-                filters.append(query.get())
+                queries.append(query)
+        combined_query = None
+        for query in queries:
+            query_obj = query.get()
+            if not combined_query:
+                combined_query = query_obj
+            else:
+                combined_query |= query_obj
+        filters.append(combined_query)
+
+    def __get_filter_range(self):
+        filters = []
+
+        for field in self.range_filter:
+            if field == "brand_safety.overall_score":
+                self.add_should_filters(self.query_params.get(field, None), filters, field)
+            else:
+                range = self.query_params.get(field, None)
+                if range:
+                    min, max = range.split(",")
+
+                    if not (min or max):
+                        continue
+
+                    query = QueryBuilder().build().must().range().field(field)
+                    if min:
+                        try:
+                            min = float(min)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.gte(min)
+                    if max:
+                        try:
+                            max = float(max)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.lte(max)
+                    filters.append(query.get())
 
         return filters
 
@@ -152,6 +216,12 @@ class QueryGenerator:
             ids = ids_str.split(",")
             filters.append(self.es_manager.ids_query(ids))
         return filters
+
+    def _adapt_query_params(self, query_params):
+        for adapter in self.params_adapters:
+            query_params = adapter().adapt(query_params)
+        return query_params
+
 
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
@@ -277,7 +347,7 @@ class ESQuerysetAdapter:
         raise NotImplementedError
 
     def __iter__(self):
-        if self.sort:
+        if self.sort or self.search_limit:
             yield from self.get_data(end=self.search_limit)
         else:
             yield from self.manager.scan(
@@ -286,8 +356,10 @@ class ESQuerysetAdapter:
 
 
 class ESFilterBackend(BaseFilterBackend):
+
     def _get_query_params(self, request):
         return request.query_params.dict()
+
 
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(
@@ -307,6 +379,9 @@ class ESFilterBackend(BaseFilterBackend):
     def _get_aggregations(self, request, queryset, view):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
+        if "flags" in aggregations:
+            flags_index = aggregations.index("flags")
+            aggregations[flags_index] = "stats.flags"
         if view.allowed_aggregations is not None:
             aggregations = [agg
                             for agg in aggregations
@@ -379,3 +454,37 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
+
+
+
+class ExportDataGenerator:
+    serializer_class = ESDictSerializer
+    terms_filter = ()
+    range_filter = ()
+    match_phrase_filter = ()
+    exists_filter = ()
+    queryset = None
+
+    def __init__(self, query_params):
+        self.query_params = query_params
+
+    def _get_query_generator(self):
+        dynamic_generator_class = type(
+            "DynamicGenerator",
+            (QueryGenerator,),
+            dict(
+                es_manager=self.queryset.manager,
+                terms_filter=self.terms_filter,
+                range_filter=self.range_filter,
+                match_phrase_filter=self.match_phrase_filter,
+                exists_filter=self.exists_filter,
+            )
+        )
+        return dynamic_generator_class(self.query_params)
+
+    def __iter__(self):
+        self.queryset.filter(
+            self._get_query_generator().get_search_filters()
+        )
+        for item in self.queryset:
+            yield self.serializer_class(item).data
