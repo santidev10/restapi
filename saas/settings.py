@@ -184,9 +184,6 @@ REST_FRAMEWORK = {
     )
 }
 
-LOGS_DIRECTORY = 'logs'
-
-DJANGO_LOG_FILE = os.getenv("DJANGO_LOG_FILE", "viewiq.log")
 hostname = socket.gethostname()
 try:
     ip = socket.gethostbyname(hostname)
@@ -197,49 +194,8 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {
-        "console": {
+        "stdout": {
             "class": "logging.StreamHandler",
-            "formatter": "main_formatter",
-            "filters": ["require_debug_true"]
-        },
-        "file": {
-            "filename": os.path.join(LOGS_DIRECTORY, DJANGO_LOG_FILE),
-            "class": "logging.handlers.TimedRotatingFileHandler",
-            "when": "midnight",
-            "interval": 1,
-            "backupCount": 14,
-            "formatter": "main_formatter",
-        },
-        "file_googleads": {
-            "filename": os.path.join(LOGS_DIRECTORY, "googleads.log"),
-            "class": "logging.handlers.TimedRotatingFileHandler",
-            "when": "midnight",
-            "interval": 1,
-            "backupCount": 14,
-            "formatter": "main_formatter",
-        },
-        "file_updates": {
-            "filename": os.path.join(LOGS_DIRECTORY, "aw_update.log"),
-            "class": "logging.handlers.TimedRotatingFileHandler",
-            "when": "midnight",
-            "interval": 1,
-            "backupCount": 14,
-            "formatter": "main_formatter",
-        },
-        "file_celery": {
-            "filename": os.path.join(LOGS_DIRECTORY, "celery_info.log"),
-            "class": "logging.handlers.TimedRotatingFileHandler",
-            "when": "midnight",
-            "interval": 1,
-            "backupCount": 14,
-            "formatter": "main_formatter",
-        },
-        "file_topic_audit": {
-            "filename": os.path.join(LOGS_DIRECTORY, "topic_audit.log"),
-            "class": "logging.handlers.TimedRotatingFileHandler",
-            "when": "midnight",
-            "interval": 1,
-            "backupCount": 14,
             "formatter": "main_formatter",
         },
         "mail_admins": {
@@ -260,30 +216,18 @@ LOGGING = {
         }
     },
     "loggers": {
-        "googleads": {
-            "handlers": ["file_googleads"],
-            "level": "WARNING",
-        },
         "aw_reporting.update": {
-            "handlers": ["file_updates", "slack_aw_update", "mail_admins"],
+            "handlers": ["slack_aw_update"],
             "level": "INFO",
-        },
-        "celery": {
-            "handlers": ["file_celery"],
-            "level": "INFO",
-        },
-        "topic_audit": {
-            "handlers": ["file_topic_audit"],
-            "level": "INFO"
         },
         "": {
-            "handlers": ["console", "file", "mail_admins"],
+            "handlers": ["stdout", "mail_admins"],
             "level": os.getenv("DJANGO_LOG_LEVEL", "ERROR"),
         },
     },
     "formatters": {
         "main_formatter": {
-            "format": "%(asctime)s %(levelname)s: %(message)s",
+            "format": "%(asctime)s %(levelname)-8s %(name)s:%(lineno)d > %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "detail_formatter": {
@@ -298,9 +242,6 @@ LOGGING = {
     "filters": {
         "require_debug_false": {
             "()": "django.utils.log.RequireDebugFalse",
-        },
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
         },
         "hide_all": {
             "()": "django.utils.log.CallbackFilter",
