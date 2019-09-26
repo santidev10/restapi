@@ -53,7 +53,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
     }
 }
-SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
 
 from utils.utittests.aws_ses_patcher import ses_monkey_patch
 

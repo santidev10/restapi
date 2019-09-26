@@ -309,12 +309,6 @@ def resolve_videos_info(ids: List[int],
                 iso_duration = item.get("contentDetails", {}).get("duration")
                 duration = isodate.parse_duration(iso_duration).total_seconds() if iso_duration else 0
 
-                # info = dict(
-                #     title=title,
-                #     thumbnail_image_url=thumbnail_image_url,
-                #     duration=duration,
-                # )
-
                 info = dict(
                     general_data=dict(
                         title=title,
