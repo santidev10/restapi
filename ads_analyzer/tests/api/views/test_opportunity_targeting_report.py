@@ -1,6 +1,7 @@
 import json
 from datetime import date
 from unittest.mock import ANY
+from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -9,6 +10,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models.opportunity_targeting_report import OpportunityTargetingReport
+from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
@@ -17,6 +19,13 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
+    def setUp(self) -> None:
+        self.report_processing_mock = patch.object(create_opportunity_targeting_report, "apply_async")
+        self.report_processing_mock.__enter__()
+
+    def tearDown(self) -> None:
+        self.report_processing_mock.__exit__()
+
     def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
         data = data or dict()
@@ -62,6 +71,7 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
+        super().setUp()
         self.create_admin_user()
 
     def test_validate_required(self):
@@ -186,3 +196,61 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             ),
             response.json()
         )
+
+    def test_creates_task(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
+        opportunity.refresh_from_db()
+        date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
+        create_opportunity_targeting_report.apply_async.reset_mock()
+
+        self._request(dict(
+            opportunity=opportunity.id,
+            date_from=date_from,
+            date_to=date_to,
+        ))
+
+        create_opportunity_targeting_report.apply_async.assert_called_with(
+            opportunity_id=opportunity.id,
+            date_from=str(date_from),
+            date_to=str(date_to),
+        )
+
+    def test_does_not_creates_task_if_exist_in_progress(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
+        opportunity.refresh_from_db()
+        date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
+        OpportunityTargetingReport.objects.create(
+            opportunity=opportunity,
+            date_from=date_from,
+            date_to=date_to,
+            external_link=None
+        )
+        create_opportunity_targeting_report.apply_async.reset_mock()
+
+        self._request(dict(
+            opportunity=opportunity.id,
+            date_from=date_from,
+            date_to=date_to,
+        ))
+
+        create_opportunity_targeting_report.apply_async.assert_not_called()
+
+    def test_does_not_creates_task_if_exist_ready(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator), name="Opportunity #123")
+        opportunity.refresh_from_db()
+        date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
+        OpportunityTargetingReport.objects.create(
+            opportunity=opportunity,
+            date_from=date_from,
+            date_to=date_to,
+            external_link="http:some-link.com"
+        )
+        create_opportunity_targeting_report.apply_async.reset_mock()
+
+        self._request(dict(
+            opportunity=opportunity.id,
+            date_from=date_from,
+            date_to=date_to,
+        ))
+
+        create_opportunity_targeting_report.apply_async.assert_not_called()
