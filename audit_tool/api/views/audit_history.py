@@ -16,7 +16,7 @@ class AuditHistoryApiView(APIView):
     def get(self, request):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
-        hours = query_params["hours"] if "hours" in query_params else None
+        hours = int(query_params["hours"]) if "hours" in query_params else None
         if audit_id:
             last_time = None
             first_time = None
