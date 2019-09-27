@@ -22,26 +22,26 @@ class AuditHistoryApiView(APIView):
             first_time = None
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
-                history = AuditProcessorCache.objects.filter(audit=audit)
-                if hours:
-                    history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
-                history = history.order_by("id")
-                res = {
-                    'results': [],
-                    'elapsed_time': 'N/A'
-                }
-                for h in history:
-                    if not first_time:
-                        first_time = h.created
-                    last_time = h.created
-                    res['results'].append({
-                        'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
-                        'count': h.count,
-                    })
-                try:
-                    res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
-                except Exception as e:
-                    pass
-                return Response(res)
             except Exception as e:
                 raise ValidationError("invalid audit_id: please check")
+            history = AuditProcessorCache.objects.filter(audit=audit)
+            if hours:
+                history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
+            history = history.order_by("id")
+            res = {
+                'results': [],
+                'elapsed_time': 'N/A'
+            }
+            for h in history:
+                if not first_time:
+                    first_time = h.created
+                last_time = h.created
+                res['results'].append({
+                    'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
+                    'count': h.count,
+                })
+            try:
+                res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
+            except Exception as e:
+                pass
+            return Response(res)
