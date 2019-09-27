@@ -8,14 +8,14 @@ from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_upd
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
 
-def aggregate_segment_statistics(segment, yt_ids):
+def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
     """
     Prepare adwords statistics for segment
     """
-    user = segment.owner
-    mcc_acc, is_chf = get_mcc_to_update(user)
+    # user = segment.owner
+    # mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
-        "ad_group__campaign__account__managers": mcc_acc,
+        # "ad_group__campaign__account__managers": mcc_acc,
         "yt_id__in": yt_ids,
     }
     aggregated = {
@@ -26,7 +26,7 @@ def aggregate_segment_statistics(segment, yt_ids):
         "video_clicks": 0,
         "video_impressions": 0,
     }
-    queryset = segment.related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
+    queryset = related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
     queryset.query.clear_ordering(force_empty=True)
     for statistic in queryset:
         for field, value in statistic.items():
@@ -47,10 +47,10 @@ def aggregate_segment_statistics(segment, yt_ids):
     result = {
         "stats": stats,
         "meta": {
-            "account_id": mcc_acc.id,
-            "account_name": mcc_acc.name,
-            "updated_at": str(now_in_default_tz()),
-            "is_chf": is_chf,
+            # "account_id": mcc_acc.id,
+            # "account_name": mcc_acc.name,
+            # "updated_at": str(now_in_default_tz()),
+            # "is_chf": is_chf,
         }
     }
     return result

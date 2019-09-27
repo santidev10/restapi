@@ -25,6 +25,7 @@ from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
+from segment.models.utils.calculate_segment_details import calculate_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ class BasePersistentSegment(Timestampable):
     related = None  # abstract property
     segment_type = None  # abstract property
     files = None # abstract property
+    related_aw_statistics_model = None # abstract property
 
     export_content_type = "application/CSV"
     export_last_modified = None
@@ -71,7 +73,9 @@ class BasePersistentSegment(Timestampable):
             self.audit_category_id = audit_category.id
 
     def calculate_details(self):
-        raise NotImplementedError
+        es_manager = self.get_es_manager()
+        details = calculate_statistics(self.related_aw_statistics_model, self.segment_type, es_manager, self.get_segment_items_query())
+        return details
 
     def get_es_manager(self):
         raise NotImplementedError
