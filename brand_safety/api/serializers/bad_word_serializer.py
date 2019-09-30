@@ -48,6 +48,8 @@ class BadWordSerializer(ModelSerializer):
         return language
 
     def validate_meta_scoring(self, value):
+        if isinstance(value, bool):
+            return value
         try:
             meta_scoring = strtobool(value)
         except (ValueError, TypeError):
@@ -55,6 +57,8 @@ class BadWordSerializer(ModelSerializer):
         return meta_scoring
 
     def validate_comment_scoring(self, value):
+        if isinstance(value, bool):
+            return value
         try:
             comment_scoring = strtobool(value)
         except (ValueError, TypeError):
