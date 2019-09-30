@@ -10,4 +10,5 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        CustomSegment.objects.get(id="").calculate_statistics()
+        stats = CustomSegment.objects.get(id=199).calculate_statistics()
+        pass

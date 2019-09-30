@@ -12,10 +12,7 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
     """
     Prepare adwords statistics for segment
     """
-    # user = segment.owner
-    # mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
-        # "ad_group__campaign__account__managers": mcc_acc,
         "yt_id__in": yt_ids,
     }
     aggregated = {
@@ -47,10 +44,6 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
     result = {
         "stats": stats,
         "meta": {
-            # "account_id": mcc_acc.id,
-            # "account_name": mcc_acc.name,
-            # "updated_at": str(now_in_default_tz()),
-            # "is_chf": is_chf,
         }
     }
     return result

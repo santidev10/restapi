@@ -79,7 +79,7 @@ class CustomSegment(Timestampable):
         super().delete(*args, **kwargs)
         return self
 
-    def calculate_statistics(self, items_count):
+    def calculate_statistics(self):
         """
         Aggregate statistics
         :param items_count: int
@@ -87,23 +87,6 @@ class CustomSegment(Timestampable):
         """
         es_manager = self.get_es_manager(sections=(Sections.GENERAL_DATA,))
         statistics = calculate_statistics(self.related_aw_statistics_model, self.segment_type, es_manager, self.get_segment_items_query())
-        # top_three_items = []
-        # all_ids = []
-        # for doc in result.hits:
-        #     all_ids.append(doc.main.id)
-        #     # Check if we data to display for each item in top three
-        #     if len(top_three_items) < 3 and getattr(doc.general_data, "title", None) and getattr(doc.general_data, "thumbnail_image_url", None):
-        #         top_three_items.append({
-        #             "id": doc.main.id,
-        #             "title": doc.general_data.title,
-        #             "image_url": doc.general_data.thumbnail_image_url
-        #         })
-        #
-        # statistics = {
-        #     "adw_data": aggregate_segment_statistics(self, all_ids),
-        #     "items_count": items_count,
-        #     "top_three_items": top_three_items
-        # }
         return statistics
 
     def get_es_manager(self, sections=None):
