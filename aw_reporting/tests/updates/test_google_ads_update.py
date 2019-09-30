@@ -878,11 +878,12 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         account.refresh_from_db()
 
-    @patch("aw_reporting.google_ads.tasks.update_campaigns.mcc_account_update.apply_async")
-    def test_skip_inactive_account(self, mock_mcc_account_update):
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.cid_campaign_update")
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc")
+    def test_skip_inactive_account(self, mock_updater, mock_cid_account_update):
         self._create_account(is_active=False)
         setup_update_campaigns()
-        mock_mcc_account_update.assert_not_called()
+        mock_cid_account_update.assert_not_called()
 
     @patch.object(CampaignUpdater, "update")
     def test_mark_account_as_inactive(self, mock_update):
