@@ -6,6 +6,6 @@ def populate_video_custom_transcripts(video, transcript_texts=[], transcript_lan
             text=text,
             language_code=language_code
         )
-        for text, language_code in zip(transcript_texts, transcript_languages)
+        for text, language_code in zip(transcript_texts, transcript_languages) if text != ""
     ]
     video.populate_custom_transcripts(transcripts_checked=True, transcripts=transcripts)

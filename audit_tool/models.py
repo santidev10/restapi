@@ -331,8 +331,8 @@ class AuditVideoTranscript(models.Model):
 
     @staticmethod
     def get_or_create(video_id, language='en', transcript=None):
-        v = AuditVideo.objects.get_or_create(video_id)
-        lang = AuditLanguage.objects.get_or_create(language=language)
+        v = AuditVideo.get_or_create(video_id)
+        lang = AuditLanguage.from_string(language)
         t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
         if transcript:
             t.transcript = transcript
