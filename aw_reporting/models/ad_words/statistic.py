@@ -56,7 +56,7 @@ class BaseStatisticModel(BaseModel):
 
 class ModelPlusDeNormFields(BaseStatisticModel):
     # for now we will use them in Pricing Tool
-    de_norm_fields_are_recalculated = models.BooleanField(default=False)
+    de_norm_fields_are_recalculated = models.BooleanField(default=False, db_index=True)
     min_stat_date = models.DateField(null=True)
     max_stat_date = models.DateField(null=True)
 

@@ -1,22 +1,30 @@
+import logging
+
 from django.db import transaction
+from google.ads.google_ads.errors import GoogleAdsException
+from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
+from google.auth.exceptions import RefreshError
 from oauth2client import client
-from oauth2client.client import HttpAccessTokenRefreshError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 from rest_framework.views import APIView
-from suds import WebFault
 
-from aw_reporting.adwords_api import get_customers
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from aw_reporting.update.tasks import upload_initial_aw_data
+from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsAuthErrors
+from aw_reporting.google_ads.updaters.accounts import AccountUpdater
+from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.utils import get_google_access_token_info
 from userprofile.permissions import PermissionGroupNames
+
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectAWAccountApiView(APIView):
@@ -132,24 +140,27 @@ class ConnectAWAccountApiView(APIView):
             # -- end of get refresh token
             # save mcc accounts
             try:
-                customers = get_customers(
-                    connection.refresh_token,
-                    **load_web_app_settings()
-                )
-            except WebFault as e:
-                fault_string = e.fault.faultstring
-                if "AuthenticationError.NOT_ADS_USER" in fault_string:
+                ga_client = get_client(login_customer_id="", refresh_token=connection.refresh_token)
+                customers = AccountUpdater.get_accessible_customers(ga_client)
+            except GoogleAdsException as e:
+                auth_error_enum = AuthorizationErrorEnum().AuthorizationError
+                error = auth_error_enum(e.failure.errors[0].error_code.authorization_error).name
+
+                # Customer is not valid
+                if error == GoogleAdsAuthErrors.NOT_ADS_USER:
                     fault_string = "AdWords account does not exist"
-                return Response(status=HTTP_400_BAD_REQUEST,
-                                data=dict(error=fault_string))
-            except HttpAccessTokenRefreshError as e:
-                ex_token_error = "Token has been expired or revoked"
-                if ex_token_error in str(e):
-                    return Response(status=HTTP_400_BAD_REQUEST,
-                                    data=dict(error=ex_token_error))
+                elif error in (GoogleAdsAuthErrors.OAUTH_TOKEN_EXPIRED, GoogleAdsAuthErrors.OAUTH_TOKEN_REVOKED):
+                    fault_string = "Token has been expired or revoked"
+                else:
+                    fault_string = str(e)
+                return Response(status=HTTP_400_BAD_REQUEST, data=fault_string)
+            except RefreshError as e:
+                logger.error(f"Error trying to connect Google account: {e}")
+                fault_string = "Unable to authenticate"
+                return Response(status=HTTP_400_BAD_REQUEST, data=fault_string)
             else:
                 mcc_accounts = list(filter(
-                    lambda i: i["canManageClients"] and not i["testAccount"],
+                    lambda i: i.customer_client.manager.value and not i.customer_client.test_account.value,
                     customers,
                 ))
                 if not mcc_accounts:
@@ -168,12 +179,12 @@ class ConnectAWAccountApiView(APIView):
 
                     for ac_data in mcc_accounts:
                         data = dict(
-                            id=ac_data["customerId"],
-                            name=ac_data["descriptiveName"],
-                            currency_code=ac_data["currencyCode"],
-                            timezone=ac_data["dateTimeZone"],
-                            can_manage_clients=ac_data["canManageClients"],
-                            is_test_account=ac_data["testAccount"],
+                            id=ac_data.customer_client.id.value,
+                            name=ac_data.customer_client.descriptive_name.value,
+                            currency_code=ac_data.customer_client.currency_code.value,
+                            timezone=ac_data.customer_client.time_zone.value,
+                            can_manage_clients=ac_data.customer_client.manager.value,
+                            is_test_account=ac_data.customer_client.test_account.value,
                         )
                         obj, _ = Account.objects.get_or_create(
                             id=data["id"], defaults=data,
@@ -181,7 +192,7 @@ class ConnectAWAccountApiView(APIView):
                         AWAccountPermission.objects.get_or_create(
                             aw_connection=connection, account=obj,
                         )
-                upload_initial_aw_data.delay(connection.email)
+                    upload_initial_aw_data_task.delay(connection.email)
 
                 response = AWAccountConnectionRelationsSerializer(relation).data
                 return Response(data=response)
