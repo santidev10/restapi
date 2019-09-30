@@ -191,9 +191,16 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
+            'stopped': self.params.get('stopped'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history()
         }
+        files = self.params.get('files')
+        if files:
+            d['source_file'] = files.get('source')
+            d['exclusion_file'] = files.get('exclusion')
+            d['inclusion_file'] = files.get('inclusion')
+
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
@@ -393,7 +400,6 @@ class AuditProcessorCache(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     count = models.BigIntegerField(default=0, db_index=True)
-
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0

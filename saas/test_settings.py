@@ -42,10 +42,6 @@ CELERY_TASK_ALWAYS_EAGER = True
 DMP_CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
 
-SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
-
-from utils.utittests.sdb_connector_patcher import monkey_patch
 from utils.utittests.aws_ses_patcher import ses_monkey_patch
 
-monkey_patch()
 ses_monkey_patch()
