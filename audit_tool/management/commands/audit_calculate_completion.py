@@ -38,4 +38,4 @@ class Command(BaseCommand):
                     audit.save(update_fields=['params'])
                 except Exception as e:
                     logger.info(str(e))
-            raise Exception("Done {} projected times".audits.count())
+            raise Exception("Done {} projected times".format(audits.count()))
