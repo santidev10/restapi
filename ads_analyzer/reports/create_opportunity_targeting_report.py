@@ -6,6 +6,7 @@ from django.conf import settings
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
+from aw_reporting.models import Opportunity
 from saas import celery_app
 from utils.aws.s3_exporter import S3Exporter
 from utils.views import XLSX_CONTENT_TYPE
@@ -40,11 +41,36 @@ class OpportunityTargetingReportXLSXGenerator:
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output, {
             "in_memory": True,
-            "strings_to_urls": False,
         })
+        self._add_target_sheet(workbook, opportunity_id, date_from, date_to)
+        self._add_devices_sheet(workbook, opportunity_id, date_from, date_to)
+        self._add_demo_sheet(workbook, opportunity_id, date_from, date_to)
+        self._add_video_sheet(workbook, opportunity_id, date_from, date_to)
+
         workbook.close()
         output.seek(0)
         return output
+
+    def _add_target_sheet(self, wb, opportunity_id, date_from, date_to):
+        sheet = wb.add_worksheet("Target")
+        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
+
+    def _add_devices_sheet(self, wb, opportunity_id, date_from, date_to):
+        sheet = wb.add_worksheet("Devices")
+        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
+
+    def _add_demo_sheet(self, wb, opportunity_id, date_from, date_to):
+        sheet = wb.add_worksheet("Demo")
+        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
+
+    def _add_video_sheet(self, wb, opportunity_id, date_from, date_to):
+        sheet = wb.add_worksheet("Video")
+        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
+
+    def _add_sheet_header(self, sheet, opportunity_id, date_from, date_to):
+        opportunity = Opportunity.objects.get(pk=opportunity_id)
+        sheet.write(0, 0, f"Opportunity: {opportunity.name}")
+        sheet.write(1, 0, f"Date Range: {date_from} - {date_to}")
 
 
 class OpportunityTargetingReportS3Exporter(S3Exporter):
