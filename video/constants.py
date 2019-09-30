@@ -3,7 +3,7 @@ TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.c
                 "monetization.is_monetizable", "monetization.channel_preferred",
                 "channel.id", "general_data.tags", "main.id",)
 
-MATCH_PHRASE_FILTER = ("general_data.title",)
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
 RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.views_per_day",
                 "stats.channel_subscribers", "ads_stats.average_cpv", "ads_stats.ctr_v",
