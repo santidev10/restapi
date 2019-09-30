@@ -32,17 +32,27 @@ class AuditHistoryApiView(APIView):
                 'results': [],
                 'elapsed_time': 'N/A'
             }
+            avg_sum = 0
+            avg_count = 0
             previous = None
             for h in history:
                 if not first_time:
                     first_time = h.created
                 last_time = h.created
+                rate = h.count - previous if previous else None
+                if rate:
+                    avg_sum+=rate
+                    avg_count+=1
                 res['results'].append({
                     'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
                     'count': h.count,
-                    'rate': h.count - previous if previous else None,
+                    'rate': rate,
                 })
                 previous = h.count
+            try:
+                res['rate_average'] = avg_sum / avg_count if avg_count > 0 else None
+            except Exception as e:
+                pass
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
             except Exception as e:
