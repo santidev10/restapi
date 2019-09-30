@@ -2,7 +2,7 @@ TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_da
                 "custom_properties.preferred", "analytics.verified", "cms.cms_title",
                 "stats.channel_group", "main.id")
 
-MATCH_PHRASE_FILTER = ("general_data.title",)
+MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
 RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "social.facebook_likes",
                 "stats.views_per_video", "stats.engage_rate", "stats.sentiment", "stats.last_30day_views",
