@@ -2,10 +2,7 @@ import logging
 import re
 from collections import OrderedDict
 
-from django.conf import settings
-
 from brand_safety.models import BadWord
-from singledb.connector import SingleDatabaseApiConnector as Connector
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -17,14 +14,14 @@ class Keywords:
 
     _keywords = None
 
-    def __init__(self, source="sdb", filename=None):
-        assert source in ["sdb", "file"]
+    def __init__(self, source="db", filename=None):
+        assert source in ["db", "file"]
 
         if source == "file":
             assert filename is not None
 
-        if source == "sdb":
-            self.load_from_sdb()
+        if source == "db":
+            self.load_from_db()
 
         elif source == "file":
             self.load_from_file(filename)
@@ -68,13 +65,8 @@ class Keywords:
         ])
         return keywords
 
-    def load_from_sdb(self):
-        if settings.USE_LEGACY_BRAND_SAFETY:
-            connector = Connector()
-            bad_words = connector.get_bad_words_list({})
-            bad_words_names = [item["name"] for item in bad_words]
-        else:
-            bad_words_names = BadWord.objects.values_list("name", flat=True)
+    def load_from_db(self):
+        bad_words_names = BadWord.objects.values_list("name", flat=True)
         keywords = list(bad_words_names)
         self._keywords = keywords
 
