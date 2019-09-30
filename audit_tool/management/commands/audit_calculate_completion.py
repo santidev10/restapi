@@ -24,7 +24,7 @@ class Command(BaseCommand):
                 avg_rate_count = 0.0
                 previous = None
                 for db_history in AuditProcessorCache.objects.filter(
-                        audit=audit, count__gt=0, created__gt=timezone.now() - timedelta(hours=1)).order_by("id"):
+                        audit=audit, created__gt=timezone.now() - timedelta(hours=1)).order_by("id"):
                     if previous:
                         rate = db_history.count - previous
                         avg_rate_count += 1.0
@@ -34,8 +34,11 @@ class Command(BaseCommand):
                     avg_rate_per_minute = avg_rate_sum / avg_rate_count
                     num_minutes = (audit.cached_data.get('total') - audit.cached_data.get('count')) / avg_rate_per_minute
                     projected_completion = timezone.now() + timedelta(minutes=num_minutes)
-                    audit.params['projected_completion'] = projected_completion.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p")
-                    audit.save(update_fields=['params'])
+                    if avg_rate_per_minute > 0:
+                        audit.params['projected_completion'] = projected_completion.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p")
+                    else:
+                        audit.params['projected_completion'] = None
+                        audit.save(update_fields=['params'])
                 except Exception as e:
                     logger.info(str(e))
             raise Exception("Done {} projected times".format(audits.count()))
