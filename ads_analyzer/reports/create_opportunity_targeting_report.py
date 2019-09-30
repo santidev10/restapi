@@ -1,5 +1,7 @@
 import logging
+from io import BytesIO
 
+import xlsxwriter
 from django.conf import settings
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -20,7 +22,7 @@ def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str,
 
     export_cls = OpportunityTargetingReportS3Exporter
     file_key = export_cls.get_s3_key(opportunity_id, date_from_str, date_to_str)
-    # export_cls.export_to_s3(report, file_key)
+    export_cls.export_object_to_s3(report, file_key)
     report_queryset = OpportunityTargetingReport.objects.filter(
         opportunity_id=opportunity_id,
         date_from=date_from_str,
@@ -35,7 +37,14 @@ def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str,
 class OpportunityTargetingReportXLSXGenerator:
 
     def build(self, opportunity_id, date_from, date_to):
-        return None
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {
+            "in_memory": True,
+            "strings_to_urls": False,
+        })
+        workbook.close()
+        output.seek(0)
+        return output
 
 
 class OpportunityTargetingReportS3Exporter(S3Exporter):

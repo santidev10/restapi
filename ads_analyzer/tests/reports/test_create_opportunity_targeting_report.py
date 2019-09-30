@@ -1,4 +1,5 @@
 from datetime import date
+from io import BytesIO
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
@@ -41,7 +42,7 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
         self.assertEqual(ReportStatus.SUCCESS.value, report.status)
 
     @mock_s3
-    def test_empty_report_content(self):
+    def test_empty_report_to_s3(self):
         opportunity = Opportunity.objects.create(id=next(str_iterator))
         date_from, date_to = date(2020, 1, 1), date(2020, 1, 2)
         self._create_report_skip_post_save(
@@ -58,6 +59,8 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
 
         s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(opportunity.id, str(date_from), str(date_to))
         self.assertTrue(OpportunityTargetingReportS3Exporter.exists(s3_key, get_key=False))
-        report = OpportunityTargetingReportS3Exporter.get_s3_export_content(s3_key)
-        book = load_workbook(report)
+        report = OpportunityTargetingReportS3Exporter.get_s3_export_content(s3_key, get_key=False)
+        book = load_workbook(BytesIO(report.read()))
         self.assertIsNotNone(book)
+
+
