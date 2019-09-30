@@ -240,7 +240,7 @@ class SegmentListGenerator(object):
         s3_filename = segment.get_s3_key(datetime=now)
         logger.error("Collecting data for {}".format(s3_filename))
         segment.export_to_s3(s3_filename)
-        segment.details = segment.calculate_details()
+        segment.details = segment.calculate_statistics()
         segment.save()
         now = timezone.now()
         PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)

@@ -27,7 +27,7 @@ from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
-from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
+from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.utils import retry_on_conflict
 from utils.models import Timestampable
 
@@ -86,26 +86,24 @@ class CustomSegment(Timestampable):
         :return:
         """
         es_manager = self.get_es_manager(sections=(Sections.GENERAL_DATA,))
-        query = self.get_segment_items_query()
-        result = es_manager.search(query, limit=settings.MAX_SEGMENT_TO_AGGREGATE).execute()
-
-        top_three_items = []
-        all_ids = []
-        for doc in result.hits:
-            all_ids.append(doc.main.id)
-            # Check if we data to display for each item in top three
-            if len(top_three_items) < 3 and getattr(doc.general_data, "title", None) and getattr(doc.general_data, "thumbnail_image_url", None):
-                top_three_items.append({
-                    "id": doc.main.id,
-                    "title": doc.general_data.title,
-                    "image_url": doc.general_data.thumbnail_image_url
-                })
-
-        statistics = {
-            "adw_data": aggregate_segment_statistics(self, all_ids),
-            "items_count": items_count,
-            "top_three_items": top_three_items
-        }
+        statistics = calculate_statistics(self.related_aw_statistics_model, self.segment_type, es_manager, self.get_segment_items_query())
+        # top_three_items = []
+        # all_ids = []
+        # for doc in result.hits:
+        #     all_ids.append(doc.main.id)
+        #     # Check if we data to display for each item in top three
+        #     if len(top_three_items) < 3 and getattr(doc.general_data, "title", None) and getattr(doc.general_data, "thumbnail_image_url", None):
+        #         top_three_items.append({
+        #             "id": doc.main.id,
+        #             "title": doc.general_data.title,
+        #             "image_url": doc.general_data.thumbnail_image_url
+        #         })
+        #
+        # statistics = {
+        #     "adw_data": aggregate_segment_statistics(self, all_ids),
+        #     "items_count": items_count,
+        #     "top_three_items": top_three_items
+        # }
         return statistics
 
     def get_es_manager(self, sections=None):

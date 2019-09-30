@@ -12,7 +12,7 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQue
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
-from segment.models.utils.calculate_segment_details import calculate_statistics
+from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.utils import retry_on_conflict
 
 
