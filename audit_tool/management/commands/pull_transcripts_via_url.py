@@ -43,6 +43,7 @@ class Command(BaseCommand):
                 video_manager.upsert([vid_obj])
                 counter += 1
                 logger.info("Parsed video with id: {}".format(vid_id))
+                logger.info("transcript_text for video with id {}: {}".format(vid_id, transcript_text))
                 logger.info("Number of videos parsed: {}".format(counter))
                 logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
                 delay = random.choice(range(0, 6))
