@@ -23,9 +23,14 @@ def migrate(file_path):
     with open(file_path) as csv_file:
 
         for row in csv.reader(csv_file):
+            for index, value in enumerate(row):
+                if value in ('\\n', '\\N'):
+                    row[index] = None
+
             id, created, clean, completed, file_name, final, audit_id, owner_id = row
+
             AuditExporter.objects.create(
-                id=int(id), created=created, clean=clean, completed=completed, file_name=file_name, final=final,
-                audit_id=int(audit_id), owner_id=int(owner_id)
+                id=id, created=created, clean=clean, completed=completed, file_name=file_name, final=final,
+                audit_id=audit_id, owner_id=owner_id
             )
 

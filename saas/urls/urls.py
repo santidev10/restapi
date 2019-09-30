@@ -17,7 +17,6 @@ from keywords.api import urls as keyword_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
 from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
-from singledb.api import urls as singledb_api_urls
 from userprofile.api import urls as userprofile_api_urls
 from utils.api.urls import APP_NAME
 from utils.documentation import urlpatterns as documentation_api_urls
@@ -49,9 +48,6 @@ urlpatterns = [
 
     # Userprofile api urls
     url(r'^api/v1/', include((userprofile_api_urls, APP_NAME), namespace=Namespace.USER_PROFILE)),
-
-    # Singledb api urls
-    url(r'^api/v1/', include((singledb_api_urls, APP_NAME), namespace="singledb_api_urls")),
 
     # Audit api urls
     url(r'^api/v1/', include((audit_tool_api_urls, APP_NAME), namespace=Namespace.AUDIT_TOOL)),

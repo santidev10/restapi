@@ -37,6 +37,8 @@ def migrate(file_path, model):
         for row in csv.reader(csv_file):
             segment_id, auth_category_id = row
             try:
-                model.objects.get(id=int(segment_id)).update(audit_category_id=int(auth_category_id))
+                obj = model.objects.get(id=int(segment_id))
+                obj.audit_category_id=int(auth_category_id)
+                obj.save()
             except (model.DoesNotExist, ValueError):
                 continue

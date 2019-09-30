@@ -1,24 +1,22 @@
 import csv
 import re
 from segment.models.persistent import PersistentSegmentRelatedChannel
-from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.youtube_api import YoutubeAPIConnector
 from utils.youtube_api import YoutubeAPIConnectorException
 from audit_tool.audit_mixin import AuditMixin
 from audit_tool.models import YoutubeUser
 from audit_tool.models import Comment
 from audit_tool.models import CommentVideo
+from es_components.managers.video import VideoManager
 
 
 class CommentAudit(AuditMixin):
     max_thread_count = 5
     channel_batch_limit = 40
     comment_batch_size = 50000
-    video_fields = 'video_id,channel_id,title'
     csv_file_path = '/Users/kennethoh/Desktop/comments.csv'
 
     def __init__(self):
-        self.connector = Connector()
         self.youtube_connector = YoutubeAPIConnector()
 
         bad_words = self.get_all_bad_words()
@@ -32,26 +30,19 @@ class CommentAudit(AuditMixin):
         :param channels: (list) channel dicts
         :return: (list) video dicts
         """
-        last_id = None
-        channel_ids = ','.join(channels)
-        params = dict(
-            fields=self.video_fields,
-            sort='video_id',
-            size=5,
-            channel_id__terms=channel_ids,
-        )
+        manager = VideoManager()
+        filters = manager.by_channel_ids_query(channels)
+        offset = 0
+        limit = 5
 
         while True:
-            params['video_id__range'] = '{},'.format(last_id or '')
-            response = self.connector.execute_get_call('videos/', params)
-
-            videos = [item for item in response.get('items', []) if item['video_id'] != last_id]
+            videos = manager.search(filters=filters, limit=5, offset=offset).execute().hits
 
             if not videos:
                 break
 
             yield videos
-            last_id = videos[-1]['video_id']
+            offset += limit
 
     def run(self):
         """
@@ -69,10 +60,10 @@ class CommentAudit(AuditMixin):
             for video in video_batch:
                 # Initially create to use as Foreign key for comment objects
                 comment_video = CommentVideo.objects.get_or_create(
-                    video_id=video['video_id']
+                    video_id=video.main.id
                 )
 
-                comments = self.get_video_comments(video)
+                comments = self.get_video_comments(video.main.id)
                 comment_ids_with_replies = []
 
                 for comment in comments:
@@ -175,13 +166,12 @@ class CommentAudit(AuditMixin):
 
         return top_10k_ids
 
-    def get_video_comments(self, video, max_page_count=3):
+    def get_video_comments(self, video_id, max_page_count=3):
         """
         Retrieves up to three pages of comments for a given video
-        :param video:
+        :param video_id:
         :return: (list) comment dicts
         """
-        video_id = video['video_id']
         video_comments = []
 
         comment_reply_ids = []

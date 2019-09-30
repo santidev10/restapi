@@ -26,8 +26,7 @@ from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models import gender_str
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
+from es_components.managers.video import VideoManager
 from utils.datetime import now_in_default_tz
 from utils.youtube_api import resolve_videos_info
 
@@ -51,6 +50,8 @@ FOOTER_ANNOTATION = "*Other includes YouTube accessed by Smart TV's, Connected T
 
 class DashboardPerformanceWeeklyReport:
     hide_logo = False
+    manager = VideoManager()
+    es_fields_to_load = ("main.id", "general_data.title",)
 
     @property
     def _with_cta_columns(self):
@@ -576,16 +577,21 @@ class DashboardPerformanceWeeklyReport:
         videos_data = list(videos_data)
         ids = [i["yt_id"] for i in videos_data]
         videos_info = {}
-        connector = SingleDatabaseApiConnector()
+
         try:
-            items = connector.get_videos_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
+            items = self.manager.search(
+                filters=self.manager.ids_query(ids)
+            ). \
+                source(includes=list(self.es_fields_to_load)).execute().hits
+        except Exception as e:
             logger.error(e)
         else:
-            videos_info = {i['id']: i for i in items}
+            videos_info = {i.main.id: i for i in items}
+
         for item in videos_data:
             video_id = item["yt_id"]
-            item['name'] = videos_info.get(video_id, {}).get("title", video_id)
+            es_video_data = videos_info.get(video_id)
+            item['name'] = es_video_data.general_data.title if es_video_data else video_id
             dict_norm_base_stats(item)
             dict_add_calculated_stats(item)
             dict_quartiles_to_rates(item)
@@ -722,14 +728,17 @@ class DashboardPerformanceWeeklyReport:
             .order_by("creative_id")
         videos_data = list(videos_data)
         ids = [i["creative_id"] for i in videos_data]
-        connector = SingleDatabaseApiConnector()
+
         try:
-            items = connector.get_videos_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
+            items = self.manager.search(
+                filters=self.manager.ids_query(ids)
+            ).\
+                source(includes=list(self.es_fields_to_load)).execute().hits
+        except Exception as e:
             logger.error(e)
             videos_info = {}
         else:
-            videos_info = {i['id']: i for i in items}
+            videos_info = {i.main.id: i.to_dict() for i in items}
 
         unresolved_ids = list(set(ids) - set(videos_info.keys()))
         if unresolved_ids:
@@ -738,7 +747,8 @@ class DashboardPerformanceWeeklyReport:
 
         for item in videos_data:
             video_id = item["creative_id"]
-            item['name'] = videos_info.get(video_id, {}).get("title", video_id)
+            es_video_data = videos_info.get(video_id, {})
+            item['name'] = es_video_data.get("general_data").get("title") or video_id
             dict_norm_base_stats(item)
             dict_add_calculated_stats(item)
             dict_quartiles_to_rates(item)
