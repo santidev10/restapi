@@ -1,10 +1,7 @@
 """
 BasePersistentSegment models module
 """
-import csv
 import logging
-import os
-import tempfile
 
 import boto3
 from django.conf import settings
@@ -23,9 +20,9 @@ from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
-from es_components.query_builder import QueryBuilder
-from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
+from segment.models.utils.export_context_manager import ExportContextManager
+from segment.models.segment_mixin import SegmentMixin
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +33,7 @@ class PersistentSegmentManager(Manager):
     """
 
 
-class BasePersistentSegment(Timestampable):
+class BasePersistentSegment(SegmentMixin, Timestampable):
     """
     Base persistent segment model
     """
@@ -112,7 +109,7 @@ class BasePersistentSegment(Timestampable):
         return s3
 
     def export_to_s3(self, s3_key):
-        with PersistentSegmentExportContent(segment=self) as exported_file_name:
+        with ExportContextManager(segment=self) as exported_file_name:
             self._s3().upload_file(
                 Bucket=settings.AMAZON_S3_BUCKET_NAME,
                 Key=s3_key,
@@ -135,29 +132,29 @@ class BasePersistentSegment(Timestampable):
         self.export_last_modified = s3_object.get("LastModified")
         return body
 
-    def get_segment_items_query(self):
-        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
-        return query
+    # def get_segment_items_query(self):
+    #     query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
+    #     return query
 
-    def extract_aggregations(self, aggregation_result_dict):
-        """
-        Extract value fields of aggregation results
-        :param aggregation_result_dict: { "agg_name" : { value: "a_value" } }
-        :return:
-        """
-        results = {}
-        for key, value in aggregation_result_dict.items():
-            results[key] = value["value"]
-        return results
-
-    def remove_all_from_segment(self):
-        """
-        Remove all references to segment uuid from Elasticsearch
-        :return:
-        """
-        es_manager = self.get_es_manager()
-        query = self.get_segment_items_query()
-        es_manager.remove_from_segment(query, self.uuid)
+    # def extract_aggregations(self, aggregation_result_dict):
+    #     """
+    #     Extract value fields of aggregation results
+    #     :param aggregation_result_dict: { "agg_name" : { value: "a_value" } }
+    #     :return:
+    #     """
+    #     results = {}
+    #     for key, value in aggregation_result_dict.items():
+    #         results[key] = value["value"]
+    #     return results
+    #
+    # def remove_all_from_segment(self):
+    #     """
+    #     Remove all references to segment uuid from Elasticsearch
+    #     :return:
+    #     """
+    #     es_manager = self.get_es_manager()
+    #     query = self.get_segment_items_query()
+    #     es_manager.remove_from_segment(query, self.uuid)
 
 
 class BasePersistentSegmentRelated(Timestampable):
@@ -175,34 +172,6 @@ class BasePersistentSegmentRelated(Timestampable):
         unique_together = (
             ("segment", "related_id"),
         )
-
-
-class PersistentSegmentExportContent(object):
-    CHUNK_SIZE = 1000
-
-    def __init__(self, segment):
-        self.segment = segment
-
-    def __enter__(self):
-        _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
-
-        with open(self.filename, mode="w+", newline="") as export_file:
-            queryset = self.segment.get_queryset()
-            field_names = self.segment.get_export_columns()
-            writer = csv.DictWriter(export_file, fieldnames=field_names)
-            writer.writeheader()
-            for item in queryset:
-                row = self.segment.export_serializer(item).data
-                writer.writerow(row)
-        return self.filename
-
-    def __exit__(self, *args):
-        os.remove(self.filename)
-
-    def _data_generator(self, export_serializer, queryset):
-        for item in queryset:
-            data = export_serializer(item).data
-            yield data
 
 
 class PersistentSegmentFileUpload(Model):

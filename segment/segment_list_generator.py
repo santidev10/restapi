@@ -1,6 +1,7 @@
 import logging
 
 from django.utils import timezone
+from elasticsearch_dsl.search import Q
 import uuid
 
 from audit_tool.models import AuditCategory
@@ -34,16 +35,31 @@ class SegmentListGenerator(object):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
     WHITELIST_SIZE = 100000
     BLACKLIST_SIZE = 100000
+    CUSTOM_CHANNEL_SIZE = 20000
+    CUSTOM_VIDEO_SIZE = 20000
     SEGMENT_BATCH_SIZE = 2000
     VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
-    def __init__(self):
+    def __init__(self, type):
+        self.type = type
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.processed_categories = set()
 
-    def run(self):
+    def run(self, segment=None):
+        handlers = {
+            "brand_suitability": self.generate_brand_suitable_lists,
+            "custom": self.generate_custom_list
+        }
+        if segment:
+            handler = handlers["custom"]
+            handler(segment)
+        else:
+            handler = handlers["brand_suitability"]
+            handler()
+
+    def generate_brand_suitable_lists(self):
         for category in AuditCategory.objects.all():
             if category not in self.processed_categories:
                 self._generate_channel_whitelist(category)
@@ -78,7 +94,8 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_category_segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
+        self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
+        # self.add_to_segment(new_category_ segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
         self.export_to_s3(new_category_segment)
@@ -101,7 +118,8 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
+        # self.add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
         self.export_to_s3(new_category_segment)
@@ -123,7 +141,8 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
+        self.add_to_segment(new_master_video_whitelist, query=query, size=self.WHITELIST_SIZE)
+        # self.add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
         self.export_to_s3(new_master_video_whitelist)
 
@@ -145,8 +164,8 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY,
-                             self.BLACKLIST_SIZE)
+        self.add_to_segment(new_master_video_blacklist, query=query, size=self.BLACKLIST_SIZE)
+        # self.add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.BLACKLIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
         self.export_to_s3(new_master_video_blacklist)
 
@@ -166,8 +185,8 @@ class SegmentListGenerator(object):
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY,
-                             self.WHITELIST_SIZE)
+        self.add_to_segment(new_master_channel_whitelist, query=query, size=self.WHITELIST_SIZE)
+        # self.add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
                                  is_master=True, master_list_type=constants.WHITELIST)
         self.export_to_s3(new_master_channel_whitelist)
@@ -188,12 +207,24 @@ class SegmentListGenerator(object):
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        self._add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
+        # self.add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
+        self.add_to_segment(new_master_channel_blacklist, query=query, size=self.BLACKLIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
                                  is_master=True, master_list_type=constants.BLACKLIST)
         self.export_to_s3(new_master_channel_blacklist)
 
-    def _add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
+    def generate_custom_list(self, segment):
+        export = segment.export
+        owner = segment.owner
+        es_manager = segment.get_es_manger()
+        serializer = segment.get_serializer()
+
+        retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+        query = Q(export.query)
+        self.add_to_segment(segment, size=segment.LIST_SIZE)
+
+
+    def add_to_segment(self, segment, query=None, size=None):
         """
         Add Elasticsearch items to segment uuid
         :param segment_uuid:
@@ -204,13 +235,37 @@ class SegmentListGenerator(object):
         :return:
         """
         ids_to_add = []
-        search_with_params = generate_search_with_params(es_manager, query, sort_key)
+        if query is None:
+            query = segment.get_segment_items_query()
+        if size is None:
+            size = segment.LIST_SIZE
+        search_with_params = segment.generate_search_with_params(query=query, sort=segment.SORT_KEY)
+        es_manager = segment.get_es_manager()
         for doc in search_with_params.scan():
             ids_to_add.append(doc.main.id)
             if len(ids_to_add) >= size:
                 break
         for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
-            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+
+    # def add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
+    #     """
+    #     Add Elasticsearch items to segment uuid
+    #     :param segment_uuid:
+    #     :param es_manager:
+    #     :param query:
+    #     :param sort_key:
+    #     :param limit:
+    #     :return:
+    #     """
+    #     ids_to_add = []
+    #     search_with_params = generate_search_with_params(es_manager, query, sort_key)
+    #     for doc in search_with_params.scan():
+    #         ids_to_add.append(doc.main.id)
+    #         if len(ids_to_add) >= size:
+    #             break
+    #     for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
+    #         retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
 
     def _clean_old_segments(self, es_manager, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
         """

@@ -14,15 +14,19 @@ from .constants import PersistentSegmentExportColumn
 from .constants import PersistentSegmentCategory
 from es_components.managers import VideoManager
 from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.constants import VIEWS_FIELD
 from segment.api.serializers import PersistentSegmentVideoExportSerializer
 from segment.utils import generate_search_with_params
+from segment.models.segment_mixin import SegmentMixin
 
 
-class PersistentSegmentVideo(BasePersistentSegment):
+class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+    SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
     segment_type = PersistentSegmentType.VIDEO
     export_serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     related_aw_statistics_model = YTVideoStatistic
 
     def get_es_manager(self, sections=None):

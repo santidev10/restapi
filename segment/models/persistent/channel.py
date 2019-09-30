@@ -13,15 +13,19 @@ from .constants import PersistentSegmentType
 from .constants import PersistentSegmentExportColumn
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.constants import SUBSCRIBERS_FIELD
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
+from segment.models.segment_mixin import SegmentMixin
 from segment.utils import generate_search_with_params
 
 
 class PersistentSegmentChannel(BasePersistentSegment):
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+    SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
     segment_type = PersistentSegmentType.CHANNEL
     export_serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
-    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     related_aw_statistics_model = YTChannelStatistic
 
     def get_es_manager(self, sections=None):
@@ -30,13 +34,13 @@ class PersistentSegmentChannel(BasePersistentSegment):
         es_manager = ChannelManager(sections=sections)
         return es_manager
 
-    def get_queryset(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        sort_key = {"stats.subscribers": {"order": "desc"}}
-        es_manager = self.get_es_manager(sections=sections)
-        scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
-        return scan
+    # def get_queryset(self, sections=None):
+    #     if sections is None:
+    #         sections = self.SECTIONS
+    #     sort_key = {"stats.subscribers": {"order": "desc"}}
+    #     es_manager = self.get_es_manager(sections=sections)
+    #     scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
+    #     return scan
 
     def get_export_columns(self):
         if self.category == "whitelist":
