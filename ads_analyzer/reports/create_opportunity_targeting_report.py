@@ -20,15 +20,14 @@ def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str,
 
     export_cls = OpportunityTargetingReportS3Exporter
     file_key = export_cls.get_s3_key(opportunity_id, date_from_str, date_to_str)
-    export_cls.export_to_s3(report, file_key)
-
-    OpportunityTargetingReport.objects.filter(
+    # export_cls.export_to_s3(report, file_key)
+    report_queryset = OpportunityTargetingReport.objects.filter(
         opportunity_id=opportunity_id,
         date_from=date_from_str,
         date_to=date_to_str,
-    ) \
-        .update(
-        staus=ReportStatus.SUCCESS.value,
+    )
+    report_queryset.update(
+        status=ReportStatus.SUCCESS.value,
         s3_file_key=file_key,
     )
 

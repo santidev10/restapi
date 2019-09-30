@@ -1,5 +1,7 @@
 from datetime import date
+from unittest.mock import patch
 
+from django.db.models.signals import post_save
 from django.test import TransactionTestCase
 from openpyxl import load_workbook
 
@@ -14,11 +16,15 @@ from utils.utittests.str_iterator import str_iterator
 
 class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
 
+    def _create_report_skip_post_save(self, *args, **kwargs):
+        with patch.object(post_save, "send"):
+            return OpportunityTargetingReport.objects.create(*args, **kwargs)
+
     @mock_s3
     def test_empty_report_updates_db_entity(self):
         opportunity = Opportunity.objects.create(id=next(str_iterator))
         date_from, date_to = date(2020, 1, 1), date(2020, 1, 2)
-        report = OpportunityTargetingReport.objects.create(
+        report = self._create_report_skip_post_save(
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
@@ -38,7 +44,7 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
     def test_empty_report_content(self):
         opportunity = Opportunity.objects.create(id=next(str_iterator))
         date_from, date_to = date(2020, 1, 1), date(2020, 1, 2)
-        OpportunityTargetingReport.objects.create(
+        self._create_report_skip_post_save(
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
@@ -54,4 +60,4 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
         self.assertTrue(OpportunityTargetingReportS3Exporter.exists(s3_key, get_key=False))
         report = OpportunityTargetingReportS3Exporter.get_s3_export_content(s3_key)
         book = load_workbook(report)
-        print(book)
+        self.assertIsNotNone(book)
