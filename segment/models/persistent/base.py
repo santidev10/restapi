@@ -40,6 +40,9 @@ class BasePersistentSegment(Timestampable):
     """
     Base persistent segment model
     """
+    REMOVE_FROM_SEGMENT_RETRY = 15
+    RETRY_SLEEP_COEFF = 1
+
     uuid = UUIDField(unique=True)
     title = CharField(max_length=255, null=True, blank=True)
     category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
@@ -81,8 +84,9 @@ class BasePersistentSegment(Timestampable):
         raise NotImplementedError
 
     def delete(self, *args, **kwargs):
+        from segment.utils import retry_on_conflict
         # Delete segment references from Elasticsearch
-        self.remove_all_from_segment()
+        retry_on_conflict(self.remove_all_from_segment, retry_amount=self.REMOVE_FROM_SEGMENT_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFF)
         super().delete(*args, **kwargs)
         return self
 

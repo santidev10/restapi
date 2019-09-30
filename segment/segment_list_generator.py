@@ -41,11 +41,14 @@ class SegmentListGenerator(object):
     def __init__(self):
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+        self.processed_categories = set()
 
     def run(self):
         for category in AuditCategory.objects.all():
-            self._generate_channel_whitelist(category)
-            self._generate_video_whitelist(category)
+            if category not in self.processed_categories:
+                self._generate_channel_whitelist(category)
+                self._generate_video_whitelist(category)
+                self.processed_categories.add(category.category_display)
 
         self._generate_master_channel_blacklist()
         self._generate_master_channel_whitelist()
