@@ -5,6 +5,7 @@ from django.db.models import ForeignKey
 from django.db.models import CASCADE
 
 from audit_tool.models import AuditCategory
+from aw_reporting.models import YTChannelStatistic
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -21,19 +22,7 @@ class PersistentSegmentChannel(BasePersistentSegment):
     export_serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
-
-    def calculate_details(self):
-        es_manager = self.get_es_manager()
-        search = es_manager.search(query=self.get_segment_items_query())
-        search.aggs.bucket("subscribers", "sum", field=f"{Sections.STATS}.subscribers")
-        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.observed_videos_likes")
-        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.observed_videos_dislikes")
-        search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
-        search.aggs.bucket("audited_videos", "sum", field=f"{Sections.BRAND_SAFETY}.videos_scored")
-        result = search.execute()
-        details = self.extract_aggregations(result.aggregations.to_dict())
-        details["items_count"] = result.hits.total
-        return details
+    related_aw_statistics_model = YTChannelStatistic
 
     def get_es_manager(self, sections=None):
         if sections is None:

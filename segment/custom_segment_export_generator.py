@@ -12,6 +12,7 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQue
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+from segment.models.utils.calculate_segment_details import calculate_statistics
 from segment.utils import retry_on_conflict
 
 
@@ -102,9 +103,13 @@ class CustomSegmentExportGenerator(S3Exporter):
         export.download_url = download_url
         export.save()
 
-        result = segment.get_es_manager().search(export.query_obj, limit=0).execute()
-        items_count = result.hits.total if result.hits.total < self.limit else self.limit
-        segment.statistics = segment.calculate_statistics(items_count)
+        statistics = calculate_statistics(
+            segment.related_aw_statistics_model,
+            segment.segment_type,
+            segment.get_es_manager(),
+            segment.get_segment_items_query()
+        )
+        segment.statistics = statistics
         segment.save()
         logger.error("Complete: {}".format(segment.title))
 
