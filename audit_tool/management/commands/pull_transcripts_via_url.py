@@ -36,19 +36,18 @@ class Command(BaseCommand):
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = self.get_video_soup(vid_id)
                 transcript_text = transcript_soup.text if transcript_soup else ""
-                print("transcript_soup: {}".format(transcript_soup))
-                print("transcript_text: {}".format(transcript_text))
                 if transcript_text != "":
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=transcript_soup)
                     transcripts_counter += 1
                 populate_video_custom_transcripts(vid_obj, [transcript_text], ['en'])
                 video_manager.upsert([vid_obj])
                 counter += 1
-                print("Parsed video with id: {}".format(vid_id))
-                print("Number of videos parsed: {}".format(counter))
-                print("Number of transcripts retrieved: {}".format(transcripts_counter))
+                logger.info("Parsed video with id: {}".format(vid_id))
+                logger.info("transcript_text for video with id {}: {}".format(vid_id, transcript_text))
+                logger.info("Number of videos parsed: {}".format(counter))
+                logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
                 delay = random.choice(range(0,6))
-                print("Sleeping for {} seconds.".format(delay))
+                logger.info("Sleeping for {} seconds.".format(delay))
                 time.sleep(delay)
 
     def get_video_soup(self, vid_id):
