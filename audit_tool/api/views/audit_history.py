@@ -20,6 +20,8 @@ class AuditHistoryApiView(APIView):
         if audit_id:
             last_time = None
             first_time = None
+            first_count = 0
+            last_count = 0
             try:
                 audit = AuditProcessor.objects.get(id=audit_id)
             except Exception as e:
@@ -36,7 +38,9 @@ class AuditHistoryApiView(APIView):
             for h in history:
                 if not first_time:
                     first_time = h.created
+                    first_count = h.count
                 last_time = h.created
+                last_count = h.count
                 rate = h.count - previous if previous else None
                 res['results'].append({
                     'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
@@ -46,6 +50,12 @@ class AuditHistoryApiView(APIView):
                 previous = h.count
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
+            except Exception as e:
+                pass
+            try:
+                diff = (last_time - first_time)
+                minutes = (diff.total_seconds() / 60)
+                res['rate_average'] = (last_count - first_count) / minutes
             except Exception as e:
                 pass
             return Response(res)
