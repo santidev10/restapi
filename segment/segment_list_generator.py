@@ -4,6 +4,7 @@ from django.utils import timezone
 from elasticsearch_dsl.search import Q
 import uuid
 
+from administration.notifications import generate_html_email
 from audit_tool.models import AuditCategory
 import brand_safety.constants as constants
 from brand_safety.auditors.utils import AuditUtils
@@ -20,12 +21,14 @@ from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import retry_on_conflict
 from segment.utils import generate_search_with_params
+from utils.aws.s3_exporter import S3Exporter
+from utils.aws.ses_emailer import SESEmailer
 
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentListGenerator(object):
+class SegmentListGenerator(S3Exporter):
     MAX_API_CALL_RETRY = 15
     RETRY_SLEEP_COEFFICIENT = 2
     SENTIMENT_THRESHOLD = 0.8
@@ -42,6 +45,7 @@ class SegmentListGenerator(object):
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
     def __init__(self, type):
+        self.ses = SESEmailer()
         self.type = type
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
@@ -98,7 +102,8 @@ class SegmentListGenerator(object):
         # self.add_to_segment(new_category_ segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
-        self.export_to_s3(new_category_segment)
+        # self.export_to_s3(new_category_segment)
+        self.persistent_segment_finalizer(new_category_segment)
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
@@ -122,7 +127,8 @@ class SegmentListGenerator(object):
         # self.add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
-        self.export_to_s3(new_category_segment)
+        # self.export_to_s3(new_category_segment)
+        self.persistent_segment_finalizer(new_category_segment)
 
     def _generate_master_video_whitelist(self):
         """
@@ -144,7 +150,8 @@ class SegmentListGenerator(object):
         self.add_to_segment(new_master_video_whitelist, query=query, size=self.WHITELIST_SIZE)
         # self.add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
-        self.export_to_s3(new_master_video_whitelist)
+        # self.export_to_s3(new_master_video_whitelist)
+        self.persistent_segment_finalizer(new_master_video_whitelist)
 
     def _generate_master_video_blacklist(self):
         """
@@ -167,7 +174,8 @@ class SegmentListGenerator(object):
         self.add_to_segment(new_master_video_blacklist, query=query, size=self.BLACKLIST_SIZE)
         # self.add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.BLACKLIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
-        self.export_to_s3(new_master_video_blacklist)
+        # self.export_to_s3(new_master_video_blacklist)
+        self.persistent_segment_finalizer(new_master_video_blacklist)
 
     def _generate_master_channel_whitelist(self):
         """
@@ -189,7 +197,8 @@ class SegmentListGenerator(object):
         # self.add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
                                  is_master=True, master_list_type=constants.WHITELIST)
-        self.export_to_s3(new_master_channel_whitelist)
+        # self.export_to_s3(new_master_channel_whitelist)
+        self.persistent_segment_finalizer(new_master_channel_whitelist)
 
     def _generate_master_channel_blacklist(self):
         """
@@ -212,17 +221,21 @@ class SegmentListGenerator(object):
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
                                  is_master=True, master_list_type=constants.BLACKLIST)
         self.export_to_s3(new_master_channel_blacklist)
+        self.persistent_segment_finalizer(new_master_channel_blacklist)
 
     def generate_custom_list(self, segment):
         export = segment.export
         owner = segment.owner
+
         es_manager = segment.get_es_manger()
         serializer = segment.get_serializer()
 
-        retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
-        query = Q(export.query)
+        segment.remove_all_from_segment()
         self.add_to_segment(segment, size=segment.LIST_SIZE)
 
+        # Upload to s3
+        # notification email
+        self.custom_list_finalizer(segment)
 
     def add_to_segment(self, segment, query=None, size=None):
         """
@@ -281,7 +294,6 @@ class SegmentListGenerator(object):
             old_segments = model.objects.filter(category=master_list_type, is_master=True).exclude(uuid=new_segment_uuid)
         else:
             old_segments = model.objects.filter(audit_category_id=category_id).exclude(uuid=new_segment_uuid)
-
         old_uuids = old_segments.values_list("uuid", flat=True)
         # Delete old segment uuid's from documents
         for uuid in old_uuids:
@@ -289,12 +301,42 @@ class SegmentListGenerator(object):
             retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         old_segments.delete()
 
-    @staticmethod
-    def export_to_s3(segment):
+    # def export(self, segment):
+    #     now = timezone.now()
+    #     s3_filename = segment.get_s3_key(datetime=now)
+    #     logger.error("Collecting data for {}".format(s3_filename))
+    #     self.export_to_s3(s3_filename)
+    #     segment.details = segment.calculate_statistics()
+    #     segment.save()
+    #     now = timezone.now()
+    #     PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)
+    #     logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
+
+    def custom_list_finalizer(self, segment, updating=False):
+        now = timezone.now()
+        export = segment.export
+        s3_key = segment.get_s3_key()
+        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        if updating:
+            export.updated_at = now
+        else:
+            export.completed_at = timezone.now()
+
+        export.download_url = download_url
+        export.save()
+
+        subject = "Custom Target List: {}".format(segment.title)
+        text_header = "Your Custom Target List {} is ready".format(segment.title)
+        text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
+        html_email = generate_html_email(text_header, text_content)
+
+        self.ses.send_email(segment.owner.email, subject, html_email)
+
+    def persistent_segment_finalizer(self, segment):
         now = timezone.now()
         s3_filename = segment.get_s3_key(datetime=now)
         logger.error("Collecting data for {}".format(s3_filename))
-        segment.export_to_s3(s3_filename)
+        self.export_to_s3(s3_filename)
         segment.details = segment.calculate_statistics()
         segment.save()
         now = timezone.now()

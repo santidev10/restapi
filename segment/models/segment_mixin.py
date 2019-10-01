@@ -23,8 +23,6 @@ from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
-from utils.aws.s3_exporter import S3Exporter
-from utils.aws.ses_emailer import SESEmailer
 
 
 class SegmentMixin(object):
