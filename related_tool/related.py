@@ -2,7 +2,6 @@ from utils.youtube_api import YoutubeAPIConnector
 from audit_tool.audit import AuditProvider
 from audit_tool.auditor import AuditService
 from audit_tool.auditor import Audit
-from singledb.connector import SingleDatabaseApiConnector as Connector
 from .models import RelatedVideo
 import csv
 import re

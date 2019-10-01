@@ -48,8 +48,8 @@ from aw_reporting.models import dict_norm_base_stats
 from aw_reporting.models import dict_quartiles_to_rates
 from aw_reporting.models.ad_words.calculations import all_stats_aggregator
 from aw_reporting.utils import get_dates_range
-from singledb.connector import SingleDatabaseApiConnector
-from singledb.connector import SingleDatabaseApiConnectorException
+from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
 from utils.datetime import as_datetime
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
@@ -108,6 +108,12 @@ INDICATORS_HAVE_PLANNED = (Indicator.CPM, Indicator.CPV, Indicator.IMPRESSIONS,
 
 
 class DeliveryChart:
+    channel_manager = ChannelManager()
+    es_fields_to_load_channel_info = ("main.id", "general_data.title", "general_data.thumbnail_image_url",)
+
+    video_manager = VideoManager()
+    es_fields_to_load_video_info = ("main.id", "general_data.title", "general_data.thumbnail_image_url",
+                                    "general_data.duration",)
 
     def __init__(self, accounts, account=None, campaigns=None, campaign=None,
                  ad_groups=None,
@@ -779,23 +785,25 @@ class DeliveryChart:
             date=self.params['date']
         )
         if raw_stats:
-            connector = SingleDatabaseApiConnector()
             try:
                 ids = [s['creative_id'] for s in raw_stats]
-                items = connector.get_videos_base_info(ids)
-            except SingleDatabaseApiConnectorException as e:
+                items = self.video_manager.search(
+                    filters=self.video_manager.ids_query(ids)
+                ). \
+                    source(includes=list(self.es_fields_to_load_video_info)).execute().hits
+            except Exception as e:
                 logger.error(e)
                 videos_info = {}
             else:
-                videos_info = {i['id']: i for i in items}
+                videos_info = {i.main.id: i for i in items}
 
             for item in raw_stats:
                 youtube_id = item['creative_id']
-                info = videos_info.get(youtube_id, {})
+                info = videos_info.get(youtube_id)
                 item['id'] = youtube_id
-                item['thumbnail'] = info.get('thumbnail_image_url')
-                item['label'] = info.get('title', youtube_id)
-                item['duration'] = info.get('duration')
+                item['label'] = info.general_data.title if info else youtube_id
+                item['thumbnail'] = info.general_data.thumbnail_image_url if info else None
+                item['duration'] = info.general_data.duration if info else None
                 del item['creative_id']
                 result[youtube_id].append(item)
         else:
@@ -873,26 +881,28 @@ class DeliveryChart:
             YTVideoStatistic.objects.all(),
             'yt_id'
         )
-        connector = SingleDatabaseApiConnector()
         try:
             ids = [s['yt_id'] for s in raw_stats]
-            items = connector.get_videos_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
+            items = self.video_manager.search(
+                filters=self.video_manager.ids_query(ids)
+            ). \
+                source(includes=list(self.es_fields_to_load_video_info)).execute().hits
+        except Exception as e:
             logger.error(e)
             videos_info = {}
         else:
-            videos_info = {i['id']: i for i in items}
+            videos_info = {i.main.id: i for i in items}
 
         result = defaultdict(list)
         for item in raw_stats:
             youtube_id = item['yt_id']
             del item['yt_id']
-            info = videos_info.get(youtube_id, {})
+            info = videos_info.get(youtube_id)
             item['id'] = youtube_id
-            item['label'] = info.get('title', youtube_id)
-            item['thumbnail'] = info.get('thumbnail_image_url')
-            item['duration'] = info.get('duration')
-            title = info.get('title', youtube_id)
+            item['label'] = info.general_data.title if info else youtube_id
+            item['thumbnail'] = info.general_data.thumbnail_image_url if info else None
+            item['duration'] = info.general_data.duration if info else None
+            title = item['label']
             result[title].append(item)
         return result
 
@@ -901,25 +911,27 @@ class DeliveryChart:
             YTChannelStatistic.objects.all(),
             'yt_id',
         )
-
-        connector = SingleDatabaseApiConnector()
         try:
             ids = list(set(s['yt_id'] for s in raw_stats))
-            items = connector.get_channels_base_info(ids)
-        except SingleDatabaseApiConnectorException as e:
+            items = self.channel_manager.search(
+                filters=self.channel_manager.ids_query(ids)
+            ). \
+                source(includes=list(self.es_fields_to_load_channel_info)).execute().hits
+
+        except Exception as e:
             logger.error(e)
             channels_info = {}
         else:
-            channels_info = {i['id']: i for i in items}
+            channels_info = {i.main.id: i for i in items}
 
         result = defaultdict(list)
         for item in raw_stats:
             channel_id = item['yt_id']
             del item['yt_id']
             item['id'] = channel_id
-            info = channels_info.get(channel_id, {})
-            item['thumbnail'] = info.get('thumbnail_image_url')
-            label = info.get("title", channel_id)
+            info = channels_info.get(channel_id)
+            item['thumbnail'] = info.general_data.thumbnail_image_url if info else None
+            label = info.general_data.title if info else channel_id
             result[label].append(item)
         return result
 

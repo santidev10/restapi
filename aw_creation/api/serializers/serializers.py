@@ -11,8 +11,8 @@ from aw_creation.models import TargetingItem, AdGroupCreation, \
     CampaignCreation, AccountCreation, LocationRule, AdScheduleRule, \
     FrequencyCap, AdCreation
 from aw_reporting.models import GeoTarget, Topic, Audience
-from singledb.connector import SingleDatabaseApiConnector, \
-    SingleDatabaseApiConnectorException
+from es_components.managers.channel import ChannelManager
+from es_components.managers.video import VideoManager
 from utils.datetime import now_in_default_tz
 from utils.lang import convert_sequence_items_to_sting
 
@@ -35,34 +35,40 @@ def add_targeting_list_items_info(data, list_type):
     ids = [i['criteria'] for i in data]
     if ids:
         if list_type == TargetingItem.CHANNEL_TYPE:
-            connector = SingleDatabaseApiConnector()
+            channel_manager = ChannelManager()
             try:
-                items = connector.get_channels_base_info(ids)
-                info = {i['id']: i for i in items}
-            except SingleDatabaseApiConnectorException as e:
+                items = channel_manager.search(
+                    filters=channel_manager.ids_query(ids)
+                ). \
+                    source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]).execute().hits
+                info = {i.main.id: i for i in items}
+            except Exception as e:
                 logger.error(e)
                 info = {}
 
             for item in data:
-                item_info = info.get(item['criteria'], {})
-                item['id'] = item_info.get("id")
-                item['name'] = item_info.get("title")
-                item['thumbnail'] = item_info.get("thumbnail_image_url")
+                item_info = info.get(item['criteria'])
+                item['id'] = item_info.main.id if item_info else None
+                item['name'] = item_info.general_data.title if item_info else None
+                item['thumbnail'] = item_info.general_data.thumbnail_image_url if item_info else None
 
         elif list_type == TargetingItem.VIDEO_TYPE:
-            connector = SingleDatabaseApiConnector()
+            video_manager = VideoManager()
             try:
-                items = connector.get_videos_base_info(ids)
-                info = {i['id']: i for i in items}
-            except SingleDatabaseApiConnectorException as e:
+                items = video_manager.search(
+                    filters=video_manager.ids_query(ids)
+                ). \
+                    source(includes=["main.id", "general_data.title", "general_data.thumbnail_image_url"]).execute().hits
+                info = {i.main.id: i for i in items}
+            except Exception as e:
                 logger.error(e)
                 info = {}
 
             for item in data:
-                item_info = info.get(item['criteria'], {})
-                item['id'] = item_info.get("id")
-                item['name'] = item_info.get("title")
-                item['thumbnail'] = item_info.get("thumbnail_image_url")
+                item_info = info.get(item['criteria'])
+                item['id'] = item_info.main.id if item_info else None
+                item['name'] = item_info.general_data.title if item_info else None
+                item['thumbnail'] = item_info.general_data.thumbnail_image_url if item_info else None
 
         elif list_type == TargetingItem.TOPIC_TYPE:
             info = dict(
