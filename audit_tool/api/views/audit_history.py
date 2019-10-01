@@ -35,6 +35,10 @@ class AuditHistoryApiView(APIView):
                 'elapsed_time': 'N/A'
             }
             previous = None
+            every_other = 1
+            if history.count() > 1440:
+                every_other = 5
+            position = 0
             for h in history:
                 if not first_time:
                     first_time = h.created
@@ -42,12 +46,14 @@ class AuditHistoryApiView(APIView):
                 last_time = h.created
                 last_count = h.count
                 rate = h.count - previous if previous else None
-                res['results'].append({
-                    'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
-                    'count': h.count,
-                    'rate': rate,
-                })
+                if position % every_other == 0:
+                    res['results'].append({
+                        'date': h.created.astimezone(pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p"),
+                        'count': h.count,
+                        'rate': rate,
+                    })
                 previous = h.count
+                position += 1
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
             except Exception as e:
