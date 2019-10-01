@@ -47,6 +47,7 @@ INSTALLED_APPS = (
 
 PROJECT_APPS = (
     "administration",
+    "ads_analyzer",
     "audit_tool",
     "aw_creation",
     "aw_reporting",
