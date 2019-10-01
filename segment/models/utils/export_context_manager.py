@@ -16,11 +16,11 @@ class ExportContextManager(object):
 
         with open(self.filename, mode="w+", newline="") as export_file:
             queryset = self.segment.get_queryset()
-            field_names = self.segment.get_export_columns()
+            field_names = self.segment.serializer.columns
             writer = csv.DictWriter(export_file, fieldnames=field_names)
             writer.writeheader()
             for item in queryset:
-                row = self.segment.export_serializer(item).data
+                row = self.segment.serializer(item).data
                 writer.writerow(row)
         return self.filename
 

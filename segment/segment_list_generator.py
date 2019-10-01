@@ -14,13 +14,11 @@ from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentFileUpload
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import retry_on_conflict
-from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
 from segment.models import CustomSegmentFileUpload
 
@@ -143,10 +141,8 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
-        # self.add_to_segment(new_category_segment.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
-        # self.export_to_s3(new_category_segment)
         self.persistent_segment_finalizer(new_category_segment)
 
     def _generate_master_video_whitelist(self):
@@ -167,9 +163,7 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_master_video_whitelist, query=query, size=self.WHITELIST_SIZE)
-        # self.add_to_segment(new_master_video_whitelist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
-        # self.export_to_s3(new_master_video_whitelist)
         self.persistent_segment_finalizer(new_master_video_whitelist)
 
     def _generate_master_video_blacklist(self):
@@ -191,9 +185,7 @@ class SegmentListGenerator(object):
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_master_video_blacklist, query=query, size=self.BLACKLIST_SIZE)
-        # self.add_to_segment(new_master_video_blacklist.uuid, self.video_manager, query, self.VIDEO_SORT_KEY, self.BLACKLIST_SIZE)
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
-        # self.export_to_s3(new_master_video_blacklist)
         self.persistent_segment_finalizer(new_master_video_blacklist)
 
     def _generate_master_channel_whitelist(self):
@@ -213,10 +205,8 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_master_channel_whitelist, query=query, size=self.WHITELIST_SIZE)
-        # self.add_to_segment(new_master_channel_whitelist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
                                  is_master=True, master_list_type=constants.WHITELIST)
-        # self.export_to_s3(new_master_channel_whitelist)
         self.persistent_segment_finalizer(new_master_channel_whitelist)
 
     def _generate_master_channel_blacklist(self):
@@ -235,16 +225,14 @@ class SegmentListGenerator(object):
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        # self.add_to_segment(new_master_channel_blacklist.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.BLACKLIST_SIZE)
         self.add_to_segment(new_master_channel_blacklist, query=query, size=self.BLACKLIST_SIZE)
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_blacklist.uuid,
                                  is_master=True, master_list_type=constants.BLACKLIST)
-        self.export_to_s3(new_master_channel_blacklist)
         self.persistent_segment_finalizer(new_master_channel_blacklist)
 
     def add_to_segment(self, segment, query=None, size=None):
         """
-        Add Elasticsearch items to segment uuid
+        Add segment uuid to Elasticsearch documents that match query
         """
         ids_to_add = []
         if query is None:
@@ -280,7 +268,10 @@ class SegmentListGenerator(object):
         """
         Finalize operations for CustomSegment objects (Custom Target Lists)
         """
-        segment.s3_exporter.export_to_s3(updating=updating)
+        logger.error(f"Generating export for custom list: {segment.title}")
+        segment.statistics = segment.calculate_statistics()
+        segment.export_file(updating=updating)
+        segment.save()
         export.refresh_from_db()
         subject = "Custom Target List: {}".format(segment.title)
         text_header = "Your Custom Target List {} is ready".format(segment.title)
@@ -291,19 +282,12 @@ class SegmentListGenerator(object):
         """
         Finalize operations for PersistentSegment objects (Brand Suitable Target lists)
         """
-        now = timezone.now()
-        s3_filename = segment.get_s3_key(datetime=now)
-        logger.error("Collecting data for {}".format(s3_filename))
-        segment.export_to_s3(s3_filename)
+        logger.error("Collecting data for {}".format(segment.title))
+        segment.export_file()
         segment.details = segment.calculate_statistics()
         segment.save()
-        now = timezone.now()
-        PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)
-        logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
+        logger.error("Saved {}".format(segment.title))
 
     def send_notification_email(self, email, subject, text_header, text_content):
         html_email = generate_html_email(text_header, text_content)
         self.ses.send_email(email, subject, html_email)
-
-    def get_s3_key(self):
-        raise NotImplementedError("Must define since base method is abstract method. get_s3_key method should be defined on segment models.")

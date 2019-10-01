@@ -58,10 +58,12 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
             self.related_aw_statistics_model = YTVideoStatistic
+            self.serializer = CustomSegmentVideoExportSerializer
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
             self.related_aw_statistics_model = YTChannelStatistic
+            self.serializer = CustomSegmentChannelExportSerializer
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -101,10 +103,16 @@ class CustomSegment(SegmentMixin, Timestampable):
             export.updated_at = now
         else:
             export.completed_at = now
+        self.s3_exporter.export_to_s3(self, s3_key)
         download_url = self.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         export.download_url = download_url
         export.save()
-        self.s3_exporter.export_to_s3(ExportContextManager, s3_key, get_key=False)
+
+    def get_export_file(self, s3_key=None):
+        if s3_key is None:
+            s3_key = self.get_s3_key()
+        export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
+        return export_content
 
     def get_es_manager(self, sections=None):
         """
@@ -125,7 +133,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         :return:
         """
         if self.segment_type == 0:
-            return CustomSegmentVideoExportSerializer
+            return
         else:
             return CustomSegmentChannelExportSerializer
 

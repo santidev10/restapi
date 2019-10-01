@@ -14,6 +14,7 @@ from django.db.models import DateTimeField
 from django.db.models import Model
 from django.db.models import IntegerField
 from django.db.models import UUIDField
+from django.utils import timezone
 
 from audit_tool.models import AuditCategory
 from utils.models import Timestampable
@@ -22,7 +23,7 @@ from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
-
+from segment.models.utils.segment_exporter import SegmentExporter
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,16 @@ class BasePersistentSegment(Timestampable):
     class Meta:
         abstract = True
         ordering = ["pk"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.s3_exporter = SegmentExporter()
+
+    def export_file(self):
+        now = timezone.now()
+        s3_key = self.get_s3_key(datetime=now)
+        self.s3_exporter.export_to_s3(ExportContextManager, s3_key)
+        PersistentSegmentFileUpload.objects.create(segment_uuid=self.uuid, filename=s3_key, created_at=now)
 
     @property
     def audit_category(self):
