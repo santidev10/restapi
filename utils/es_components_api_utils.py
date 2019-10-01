@@ -178,6 +178,11 @@ class QueryGenerator:
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
+                if field == "general_data.title":
+                    value = {
+                        "query": value,
+                        "boost": 2
+                    }
                 filters.append(
                     QueryBuilder().build().must().match_phrase().field(field).value(value).get()
                 )
