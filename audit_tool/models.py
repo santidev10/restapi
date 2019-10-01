@@ -194,7 +194,7 @@ class AuditProcessor(models.Model):
             'stopped': self.params.get('stopped'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
-            'projected_completion': self.params.get('projected_completion'),
+            'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
         }
         files = self.params.get('files')
         if files:
