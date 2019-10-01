@@ -22,6 +22,8 @@ class Command(BaseCommand):
                     continue
                 history = AuditProcessorCache.objects.filter(audit=audit, created__gt=timezone.now() - timedelta(hours=1))
                 if history.count() < 2:
+                    audit.params['projected_completion'] = None
+                    audit.save(update_fields=['params'])
                     continue
                 first = history.order_by("id")[0]
                 last = history.order_by("-id")[0]
