@@ -82,15 +82,20 @@ class BadWordListTestCase(ExtendedAPITestCase):
         bad_word = BadWord.objects.create(
             id=next(int_iterator),
             category=self.test_category,
-            name="Test Bad Word"
+            name="Test Bad Word",
+            meta_scoring=False,
+            comment_scoring=True
         )
         response = self._request()
         data = response.data["items"]
 
-        self.assertEqual(set(data[0].keys()), {"id", "name", "category", "negative_score", "language"})
+        self.assertEqual(set(data[0].keys()), {"id", "name", "category", "negative_score", "language", "meta_scoring",
+                                               "comment_scoring"})
         self.assertEqual(data[0]["id"], bad_word.id)
         self.assertEqual(data[0]["name"], bad_word.name)
         self.assertEqual(data[0]["category"], bad_word.category.name)
+        self.assertEqual(data[0]["meta_scoring"], bad_word.meta_scoring)
+        self.assertEqual(data[0]["comment_scoring"], bad_word.comment_scoring)
 
     def test_ordered_by_name(self):
         self.create_admin_user()
@@ -168,3 +173,5 @@ class BadWordListTestCase(ExtendedAPITestCase):
         response = self._request(search=search_term)
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+
