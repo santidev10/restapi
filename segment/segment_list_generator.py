@@ -20,15 +20,15 @@ from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import retry_on_conflict
-from segment.utils import generate_search_with_params
 from utils.aws.s3_exporter import S3Exporter
 from utils.aws.ses_emailer import SESEmailer
+from segment.models import CustomSegmentFileUpload
 
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentListGenerator(S3Exporter):
+class SegmentListGenerator(object):
     MAX_API_CALL_RETRY = 15
     RETRY_SLEEP_COEFFICIENT = 2
     SENTIMENT_THRESHOLD = 0.8
@@ -45,23 +45,42 @@ class SegmentListGenerator(S3Exporter):
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
     def __init__(self, type):
+        """
+
+        :param type:
+            0: Brand suitability
+            1: Custom lists
+        """
         self.ses = SESEmailer()
         self.type = type
         self.video_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.channel_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         self.processed_categories = set()
 
-    def run(self, segment=None):
+    def run(self):
         handlers = {
-            "brand_suitability": self.generate_brand_suitable_lists,
-            "custom": self.generate_custom_list
+            0: self.generate_brand_suitable_lists,
+            1: self.generate_custom_lists,
+            2: self.update_custom_lists
         }
-        if segment:
-            handler = handlers["custom"]
-            handler(segment)
-        else:
-            handler = handlers["brand_suitability"]
-            handler()
+        handler = handlers[self.type]
+        handler()
+
+    def generate_custom_lists(self):
+        dequeue_export = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
+        while dequeue_export:
+            segment = dequeue_export.segment
+            segment.remove_all_from_segment()
+            self.add_to_segment(segment, query=dequeue_export.query_obj, size=segment.LIST_SIZE)
+            self.custom_list_finalizer(segment, dequeue_export)
+
+            dequeue_export = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
+
+    def update_custom_lists(self):
+        # dequeue_item = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
+        # while dequeue_item:
+        pass
+
 
     def generate_brand_suitable_lists(self):
         for category in AuditCategory.objects.all():
@@ -223,29 +242,9 @@ class SegmentListGenerator(S3Exporter):
         self.export_to_s3(new_master_channel_blacklist)
         self.persistent_segment_finalizer(new_master_channel_blacklist)
 
-    def generate_custom_list(self, segment):
-        export = segment.export
-        owner = segment.owner
-
-        es_manager = segment.get_es_manger()
-        serializer = segment.get_serializer()
-
-        segment.remove_all_from_segment()
-        self.add_to_segment(segment, size=segment.LIST_SIZE)
-
-        # Upload to s3
-        # notification email
-        self.custom_list_finalizer(segment)
-
     def add_to_segment(self, segment, query=None, size=None):
         """
         Add Elasticsearch items to segment uuid
-        :param segment_uuid:
-        :param es_manager:
-        :param query:
-        :param sort_key:
-        :param limit:
-        :return:
         """
         ids_to_add = []
         if query is None:
@@ -261,33 +260,9 @@ class SegmentListGenerator(S3Exporter):
         for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
             retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
 
-    # def add_to_segment(self, segment_uuid, es_manager, query, sort_key, size):
-    #     """
-    #     Add Elasticsearch items to segment uuid
-    #     :param segment_uuid:
-    #     :param es_manager:
-    #     :param query:
-    #     :param sort_key:
-    #     :param limit:
-    #     :return:
-    #     """
-    #     ids_to_add = []
-    #     search_with_params = generate_search_with_params(es_manager, query, sort_key)
-    #     for doc in search_with_params.scan():
-    #         ids_to_add.append(doc.main.id)
-    #         if len(ids_to_add) >= size:
-    #             break
-    #     for batch in AuditUtils.batch(ids_to_add, self.SEGMENT_BATCH_SIZE):
-    #         retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment_uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
-
     def _clean_old_segments(self, es_manager, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
         """
         Delete old category segments and clean documents with old segment uuid
-        :param es_manager:
-        :param model:
-        :param category_id:
-        :param new_segment_uuid:
-        :return:
         """
         # Delete old persistent segments with same audit category and delete from Elasticsearch
         if is_master:
@@ -301,44 +276,34 @@ class SegmentListGenerator(S3Exporter):
             retry_on_conflict(es_manager.remove_from_segment, remove_query, uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         old_segments.delete()
 
-    # def export(self, segment):
-    #     now = timezone.now()
-    #     s3_filename = segment.get_s3_key(datetime=now)
-    #     logger.error("Collecting data for {}".format(s3_filename))
-    #     self.export_to_s3(s3_filename)
-    #     segment.details = segment.calculate_statistics()
-    #     segment.save()
-    #     now = timezone.now()
-    #     PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)
-    #     logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
-
-    def custom_list_finalizer(self, segment, updating=False):
-        now = timezone.now()
-        export = segment.export
-        s3_key = segment.get_s3_key()
-        download_url = self.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
-        if updating:
-            export.updated_at = now
-        else:
-            export.completed_at = timezone.now()
-
-        export.download_url = download_url
-        export.save()
-
+    def custom_list_finalizer(self, segment, export, updating=False):
+        """
+        Finalize operations for CustomSegment objects (Custom Target Lists)
+        """
+        segment.s3_exporter.export_to_s3(updating=updating)
+        export.refresh_from_db()
         subject = "Custom Target List: {}".format(segment.title)
         text_header = "Your Custom Target List {} is ready".format(segment.title)
-        text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
-        html_email = generate_html_email(text_header, text_content)
-
-        self.ses.send_email(segment.owner.email, subject, html_email)
+        text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
+        self.send_notification_email(segment.owner.email, subject, text_header, text_content)
 
     def persistent_segment_finalizer(self, segment):
+        """
+        Finalize operations for PersistentSegment objects (Brand Suitable Target lists)
+        """
         now = timezone.now()
         s3_filename = segment.get_s3_key(datetime=now)
         logger.error("Collecting data for {}".format(s3_filename))
-        self.export_to_s3(s3_filename)
+        segment.export_to_s3(s3_filename)
         segment.details = segment.calculate_statistics()
         segment.save()
         now = timezone.now()
         PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=s3_filename, created_at=now)
         logger.error("Saved {}".format(segment.get_s3_key(datetime=now)))
+
+    def send_notification_email(self, email, subject, text_header, text_content):
+        html_email = generate_html_email(text_header, text_content)
+        self.ses.send_email(email, subject, html_email)
+
+    def get_s3_key(self):
+        raise NotImplementedError("Must define since base method is abstract method. get_s3_key method should be defined on segment models.")

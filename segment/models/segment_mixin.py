@@ -3,29 +3,29 @@ import time
 
 import boto3
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
-from django.db.models import BooleanField
-from django.db.models import CharField
-from django.db.models import Manager
-from django.db.models import TextField
-from django.db.models import DateTimeField
-from django.db.models import Model
-from django.db.models import IntegerField
-from django.db.models import UUIDField
+from django.utils import timezone
 
 from audit_tool.models import AuditCategory
 from utils.models import Timestampable
 from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.models.persistent.constants.constants import S3_SEGMENT_EXPORT_KEY_PATTERN
-from segment.models.persistent.constants.constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
+from segment.models.utils.segment_exporter import SegmentExporter
 
 
 class SegmentMixin(object):
+    """
+    Mixin methods for segment models
+    Expected attributes and methods on models used in mixin:
+    Attributes:
+        related_aw_statistics_model, uuid
+    Methods:
+        get_s3_key, get_es_manager,
+
+    """
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
@@ -37,22 +37,6 @@ class SegmentMixin(object):
     def get_queryset(self, sections=None, query=None, sort=None):
         scan = self.generate_search_with_params(sections=sections, query=query, sort=sort).scan()
         return scan
-
-    def _s3(self):
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AMAZON_S3_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY
-        )
-        return s3
-
-    def export_to_s3(self, s3_key):
-        with ExportContextManager(segment=self) as exported_file_name:
-            self._s3().upload_file(
-                Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=s3_key,
-                Filename=exported_file_name,
-            )
 
     def calculate_statistics(self):
         """
@@ -106,7 +90,7 @@ class SegmentMixin(object):
 
     def retry_on_conflict(self, method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
         """
-        Retry on Document Conflicts
+        Retry Elasticsearch operations on Document Conflicts
         """
         tries_count = 0
         try:

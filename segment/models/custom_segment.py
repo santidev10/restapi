@@ -12,6 +12,7 @@ from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import CASCADE
 from django.db.models import UUIDField
+from django.utils import timezone
 
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
@@ -30,13 +31,12 @@ from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
-from segment.models.segment_mixin import SegmentUtils
 from segment.models.utils.export_context_manager import ExportContextManager
 from segment.utils import generate_search_with_params
 from segment.utils import retry_on_conflict
 from segment.models.segment_mixin import SegmentMixin
 from utils.models import Timestampable
-
+from segment.models.utils.segment_exporter import SegmentExporter
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.segment_utils = SegmentUtils(self)
-
+        self.s3_exporter = SegmentExporter()
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
@@ -93,6 +92,20 @@ class CustomSegment(SegmentMixin, Timestampable):
         super().delete(*args, **kwargs)
         return self
 
+    def export_file(self, s3_key=None, updating=False):
+        now = timezone.now()
+        export = self.export
+        if s3_key is None:
+            s3_key = self.get_s3_key()
+        if updating:
+            export.updated_at = now
+        else:
+            export.completed_at = now
+        download_url = self.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
+        export.download_url = download_url
+        export.save()
+        self.s3_exporter.export_to_s3(ExportContextManager, s3_key, get_key=False)
+
     def get_es_manager(self, sections=None):
         """
         Get Elasticsearch manager based on segment type
@@ -117,7 +130,17 @@ class CustomSegment(SegmentMixin, Timestampable):
             return CustomSegmentChannelExportSerializer
 
     def get_s3_key(self):
-        return f"{self.owner_id}/{self.title}.csv"
+        return f"custom_segments/{self.owner_id}/{self.title}.csv"
+
+    def delete_export(self, s3_key=None):
+        """
+        Delete csv from s3
+        :param s3_key: str -> S3 file keyname
+        :return:
+        """
+        if s3_key is None:
+            s3_key = self.get_s3_key()
+        self.s3_exporter.delete_obj(s3_key)
 
 
 class CustomSegmentRelated(Model):

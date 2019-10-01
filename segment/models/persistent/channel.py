@@ -16,11 +16,11 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
-from segment.models.segment_mixin import SegmentMixin
 from segment.utils import generate_search_with_params
+from segment.models.segment_mixin import SegmentMixin
 
 
-class PersistentSegmentChannel(BasePersistentSegment):
+class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
     segment_type = PersistentSegmentType.CHANNEL
@@ -33,14 +33,6 @@ class PersistentSegmentChannel(BasePersistentSegment):
             sections = self.SECTIONS
         es_manager = ChannelManager(sections=sections)
         return es_manager
-
-    # def get_queryset(self, sections=None):
-    #     if sections is None:
-    #         sections = self.SECTIONS
-    #     sort_key = {"stats.subscribers": {"order": "desc"}}
-    #     es_manager = self.get_es_manager(sections=sections)
-    #     scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
-    #     return scan
 
     def get_export_columns(self):
         if self.category == "whitelist":

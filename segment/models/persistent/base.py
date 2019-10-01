@@ -22,7 +22,7 @@ from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
-from segment.models.segment_mixin import SegmentMixin
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class PersistentSegmentManager(Manager):
     """
 
 
-class BasePersistentSegment(SegmentMixin, Timestampable):
+class BasePersistentSegment(Timestampable):
     """
     Base persistent segment model
     """
