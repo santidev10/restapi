@@ -7,6 +7,7 @@ from django.conf import settings
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from aw_reporting.models import Opportunity
+from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
 from utils.aws.s3_exporter import S3Exporter
 from utils.views import XLSX_CONTENT_TYPE
@@ -33,6 +34,12 @@ def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str,
         status=ReportStatus.SUCCESS.value,
         s3_file_key=file_key,
     )
+    notify_opportunity_targeting_report_is_ready.si(
+        opportunity_id=opportunity_id,
+        date_from_str=date_from_str,
+        date_to_str=date_to_str,
+    ) \
+        .apply_async()
 
 
 class OpportunityTargetingReportXLSXGenerator:

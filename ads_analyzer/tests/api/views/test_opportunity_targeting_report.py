@@ -1,9 +1,7 @@
 import json
-from asyncio import sleep
 from datetime import date
 from unittest.mock import ANY
 
-from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -24,7 +22,6 @@ from utils.utittests.s3_mock import mock_s3
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
-@override_settings(CELERY_TASK_ALWAYS_EAGER=False)
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
     def setUp(self) -> None:
         self.report_processing_mock = mock_send_task()

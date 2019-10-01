@@ -11,6 +11,9 @@ from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
+from email_reports.tasks import notify_opportunity_targeting_report_is_ready
+from saas import celery_app
+from utils.utittests.celery import mock_send_task
 from utils.utittests.s3_mock import mock_s3
 from utils.utittests.str_iterator import str_iterator
 
@@ -18,11 +21,11 @@ from utils.utittests.str_iterator import str_iterator
 class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
 
     def _act(self, opportunity_id, date_from, date_to):
-        create_opportunity_targeting_report.si(
+        create_opportunity_targeting_report(
             opportunity_id=opportunity_id,
             date_from_str=str(date_from),
             date_to_str=str(date_to),
-        ).apply_async()
+        )
 
     def _get_report_workbook(self, opportunity_id, date_from, date_to):
         s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(
@@ -51,6 +54,27 @@ class CreateOpportunityTargetingReportTestCase(TransactionTestCase):
         s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(opportunity.id, str(date_from), str(date_to))
         self.assertEqual(s3_key, report.s3_file_key)
         self.assertEqual(ReportStatus.SUCCESS.value, report.status)
+
+    @mock_s3
+    def test_send_email_notifications(self):
+        opportunity = Opportunity.objects.create(id=next(str_iterator))
+        date_from, date_to = date(2020, 1, 1), date(2020, 1, 2)
+
+        with mock_send_task():
+            self._act(opportunity.id, date_from, date_to)
+
+            calls = celery_app.send_task.mock_calls
+
+        self.assertEqual(1, len(calls))
+        expected_kwargs = dict(
+            opportunity_id=opportunity.id,
+            date_from_str=str(date_from),
+            date_to_str=str(date_to),
+        )
+        self.assertEqual(
+            (notify_opportunity_targeting_report_is_ready.name, (), expected_kwargs),
+            calls[0][1]
+        )
 
     @mock_s3
     def test_empty_report_to_s3(self):
