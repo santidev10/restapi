@@ -232,11 +232,9 @@ class GoogleAdsUpdater(object):
                         sleep = tries_count ** self.SLEEP_COEFF
                         time.sleep(sleep)
                     else:
-                        raise err
-                else:
-                    return
-        except Exception:
-            raise
+                        logger.error(f"MAX RETRIES EXCEEDED: {err}")
+        except Exception as err:
+            logger.error(f"UNHANDLED RETRY EXCEPTION: {err}")
 
 
 # Exception has been handled and should continue processing next account

@@ -193,7 +193,8 @@ class AuditProcessor(models.Model):
             'resumed': self.params.get('resumed'),
             'stopped': self.params.get('stopped'),
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
-            'has_history': self.has_history()
+            'has_history': self.has_history(),
+            'projected_completion': self.params.get('projected_completion'),
         }
         files = self.params.get('files')
         if files:
@@ -320,14 +321,20 @@ class AuditVideo(models.Model):
         except IntegrityError as e:
             return AuditVideo.objects.get(video_id=video_id)
 
+
 class AuditVideoTranscript(models.Model):
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=1, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
 
+    class Meta:
+        unique_together = ("video", "language")
+
     @staticmethod
-    def get_or_create(self, video_id, transcript=None):
-        v = AuditVideo.objects.get_or_create(video_id)
-        t, _ = AuditVideoTranscript.objects.get_or_create(video=v)
+    def get_or_create(video_id, language='en', transcript=None):
+        v = AuditVideo.get_or_create(video_id)
+        lang = AuditLanguage.from_string(language)
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
         if transcript:
             t.transcript = transcript
             t.save(update_fields=['transcript'])

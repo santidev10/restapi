@@ -160,7 +160,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(HTTP_200_OK, response.status_code)
 
     def test_get_opportunities_filter_period(self):
-        today = timezone.now()
+        today = now_in_default_tz().date()
         first_day = today.replace(day=1)
         month_ago, month_after = first_day - timedelta(
             days=1), first_day + timedelta(days=32)

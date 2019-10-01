@@ -57,7 +57,6 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
-from saas import celery_app
 from utils.exception import ExceptionWithArgs
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
@@ -85,7 +84,6 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
     def setUp(self):
         self.redis_mock = patch('utils.celery.tasks.REDIS_CLIENT', MockRedis())
         self.redis_mock.start()
-        celery_app.conf.update(CELERY_ALWAYS_EAGER=True)
 
     def tearDown(self):
         self.redis_mock.stop()
@@ -451,11 +449,12 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         AdGroupStatistic.objects.create(id=1, date=today, ad_group=ad_group,
                                         average_position=1)
 
+        audience_id = 1234578910
         mock_audience_data = MockGoogleAdsAPIResponse()
         mock_audience_data.set("ad_group", "id", ad_group.id)
         # CriterionTypeEnum 29 = CUSTOM_AFFINITY
         mock_audience_data.set("ad_group_criterion", "type", 29, nested_key=None)
-        mock_audience_data.set("ad_group_criterion", "custom_affinity.custom_affinity", "test_custom_affinity/123")
+        mock_audience_data.set("ad_group_criterion", "custom_affinity.custom_affinity", f"test_custom_affinity/{audience_id}")
         mock_audience_data.set("metrics", "impressions", 0)
         mock_audience_data.set("metrics", "video_views", 0)
         mock_audience_data.set("metrics", "clicks", 0)
@@ -478,8 +477,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
 
-        self.assertEqual(Audience.objects.all().count(), 1)
-        self.assertEqual(Audience.objects.first().type, Audience.CUSTOM_AFFINITY_TYPE)
+        self.assertTrue(Audience.objects.filter(id=audience_id).exists())
+        self.assertEqual(Audience.objects.get(id=audience_id).type, Audience.CUSTOM_AFFINITY_TYPE)
 
     def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -847,6 +846,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_customer_client_data.set("customer_client", "currency_code", "USD")
         mock_customer_client_data.set("customer_client", "time_zone", "UTC")
         mock_customer_client_data.set("customer_client", "manager", False)
+        mock_customer_client_data.set("customer_client", "test_account", False)
         mock_customer_client_data.add_row()
 
         mcc_accounts = Account.objects.filter(is_active=True, can_manage_clients=True)
@@ -878,11 +878,12 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         account.refresh_from_db()
 
-    @patch("aw_reporting.google_ads.tasks.update_campaigns.mcc_account_update.apply_async")
-    def test_skip_inactive_account(self, mock_mcc_account_update):
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.cid_campaign_update")
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc")
+    def test_skip_inactive_account(self, mock_updater, mock_cid_account_update):
         self._create_account(is_active=False)
         setup_update_campaigns()
-        mock_mcc_account_update.assert_not_called()
+        mock_cid_account_update.assert_not_called()
 
     @patch.object(CampaignUpdater, "update")
     def test_mark_account_as_inactive(self, mock_update):
@@ -924,7 +925,11 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         account = self._create_account(id=test_account_id, is_active=True)
 
         client = GoogleAdsClient("", "")
-        GoogleAdsUpdater().full_update(account, client)
+        updater = GoogleAdsUpdater()
+        mock_updater = MagicMock()
+        updater.main_updaters = (mock_updater, )
+        updater.MAX_RETRIES = 2
+        updater.full_update(account, client)
         self.assertGreater(mock_execute.call_count, 1)
 
     def test_budget_daily(self):
@@ -1053,6 +1058,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_customer_client_data.set("customer_client", "currency_code", "USD")
         mock_customer_client_data.set("customer_client", "time_zone", "UTC")
         mock_customer_client_data.set("customer_client", "manager", False)
+        mock_customer_client_data.set("customer_client", "test_account", False)
         mock_customer_client_data.add_row()
 
         client = GoogleAdsClient("", "")
@@ -1082,6 +1088,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_customer_client_data.set("customer_client", "currency_code", "USD")
         mock_customer_client_data.set("customer_client", "time_zone", "UTC")
         mock_customer_client_data.set("customer_client", "manager", False)
+        mock_customer_client_data.set("customer_client", "test_account", False)
         mock_customer_client_data.add_row()
 
         origin_method = CursorWrapper.execute
