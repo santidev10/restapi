@@ -28,7 +28,7 @@ class Command(BaseCommand):
                 first = history.order_by("id")[0]
                 last = history.order_by("-id")[0]
                 count = last.count - first.count
-                minutes = round((last.created - first.created).total_seconds() / 60)
+                minutes = (last.created - first.created).total_seconds() / 60
                 avg_rate_per_minute = count / minutes if minutes > 0 else 0
                 if avg_rate_per_minute > 0:
                     num_minutes = (audit.cached_data.get('total') - audit.cached_data.get('count')) / avg_rate_per_minute
