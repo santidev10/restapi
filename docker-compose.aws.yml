@@ -48,6 +48,20 @@ services:
         gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
         tag: restapi_celery_worker_delivery
 
+  celery_worker_hourly_campaigns:
+    command: ["celery", "-A", "saas", "worker", "-Q", "google_ads_campaigns", "-c", "8"]
+    image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
+    restart: always
+    volumes:
+      - ./local_settings.py:/app/saas/local_settings.py
+    env_file:
+      - chf.restapi.env
+    logging:
+      driver: gelf
+      options:
+        gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
+        tag: restapi_celery_worker_google_ads_campaigns
+
   celery_beat:
     command: ["celery", "-A", "saas", "beat"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
