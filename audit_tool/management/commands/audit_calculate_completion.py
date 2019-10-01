@@ -31,7 +31,7 @@ class Command(BaseCommand):
                         avg_rate_sum += rate
                     previous = db_history.count
                 try:
-                    avg_rate_per_minute = avg_rate_sum / avg_rate_count
+                    avg_rate_per_minute = avg_rate_sum / avg_rate_count if avg_rate_count > 0 else 0
                     num_minutes = (audit.cached_data.get('total') - audit.cached_data.get('count')) / avg_rate_per_minute
                     projected_completion = timezone.now() + timedelta(minutes=num_minutes)
                     if avg_rate_per_minute > 0:
