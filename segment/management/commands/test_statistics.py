@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        type = 1
+        type = 0
+        # type = 2
         generator = SegmentListGenerator(type)
         generator.run()

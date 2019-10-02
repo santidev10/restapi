@@ -24,7 +24,7 @@ class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
     segment_type = PersistentSegmentType.CHANNEL
-    export_serializer = PersistentSegmentChannelExportSerializer
+    serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
     related_aw_statistics_model = YTChannelStatistic
 

@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.utils import timezone
 from elasticsearch_dsl.search import Q
@@ -34,11 +35,16 @@ class SegmentListGenerator(object):
     MINIMUM_SUBSCRIBERS = 1000
     MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 89
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
-    WHITELIST_SIZE = 100000
-    BLACKLIST_SIZE = 100000
+    # WHITELIST_SIZE = 100000
+    # BLACKLIST_SIZE = 100000
+    # REMOVEME
+    WHITELIST_SIZE = 50
+    BLACKLIST_SIZE = 50
+
     CUSTOM_CHANNEL_SIZE = 20000
     CUSTOM_VIDEO_SIZE = 20000
     SEGMENT_BATCH_SIZE = 2000
+    UPDATE_THRESHOLD = 7
     VIDEO_SORT_KEY = {"stats.views": {"order": "desc"}}
     CHANNEL_SORT_KEY = {"stats.subscribers": {"order": "desc"}}
 
@@ -75,18 +81,25 @@ class SegmentListGenerator(object):
             dequeue_export = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
 
     def update_custom_lists(self):
-        # dequeue_item = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
-        # while dequeue_item:
-        pass
-
+        threshold = timezone.now() - timedelta(days=self.UPDATE_THRESHOLD)
+        to_update = CustomSegmentFileUpload.objects.filter(
+            (Q(updated_at__isnull=True) & Q(created_at__lte=threshold)) | Q(updated_at__lte=threshold)
+        )
+        for export in to_update:
+            if export.segment.owner is None:
+                continue
+            segment = export.segment
+            segment.remove_all_from_segment()
+            self.add_to_segment(segment, query=export.query_obj, size=segment.LIST_SIZE)
+            self.custom_list_finalizer(segment, export)
 
     def generate_brand_suitable_lists(self):
-        for category in AuditCategory.objects.all():
-            if category not in self.processed_categories:
-                self._generate_channel_whitelist(category)
-                self._generate_video_whitelist(category)
-                self.processed_categories.add(category.category_display)
-
+        # for category in AuditCategory.objects.all():
+        #     if category.category_display not in self.processed_categories:
+        #         self._generate_channel_whitelist(category)
+        #         self._generate_video_whitelist(category)
+        #         self.processed_categories.add(category.category_display)
+        #
         self._generate_master_channel_blacklist()
         self._generate_master_channel_whitelist()
 
@@ -116,10 +129,8 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
-        # self.add_to_segment(new_category_ segment.uuid, self.channel_manager, query, self.CHANNEL_SORT_KEY, self.WHITELIST_SIZE)
         # Clean old segments
         self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
-        # self.export_to_s3(new_category_segment)
         self.persistent_segment_finalizer(new_category_segment)
 
     def _generate_video_whitelist(self, category):
@@ -141,7 +152,6 @@ class SegmentListGenerator(object):
                     & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
-        # Clean old segments
         self._clean_old_segments(self.video_manager, PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
         self.persistent_segment_finalizer(new_category_segment)
 
@@ -205,8 +215,7 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         self.add_to_segment(new_master_channel_whitelist, query=query, size=self.WHITELIST_SIZE)
-        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid,
-                                 is_master=True, master_list_type=constants.WHITELIST)
+        self._clean_old_segments(self.channel_manager, PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
         self.persistent_segment_finalizer(new_master_channel_whitelist)
 
     def _generate_master_channel_blacklist(self):
@@ -286,7 +295,7 @@ class SegmentListGenerator(object):
         segment.export_file()
         segment.details = segment.calculate_statistics()
         segment.save()
-        logger.error("Saved {}".format(segment.title))
+        logger.error("Successfully created: {}".format(segment.title))
 
     def send_notification_email(self, email, subject, text_header, text_content):
         html_email = generate_html_email(text_header, text_content)

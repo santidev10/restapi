@@ -54,6 +54,8 @@ class CustomSegment(SegmentMixin, Timestampable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter()
+        self.s3_exporter.set_bucket(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000

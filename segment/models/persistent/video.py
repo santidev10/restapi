@@ -25,7 +25,7 @@ class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
     segment_type = PersistentSegmentType.VIDEO
-    export_serializer = PersistentSegmentVideoExportSerializer
+    serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()
     related_aw_statistics_model = YTVideoStatistic
 
