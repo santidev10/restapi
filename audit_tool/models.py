@@ -2,14 +2,15 @@ import hashlib
 from datetime import datetime
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
+from django.db.models import IntegerField
 from django.db.models import Q
-from django.db.models import SET_NULL
 from django.utils import timezone
+
+from django.contrib.auth import get_user_model
 
 
 def get_hash_name(s):
@@ -190,8 +191,17 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
-            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
+            'stopped': self.params.get('stopped'),
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
+            'has_history': self.has_history(),
+            'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
         }
+        files = self.params.get('files')
+        if files:
+            d['source_file'] = files.get('source')
+            d['exclusion_file'] = files.get('exclusion')
+            d['inclusion_file'] = files.get('inclusion')
+
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
@@ -199,6 +209,11 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def has_history(self):
+        if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
+            return True
+        return False
 
     def get_related_audits(self):
         d = []
@@ -307,6 +322,24 @@ class AuditVideo(models.Model):
             return AuditVideo.objects.get(video_id=video_id)
 
 
+class AuditVideoTranscript(models.Model):
+    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=1, on_delete=models.CASCADE)
+    transcript = models.TextField(default=None, null=True)
+
+    class Meta:
+        unique_together = ("video", "language")
+
+    @staticmethod
+    def get_or_create(video_id, language='en', transcript=None):
+        v = AuditVideo.get_or_create(video_id)
+        lang = AuditLanguage.from_string(language)
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
+        if transcript:
+            t.transcript = transcript
+            t.save(update_fields=['transcript'])
+        return t
+
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, null=True, default=None)
@@ -357,8 +390,23 @@ class AuditExporter(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
-    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+    owner_id = IntegerField(null=True, blank=True)
 
+    @property
+    def owner(self):
+        if self.owner_id:
+            return get_user_model().objects.get(id=self.owner_id)
+
+    @owner.setter
+    def owner(self, owner):
+        if owner:
+            self.owner_id = owner.id
+
+
+class AuditProcessorCache(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    count = models.BigIntegerField(default=0, db_index=True)
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0

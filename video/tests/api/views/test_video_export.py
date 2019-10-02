@@ -1,5 +1,5 @@
-import json
 from datetime import datetime
+from unittest import mock
 
 import pytz
 from rest_framework.status import HTTP_200_OK
@@ -14,29 +14,36 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.s3_mock import mock_s3
 from video.api.urls.names import Name
 
+EXPECT_MESSSAGE = "File is in queue for preparing. After it is finished exporting, " \
+                  "you will receive message via email."
 
-class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
+EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
+
+
+class VideoListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, **query_params):
         return reverse(
-            Name.VIDEO_EXPORT,
+            Name.VIDEO_PREPARE_EXPORT,
             [Namespace.VIDEO],
             query_params=query_params,
         )
 
     def _request(self, **query_params):
         url = self._get_url(**query_params)
-        return self.client.get(url)
+        return self.client.post(url)
 
+    @mock_s3
     def test_not_auth(self):
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
+    @mock_s3
     def test_no_permissions(self):
         self.create_test_user()
 
@@ -44,6 +51,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    @mock_s3
     def test_success_admin(self):
         self.create_admin_user()
 
@@ -51,6 +59,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @mock_s3
     def test_success_allowed_user(self):
         user = self.create_test_user()
         user.add_custom_user_permission("video_list")
@@ -59,40 +68,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_success_csv_response(self):
-        test_datetime = datetime(2020, 3, 4, 5, 6, 7)
-        self.create_admin_user()
-
-        with patch_now(test_datetime):
-            response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "Videos export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
-        self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
-
-    def test_headers(self):
-        self.create_admin_user()
-
-        response = self._request()
-
-        csv_data = get_data_from_csv_response(response)
-        headers = next(csv_data)
-        self.assertEqual(headers, [
-            "title",
-            "url",
-            "views",
-            "likes",
-            "dislikes",
-            "comments",
-            "youtube_published_at",
-            "brand_safety_score",
-            "video_view_rate",
-            "ctr",
-            "ctr_v",
-            "average_cpv",
-        ])
-
+    @mock_s3
     def test_response(self):
         self.create_admin_user()
         video = Video(next(int_iterator))
@@ -119,35 +95,76 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.BRAND_SAFETY))
         manager.upsert([video])
 
-        response = self._request()
+        response = self._request(emails="test@test.test")
 
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)[1]
-        expected_values = [
-            video.general_data.title,
-            f"https://www.youtube.com/watch?v={video.main.id}",
-            video.stats.views,
-            video.stats.likes,
-            video.stats.dislikes,
-            video.stats.comments,
-            video.general_data.youtube_published_at.isoformat().replace("+00:00", "Z"),
-            video.brand_safety.overall_score,
-            video.ads_stats.video_view_rate,
-            video.ads_stats.ctr,
-            video.ads_stats.ctr_v,
-            video.ads_stats.average_cpv,
-        ]
-        expected_values_str = [str(value) for value in expected_values]
-        self.assertEqual(
-            data,
-            expected_values_str
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(EXPECT_MESSSAGE, response.data.get("message"))
+
+    @mock_s3
+    def test_filter(self):
+        self.create_admin_user()
+        filter_count = 2
+        videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
+        video_ids = [str(video.main.id) for video in videos]
+
+        response = self._request(**{"main.id": ",".join(video_ids[:filter_count])})
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(EXPECT_MESSSAGE, response.data.get("message"))
+
+    @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self._request()
+        self.assertIsNotNone(response2.data.get("export_url"))
+
+
+class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
+    def _get_url(self, export_name):
+        return reverse(
+            Name.VIDEO_EXPORT,
+            [Namespace.VIDEO],
+            args=(export_name,),
         )
 
-    def test_missed_values(self):
+    def _request(self, export_name=EXPORT_FILE_HASH):
+        url = self._get_url(export_name)
+        return self.client.get(url)
+
+    def _request_collect_file(self, **query_params):
+        collect_file_url = reverse(
+            Name.VIDEO_PREPARE_EXPORT,
+            [Namespace.VIDEO],
+            query_params=query_params,
+        )
+        self.client.post(collect_file_url)
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("video_list")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("video_list")
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_missed_values(self, *args):
         self.create_admin_user()
         video = Video(next(int_iterator))
         VideoManager(sections=Sections.GENERAL_DATA).upsert([video])
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -159,14 +176,18 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_filter_ids(self):
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids(self, *args):
         self.create_admin_user()
         filter_count = 2
         videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
         VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
         video_ids = [str(video.main.id) for video in videos]
 
-        response = self._request(**{"main.id": ",".join(video_ids[:filter_count])})
+        self._request_collect_file(**{"main.id": ",".join(video_ids[:filter_count])})
+        response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
@@ -176,14 +197,19 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_filter_ids_deprecated(self):
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids_deprecated(self, *args):
         self.create_admin_user()
         filter_count = 2
         videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
         VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
         video_ids = [str(video.main.id) for video in videos]
 
-        response = self._request(ids=",".join(video_ids[:filter_count]))
+        self._request_collect_file(ids=",".join(video_ids[:filter_count]))
+
+        response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
@@ -193,31 +219,92 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_filter_verified(self):
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_verified(self, *args):
         self.create_admin_user()
-        channels = [Video(next(int_iterator)) for _ in range(2)]
-        VideoManager(sections=Sections.GENERAL_DATA).upsert([channels[0]])
-        VideoManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([channels[1]])
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
+        VideoManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([videos[1]])
 
-        response = self._request(analytics="true")
+        self._request_collect_file(analytics="true")
+
+        response = self._request()
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
 
-    def test_filter_ids_post_body(self):
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_headers(self, *args):
         self.create_admin_user()
-        filter_count = 2
-        videos = [Video(next(int_iterator)) for _ in range(filter_count + 1)]
-        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
-        video_ids = [str(video.main.id) for video in videos]
 
-        url = self._get_url()
-        payload = {
-            "main.id": video_ids[:filter_count]
-        }
-        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self._request_collect_file()
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "application/CSV")
+
+        csv_data = get_data_from_csv_response(response)
+        headers = next(csv_data)
+        self.assertEqual(headers, [
+            "title",
+            "url",
+            "views",
+            "likes",
+            "dislikes",
+            "comments",
+            "youtube_published_at",
+            "brand_safety_score",
+            "video_view_rate",
+            "ctr",
+            "ctr_v",
+            "average_cpv",
+        ])
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_brand_safety(self, *args):
+        self.create_admin_user()
+
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+
+        for video in videos:
+            video.populate_brand_safety(overall_score=50)
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
+        VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
+
+        self._request_collect_file(brand_safety="High Risk")
+        response = self._request()
+
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
 
-        self.assertEqual(filter_count, len(data))
+        self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_brand_safety_not_allowed(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("video_list")
+
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+
+        for video in videos:
+            video.populate_brand_safety(overall_score=50)
+        VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
+        VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
+
+        self._request_collect_file(brand_safety="High Risk")
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(2, len(data))

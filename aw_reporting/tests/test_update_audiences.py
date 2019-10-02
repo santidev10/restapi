@@ -3,12 +3,12 @@ from functools import partial
 
 import requests
 from django.test import TestCase
-from mock import patch
 from rest_framework.status import HTTP_200_OK
+from unittest.mock import patch
 
 from aw_reporting.models import Audience
-from aw_reporting.update.tasks.update_audiences import AudienceAWLink
-from aw_reporting.update.tasks.update_audiences import update_audiences_from_aw
+from aw_reporting.google_ads.updaters.audiences import update_audiences
+from aw_reporting.google_ads.updaters.audiences import AudienceAWLink
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 
@@ -33,7 +33,7 @@ class UpdateAudiencesTestCase(TestCase):
         self.assertFalse(test_queryset.exists())
 
         with path_response(test_audience_data):
-            update_audiences_from_aw()
+            update_audiences()
 
         self.assertTrue(test_queryset.exists())
         self.assertEqual(test_queryset.first().name, test_affinity_data["name"])
@@ -58,7 +58,7 @@ class UpdateAudiencesTestCase(TestCase):
         }
 
         with path_response(test_audience_data):
-            update_audiences_from_aw()
+            update_audiences()
 
         self.assertEqual(
             Audience.objects.get(pk=test_affinity_data_2["id"]).parent_id,
@@ -85,7 +85,7 @@ def test_response(test_data, url, *args, **kwargs):
         [dict(id="Criterion ID", name="Category")] \
         + response_data
     test_csv = "\r\n".join([
-        ",".join([str(item["id"]), item["name"]])
+        "\t".join([str(item["id"]), item["name"]])
         for item in response_data_with_headers
     ])
     return MockResponse(text=test_csv)

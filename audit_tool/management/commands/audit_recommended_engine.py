@@ -64,7 +64,7 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/7)]
                 self.language = self.audit.params.get('language')
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
@@ -89,7 +89,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
-        if thread_id % 3 == 0:
+        if thread_id % 7 == 0:
             thread_id = 0
         if pending_videos.count() == 0:
             if thread_id == 0:
@@ -113,14 +113,15 @@ class Command(BaseCommand):
                     print("Audit completed, all videos processed")
                     a = AuditExporter.objects.create(
                         audit=self.audit,
-                        owner=None,
+                        owner_id=None,
                         clean=True,
                     )
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
-        start = thread_id * 50
-        for video in pending_videos[start:start+50]:
+        num = 25
+        start = thread_id * num
+        for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])

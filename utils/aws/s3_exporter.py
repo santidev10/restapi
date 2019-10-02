@@ -40,16 +40,27 @@ class S3Exporter(ABC):
 
     @classmethod
     def get_s3_export_content(cls, name, get_key=True):
+        body = cls._get_s3_object(name, get_key).get("Body")
+        return body
+
+    @classmethod
+    def exists(cls, name, get_key=True):
+        try:
+            return cls._get_s3_object(name, get_key) is not None
+        except ReportNotFoundException:
+            return False
+
+    @classmethod
+    def _get_s3_object(cls, name, get_key=True):
         s3 = S3Exporter._s3()
         try:
-            s3_object = s3.get_object(
+            return s3.get_object(
                 Bucket=cls.bucket_name,
                 Key=cls.get_s3_key(name) if get_key else name
             )
         except s3.exceptions.NoSuchKey:
             raise ReportNotFoundException()
-        body = s3_object.get("Body")
-        return body
+
 
     @classmethod
     def generate_temporary_url(cls, key_name, time_limit=3600):

@@ -24,6 +24,7 @@ import boto3
 from botocore.client import Config
 from utils.permissions import user_has_permission
 
+
 class AuditExportApiView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
@@ -72,7 +73,7 @@ class AuditExportApiView(APIView):
                 a = AuditExporter.objects.create(
                     audit=audit,
                     clean=clean,
-                    owner=request.user
+                    owner_id=request.user.id
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',
@@ -201,7 +202,7 @@ class AuditExportApiView(APIView):
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        with open(file_name, 'a+', newline='') as myfile:
+        with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in video_meta:
@@ -296,7 +297,6 @@ class AuditExportApiView(APIView):
                     except Exception as e:
                         pass
                 wr.writerow(data)
-            myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -321,9 +321,9 @@ class AuditExportApiView(APIView):
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
-                audit=audit,
-                clean=clean,
-                final=True
+            audit=audit,
+            clean=clean,
+            final=True
         )
         if exports.count() > 0:
             return exports[0].file_name, _
@@ -341,8 +341,9 @@ class AuditExportApiView(APIView):
             "Last Video Views",
             "Last Video Category",
             "Num Bad Videos",
-            "Unique Bad Words",
-            "Bad Words",
+            "Unique {} Words".format("Bad" if clean is False else "Good"),
+            "{} Words".format("Bad" if clean is False else "Good"),
+            "Brand Safety Score",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -361,7 +362,10 @@ class AuditExportApiView(APIView):
         for cid in channels:
             channel_ids.append(cid.channel_id)
             try:
-                hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+                if clean is False:
+                    hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+                else:
+                    hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
             except Exception as e:
                 hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
@@ -377,7 +381,8 @@ class AuditExportApiView(APIView):
                         if bad_word not in hit_words[cid.channel.channel_id]:
                             hit_words[cid.channel.channel_id].add(bad_word)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
-        with open(file_name, 'a+', newline='') as myfile:
+        auditor = BrandSafetyAudit(discovery=False)
+        with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             for v in channel_meta:
@@ -393,6 +398,7 @@ class AuditExportApiView(APIView):
                     last_category = v.last_uploaded_category.category_display
                 except Exception as e:
                     last_category = ""
+                channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
                 data = [
                     v.name,
                     "https://www.youtube.com/channel/" + v.channel.channel_id,
@@ -407,7 +413,8 @@ class AuditExportApiView(APIView):
                     last_category,
                     bad_videos_count[v.channel.channel_id],
                     len(hit_words[v.channel.channel_id]),
-                    ','.join(hit_words[v.channel.channel_id])
+                    ','.join(hit_words[v.channel.channel_id]),
+                    channel_brand_safety_score
                 ]
                 try:
                     if len(bad_word_categories) > 0:
@@ -431,7 +438,6 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
                 wr.writerow(data)
-            myfile.buffer.seek(0)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex

@@ -57,7 +57,7 @@ class Command(BaseCommand):
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
 
-    def process_audit(self, num=2500):
+    def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         self.num_videos = self.audit.params.get('num_videos')
@@ -88,7 +88,7 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 raise Exception("not first thread but audit is done")
-        pending_channels = pending_channels.filter(channel__processed=True)#.select_related("channel")
+        pending_channels = pending_channels.filter(channel__processed=True)
         start = self.thread_id * num
         counter = 0
         for channel in pending_channels[start:start+num]:
