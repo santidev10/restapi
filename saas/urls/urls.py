@@ -60,7 +60,7 @@ urlpatterns = [
     # Email reports
     url(r'^api/v1/', include((email_reports_api_urls, APP_NAME), namespace="email_reports_api_urls")),
 
-    url(r'^api/v1/', include((ads_analyzer_urls, APP_NAME), namespace=Namespace.ADS_ANALYZER)),
+    url(r'^api/v1/ads_analyzer/', include((ads_analyzer_urls, APP_NAME), namespace=Namespace.ADS_ANALYZER)),
 
     url(r'^api/v2/', include((brand_safety_api_urls, APP_NAME), namespace=Namespace.BRAND_SAFETY)),
 
