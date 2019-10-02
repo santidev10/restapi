@@ -196,33 +196,6 @@ class QueryGenerator:
             filters.append(query)
         return filters
 
-
-    # def __get_filters_match_phrase(self):
-    #     filters = []
-    #     queries = []
-    #     combined_query = None
-    #
-    #     for field in self.match_phrase_filter:
-    #         value = self.query_params.get(field, None)
-    #         if value and isinstance(value, str):
-    #             if field == "general_data.title":
-    #                 value = {
-    #                     "query": value,
-    #                     "boost": 2
-    #                 }
-    #             queries.append(
-    #                 QueryBuilder().build().should().match_phrase().field(field).value(value).get()
-    #             )
-    #
-    #     for query in queries:
-    #         if not combined_query:
-    #             combined_query = query
-    #         else:
-    #             combined_query |= query
-    #     filters.append(combined_query)
-    #
-    #     return filters
-
     def __get_filters_exists(self):
         filters = []
 
