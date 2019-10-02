@@ -57,12 +57,14 @@ EMAIL_REPORT_CLASSES = (
 def notify_opportunity_targeting_report_is_ready(opportunity_id, date_from_str, date_to_str):
     from ads_analyzer.models import OpportunityTargetingReport
     from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
-
-    report = OpportunityTargetingReport.objects.get(
-        opportunity_id=opportunity_id,
-        date_from=date_from_str,
-        date_to=date_to_str,
-    )
+    try:
+        report = OpportunityTargetingReport.objects.get(
+            opportunity_id=opportunity_id,
+            date_from=date_from_str,
+            date_to=date_to_str,
+        )
+    except OpportunityTargetingReport.DoesNotExist:
+        return
     direct_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key)
     subject = f"Opportunity Targeting Report > {report.opportunity.name}: {date_from_str} - {date_to_str}"
     body = f"Report has been prepared. Download it by the following link {direct_link}"
