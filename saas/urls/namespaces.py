@@ -1,5 +1,6 @@
 class Namespace:
     ADMIN = "admin_api_urls"
+    ADS_ANALYZER = "ads_analyzer_urls"
     AW_CREATION = "aw_creation_urls"
     AW_REPORTING = "aw_reporting_urls"
     SEGMENT = "segment_api_urls"
