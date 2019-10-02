@@ -32,8 +32,6 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
-from segment.utils import generate_search_with_params
-from segment.utils import retry_on_conflict
 from segment.models.segment_mixin import SegmentMixin
 from utils.models import Timestampable
 from segment.models.utils.segment_exporter import SegmentExporter
@@ -61,11 +59,13 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.LIST_SIZE = 20000
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
+            self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
             self.related_aw_statistics_model = YTChannelStatistic
             self.serializer = CustomSegmentChannelExportSerializer
+            self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -89,6 +89,10 @@ class CustomSegment(SegmentMixin, Timestampable):
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
+
+    def set_es_sections(self, sections, upsert_sections):
+        self.es_manager.sections = sections
+        self.es_manager.upsert_sections = upsert_sections
 
     def delete(self, *args, **kwargs):
         # Delete segment references from Elasticsearch

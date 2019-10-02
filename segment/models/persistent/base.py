@@ -84,18 +84,17 @@ class BasePersistentSegment(Timestampable):
         if audit_category and audit_category.id:
             self.audit_category_id = audit_category.id
 
-    def calculate_statistics(self):
-        es_manager = self.get_es_manager()
-        statistics = calculate_statistics(self.related_aw_statistics_model, self.segment_type, es_manager, self.get_segment_items_query())
+    def calculate_statistics(self, items=None):
+        statistics = calculate_statistics(self, items=items)
         return statistics
 
     def get_es_manager(self):
         raise NotImplementedError
 
     def delete(self, *args, **kwargs):
-        from segment.utils import retry_on_conflict
         # Delete segment references from Elasticsearch
-        retry_on_conflict(self.remove_all_from_segment, retry_amount=self.REMOVE_FROM_SEGMENT_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFF)
+        # Method provided by segment_mixin
+        self.remove_all_from_segment()
         super().delete(*args, **kwargs)
         return self
 

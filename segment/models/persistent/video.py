@@ -17,7 +17,6 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import VIEWS_FIELD
 from segment.api.serializers import PersistentSegmentVideoExportSerializer
-from segment.utils import generate_search_with_params
 from segment.models.segment_mixin import SegmentMixin
 
 
@@ -29,19 +28,9 @@ class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     objects = PersistentSegmentManager()
     related_aw_statistics_model = YTVideoStatistic
 
-    def get_es_manager(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        es_manager = VideoManager(sections=sections)
-        return es_manager
-
-    def get_queryset(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        sort_key = {"stats.views": {"order": "desc"}}
-        es_manager = self.get_es_manager(sections=sections)
-        scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
-        return scan
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def get_export_columns(self):
         if self.category == "whitelist":

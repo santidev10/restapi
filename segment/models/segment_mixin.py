@@ -26,7 +26,7 @@ class SegmentMixin(object):
         get_s3_key, get_es_manager,
 
     """
-    REMOVE_FROM_SEGMENT_RETRY = 15
+    RETRY_ON_CONFLICT = 15
     RETRY_SLEEP_COEFF = 1
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
@@ -34,19 +34,17 @@ class SegmentMixin(object):
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
         return query
 
-    def get_queryset(self, sections=None, query=None, sort=None):
-        scan = self.generate_search_with_params(sections=sections, query=query, sort=sort).scan()
+    def get_queryset(self, query=None, sort=None):
+        scan = self.generate_search_with_params(query=query, sort=sort).scan()
         return scan
 
-    def calculate_statistics(self):
+    def calculate_statistics(self, items=None):
         """
         Aggregate statistics
         :param items_count: int
         :return:
         """
-        statistics = calculate_statistics(
-            self.related_aw_statistics_model, self.segment_type, self.get_es_manager(), self.get_segment_items_query()
-        )
+        statistics = calculate_statistics(self, items=items)
         return statistics
 
     @staticmethod
@@ -61,16 +59,22 @@ class SegmentMixin(object):
             results[key] = value["value"]
         return results
 
-    def remove_all_from_segment(self):
+    def remove_all_from_segment(self, query=None):
         """
         Remove all references to segment uuid from Elasticsearch
         :return:
         """
-        es_manager = self.get_es_manager()
-        query = self.get_segment_items_query()
-        self.retry_on_conflict(es_manager.remove_from_segment, query, self.uuid, retry_amount=self.REMOVE_FROM_SEGMENT_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFF)
+        if query is None:
+            query = self.get_segment_items_query()
+        self.retry_on_conflict(self.es_manager.remove_from_segment, query, self.uuid)
 
-    def generate_search_with_params(self, sections=None, query=None, sort=None):
+    def add_to_segment(self, doc_ids=None, query=None):
+        if doc_ids:
+            self.retry_on_conflict(self.es_manager.add_to_segment_by_id, doc_ids)
+        else:
+            self.retry_on_conflict(self.es_manager.add_to_segment, query)
+
+    def generate_search_with_params(self, query=None, sort=None):
         """
         Generate scan query with sorting
         :param manager:
@@ -78,7 +82,7 @@ class SegmentMixin(object):
         :param sort:
         :return:
         """
-        manager = self.get_es_manager(sections=sections)
+        manager = self.es_manager
         if query is None:
             query = self.get_segment_items_query()
         search = manager._search()
@@ -88,9 +92,9 @@ class SegmentMixin(object):
         search = search.params(preserve_order=True)
         return search
 
-    def retry_on_conflict(self, method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
+    def retry_on_conflict(self, method, *args, retry_amount=5, sleep_coeff=2, **kwargs):
         """
-        Retry Elasticsearch operations on Document Conflicts
+        Retry on Document Conflicts
         """
         tries_count = 0
         try:
@@ -101,7 +105,7 @@ class SegmentMixin(object):
                     if "ConflictError(409" in str(err):
                         tries_count += 1
                         if tries_count <= retry_amount:
-                            sleep_seconds_count = retry_amount ** sleep_coeff
+                            sleep_seconds_count = tries_count ** sleep_coeff
                             time.sleep(sleep_seconds_count)
                     else:
                         raise err

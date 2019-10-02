@@ -16,7 +16,6 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
-from segment.utils import generate_search_with_params
 from segment.models.segment_mixin import SegmentMixin
 
 
@@ -28,11 +27,9 @@ class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     objects = PersistentSegmentManager()
     related_aw_statistics_model = YTChannelStatistic
 
-    def get_es_manager(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        es_manager = ChannelManager(sections=sections)
-        return es_manager
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def get_export_columns(self):
         if self.category == "whitelist":
