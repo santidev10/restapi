@@ -26,7 +26,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
             IsAdminUser,
         ),
     )
-    queryset = OpportunityTargetingReport.objects.all()
+    queryset = OpportunityTargetingReport.objects.all().order_by("-created_at")
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
 
@@ -42,7 +42,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
         if report.status == ReportStatus.SUCCESS.value and report.s3_file_key:
             return Response(data=dict(
                 message="Report is ready. Please download it by link below",
-                report_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
+                download_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
                 status="ready",
             ))
         elif report.status == ReportStatus.IN_PROGRESS.value:

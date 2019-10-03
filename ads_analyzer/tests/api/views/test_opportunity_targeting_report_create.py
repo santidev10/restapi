@@ -197,7 +197,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             dict(
                 status="ready",
                 message=ANY,
-                report_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key)
+                download_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key)
             ),
             response.json()
         )
