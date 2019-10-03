@@ -17,7 +17,7 @@ class OpportunityTargetingReportAPIView(APIView):
         ),
     )
 
-    def put(self, request):
+    def post(self, request):
         serializer = OpportunityTargetReportPayloadSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=HTTP_400_BAD_REQUEST)
