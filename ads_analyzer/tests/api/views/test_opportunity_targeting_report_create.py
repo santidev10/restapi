@@ -33,7 +33,7 @@ class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
     def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
         data = data or dict()
-        return self.client.put(url, json.dumps(data, default=str), content_type="application/json")
+        return self.client.post(url, json.dumps(data, default=str), content_type="application/json")
 
 
 class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIViewTestCase):

@@ -22,6 +22,7 @@ class OpportunityTargetingReport(models.Model):
     status = models.CharField(max_length=32, default=ReportStatus.IN_PROGRESS.value,
                               null=False, choices=ReportStatus.choices())
     recipients = models.ManyToManyField(get_user_model())
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
 
     class Meta:
         constraints = [
