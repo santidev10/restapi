@@ -41,9 +41,4 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
         func = opts["receipt"]
         result = func(**kwargs)
         stats[key] = result
-    result = {
-        "stats": stats,
-        "meta": {
-        }
-    }
-    return result
+    return stats

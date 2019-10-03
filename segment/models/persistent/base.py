@@ -119,14 +119,6 @@ class BasePersistentSegment(Timestampable):
         )
         return s3
 
-    def export_to_s3(self, s3_key):
-        with ExportContextManager(segment=self) as exported_file_name:
-            self._s3().upload_file(
-                Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=s3_key,
-                Filename=exported_file_name,
-            )
-
     def get_s3_export_content(self):
         s3 = self._s3()
         # Get latest entry from file upload manager

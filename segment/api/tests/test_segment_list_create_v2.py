@@ -8,6 +8,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 import uuid
 
 from saas.urls.namespaces import Namespace
+from segment.api.tests.test_brand_safety_list import GOOGLE_ADS_STATISTICS
+from segment.api.tests.test_brand_safety_list import STATISTICS_FIELDS_CHANNEL
+from segment.api.tests.test_brand_safety_list import STATISTICS_FIELDS_VIDEO
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentRelated
@@ -246,3 +249,28 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         data = response.data
         self.assertEqual(len(data["items"][0]["statistics"]["top_three_items"]), 3)
+
+    def test_channel_segment_statistics_fields(self):
+        self.create_admin_user()
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=1,
+        )
+        segment.details = segment.calculate_statistics()
+        segment.save()
+        segment.refresh_from_db()
+        response = self.client.get(self._get_url("channel"))
+        data = response.data["items"][0]
+        self.assertEqual(set(data["statistics"].keys()), GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL)
+
+    def test_video_segment_statistics_fields(self):
+        self.create_admin_user()
+        segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(), is_master=False,
+            category=PersistentSegmentCategory.WHITELIST,
+        )
+        segment.details = segment.calculate_statistics()
+        segment.save()
+        segment.refresh_from_db()
+        response = self.client.get(self._get_url("channel"))
+        data = response.data["items"][0]
+        self.assertEqual(set(data["statistics"].keys()), GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO)

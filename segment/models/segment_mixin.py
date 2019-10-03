@@ -1,19 +1,9 @@
-import logging
 import time
 
-import boto3
-from django.conf import settings
-from django.utils import timezone
-
-from audit_tool.models import AuditCategory
-from utils.models import Timestampable
-from segment.models.persistent.constants import PersistentSegmentCategory
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from es_components.constants import SEGMENTS_UUID_FIELD
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
-from segment.models.utils.export_context_manager import ExportContextManager
-from segment.models.utils.segment_exporter import SegmentExporter
 
 
 class SegmentMixin(object):
@@ -26,8 +16,6 @@ class SegmentMixin(object):
         get_s3_key, get_es_manager,
 
     """
-    RETRY_ON_CONFLICT = 15
-    RETRY_SLEEP_COEFF = 1
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
 
     def get_segment_items_query(self):
@@ -70,19 +58,18 @@ class SegmentMixin(object):
 
     def add_to_segment(self, doc_ids=None, query=None):
         if doc_ids:
-            self.retry_on_conflict(self.es_manager.add_to_segment_by_id, doc_ids)
+            self.retry_on_conflict(self.es_manager.add_to_segment_by_ids, doc_ids, self.uuid)
         else:
-            self.retry_on_conflict(self.es_manager.add_to_segment, query)
+            self.retry_on_conflict(self.es_manager.add_to_segment, query, self.uuid)
 
-    def generate_search_with_params(self, query=None, sort=None):
+    def generate_search_with_params(self, query=None, sort=None, sections=None):
         """
         Generate scan query with sorting
-        :param manager:
-        :param query:
-        :param sort:
         :return:
         """
         manager = self.es_manager
+        if sections:
+            manager.sections = sections
         if query is None:
             query = self.get_segment_items_query()
         search = manager._search()

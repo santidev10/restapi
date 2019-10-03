@@ -14,6 +14,11 @@ class PersistentSegmentSerializer(ModelSerializer):
         "views",
         "audited_videos",
         "items_count",
+        "average_cpm",
+        "average_cpv",
+        "ctr",
+        "ctr_v",
+        "video_view_rate",
     )
 
     class Meta:
