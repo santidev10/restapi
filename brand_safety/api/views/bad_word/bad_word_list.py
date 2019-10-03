@@ -51,7 +51,7 @@ class BadWordListApiView(ListCreateAPIView):
                 try:
                     filters["meta_scoring"] = strtobool(meta_scoring)
                 except ValueError:
-                    raise ValidationError("Meta_scoring filter param must be True or False. Received: {}.".format(category))
+                    raise ValidationError("Meta_scoring filter param must be True or False. Received: {}.".format(meta_scoring))
 
         comment_scoring = self.request.query_params.get("comment_scoring")
         if comment_scoring is not None:
@@ -61,7 +61,7 @@ class BadWordListApiView(ListCreateAPIView):
                 try:
                     filters["comment_scoring"] = strtobool(comment_scoring)
                 except ValueError:
-                    raise ValidationError("Comment_scoring filter param must be True or False. Received: {}.".format(category))
+                    raise ValidationError("Comment_scoring filter param must be True or False. Received: {}.".format(comment_scoring))
 
 
         if filters:
