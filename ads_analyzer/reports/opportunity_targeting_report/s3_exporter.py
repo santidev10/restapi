@@ -1,8 +1,9 @@
 from django.conf import settings
 
-from ads_analyzer.reports.opportunity_targeting_report.create_report import S3_FILE_KEY_PATTERN
 from utils.aws.s3_exporter import S3Exporter
 from utils.views import XLSX_CONTENT_TYPE
+
+S3_FILE_KEY_PATTERN = "opportunity_targeting_reports/{opportunity_id}_{date_from}_{date_to}"
 
 
 class OpportunityTargetingReportS3Exporter(S3Exporter):

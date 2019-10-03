@@ -1,7 +1,6 @@
 from datetime import date
 from datetime import timedelta
 from io import BytesIO
-from unittest.mock import ANY
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
@@ -119,15 +118,42 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
                 )
 
 
+class ColumnsDeclaration:
+    def __init__(self, definition):
+        self.definition = definition
+        self.values = dict(definition)
+
+    def __getattr__(self, item):
+        try:
+            return super().__getattribute__(item)
+        except AttributeError:
+            return self.values[item]
+
+    def labels(self):
+        return tuple([name for _, name in self.definition])
+
+    def ids(self):
+        return tuple([name for name, _ in self.definition])
+
+
 class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingReportBaseTestCase):
     SHEET_NAME = None
     DATA_ROW_INDEX = 3
-    columns = None
+    columns: ColumnsDeclaration = None
 
     def get_data_table(self, opportunity_id, date_from, date_to):
         book = self.get_report_workbook(opportunity_id, date_from, date_to)
         sheet = book.get_sheet_by_name(self.SHEET_NAME)
         return list(sheet)[self.DATA_ROW_INDEX:]
+
+    def get_data_dict(self, *args, **kwargs):
+        rows = self.get_data_table(*args, **kwargs)
+        headers = [cell.value for cell in rows[0]]
+
+        return [
+            dict(zip(headers, [cell.value for cell in row]))
+            for row in rows[1:]
+        ]
 
     def setUp(self) -> None:
         super().setUp()
@@ -139,34 +165,47 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
 
 class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingReportSheetTestCase):
     SHEET_NAME = "Target"
-    columns = (
-        "Target",
-        "Type",
-        "Ads Campaign",
-        "Ads Ad group",
-        "Salesforce Placement",
-        "Placement Start Date",
-        "Placement End Date",
-        "Days remaining",
-        "Margin Cap",
-        "Cannot Roll over Delivery",
-        "Rate Type",
-        "Contracted Rate",
-        "Max bid",
-        "Avg. Rate",
-        "Cost",
-        "Cost delivery percentage",
-        "Impressions",
-        "Views",
-        "Delivery percentage",
-        "Revenue",
-        "Profit",
-        "Margin",
-        "Video played to 100%",
-        "View rate",
-        "Clicks",
-        "CTR",
+
+    columns = ColumnsDeclaration(
+        (
+            ("target", "Target"),
+            ("type", "Type"),
+            ("campaign_name", "Ads Campaign"),
+            ("ad_group_name", "Ads Ad group"),
+            ("placement_name", "Salesforce Placement"),
+            ("placement_start", "Placement Start Date"),
+            ("placement_end", "Placement End Date"),
+            ("days_remaining", "Days remaining"),
+            ("margin_cap", "Margin Cap"),
+            ("cannot_roll_over", "Cannot Roll over Delivery"),
+            ("goal_type", "Rate Type"),
+            ("contracted_rate", "Contracted Rate"),
+            ("max_bid", "Max bid"),
+            ("avg_rate", "Avg. Rate"),
+            ("cost", "Cost"),
+            ("cost_delivered_percentage", "Cost delivery percentage"),
+            ("impressions", "Impressions"),
+            ("views", "Views"),
+            ("delivery_percentage", "Delivery percentage"),
+            ("revenue", "Revenue"),
+            ("profit", "Profit"),
+            ("margin", "Margin"),
+            ("video_played_100", "Video played to 100%"),
+            ("view_rate", "View rate"),
+            ("clicks", "Clicks"),
+            ("ctr", "CTR"),
+        )
     )
+
+    def setUp(self) -> None:
+        super().setUp()
+        any_date = date(2019, 1, 1)
+        pl_start, pl_end = any_date - timedelta(days=1), any_date + timedelta(days=1)
+        self.placement = OpPlacement.objects.create(opportunity=self.opportunity, name="Test Placement",
+                                                    goal_type_id=SalesForceGoalType.CPV,
+                                                    start=pl_start, end=pl_end)
+        self.campaign = Campaign.objects.create(salesforce_placement=self.placement, name="Test Campaign")
+        self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup")
 
     def test_headers(self):
         any_date = date(2019, 1, 1)
@@ -175,88 +214,54 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         rows = self.get_data_table(self.opportunity.id, any_date, any_date)
         headers = rows[0]
         self.assertEqual(
-            list(self.columns),
+            list(self.columns.labels()),
             [cell.value for cell in headers]
         )
 
-    def test_topic_general_data(self):
-        any_date = date(2019, 1, 1)
-        pl_start, pl_end = any_date - timedelta(days=1), any_date + timedelta(days=1)
+    def test_general_data(self):
         self.opportunity.cannot_roll_over = True
         self.opportunity.save()
-        placement = OpPlacement.objects.create(opportunity=self.opportunity, name="Test Placement",
-                                               goal_type_id=SalesForceGoalType.CPV,
-                                               start=pl_start, end=pl_end)
-        campaign = Campaign.objects.create(salesforce_placement=placement, name="Test Campaign")
-        ad_group = AdGroup.objects.create(campaign=campaign, name="Test AdGroup")
+        any_date = date(2019, 1, 1)
         topic = Topic.objects.create(name="Test topic")
-        TopicStatistic.objects.create(ad_group=ad_group, topic=topic, date=any_date)
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
         self.act(self.opportunity.id, any_date, any_date)
-        rows = self.get_data_table(self.opportunity.id, any_date, any_date)
-        data = rows[1:]
-        self.assertEqual(
-            1,
-            len(data)
-        )
-        data_row = data[0]
-        data_values = [cell.value for cell in data_row]
-        expected_values = [
-            topic.name,
-            "Topic",
-            campaign.name,
-            ad_group.name,
-            placement.name,
-            str(pl_start),
-            str(pl_end),
-            ANY,
-            # FIXME: ADD "Margin Cap"
-            "N/A",
-            self.opportunity.cannot_roll_over,
-            placement.goal_type
-        ]
-        self.assertEqual(
-            expected_values,
-            data_values[:11]
-        )
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(self.campaign.name, item[columns.campaign_name])
+        self.assertEqual(self.ad_group.name, item[columns.ad_group_name])
+        self.assertEqual(self.placement.name, item[columns.placement_name])
+        self.assertEqual(str(self.placement.start), item[columns.placement_start])
+        self.assertEqual(str(self.placement.end), item[columns.placement_end])
+        self.assertEqual(self.opportunity.cannot_roll_over, item[columns.cannot_roll_over])
+        self.assertEqual(self.placement.goal_type, item[columns.goal_type])
+
+    def test_topic_general_data(self):
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(topic.name, item[columns.target])
+        self.assertEqual("Topic", item[columns.type])
 
     def test_keyword_general_data(self):
         any_date = date(2019, 1, 1)
-        pl_start, pl_end = any_date - timedelta(days=1), any_date + timedelta(days=1)
         self.opportunity.cannot_roll_over = True
         self.opportunity.save()
-        placement = OpPlacement.objects.create(opportunity=self.opportunity, name="Test Placement",
-                                               goal_type_id=SalesForceGoalType.CPV,
-                                               start=pl_start, end=pl_end)
-        campaign = Campaign.objects.create(salesforce_placement=placement, name="Test Campaign")
-        ad_group = AdGroup.objects.create(campaign=campaign, name="Test AdGroup")
         keyword = "test keyword"
-        KeywordStatistic.objects.create(keyword=keyword, ad_group=ad_group, date=any_date)
+        KeywordStatistic.objects.create(keyword=keyword, ad_group=self.ad_group, date=any_date)
 
         self.act(self.opportunity.id, any_date, any_date)
-        rows = self.get_data_table(self.opportunity.id, any_date, any_date)
-        data = rows[1:]
-        self.assertEqual(
-            1,
-            len(data)
-        )
-        data_row = data[0]
-        data_values = [cell.value for cell in data_row]
-        expected_values = [
-            keyword,
-            "Keyword",
-            campaign.name,
-            ad_group.name,
-            placement.name,
-            str(pl_start),
-            str(pl_end),
-            ANY,
-            # FIXME: ADD "Margin Cap"
-            "N/A",
-            self.opportunity.cannot_roll_over,
-            placement.goal_type
-        ]
-        self.assertEqual(
-            expected_values,
-            data_values[:11]
-        )
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(keyword, item[columns.target])
+        self.assertEqual("Keyword", item[columns.type])

@@ -18,8 +18,6 @@ from saas import celery_app
 
 logger = logging.getLogger(__name__)
 
-S3_FILE_KEY_PATTERN = "opportunity_targeting_reports/{opportunity_id}_{date_from}_{date_to}"
-
 
 @celery_app.task
 def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str, date_to_str: str):
