@@ -11,6 +11,7 @@ class OpportunityTargetingReport(models.Model):
     date_to = models.DateField(null=False)
     external_link = models.URLField(default=None, null=True)
     recipients = models.ManyToManyField(get_user_model())
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [

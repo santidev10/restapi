@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
+    OpportunityTargetReportModelSerializer
+from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
     OpportunityTargetReportPayloadSerializer
 from ads_analyzer.models import OpportunityTargetingReport
 from utils.api_paginator import CustomPageNumberPaginator
@@ -23,7 +25,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
         ),
     )
     queryset = OpportunityTargetingReport.objects.all()
-    serializer_class = OpportunityTargetReportPayloadSerializer
+    serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
 
     def post(self, request, *args, **kwargs):

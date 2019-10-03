@@ -1,9 +1,14 @@
+from datetime import date
+
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
+from ads_analyzer.models import OpportunityTargetingReport
+from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
@@ -59,4 +64,30 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "max_page": 1,
             },
             response.data
+        )
+
+    def test_structure(self):
+        opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
+        date_from = date(2019, 1, 1)
+        date_to = date(2019, 1, 2)
+        report = OpportunityTargetingReport.objects.create(
+            opportunity=opportunity,
+            date_from=date_from,
+            date_to=date_to,
+            external_link="http://example.com/report?download=1",
+        )
+
+        response = self._request()
+
+        self.assertEqual(1, response.json()["items_count"])
+        self.assertEqual(
+            {
+                "id": report.id,
+                "opportunity": opportunity.id,
+                "date_from": report.date_from.isoformat(),
+                "date_to": report.date_to.isoformat(),
+                "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
+                "download_link": report.external_link,
+            },
+            response.json()["items"][0]
         )
