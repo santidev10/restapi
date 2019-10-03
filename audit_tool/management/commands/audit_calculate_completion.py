@@ -12,7 +12,6 @@ import pytz
 process:
     Looks for processing audits, and calculates projected completion time
 """
-# 7:47
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='calculate_completion.pid') as p:
