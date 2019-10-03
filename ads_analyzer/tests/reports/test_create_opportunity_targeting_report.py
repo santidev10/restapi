@@ -10,10 +10,11 @@ from openpyxl import load_workbook
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
-from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
+from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import Topic
@@ -203,6 +204,47 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         expected_values = [
             topic.name,
             "Topic",
+            campaign.name,
+            ad_group.name,
+            placement.name,
+            str(pl_start),
+            str(pl_end),
+            ANY,
+            # FIXME: ADD "Margin Cap"
+            "N/A",
+            self.opportunity.cannot_roll_over,
+            placement.goal_type
+        ]
+        self.assertEqual(
+            expected_values,
+            data_values[:11]
+        )
+
+    def test_keyword_general_data(self):
+        any_date = date(2019, 1, 1)
+        pl_start, pl_end = any_date - timedelta(days=1), any_date + timedelta(days=1)
+        self.opportunity.cannot_roll_over = True
+        self.opportunity.save()
+        placement = OpPlacement.objects.create(opportunity=self.opportunity, name="Test Placement",
+                                               goal_type_id=SalesForceGoalType.CPV,
+                                               start=pl_start, end=pl_end)
+        campaign = Campaign.objects.create(salesforce_placement=placement, name="Test Campaign")
+        ad_group = AdGroup.objects.create(campaign=campaign, name="Test AdGroup")
+        keyword = "test keyword"
+        KeywordStatistic.objects.create(keyword=keyword, ad_group=ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        rows = self.get_data_table(self.opportunity.id, any_date, any_date)
+        data = rows[1:]
+        self.assertEqual(
+            1,
+            len(data)
+        )
+        data_row = data[0]
+        data_values = [cell.value for cell in data_row]
+        expected_values = [
+            keyword,
+            "Keyword",
             campaign.name,
             ad_group.name,
             placement.name,

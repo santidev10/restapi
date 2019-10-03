@@ -9,7 +9,7 @@ from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer i
     OpportunityTargetReportPayloadSerializer
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
-from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
+from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission

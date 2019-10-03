@@ -56,7 +56,7 @@ EMAIL_REPORT_CLASSES = (
 @celery_app.task
 def notify_opportunity_targeting_report_is_ready(opportunity_id, date_from_str, date_to_str):
     from ads_analyzer.models import OpportunityTargetingReport
-    from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
+    from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
     try:
         report = OpportunityTargetingReport.objects.get(
             opportunity_id=opportunity_id,

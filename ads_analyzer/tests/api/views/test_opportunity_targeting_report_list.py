@@ -8,7 +8,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
-from ads_analyzer.reports.create_opportunity_targeting_report import OpportunityTargetingReportS3Exporter
+from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
