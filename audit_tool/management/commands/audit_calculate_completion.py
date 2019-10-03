@@ -30,7 +30,7 @@ class Command(BaseCommand):
                 minutes = (last.created - first.created).total_seconds() / 60
                 avg_rate_per_minute = count / minutes if minutes > 0 else 0
                 if avg_rate_per_minute > 0:
-                    num_minutes = (audit.cached_data.get('total') - audit.cached_data.get('count')) / avg_rate_per_minute
+                    num_minutes = (audit.cached_data.get('total') - last.count) / avg_rate_per_minute
                     projected_completion = timezone.now() + timedelta(minutes=num_minutes)
                     audit.params['projected_completion'] = projected_completion.astimezone(
                         pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p")
