@@ -84,6 +84,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "keywords.tasks.update_keywords_percentiles",
         "schedule": 3600,
     },
+    "pull-custom-transcripts": {
+        "task": "audit_tool.tasks.pull_custom_transcripts",
+        "schedule": 3600
+    }
 }
 CELERY_RESULT_BACKEND = "django-db"
 
