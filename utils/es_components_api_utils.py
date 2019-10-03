@@ -13,6 +13,7 @@ from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
+from elasticsearch_dsl import Q
 
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
@@ -174,14 +175,25 @@ class QueryGenerator:
 
     def __get_filters_match_phrase(self):
         filters = []
-
+        fields = []
+        search_phrase = None
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
-                filters.append(
-                    QueryBuilder().build().must().match_phrase().field(field).value(value).get()
-                )
-
+                if field == "general_data.title":
+                    field = "general_data.title^2"
+                search_phrase = value
+            fields.append(field)
+        query = Q(
+            {
+                "multi_match": {
+                    "query": search_phrase,
+                    "fields": fields
+                }
+            }
+        )
+        if search_phrase:
+            filters.append(query)
         return filters
 
     def __get_filters_exists(self):
