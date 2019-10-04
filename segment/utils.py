@@ -30,7 +30,7 @@ def get_persistent_segment_model_by_type(segment_type):
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
 
-def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
+def retry_on_conflict(method, *args, retry_amount=5, sleep_coeff=2, **kwargs):
     """
     Retry on Document Conflicts
     """
@@ -43,7 +43,7 @@ def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
                 if "ConflictError(409" in str(err):
                     tries_count += 1
                     if tries_count <= retry_amount:
-                        sleep_seconds_count = retry_amount ** sleep_coeff
+                        sleep_seconds_count = tries_count ** sleep_coeff
                         time.sleep(sleep_seconds_count)
                 else:
                     raise err

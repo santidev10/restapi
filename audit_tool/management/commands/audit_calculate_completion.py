@@ -12,7 +12,6 @@ import pytz
 process:
     Looks for processing audits, and calculates projected completion time
 """
-# 7:47
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='calculate_completion.pid') as p:
@@ -21,17 +20,17 @@ class Command(BaseCommand):
                 if not audit.cached_data or not audit.cached_data.get('total'):
                     continue
                 history = AuditProcessorCache.objects.filter(audit=audit, created__gt=timezone.now() - timedelta(hours=1))
-                if history.count() < 2:
+                if history.count() < 15:
                     audit.params['projected_completion'] = None
                     audit.save(update_fields=['params'])
                     continue
                 first = history.order_by("id")[0]
                 last = history.order_by("-id")[0]
                 count = last.count - first.count
-                minutes = round((last.created - first.created).total_seconds() / 60)
+                minutes = (last.created - first.created).total_seconds() / 60
                 avg_rate_per_minute = count / minutes if minutes > 0 else 0
                 if avg_rate_per_minute > 0:
-                    num_minutes = (audit.cached_data.get('total') - audit.cached_data.get('count')) / avg_rate_per_minute
+                    num_minutes = (audit.cached_data.get('total') - last.count) / avg_rate_per_minute
                     projected_completion = timezone.now() + timedelta(minutes=num_minutes)
                     audit.params['projected_completion'] = projected_completion.astimezone(
                         pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p")

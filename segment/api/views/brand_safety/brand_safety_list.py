@@ -16,9 +16,10 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),
     )
+    MINIMUM_ITEMS_COUNT = 100
 
     def get_queryset(self):
-        request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
+        request_origin = self.request.META.get("HTTP_ORIGIN", "") or self.request.META.get("HTTP_REFERER", "")
         if is_correct_apex_domain(request_origin):
             queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
         else:
@@ -32,7 +33,7 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
             "items": []
         }
         for item in response.data.get("items", []):
-            if not item.get("statistics") or item["statistics"].get("items_count", 0) < 100:
+            if (not item.get("statistics") or item["statistics"].get("items_count", 0) < self.MINIMUM_ITEMS_COUNT) and item["is_master"] is False:
                 continue
             if item["category"] == PersistentSegmentCategory.WHITELIST and item["is_master"] is True:
                 data["master_whitelist"] = item

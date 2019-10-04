@@ -15,7 +15,7 @@ class PersistentSegmentExportApiView(DynamicPersistentModelViewMixin, APIView):
     def get(self, request, pk, *_):
         try:
             segment = self.get_queryset().get(pk=pk)
-            content_generator = segment.get_s3_export_content().iter_chunks()
+            content_generator = segment.get_export_file()
         except segment.__class__.DoesNotExist:
             raise Http404
         response = StreamingHttpResponse(

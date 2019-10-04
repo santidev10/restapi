@@ -76,8 +76,6 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
 from segment.models import CustomSegment
-from segment.models import CustomSegmentRelated
-from segment.utils import generate_search_with_params
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -367,10 +365,7 @@ class ItemsFromSegmentIdsApiView(APIView):
         ids = request.data
         for segment_id in ids:
             segment = CustomSegment.objects.get(id=segment_id)
-            es_manager = segment.get_es_manager(sections=(Sections.MAIN, Sections.GENERAL_DATA))
-            query = segment.get_segment_items_query()
-            scan = generate_search_with_params(es_manager, query).scan()
-
+            scan = segment.generate_search_with_params().scan()
             related_ids = [
                 {
                     "criteria": item.main.id,
