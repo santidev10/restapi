@@ -6,10 +6,12 @@ from rest_framework.fields import DateField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
+from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import get_ctr
 from aw_reporting.models import goal_type_str
 
 __all__ = [
@@ -40,6 +42,13 @@ class TargetTableSerializer(ModelSerializer):
     video_views = IntegerField(source="sum_video_views")
     clicks = IntegerField(source="sum_clicks")
     cost = FloatField(source="sum_cost")
+    ctr = SerializerMethodField()
+
+    def get_ctr(self, obj):
+        return get_ctr(
+            impressions=obj["sum_impressions"],
+            clicks=obj["sum_clicks"],
+        )
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -74,8 +83,9 @@ class TargetTableSerializer(ModelSerializer):
             "video_views",
             "clicks",
             "cost",
+            "ctr",
         )
-        group_by = ("id", )
+        group_by = ("id",)
         values_shared = (
             "ad_group__campaign__name",
             "ad_group__name",

@@ -384,9 +384,18 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_view_rate(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
     def test_ctr(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              impressions=200, clicks=30)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertAlmostEqual(stats.clicks / stats.impressions, item[columns.ctr])
 
     @skip("Not implemented")
     def test_ordering(self):
@@ -446,4 +455,8 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
 
     @skip("Not implemented")
     def test_margin_green(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_percentage_fields(self):
         raise NotImplementedError
