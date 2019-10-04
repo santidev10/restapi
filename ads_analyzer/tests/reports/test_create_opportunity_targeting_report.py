@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
 from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
@@ -150,15 +151,6 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
         sheet = book.get_sheet_by_name(self.SHEET_NAME)
         return list(sheet)[self.DATA_ROW_INDEX:]
 
-    def get_data_dict(self, *args, **kwargs):
-        rows = self.get_data_table(*args, **kwargs)
-        headers = [cell.value for cell in rows[0]]
-
-        return [
-            dict(zip(headers, [cell.value for cell in row]))
-            for row in rows[1:]
-        ]
-
     def setUp(self) -> None:
         super().setUp()
         self.opportunity = Opportunity.objects.create(
@@ -213,6 +205,15 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
 
 
 class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTargetingReportTargetTestCase):
+    def get_data_dict(self, *args, **kwargs):
+        rows = self.get_data_table(*args, **kwargs)
+        headers = [cell.value for cell in rows[0]]
+
+        return [
+            dict(zip(headers, [cell.value for cell in row]))
+            for row in rows[1:]
+        ]
+
     def test_headers(self):
         any_date = date(2019, 1, 1)
         self.act(self.opportunity.id, any_date, any_date)
@@ -552,6 +553,20 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
 
 
 class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):
+    class Color:
+        RED = "FF0013"
+        YELLOW = "FFFE50"
+        GREEN = "00B25B"
+
+    def get_cell_dict(self, *args, **kwargs):
+        rows = self.get_data_table(*args, **kwargs)
+        headers = [cell.value for cell in rows[0]]
+
+        return [
+            dict(zip(headers, row))
+            for row in rows[1:]
+        ]
+
     @skip("Not implemented")
     def test_cost_delivery_percentage_red(self):
         raise NotImplementedError
@@ -576,9 +591,18 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
     def test_delivery_percentage_green(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
     def test_margin_red(self):
-        raise NotImplementedError
+        test_margin = .25
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        with patch.object(TargetTableSerializer, "get_margin", return_value=test_margin):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.RED, item[columns.ctr].fill.start_color.rgb)
 
     @skip("Not implemented")
     def test_margin_yellow(self):
