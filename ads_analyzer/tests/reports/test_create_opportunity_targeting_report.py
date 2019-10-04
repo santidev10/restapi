@@ -554,9 +554,9 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
 
 class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):
     class Color:
-        RED = "FF0013"
-        YELLOW = "FFFE50"
-        GREEN = "00B25B"
+        RED = "FFFF0013"
+        YELLOW = "FFFFFE50"
+        GREEN = "FF00B25B"
 
     def get_cell_dict(self, *args, **kwargs):
         rows = self.get_data_table(*args, **kwargs)
@@ -602,15 +602,33 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
         styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
         item = styles[0]
         columns = self.columns
-        self.assertEqual(self.Color.RED, item[columns.ctr].fill.start_color.rgb)
+        self.assertEqual(self.Color.RED, item[columns.margin].fill.start_color.rgb)
 
-    @skip("Not implemented")
     def test_margin_yellow(self):
-        raise NotImplementedError
+        test_margin = .35
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_margin", return_value=test_margin):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.YELLOW, item[columns.margin].fill.start_color.rgb)
+
     def test_margin_green(self):
-        raise NotImplementedError
+        test_margin = .45
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        with patch.object(TargetTableSerializer, "get_margin", return_value=test_margin):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.GREEN, item[columns.margin].fill.start_color.rgb)
 
     @skip("Not implemented")
     def test_percentage_fields(self):
