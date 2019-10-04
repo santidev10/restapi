@@ -53,6 +53,7 @@ class TargetTableSerializer(ModelSerializer):
     avg_rate = SerializerMethodField()
     revenue = SerializerMethodField()
     profit = SerializerMethodField()
+    margin = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -90,6 +91,13 @@ class TargetTableSerializer(ModelSerializer):
         revenue = self.get_revenue(obj)
         cost = obj["sum_cost"]
         return revenue - cost
+
+    def get_margin(self, obj):
+        profit = self.get_profit(obj)
+        revenue = self.get_revenue(obj)
+        return (profit / revenue
+                if revenue
+                else None)
 
     def _get_units(self, obj):
         goal_type_id = self._get_goal_type_id(obj)
@@ -152,6 +160,7 @@ class TargetTableSerializer(ModelSerializer):
             "avg_rate",
             "revenue",
             "profit",
+            "margin",
         )
         group_by = ("id",)
         values_shared = (
