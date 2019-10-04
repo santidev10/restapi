@@ -25,6 +25,7 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
 from utils.utittests.celery import mock_send_task
+from utils.utittests.patch_now import patch_now
 from utils.utittests.s3_mock import S3TestCase
 from utils.utittests.str_iterator import str_iterator
 
@@ -344,9 +345,20 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(stats.cost, item[columns.cost])
         self.assertEqual(stats.clicks, item[columns.clicks])
 
-    @skip("Not implemented")
     def test_days_remaining(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        days_remaining = 3
+        test_now = self.placement.end - timedelta(days=days_remaining)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        with patch_now(test_now):
+            self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(days_remaining, item[columns.days_remaining])
 
     @skip("Not implemented")
     def test_margin_cap(self):

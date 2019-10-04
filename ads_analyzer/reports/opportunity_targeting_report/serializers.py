@@ -49,6 +49,7 @@ class TargetTableSerializer(ModelSerializer):
     cost = FloatField(source="sum_cost")
     ctr = SerializerMethodField()
     view_rate = SerializerMethodField()
+    days_remaining = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -61,6 +62,11 @@ class TargetTableSerializer(ModelSerializer):
             video_impressions=obj["sum_video_impressions"],
             video_views=obj["sum_video_views"],
         )
+
+    def get_days_remaining(self, obj):
+        placement_end = obj["ad_group__campaign__salesforce_placement__end"]
+        today = self.context["now"].date()
+        return (placement_end - today).days
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -101,6 +107,7 @@ class TargetTableSerializer(ModelSerializer):
             "cost",
             "ctr",
             "view_rate",
+            "days_remaining",
         )
         group_by = ("id",)
         values_shared = (

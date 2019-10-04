@@ -15,13 +15,15 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
+from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
 
 @celery_app.task
 def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str, date_to_str: str):
-    report_generator = OpportunityTargetingReportXLSXGenerator()
+    now = now_in_default_tz()
+    report_generator = OpportunityTargetingReportXLSXGenerator(now=now)
     report = report_generator.build(opportunity_id, date_from_str, date_to_str)
 
     export_cls = OpportunityTargetingReportS3Exporter
@@ -45,6 +47,8 @@ def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str,
 
 
 class OpportunityTargetingReportXLSXGenerator:
+    def __init__(self, now):
+        self.now = now
 
     def build(self, opportunity_id, date_from, date_to):
         output = BytesIO()
@@ -82,7 +86,7 @@ class OpportunityTargetingReportXLSXGenerator:
                 date__lte=date_to,
             )
 
-            return serializer(queryset, many=True)
+            return serializer(queryset, many=True, context=dict(now=self.now))
 
         serializers = [
             get_serializer(*args)
