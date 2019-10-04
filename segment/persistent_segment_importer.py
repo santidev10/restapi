@@ -13,7 +13,6 @@ from es_components.managers import VideoManager
 from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import get_persistent_segment_model_by_type
-from segment.utils import retry_on_conflict
 from segment.segment_list_generator import SegmentListGenerator
 
 logger = logging.getLogger(__name__)
@@ -85,8 +84,7 @@ class PersistentSegmentImporter(object):
 
     def run(self):
         # Add item to segment
-        segment_uuid = self.segment.uuid
-        retry_on_conflict(self.es_manager.add_to_segment_by_ids, self.youtube_ids, segment_uuid)
+        self.segment.add_to_segment(doc_ids=self.youtube_ids)
 
         exported = False
         # Wait until all items have been added to segment
@@ -99,7 +97,8 @@ class PersistentSegmentImporter(object):
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export
-                SegmentListGenerator.export_to_s3(self.segment)
+                self.segment.details = self.segment.calculate_statistics()
+                self.segment.export_file()
                 exported = True
                 break
             else:

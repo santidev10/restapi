@@ -15,12 +15,12 @@ class Command(BaseCommand):
 
         # Channels
         for segment in PersistentSegmentChannel.objects.all():
-            segment.details = segment.calculate_details()
+            segment.details = segment.calculate_statistics()
             segment.save()
 
         # Videos
         for segment in PersistentSegmentVideo.objects.all():
-            segment.details = segment.calculate_details()
+            segment.details = segment.calculate_statistics()
             segment.save()
 
         logger.info("Finish")
