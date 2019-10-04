@@ -328,7 +328,6 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_video_general_data_title(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
     def test_general_stats(self):
         any_date = date(2019, 1, 1)
         topic = Topic.objects.create(name="Test topic")
@@ -343,7 +342,7 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(stats.impressions, item[columns.impressions])
         self.assertEqual(stats.video_views, item[columns.views])
         self.assertEqual(stats.cost, item[columns.cost])
-        self.assertEqual(stats.clics, item[columns.clicks])
+        self.assertEqual(stats.clicks, item[columns.clicks])
 
     @skip("Not implemented")
     def test_days_remaining(self):
@@ -393,10 +392,58 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_ordering(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
     def test_general_stats_aggregates(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        impressions = (1000, 2100)
+        period = len(impressions)
+        date_from, date_to = any_date, any_date + timedelta(days=period)
+        for index in range(period):
+            TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic,
+                                          date=any_date + timedelta(days=index),
+                                          impressions=impressions[index])
+
+        self.act(self.opportunity.id, date_from, date_to)
+        data = self.get_data_dict(self.opportunity.id, date_from, date_to)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(sum(impressions), item[columns.impressions])
 
 
 class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):
-    pass
+    @skip("Not implemented")
+    def test_cost_delivery_percentage_red(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_cost_delivery_percentage_yellow(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_cost_delivery_percentage_green(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_delivery_percentage_red(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_delivery_percentage_yellow(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_delivery_percentage_green(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_margin_red(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_margin_yellow(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_margin_green(self):
+        raise NotImplementedError

@@ -2,6 +2,7 @@ from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
 from rest_framework.fields import FloatField
+from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
 
@@ -19,15 +20,19 @@ class GoalTypeField(CharField):
 class TargetTableSerializer(ModelSerializer):
     name = ReadOnlyField(default="N/A")
     type = ReadOnlyField(default="N/A")
-    campaign_name = CharField(source="ad_group.campaign.name")
-    ad_group_name = CharField(source="ad_group.name")
-    placement_name = CharField(source="ad_group.campaign.salesforce_placement.name")
-    placement_start = DateField(source="ad_group.campaign.salesforce_placement.start")
-    placement_end = DateField(source="ad_group.campaign.salesforce_placement.end")
+    campaign_name = CharField(source="ad_group__campaign__name")
+    ad_group_name = CharField(source="ad_group__name")
+    placement_name = CharField(source="ad_group__campaign__salesforce_placement__name")
+    placement_start = DateField(source="ad_group__campaign__salesforce_placement__start")
+    placement_end = DateField(source="ad_group__campaign__salesforce_placement__end")
     margin_cap = ReadOnlyField(default="N/A")
-    cannot_roll_over = BooleanField(source="ad_group.campaign.salesforce_placement.opportunity.cannot_roll_over")
-    rate_type = GoalTypeField(source="ad_group.campaign.salesforce_placement.goal_type_id")
-    contracted_rate = FloatField(source="ad_group.campaign.salesforce_placement.ordered_rate")
+    cannot_roll_over = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over")
+    rate_type = GoalTypeField(source="ad_group__campaign__salesforce_placement__goal_type_id")
+    contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
+    impressions = IntegerField(source="sum_impressions")
+    video_views = IntegerField(source="sum_video_views")
+    clicks = IntegerField(source="sum_clicks")
+    cost = FloatField(source="sum_cost")
 
     class Meta:
         model = None
@@ -43,11 +48,15 @@ class TargetTableSerializer(ModelSerializer):
             "cannot_roll_over",
             "rate_type",
             "contracted_rate",
+            "impressions",
+            "video_views",
+            "clicks",
+            "cost",
         )
 
 
 class TargetTableTopicSerializer(TargetTableSerializer):
-    name = CharField(source="topic.name")
+    name = CharField(source="topic__name")
     type = ReadOnlyField(default="Topic")
 
     class Meta(TargetTableSerializer.Meta):

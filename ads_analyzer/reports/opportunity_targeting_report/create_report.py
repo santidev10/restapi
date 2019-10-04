@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 
 import xlsxwriter
+from django.db.models import Sum
 from itertools import chain
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -69,22 +70,40 @@ class OpportunityTargetingReportXLSXGenerator:
         ]
 
     def _add_target_sheet(self, wb, sheet_headers, opportunity_id, date_from, date_to):
-        topic_queryset = TopicStatistic.objects.filter(
-            ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
-            date__gte=date_from,
-            date__lte=date_to,
+        target_models = (
+            (TopicStatistic, ("topic_id", "topic__name"), TargetTableTopicSerializer),
+            (KeywordStatistic, ("keyword",), TargetTableKeywordSerializer),
         )
-        topic_serializer = TargetTableTopicSerializer(topic_queryset, many=True)
-
-        keyword_queryset = KeywordStatistic.objects.filter(
-            ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
-            date__gte=date_from,
-            date__lte=date_to,
+        values_shared = (
+            "ad_group__campaign__name",
+            "ad_group__name",
+            "ad_group__campaign__salesforce_placement__name",
+            "ad_group__campaign__salesforce_placement__start",
+            "ad_group__campaign__salesforce_placement__end",
+            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
+            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
+            "ad_group__campaign__salesforce_placement__goal_type_id",
+            "ad_group__campaign__salesforce_placement__ordered_rate",
         )
-        keyword_serializer = TargetTableKeywordSerializer(keyword_queryset, many=True)
 
-        data = chain(*[serializer.data for serializer
-                       in [topic_serializer, keyword_serializer]])
+        def get_serializer(model, group_by, serializer):
+            queryset = model.objects \
+                .filter(ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
+                        date__gte=date_from,
+                        date__lte=date_to, ) \
+                .values(*group_by, *values_shared) \
+                .order_by(*group_by) \
+                .annotate(sum_impressions=Sum("impressions"),
+                          sum_video_views=Sum("video_views"),
+                          sum_clicks=Sum("clicks"),
+                          sum_cost=Sum("cost"), )
+            return serializer(queryset, many=True)
+
+        serializers = [
+            get_serializer(*args)
+            for args in target_models
+        ]
+        data = chain(*[serializer.data for serializer in serializers])
 
         renderer = TargetSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
         renderer.render(data)
