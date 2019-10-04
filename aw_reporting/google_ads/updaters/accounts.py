@@ -19,7 +19,14 @@ class AccountUpdater(UpdateMixin):
     def __init__(self, mcc_account):
         self.mcc_account = mcc_account
         self.ga_service = None
-        self.existing_cid_accounts = set([int(_id) for _id in Account.objects.filter(can_manage_clients=False).values_list("id", flat=True)])
+        self.existing_cid_accounts = set()
+        # Ignore accounts that do not have valid Google Ads account ids
+        for cid_id in Account.objects.filter(can_manage_clients=False).values_list("id", flat=True):
+            try:
+                cid_id = int(cid_id)
+                self.existing_cid_accounts.add(cid_id)
+            except ValueError:
+                continue
 
     def update(self, client):
         self.ga_service = client.get_service("GoogleAdsService", version="v2")

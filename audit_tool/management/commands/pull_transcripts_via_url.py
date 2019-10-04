@@ -37,7 +37,7 @@ class Command(BaseCommand):
                 transcript_soup = self.get_video_soup(vid_id)
                 transcript_text = transcript_soup.text if transcript_soup else ""
                 if transcript_text != "":
-                    AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=transcript_soup)
+                    AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
                     transcripts_counter += 1
                 populate_video_custom_transcripts(vid_obj, [transcript_text], ['en'])
                 video_manager.upsert([vid_obj])

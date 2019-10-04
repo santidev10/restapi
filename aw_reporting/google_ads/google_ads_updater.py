@@ -9,6 +9,7 @@ from google.api_core.exceptions import InternalServerError
 from google.api_core.exceptions import GoogleAPIError
 from google.api_core.exceptions import RetryError
 from google.api_core.exceptions import ResourceExhausted
+from google.auth.exceptions import RefreshError
 
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
@@ -153,6 +154,12 @@ class GoogleAdsUpdater(object):
                 permission.can_read = False
                 permission.save()
                 continue
+
+            except RefreshError:
+                continue
+
+            except Exception as e:
+                logger.error(f"UNHANDLED Exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
 
             else:
                 return

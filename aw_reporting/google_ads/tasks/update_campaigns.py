@@ -29,6 +29,8 @@ LOCK_NAME = "update_campaigns"
 def setup_update_campaigns():
     start = time.time()
 
+    check_aw_connections()
+
     # Account update tasks
     mcc_ids = Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True)
     account_update_tasks = group_chorded([
@@ -43,16 +45,14 @@ def setup_update_campaigns():
     campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
     job = chain(
         lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
-        check_aw_connections.si(),
         account_update_tasks,
         campaign_update_tasks,
+        finalize_campaigns_update.si(start),
         unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
-        finalize_campaigns_update.si(start)
     )
     return job()
 
 
-@celery_app.task
 def check_aw_connections():
     # Update permissions
     if not settings.IS_TEST:
@@ -77,7 +77,13 @@ def setup_cid_update_tasks(mcc_id):
     Create task signatures for all cid accounts under mcc_id
     :return: list -> Celery update tasks
     """
-    cid_accounts = Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True)
+    cid_accounts = []
+    for account in Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True):
+        try:
+            int(account.id)
+            cid_accounts.append(account)
+        except ValueError:
+            continue
     task_signatures = [
         cid_campaign_update.si(mcc_id, cid_account.id, index + 1, len(cid_accounts)).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
         for index, cid_account in enumerate(cid_accounts, start=0)
