@@ -51,6 +51,7 @@ class TargetTableSerializer(ModelSerializer):
     view_rate = SerializerMethodField()
     days_remaining = SerializerMethodField()
     avg_rate = SerializerMethodField()
+    revenue = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -70,17 +71,34 @@ class TargetTableSerializer(ModelSerializer):
         return (placement_end - today).days
 
     def get_avg_rate(self, obj):
-        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
         cost = obj["sum_cost"]
-        units = 0
-        if goal_type_id == SalesForceGoalType.CPV:
-            units = obj["sum_video_views"]
-        if goal_type_id == SalesForceGoalType.CPM:
-            units = obj["sum_impressions"] / 1000
+        units = self._get_units(obj)
+        divider = self._get_units_divider(obj)
         try:
-            return cost / units
+            return cost / (units / divider)
         except ZeroDivisionError:
             return None
+
+    def get_revenue(self, obj):
+        units = self._get_units(obj)
+        rate = obj["ad_group__campaign__salesforce_placement__ordered_rate"]
+        divider = self._get_units_divider(obj)
+        return units * rate / divider
+
+    def _get_units(self, obj):
+        units = 0
+        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
+        if goal_type_id == SalesForceGoalType.CPV:
+            units = obj["sum_video_views"]
+        elif goal_type_id == SalesForceGoalType.CPM:
+            units = obj["sum_impressions"]
+        return units
+
+    def _get_units_divider(self, obj):
+        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
+        return (1000
+                if goal_type_id == SalesForceGoalType.CPM
+                else 1)
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -123,6 +141,7 @@ class TargetTableSerializer(ModelSerializer):
             "view_rate",
             "days_remaining",
             "avg_rate",
+            "revenue",
         )
         group_by = ("id",)
         values_shared = (

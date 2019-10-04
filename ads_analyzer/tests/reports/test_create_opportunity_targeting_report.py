@@ -404,9 +404,41 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_cost_delivery_percentage(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
-    def test_revenue(self):
-        raise NotImplementedError
+    def test_revenue_cpv(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPV
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              video_views=34)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertAlmostEqual(
+            stats.video_views * self.placement.ordered_rate,
+            item[columns.revenue]
+        )
+
+    def test_revenue_cpm(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPM
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              impressions=3400)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertAlmostEqual(
+            stats.impressions * self.placement.ordered_rate / 1000,
+            item[columns.revenue]
+        )
 
     @skip("Not implemented")
     def test_profit(self):
