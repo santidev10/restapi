@@ -1,6 +1,7 @@
 from datetime import date
 from datetime import timedelta
 from io import BytesIO
+from unittest import skip
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
@@ -18,6 +19,8 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
@@ -207,6 +210,8 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         self.campaign = Campaign.objects.create(salesforce_placement=self.placement, name="Test Campaign")
         self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup")
 
+
+class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTargetingReportTargetTestCase):
     def test_headers(self):
         any_date = date(2019, 1, 1)
         self.act(self.opportunity.id, any_date, any_date)
@@ -266,3 +271,132 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         columns = self.columns
         self.assertEqual(keyword, item[columns.target])
         self.assertEqual("Keyword", item[columns.type])
+
+    @skip("Not implemented")
+    def test_interests_in_marketing_general_data(self):
+        raise NotImplemented
+
+    @skip("Not implemented")
+    def test_interests_affinity_general_data(self):
+        raise NotImplemented
+
+    @skip("Not implemented")
+    def test_interests_caa_general_data(self):
+        raise NotImplemented
+
+    @skip("Not implemented")
+    def test_interests_custom_intent_general_data(self):
+        raise NotImplemented
+
+    @skip("Not implemented")
+    def test_interests_detailed_demographic_general_data(self):
+        raise NotImplemented
+
+    @skip("Not implemented")
+    def test_channel_general_data(self):
+        any_date = date(2019, 1, 1)
+        channel_id = next(str_iterator)
+        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(channel_id, item[columns.target])
+        self.assertEqual("Channel", item[columns.type])
+
+    @skip("Not implemented")
+    def test_channel_general_data_title(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_video_general_data(self):
+        any_date = date(2019, 1, 1)
+        video_id = next(str_iterator)
+        YTVideoStatistic.objects.create(yt_id=video_id, ad_group=self.ad_group)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(video_id, item[columns.target])
+        self.assertEqual("Video", item[columns.type])
+
+    @skip("Not implemented")
+    def test_video_general_data_title(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_general_stats(self):
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              impressions=1000, video_views=200, cost=1.02, clicks=30)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(stats.impressions, item[columns.impressions])
+        self.assertEqual(stats.video_views, item[columns.views])
+        self.assertEqual(stats.cost, item[columns.cost])
+        self.assertEqual(stats.clics, item[columns.clicks])
+
+    @skip("Not implemented")
+    def test_days_remaining(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_margin_cap(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_max_bid(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_average_rate(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_cost_delivery_percentage(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_revenue(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_profit(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_margin(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_video_played_to_100(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_view_rate(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_ctr(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_ordering(self):
+        raise NotImplementedError
+
+    @skip("Not implemented")
+    def test_general_stats_aggregates(self):
+        raise NotImplementedError
+
+
+class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):
+    pass
