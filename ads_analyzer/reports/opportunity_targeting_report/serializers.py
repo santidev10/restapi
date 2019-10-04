@@ -52,6 +52,7 @@ class TargetTableSerializer(ModelSerializer):
     days_remaining = SerializerMethodField()
     avg_rate = SerializerMethodField()
     revenue = SerializerMethodField()
+    profit = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -85,9 +86,14 @@ class TargetTableSerializer(ModelSerializer):
         divider = self._get_units_divider(obj)
         return units * rate / divider
 
+    def get_profit(self, obj):
+        revenue = self.get_revenue(obj)
+        cost = obj["sum_cost"]
+        return revenue - cost
+
     def _get_units(self, obj):
+        goal_type_id = self._get_goal_type_id(obj)
         units = 0
-        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
         if goal_type_id == SalesForceGoalType.CPV:
             units = obj["sum_video_views"]
         elif goal_type_id == SalesForceGoalType.CPM:
@@ -95,10 +101,13 @@ class TargetTableSerializer(ModelSerializer):
         return units
 
     def _get_units_divider(self, obj):
-        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
+        goal_type_id = self._get_goal_type_id(obj)
         return (1000
                 if goal_type_id == SalesForceGoalType.CPM
                 else 1)
+
+    def _get_goal_type_id(self, obj):
+        return obj["ad_group__campaign__salesforce_placement__goal_type_id"]
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -142,6 +151,7 @@ class TargetTableSerializer(ModelSerializer):
             "days_remaining",
             "avg_rate",
             "revenue",
+            "profit",
         )
         group_by = ("id",)
         values_shared = (
