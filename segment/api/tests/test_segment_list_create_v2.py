@@ -251,26 +251,47 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(len(data["items"][0]["statistics"]["top_three_items"]), 3)
 
     def test_channel_segment_statistics_fields(self):
-        self.create_admin_user()
+        user = self.create_test_user()
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(), segment_type=1,
+            list_type=0, title="channel", owner=user,
+            statistics={
+                "items_count": 0,
+                "audited_videos": 0,
+                "subscribers": 0,
+                "dislikes": 0,
+                "likes": 0,
+                "video_view_rate": 0,
+                "ctr": 0,
+                "ctr_v": 0,
+                "average_cpv": 0,
+                "average_cpm": 0,
+                "views": 0,
+            }
         )
-        segment.details = segment.calculate_statistics()
-        segment.save()
-        segment.refresh_from_db()
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
         response = self.client.get(self._get_url("channel"))
         data = response.data["items"][0]
-        self.assertEqual(set(data["statistics"].keys()), GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL)
+        self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
 
     def test_video_segment_statistics_fields(self):
-        self.create_admin_user()
-        segment = PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(), is_master=False,
-            category=PersistentSegmentCategory.WHITELIST,
+        user = self.create_test_user()
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=0,
+            list_type=0, title="video", owner=user,
+            statistics={
+                "items_count": 0,
+                "dislikes": 0,
+                "likes": 0,
+                "video_view_rate": 0,
+                "ctr": 0,
+                "ctr_v": 0,
+                "average_cpv": 0,
+                "average_cpm": 0,
+                "views": 0,
+            }
         )
-        segment.details = segment.calculate_statistics()
-        segment.save()
-        segment.refresh_from_db()
-        response = self.client.get(self._get_url("channel"))
+        CustomSegmentFileUpload.objects.create(segment=segment, query={})
+        response = self.client.get(self._get_url("video"))
         data = response.data["items"][0]
-        self.assertEqual(set(data["statistics"].keys()), GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO)
+        self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO))

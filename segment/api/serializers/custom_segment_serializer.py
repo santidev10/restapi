@@ -75,7 +75,7 @@ class CustomSegmentSerializer(ModelSerializer):
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         data["list_type"] = self.map_to_str(data["list_type"], item_type="list")
         data["download_url"] = instance.export.download_url
-        data["pending"] = True if data["statistics"].get("adw_data") is None else False
+        data["pending"] = False if data["statistics"] else True
         if not data["statistics"]:
             data["statistics"] = {
                 "top_three_items": [{

@@ -16,14 +16,13 @@ from django.db.models import IntegerField
 from django.db.models import UUIDField
 from django.utils import timezone
 
-from audit_tool.models import AuditCategory
-from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
+from audit_tool.models import AuditCategory
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
-from segment.models.utils.export_context_manager import ExportContextManager
 from segment.models.utils.segment_exporter import SegmentExporter
+from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
@@ -136,33 +135,14 @@ class BasePersistentSegment(Timestampable):
         return body
 
     def get_export_file(self):
-        key = self.get_s3_key(from_db=True)
-        export_content = self.s3_exporter.get_s3_export_content(key, get_key=False).iter_chunks()
+        try:
+            key = self.get_s3_key(from_db=True)
+            s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
+        except Exception as e:
+            raise e
+        self.export_last_modified = s3_object.get("LastModified")
+        export_content = s3_object.iter_chunks()
         return export_content
-
-    # def get_segment_items_query(self):
-    #     query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
-    #     return query
-
-    # def extract_aggregations(self, aggregation_result_dict):
-    #     """
-    #     Extract value fields of aggregation results
-    #     :param aggregation_result_dict: { "agg_name" : { value: "a_value" } }
-    #     :return:
-    #     """
-    #     results = {}
-    #     for key, value in aggregation_result_dict.items():
-    #         results[key] = value["value"]
-    #     return results
-    #
-    # def remove_all_from_segment(self):
-    #     """
-    #     Remove all references to segment uuid from Elasticsearch
-    #     :return:
-    #     """
-    #     es_manager = self.get_es_manager()
-    #     query = self.get_segment_items_query()
-    #     es_manager.remove_from_segment(query, self.uuid)
 
 
 class BasePersistentSegmentRelated(Timestampable):

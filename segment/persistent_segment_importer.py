@@ -84,7 +84,6 @@ class PersistentSegmentImporter(object):
 
     def run(self):
         # Add item to segment
-        segment_uuid = self.segment.uuid
         self.segment.add_to_segment(doc_ids=self.youtube_ids)
 
         exported = False
@@ -98,7 +97,8 @@ class PersistentSegmentImporter(object):
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export
-                SegmentListGenerator.export_to_s3(self.segment)
+                self.segment.details = self.segment.calculate_statistics()
+                self.segment.export_file()
                 exported = True
                 break
             else:

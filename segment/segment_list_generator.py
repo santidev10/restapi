@@ -70,16 +70,15 @@ class SegmentListGenerator(object):
             logger.error(f"Processing audit category: id: {category.id}, name: {category.category_display}")
             if category.category_display not in self.processed_categories:
                 self._generate_channel_whitelist(category)
-                break
-        #         self._generate_video_whitelist(category)
-        #         self.processed_categories.add(category.category_display)
-        #
-        # logger.error("Processing master whitelists and blacklists")
-        # self._generate_master_channel_blacklist()
-        # self._generate_master_channel_whitelist()
-        #
-        # self._generate_master_video_blacklist()
-        # self._generate_master_video_whitelist()
+                self._generate_video_whitelist(category)
+                self.processed_categories.add(category.category_display)
+
+        logger.error("Processing master whitelists and blacklists")
+        self._generate_master_channel_blacklist()
+        self._generate_master_channel_whitelist()
+
+        self._generate_master_video_blacklist()
+        self._generate_master_video_whitelist()
 
     def generate_custom_lists(self):
         """
