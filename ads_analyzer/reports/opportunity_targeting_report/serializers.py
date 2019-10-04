@@ -1,5 +1,8 @@
+from django.db.models import Case
+from django.db.models import F
 from django.db.models import QuerySet
 from django.db.models import Sum
+from django.db.models import When
 from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
@@ -12,7 +15,9 @@ from rest_framework.serializers import ModelSerializer
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import get_ctr
+from aw_reporting.models import get_video_view_rate
 from aw_reporting.models import goal_type_str
+from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 __all__ = [
     "TargetTableTopicSerializer",
@@ -43,11 +48,18 @@ class TargetTableSerializer(ModelSerializer):
     clicks = IntegerField(source="sum_clicks")
     cost = FloatField(source="sum_cost")
     ctr = SerializerMethodField()
+    view_rate = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
             impressions=obj["sum_impressions"],
             clicks=obj["sum_clicks"],
+        )
+
+    def get_view_rate(self, obj):
+        return get_video_view_rate(
+            video_impressions=obj["sum_video_impressions"],
+            video_views=obj["sum_video_views"],
         )
 
     def __new__(cls, *args, **kwargs):
@@ -63,7 +75,11 @@ class TargetTableSerializer(ModelSerializer):
             .annotate(sum_impressions=Sum("impressions"),
                       sum_video_views=Sum("video_views"),
                       sum_clicks=Sum("clicks"),
-                      sum_cost=Sum("cost"), )
+                      sum_cost=Sum("cost"),
+                      sum_video_impressions=Sum(Case(When(
+                          ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                          then=F("impressions")
+                      ))), )
 
     class Meta:
         model = None
@@ -84,6 +100,7 @@ class TargetTableSerializer(ModelSerializer):
             "clicks",
             "cost",
             "ctr",
+            "view_rate",
         )
         group_by = ("id",)
         values_shared = (

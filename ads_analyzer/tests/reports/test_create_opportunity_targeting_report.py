@@ -380,9 +380,35 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_video_played_to_100(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
-    def test_view_rate(self):
-        raise NotImplementedError
+    def test_view_rate_cpv(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPV
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              impressions=200, video_views=30)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertAlmostEqual(stats.video_views / stats.impressions, item[columns.view_rate])
+
+    def test_view_rate_cpm(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPM
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                      impressions=200, clicks=30)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(None, item[columns.view_rate])
 
     def test_ctr(self):
         any_date = date(2019, 1, 1)
