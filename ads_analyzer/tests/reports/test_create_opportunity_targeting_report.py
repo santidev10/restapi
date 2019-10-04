@@ -202,7 +202,7 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         any_date = date(2019, 1, 1)
         pl_start, pl_end = any_date - timedelta(days=1), any_date + timedelta(days=1)
         self.placement = OpPlacement.objects.create(opportunity=self.opportunity, name="Test Placement",
-                                                    goal_type_id=SalesForceGoalType.CPV,
+                                                    goal_type_id=SalesForceGoalType.CPV, ordered_rate=1.23,
                                                     start=pl_start, end=pl_end)
         self.campaign = Campaign.objects.create(salesforce_placement=self.placement, name="Test Campaign")
         self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup")
@@ -237,6 +237,7 @@ class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingR
         self.assertEqual(str(self.placement.end), item[columns.placement_end])
         self.assertEqual(self.opportunity.cannot_roll_over, item[columns.cannot_roll_over])
         self.assertEqual(self.placement.goal_type, item[columns.goal_type])
+        self.assertEqual(self.placement.ordered_rate, item[columns.contracted_rate])
 
     def test_topic_general_data(self):
         any_date = date(2019, 1, 1)

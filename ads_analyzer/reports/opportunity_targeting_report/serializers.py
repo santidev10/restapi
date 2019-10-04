@@ -1,6 +1,7 @@
 from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
+from rest_framework.fields import FloatField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
 
@@ -26,6 +27,7 @@ class TargetTableSerializer(ModelSerializer):
     margin_cap = ReadOnlyField(default="N/A")
     cannot_roll_over = BooleanField(source="ad_group.campaign.salesforce_placement.opportunity.cannot_roll_over")
     rate_type = GoalTypeField(source="ad_group.campaign.salesforce_placement.goal_type_id")
+    contracted_rate = FloatField(source="ad_group.campaign.salesforce_placement.ordered_rate")
 
     class Meta:
         model = None
@@ -40,6 +42,7 @@ class TargetTableSerializer(ModelSerializer):
             "margin_cap",
             "cannot_roll_over",
             "rate_type",
+            "contracted_rate",
         )
 
 
