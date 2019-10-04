@@ -368,9 +368,37 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_max_bid(self):
         raise NotImplementedError
 
-    @skip("Not implemented")
-    def test_average_rate(self):
-        raise NotImplementedError
+    def test_average_rate_cpv(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPV
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              cost=23, video_views=34)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        expected_rate = stats.cost / stats.video_views
+        self.assertAlmostEqual(expected_rate, item[columns.avg_rate])
+
+    def test_average_rate_cpm(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPM
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              cost=23, impressions=34)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        expected_rate = stats.cost / (stats.impressions / 1000)
+        self.assertAlmostEqual(expected_rate, item[columns.avg_rate])
 
     @skip("Not implemented")
     def test_cost_delivery_percentage(self):

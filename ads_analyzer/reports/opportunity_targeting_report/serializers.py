@@ -50,6 +50,7 @@ class TargetTableSerializer(ModelSerializer):
     ctr = SerializerMethodField()
     view_rate = SerializerMethodField()
     days_remaining = SerializerMethodField()
+    avg_rate = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -67,6 +68,19 @@ class TargetTableSerializer(ModelSerializer):
         placement_end = obj["ad_group__campaign__salesforce_placement__end"]
         today = self.context["now"].date()
         return (placement_end - today).days
+
+    def get_avg_rate(self, obj):
+        goal_type_id = obj["ad_group__campaign__salesforce_placement__goal_type_id"]
+        cost = obj["sum_cost"]
+        units = 0
+        if goal_type_id == SalesForceGoalType.CPV:
+            units = obj["sum_video_views"]
+        if goal_type_id == SalesForceGoalType.CPM:
+            units = obj["sum_impressions"] / 1000
+        try:
+            return cost / units
+        except ZeroDivisionError:
+            return None
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -108,6 +122,7 @@ class TargetTableSerializer(ModelSerializer):
             "ctr",
             "view_rate",
             "days_remaining",
+            "avg_rate",
         )
         group_by = ("id",)
         values_shared = (
