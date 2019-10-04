@@ -1,3 +1,5 @@
+from django.db.models import QuerySet
+from django.db.models import Sum
 from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
@@ -9,6 +11,11 @@ from rest_framework.serializers import ModelSerializer
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import goal_type_str
+
+__all__ = [
+    "TargetTableTopicSerializer",
+    "TargetTableKeywordSerializer",
+]
 
 
 class GoalTypeField(CharField):
@@ -34,6 +41,21 @@ class TargetTableSerializer(ModelSerializer):
     clicks = IntegerField(source="sum_clicks")
     cost = FloatField(source="sum_cost")
 
+    def __new__(cls, *args, **kwargs):
+        if args and isinstance(args[0], QuerySet):
+            queryset = cls._build_queryset(args[0])
+            args = (queryset,) + args[1:]
+        return super().__new__(cls, *args, **kwargs)
+
+    @classmethod
+    def _build_queryset(cls, queryset):
+        return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
+            .order_by(*cls.Meta.group_by) \
+            .annotate(sum_impressions=Sum("impressions"),
+                      sum_video_views=Sum("video_views"),
+                      sum_clicks=Sum("clicks"),
+                      sum_cost=Sum("cost"), )
+
     class Meta:
         model = None
         fields = (
@@ -53,6 +75,18 @@ class TargetTableSerializer(ModelSerializer):
             "clicks",
             "cost",
         )
+        group_by = ("id", )
+        values_shared = (
+            "ad_group__campaign__name",
+            "ad_group__name",
+            "ad_group__campaign__salesforce_placement__name",
+            "ad_group__campaign__salesforce_placement__start",
+            "ad_group__campaign__salesforce_placement__end",
+            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
+            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
+            "ad_group__campaign__salesforce_placement__goal_type_id",
+            "ad_group__campaign__salesforce_placement__ordered_rate",
+        )
 
 
 class TargetTableTopicSerializer(TargetTableSerializer):
@@ -61,6 +95,7 @@ class TargetTableTopicSerializer(TargetTableSerializer):
 
     class Meta(TargetTableSerializer.Meta):
         model = TopicStatistic
+        group_by = ("topic_id", "topic__name")
 
 
 class TargetTableKeywordSerializer(TargetTableSerializer):
@@ -69,3 +104,4 @@ class TargetTableKeywordSerializer(TargetTableSerializer):
 
     class Meta(TargetTableSerializer.Meta):
         model = KeywordStatistic
+        group_by = ("keyword",)

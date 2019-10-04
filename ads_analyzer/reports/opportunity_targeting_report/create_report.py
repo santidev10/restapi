@@ -2,7 +2,6 @@ import logging
 from io import BytesIO
 
 import xlsxwriter
-from django.db.models import Sum
 from itertools import chain
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -71,32 +70,18 @@ class OpportunityTargetingReportXLSXGenerator:
 
     def _add_target_sheet(self, wb, sheet_headers, opportunity_id, date_from, date_to):
         target_models = (
-            (TopicStatistic, ("topic_id", "topic__name"), TargetTableTopicSerializer),
-            (KeywordStatistic, ("keyword",), TargetTableKeywordSerializer),
-        )
-        values_shared = (
-            "ad_group__campaign__name",
-            "ad_group__name",
-            "ad_group__campaign__salesforce_placement__name",
-            "ad_group__campaign__salesforce_placement__start",
-            "ad_group__campaign__salesforce_placement__end",
-            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
-            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
-            "ad_group__campaign__salesforce_placement__goal_type_id",
-            "ad_group__campaign__salesforce_placement__ordered_rate",
+            (TopicStatistic, TargetTableTopicSerializer),
+            (KeywordStatistic, TargetTableKeywordSerializer),
         )
 
-        def get_serializer(model, group_by, serializer):
+        def get_serializer(model, serializer):
             queryset = model.objects \
-                .filter(ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
-                        date__gte=date_from,
-                        date__lte=date_to, ) \
-                .values(*group_by, *values_shared) \
-                .order_by(*group_by) \
-                .annotate(sum_impressions=Sum("impressions"),
-                          sum_video_views=Sum("video_views"),
-                          sum_clicks=Sum("clicks"),
-                          sum_cost=Sum("cost"), )
+                .filter(
+                ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
+                date__gte=date_from,
+                date__lte=date_to,
+            )
+
             return serializer(queryset, many=True)
 
         serializers = [
