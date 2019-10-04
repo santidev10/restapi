@@ -76,7 +76,7 @@ class SegmentMixin(object):
         search = search.query(query)
         if sort:
             search = search.sort(sort)
-        search = search.params(preserve_order=True)
+            search = search.params(preserve_order=True)
         return search
 
     def retry_on_conflict(self, method, *args, retry_amount=5, sleep_coeff=2, **kwargs):

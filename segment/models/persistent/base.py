@@ -64,13 +64,12 @@ class BasePersistentSegment(Timestampable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.s3_exporter = SegmentExporter()
-        self.s3_exporter.set_bucket(settings.AMAZON_S3_BUCKET_NAME)
+        self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_BUCKET_NAME)
 
-    def export_file(self):
+    def export_file(self, queryset=None):
         now = timezone.now()
         s3_key = self.get_s3_key(datetime=now)
-        self.s3_exporter.export_to_s3(self, s3_key)
+        self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
         PersistentSegmentFileUpload.objects.create(segment_uuid=self.uuid, filename=s3_key, created_at=now)
 
     @property
@@ -140,7 +139,6 @@ class BasePersistentSegment(Timestampable):
             s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
         except Exception as e:
             raise e
-        self.export_last_modified = s3_object.get("LastModified")
         export_content = s3_object.iter_chunks()
         return export_content
 

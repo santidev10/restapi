@@ -51,8 +51,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.s3_exporter = SegmentExporter()
-        self.s3_exporter.set_bucket(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
 
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
@@ -100,7 +99,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         super().delete(*args, **kwargs)
         return self
 
-    def export_file(self, s3_key=None, updating=False):
+    def export_file(self, s3_key=None, updating=False, queryset=None):
         now = timezone.now()
         export = self.export
         if s3_key is None:
@@ -109,7 +108,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             export.updated_at = now
         else:
             export.completed_at = now
-        self.s3_exporter.export_to_s3(self, s3_key)
+        self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
         download_url = self.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         export.download_url = download_url
         export.save()

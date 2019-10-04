@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from django.utils import timezone
-from elasticsearch_dsl.search import Q
+from django.db.models import Q
 import uuid
 
 from administration.notifications import generate_html_email
@@ -32,11 +32,8 @@ class SegmentListGenerator(object):
     MINIMUM_SUBSCRIBERS = 1000
     MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 89
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
-    # WHITELIST_SIZE = 100000
-    # BLACKLIST_SIZE = 100000
-    # REMOVEME
-    WHITELIST_SIZE = 300
-    BLACKLIST_SIZE = 300
+    WHITELIST_SIZE = 100000
+    BLACKLIST_SIZE = 100000
 
     CUSTOM_CHANNEL_SIZE = 20000
     CUSTOM_VIDEO_SIZE = 20000
@@ -271,21 +268,22 @@ class SegmentListGenerator(object):
         Finalize operations for CustomSegment objects (Custom Target Lists)
         """
         segment.statistics = segment.calculate_statistics(items=all_items)
-        segment.export_file(updating=updating)
+        segment.export_file(updating=updating, queryset=all_items)
         segment.save()
         export.refresh_from_db()
         subject = "Custom Target List: {}".format(segment.title)
         text_header = "Your Custom Target List {} is ready".format(segment.title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
         self.send_notification_email(segment.owner.email, subject, text_header, text_content)
-        logger.error(f"Successfully generated export for custom list: id: {segment.id}, title: {segment.title}")
+        message = "updated" if updating else "generated"
+        logger.error(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
     def persistent_segment_finalizer(self, segment, all_items):
         """
         Finalize operations for PersistentSegment objects (Brand Suitable Target lists)
         """
-        segment.export_file()
         segment.details = segment.calculate_statistics(items=all_items)
+        segment.export_file(queryset=all_items)
         segment.save()
         logger.error(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
 
