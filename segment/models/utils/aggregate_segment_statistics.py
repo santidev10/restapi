@@ -2,8 +2,6 @@
 Segment models utils module
 """
 from django.db.models import F
-from utils.datetime import now_in_default_tz
-from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_update
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
