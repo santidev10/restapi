@@ -7,8 +7,8 @@ from aw_reporting.models import Opportunity
 
 class OpportunityTargetingReport(models.Model):
     opportunity = models.ForeignKey(Opportunity, null=False, on_delete=CASCADE)
-    date_from = models.DateField(null=False)
-    date_to = models.DateField(null=False)
+    date_from = models.DateField(null=True)
+    date_to = models.DateField(null=True)
     external_link = models.URLField(default=None, null=True)
     recipients = models.ManyToManyField(get_user_model())
     created_at = models.DateTimeField(auto_now_add=True, null=True)

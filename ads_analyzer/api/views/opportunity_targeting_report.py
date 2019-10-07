@@ -13,8 +13,8 @@ from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer i
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
     OpportunityTargetReportPayloadSerializer
 from ads_analyzer.models import OpportunityTargetingReport
-from aw_reporting.models import Opportunity
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.datetime import now_in_default_tz
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -77,7 +77,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
 
     @staticmethod
     def get_expiration_datetime():
-        return datetime.now() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
+        return now_in_default_tz() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
 
 
 
