@@ -67,7 +67,6 @@ TITLE = "title"
 DESCRIPTION = "description"
 TAGS = "tags"
 TRANSCRIPT = "transcript"
-CUSTOM_TRANSCRIPT = "custom_transcript"
 
 UNAVAILABLE_MESSAGE = "Brand Safety data unavailable."
 CHANNEL_LIST_API_VIEW = "ChannelListApiView"
