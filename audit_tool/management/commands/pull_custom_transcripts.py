@@ -32,7 +32,7 @@ class Command(BaseCommand):
             for vid_id in vid_ids:
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = self.get_video_soup(vid_id)
-                transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+                transcript_text = replace_apostrophes(transcript_soup.text).replace("\n", " ") if transcript_soup else ""
                 if transcript_text != "":
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
                     transcripts_counter += 1
@@ -42,12 +42,6 @@ class Command(BaseCommand):
                 logger.info("Parsed video with id: {}".format(vid_id))
                 logger.info("Number of videos parsed: {}".format(counter))
                 logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
-                print("Parsed video with id: {}".format(vid_id))
-                print("Number of videos parsed: {}".format(counter))
-                print("Number of transcripts retrieved: {}".format(transcripts_counter))
-                delay = 0
-                logger.info("Sleeping for {} seconds.".format(delay))
-                time.sleep(delay)
 
     def get_video_soup(self, vid_id):
         transcript_url = "http://video.google.com/timedtext?lang=en&v="
