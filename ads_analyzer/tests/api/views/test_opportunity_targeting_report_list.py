@@ -1,4 +1,6 @@
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -75,6 +77,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_from=date_from,
             date_to=date_to,
             external_link="http://example.com/report?download=1",
+            expire_at=datetime.now().date() + timedelta(days=1)
         )
 
         response = self._request()

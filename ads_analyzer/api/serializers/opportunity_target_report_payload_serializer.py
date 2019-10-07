@@ -15,6 +15,7 @@ class OpportunityTargetReportPayloadSerializer(ModelSerializer):
             "opportunity",
             "date_from",
             "date_to",
+            "expire_at"
         )
 
 

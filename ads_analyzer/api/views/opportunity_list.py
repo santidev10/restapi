@@ -14,5 +14,5 @@ class OpportunityListAPIView(ListAPIView):
             IsAdminUser,
         ),
     )
-    queryset = Opportunity.objects
+    queryset = Opportunity.objects.have_active_campaigns()
     serializer_class = OpportunitySerializer

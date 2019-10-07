@@ -1,5 +1,7 @@
 import json
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from unittest.mock import ANY
 
 from rest_framework.status import HTTP_200_OK
@@ -144,7 +146,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=None
+            external_link=None,
+            expire_at=datetime.now().date() + timedelta(days=1)
         )
 
         response = self._request(dict(
@@ -169,7 +172,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=external_link
+            external_link=external_link,
+            expire_at=datetime.now().date() + timedelta(days=1)
         )
 
         response = self._request(dict(
@@ -183,6 +187,33 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 status="ready",
                 report_link=external_link,
                 message=ANY,
+            ),
+            response.json()
+        )
+
+    def test_report_expire(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator))
+        date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
+        external_link = "http://some_url.com"
+
+        OpportunityTargetingReport.objects.create(
+            opportunity=opportunity,
+            date_from=date_from,
+            date_to=date_to,
+            external_link=external_link,
+            expire_at=datetime.now().date()
+        )
+
+        response = self._request(dict(
+            opportunity=opportunity.id,
+            date_from=date_from,
+            date_to=date_to,
+        ))
+
+        self.assertEqual(
+            dict(
+                status="created",
+                message="Processing.  You will receive an email when your export is ready.",
             ),
             response.json()
         )

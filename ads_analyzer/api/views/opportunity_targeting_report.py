@@ -1,3 +1,5 @@
+from datetime import datetime
+from datetime import timedelta
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -24,11 +26,17 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
             IsAdminUser,
         ),
     )
-    queryset = OpportunityTargetingReport.objects.all()
+    queryset = OpportunityTargetingReport.objects.filter(expire_at__gt=datetime.now().date())
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
+    report_expire_timedelta_days = 1
+
+    @property
+    def report_expire_at(self):
+        return datetime.now().date() + timedelta(days=self.report_expire_timedelta_days)
 
     def post(self, request, *args, **kwargs):
+        request.data.update(expire_at=self.report_expire_at)
         serializer = OpportunityTargetReportPayloadSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -39,7 +47,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
 
         if report.external_link:
             return Response(data=dict(
-                message="Report is ready. Please download it by link beow",
+                message="Report is ready. Please download it by link below",
                 report_link=report.external_link,
                 status="ready",
             ))
