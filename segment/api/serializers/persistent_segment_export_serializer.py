@@ -10,7 +10,8 @@ from brand_safety.languages import LANGUAGES
 
 
 class PersistentSegmentVideoExportSerializer(Serializer):
-    # Fields map to segment export rows
+    columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes", "Views", "Overall_Score")
+
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)
     Language = SerializerMethodField("get_language")
@@ -33,6 +34,8 @@ class PersistentSegmentVideoExportSerializer(Serializer):
 
 
 class PersistentSegmentChannelExportSerializer(Serializer):
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score")
+
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)

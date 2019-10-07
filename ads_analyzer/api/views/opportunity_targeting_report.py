@@ -1,3 +1,8 @@
+from datetime import datetime
+from datetime import timedelta
+
+from django.conf import settings
+
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -11,6 +16,7 @@ from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from utils.api_paginator import CustomPageNumberPaginator
+from utils.datetime import now_in_default_tz
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
@@ -26,16 +32,37 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
             IsAdminUser,
         ),
     )
-    queryset = OpportunityTargetingReport.objects.all().order_by("-created_at")
+
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
 
+    def get_queryset(self):
+        return OpportunityTargetingReport.objects.filter(created_at__gte=self.get_expiration_datetime()) \
+            .order_by("-created_at")
+
     def post(self, request, *args, **kwargs):
+        opportunity_id = request.data.get("opportunity")
+        date_from = request.data.get("date_from")
+        date_to = request.data.get("date_to")
+
         serializer = OpportunityTargetReportPayloadSerializer(data=request.data)
+
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=HTTP_400_BAD_REQUEST)
-        report = serializer.save()
+
+        queryset = OpportunityTargetingReport.objects.filter(
+            opportunity_id=opportunity_id,
+            date_from=date_from,
+            date_to=date_to,
+            created_at__gte=self.get_expiration_datetime()
+        )
+        if not queryset.exists():
+            report = serializer.save()
+        else:
+            report = queryset.first()
+
         user = request.user
+
         if not report.recipients.filter(pk=user.pk).exists():
             report.recipients.add(user)
 
@@ -54,3 +81,11 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
             message="Report failed.",
             status="failed",
         ))
+
+    @staticmethod
+    def get_expiration_datetime():
+        return now_in_default_tz() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
+
+
+
+

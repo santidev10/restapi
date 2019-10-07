@@ -18,7 +18,7 @@ class S3ExportApiView(APIViewMixin):
     generate_export_task = None
 
     def post(self, request):
-        query_params = request.query_params.dict()
+        query_params = self._get_query_params(request)
         query_params.update(request.data)
 
         export_name = self.generate_report_hash(query_params, request.user.pk)
@@ -54,6 +54,9 @@ class S3ExportApiView(APIViewMixin):
         filename = self.get_filename(export_name)
         response["Content-Disposition"] = "attachment; filename={}".format(filename)
         return response
+
+    def _get_query_params(self, request):
+        return request.query_params.dict()
 
     @staticmethod
     def get_filename(name):

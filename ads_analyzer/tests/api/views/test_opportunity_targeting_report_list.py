@@ -78,7 +78,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 opportunity=opportunity,
                 date_from=date_from,
                 date_to=date_to,
-                s3_file_key="example/report",
+                s3_file_key="example/report"
             )
 
         response = self._request()

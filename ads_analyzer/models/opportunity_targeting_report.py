@@ -16,18 +16,13 @@ class ReportStatus(ExtendedEnum):
 
 class OpportunityTargetingReport(models.Model):
     opportunity = models.ForeignKey(Opportunity, null=False, on_delete=CASCADE)
-    date_from = models.DateField(null=False)
-    date_to = models.DateField(null=False)
+    date_from = models.DateField(null=True)
+    date_to = models.DateField(null=True)
     s3_file_key = models.CharField(max_length=128, default=None, null=True)
     status = models.CharField(max_length=32, default=ReportStatus.IN_PROGRESS.value,
                               null=False, choices=ReportStatus.choices())
     recipients = models.ManyToManyField(get_user_model())
     created_at = models.DateTimeField(auto_now_add=True, null=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["opportunity", "date_from", "date_to"], name="unique_id_date_range")
-        ]
 
 
 @receiver(post_save, sender=OpportunityTargetingReport, dispatch_uid="save_opportunity_report_receiver")

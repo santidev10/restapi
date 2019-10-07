@@ -23,7 +23,7 @@ from video.constants import MATCH_PHRASE_FILTER
 from video.constants import RANGE_FILTER
 from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
-from userprofile.permissions import PermissionGroupNames
+from utils.permissions import BrandSafetyDataVisible
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -81,6 +81,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "analytics:missing",
         "cms.cms_title",
         "general_data.category",
+        "general_data.country",
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
@@ -115,7 +116,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
-                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS)
+                    Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
+                    Sections.CUSTOM_TRANSCRIPTS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
         flags = deepcopy(self.request.query_params).get("flags")
@@ -132,20 +134,10 @@ class VideoListApiView(APIViewMixin, ListAPIView):
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or self.request.user.has_perm("userprofile.scoring_brand_safety") or \
-                self.request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING):
+        if not BrandSafetyDataVisible().has_permission(self.request):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
-                self.request.query_params["brand_safety.overall_score"] = []
-                labels = self.request.query_params["brand_safety"].lower().split(",")
-                if "high risk" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("0,69")
-                if "risky" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("70,79")
-                if "low risk" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("80,89")
-                if "safe" in labels:
-                    self.request.query_params["brand_safety.overall_score"].append("90,100")
+                self.request.query_params["brand_safety"] = None
                 self.request.query_params._mutable = False
 
         if not self.request.user.has_perm("userprofile.video_list") and \

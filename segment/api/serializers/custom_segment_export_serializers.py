@@ -5,6 +5,8 @@ from brand_safety.languages import LANGUAGES
 
 
 class CustomSegmentChannelExportSerializer(Serializer):
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score")
+
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
     Language = SerializerMethodField("get_language")
@@ -25,6 +27,8 @@ class CustomSegmentChannelExportSerializer(Serializer):
 
 
 class CustomSegmentVideoExportSerializer(Serializer):
+    columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score")
+
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
     Language = SerializerMethodField("get_language")

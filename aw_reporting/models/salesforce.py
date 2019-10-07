@@ -7,6 +7,7 @@ from django.db.models import Count
 from django.db.models import Q
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
+from aw_reporting.models.ad_words.constants import CampaignStatus
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
@@ -129,8 +130,16 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
 
     def have_campaigns(self, user=None):
         return self.get_queryset_for_user(user=user) \
-            .annotate(campaign_count=Count("placements__adwords_campaigns")) \
+            .annotate(campaign_count=Count("placements__adwords_campaigns"))\
             .filter(campaign_count__gt=0)
+
+    def have_active_campaigns(self):
+        return self.get_queryset()\
+            .annotate(active_campaign_count=Count(
+                                         "placements__adwords_campaigns",
+                                         filter=Q(placements__adwords_campaigns__status=CampaignStatus.ELIGIBLE.value)
+                                     ))\
+            .filter(active_campaign_count__gt=0)
 
 
 class Opportunity(models.Model, DemoEntityModelMixin):

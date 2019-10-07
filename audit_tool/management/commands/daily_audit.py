@@ -12,7 +12,6 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.core.management import BaseCommand
 from django.db import transaction
-from django.http import QueryDict
 
 from audit_tool.adwords import AdwordsBlackList
 from audit_tool.adwords import AdwordsReports
@@ -24,7 +23,8 @@ from audit_tool.models import VideoAudit
 from audit_tool.youtube import Youtube
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Account
-from singledb.connector import SingleDatabaseApiConnector
+from es_components.managers.channel import ChannelManager
+from es_components.query_builder import QueryBuilder
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -179,12 +179,12 @@ class Command(BaseCommand):
     @staticmethod
     def load_preferred_channels() -> Set[str]:
         logger.info("Loading preferred channels list")
-        singledb = SingleDatabaseApiConnector()
-        response = singledb.execute_get_call(
-            "channels/",
-            QueryDict("fields=channel_id&preferred__term=1&size=10000")
-        )
-        preferred_channels = set([_['channel_id'] for _ in response['items']])
+
+        manager = ChannelManager()
+        items = manager.search(
+            filters=QueryBuilder().build().must().term().field("custom_properties.preferred").value(True).get()
+        ).execute().hits
+        preferred_channels = set([item.main.id for item in items])
         count = len(preferred_channels)
         logger.info("Loaded {} preferred channel(s)".format(count))
         return preferred_channels
@@ -193,7 +193,7 @@ class Command(BaseCommand):
     def parse_videos_by_keywords(videos: List[VideoDMO]) -> None:
         logger.info("Parsing {} video(s)".format(len(videos)))
         keywords = Keywords()
-        keywords.load_from_sdb()
+        keywords.load_from_db()
         keywords.compile_regexp()
         texts = [video.get_text() for video in videos]
         found = keywords.parse_all(texts)

@@ -21,9 +21,6 @@ services:
   web:
     ports:
       - "8000:80"
-  sdb:
-    volumes:
-      - ../singledb/:/code/
   webdev:
     image: viewiq-ui-dev
     build:

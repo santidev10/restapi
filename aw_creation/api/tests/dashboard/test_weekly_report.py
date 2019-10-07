@@ -35,9 +35,12 @@ from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
-from utils.utittests.sdb_connector_patcher import SingleDatabaseApiConnectorPatcher
 from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.xlsx import get_sheet_from_response
+from es_components.tests.utils import ESTestCase
+from es_components.managers.video import VideoManager
+from es_components.models import Video
+from es_components.constants import Sections
 
 
 class SectionName:
@@ -142,7 +145,7 @@ COLUMN_SET_BY_SECTION_NAME_NO_CONVERSIONS = {
 }
 
 
-class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
+class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase, ESTestCase):
     def _get_url(self, account_creation_id):
         return reverse(
             Name.Dashboard.PERFORMANCE_EXPORT_WEEKLY_REPORT,
@@ -215,9 +218,14 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
         self.create_test_user()
-        any_video = SingleDatabaseApiConnectorPatcher().get_video_list()["items"][0]
-        video_title = any_video["title"]
-        video_id = any_video["id"]
+
+        video_title = "title"
+        video_id = str(next(int_iterator))
+
+        video = Video(video_id)
+        video.populate_general_data(title=video_title)
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
@@ -243,9 +251,14 @@ class DashboardWeeklyReportAPITestCase(ExtendedAPITestCase):
         any_date_2 = any_date_1 + timedelta(days=1)
         today = max(any_date_1, any_date_2)
         self.create_test_user()
-        any_video = SingleDatabaseApiConnectorPatcher().get_video_list()["items"][0]
-        video_title = any_video["title"]
-        video_id = any_video["id"]
+
+        video_title = "title"
+        video_id = str(next(int_iterator))
+
+        video = Video(video_id)
+        video.populate_general_data(title=video_title)
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+
         account = Account.objects.create(id=next(int_iterator))
         campaign = Campaign.objects.create(account=account)
         ad_group = AdGroup.objects.create(campaign=campaign)
