@@ -12,6 +12,7 @@ from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
 from audit_tool.models import AuditVideoTranscript
 from es_components.managers.video import VideoManager
+from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_transcripts
 
@@ -62,6 +63,8 @@ class Command(BaseCommand):
 
     def get_unparsed_vids(self):
         s = Search(using='default')
+        s = s.index(Video.Index.name)
+
         # Get English Videos Query
         q1 = Q(
             {
@@ -98,5 +101,5 @@ class Command(BaseCommand):
         )
         s = s.query(q1).query(q2).query(q3)
         s = s.sort({"stats.views": {"order": "desc"}})
-        for video in s.scan():
-            yield video
+        s = s[:10000]
+        return s.execute()
