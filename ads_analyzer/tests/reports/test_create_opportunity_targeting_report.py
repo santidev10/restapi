@@ -431,6 +431,70 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
             topics_cost_delivery_percentage[topic_2.name]
         )
 
+    def test_delivery_percentage_cpm(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPM
+        self.placement.save()
+        topic_1 = Topic.objects.create(name="Test topic 1")
+        topic_2 = Topic.objects.create(name="Test topic 2")
+        impressions = (20, 80)
+        stats_1 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_1,
+                                                date=any_date,
+                                                impressions=impressions[0])
+        stats_2 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_2,
+                                                date=any_date,
+                                                impressions=impressions[1])
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(2, len(data))
+        columns = self.columns
+        topics_cost_delivery_percentage = {
+            item[columns.target]: item[columns.delivery_percentage]
+            for item in data
+        }
+        sum_impressions = sum(impressions)
+        self.assertEqual(
+            stats_1.impressions / sum_impressions,
+            topics_cost_delivery_percentage[topic_1.name]
+        )
+        self.assertEqual(
+            stats_2.impressions / sum_impressions,
+            topics_cost_delivery_percentage[topic_2.name]
+        )
+
+    def test_delivery_percentage_cpv(self):
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPV
+        self.placement.save()
+        topic_1 = Topic.objects.create(name="Test topic 1")
+        topic_2 = Topic.objects.create(name="Test topic 2")
+        views = (20, 80)
+        stats_1 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_1,
+                                                date=any_date,
+                                                video_views=views[0])
+        stats_2 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_2,
+                                                date=any_date,
+                                                video_views=views[1])
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(2, len(data))
+        columns = self.columns
+        topics_cost_delivery_percentage = {
+            item[columns.target]: item[columns.delivery_percentage]
+            for item in data
+        }
+        sum_views = sum(views)
+        self.assertEqual(
+            stats_1.video_views / sum_views,
+            topics_cost_delivery_percentage[topic_1.name]
+        )
+        self.assertEqual(
+            stats_2.video_views / sum_views,
+            topics_cost_delivery_percentage[topic_2.name]
+        )
+
     def test_revenue_cpv(self):
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV

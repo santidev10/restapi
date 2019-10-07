@@ -59,6 +59,7 @@ class TargetTableSerializer(ModelSerializer):
     margin = SerializerMethodField()
     video_played_to_100 = SerializerMethodField()
     cost_delivery_percentage = SerializerMethodField()
+    delivery_percentage = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -116,6 +117,13 @@ class TargetTableSerializer(ModelSerializer):
             return obj["sum_cost"] / obj["sum_type_cost"]
         return None
 
+    def get_delivery_percentage(self, obj):
+        delivered = self._get_units(obj)
+        sum_delivery = obj["sum_type_delivery"]
+        if sum_delivery:
+            return delivered / sum_delivery
+        return None
+
     def _get_units(self, obj):
         goal_type_id = self._get_goal_type_id(obj)
         units = 0
@@ -145,7 +153,17 @@ class TargetTableSerializer(ModelSerializer):
         type_subquery = queryset.filter(ad_group_id=OuterRef("ad_group_id")) \
             .order_by("ad_group_id") \
             .values("ad_group_id")
-        sum_type_subquery = type_subquery.annotate(sum=Sum("cost")).values("sum")
+        subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
+        subquery_delivery = type_subquery.annotate(sum=Sum(Case(
+            When(
+                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                then=F("video_views")
+            ),
+            When(
+                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                then=F("impressions")
+            )
+        ))).values("sum")
         return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
             .order_by(*cls.Meta.group_by) \
             .annotate(sum_impressions=Sum("impressions"),
@@ -157,7 +175,8 @@ class TargetTableSerializer(ModelSerializer):
                           then=F("impressions")
                       ))),
                       sum_video_views_100_quartile=Sum("video_views_100_quartile"),
-                      sum_type_cost=Subquery(sum_type_subquery, output_field=DBFloatField()), )
+                      sum_type_cost=Subquery(subquery_cost, output_field=DBFloatField()),
+                      sum_type_delivery=Subquery(subquery_delivery, output_field=DBFloatField()), )
 
     class Meta:
         model = None
@@ -186,6 +205,7 @@ class TargetTableSerializer(ModelSerializer):
             "margin",
             "video_played_to_100",
             "cost_delivery_percentage",
+            "delivery_percentage",
         )
         group_by = ("id",)
         values_shared = (
