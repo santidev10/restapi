@@ -42,7 +42,7 @@ class BrandSafetyVideoSerializer(Serializer):
 
     def get_transcript(self, video):
         transcript = None
-        if video.captions and video.captions.items:
+        if 'captions' in video and 'items' in video.captions:
             for caption in video.captions.items:
                 if caption.language_code == "en":
                     text = caption.text
@@ -51,7 +51,7 @@ class BrandSafetyVideoSerializer(Serializer):
 
     def get_custom_transcript(self, video):
         custom_transcript = None
-        if video.custom_transcripts and video.custom_transcripts.transcripts:
+        if 'custom_transcripts' in video and 'transcripts' in video.custom_transcripts:
             for custom_transcript in video.custom_transcripts.transcripts:
                 if custom_transcript.language_code == "en":
                     text = custom_transcript.text
