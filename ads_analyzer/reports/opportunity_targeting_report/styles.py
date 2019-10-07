@@ -52,6 +52,26 @@ class TargetSheetTableStyles(Styles):
         )
         return self._calculate_range_stats(bounds, value)
 
+    def _get_cost_delivery_percentage_column_style(self, value, is_header):
+        if is_header:
+            return None
+        bounds = (
+            (.5, self._Styles.CRITICAL),
+            (.7, self._Styles.WARNING),
+            (1, self._Styles.GOOD),
+        )
+        return self._calculate_range_stats(bounds, value)
+
+    def _get_delivery_percentage_column_style(self, value, is_header):
+        if is_header:
+            return None
+        bounds = (
+            (.5, self._Styles.CRITICAL),
+            (.7, self._Styles.WARNING),
+            (1, self._Styles.GOOD),
+        )
+        return self._calculate_range_stats(bounds, value)
+
     def _calculate_range_stats(self, bounds, value):
         if value is None:
             return None

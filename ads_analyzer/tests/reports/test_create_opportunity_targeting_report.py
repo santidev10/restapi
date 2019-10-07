@@ -672,29 +672,86 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
             for row in rows[1:]
         ]
 
-    @skip("Not implemented")
     def test_cost_delivery_percentage_red(self):
-        raise NotImplementedError
+        test_cost_delivered_percentage = .45
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_cost_delivery_percentage",
+                          return_value=test_cost_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.RED, item[columns.cost_delivered_percentage].fill.start_color.rgb)
+
     def test_cost_delivery_percentage_yellow(self):
-        raise NotImplementedError
+        test_cost_delivered_percentage = .55
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_cost_delivery_percentage",
+                          return_value=test_cost_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.YELLOW, item[columns.cost_delivered_percentage].fill.start_color.rgb)
+
     def test_cost_delivery_percentage_green(self):
-        raise NotImplementedError
+        test_cost_delivered_percentage = .75
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_cost_delivery_percentage",
+                          return_value=test_cost_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.GREEN, item[columns.cost_delivered_percentage].fill.start_color.rgb)
+
     def test_delivery_percentage_red(self):
-        raise NotImplementedError
+        test_delivered_percentage = .45
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_delivery_percentage", return_value=test_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.RED, item[columns.delivery_percentage].fill.start_color.rgb)
+
     def test_delivery_percentage_yellow(self):
-        raise NotImplementedError
+        test_delivered_percentage = .55
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
 
-    @skip("Not implemented")
+        with patch.object(TargetTableSerializer, "get_delivery_percentage", return_value=test_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.YELLOW, item[columns.delivery_percentage].fill.start_color.rgb)
+
     def test_delivery_percentage_green(self):
-        raise NotImplementedError
+        test_delivered_percentage = .75
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        with patch.object(TargetTableSerializer, "get_delivery_percentage", return_value=test_delivered_percentage):
+            self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        self.assertEqual(self.Color.GREEN, item[columns.delivery_percentage].fill.start_color.rgb)
 
     def test_margin_red(self):
         test_margin = .25
