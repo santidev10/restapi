@@ -67,7 +67,8 @@ class BrandSafetyAudit(object):
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY, Sections.CAPTIONS),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
+                      Sections.CAPTIONS, Sections.CUSTOM_TRANSCRIPTS),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
 

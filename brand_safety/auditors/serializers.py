@@ -41,12 +41,14 @@ class BrandSafetyVideoSerializer(Serializer):
         return tags
 
     def get_transcript(self, video):
-        transcript = None
+        en_captions = None
         if 'captions' in video and 'items' in video.captions:
-            for caption in video.captions.items:
-                if caption.language_code == "en":
-                    text = caption.text
-                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+            en_captions = [caption.text for caption in video.captions.items if caption.language_code == "en"]
+        elif 'custom_transcripts' in video and 'transcripts' in video.custom_transcripts:
+            en_captions = [caption.text for caption in video.custom_transcripts.transcripts if caption.language_code == "en"]
+        text = en_captions[0] if en_captions else ""
+        print('text: {}'.format(text))
+        transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         return transcript
 
     def get_custom_transcript(self, video):
