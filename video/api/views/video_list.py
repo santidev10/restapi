@@ -81,6 +81,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "analytics:missing",
         "cms.cms_title",
         "general_data.category",
+        "general_data.country",
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
