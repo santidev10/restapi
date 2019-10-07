@@ -482,9 +482,24 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
             item[columns.margin]
         )
 
-    @skip("Not implemented")
     def test_video_played_to_100(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        self.placement.goal_type_id = SalesForceGoalType.CPV
+        self.placement.save()
+        topic = Topic.objects.create(name="Test topic")
+        stats = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date,
+                                              video_views_100_quartile=34.2, impressions=450)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        expected_video_played_100 = stats.video_views_100_quartile / stats.impressions
+        self.assertAlmostEqual(
+            expected_video_played_100,
+            item[columns.video_played_100]
+        )
 
     def test_view_rate_cpv(self):
         any_date = date(2019, 1, 1)

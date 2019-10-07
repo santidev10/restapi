@@ -54,6 +54,7 @@ class TargetTableSerializer(ModelSerializer):
     revenue = SerializerMethodField()
     profit = SerializerMethodField()
     margin = SerializerMethodField()
+    video_played_to_100 = SerializerMethodField()
 
     def get_ctr(self, obj):
         return get_ctr(
@@ -99,6 +100,12 @@ class TargetTableSerializer(ModelSerializer):
                 if revenue
                 else None)
 
+    def get_video_played_to_100(self, obj):
+        impressions = obj["sum_impressions"]
+        if impressions:
+            return obj["sum_video_views_100_quartile"] / obj["sum_impressions"]
+        return None
+
     def _get_units(self, obj):
         goal_type_id = self._get_goal_type_id(obj)
         units = 0
@@ -134,7 +141,8 @@ class TargetTableSerializer(ModelSerializer):
                       sum_video_impressions=Sum(Case(When(
                           ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
                           then=F("impressions")
-                      ))), )
+                      ))),
+                      sum_video_views_100_quartile=Sum("video_views_100_quartile"), )
 
     class Meta:
         model = None
@@ -161,6 +169,7 @@ class TargetTableSerializer(ModelSerializer):
             "revenue",
             "profit",
             "margin",
+            "video_played_to_100",
         )
         group_by = ("id",)
         values_shared = (
