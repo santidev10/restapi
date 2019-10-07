@@ -401,9 +401,35 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         expected_rate = stats.cost / (stats.impressions / 1000)
         self.assertAlmostEqual(expected_rate, item[columns.avg_rate])
 
-    @skip("Not implemented")
     def test_cost_delivery_percentage(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        topic_1 = Topic.objects.create(name="Test topic 1")
+        topic_2 = Topic.objects.create(name="Test topic 2")
+        costs = (20, 80)
+        stats_1 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_1,
+                                                date=any_date,
+                                                cost=costs[0])
+        stats_2 = TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic_2,
+                                                date=any_date,
+                                                cost=costs[1])
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(2, len(data))
+        columns = self.columns
+        topics_cost_delivery_percentage = {
+            item[columns.target]: item[columns.cost_delivered_percentage]
+            for item in data
+        }
+        sum_cost = sum(costs)
+        self.assertEqual(
+            stats_1.cost / sum_cost,
+            topics_cost_delivery_percentage[topic_1.name]
+        )
+        self.assertEqual(
+            stats_2.cost / sum_cost,
+            topics_cost_delivery_percentage[topic_2.name]
+        )
 
     def test_revenue_cpv(self):
         any_date = date(2019, 1, 1)
