@@ -792,6 +792,18 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
         columns = self.columns
         self.assertEqual(self.Color.GREEN, item[columns.margin].fill.start_color.rgb)
 
-    @skip("Not implemented")
     def test_percentage_fields(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
+        item = styles[0]
+        columns = self.columns
+        # self.assertEqual("0%", item[columns.margin].number_format)
+        # self.assertEqual("0.00%", item[columns.cost_delivery_percentage].number_format)
+        # self.assertEqual("0.00%", item[columns.delivery_percentage].number_format)
+        self.assertEqual("0%", item[columns.video_played_100].number_format)
+        self.assertEqual("0.00%", item[columns.view_rate].number_format)
+        self.assertEqual("0.00%", item[columns.ctr].number_format)

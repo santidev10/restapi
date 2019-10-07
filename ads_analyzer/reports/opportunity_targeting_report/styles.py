@@ -22,6 +22,8 @@ class TargetSheetTableStyles(Styles):
         GOOD = "GOOD"
         WARNING = "WARNING"
         CRITICAL = "CRITICAL"
+        PERCENTAGE_SHORT = "PERCENTAGE_SHORT"
+        PERCENTAGE_LONG = "PERCENTAGE_LONG"
 
     STYLE_DEFINITION = {
         _Styles.GOOD: {
@@ -32,6 +34,12 @@ class TargetSheetTableStyles(Styles):
         },
         _Styles.CRITICAL: {
             "bg_color": "#FF0013",
+        },
+        _Styles.PERCENTAGE_SHORT: {
+            "num_format": "0%",
+        },
+        _Styles.PERCENTAGE_LONG: {
+            "num_format": "0.00%",
         },
     }
 
@@ -71,6 +79,21 @@ class TargetSheetTableStyles(Styles):
             (1, self._Styles.GOOD),
         )
         return self._calculate_range_stats(bounds, value)
+
+    def _get_video_played_to_100_column_style(self, value, is_header):
+        if is_header:
+            return None
+        return self._Styles.PERCENTAGE_SHORT
+
+    def _get_view_rate_column_style(self, value, is_header):
+        if is_header:
+            return None
+        return self._Styles.PERCENTAGE_LONG
+
+    def _get_ctr_column_style(self, value, is_header):
+        if is_header:
+            return None
+        return self._Styles.PERCENTAGE_LONG
 
     def _calculate_range_stats(self, bounds, value):
         if value is None:
