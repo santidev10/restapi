@@ -1,5 +1,7 @@
 import json
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from unittest.mock import ANY
 
 from rest_framework.status import HTTP_200_OK
@@ -15,12 +17,14 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
+from utils.utittests.patch_now import patch_now
+
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
     def _request(self, data=None):
         url = reverse(AdsAnalyzerPathName.OPPORTUNITY_TARGETING_REPORT, [Namespace.ADS_ANALYZER])
         data = data or dict()
-        return self.client.put(url, json.dumps(data, default=str), content_type="application/json")
+        return self.client.post(url, json.dumps(data, default=str), content_type="application/json")
 
 
 class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIViewTestCase):
@@ -65,18 +69,12 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         self.create_admin_user()
 
     def test_validate_required(self):
-        required_fields = (
-            "opportunity",
-            "date_from",
-            "date_to",
-        )
+        required_fields = "opportunity"
 
         response = self._request(dict())
 
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        for field in required_fields:
-            with self.subTest(field):
-                self.assertIn(field, response.data)
+        self.assertIn(required_fields, response.data)
 
     def test_invalid_opportunity(self):
         response = self._request(dict(
@@ -182,6 +180,31 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             dict(
                 status="ready",
                 report_link=external_link,
+                message=ANY,
+            ),
+            response.json()
+        )
+
+    def test_report_expire(self):
+        opportunity = Opportunity.objects.create(id=next(int_iterator))
+        date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
+        OpportunityTargetingReport.objects.create(
+            opportunity=opportunity,
+            date_from=date_from,
+            date_to=date_to
+        )
+
+        with patch_now(datetime.now() + timedelta(hours=25)):
+
+            response = self._request(dict(
+                opportunity=opportunity.id,
+                date_from=date_from,
+                date_to=date_to,
+            ))
+
+        self.assertEqual(
+            dict(
+                status="created",
                 message=ANY,
             ),
             response.json()

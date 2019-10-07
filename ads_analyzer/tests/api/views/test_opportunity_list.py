@@ -3,7 +3,9 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
+from aw_reporting.models import Campaign
 from aw_reporting.models import Opportunity
+from aw_reporting.models import OpPlacement
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -61,9 +63,30 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
             name="Test Opportunity"
         )
         opportunity.refresh_from_db()
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            name="Test Placement",
+            opportunity=opportunity)
+        placement.refresh_from_db()
+        Campaign.objects.create(
+            salesforce_placement=placement,
+            status="eligible"
+        )
         response = self._request()
 
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
         )], response.json())
+
+    def test_no_active_opportunity(self):
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity"
+        )
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual([], response.json())
+
