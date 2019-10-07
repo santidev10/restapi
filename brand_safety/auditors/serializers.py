@@ -46,6 +46,5 @@ class BrandSafetyVideoSerializer(Serializer):
         elif 'custom_transcripts' in video and 'transcripts' in video.custom_transcripts:
             en_captions = [caption.text for caption in video.custom_transcripts.transcripts if caption.language_code == "en"]
         text = en_captions[0] if en_captions else ""
-        print('text: {}'.format(text))
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         return transcript
