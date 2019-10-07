@@ -10,6 +10,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
     OpportunityTargetReportModelSerializer
+from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
+    OpportunityTargetReportPayloadSerializer
 from ads_analyzer.models import OpportunityTargetingReport
 from aw_reporting.models import Opportunity
 from utils.api_paginator import CustomPageNumberPaginator
@@ -40,23 +42,19 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
         date_from = request.data.get("date_from")
         date_to = request.data.get("date_to")
 
-        try:
-            opportunity = Opportunity.objects.get(id=opportunity_id)
-        except:
-            return Response(data={"error": "Opportunity not exists"}, status=HTTP_400_BAD_REQUEST)
+        serializer = OpportunityTargetReportPayloadSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(data=serializer.errors, status=HTTP_400_BAD_REQUEST)
 
         queryset = OpportunityTargetingReport.objects.filter(
-            opportunity=opportunity,
+            opportunity_id=opportunity_id,
             date_from=date_from,
             date_to=date_to,
             created_at__gte=self.get_expiration_datetime()
         )
         if not queryset.exists():
-            report = OpportunityTargetingReport.objects.create(
-                opportunity=opportunity,
-                date_from=date_from,
-                date_to=date_to
-            )
+            report = serializer.save()
         else:
             report = queryset.first()
 

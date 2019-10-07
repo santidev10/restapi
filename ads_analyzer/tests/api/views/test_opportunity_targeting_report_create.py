@@ -66,6 +66,21 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
     def setUp(self) -> None:
         self.create_admin_user()
 
+    def test_validate_required(self):
+        required_fields = (
+            "opportunity",
+            "date_from",
+            "date_to",
+        )
+
+        response = self._request(dict())
+
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        for field in required_fields:
+            with self.subTest(field):
+                self.assertIn(field, response.data)
+
     def test_invalid_opportunity(self):
         response = self._request(dict(
             opportunity="missed_id",
