@@ -88,6 +88,11 @@ def remove_mentions_hashes_urls(s):
     return remove_links(remove_hashtags(remove_mentions(s)))
 
 
+def replace_apostrophes(s):
+    apostrophe_regex = re.compile("(&#39;)")
+    return apostrophe_regex.sub("'", s)
+
+
 # Returns Language Detected by FastText
 def fasttext_lang(s):
     global fast_text_model
