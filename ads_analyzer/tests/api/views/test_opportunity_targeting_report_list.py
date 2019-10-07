@@ -76,8 +76,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link="http://example.com/report?download=1",
-            expire_at=datetime.now().date() + timedelta(days=1)
+            external_link="http://example.com/report?download=1"
         )
 
         response = self._request()

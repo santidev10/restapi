@@ -1,8 +1,8 @@
 import json
 from datetime import date
 from datetime import datetime
-from datetime import timedelta
 from unittest.mock import ANY
+from unittest.mock import patch
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -65,20 +65,6 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
         self.create_admin_user()
-
-    def test_validate_required(self):
-        required_fields = (
-            "opportunity",
-            "date_from",
-            "date_to",
-        )
-
-        response = self._request(dict())
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        for field in required_fields:
-            with self.subTest(field):
-                self.assertIn(field, response.data)
 
     def test_invalid_opportunity(self):
         response = self._request(dict(
@@ -146,8 +132,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=None,
-            expire_at=datetime.now().date() + timedelta(days=1)
+            external_link=None
         )
 
         response = self._request(dict(
@@ -172,8 +157,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             opportunity=opportunity,
             date_from=date_from,
             date_to=date_to,
-            external_link=external_link,
-            expire_at=datetime.now().date() + timedelta(days=1)
+            external_link=external_link
         )
 
         response = self._request(dict(
@@ -194,26 +178,25 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
     def test_report_expire(self):
         opportunity = Opportunity.objects.create(id=next(int_iterator))
         date_from, date_to = date(2019, 1, 2), date(2019, 1, 3)
-        external_link = "http://some_url.com"
-
         OpportunityTargetingReport.objects.create(
             opportunity=opportunity,
             date_from=date_from,
-            date_to=date_to,
-            external_link=external_link,
-            expire_at=datetime.now().date()
+            date_to=date_to
         )
 
-        response = self._request(dict(
-            opportunity=opportunity.id,
-            date_from=date_from,
-            date_to=date_to,
-        ))
+        with patch("ads_analyzer.api.views.opportunity_targeting_report.OpportunityTargetingReportAPIView."
+                   "get_expiration_datetime", return_value=datetime.now()):
+
+            response = self._request(dict(
+                opportunity=opportunity.id,
+                date_from=date_from,
+                date_to=date_to,
+            ))
 
         self.assertEqual(
             dict(
                 status="created",
-                message="Processing.  You will receive an email when your export is ready.",
+                message=ANY,
             ),
             response.json()
         )
