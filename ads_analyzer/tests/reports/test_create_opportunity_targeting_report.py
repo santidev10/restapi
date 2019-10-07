@@ -801,9 +801,9 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
         styles = self.get_cell_dict(self.opportunity.id, any_date, any_date)
         item = styles[0]
         columns = self.columns
-        # self.assertEqual("0%", item[columns.margin].number_format)
-        # self.assertEqual("0.00%", item[columns.cost_delivery_percentage].number_format)
-        # self.assertEqual("0.00%", item[columns.delivery_percentage].number_format)
+        self.assertEqual("0%", item[columns.margin].number_format)
+        self.assertEqual("0.00%", item[columns.cost_delivered_percentage].number_format)
+        self.assertEqual("0.00%", item[columns.delivery_percentage].number_format)
         self.assertEqual("0%", item[columns.video_played_100].number_format)
         self.assertEqual("0.00%", item[columns.view_rate].number_format)
         self.assertEqual("0.00%", item[columns.ctr].number_format)

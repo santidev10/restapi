@@ -1,3 +1,12 @@
+from typing import List
+
+from utils.lang import merge_dicts
+
+__all__ = [
+    "TargetSheetTableStyles",
+]
+
+
 class Styles:
     STYLE_DEFINITION = {}
 
@@ -6,14 +15,19 @@ class Styles:
         self._style_cache = {}
 
     def get_style(self, cursor, value, is_header, header=None):
-        style_name = self._resolve_style_name(cursor, value, is_header, header)
-        if style_name not in self._style_cache:
-            style_definition = self.STYLE_DEFINITION.get(style_name, {})
+        style_names = self._resolve_style_names(cursor, value, is_header, header)
+        style_key = ":".join(style_names)
+        if style_key not in self._style_cache:
+            style_definitions = [
+                self.STYLE_DEFINITION.get(style_name, {})
+                for style_name in style_names
+            ]
+            style_definition = merge_dicts(*style_definitions)
             style = self.workbook.add_format(style_definition)
-            self._style_cache[style_name] = style
-        return self._style_cache[style_name]
+            self._style_cache[style_key] = style
+        return self._style_cache[style_key]
 
-    def _resolve_style_name(self, cursor, value, is_header, header) -> str:
+    def _resolve_style_names(self, cursor, value, is_header, header) -> List[str]:
         raise NotImplementedError
 
 
@@ -43,62 +57,66 @@ class TargetSheetTableStyles(Styles):
         },
     }
 
-    def _resolve_style_name(self, cursor, value, is_header, header) -> str:
-        get_style_method_name = f"_get_{header}_column_style"
+    def _resolve_style_names(self, cursor, value, is_header, header) -> List[str]:
+        get_style_method_name = f"_get_{header}_column_style_classes"
         get_style_method = getattr(self, get_style_method_name, None)
         if get_style_method is None:
-            return None
-        return get_style_method(value, is_header)
+            return []
+        return [style for style in get_style_method(value, is_header) if style]
 
-    def _get_margin_column_style(self, value, is_header):
+    def _get_margin_column_style_classes(self, value, is_header):
         if is_header:
-            return None
+            return []
         bounds = (
             (.3, self._Styles.CRITICAL),
             (.4, self._Styles.WARNING),
             (1, self._Styles.GOOD),
         )
-        return self._calculate_range_stats(bounds, value)
+        color_style = calculate_range_stats(bounds, value)
+        return [color_style, self._Styles.PERCENTAGE_SHORT]
 
-    def _get_cost_delivery_percentage_column_style(self, value, is_header):
+    def _get_cost_delivery_percentage_column_style_classes(self, value, is_header):
         if is_header:
-            return None
+            return []
         bounds = (
             (.5, self._Styles.CRITICAL),
             (.7, self._Styles.WARNING),
             (1, self._Styles.GOOD),
         )
-        return self._calculate_range_stats(bounds, value)
+        color_style = calculate_range_stats(bounds, value)
+        return [color_style, self._Styles.PERCENTAGE_LONG]
 
-    def _get_delivery_percentage_column_style(self, value, is_header):
+    def _get_delivery_percentage_column_style_classes(self, value, is_header):
         if is_header:
-            return None
+            return []
         bounds = (
             (.5, self._Styles.CRITICAL),
             (.7, self._Styles.WARNING),
             (1, self._Styles.GOOD),
         )
-        return self._calculate_range_stats(bounds, value)
+        color_style = calculate_range_stats(bounds, value)
+        return [color_style, self._Styles.PERCENTAGE_LONG]
 
-    def _get_video_played_to_100_column_style(self, value, is_header):
+    def _get_video_played_to_100_column_style_classes(self, value, is_header):
         if is_header:
-            return None
-        return self._Styles.PERCENTAGE_SHORT
+            return []
+        return [self._Styles.PERCENTAGE_SHORT]
 
-    def _get_view_rate_column_style(self, value, is_header):
+    def _get_view_rate_column_style_classes(self, value, is_header):
         if is_header:
-            return None
-        return self._Styles.PERCENTAGE_LONG
+            return []
+        return [self._Styles.PERCENTAGE_LONG]
 
-    def _get_ctr_column_style(self, value, is_header):
+    def _get_ctr_column_style_classes(self, value, is_header):
         if is_header:
-            return None
-        return self._Styles.PERCENTAGE_LONG
+            return []
+        return [self._Styles.PERCENTAGE_LONG]
 
-    def _calculate_range_stats(self, bounds, value):
-        if value is None:
-            return None
-        for bound, style in bounds:
-            if value < bound:
-                return style
+
+def calculate_range_stats(bounds, value):
+    if value is None:
         return None
+    for bound, style in bounds:
+        if value < bound:
+            return style
+    return None
