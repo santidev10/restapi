@@ -23,17 +23,12 @@ class Command(BaseCommand):
         init_es_connection()
         with PidFile(piddir='.', pidname='pull_transcripts.pid') as p:
             unparsed_vids = self.get_unparsed_vids()
-            parsed_vids = set()
+            vid_ids = set([vid.main.id for vid in unparsed_vids])
             counter = 0
             transcripts_counter = 0
             video_manager = VideoManager(sections=(Sections.CUSTOM_TRANSCRIPTS,),
                                          upsert_sections=(Sections.CUSTOM_TRANSCRIPTS,))
-            for vid in unparsed_vids:
-                vid_id = vid.main.id
-                if vid_id in parsed_vids:
-                    continue
-                else:
-                    parsed_vids.add(vid_id)
+            for vid_id in vid_ids:
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = self.get_video_soup(vid_id)
                 transcript_text = transcript_soup.text if transcript_soup else ""
@@ -47,7 +42,7 @@ class Command(BaseCommand):
                 logger.info("transcript_text for video with id {}: {}".format(vid_id, transcript_text))
                 logger.info("Number of videos parsed: {}".format(counter))
                 logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
-                delay = random.choice(range(0, 6))
+                delay = 0
                 logger.info("Sleeping for {} seconds.".format(delay))
                 time.sleep(delay)
 
