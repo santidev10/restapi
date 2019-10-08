@@ -173,7 +173,7 @@ class TargetTableSerializer(ModelSerializer):
             )
         ))).values("sum")
         return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
-            .order_by(*cls.Meta.group_by) \
+            .order_by("-sum_video_views") \
             .annotate(sum_impressions=Sum("impressions"),
                       sum_video_views=Sum("video_views"),
                       sum_clicks=Sum("clicks"),
