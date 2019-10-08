@@ -26,12 +26,9 @@ class OpportunityTargetingReport(models.Model):
 
 
 @receiver(post_save, sender=OpportunityTargetingReport, dispatch_uid="save_opportunity_report_receiver")
-def save_account_receiver(sender, instance, created, **_):
+def save_opportunity_report_receiver(sender, instance, created, **_):
     if created:
         from ads_analyzer.tasks import create_opportunity_targeting_report
         report = instance
-        create_opportunity_targeting_report.si(
-            opportunity_id=report.opportunity_id,
-            date_from_str=report.date_from.isoformat(),
-            date_to_str=report.date_to.isoformat(),
-        ).apply_async()
+        create_opportunity_targeting_report.si(report_id=report.pk,) \
+            .apply_async()

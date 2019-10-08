@@ -19,11 +19,10 @@ from saas import celery_app
 from saas.urls.namespaces import Namespace
 from utils.utittests.celery import mock_send_task
 from utils.utittests.int_iterator import int_iterator
+from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.s3_mock import mock_s3
 from utils.utittests.test_case import ExtendedAPITestCase
-
-from utils.utittests.patch_now import patch_now
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
@@ -210,7 +209,6 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         with patch_now(datetime.now() + timedelta(hours=25)):
-
             response = self._request(dict(
                 opportunity=opportunity.id,
                 date_from=date_from,
@@ -239,10 +237,13 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
 
         calls = celery_app.send_task.mock_calls
         self.assertEqual(1, len(calls))
-        expected_kwargs = dict(
+        report = OpportunityTargetingReport.objects.get(
             opportunity_id=opportunity.id,
-            date_from_str=str(date_from),
-            date_to_str=str(date_to),
+            date_from=date_from,
+            date_to=date_to,
+        )
+        expected_kwargs = dict(
+            report_id=report.id,
         )
         self.assertEqual(
             (create_opportunity_targeting_report.name, (), expected_kwargs),

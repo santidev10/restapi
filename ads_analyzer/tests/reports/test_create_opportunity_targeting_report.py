@@ -39,18 +39,24 @@ from utils.utittests.str_iterator import str_iterator
 
 class CreateOpportunityTargetingReportBaseTestCase(TransactionTestCase, S3TestCase):
     def act(self, opportunity_id, date_from, date_to):
+        with patch.object(post_save, "send"):
+            report, _ = OpportunityTargetingReport.objects.get_or_create(
+                opportunity_id=opportunity_id,
+                date_from=date_from,
+                date_to=date_to,
+            )
         create_opportunity_targeting_report(
-            opportunity_id=opportunity_id,
-            date_from_str=str(date_from),
-            date_to_str=str(date_to),
+            report_id=report.id,
         )
+        return report
 
     def get_report_workbook(self, opportunity_id, date_from, date_to):
-        s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(
-            opportunity_id,
-            str(date_from),
-            str(date_to)
+        report = OpportunityTargetingReport.objects.get(
+            opportunity_id=opportunity_id,
+            date_from=date_from,
+            date_to=date_to,
         )
+        s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(report)
         self.assertTrue(OpportunityTargetingReportS3Exporter.exists(s3_key, get_key=False))
         file = OpportunityTargetingReportS3Exporter.get_s3_export_content(s3_key, get_key=False)
         book = load_workbook(BytesIO(file.read()))
@@ -70,7 +76,7 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
         self.act(opportunity.id, date_from, date_to)
 
         report.refresh_from_db()
-        s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(opportunity.id, str(date_from), str(date_to))
+        s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(report)
         self.assertEqual(s3_key, report.s3_file_key)
         self.assertEqual(ReportStatus.SUCCESS.value, report.status)
 
@@ -79,15 +85,13 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
         date_from, date_to = date(2020, 1, 1), date(2020, 1, 2)
 
         with mock_send_task():
-            self.act(opportunity.id, date_from, date_to)
+            report = self.act(opportunity.id, date_from, date_to)
 
             calls = celery_app.send_task.mock_calls
 
         self.assertEqual(1, len(calls))
         expected_kwargs = dict(
-            opportunity_id=opportunity.id,
-            date_from_str=str(date_from),
-            date_to_str=str(date_to),
+            report_id=report.id,
         )
         self.assertEqual(
             (notify_opportunity_targeting_report_is_ready.name, (), expected_kwargs),
@@ -165,7 +169,7 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
         )
 
 
-class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingReportSheetTestCase, ESTestCase):
+class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingReportSheetTestCase):
     SHEET_NAME = "Target"
 
     columns = ColumnsDeclaration(
@@ -313,22 +317,6 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(channel_id, item[columns.target])
         self.assertEqual("Channel", item[columns.type])
 
-    def test_channel_general_data_title(self):
-        channel_id = "test_channel:123"
-        channel_name = "Test Channel Name"
-        channel = Channel(id=channel_id)
-        channel.populate_general_data(title=channel_name)
-        ChannelManager(Sections.GENERAL_DATA).upsert([channel])
-        any_date = date(2019, 1, 1)
-        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
-
-        self.act(self.opportunity.id, any_date, any_date)
-        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
-        self.assertEqual(1, len(data))
-        item = data[0]
-        columns = self.columns
-        self.assertEqual(channel_name, item[columns.target])
-
     def test_video_general_data(self):
         any_date = date(2019, 1, 1)
         video_id = next(str_iterator)
@@ -341,22 +329,6 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         columns = self.columns
         self.assertEqual(video_id, item[columns.target])
         self.assertEqual("Video", item[columns.type])
-
-    def test_video_general_data_title(self):
-        any_date = date(2019, 1, 1)
-        video_id = "test_channel:123"
-        video_name = "Test Channel Name"
-        video = Video(id=video_id)
-        video.populate_general_data(title=video_name)
-        VideoManager(Sections.GENERAL_DATA).upsert([video])
-        YTVideoStatistic.objects.create(yt_id=video_id, ad_group=self.ad_group, date=any_date)
-
-        self.act(self.opportunity.id, any_date, any_date)
-        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
-        self.assertEqual(1, len(data))
-        item = data[0]
-        columns = self.columns
-        self.assertEqual(video_name, item[columns.target])
 
     def test_general_stats(self):
         any_date = date(2019, 1, 1)
@@ -683,6 +655,41 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         item = data[0]
         columns = self.columns
         self.assertEqual(sum(impressions), item[columns.impressions])
+
+
+class CreateOpportunityTargetingReportTargetDataESTestCase(CreateOpportunityTargetingReportTargetDataTestCase,
+                                                           ESTestCase):
+    def test_channel_general_data_title(self):
+        channel_id = "test_channel:123"
+        channel_name = "Test Channel Name"
+        channel = Channel(id=channel_id)
+        channel.populate_general_data(title=channel_name)
+        ChannelManager(Sections.GENERAL_DATA).upsert([channel])
+        any_date = date(2019, 1, 1)
+        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(channel_name, item[columns.target])
+
+    def test_video_general_data_title(self):
+        any_date = date(2019, 1, 1)
+        video_id = "test_channel:123"
+        video_name = "Test Channel Name"
+        video = Video(id=video_id)
+        video.populate_general_data(title=video_name)
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+        YTVideoStatistic.objects.create(yt_id=video_id, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(video_name, item[columns.target])
 
 
 class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):

@@ -54,19 +54,15 @@ EMAIL_REPORT_CLASSES = (
 
 
 @celery_app.task
-def notify_opportunity_targeting_report_is_ready(opportunity_id, date_from_str, date_to_str):
+def notify_opportunity_targeting_report_is_ready(report_id):
     from ads_analyzer.models import OpportunityTargetingReport
     from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
     try:
-        report = OpportunityTargetingReport.objects.get(
-            opportunity_id=opportunity_id,
-            date_from=date_from_str,
-            date_to=date_to_str,
-        )
+        report = OpportunityTargetingReport.objects.get(pk=report_id)
     except OpportunityTargetingReport.DoesNotExist:
         return
     direct_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key)
-    subject = f"Opportunity Targeting Report > {report.opportunity.name}: {date_from_str} - {date_to_str}"
+    subject = f"Opportunity Targeting Report > {report.opportunity.name}: {report.date_from} - {report.date_to}"
     body = f"Report has been prepared. Download it by the following link {direct_link}"
     emailer = SESEmailer()
     for email in report.recipients.all().values_list("email", flat=True):

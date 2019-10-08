@@ -30,6 +30,6 @@ class NotifyOpportunityTargetReportTestCase(TransactionTestCase):
             )
             report.recipients.add(recipient)
 
-        notify_opportunity_targeting_report_is_ready(opportunity.id, str(date_from), str(date_to))
+        notify_opportunity_targeting_report_is_ready(report.id)
 
         self.assertEqual(1, len(mail.outbox))

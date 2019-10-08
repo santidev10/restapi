@@ -25,28 +25,22 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def create_opportunity_targeting_report(opportunity_id: str, date_from_str: str, date_to_str: str):
+def create_opportunity_targeting_report(report_id):
     now = now_in_default_tz()
+    report_entity = OpportunityTargetingReport.objects.get(pk=report_id)
     report_generator = OpportunityTargetingReportXLSXGenerator(now=now)
-    report = report_generator.build(opportunity_id, date_from_str, date_to_str)
+    report = report_generator.build(report_entity.opportunity_id, report_entity.date_from, report_entity.date_to)
 
     export_cls = OpportunityTargetingReportS3Exporter
-    file_key = export_cls.get_s3_key(opportunity_id, date_from_str, date_to_str)
+    file_key = export_cls.get_s3_key(report_entity)
     export_cls.export_object_to_s3(report, file_key)
     report_queryset = OpportunityTargetingReport.objects.filter(
-        opportunity_id=opportunity_id,
-        date_from=date_from_str,
-        date_to=date_to_str,
-    )
+        pk=report_id, )
     report_queryset.update(
         status=ReportStatus.SUCCESS.value,
         s3_file_key=file_key,
     )
-    notify_opportunity_targeting_report_is_ready.si(
-        opportunity_id=opportunity_id,
-        date_from_str=date_from_str,
-        date_to_str=date_to_str,
-    ) \
+    notify_opportunity_targeting_report_is_ready.si(report_id=report_id) \
         .apply_async()
 
 
