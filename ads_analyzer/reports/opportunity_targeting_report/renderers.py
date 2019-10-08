@@ -3,7 +3,7 @@ from typing import Type
 from rest_framework_csv.renderers import CSVRenderer
 
 from ads_analyzer.reports.opportunity_targeting_report.styles import Styles
-from ads_analyzer.reports.opportunity_targeting_report.styles import TargetSheetTableStyles
+from ads_analyzer.reports.opportunity_targeting_report.styles import SheetTableStyles
 
 
 class Cursor:
@@ -65,7 +65,7 @@ class SheetTableRenderer(CSVRenderer):
 
 class TargetSheetTableRenderer(SheetTableRenderer):
     sheet_name = "Target"
-    style_cls = TargetSheetTableStyles
+    style_cls = SheetTableStyles
     header = [
         "name",
         "type",
@@ -125,7 +125,7 @@ class TargetSheetTableRenderer(SheetTableRenderer):
 
 class DevicesSheetTableRenderer(SheetTableRenderer):
     sheet_name = "Devices"
-    style_cls = TargetSheetTableStyles
+    style_cls = SheetTableStyles
     header = [
         "type",
         "campaign_name",

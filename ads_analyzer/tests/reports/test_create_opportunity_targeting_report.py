@@ -905,13 +905,15 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.opportunity.cannot_roll_over = True
         self.opportunity.save()
         any_date = date(2019, 1, 1)
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1)
+        device_id = 1
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=device_id, date=any_date, average_position=1)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
         self.assertEqual(1, len(data))
         item = data[0]
         columns = self.columns
+        self.assertEqual(device_str(device_id), item[columns.type])
         self.assertEqual(self.campaign.name, item[columns.campaign_name])
         self.assertEqual(self.ad_group.name, item[columns.ad_group_name])
         self.assertEqual(self.placement.name, item[columns.placement_name])

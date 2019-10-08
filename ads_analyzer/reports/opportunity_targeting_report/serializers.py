@@ -35,7 +35,7 @@ __all__ = [
     "TargetTableKeywordSerializer",
     "TargetTableChannelSerializer",
     "TargetTableVideoSerializer",
-    "DevicesTableSerializer"
+    "DevicesTableSerializer",
 ]
 
 
@@ -160,10 +160,14 @@ class TargetTableSerializer(ModelSerializer):
         return super().__new__(cls, *args, **kwargs)
 
     @classmethod
-    def _build_queryset(cls, queryset):
-        type_subquery = queryset.filter(ad_group_id=OuterRef("ad_group_id")) \
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group_id=OuterRef("ad_group_id")) \
             .order_by("ad_group_id") \
             .values("ad_group_id")
+
+    @classmethod
+    def _build_queryset(cls, queryset):
+        type_subquery = cls._build_type_subquery(queryset)
         subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
         subquery_delivery = type_subquery.annotate(sum=Sum(Case(
             When(
@@ -293,31 +297,8 @@ class DevicesTableSerializer(TargetTableSerializer):
         return device_str(device_id)
 
     @classmethod
-    def _build_queryset(cls, queryset):
-        type_subquery = queryset.filter(ad_group_id=OuterRef("ad_group__campaign_id")) \
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group__campaign_id=OuterRef("ad_group__campaign_id")) \
             .order_by("ad_group__campaign_id") \
             .values("ad_group__campaign_id")
-        subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
-        subquery_delivery = type_subquery.annotate(sum=Sum(Case(
-            When(
-                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
-                then=F("video_views")
-            ),
-            When(
-                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
-                then=F("impressions")
-            )
-        ))).values("sum")
-        return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
-            .order_by(*cls.Meta.group_by) \
-            .annotate(sum_impressions=Sum("impressions"),
-                      sum_video_views=Sum("video_views"),
-                      sum_clicks=Sum("clicks"),
-                      sum_cost=Sum("cost"),
-                      sum_video_impressions=Sum(Case(When(
-                          ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
-                          then=F("impressions")
-                      ))),
-                      sum_video_views_100_quartile=Sum("video_views_100_quartile"),
-                      sum_type_cost=Subquery(subquery_cost, output_field=DBFloatField()),
-                      sum_type_delivery=Subquery(subquery_delivery, output_field=DBFloatField()), )
+
