@@ -37,6 +37,13 @@ class S3Exporter(ABC):
                 Key=cls.get_s3_key(name) if get_key is True else name,
                 Filename=exported_file_name,
             )
+    @classmethod
+    def export_object_to_s3(cls, file_obj, file_key):
+        S3Exporter._s3().upload_fileobj(
+            Fileobj=file_obj,
+            Bucket=cls.bucket_name,
+            Key=file_key,
+        )
 
     @classmethod
     def get_s3_export_content(cls, name, get_key=True):

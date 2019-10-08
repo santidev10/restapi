@@ -1,13 +1,14 @@
 from datetime import date
-from datetime import datetime
-from datetime import timedelta
+from unittest.mock import patch
 
+from django.db.models.signals import post_save
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
+from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from utils.utittests.int_iterator import int_iterator
@@ -72,12 +73,13 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
-        report = OpportunityTargetingReport.objects.create(
-            opportunity=opportunity,
-            date_from=date_from,
-            date_to=date_to,
-            external_link="http://example.com/report?download=1"
-        )
+        with patch.object(post_save, "send"):
+            report = OpportunityTargetingReport.objects.create(
+                opportunity=opportunity,
+                date_from=date_from,
+                date_to=date_to,
+                s3_file_key="example/report"
+            )
 
         response = self._request()
 
@@ -89,7 +91,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_from": report.date_from.isoformat(),
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
-                "download_link": report.external_link,
+                "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
             },
             response.json()["items"][0]
         )

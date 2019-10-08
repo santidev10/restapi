@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from functools import wraps
+from unittest import TestCase
 
 from django.conf import settings
 from moto import mock_s3 as moto_mock_s3
@@ -25,3 +26,16 @@ def mock_s3(fn):
             return fn(*args, **kwargs)
 
     return wrapper
+
+
+class S3TestCaseMetaclass(type):
+    def __new__(cls, name, bases, attrs):
+        for attr in attrs:
+            value = attrs[attr]
+            if callable(value) and attr.startswith("test_"):
+                attrs[attr] = mock_s3(value)
+        return type.__new__(cls, name, bases, attrs)
+
+
+class S3TestCase(TestCase, metaclass=S3TestCaseMetaclass):
+    pass
