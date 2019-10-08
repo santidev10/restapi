@@ -43,6 +43,10 @@ class ExtendedEnum(Enum):
         map_cls = namedtuple("{}Map".format(cls.__name__), cls.names())
         return map_cls(**{key: value.value for key, value in cls.__members__.items()})
 
+    @classmethod
+    def choices(cls):
+        return tuple((item.name, item.value) for item in cls)
+
 
 def merge_dicts(*dicts):
     return reduce(lambda res, item: {**res, **item}, dicts, {})

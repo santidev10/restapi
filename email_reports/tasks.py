@@ -10,9 +10,11 @@ from email_reports.reports import DailyCampaignReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
 from saas import celery_app
+from utils.aws.ses_emailer import SESEmailer
 
 __all__ = [
     "send_daily_email_reports",
+    "notify_opportunity_targeting_report_is_ready",
 ]
 
 logger = logging.getLogger(__name__)
@@ -49,3 +51,23 @@ EMAIL_REPORT_CLASSES = (
     CampaignOverPacing,
     ESMonitoringEmailReport,
 )
+
+
+@celery_app.task
+def notify_opportunity_targeting_report_is_ready(report_id):
+    from ads_analyzer.models import OpportunityTargetingReport
+    from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+    try:
+        report = OpportunityTargetingReport.objects.get(pk=report_id)
+    except OpportunityTargetingReport.DoesNotExist:
+        return
+    direct_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key)
+    subject = f"Opportunity Targeting Report > {report.opportunity.name}: {report.date_from} - {report.date_to}"
+    body = f"Report has been prepared. Download it by the following link {direct_link}"
+    emailer = SESEmailer()
+    for email in report.recipients.all().values_list("email", flat=True):
+        emailer.send_email(
+            [email],
+            subject,
+            body,
+        )
