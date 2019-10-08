@@ -307,32 +307,6 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_interests_detailed_demographic_general_data(self):
         raise NotImplemented
 
-    def test_channel_general_data(self):
-        any_date = date(2019, 1, 1)
-        channel_id = next(str_iterator)
-        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
-
-        self.act(self.opportunity.id, any_date, any_date)
-        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
-        self.assertEqual(1, len(data))
-        item = data[0]
-        columns = self.columns
-        self.assertEqual(channel_id, item[columns.target])
-        self.assertEqual("Channel", item[columns.type])
-
-    def test_video_general_data(self):
-        any_date = date(2019, 1, 1)
-        video_id = next(str_iterator)
-        YTVideoStatistic.objects.create(yt_id=video_id, ad_group=self.ad_group, date=any_date)
-
-        self.act(self.opportunity.id, any_date, any_date)
-        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
-        self.assertEqual(1, len(data))
-        item = data[0]
-        columns = self.columns
-        self.assertEqual(video_id, item[columns.target])
-        self.assertEqual("Video", item[columns.type])
-
     def test_general_stats(self):
         any_date = date(2019, 1, 1)
         topic = Topic.objects.create(name="Test topic")
@@ -659,9 +633,31 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         columns = self.columns
         self.assertEqual(sum(impressions), item[columns.impressions])
 
+    def test_all_history(self):
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        self.act(self.opportunity.id, None, None)
+        data = self.get_data_dict(self.opportunity.id, None, None)
+        self.assertEqual(1, len(data))
+
 
 class CreateOpportunityTargetingReportTargetDataESTestCase(CreateOpportunityTargetingReportTargetDataTestCase,
                                                            ESTestCase):
+    def test_channel_general_data(self):
+        any_date = date(2019, 1, 1)
+        channel_id = next(str_iterator)
+        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(channel_id, item[columns.target])
+        self.assertEqual("Channel", item[columns.type])
+
     def test_channel_general_data_title(self):
         channel_id = "test_channel:123"
         channel_name = "Test Channel Name"
@@ -677,6 +673,19 @@ class CreateOpportunityTargetingReportTargetDataESTestCase(CreateOpportunityTarg
         item = data[0]
         columns = self.columns
         self.assertEqual(channel_name, item[columns.target])
+
+    def test_video_general_data(self):
+        any_date = date(2019, 1, 1)
+        video_id = next(str_iterator)
+        YTVideoStatistic.objects.create(yt_id=video_id, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(video_id, item[columns.target])
+        self.assertEqual("Video", item[columns.type])
 
     def test_video_general_data_title(self):
         any_date = date(2019, 1, 1)
