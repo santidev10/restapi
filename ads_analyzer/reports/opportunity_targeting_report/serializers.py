@@ -17,6 +17,8 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
+from aw_reporting.models import device_str
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import get_ctr
@@ -33,6 +35,7 @@ __all__ = [
     "TargetTableKeywordSerializer",
     "TargetTableChannelSerializer",
     "TargetTableVideoSerializer",
+    "DevicesTableSerializer"
 ]
 
 
@@ -275,3 +278,46 @@ class TargetTableVideoSerializer(TargetTableSerializer):
     class Meta(TargetTableSerializer.Meta):
         model = KeywordStatistic
         group_by = ("yt_id",)
+
+
+
+class DevicesTableSerializer(TargetTableSerializer):
+    type = SerializerMethodField()
+
+    class Meta(TargetTableSerializer.Meta):
+        model = AdGroupStatistic
+        group_by = ("device_id",)
+
+    def get_type(self, obj):
+        device_id = obj["device_id"]
+        return device_str(device_id)
+
+    @classmethod
+    def _build_queryset(cls, queryset):
+        type_subquery = queryset.filter(ad_group_id=OuterRef("ad_group__campaign_id")) \
+            .order_by("ad_group__campaign_id") \
+            .values("ad_group__campaign_id")
+        subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
+        subquery_delivery = type_subquery.annotate(sum=Sum(Case(
+            When(
+                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                then=F("video_views")
+            ),
+            When(
+                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                then=F("impressions")
+            )
+        ))).values("sum")
+        return queryset.values(*cls.Meta.group_by, *cls.Meta.values_shared) \
+            .order_by(*cls.Meta.group_by) \
+            .annotate(sum_impressions=Sum("impressions"),
+                      sum_video_views=Sum("video_views"),
+                      sum_clicks=Sum("clicks"),
+                      sum_cost=Sum("cost"),
+                      sum_video_impressions=Sum(Case(When(
+                          ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                          then=F("impressions")
+                      ))),
+                      sum_video_views_100_quartile=Sum("video_views_100_quartile"),
+                      sum_type_cost=Subquery(subquery_cost, output_field=DBFloatField()),
+                      sum_type_delivery=Subquery(subquery_delivery, output_field=DBFloatField()), )
