@@ -25,12 +25,14 @@ from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 from es_components.managers.base import BaseManager
 
 __all__ = [
     "TargetTableTopicSerializer",
     "TargetTableKeywordSerializer",
     "TargetTableChannelSerializer",
+    "TargetTableVideoSerializer",
 ]
 
 
@@ -260,6 +262,15 @@ class ESTitleField(CharField):
 class TargetTableChannelSerializer(TargetTableSerializer):
     name = ESTitleField(source="yt_id", es_manager_cls=ChannelManager)
     type = ReadOnlyField(default="Channel")
+
+    class Meta(TargetTableSerializer.Meta):
+        model = KeywordStatistic
+        group_by = ("yt_id",)
+
+
+class TargetTableVideoSerializer(TargetTableSerializer):
+    name = ESTitleField(source="yt_id", es_manager_cls=VideoManager)
+    type = ReadOnlyField(default="Video")
 
     class Meta(TargetTableSerializer.Meta):
         model = KeywordStatistic

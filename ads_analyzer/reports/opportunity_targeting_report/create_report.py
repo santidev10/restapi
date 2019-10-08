@@ -11,10 +11,12 @@ from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import Opport
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableChannelSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableTopicSerializer
+from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableVideoSerializer
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
 from utils.datetime import now_in_default_tz
@@ -79,6 +81,7 @@ class OpportunityTargetingReportXLSXGenerator:
             (TopicStatistic, TargetTableTopicSerializer),
             (KeywordStatistic, TargetTableKeywordSerializer),
             (YTChannelStatistic, TargetTableChannelSerializer),
+            (YTVideoStatistic, TargetTableVideoSerializer),
         )
 
         def get_serializer(model, serializer):
