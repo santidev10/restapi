@@ -113,10 +113,6 @@ class OpportunityTargetingReportXLSXGenerator:
             filters = filters & Q(date__lte=date_to)
         return filters
 
-    def _add_devices_sheet(self, wb, opportunity_id, date_from, date_to):
-        sheet = wb.add_worksheet("Devices")
-        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
-
     def _add_demo_sheet(self, wb, opportunity_id, date_from, date_to):
         sheet = wb.add_worksheet("Demo")
         self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
