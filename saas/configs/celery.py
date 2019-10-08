@@ -102,6 +102,7 @@ class Queue:
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
     GOOGLE_ADS_CAMPAIGNS = "google_ads_campaigns"
+    CUSTOM_TRANSCRIPTS = "custom_transcripts"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -111,6 +112,7 @@ CELERY_ROUTES_PREPARED = [
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
+    ("audit_tool.tasks.pull_custom_transcripts", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
@@ -124,6 +126,7 @@ class TaskExpiration:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+    CUSTOM_TRANSCRIPTS_UPDATE = timedelta(hours=8).total_seconds()
 
 
 class TaskTimeout:
@@ -131,3 +134,4 @@ class TaskTimeout:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+    CUSTOM_TRANSCRIPTS_UPDATE = timedelta(hours=8).total_seconds()
