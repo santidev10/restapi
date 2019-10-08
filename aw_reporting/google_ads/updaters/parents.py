@@ -6,6 +6,7 @@ from django.db.models import Max
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import ParentStatistic
+from aw_reporting.models.ad_words.constants import Parent
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -47,9 +48,8 @@ class ParentUpdater(UpdateMixin):
         for row in parent_metrics:
             ad_group_id = row.ad_group.id.value
             self.ad_group_ids.add(ad_group_id)
-            parent_status_str = self.parental_status_enum.Name(row.ad_group_criterion.parental_status.type).lower()
             statistics = {
-                "parent_status_id": constants.PARENT_STATUSES.index(parent_status_str),
+                "parent_status_id": constants.PARENT_ENUM_TO_ID.get(row.ad_group_criterion.parental_status.type, Parent.PARENT),
                 "date": row.segments.date.value,
                 "ad_group_id": ad_group_id,
                 **self.get_quartile_views(row)

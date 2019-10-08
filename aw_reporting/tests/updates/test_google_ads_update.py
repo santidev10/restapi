@@ -21,11 +21,13 @@ from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
+from aw_reporting.google_ads.updaters.age_range import AgeRangeUpdater
 from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
 from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
+from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
@@ -56,6 +58,10 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models.ad_words.constants import AgeRange
+from aw_reporting.models.ad_words.constants import Device
+from aw_reporting.models.ad_words.constants import Gender
+from aw_reporting.models.ad_words.constants import Parent
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.exception import ExceptionWithArgs
 from utils.utittests.generic_test import generic_test
@@ -517,6 +523,139 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         recalculate_de_norm_fields_for_account(account.id)
 
         self.assertEqual(ParentStatistic.objects.all().count(), 1)
+
+    def test_parent_enum_mapping(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(id=1, date=today, ad_group=ad_group,
+                                        average_position=1)
+
+        parent_status_response = [300, 301, 302]
+        expected_parent_status_value = list(range(0, 3))
+        mock_parent_data = MockGoogleAdsAPIResponse()
+        for index, status in enumerate(parent_status_response):
+            mock_parent_data.set("ad_group", "id", ad_group.id)
+            mock_parent_data.set("ad_group_criterion", "parental_status", status, nested_key="type")
+            mock_parent_data.set("metrics", "cost_micros", 0)
+            mock_parent_data.set("metrics", "impressions", 0)
+            mock_parent_data.set("metrics", "video_views", 0)
+            mock_parent_data.set("metrics", "clicks", 0)
+            mock_parent_data.set("metrics", "conversions", 0)
+            mock_parent_data.set("metrics", "all_conversions", 0)
+            mock_parent_data.set("metrics", "view_through_conversions", 0)
+            mock_parent_data.set("metrics", "video_quartile_25_rate", 0)
+            mock_parent_data.set("metrics", "video_quartile_50_rate", 0)
+            mock_parent_data.set("metrics", "video_quartile_75_rate", 0)
+            mock_parent_data.set("metrics", "video_quartile_100_rate", 0)
+            mock_parent_data.set("segments", "date", str(today))
+            mock_parent_data.add_row()
+
+        self.assertEqual(ParentStatistic.objects.all().count(), 0)
+
+        client = GoogleAdsClient("", "")
+        updater = ParentUpdater(account)
+        updater._get_parent_performance = MagicMock(return_value=mock_parent_data)
+        updater.update(client)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        statistics = ParentStatistic.objects.all().order_by("parent_status_id")
+        for index, expected in enumerate(expected_parent_status_value):
+            actual = statistics[index].parent_status_id
+            self.assertEqual(actual, expected)
+
+    def test_age_range_enum_mapping(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        AdGroupStatistic.objects.create(id=1, date=today, ad_group=ad_group,
+                                        average_position=1)
+
+        age_range_response = [503999, 503001, 503002, 503003, 503004, 503005, 503006]
+        expected_age_range_values = list(range(0, 7))
+        mock_age_range_data = MockGoogleAdsAPIResponse()
+        for index, age_range in enumerate(age_range_response):
+            mock_age_range_data.set("ad_group", "id", ad_group.id)
+            mock_age_range_data.set("ad_group_criterion", "age_range", age_range, nested_key="type")
+            mock_age_range_data.set("metrics", "cost_micros", 0)
+            mock_age_range_data.set("metrics", "impressions", 0)
+            mock_age_range_data.set("metrics", "video_views", 0)
+            mock_age_range_data.set("metrics", "clicks", 0)
+            mock_age_range_data.set("metrics", "conversions", 0)
+            mock_age_range_data.set("metrics", "all_conversions", 0)
+            mock_age_range_data.set("metrics", "view_through_conversions", 0)
+            mock_age_range_data.set("metrics", "video_quartile_25_rate", 0)
+            mock_age_range_data.set("metrics", "video_quartile_50_rate", 0)
+            mock_age_range_data.set("metrics", "video_quartile_75_rate", 0)
+            mock_age_range_data.set("metrics", "video_quartile_100_rate", 0)
+            mock_age_range_data.set("segments", "date", str(today))
+            mock_age_range_data.add_row()
+
+        self.assertEqual(AgeRangeStatistic.objects.all().count(), 0)
+
+        client = GoogleAdsClient("", "")
+        updater = AgeRangeUpdater(account)
+        updater._get_age_range_performance = MagicMock(return_value=mock_age_range_data)
+        updater.get_clicks_report = MagicMock(return_value={})
+        updater.update(client)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        statistics = AgeRangeStatistic.objects.all().order_by("age_range_id")
+        for index, expected in enumerate(expected_age_range_values):
+            actual = statistics[index].age_range_id
+            self.assertEqual(actual, expected)
+
+    def test_device_enum_mapping(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=1, account=account)
+
+        device_response = [1, 2, 3, 4, 5]
+        expected_device_values = list(range(-1, 4))
+        mock_campaign_data = MockGoogleAdsAPIResponse()
+        for device_id in device_response:
+            mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id),
+                                   nested_key=None)
+            mock_campaign_data.set("campaign", "id", campaign.id)
+            mock_campaign_data.set("campaign", "name", "test")
+            mock_campaign_data.set("campaign", "status", 2, nested_key=None)
+            mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
+            mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
+            mock_campaign_data.set("segments", "date", today)
+            mock_campaign_data.set("campaign", "start_date", today),
+            mock_campaign_data.set("campaign", "end_date", today),
+            mock_campaign_data.set("campaign_budget", "amount_micros", 1 * 10 ** 6)
+            mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
+            mock_campaign_data.set("metrics", "impressions", 1)
+            mock_campaign_data.set("metrics", "video_views", 1)
+            mock_campaign_data.set("metrics", "clicks", 1)
+            mock_campaign_data.set("metrics", "conversions", 0)
+            mock_campaign_data.set("metrics", "all_conversions", 0)
+            mock_campaign_data.set("metrics", "view_through_conversions", 0)
+            mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
+            mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
+            mock_campaign_data.set("segments", "device", device_id, nested_key=None)
+            mock_campaign_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = CampaignUpdater(account)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater.update(client)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        statistics = CampaignStatistic.objects.all().order_by("device_id")
+        for index, expected in enumerate(expected_device_values):
+            actual = statistics[index].device_id
+            self.assertEqual(actual, expected)
 
     def test_get_ad_is_disapproved(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -1135,6 +1274,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertGreater(account.interest_count, 0)
         self.assertGreater(account.topic_count, 0)
         self.assertGreater(account.keyword_count, 0)
+
 
 
 class FakeExceptionWithArgs:

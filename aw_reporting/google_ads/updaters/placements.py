@@ -3,9 +3,11 @@ from datetime import timedelta
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models.ad_words.constants import Device
 from utils.datetime import now_in_default_tz
 
 
@@ -83,7 +85,7 @@ class PlacementUpdater(UpdateMixin):
                 "yt_id": yt_id,
                 "date": row.segments.date.value,
                 "ad_group_id": row.ad_group.id.value,
-                "device_id": row.segments.device,
+                "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))
