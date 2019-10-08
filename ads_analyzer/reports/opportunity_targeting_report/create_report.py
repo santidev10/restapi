@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 
 import xlsxwriter
+from django.db.models import Q
 from itertools import chain
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -77,14 +78,10 @@ class OpportunityTargetingReportXLSXGenerator:
             (YTChannelStatistic, TargetTableChannelSerializer),
             (YTVideoStatistic, TargetTableVideoSerializer),
         )
+        filters = self._build_filters(opportunity_id, date_from, date_to)
 
         def get_serializer(model, serializer):
-            queryset = model.objects \
-                .filter(
-                ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id,
-                date__gte=date_from,
-                date__lte=date_to,
-            )
+            queryset = model.objects.filter(filters)
 
             return serializer(queryset, many=True, context=dict(now=self.now))
 
@@ -96,6 +93,14 @@ class OpportunityTargetingReportXLSXGenerator:
 
         renderer = TargetSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
         renderer.render(data)
+
+    def _build_filters(self, opportunity_id, date_from, date_to):
+        filters = Q(ad_group__campaign__salesforce_placement__opportunity_id=opportunity_id)
+        if date_from:
+            filters = filters & Q(date__gte=date_from)
+        if date_to:
+            filters = filters & Q(date__lte=date_to)
+        return filters
 
     def _add_devices_sheet(self, wb, opportunity_id, date_from, date_to):
         sheet = wb.add_worksheet("Devices")

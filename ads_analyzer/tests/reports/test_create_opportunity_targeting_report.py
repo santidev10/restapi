@@ -630,6 +630,15 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         columns = self.columns
         self.assertEqual(sum(impressions), item[columns.impressions])
 
+    def test_all_history(self):
+        any_date = date(2019, 1, 1)
+        topic = Topic.objects.create(name="Test topic")
+        TopicStatistic.objects.create(ad_group=self.ad_group, topic=topic, date=any_date)
+
+        self.act(self.opportunity.id, None, None)
+        data = self.get_data_dict(self.opportunity.id, None, None)
+        self.assertEqual(1, len(data))
+
 
 class CreateOpportunityTargetingReportTargetDataESTestCase(CreateOpportunityTargetingReportTargetDataTestCase,
                                                            ESTestCase):
