@@ -46,7 +46,6 @@ class BrandSafetyParamAdapter:
         return query_params
 
 
-
 def get_limits(query_params, default_page_size=None, max_page_number=None):
     size = int(query_params.get("size", default_page_size or DEFAULT_PAGE_SIZE))
     page = int(query_params.get("page", 1))
@@ -85,7 +84,7 @@ class QueryGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = ()
 
     def __init__(self, query_params):
         self.query_params = self._adapt_query_params(query_params)
@@ -383,6 +382,7 @@ class ESFilterBackend(BaseFilterBackend):
                 range_filter=view.range_filter,
                 match_phrase_filter=view.match_phrase_filter,
                 exists_filter=view.exists_filter,
+                params_adapters=view.params_adapters,
             )
         )
         query_params = self._get_query_params(request)
@@ -475,6 +475,7 @@ class ExportDataGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = ()
     queryset = None
 
     def __init__(self, query_params):
@@ -490,6 +491,7 @@ class ExportDataGenerator:
                 range_filter=self.range_filter,
                 match_phrase_filter=self.match_phrase_filter,
                 exists_filter=self.exists_filter,
+                params_adapters=self.params_adapters,
             )
         )
         return dynamic_generator_class(self.query_params)

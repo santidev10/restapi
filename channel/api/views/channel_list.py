@@ -9,11 +9,13 @@ from channel.constants import TERMS_FILTER
 from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import EXISTS_FILTER
+from channel.utils import ChannelGroupParamAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
+from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -102,6 +104,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
+    params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter,)
 
     allowed_aggregations = (
         "ads_stats.average_cpv:max",

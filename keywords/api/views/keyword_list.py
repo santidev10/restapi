@@ -10,6 +10,7 @@ from keywords.constants import TERMS_FILTER
 from keywords.constants import RANGE_FILTER
 from keywords.constants import MATCH_PHRASE_FILTER
 from keywords.api.serializers.keyword_with_views_history import KeywordWithViewsHistorySerializer
+from keywords.utils import KeywordViralParamAdapter
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
@@ -51,6 +52,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
+    params_adapters = (KeywordViralParamAdapter,)
 
     allowed_aggregations = (
         "stats.search_volume:min",
@@ -81,13 +83,5 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params._mutable = True
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
-
-        if query_params.get("stats.is_viral"):
-            if query_params.get("stats.is_viral") == "Viral":
-                self.request.query_params._mutable = True
-                self.request.query_params["stats.is_viral"] = "true"
-            elif query_params.get("stats.is_viral") == "All":
-                self.request.query_params._mutable = True
-                self.request.query_params["stats.is_viral"] = ""
 
         return ESQuerysetAdapter(KeywordManager(sections))
