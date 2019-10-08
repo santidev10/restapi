@@ -24,6 +24,10 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.models import Channel
+from es_components.tests.utils import ESTestCase
 from saas import celery_app
 from utils.utittests.celery import mock_send_task
 from utils.utittests.patch_now import patch_now
@@ -159,7 +163,7 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
         )
 
 
-class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingReportSheetTestCase):
+class CreateOpportunityTargetingReportTargetTestCase(CreateOpportunityTargetingReportSheetTestCase, ESTestCase):
     SHEET_NAME = "Target"
 
     columns = ColumnsDeclaration(
@@ -294,11 +298,10 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
     def test_interests_detailed_demographic_general_data(self):
         raise NotImplemented
 
-    @skip("Not implemented")
     def test_channel_general_data(self):
         any_date = date(2019, 1, 1)
         channel_id = next(str_iterator)
-        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group)
+        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -308,9 +311,21 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(channel_id, item[columns.target])
         self.assertEqual("Channel", item[columns.type])
 
-    @skip("Not implemented")
     def test_channel_general_data_title(self):
-        raise NotImplementedError
+        channel_id = "test_channel:123"
+        channel_name = "Test Channel Name"
+        channel = Channel(id=channel_id)
+        channel.populate_general_data(title=channel_name)
+        ChannelManager(Sections.GENERAL_DATA).upsert([channel])
+        any_date = date(2019, 1, 1)
+        YTChannelStatistic.objects.create(yt_id=channel_id, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(channel_name, item[columns.target])
 
     @skip("Not implemented")
     def test_video_general_data(self):

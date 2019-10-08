@@ -1,3 +1,5 @@
+from typing import Type
+
 from django.db.models import Case
 from django.db.models import F
 from django.db.models import FloatField as DBFloatField
@@ -21,10 +23,14 @@ from aw_reporting.models import get_ctr
 from aw_reporting.models import get_video_view_rate
 from aw_reporting.models import goal_type_str
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers.base import BaseManager
 
 __all__ = [
     "TargetTableTopicSerializer",
     "TargetTableKeywordSerializer",
+    "TargetTableChannelSerializer",
 ]
 
 
@@ -237,3 +243,24 @@ class TargetTableKeywordSerializer(TargetTableSerializer):
     class Meta(TargetTableSerializer.Meta):
         model = KeywordStatistic
         group_by = ("keyword",)
+
+
+class ESTitleField(CharField):
+    def __init__(self, *args, **kwargs):
+        es_manager_cls: Type[BaseManager] = kwargs.pop("es_manager_cls")
+        self.es_manager = es_manager_cls(Sections.GENERAL_DATA)
+        super(ESTitleField, self).__init__(*args, **kwargs)
+
+    def to_representation(self, yt_id):
+        item = self.es_manager.get([yt_id])[0]
+        value = item.general_data.title if item and item.general_data else yt_id
+        return super().to_representation(value)
+
+
+class TargetTableChannelSerializer(TargetTableSerializer):
+    name = ESTitleField(source="yt_id", es_manager_cls=ChannelManager)
+    type = ReadOnlyField(default="Channel")
+
+    class Meta(TargetTableSerializer.Meta):
+        model = KeywordStatistic
+        group_by = ("yt_id",)
