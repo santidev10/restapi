@@ -2,8 +2,8 @@ from typing import Type
 
 from rest_framework_csv.renderers import CSVRenderer
 
-from ads_analyzer.reports.opportunity_targeting_report.styles import Styles
 from ads_analyzer.reports.opportunity_targeting_report.styles import SheetTableStyles
+from ads_analyzer.reports.opportunity_targeting_report.styles import Styles
 
 
 class Cursor:
@@ -122,6 +122,7 @@ class TargetSheetTableRenderer(SheetTableRenderer):
         "clicks": "Clicks",
         "ctr": "CTR",
     }
+
 
 class DevicesSheetTableRenderer(SheetTableRenderer):
     sheet_name = "Devices"
