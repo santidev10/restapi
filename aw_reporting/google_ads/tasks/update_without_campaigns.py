@@ -30,8 +30,8 @@ def setup_update_without_campaigns():
     job = chain(
         lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, LOCK_EXPIRE=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         setup_cid_update_tasks(),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         finalize_update.si(start),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
     )
     return job()
 

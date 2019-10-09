@@ -33,8 +33,8 @@ def setup_update_campaigns():
         lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, LOCK_EXPIRE=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
         setup_mcc_update_tasks(mcc_ids),
         setup_cid_update_tasks(mcc_ids),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
         finalize_campaigns_update.si(start),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
     )
     return job()
 
