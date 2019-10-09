@@ -188,14 +188,6 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         except UserChannelsNotAvailable:
             return ESEmptyResponseAdapter(ChannelManager())
 
-        channel_group = deepcopy(self.request.query_params).get("stats.channel_group")
-
-        if channel_group:
-            self.request.query_params._mutable = True
-            channel_group = channel_group.lower().split(" ")[0]
-            self.request.query_params["stats.channel_group"] = channel_group
-            self.request.query_params._mutable = False
-
         if channels_ids:
             self.request.query_params._mutable = True
             self.request.query_params["main.id"] = channels_ids
