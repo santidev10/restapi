@@ -6,10 +6,13 @@ from django.db.models import Q
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
+from ads_analyzer.reports.opportunity_targeting_report.renderers import DemoSheetTableRenderer
 from ads_analyzer.reports.opportunity_targeting_report.renderers import DevicesSheetTableRenderer
 from ads_analyzer.reports.opportunity_targeting_report.renderers import TargetSheetTableRenderer
 from ads_analyzer.reports.opportunity_targeting_report.renderers import VideosSheetTableRenderer
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoAgeRangeTableSerializer
+from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoGenderTableSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import DevicesTableSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableChannelSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
@@ -18,6 +21,8 @@ from ads_analyzer.reports.opportunity_targeting_report.serializers import Target
 from ads_analyzer.reports.opportunity_targeting_report.serializers import VideosTableSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
 from aw_reporting.models import TopicStatistic
@@ -63,7 +68,7 @@ class OpportunityTargetingReportXLSXGenerator:
         sheet_headers = self._get_headers(opportunity_id, date_from, date_to)
         self._add_target_sheet(workbook, sheet_headers, opportunity_id, date_from, date_to)
         self._add_devices_sheet(workbook, sheet_headers, opportunity_id, date_from, date_to)
-        self._add_demo_sheet(workbook, opportunity_id, date_from, date_to)
+        self._add_demo_sheet(workbook, sheet_headers, opportunity_id, date_from, date_to)
         self._add_video_sheet(workbook, sheet_headers, opportunity_id, date_from, date_to)
 
         workbook.close()
@@ -108,9 +113,26 @@ class OpportunityTargetingReportXLSXGenerator:
         renderer = DevicesSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
         renderer.render(data)
 
-    def _add_demo_sheet(self, wb, opportunity_id, date_from, date_to):
-        sheet = wb.add_worksheet("Demo")
-        self._add_sheet_header(sheet, opportunity_id, date_from, date_to)
+    def _add_demo_sheet(self, wb, sheet_headers, opportunity_id, date_from, date_to):
+        demo_models = (
+            (AgeRangeStatistic, DemoAgeRangeTableSerializer),
+            (GenderStatistic, DemoGenderTableSerializer),
+        )
+        filters = self._build_filters(opportunity_id, date_from, date_to)
+
+        def get_serializer(model, serializer):
+            queryset = model.objects.filter(filters)
+
+            return serializer(queryset, many=True, context=dict(now=self.now))
+
+        serializers = [
+            get_serializer(*args)
+            for args in demo_models
+        ]
+        data = merge_sort([serializer.data for serializer in serializers], key=lambda i: -i["video_views"])
+
+        renderer = DemoSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
+        renderer.render(data)
 
     def _add_video_sheet(self, wb, sheet_headers, opportunity_id, date_from, date_to):
         queryset = AdStatistic.objects.filter(self._build_filters(opportunity_id, date_from, date_to, "ad__ad_group"))
