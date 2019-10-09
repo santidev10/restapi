@@ -5,7 +5,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
-from django.conf.global_settings import LANGUAGES
+from brand_safety.languages import LANG_CODES
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -42,10 +42,9 @@ class BrandSafetyVideoSerializer(Serializer):
 
     def get_transcript(self, video):
         text = ""
-        lang_dict = {item[1]: item[0] for item in LANGUAGES}
         try:
             vid_language = video.general_data.language
-            vid_lang_code = lang_dict[vid_language.capitalize()]
+            vid_lang_code = LANG_CODES[vid_language.capitalize()]
         except Exception as e:
             vid_lang_code = 'en'
 
