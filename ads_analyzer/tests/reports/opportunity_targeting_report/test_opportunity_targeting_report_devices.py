@@ -384,9 +384,23 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         columns = self.columns
         self.assertAlmostEqual(stats.clicks / stats.impressions, item[columns.ctr])
 
-    @skip("Not implemented")
     def test_ordering(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
+                                        video_views=1)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=3, date=any_date, average_position=1,
+                                        video_views=2)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=2, date=any_date, average_position=1,
+                                        video_views=3)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        views = [item[self.columns.views] for item in data]
+        self.assertEqual(
+            sorted(views, reverse=True),
+            views
+        )
 
     def test_general_stats_aggregates(self):
         any_date = date(2019, 1, 1)
