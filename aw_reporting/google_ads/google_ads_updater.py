@@ -163,8 +163,11 @@ class GoogleAdsUpdater(object):
 
             else:
                 return
+        message = f"Unable to find AWConnection for MCC: {self.mcc_account.id} with updater: {updater.__class__.__name__}"
+        if self.cid_account:
+            message += f" for CID: {self.cid_account.id}"
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
-        logger.error(f"Unable to find AWConnection for mcc: {self.mcc_account.id} with updater: {updater.__class__.__name__}")
+        logger.error(message)
 
     def execute(self, updater, client):
         """
