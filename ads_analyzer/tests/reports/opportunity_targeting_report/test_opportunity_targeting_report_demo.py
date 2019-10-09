@@ -9,8 +9,8 @@ from aw_reporting.models import GenderStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.utittests.patch_now import patch_now
 
-from .test_create_opportunity_targeting_report import ColumnsDeclaration
-from .test_create_opportunity_targeting_report import CreateOpportunityTargetingReportTargetTestCase
+from .base import ColumnsDeclaration
+from .base import CreateOpportunityTargetingReportTargetTestCase
 
 
 class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetingReportTargetTestCase):

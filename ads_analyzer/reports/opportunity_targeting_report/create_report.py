@@ -29,6 +29,7 @@ from aw_reporting.models import YTVideoStatistic
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
 from utils.datetime import now_in_default_tz
+from utils.lang import merge_sort
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ class OpportunityTargetingReportXLSXGenerator:
             get_serializer(*args)
             for args in target_models
         ]
-        data = chain(*[serializer.data for serializer in serializers])
+        data = merge_sort([serializer.data for serializer in serializers], key=lambda i: -i["video_views"])
 
         renderer = TargetSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
         renderer.render(data)
