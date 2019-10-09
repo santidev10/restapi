@@ -452,6 +452,7 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = ()
 
 
 class PaginatorWithAggregationMixin:
