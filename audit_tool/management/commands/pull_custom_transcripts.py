@@ -22,26 +22,25 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         init_es_connection()
-        with PidFile(piddir='.', pidname='pull_transcripts.pid') as p:
-            unparsed_vids = self.get_unparsed_vids()
-            vid_ids = set([vid.main.id for vid in unparsed_vids])
-            counter = 0
-            transcripts_counter = 0
-            video_manager = VideoManager(sections=(Sections.CUSTOM_TRANSCRIPTS,),
-                                         upsert_sections=(Sections.CUSTOM_TRANSCRIPTS,))
-            for vid_id in vid_ids:
-                vid_obj = video_manager.get_or_create([vid_id])[0]
-                transcript_soup = self.get_video_soup(vid_id)
-                transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
-                if transcript_text != "":
-                    AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
-                    transcripts_counter += 1
-                populate_video_custom_transcripts(vid_obj, [transcript_text], ['en'])
-                video_manager.upsert([vid_obj])
-                counter += 1
-                logger.info("Parsed video with id: {}".format(vid_id))
-                logger.info("Number of videos parsed: {}".format(counter))
-                logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
+        unparsed_vids = self.get_unparsed_vids()
+        vid_ids = set([vid.main.id for vid in unparsed_vids])
+        counter = 0
+        transcripts_counter = 0
+        video_manager = VideoManager(sections=(Sections.CUSTOM_TRANSCRIPTS,),
+                                     upsert_sections=(Sections.CUSTOM_TRANSCRIPTS,))
+        for vid_id in vid_ids:
+            vid_obj = video_manager.get_or_create([vid_id])[0]
+            transcript_soup = self.get_video_soup(vid_id)
+            transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+            if transcript_text != "":
+                AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
+                transcripts_counter += 1
+            populate_video_custom_transcripts(vid_obj, [transcript_text], ['en'])
+            video_manager.upsert([vid_obj])
+            counter += 1
+            logger.info("Parsed video with id: {}".format(vid_id))
+            logger.info("Number of videos parsed: {}".format(counter))
+            logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
 
     def get_video_soup(self, vid_id):
         transcript_url = "http://video.google.com/timedtext?lang=en&v="
