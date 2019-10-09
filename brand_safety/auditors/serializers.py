@@ -51,7 +51,7 @@ class BrandSafetyVideoSerializer(Serializer):
 
         if 'captions' in video and 'items' in video.captions:
             if len(video.captions.items) == 1:
-                text = video.captions.items[0]
+                text = video.captions.items[0].text
             else:
                 for item in video.captions.items:
                     if item.language_code == vid_lang_code:
