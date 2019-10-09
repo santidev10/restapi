@@ -3,9 +3,11 @@ import logging
 
 from django.db.models import Max
 
-from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.constants import DAILY_STATISTIC_PERFORMANCE_FIELDS
+from aw_reporting.google_ads.constants import GENDER_ENUM_TO_ID
 from aw_reporting.google_ads.utils import format_query
 from aw_reporting.models import GenderStatistic
+from aw_reporting.models.ad_words.constants import Gender
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from utils.datetime import now_in_default_tz
 
@@ -54,7 +56,7 @@ class GenderUpdater(UpdateMixin):
         """
         gender_fields = {
             "ad_group_criterion": ("gender.type",),
-            **constants.DAILY_STATISTIC_PERFORMANCE_FIELDS
+            **DAILY_STATISTIC_PERFORMANCE_FIELDS
         }
         formatted = format_query(gender_fields)
         gender_statistics_query = f"SELECT {formatted} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
@@ -70,7 +72,7 @@ class GenderUpdater(UpdateMixin):
         for row in gender_performance:
             ad_group_id = row.ad_group.id.value
             statistics = {
-                "gender_id": row.ad_group_criterion.gender.type,
+                "gender_id": GENDER_ENUM_TO_ID.get(row.ad_group_criterion.gender.type, Gender.UNDETERMINED),
                 "date": row.segments.date.value,
                 "ad_group_id": ad_group_id,
                 **self.get_quartile_views(row)

@@ -7,6 +7,7 @@ import logging
 import pytz
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import Account
 from aw_reporting.models import ACTION_STATUSES
@@ -14,6 +15,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models.ad_words.constants import BudgetType
+from aw_reporting.models.ad_words.constants import Device
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -126,7 +128,7 @@ class CampaignUpdater(UpdateMixin):
             statistics = {
                 "date": row.segments.date.value,
                 "campaign_id": row.campaign.id.value,
-                "device_id": row.segments.device,
+                "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 **self.get_quartile_views(row)
             }
             # Update statistics with click performance obtained in get_clicks_report

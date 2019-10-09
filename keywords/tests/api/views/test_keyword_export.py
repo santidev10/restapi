@@ -258,3 +258,20 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_viral(self, *args):
+        self.create_admin_user()
+        keywords = [Keyword(next(int_iterator)) for _ in range(2)]
+        keywords[0].populate_stats(is_viral=True)
+        KeywordManager(sections=Sections.STATS).upsert(keywords)
+
+        self._request_collect_file(**{"stats.is_viral": "Viral"})
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(1, len(data))

@@ -12,8 +12,10 @@ from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
 from audit_tool.models import AuditVideoTranscript
 from es_components.managers.video import VideoManager
+from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_transcripts
+from utils.lang import replace_apostrophes
 
 
 class Command(BaseCommand):
@@ -22,20 +24,15 @@ class Command(BaseCommand):
         init_es_connection()
         with PidFile(piddir='.', pidname='pull_transcripts.pid') as p:
             unparsed_vids = self.get_unparsed_vids()
-            parsed_vids = set()
+            vid_ids = set([vid.main.id for vid in unparsed_vids])
             counter = 0
             transcripts_counter = 0
             video_manager = VideoManager(sections=(Sections.CUSTOM_TRANSCRIPTS,),
                                          upsert_sections=(Sections.CUSTOM_TRANSCRIPTS,))
-            for vid in unparsed_vids:
-                vid_id = vid.main.id
-                if vid_id in parsed_vids:
-                    continue
-                else:
-                    parsed_vids.add(vid_id)
+            for vid_id in vid_ids:
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = self.get_video_soup(vid_id)
-                transcript_text = transcript_soup.text if transcript_soup else ""
+                transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
                 if transcript_text != "":
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
                     transcripts_counter += 1
@@ -43,12 +40,8 @@ class Command(BaseCommand):
                 video_manager.upsert([vid_obj])
                 counter += 1
                 logger.info("Parsed video with id: {}".format(vid_id))
-                logger.info("transcript_text for video with id {}: {}".format(vid_id, transcript_text))
                 logger.info("Number of videos parsed: {}".format(counter))
                 logger.info("Number of transcripts retrieved: {}".format(transcripts_counter))
-                delay = random.choice(range(0, 6))
-                logger.info("Sleeping for {} seconds.".format(delay))
-                time.sleep(delay)
 
     def get_video_soup(self, vid_id):
         transcript_url = "http://video.google.com/timedtext?lang=en&v="
@@ -62,6 +55,8 @@ class Command(BaseCommand):
 
     def get_unparsed_vids(self):
         s = Search(using='default')
+        s = s.index(Video.Index.name)
+
         # Get English Videos Query
         q1 = Q(
             {
@@ -98,5 +93,5 @@ class Command(BaseCommand):
         )
         s = s.query(q1).query(q2).query(q3)
         s = s.sort({"stats.views": {"order": "desc"}})
-        for video in s.scan():
-            yield video
+        s = s[:10000]
+        return s.execute()

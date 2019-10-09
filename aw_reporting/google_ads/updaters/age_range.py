@@ -6,6 +6,8 @@ from django.db.models import Max
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models.ad_words.constants import AgeRange
+from aw_reporting.google_ads.constants import AGE_RANGE_ENUM_TO_ID
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -67,7 +69,6 @@ class AgeRangeUpdater(UpdateMixin):
         """
         Generator to yield AgeRangeStatistic instances
         :param age_range_metrics: iter -> Google ads ad_group resource search response
-        :param age_range_types: dict -> Google ads ad_group_criterion resource search response mapped to dict
         :param click_type_data: dict -> Google ads click data by ad_group
         :return:
         """
@@ -75,6 +76,7 @@ class AgeRangeUpdater(UpdateMixin):
             ad_group_id = row.ad_group.id.value
             statistics = {
                 "ad_group_id": ad_group_id,
+                "age_range_id": AGE_RANGE_ENUM_TO_ID.get(row.ad_group_criterion.age_range.type, AgeRange.UNDETERMINED),
                 "date": row.segments.date.value,
                 **self.get_quartile_views(row)
             }

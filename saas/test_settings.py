@@ -5,7 +5,6 @@ except ImportError:
 
 IS_TEST = True
 
-
 try:
     from teamcity import is_running_under_teamcity
 
@@ -13,7 +12,6 @@ try:
         TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 except:
     pass
-
 MIGRATION_MODULES = {
     "administration": None,
     "audit_tool": None,

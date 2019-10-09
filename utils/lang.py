@@ -1,8 +1,10 @@
+import re
 from collections import namedtuple
 from enum import Enum
 from functools import reduce
+from types import GeneratorType
 from typing import Sequence
-import re
+
 from fasttext.FastText import _FastText as FastText
 
 fast_text_model = None
@@ -42,6 +44,10 @@ class ExtendedEnum(Enum):
     def map_object(cls):
         map_cls = namedtuple("{}Map".format(cls.__name__), cls.names())
         return map_cls(**{key: value.value for key, value in cls.__members__.items()})
+
+    @classmethod
+    def choices(cls):
+        return tuple((item.name, item.value) for item in cls)
 
 
 def merge_dicts(*dicts):
@@ -88,6 +94,11 @@ def remove_mentions_hashes_urls(s):
     return remove_links(remove_hashtags(remove_mentions(s)))
 
 
+def replace_apostrophes(s):
+    apostrophe_regex = re.compile("(&#39;)")
+    return apostrophe_regex.sub("'", s)
+
+
 # Returns Language Detected by FastText
 def fasttext_lang(s):
     global fast_text_model
@@ -98,3 +109,48 @@ def fasttext_lang(s):
     fast_text_result = fast_text_model.predict(s)
     language = fast_text_result[0][0].split('__')[2].lower()
     return language
+
+
+def merge_sort(generators, key=None):
+    """
+    Implementation of the merge sort algorithm. It assumes that all incoming generators/iterators are presorted
+    """
+    key = key or (lambda x: x)
+    wrappers = [_GeneratorWrapper(g) for g in generators]
+    while True:
+        wrappers = [w for w in wrappers if w.has_next]
+        if len(wrappers) == 0:
+            return
+        next_wrapper = min(wrappers, key=lambda w: key(w.head))
+        yield next_wrapper.head
+        next_wrapper.shift()
+
+
+class _GeneratorWrapper:
+    def __init__(self, generator):
+        self.generator = (generator
+                          if isinstance(generator, GeneratorType)
+                          else as_generator(generator))
+        self._head = None
+        self._has_next = None
+        self.shift()
+
+    @property
+    def has_next(self):
+        return self._has_next
+
+    @property
+    def head(self):
+        return self._head
+
+    def shift(self):
+        try:
+            self._head = next(self.generator)
+        except StopIteration:
+            self._has_next = False
+        else:
+            self._has_next = True
+
+
+def as_generator(items):
+    yield from items

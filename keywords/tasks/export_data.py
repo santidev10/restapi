@@ -14,12 +14,14 @@ from keywords.constants import TERMS_FILTER
 from keywords.constants import RANGE_FILTER
 from keywords.constants import KEYWORD_CSV_HEADERS
 from keywords.api.serializers.keyword_export import KeywordListExportSerializer
+from keywords.utils import KeywordViralParamAdapter
 
 
 class KeywordListDataGenerator(ExportDataGenerator):
     serializer_class = KeywordListExportSerializer
     terms_filter = TERMS_FILTER
     range_filter = RANGE_FILTER
+    params_adapters = (KeywordViralParamAdapter,)
     queryset = ESQuerysetAdapter(KeywordManager((
         Sections.MAIN,
         Sections.STATS,

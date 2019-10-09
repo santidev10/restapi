@@ -3,6 +3,7 @@ from rest_framework.fields import DateField
 from rest_framework.serializers import ModelSerializer
 
 from ads_analyzer.models import OpportunityTargetingReport
+from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 
 
 class OpportunityTargetReportPayloadSerializer(ModelSerializer):
@@ -22,8 +23,14 @@ class OpportunityTargetReportPayloadSerializer(ModelSerializer):
         )
 
 
+class ReportDownloadLink(CharField):
+    def to_representation(self, s3_file_key):
+        s3_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(s3_file_key)
+        return super().to_representation(s3_link)
+
+
 class OpportunityTargetReportModelSerializer(ModelSerializer):
-    download_link = CharField(source="external_link")
+    download_link = ReportDownloadLink(source="s3_file_key")
 
     class Meta:
         model = OpportunityTargetingReport

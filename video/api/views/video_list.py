@@ -12,6 +12,7 @@ from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import APIViewMixin
+from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
@@ -69,6 +70,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
+    params_adapters = (BrandSafetyParamAdapter,)
 
     allowed_aggregations = (
         "ads_stats.average_cpv:max",

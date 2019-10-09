@@ -2,10 +2,12 @@ from datetime import timedelta
 import logging
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
+from aw_reporting.models.ad_words.constants import Device
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -107,7 +109,7 @@ class AdGroupUpdater(UpdateMixin):
             statistics = {
                 "date": row.segments.date.value,
                 "ad_network": row.segments.ad_network_type,
-                "device_id": row.segments.device,
+                "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 "ad_group_id": ad_group_id,
                 "average_position": 0.0,
                 "engagements": row.metrics.engagements.value if row.metrics.engagements else 0,
