@@ -8,3 +8,4 @@ class ChannelGroupParamAdapter:
             query_params[self.parameter_full_name] = parameter
 
         return query_params
+    
