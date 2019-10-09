@@ -27,18 +27,15 @@ LOCK_NAME = "update_campaigns"
 
 @celery_app.task(expires=TaskExpiration.HOURLY_AW_UPDATE, soft_time_limit=TaskTimeout.HOURLY_AW_UPDATE)
 def setup_update_campaigns():
-    start = time.time()
-    mcc_ids = Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True)
+    mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     job = chain(
         lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, LOCK_EXPIRE=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
-        setup_mcc_update_tasks(mcc_ids),
-        setup_cid_update_tasks(mcc_ids),
-        finalize_campaigns_update.si(start),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+        setup_mcc_update_tasks.si(mcc_ids),
     )
     return job()
 
 
+@celery_app.task
 def setup_mcc_update_tasks(mcc_ids):
     """
     Update permissions and setup task signatures to update all MCC accounts
@@ -54,9 +51,14 @@ def setup_mcc_update_tasks(mcc_ids):
         mcc_account_update.si(mcc_id, index + 1, len(mcc_ids))
         for index, mcc_id in enumerate(mcc_ids, start=0)
     ]).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
-    return account_update_tasks
+    job = chain(
+        account_update_tasks,
+        setup_cid_update_tasks.si(mcc_ids),
+    )
+    return job()
 
 
+@celery_app.task
 def setup_cid_update_tasks(mcc_ids):
     """
     Setup task signatures to update all CID accounts under all MCC accounts
@@ -67,7 +69,12 @@ def setup_cid_update_tasks(mcc_ids):
         create_cid_tasks(mcc_id) for mcc_id in mcc_ids
     )
     campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
-    return campaign_update_tasks
+    job = chain(
+        campaign_update_tasks,
+        finalize_campaigns_update.si(),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+    )
+    return job()
 
 
 @celery_app.task
@@ -101,7 +108,7 @@ def create_cid_tasks(mcc_id):
 
 
 @celery_app.task
-@retry(count=10, delay=3, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error, ))
 def cid_campaign_update(mcc_id, cid_id, index, total):
     """
     Update single CID account
@@ -116,7 +123,7 @@ def cid_campaign_update(mcc_id, cid_id, index, total):
 
 
 @celery_app.task
-def finalize_campaigns_update(start):
+def finalize_campaigns_update():
     logger.error("Adding relations between reports and creations for Campaign.")
     add_relation_between_report_and_creation_campaigns()
-    logger.error(f"Campaign update complete. Time took: {time.time() - start}")
+    logger.error(f"Campaign update complete")
