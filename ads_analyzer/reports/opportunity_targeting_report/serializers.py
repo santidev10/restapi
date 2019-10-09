@@ -291,24 +291,28 @@ class TargetTableVideoSerializer(TargetTableSerializer):
         group_by = ("yt_id",)
 
 
+class TransformField(CharField):
+    def __init__(self, *args, **kwargs):
+        self.transform_function = kwargs.pop("transform_function")
+        super(TransformField, self).__init__(*args, **kwargs)
+
+    def to_representation(self, value):
+        value = self.transform_function(value)
+        return super().to_representation(value)
+
 
 class DevicesTableSerializer(TargetTableSerializer):
-    type = SerializerMethodField()
+    type = TransformField(source="device_id", transform_function=device_str)
 
     class Meta(TargetTableSerializer.Meta):
         model = AdGroupStatistic
         group_by = ("device_id",)
-
-    def get_type(self, obj):
-        device_id = obj["device_id"]
-        return device_str(device_id)
 
     @classmethod
     def _build_type_subquery(cls, queryset):
         return queryset.filter(ad_group__campaign_id=OuterRef("ad_group__campaign_id")) \
             .order_by("ad_group__campaign_id") \
             .values("ad_group__campaign_id")
-
 
 
 class DemoTableSerializer(TargetTableSerializer):
@@ -320,24 +324,17 @@ class DemoTableSerializer(TargetTableSerializer):
 
 
 class DemoAgeRangeTableSerializer(DemoTableSerializer):
-    name = SerializerMethodField()
+    name = TransformField(source="age_range_id", transform_function=age_range_str)
 
     class Meta(DemoTableSerializer.Meta):
         model = AgeRangeStatistic
         group_by = ("age_range_id",)
 
-    def get_name(self, obj):
-        age_range_id = obj["age_range_id"]
-        return age_range_str(age_range_id)
 
 class DemoGenderTableSerializer(DemoTableSerializer):
-    name = SerializerMethodField()
+    name = TransformField(source="gender_id", transform_function=gender_str)
 
     class Meta(DemoTableSerializer.Meta):
         model = GenderStatistic
         group_by = ("gender_id",)
-
-    def get_name(self, obj):
-        gender_id = obj["gender_id"]
-        return gender_str(gender_id)
 

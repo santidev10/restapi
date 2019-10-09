@@ -135,7 +135,7 @@ class OpportunityTargetingReportXLSXGenerator:
             get_serializer(*args)
             for args in demo_models
         ]
-        data = chain(*[serializer.data for serializer in serializers])
+        data = merge_sort([serializer.data for serializer in serializers], key=lambda i: -i["video_views"])
 
         renderer = DemoSheetTableRenderer(workbook=wb, sheet_headers=sheet_headers)
         renderer.render(data)
