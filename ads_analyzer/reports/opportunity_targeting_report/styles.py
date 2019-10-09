@@ -31,7 +31,7 @@ class Styles:
         raise NotImplementedError
 
 
-class TargetSheetTableStyles(Styles):
+class SheetTableStyles(Styles):
     class _Styles:
         GOOD = "GOOD"
         WARNING = "WARNING"

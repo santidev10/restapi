@@ -17,6 +17,8 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
+from aw_reporting.models import device_str
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import get_ctr
@@ -33,6 +35,7 @@ __all__ = [
     "TargetTableKeywordSerializer",
     "TargetTableChannelSerializer",
     "TargetTableVideoSerializer",
+    "DevicesTableSerializer",
 ]
 
 
@@ -157,10 +160,14 @@ class TargetTableSerializer(ModelSerializer):
         return super().__new__(cls, *args, **kwargs)
 
     @classmethod
-    def _build_queryset(cls, queryset):
-        type_subquery = queryset.filter(ad_group_id=OuterRef("ad_group_id")) \
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group_id=OuterRef("ad_group_id")) \
             .order_by("ad_group_id") \
             .values("ad_group_id")
+
+    @classmethod
+    def _build_queryset(cls, queryset):
+        type_subquery = cls._build_type_subquery(queryset)
         subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
         subquery_delivery = type_subquery.annotate(sum=Sum(Case(
             When(
@@ -275,3 +282,23 @@ class TargetTableVideoSerializer(TargetTableSerializer):
     class Meta(TargetTableSerializer.Meta):
         model = KeywordStatistic
         group_by = ("yt_id",)
+
+
+
+class DevicesTableSerializer(TargetTableSerializer):
+    type = SerializerMethodField()
+
+    class Meta(TargetTableSerializer.Meta):
+        model = AdGroupStatistic
+        group_by = ("device_id",)
+
+    def get_type(self, obj):
+        device_id = obj["device_id"]
+        return device_str(device_id)
+
+    @classmethod
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group__campaign_id=OuterRef("ad_group__campaign_id")) \
+            .order_by("ad_group__campaign_id") \
+            .values("ad_group__campaign_id")
+
