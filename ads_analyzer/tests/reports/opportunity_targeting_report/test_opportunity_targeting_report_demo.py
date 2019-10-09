@@ -10,10 +10,10 @@ from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from utils.utittests.patch_now import patch_now
 
 from .base import ColumnsDeclaration
-from .base import CreateOpportunityTargetingReportTargetTestCase
+from .base import CreateOpportunityTargetingReportSheetTestCase
 
 
-class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetingReportTargetTestCase):
+class CreateOpportunityTargetingReportDemoDataTestCase(CreateOpportunityTargetingReportSheetTestCase):
     SHEET_NAME = "Demo"
 
     columns = ColumnsDeclaration(
