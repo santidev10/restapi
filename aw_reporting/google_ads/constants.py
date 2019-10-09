@@ -1,5 +1,16 @@
 from django.conf import settings
 
+from google.ads.google_ads.v2.services.enums import AgeRangeTypeEnum
+from google.ads.google_ads.v2.services.enums import DeviceEnum
+from google.ads.google_ads.v2.services.enums import GenderTypeEnum
+from google.ads.google_ads.v2.services.enums import ParentalStatusTypeEnum
+
+from aw_reporting.models.ad_words.constants import AgeRange
+from aw_reporting.models.ad_words.constants import Device
+from aw_reporting.models.ad_words.constants import Gender
+from aw_reporting.models.ad_words.constants import Parent
+
+
 GET_DF = "%Y-%m-%d"
 MIN_FETCH_DATE = settings.MIN_AW_FETCH_DATE
 
@@ -152,4 +163,35 @@ VIDEO_PERFORMANCE_FIELDS = {
     "video": ("channel_id", "duration_millis", "id"),
     "metrics": tuple(set(MAIN_STATISTICS_FIELDS) - {"all_conversions"}) + COMPLETED_FIELDS,
     "segments": ("date",),
+}
+
+# Mappings of Google Ads enum values to object ids throughout application
+GENDER_ENUM_TO_ID = {
+    GenderTypeEnum.GenderType.UNDETERMINED: Gender.UNDETERMINED,
+    GenderTypeEnum.GenderType.FEMALE: Gender.FEMALE,
+    GenderTypeEnum.GenderType.MALE: Gender.MALE,
+}
+
+AGE_RANGE_ENUM_TO_ID = {
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_UNDETERMINED: AgeRange.UNDETERMINED,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_18_24: AgeRange.AGE_18_24,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_25_34: AgeRange.AGE_25_34,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_35_44: AgeRange.AGE_35_44,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_45_54: AgeRange.AGE_45_54,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_55_64: AgeRange.AGE_55_64,
+    AgeRangeTypeEnum.AgeRangeType.AGE_RANGE_65_UP: AgeRange.AGE_65_UP,
+}
+
+DEVICE_ENUM_TO_ID = {
+    DeviceEnum.Device.UNKNOWN: Device._UNDETERMINED,
+    DeviceEnum.Device.DESKTOP: Device.COMPUTER,
+    DeviceEnum.Device.MOBILE: Device.MOBILE,
+    DeviceEnum.Device.TABLET: Device.TABLET,
+    DeviceEnum.Device.OTHER: Device.OTHER,
+}
+
+PARENT_ENUM_TO_ID = {
+    ParentalStatusTypeEnum.ParentalStatusType.PARENT: Parent.PARENT,
+    ParentalStatusTypeEnum.ParentalStatusType.NOT_A_PARENT: Parent.NOT_A_PARENT,
+    ParentalStatusTypeEnum.ParentalStatusType.UNDETERMINED: Parent.UNDETERMINED,
 }

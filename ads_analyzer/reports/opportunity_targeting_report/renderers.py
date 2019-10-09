@@ -3,7 +3,7 @@ from typing import Type
 from rest_framework_csv.renderers import CSVRenderer
 
 from ads_analyzer.reports.opportunity_targeting_report.styles import Styles
-from ads_analyzer.reports.opportunity_targeting_report.styles import TargetSheetTableStyles
+from ads_analyzer.reports.opportunity_targeting_report.styles import SheetTableStyles
 
 
 class Cursor:
@@ -65,7 +65,7 @@ class SheetTableRenderer(CSVRenderer):
 
 class TargetSheetTableRenderer(SheetTableRenderer):
     sheet_name = "Target"
-    style_cls = TargetSheetTableStyles
+    style_cls = SheetTableStyles
     header = [
         "name",
         "type",
@@ -96,6 +96,64 @@ class TargetSheetTableRenderer(SheetTableRenderer):
     ]
     labels = {
         "name": "Target",
+        "type": "Type",
+        "campaign_name": "Ads Campaign",
+        "ad_group_name": "Ads Ad group",
+        "placement_name": "Salesforce Placement",
+        "placement_start": "Placement Start Date",
+        "placement_end": "Placement End Date",
+        "days_remaining": "Days remaining",
+        "margin_cap": "Margin Cap",
+        "cannot_roll_over": "Cannot Roll over Delivery",
+        "rate_type": "Rate Type",
+        "contracted_rate": "Contracted Rate",
+        "max_bid": "Max bid",
+        "avg_rate": "Avg. Rate",
+        "cost": "Cost",
+        "cost_delivery_percentage": "Cost delivery percentage",
+        "impressions": "Impressions",
+        "video_views": "Views",
+        "delivery_percentage": "Delivery percentage",
+        "revenue": "Revenue",
+        "profit": "Profit",
+        "margin": "Margin",
+        "video_played_to_100": "Video played to 100%",
+        "view_rate": "View rate",
+        "clicks": "Clicks",
+        "ctr": "CTR",
+    }
+
+class DevicesSheetTableRenderer(SheetTableRenderer):
+    sheet_name = "Devices"
+    style_cls = SheetTableStyles
+    header = [
+        "type",
+        "campaign_name",
+        "ad_group_name",
+        "placement_name",
+        "placement_start",
+        "placement_end",
+        "days_remaining",
+        "margin_cap",
+        "cannot_roll_over",
+        "rate_type",
+        "contracted_rate",
+        "max_bid",
+        "avg_rate",
+        "cost",
+        "cost_delivery_percentage",
+        "impressions",
+        "video_views",
+        "delivery_percentage",
+        "revenue",
+        "profit",
+        "margin",
+        "video_played_to_100",
+        "view_rate",
+        "clicks",
+        "ctr",
+    ]
+    labels = {
         "type": "Type",
         "campaign_name": "Ads Campaign",
         "ad_group_name": "Ads Ad group",
