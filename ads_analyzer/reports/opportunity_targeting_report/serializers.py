@@ -17,8 +17,12 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
+from aw_reporting.models import age_range_str
 from aw_reporting.models import device_str
+from aw_reporting.models import gender_str
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import get_ctr
@@ -36,6 +40,9 @@ __all__ = [
     "TargetTableChannelSerializer",
     "TargetTableVideoSerializer",
     "DevicesTableSerializer",
+    "DemoTableSerializer",
+    "DemoAgeRangeTableSerializer",
+    "DemoGenderTableSerializer",
 ]
 
 
@@ -301,4 +308,36 @@ class DevicesTableSerializer(TargetTableSerializer):
         return queryset.filter(ad_group__campaign_id=OuterRef("ad_group__campaign_id")) \
             .order_by("ad_group__campaign_id") \
             .values("ad_group__campaign_id")
+
+
+
+class DemoTableSerializer(TargetTableSerializer):
+    @classmethod
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group__campaign_id=OuterRef("ad_group__campaign_id")) \
+            .order_by("ad_group__campaign_id") \
+            .values("ad_group__campaign_id")
+
+
+class DemoAgeRangeTableSerializer(DemoTableSerializer):
+    name = SerializerMethodField()
+
+    class Meta(DemoTableSerializer.Meta):
+        model = AgeRangeStatistic
+        group_by = ("age_range_id",)
+
+    def get_name(self, obj):
+        age_range_id = obj["age_range_id"]
+        return age_range_str(age_range_id)
+
+class DemoGenderTableSerializer(DemoTableSerializer):
+    name = SerializerMethodField()
+
+    class Meta(DemoTableSerializer.Meta):
+        model = GenderStatistic
+        group_by = ("gender_id",)
+
+    def get_name(self, obj):
+        gender_id = obj["gender_id"]
+        return gender_str(gender_id)
 

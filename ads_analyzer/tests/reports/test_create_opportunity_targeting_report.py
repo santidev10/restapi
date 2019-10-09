@@ -13,10 +13,13 @@ from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
 from ads_analyzer.tasks import create_opportunity_targeting_report
+from aw_reporting.models import device_str
+from aw_reporting.models import age_range_str
 from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import Topic
@@ -36,8 +39,6 @@ from utils.utittests.celery import mock_send_task
 from utils.utittests.patch_now import patch_now
 from utils.utittests.s3_mock import S3TestCase
 from utils.utittests.str_iterator import str_iterator
-
-from aw_reporting.models import device_str
 
 
 class CreateOpportunityTargetingReportBaseTestCase(TransactionTestCase, S3TestCase):
