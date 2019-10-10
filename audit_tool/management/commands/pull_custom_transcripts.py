@@ -14,7 +14,7 @@ from audit_tool.models import AuditVideoTranscript
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 from es_components.constants import Sections
-from utils.transform import populate_video_custom_transcripts
+from utils.transform import populate_video_custom_captions
 from utils.lang import replace_apostrophes
 
 
@@ -27,8 +27,8 @@ class Command(BaseCommand):
             vid_ids = set([vid.main.id for vid in unparsed_vids])
             counter = 0
             transcripts_counter = 0
-            video_manager = VideoManager(sections=(Sections.CUSTOM_TRANSCRIPTS,),
-                                         upsert_sections=(Sections.CUSTOM_TRANSCRIPTS,))
+            video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+                                         upsert_sections=(Sections.CUSTOM_CAPTIONS,))
             for vid_id in vid_ids:
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = self.get_video_soup(vid_id)
@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 if transcript_text != "":
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
                     transcripts_counter += 1
-                populate_video_custom_transcripts(vid_obj, [transcript_text], ['en'])
+                populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
                 video_manager.upsert([vid_obj])
                 counter += 1
                 logger.info("Parsed video with id: {}".format(vid_id))
@@ -79,13 +79,13 @@ class Command(BaseCommand):
                 }
             }
         )
-        # Get Videos with no custom_transcripts.transcripts_checked
+        # Get Videos with no custom_captions.transcripts_checked
         q3 = Q(
             {
                 "bool": {
                     "must_not": {
                         "exists": {
-                            "field": "custom_transcripts.transcripts_checked"
+                            "field": "custom_captions.transcripts_checked"
                         }
                     }
                 }
