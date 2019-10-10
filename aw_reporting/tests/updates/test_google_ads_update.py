@@ -1068,7 +1068,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_updater = MagicMock()
         updater.main_updaters = (mock_updater, )
         updater.MAX_RETRIES = 2
-        updater.full_update(account, client)
+        updater.full_update(account, client=client)
         self.assertGreater(mock_execute.call_count, 1)
 
     def test_budget_daily(self):
