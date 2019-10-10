@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='opportunitytargetingreport',
             name='s3_file_key',
-            field=models.CharField(default=None, max_length=133, null=True),
+            field=models.CharField(default=None, max_length=256, null=True),
         ),
     ]
