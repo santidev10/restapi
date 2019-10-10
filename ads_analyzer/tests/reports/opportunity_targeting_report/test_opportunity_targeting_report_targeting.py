@@ -287,6 +287,36 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
             topics_cost_delivery_percentage[topic_2.name]
         )
 
+    def test_cost_delivery_percentage_by_interests(self):
+        any_date = date(2019, 1, 1)
+        costs = (20, 80)
+
+        audience1 = Audience.objects.create(type=Audience.IN_MARKET_TYPE, name="Test Audience 1")
+        audience2 = Audience.objects.create(type=Audience.IN_MARKET_TYPE, name="Test Audience 2")
+
+        stats_1 = AudienceStatistic.objects.create(audience=audience1, ad_group=self.ad_group, date=any_date,
+                                                   cost=costs[0])
+        stats_2 = AudienceStatistic.objects.create(audience=audience2, ad_group=self.ad_group, date=any_date,
+                                                   cost=costs[1])
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(2, len(data))
+        columns = self.columns
+        topics_cost_delivery_percentage = {
+            item[columns.target]: item[columns.cost_delivered_percentage]
+            for item in data
+        }
+        sum_cost = sum(costs)
+        self.assertEqual(
+            stats_1.cost / sum_cost,
+            topics_cost_delivery_percentage[audience1.name]
+        )
+        self.assertEqual(
+            stats_2.cost / sum_cost,
+            topics_cost_delivery_percentage[audience2.name]
+        )
+
     def test_delivery_percentage_cpm(self):
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPM

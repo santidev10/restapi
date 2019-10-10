@@ -48,11 +48,27 @@ __all__ = [
     "DemoGenderTableSerializer",
 ]
 
+INTEREST_STR = {
+    Audience.CUSTOM_AFFINITY_TYPE: "Interests - CAA",
+    Audience.AFFINITY_TYPE: "Interests - Affinity",
+    Audience.IN_MARKET_TYPE: "Interests - In market",
+}
+
 
 class GoalTypeField(CharField):
     def to_representation(self, goal_type_id):
         goal_type = goal_type_str(goal_type_id)
         return super(GoalTypeField, self).to_representation(goal_type)
+
+
+class TransformField(CharField):
+    def __init__(self, *args, **kwargs):
+        self.transform_function = kwargs.pop("transform_function")
+        super(TransformField, self).__init__(*args, **kwargs)
+
+    def to_representation(self, value):
+        value = self.transform_function(value)
+        return super().to_representation(value)
 
 
 class TargetTableSerializer(ModelSerializer):
@@ -295,36 +311,18 @@ class TargetTableVideoSerializer(TargetTableSerializer):
 
 
 class TargetTableAudienceSerializer(TargetTableSerializer):
-    type = SerializerMethodField()
+    type = TransformField(source="audience__type", transform_function=lambda value: INTEREST_STR.get(value, value))
     name = CharField(source="audience__name")
 
     class Meta(TargetTableSerializer.Meta):
         model = AudienceStatistic
-        group_by = ("audience_id",)
+        group_by = ("audience_id", "audience__name", "audience__type")
 
-        values_shared = TargetTableSerializer.Meta.values_shared + (
-            "audience__name",
-            "audience__type"
-        )
-
-    def get_type(self, obj):
-        interest_str = {
-            Audience.CUSTOM_AFFINITY_TYPE: "Interests - CAA",
-            Audience.AFFINITY_TYPE: "Interests - Affinity",
-            Audience.IN_MARKET_TYPE: "Interests - In market",
-
-        }
-        return interest_str.get(obj["audience__type"])
-
-
-class TransformField(CharField):
-    def __init__(self, *args, **kwargs):
-        self.transform_function = kwargs.pop("transform_function")
-        super(TransformField, self).__init__(*args, **kwargs)
-
-    def to_representation(self, value):
-        value = self.transform_function(value)
-        return super().to_representation(value)
+    @classmethod
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad_group_id=OuterRef("ad_group_id"), audience__type=OuterRef("audience__type")) \
+            .order_by("ad_group_id", "audience__type") \
+            .values("ad_group_id", "audience__type")
 
 
 class DevicesTableSerializer(TargetTableSerializer):
