@@ -69,31 +69,26 @@ class SheetTableStyles(Styles):
         if is_header:
             return []
         bounds = (
-            (.3, self._Styles.CRITICAL),
-            (.4, self._Styles.WARNING),
-            (1, self._Styles.GOOD),
+            ((MinMaxNumber(), .3), self._Styles.CRITICAL),
+            ((MinMaxNumber(), .4), self._Styles.WARNING),
+            ((MinMaxNumber(), MinMaxNumber()), self._Styles.GOOD),
         )
         color_style = calculate_range_stats(bounds, value)
         return [color_style, self._Styles.PERCENTAGE_SHORT]
 
     def _get_cost_delivery_percentage_column_style_classes(self, value, is_header):
-        if is_header:
-            return []
-        bounds = (
-            (.5, self._Styles.CRITICAL),
-            (.7, self._Styles.WARNING),
-            (1, self._Styles.GOOD),
-        )
-        color_style = calculate_range_stats(bounds, value)
-        return [color_style, self._Styles.PERCENTAGE_LONG]
+        return self._get_base_delivery_percentage_column_style_classes(value, is_header)
 
     def _get_delivery_percentage_column_style_classes(self, value, is_header):
+        return self._get_base_delivery_percentage_column_style_classes(value, is_header)
+
+    def _get_base_delivery_percentage_column_style_classes(self, value, is_header):
         if is_header:
             return []
         bounds = (
-            (.5, self._Styles.CRITICAL),
-            (.7, self._Styles.WARNING),
-            (1, self._Styles.GOOD),
+            ((MinMaxNumber(), .5), self._Styles.CRITICAL),
+            ((MinMaxNumber(), .7), self._Styles.WARNING),
+            ((MinMaxNumber(), MinMaxNumber()), self._Styles.GOOD),
         )
         color_style = calculate_range_stats(bounds, value)
         return [color_style, self._Styles.PERCENTAGE_LONG]
@@ -117,7 +112,21 @@ class SheetTableStyles(Styles):
 def calculate_range_stats(bounds, value):
     if value is None:
         return None
-    for bound, style in bounds:
-        if value < bound:
+    for (min_value, max_value), style in bounds:
+        if min_value <= value <= max_value:
             return style
     return None
+
+
+class MinMaxNumber:
+    def __lt__(self, other):
+        return True
+
+    def __le__(self, other):
+        return True
+
+    def __gt__(self, other):
+        return True
+
+    def __ge__(self, other):
+        return True
