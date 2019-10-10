@@ -6,22 +6,10 @@ from django.db.models import Q
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
-from ads_analyzer.reports.opportunity_targeting_report.renderers import DemoSheetTableRenderer
-from ads_analyzer.reports.opportunity_targeting_report.renderers import DevicesSheetTableRenderer
-from ads_analyzer.reports.opportunity_targeting_report.renderers import TargetSheetTableRenderer
-from ads_analyzer.reports.opportunity_targeting_report.renderers import VideosSheetTableRenderer
-from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoAgeRangeTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoGenderTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DevicesTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableChannelSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableTopicSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableVideoSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import VideosTableSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
@@ -32,6 +20,20 @@ from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
 from utils.datetime import now_in_default_tz
 from utils.lang import merge_sort
+from .renderers import DemoSheetTableRenderer
+from .renderers import DevicesSheetTableRenderer
+from .renderers import TargetSheetTableRenderer
+from .renderers import VideosSheetTableRenderer
+from .s3_exporter import OpportunityTargetingReportS3Exporter
+from .serializers import DemoAgeRangeTableSerializer
+from .serializers import DemoGenderTableSerializer
+from .serializers import DevicesTableSerializer
+from .serializers import TargetTableAudienceSerializer
+from .serializers import TargetTableChannelSerializer
+from .serializers import TargetTableKeywordSerializer
+from .serializers import TargetTableTopicSerializer
+from .serializers import TargetTableVideoSerializer
+from .serializers import VideosTableSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,7 @@ class OpportunityTargetingReportXLSXGenerator:
             (KeywordStatistic, TargetTableKeywordSerializer),
             (YTChannelStatistic, TargetTableChannelSerializer),
             (YTVideoStatistic, TargetTableVideoSerializer),
+            (AudienceStatistic, TargetTableAudienceSerializer),
         )
         filters = self._build_filters(opportunity_id, date_from, date_to)
 
