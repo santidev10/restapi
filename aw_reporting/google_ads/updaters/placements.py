@@ -45,11 +45,16 @@ class PlacementUpdater(UpdateMixin):
             min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
             max_date = max_acc_date
 
+            # As Out-Of-Memory errors prevention we have to download this report twice
+            # and save to the DB only the necessary records at each load.
+            # Any accumulation of such a report in memory is unacceptable because it may cause Out-Of-Memory error.
             placement_metrics = self._get_placement_metrics(min_date, max_date)
-            channel_statistics, video_statistics = self._prepare_instances(placement_metrics)
+            channel_statistics_generator = self._prepare_instances(placement_metrics, YTChannelStatistic, stat_type=constants.YOUTUBE_CHANNEL)
+            YTChannelStatistic.objects.safe_bulk_create(channel_statistics_generator)
 
-            YTChannelStatistic.objects.safe_bulk_create(channel_statistics)
-            YTVideoStatistic.objects.safe_bulk_create(video_statistics)
+            placement_metrics = self._get_placement_metrics(min_date, max_date)
+            video_statistics_generator = self._prepare_instances(placement_metrics, YTVideoStatistic, stat_type=constants.YOUTUBE_VIDEO)
+            YTVideoStatistic.objects.safe_bulk_create(video_statistics_generator)
 
     def _get_placement_metrics(self, min_date, max_date):
         """
@@ -61,24 +66,21 @@ class PlacementUpdater(UpdateMixin):
         placement_performance = self.ga_service.search(self.account.id, query=query)
         return placement_performance
 
-    def _prepare_instances(self, placement_metrics):
+    def _prepare_instances(self, placement_metrics, model, stat_type=constants.YOUTUBE_CHANNEL):
         """
         Generate statistics based on placement type
         :param placement_metrics: Google ads detail_placement_view resource search response
         :return: tuple (lists) -> YTChannelStatistic, YTVideoStatistic
         """
-        video_statistics = []
-        channel_statistics = []
         for row in placement_metrics:
             placement_type = self.ad_group_criterion_type.Name(row.ad_group_criterion.type)
-            if placement_type == constants.YOUTUBE_CHANNEL:
-                model = YTChannelStatistic
-                to_create = channel_statistics
-                yt_id = row.ad_group_criterion.youtube_channel.channel_id.value
-            elif placement_type == constants.YOUTUBE_VIDEO:
-                model = YTVideoStatistic
-                to_create = video_statistics
-                yt_id = row.ad_group_criterion.youtube_video.video_id.value
+            if placement_type == stat_type:
+                if placement_type == constants.YOUTUBE_CHANNEL:
+                    yt_id = row.ad_group_criterion.youtube_channel.channel_id.value
+                elif placement_type == constants.YOUTUBE_VIDEO:
+                    yt_id = row.ad_group_criterion.youtube_video.video_id.value
+                else:
+                    continue
             else:
                 continue
             statistics = {
@@ -89,5 +91,4 @@ class PlacementUpdater(UpdateMixin):
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))
-            to_create.append(model(**statistics))
-        return channel_statistics, video_statistics
+            yield model(**statistics)

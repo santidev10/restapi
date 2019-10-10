@@ -71,8 +71,8 @@ def setup_cid_update_tasks(mcc_ids):
     campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
     job = chain(
         campaign_update_tasks,
-        finalize_campaigns_update.si(),
         unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+        finalize_campaigns_update.si(),
     )
     return job()
 
