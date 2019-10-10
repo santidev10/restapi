@@ -22,6 +22,8 @@ from aw_reporting.models import device_str
 from aw_reporting.models import gender_str
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Audience
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
@@ -39,6 +41,7 @@ __all__ = [
     "TargetTableKeywordSerializer",
     "TargetTableChannelSerializer",
     "TargetTableVideoSerializer",
+    "TargetTableAudienceSerializer",
     "DevicesTableSerializer",
     "DemoTableSerializer",
     "DemoAgeRangeTableSerializer",
@@ -291,6 +294,29 @@ class TargetTableVideoSerializer(TargetTableSerializer):
         group_by = ("yt_id",)
 
 
+class TargetTableAudienceSerializer(TargetTableSerializer):
+    type = SerializerMethodField()
+    name = CharField(source="audience__name")
+
+    class Meta(TargetTableSerializer.Meta):
+        model = AudienceStatistic
+        group_by = ("audience_id",)
+
+        values_shared = TargetTableSerializer.Meta.values_shared + (
+            "audience__name",
+            "audience__type"
+        )
+
+    def get_type(self, obj):
+        interest_str = {
+            Audience.CUSTOM_AFFINITY_TYPE: "Interests - CAA",
+            Audience.AFFINITY_TYPE: "Interests - Affinity",
+            Audience.IN_MARKET_TYPE: "Interests - In market",
+
+        }
+        return interest_str.get(obj["audience__type"])
+
+
 class TransformField(CharField):
     def __init__(self, *args, **kwargs):
         self.transform_function = kwargs.pop("transform_function")
@@ -299,6 +325,7 @@ class TransformField(CharField):
     def to_representation(self, value):
         value = self.transform_function(value)
         return super().to_representation(value)
+
 
 
 class DevicesTableSerializer(TargetTableSerializer):
