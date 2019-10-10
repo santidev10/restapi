@@ -57,7 +57,8 @@ class AdGroupUpdater(UpdateMixin):
         max_date = str(max_date)
 
         ad_group_performance = self._get_ad_group_performance(min_date, max_date)
-        self._create_instances(ad_group_performance, click_type_data)
+        generator = self._generate_instances(ad_group_performance, click_type_data)
+        AdGroupStatistic.objects.safe_bulk_create(generator)
 
     def _get_ad_group_performance(self, min_date, max_date):
         """
@@ -71,7 +72,7 @@ class AdGroupUpdater(UpdateMixin):
         ad_group_performance = self.ga_service.search(self.account.id, query=query)
         return ad_group_performance
 
-    def _create_instances(self, ad_group_performance, click_type_data):
+    def _generate_instances(self, ad_group_performance, click_type_data):
         """
         Method to create and update AdGroup and AdGroupStatistic objects
         :param ad_group_performance: Google ads ad_group resource search response
@@ -81,7 +82,6 @@ class AdGroupUpdater(UpdateMixin):
         ad_group_type_enum = self.client.get_type("AdGroupTypeEnum", version="v2").AdGroupType
         updated_ad_groups = set()
         ad_groups_to_create = []
-        statistics_to_create = []
         for row in ad_group_performance:
             ad_group_id = str(row.ad_group.id.value)
             campaign_id = str(row.campaign.id.value)
@@ -120,7 +120,5 @@ class AdGroupUpdater(UpdateMixin):
             # Update statistics with click performance obtained in get_clicks_report
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME, ignore_a_few_records=True)
             statistics.update(click_data)
-            statistics_to_create.append(AdGroupStatistic(**statistics))
-
+            yield AdGroupStatistic(**statistics)
         AdGroup.objects.bulk_create(ad_groups_to_create)
-        AdGroupStatistic.objects.safe_bulk_create(statistics_to_create)

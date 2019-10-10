@@ -43,7 +43,7 @@ def upload_initial_aw_data_task(connection_pk):
             try:
                 updater.mcc_account = manager
                 client.login_customer_id = manager.id
-                updater.full_update(account, client)
+                updater.full_update(account, client=client)
             except Exception as e:
                 # Try next manager id
                 logger.error(e)

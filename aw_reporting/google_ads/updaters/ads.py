@@ -48,7 +48,8 @@ class AdUpdater(UpdateMixin):
                 resource_name=self.RESOURCE_NAME
             )
             ad_performance = self._get_ad_performance(min_date, max_date)
-            self._create_instances(ad_performance, click_type_data)
+            generator = self._generate_instances(ad_performance, click_type_data)
+            AdStatistic.objects.safe_bulk_create(generator)
 
     def _get_ad_performance(self, min_date, max_date):
         """
@@ -62,7 +63,7 @@ class AdUpdater(UpdateMixin):
         ad_performance = self.ga_service.search(self.account.id, query=query)
         return ad_performance
 
-    def _create_instances(self, ad_performance: iter, click_type_data: dict):
+    def _generate_instances(self, ad_performance: iter, click_type_data: dict):
         """
         Generator that yields GenderStatistic instances
         :param ad_performance: iter -> Google ads ad_group_ad resource search response
@@ -70,12 +71,9 @@ class AdUpdater(UpdateMixin):
         """
         updated_ad_ids = set()
         ads_to_create = []
-        stats_to_create = []
-
         for row in ad_performance:
             ad = row.ad_group_ad.ad
             ad_id = ad.id.value
-
             if ad_id not in updated_ad_ids:
                 updated_ad_ids.add(ad_id)
                 ad_data = {
@@ -102,7 +100,6 @@ class AdUpdater(UpdateMixin):
             # Update statistics with click performance obtained in get_clicks_report
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
             statistics.update(click_data)
-            stats_to_create.append(AdStatistic(**statistics))
-
+            yield AdStatistic(**statistics)
         Ad.objects.safe_bulk_create(ads_to_create)
-        AdStatistic.objects.safe_bulk_create(stats_to_create)
+
