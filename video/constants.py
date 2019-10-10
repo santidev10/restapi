@@ -12,7 +12,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views", "brand_safety.overall_score")
 
-EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags")
+EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags", "custom_captions.items")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
