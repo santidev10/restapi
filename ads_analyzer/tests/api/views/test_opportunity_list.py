@@ -4,9 +4,11 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from aw_reporting.models import Campaign
-from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -34,6 +36,15 @@ class OpportunityListPermissionsAPIViewTestCase(OpportunityTargetingReportBaseAP
     def test_user_with_permissions(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_opportunity_list")
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_user_with_permissions_group(self):
+        user = self.create_test_user()
+        Permissions.sync_groups()
+        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
 
         response = self._request()
 
@@ -89,4 +100,3 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual([], response.json())
-

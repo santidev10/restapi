@@ -17,6 +17,8 @@ from ads_analyzer.tasks import create_opportunity_targeting_report
 from aw_reporting.models import Opportunity
 from saas import celery_app
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
 from utils.utittests.celery import mock_send_task
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
@@ -63,6 +65,15 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
     def test_user_with_permissions(self):
         user = self.create_test_user()
         user.add_custom_user_permission("create_opportunity_report")
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_user_with_permissions_group(self):
+        user = self.create_test_user()
+        Permissions.sync_groups()
+        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
 
         response = self._request()
 
