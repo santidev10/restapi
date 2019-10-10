@@ -3,7 +3,6 @@ from io import BytesIO
 
 import xlsxwriter
 from django.db.models import Q
-from itertools import chain
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.models.opportunity_targeting_report import ReportStatus
@@ -18,8 +17,10 @@ from ads_analyzer.reports.opportunity_targeting_report.serializers import Target
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableTopicSerializer
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableVideoSerializer
+from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableAudienceSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Opportunity
@@ -86,6 +87,7 @@ class OpportunityTargetingReportXLSXGenerator:
             (KeywordStatistic, TargetTableKeywordSerializer),
             (YTChannelStatistic, TargetTableChannelSerializer),
             (YTVideoStatistic, TargetTableVideoSerializer),
+            (AudienceStatistic, TargetTableAudienceSerializer),
         )
         filters = self._build_filters(opportunity_id, date_from, date_to)
 
