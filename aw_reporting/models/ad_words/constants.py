@@ -55,6 +55,7 @@ class Device:
     MOBILE = 1
     TABLET = 2
     OTHER = 3
+    CONNECTED_TV = 6
 
 
 ALL_AGE_RANGES = get_all_class_constants(AgeRange)
@@ -83,6 +84,7 @@ _DEVICE_REPRESENTATION = {
     Device.MOBILE: "Mobile devices with full browsers",
     Device.TABLET: "Tablets with full browsers",
     Device.OTHER: "Other",
+    Device.CONNECTED_TV: "TV Screens",
 }
 
 

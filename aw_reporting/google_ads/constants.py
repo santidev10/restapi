@@ -188,6 +188,7 @@ DEVICE_ENUM_TO_ID = {
     DeviceEnum.Device.MOBILE: Device.MOBILE,
     DeviceEnum.Device.TABLET: Device.TABLET,
     DeviceEnum.Device.OTHER: Device.OTHER,
+    DeviceEnum.Device.CONNECTED_TV: Device.CONNECTED_TV,
 }
 
 PARENT_ENUM_TO_ID = {
