@@ -327,7 +327,6 @@ class TransformField(CharField):
         return super().to_representation(value)
 
 
-
 class DevicesTableSerializer(TargetTableSerializer):
     type = TransformField(source="device_id", transform_function=device_str)
 
