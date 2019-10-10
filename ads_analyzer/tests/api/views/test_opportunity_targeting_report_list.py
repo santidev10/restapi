@@ -12,6 +12,8 @@ from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -40,6 +42,15 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
     def test_user_with_permissions(self):
         user = self.create_test_user()
         user.add_custom_user_permission("create_opportunity_report")
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_user_with_permissions_group(self):
+        user = self.create_test_user()
+        Permissions.sync_groups()
+        user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
 
         response = self._request()
 
@@ -89,7 +100,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         self.assertEqual(
             {
                 "id": report.id,
-                "opportunity": opportunity.id,
+                "opportunity_id": opportunity.id,
+                "opportunity": opportunity.name,
                 "date_from": report.date_from.isoformat(),
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
