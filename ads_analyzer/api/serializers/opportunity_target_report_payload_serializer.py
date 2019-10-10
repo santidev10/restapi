@@ -31,12 +31,14 @@ class ReportDownloadLink(CharField):
 
 class OpportunityTargetReportModelSerializer(ModelSerializer):
     download_link = ReportDownloadLink(source="s3_file_key")
+    opportunity = CharField(source='opportunity.name')
 
     class Meta:
         model = OpportunityTargetingReport
         fields = (
             "id",
             "opportunity",
+            "opportunity_id",
             "date_from",
             "date_to",
             "created_at",
