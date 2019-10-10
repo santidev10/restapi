@@ -29,7 +29,7 @@ LOCK_NAME = "update_campaigns"
 def setup_update_campaigns():
     mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, LOCK_EXPIRE=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
         setup_mcc_update_tasks.si(mcc_ids),
     )
     return job()
