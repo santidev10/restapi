@@ -119,7 +119,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                    Sections.CUSTOM_TRANSCRIPTS)
+                    Sections.CUSTOM_CAPTIONS)
 
         channel_id = deepcopy(self.request.query_params).get("channel")
         flags = deepcopy(self.request.query_params).get("flags")
