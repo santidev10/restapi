@@ -89,7 +89,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         self.assertEqual(
             {
                 "id": report.id,
-                "opportunity": opportunity.id,
+                "opportunity_id": opportunity.id,
+                "opportunity": opportunity.name,
                 "date_from": report.date_from.isoformat(),
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
