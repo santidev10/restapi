@@ -117,6 +117,6 @@ def calculate_range_stats(bounds, value):
     if value is None:
         return None
     for bound, style in bounds:
-        if value < bound:
+        if value <= bound:
             return style
     return None
