@@ -3,7 +3,7 @@ from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 from utils.views import XLSX_CONTENT_TYPE
 
-S3_FILE_KEY_PATTERN = "opportunity_targeting_reports/{opportunity_id}_{date_from}_{date_to}_{created_at}"
+S3_FILE_KEY_PATTERN = "opportunity_targeting_reports/{opportunity_id}_{date_from}_{date_to}_{created_at}.xlsx"
 
 
 class OpportunityTargetingReportS3Exporter(S3Exporter):
