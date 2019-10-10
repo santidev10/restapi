@@ -2,6 +2,8 @@ from datetime import date
 from datetime import timedelta
 from unittest import skip
 
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
@@ -125,17 +127,56 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(keyword, item[columns.target])
         self.assertEqual("Keyword", item[columns.type])
 
-    @skip("Not implemented")
     def test_interests_in_marketing_general_data(self):
-        raise NotImplemented
+        any_date = date(2019, 1, 1)
+        self.opportunity.cannot_roll_over = True
+        self.opportunity.save()
 
-    @skip("Not implemented")
+        audience_name = "Test Audience"
+        audience = Audience.objects.create(type=Audience.IN_MARKET_TYPE, name=audience_name)
+        AudienceStatistic.objects.create(audience=audience, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(audience_name, item[columns.target])
+        self.assertEqual("Interests - In market", item[columns.type])
+
     def test_interests_affinity_general_data(self):
-        raise NotImplemented
+        any_date = date(2019, 1, 1)
+        self.opportunity.cannot_roll_over = True
+        self.opportunity.save()
 
-    @skip("Not implemented")
+        audience_name = "Test Audience"
+        audience = Audience.objects.create(type=Audience.AFFINITY_TYPE, name=audience_name)
+        AudienceStatistic.objects.create(audience=audience, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(audience_name, item[columns.target])
+        self.assertEqual("Interests - Affinity", item[columns.type])
+
     def test_interests_caa_general_data(self):
-        raise NotImplemented
+        any_date = date(2019, 1, 1)
+        self.opportunity.cannot_roll_over = True
+        self.opportunity.save()
+
+        audience_name = "Test Audience"
+        audience = Audience.objects.create(type=Audience.CUSTOM_AFFINITY_TYPE, name=audience_name)
+        AudienceStatistic.objects.create(audience=audience, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(audience_name, item[columns.target])
+        self.assertEqual("Interests - CAA", item[columns.type])
 
     @skip("Not implemented")
     def test_interests_custom_intent_general_data(self):
@@ -244,6 +285,36 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(
             stats_2.cost / sum_cost,
             topics_cost_delivery_percentage[topic_2.name]
+        )
+
+    def test_cost_delivery_percentage_by_interests(self):
+        any_date = date(2019, 1, 1)
+        costs = (20, 80)
+
+        audience1 = Audience.objects.create(type=Audience.IN_MARKET_TYPE, name="Test Audience 1")
+        audience2 = Audience.objects.create(type=Audience.IN_MARKET_TYPE, name="Test Audience 2")
+
+        stats_1 = AudienceStatistic.objects.create(audience=audience1, ad_group=self.ad_group, date=any_date,
+                                                   cost=costs[0])
+        stats_2 = AudienceStatistic.objects.create(audience=audience2, ad_group=self.ad_group, date=any_date,
+                                                   cost=costs[1])
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(2, len(data))
+        columns = self.columns
+        topics_cost_delivery_percentage = {
+            item[columns.target]: item[columns.cost_delivered_percentage]
+            for item in data
+        }
+        sum_cost = sum(costs)
+        self.assertEqual(
+            stats_1.cost / sum_cost,
+            topics_cost_delivery_percentage[audience1.name]
+        )
+        self.assertEqual(
+            stats_2.cost / sum_cost,
+            topics_cost_delivery_percentage[audience2.name]
         )
 
     def test_delivery_percentage_cpm(self):
