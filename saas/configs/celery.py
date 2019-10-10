@@ -86,7 +86,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts",
-        "schedule": crontab(hour="4", minute="0")
+        "schedule": 14400
     }
 }
 CELERY_RESULT_BACKEND = "django-db"
