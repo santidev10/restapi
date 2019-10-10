@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
+from ads_analyzer.models.opportunity_targeting_report import ReportStatus
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
 from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
@@ -78,7 +79,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 opportunity=opportunity,
                 date_from=date_from,
                 date_to=date_to,
-                s3_file_key="example/report"
+                s3_file_key="example/report",
+                status=ReportStatus.SUCCESS.value
             )
 
         response = self._request()
@@ -92,6 +94,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
                 "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
+                "status": report.status
             },
             response.json()["items"][0]
         )
