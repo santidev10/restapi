@@ -30,7 +30,7 @@ def segmented_audit_next_channels_batch():
 def pull_custom_transcripts():
     init_es_connection()
     logger.info("Pulling custom transcripts.")
-    with PidFile(piddir='.', pidname='pull_transcripts.pid') as p:
+    with PidFile(piddir='.', pidname='pull_custom_transcripts.pid') as p:
         unparsed_vids = get_unparsed_vids()
         vid_ids = set([vid.main.id for vid in unparsed_vids])
         counter = 0
