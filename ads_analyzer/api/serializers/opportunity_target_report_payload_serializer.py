@@ -41,5 +41,5 @@ class OpportunityTargetReportModelSerializer(ModelSerializer):
             "date_to",
             "created_at",
             "download_link",
-            "status"
+            "status",
         )
