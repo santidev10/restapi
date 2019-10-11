@@ -52,10 +52,6 @@ class AdGroupUpdater(UpdateMixin):
             min_date, max_date,
             resource_name=self.RESOURCE_NAME
         )
-
-        min_date = str(min_date)
-        max_date = str(max_date)
-
         ad_group_performance = self._get_ad_group_performance(min_date, max_date)
         generator = self._generate_instances(ad_group_performance, click_type_data)
         AdGroupStatistic.objects.safe_bulk_create(generator)
