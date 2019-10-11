@@ -1,4 +1,4 @@
 [submodule "es_components"]
 	path = es_components
 	url = git@bitbucket.org:sigmacf/es_components.git
-	branch = release/4.2
+	branch = release/4.3

@@ -9,6 +9,7 @@ from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
 from google.ads.google_ads.client import GoogleAdsClient
 from google.ads.google_ads.errors import GoogleAdsException
+from google.ads.google_ads.v1.services.enums import DeviceEnum
 from google.api_core.exceptions import GoogleAPIError
 from pytz import timezone
 from pytz import utc
@@ -1274,6 +1275,62 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertGreater(account.interest_count, 0)
         self.assertGreater(account.topic_count, 0)
         self.assertGreater(account.keyword_count, 0)
+
+    def test_update_ad_group_device_tv_screen(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(id=1,
+                                          campaign=campaign,
+                                          de_norm_fields_are_recalculated=True,
+                                          cost=1,
+                                          impressions=1,
+                                          video_views=1,
+                                          clicks=1,
+                                          engagements=1,
+                                          active_view_impressions=1,
+                                          name="test"
+                                          )
+        dt = today - timedelta(days=2)
+        resource_name = self.create_resource_name("ad_group", ad_group.id)
+        mock_ad_group_data = MockGoogleAdsAPIResponse()
+        mock_ad_group_data.set("campaign", "id", campaign.id)
+        mock_ad_group_data.set("ad_group", "resource_name", resource_name, nested_key=None)
+        mock_ad_group_data.set("ad_group", "id", ad_group.id)
+        mock_ad_group_data.set("ad_group", "name", ad_group.name)
+        mock_ad_group_data.set("ad_group", "status", 2, nested_key=None)
+        mock_ad_group_data.set("ad_group", "type", 7, nested_key=None)
+        mock_ad_group_data.set("metrics", "average_position", 12)
+        mock_ad_group_data.set("metrics", "cost_micros", 2 * 10 ** 6)
+        mock_ad_group_data.set("metrics", "impressions", 4)
+        mock_ad_group_data.set("metrics", "video_views", 6)
+        mock_ad_group_data.set("metrics", "clicks", 8)
+        mock_ad_group_data.set("metrics", "conversions", 0)
+        mock_ad_group_data.set("metrics", "all_conversions", 0)
+        mock_ad_group_data.set("metrics", "view_through_conversions", 0)
+        mock_ad_group_data.set("metrics", "video_quartile_25_rate", 0)
+        mock_ad_group_data.set("metrics", "video_quartile_50_rate", 0)
+        mock_ad_group_data.set("metrics", "video_quartile_75_rate", 0)
+        mock_ad_group_data.set("metrics", "video_quartile_100_rate", 0)
+        mock_ad_group_data.set("metrics", "engagements", 1)
+        mock_ad_group_data.set("metrics", "active_view_impressions", 12)
+        mock_ad_group_data.set("segments", "date", str(dt))
+        mock_ad_group_data.set("segments", "device", DeviceEnum.Device.CONNECTED_TV, nested_key=None)
+        mock_ad_group_data.set("segments", "ad_network_type", 6)
+        mock_ad_group_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = AdGroupUpdater(account)
+        updater._get_ad_group_performance = MagicMock(return_value=mock_ad_group_data)
+        updater.get_clicks_report = MagicMock(return_value={})
+
+        updater.update(client)
+        recalculate_de_norm_fields_for_account(account.id)
+        ad_group.refresh_from_db()
+
+        self.assertEqual(Device.CONNECTED_TV, ad_group.statistics.first().device_id)
+        self.assertTrue(ad_group.device_tv_screens)
 
 
 

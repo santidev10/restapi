@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.case import skip
 
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Device
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import device_str
 from utils.utittests.patch_now import patch_now
@@ -418,3 +419,15 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         item = data[0]
         columns = self.columns
         self.assertEqual(sum(impressions), item[columns.impressions])
+
+    def test_tv_screens(self):
+        any_date = date(2019, 1, 1)
+        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=Device.CONNECTED_TV, average_position=1,
+                                        date=any_date)
+
+        self.act(self.opportunity.id, None, None)
+        data = self.get_data_dict(self.opportunity.id, None, None)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual("TV Screens", item[columns.type])
