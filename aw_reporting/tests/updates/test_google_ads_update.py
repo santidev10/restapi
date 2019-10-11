@@ -895,8 +895,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertEqual(min_date, str(MIN_FETCH_DATE))
-        self.assertEqual(max_date, str(date.today()))
+        self.assertEqual(min_date, MIN_FETCH_DATE)
+        self.assertEqual(max_date, date.today())
 
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime.now(utc)
