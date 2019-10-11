@@ -112,7 +112,7 @@ CELERY_ROUTES_PREPARED = [
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
-    ("audit_tool.tasks.pull_custom_transcripts", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
+    ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
