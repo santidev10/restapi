@@ -45,6 +45,7 @@ services:
       - rabbitmq
       - pg
       - redis
+      - es
     environment:
       RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
