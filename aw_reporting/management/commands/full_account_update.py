@@ -1,5 +1,8 @@
 from django.core.management import BaseCommand
 
+from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
+from aw_creation.tasks import add_relation_between_report_and_creation_ads
+from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.models import Account
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 
@@ -22,3 +25,7 @@ class Command(BaseCommand):
                     updater.full_update(account, any_permission=True)
                 except Exception:
                     continue
+
+        add_relation_between_report_and_creation_campaigns()
+        add_relation_between_report_and_creation_ad_groups()
+        add_relation_between_report_and_creation_ads()
