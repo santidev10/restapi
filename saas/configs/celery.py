@@ -85,7 +85,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 3600,
     },
     "pull-custom-transcripts": {
-        "task": "audit_tool.tasks.pull_custom_transcripts",
+        "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 600
     }
 }
