@@ -17,16 +17,17 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.models import age_range_str
-from aw_reporting.models import device_str
-from aw_reporting.models import gender_str
 from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Audience
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
+from aw_reporting.models import age_range_str
+from aw_reporting.models import device_str
+from aw_reporting.models import gender_str
 from aw_reporting.models import get_ctr
 from aw_reporting.models import get_video_view_rate
 from aw_reporting.models import goal_type_str
@@ -46,6 +47,7 @@ __all__ = [
     "DemoTableSerializer",
     "DemoAgeRangeTableSerializer",
     "DemoGenderTableSerializer",
+    "VideosTableSerializer",
 ]
 
 INTEREST_STR = {
@@ -111,7 +113,7 @@ class TargetTableSerializer(ModelSerializer):
         )
 
     def get_days_remaining(self, obj):
-        placement_end = obj["ad_group__campaign__salesforce_placement__end"]
+        placement_end = obj[f"{self.Meta.ad_group_ref}__campaign__salesforce_placement__end"]
         today = self.context["now"].date()
         return (placement_end - today).days
 
@@ -126,7 +128,7 @@ class TargetTableSerializer(ModelSerializer):
 
     def get_revenue(self, obj):
         units = self._get_units(obj)
-        rate = obj["ad_group__campaign__salesforce_placement__ordered_rate"]
+        rate = obj[f"{self.Meta.ad_group_ref}__campaign__salesforce_placement__ordered_rate"]
         divider = self._get_units_divider(obj)
         return units * rate / divider
 
@@ -177,7 +179,7 @@ class TargetTableSerializer(ModelSerializer):
                 else 1)
 
     def _get_goal_type_id(self, obj):
-        return obj["ad_group__campaign__salesforce_placement__goal_type_id"]
+        return obj[f"{self.Meta.ad_group_ref}__campaign__salesforce_placement__goal_type_id"]
 
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
@@ -195,13 +197,14 @@ class TargetTableSerializer(ModelSerializer):
     def _build_queryset(cls, queryset):
         type_subquery = cls._build_type_subquery(queryset)
         subquery_cost = type_subquery.annotate(sum=Sum("cost")).values("sum")
+        goal_type_ref = f"{cls.Meta.ad_group_ref}__campaign__salesforce_placement__goal_type_id"
         subquery_delivery = type_subquery.annotate(sum=Sum(Case(
             When(
-                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                **{goal_type_ref: SalesForceGoalType.CPV},
                 then=F("video_views")
             ),
             When(
-                ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM,
+                **{goal_type_ref: SalesForceGoalType.CPM},
                 then=F("impressions")
             )
         ))).values("sum")
@@ -212,7 +215,7 @@ class TargetTableSerializer(ModelSerializer):
                       sum_clicks=Sum("clicks"),
                       sum_cost=Sum("cost"),
                       sum_video_impressions=Sum(Case(When(
-                          ad_group__campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV,
+                          **{goal_type_ref: SalesForceGoalType.CPV},
                           then=F("impressions")
                       ))),
                       sum_video_views_100_quartile=Sum("video_views_100_quartile"),
@@ -260,6 +263,7 @@ class TargetTableSerializer(ModelSerializer):
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
+        ad_group_ref = "ad_group"
 
 
 class TargetTableTopicSerializer(TargetTableSerializer):
@@ -362,3 +366,32 @@ class DemoGenderTableSerializer(DemoTableSerializer):
         model = GenderStatistic
         group_by = ("gender_id",)
 
+
+class VideosTableSerializer(TargetTableSerializer):
+    name = CharField(source="ad__creative_name")
+    campaign_name = CharField(source="ad__ad_group__campaign__name")
+    ad_group_name = CharField(source="ad__ad_group__name")
+    placement_name = CharField(source="ad__ad_group__campaign__salesforce_placement__name")
+    placement_start = DateField(source="ad__ad_group__campaign__salesforce_placement__start")
+    placement_end = DateField(source="ad__ad_group__campaign__salesforce_placement__end")
+    cannot_roll_over = BooleanField(source="ad__ad_group__campaign__salesforce_placement"
+                                           "__opportunity__cannot_roll_over")
+    rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
+    contracted_rate = FloatField(source="ad__ad_group__campaign__salesforce_placement__ordered_rate")
+
+    @classmethod
+    def _build_type_subquery(cls, queryset):
+        return queryset.filter(ad__ad_group__campaign_id=OuterRef("ad__ad_group__campaign_id")) \
+            .order_by("ad__ad_group__campaign_id") \
+            .values("ad__ad_group__campaign_id")
+
+    @classmethod
+    def _build_queryset(cls, queryset):
+        queryset = queryset.annotate(ad_group=F("ad__ad_group"))
+        return super()._build_queryset(queryset)
+
+    class Meta(TargetTableSerializer.Meta):
+        model = AdStatistic
+        group_by = ("ad_id", "ad__creative_name")
+        values_shared = tuple([f"ad__{value}" for value in TargetTableSerializer.Meta.values_shared])
+        ad_group_ref = "ad__ad_group"

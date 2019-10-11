@@ -3,6 +3,7 @@ from typing import List
 from utils.lang import merge_dicts
 
 __all__ = [
+    "Styles",
     "SheetTableStyles",
 ]
 

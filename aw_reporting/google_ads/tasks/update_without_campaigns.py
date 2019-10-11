@@ -27,7 +27,7 @@ LOCK_NAME = "update_without_campaigns"
 @celery_app.task(expires=TaskExpiration.FULL_AW_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_UPDATE)
 def setup_update_without_campaigns():
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, LOCK_EXPIRE=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         setup_cid_update_tasks.si()
     )
     return job()
@@ -44,8 +44,8 @@ def setup_cid_update_tasks():
     cid_update_tasks = group_chorded(cid_update_tasks).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
     job = chain(
         cid_update_tasks,
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         finalize_update.si(),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
     )
     return job()
 

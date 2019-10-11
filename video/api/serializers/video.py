@@ -7,6 +7,7 @@ from rest_framework.fields import SerializerMethodField
 
 from utils.brand_safety_view_decorator import get_brand_safety_data
 from utils.es_components_api_utils import ESDictSerializer
+from brand_safety.languages import LANG_CODES
 
 
 class VideoSerializer(ESDictSerializer):
@@ -42,12 +43,27 @@ class VideoSerializer(ESDictSerializer):
         return chart_data
 
     def get_transcript(self, video):
-        transcript = None
-        if video.captions and video.captions.items:
-            for caption in video.captions.items:
-                if caption.language_code == "en":
-                    text = caption.text or ""
-                    transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+        text = ""
+        try:
+            vid_language = video.general_data.language
+            vid_lang_code = LANG_CODES[vid_language.capitalize()]
+        except Exception as e:
+            vid_lang_code = 'en'
+
+        if 'captions' in video and 'items' in video.captions:
+            if len(video.captions.items) == 1:
+                text = video.captions.items[0].text
+            else:
+                for item in video.captions.items:
+                    if item.language_code == vid_lang_code:
+                        text = item.text
+                        break
+        if not text and 'custom_captions' in video and 'items' in video.custom_captions:
+            for item in video.custom_captions.items:
+                if item.language_code == vid_lang_code:
+                    text = item.text
+                    break
+        transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         return transcript
 
     def get_brand_safety_data(self, channel):
