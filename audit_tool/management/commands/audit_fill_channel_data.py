@@ -110,8 +110,9 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 try:
-                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
-                    db_channel_meta.default_language = db_lang
+                    if i['brandingSettings']['channel']['defaultLanguage']:
+                        db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                        db_channel_meta.default_language = db_lang
                 except Exception as e:
                     pass
                 country = i['brandingSettings']['channel'].get('country')
