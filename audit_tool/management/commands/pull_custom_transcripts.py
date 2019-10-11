@@ -5,8 +5,6 @@ from pid import PidFile
 import requests
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
-import time
-import random
 
 from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
