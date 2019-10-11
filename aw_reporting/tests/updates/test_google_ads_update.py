@@ -680,7 +680,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             mock_ad_data.set("ad_group_ad", "ad.id", _id)
             mock_ad_data.set("ad_group_ad", "status", 0, nested_key=None)
             mock_ad_data.set("ad_group_ad", "ad.text_ad.headline", "test_headline")
-            mock_ad_data.set("ad_group_ad", "ad.image_ad.name", "test_name")
+            mock_ad_data.set("ad_group_ad", "ad.name", "test_name")
             mock_ad_data.set("ad_group_ad", "ad.display_url", "test_display_url")
             mock_ad_data.set("ad_group", "id", ad_group.id)
             mock_ad_data.set("ad_group", "name", ad_group.name)
@@ -735,7 +735,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             mock_ad_data.set("ad_group_ad", "ad.id", ad_id)
             mock_ad_data.set("ad_group_ad", "status", 0, nested_key=None)
             mock_ad_data.set("ad_group_ad", "ad.text_ad.headline", "test_headline")
-            mock_ad_data.set("ad_group_ad", "ad.image_ad.name", "test_name")
+            mock_ad_data.set("ad_group_ad", "ad.name", "test_name")
             mock_ad_data.set("ad_group_ad", "ad.display_url", "test_display_url")
             mock_ad_data.set("ad_group_ad", "policy_summary.approval_status", 2, nested_key=None)
             mock_ad_data.set("metrics", "average_position", 0)
@@ -864,8 +864,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertEqual(min_date, str(MIN_FETCH_DATE))
-        self.assertEqual(max_date, str(now.date()))
+        self.assertEqual(min_date, MIN_FETCH_DATE)
+        self.assertEqual(max_date, now.date())
 
     def test_ad_group_update_requests_again_recent_statistic(self):
         now = datetime.now(utc)
@@ -927,8 +927,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertEqual(min_date, str(request_start_date))
-        self.assertEqual(max_date, str(date.today()))
+        self.assertEqual(min_date, request_start_date)
+        self.assertEqual(max_date, date.today())
 
     @generic_test([
         ("Updating 6am", (time(5, 59),), {}),
