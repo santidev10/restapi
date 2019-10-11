@@ -28,7 +28,10 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
 
         report.refresh_from_db()
         s3_key = OpportunityTargetingReportS3Exporter.get_s3_key(report)
+        report_file_extention = ".xlsx"
+
         self.assertEqual(s3_key, report.s3_file_key)
+        self.assertIn(report_file_extention, s3_key)
         self.assertEqual(ReportStatus.SUCCESS.value, report.status)
 
     def test_send_email_notifications(self):
@@ -69,7 +72,7 @@ class CreateOpportunityTargetingReportGeneralTestCase(CreateOpportunityTargeting
 
         book = self.get_report_workbook(opportunity.id, date_from, date_to)
         self.assertEqual(
-            ["Target", "Devices", "Demo", "Video"],
+            ["Target", "Devices", "Demo", "Videos"],
             book.sheetnames
         )
         for sheet, sheet_name in zip(book.worksheets, book.sheetnames):

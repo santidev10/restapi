@@ -2,21 +2,25 @@ from datetime import date
 from datetime import timedelta
 from unittest.case import skip
 
-from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import Device
+from aw_reporting.models import Ad
+from aw_reporting.models import AdStatistic
 from aw_reporting.models import SalesForceGoalType
-from aw_reporting.models import device_str
 from utils.utittests.patch_now import patch_now
+from utils.utittests.str_iterator import str_iterator
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
 
 
 class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTargetingReportSheetTestCase):
-    SHEET_NAME = "Devices"
+    SHEET_NAME = "Videos"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.ad = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad")
 
     columns = ColumnsDeclaration(
         (
-            ("type", "Type"),
+            ("name", "Video"),
             ("campaign_name", "Ads Campaign"),
             ("ad_group_name", "Ads Ad group"),
             ("placement_name", "Salesforce Placement"),
@@ -68,15 +72,14 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.opportunity.cannot_roll_over = True
         self.opportunity.save()
         any_date = date(2019, 1, 1)
-        device_id = 1
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=device_id, date=any_date, average_position=1)
+        AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
         self.assertEqual(1, len(data))
         item = data[0]
         columns = self.columns
-        self.assertEqual(device_str(device_id), item[columns.type])
+        self.assertEqual(self.ad.creative_name, item[columns.name])
         self.assertEqual(self.campaign.name, item[columns.campaign_name])
         self.assertEqual(self.ad_group.name, item[columns.ad_group_name])
         self.assertEqual(self.placement.name, item[columns.placement_name])
@@ -88,8 +91,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
 
     def test_general_stats(self):
         any_date = date(2019, 1, 1)
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                impressions=1000, video_views=200, cost=1.02, clicks=30)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           impressions=1000, video_views=200, cost=1.02, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -105,7 +108,7 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         days_remaining = 3
         test_now = self.placement.end - timedelta(days=days_remaining)
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1)
+        AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date)
 
         with patch_now(test_now):
             self.act(self.opportunity.id, any_date, any_date)
@@ -127,8 +130,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                cost=23, video_views=34)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           cost=23, video_views=34)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -142,8 +145,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                cost=23, impressions=34)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           cost=23, impressions=34)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -156,34 +159,29 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
     def test_cost_delivery_percentage(self):
         any_date = date(2019, 1, 1)
         costs = (20, 80)
+        ad_1 = self.ad
+        ad_2 = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad 2")
 
-        stats_1 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date,
-                                                  average_position=1,
-                                                  cost=costs[0])
-        stats_2 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=2, date=any_date,
-                                                  average_position=1,
-                                                  cost=costs[1])
-
-        device_1 = device_str(stats_1.device_id)
-        device_2 = device_str(stats_2.device_id)
+        stats_1 = AdStatistic.objects.create(ad=ad_1, average_position=1, date=any_date, cost=costs[0])
+        stats_2 = AdStatistic.objects.create(ad=ad_2, average_position=1, date=any_date, cost=costs[1])
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
         self.assertEqual(2, len(data))
         columns = self.columns
         topics_cost_delivery_percentage = {
-            item[columns.type]: item[columns.cost_delivered_percentage]
+            item[columns.name]: item[columns.cost_delivered_percentage]
             for item in data
         }
         sum_cost = sum(costs)
 
         self.assertEqual(
             stats_1.cost / sum_cost,
-            topics_cost_delivery_percentage[device_1]
+            topics_cost_delivery_percentage[ad_1.creative_name]
         )
         self.assertEqual(
             stats_2.cost / sum_cost,
-            topics_cost_delivery_percentage[device_2]
+            topics_cost_delivery_percentage[ad_2.creative_name]
         )
 
     def test_delivery_percentage_cpm(self):
@@ -191,32 +189,28 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
         impressions = (20, 80)
-        stats_1 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date,
-                                                  average_position=1,
-                                                  impressions=impressions[0])
-        stats_2 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=2, date=any_date,
-                                                  average_position=1,
-                                                  impressions=impressions[1])
+        ad_1 = self.ad
+        ad_2 = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad 2")
 
-        device_1 = device_str(stats_1.device_id)
-        device_2 = device_str(stats_2.device_id)
+        stats_1 = AdStatistic.objects.create(ad=ad_1, average_position=1, date=any_date, impressions=impressions[0])
+        stats_2 = AdStatistic.objects.create(ad=ad_2, average_position=1, date=any_date, impressions=impressions[1])
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
         self.assertEqual(2, len(data))
         columns = self.columns
         topics_cost_delivery_percentage = {
-            item[columns.type]: item[columns.delivery_percentage]
+            item[columns.name]: item[columns.delivery_percentage]
             for item in data
         }
         sum_impressions = sum(impressions)
         self.assertEqual(
             stats_1.impressions / sum_impressions,
-            topics_cost_delivery_percentage[device_1]
+            topics_cost_delivery_percentage[ad_1.creative_name]
         )
         self.assertEqual(
             stats_2.impressions / sum_impressions,
-            topics_cost_delivery_percentage[device_2]
+            topics_cost_delivery_percentage[ad_2.creative_name]
         )
 
     def test_delivery_percentage_cpv(self):
@@ -224,42 +218,37 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
 
-        views = (20, 80)
-        stats_1 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date,
-                                                  average_position=1,
-                                                  video_views=views[0])
-        stats_2 = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=2, date=any_date,
-                                                  average_position=1,
-                                                  video_views=views[1])
+        ad_1 = self.ad
+        ad_2 = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad 2")
 
-        device_1 = device_str(stats_1.device_id)
-        device_2 = device_str(stats_2.device_id)
+        views = (20, 80)
+        stats_1 = AdStatistic.objects.create(ad=ad_1, average_position=1, date=any_date, video_views=views[0])
+        stats_2 = AdStatistic.objects.create(ad=ad_2, average_position=1, date=any_date, video_views=views[1])
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
         self.assertEqual(2, len(data))
         columns = self.columns
         topics_cost_delivery_percentage = {
-            item[columns.type]: item[columns.delivery_percentage]
+            item[columns.name]: item[columns.delivery_percentage]
             for item in data
         }
         sum_views = sum(views)
 
         self.assertEqual(
             stats_1.video_views / sum_views,
-            topics_cost_delivery_percentage[device_1]
+            topics_cost_delivery_percentage[ad_1.creative_name]
         )
         self.assertEqual(
             stats_2.video_views / sum_views,
-            topics_cost_delivery_percentage[device_2]
+            topics_cost_delivery_percentage[ad_2.creative_name]
         )
 
     def test_revenue_cpv(self):
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                video_views=34)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date, video_views=34)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -275,8 +264,7 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                impressions=3400)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date, impressions=3400)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -292,8 +280,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                video_views=34, impressions=450, cost=13)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           video_views=34, impressions=450, cost=13)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -311,8 +299,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                video_views=34, impressions=450, cost=13)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           video_views=34, impressions=450, cost=13)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -331,8 +319,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                video_views_100_quartile=34.2, impressions=450)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           video_views_100_quartile=34.2, impressions=450)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -349,8 +337,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPV
         self.placement.save()
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                impressions=200, video_views=30)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           impressions=200, video_views=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -363,8 +351,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         any_date = date(2019, 1, 1)
         self.placement.goal_type_id = SalesForceGoalType.CPM
         self.placement.save()
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                        impressions=200, clicks=30)
+        AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                   impressions=200, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -375,8 +363,8 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
 
     def test_ctr(self):
         any_date = date(2019, 1, 1)
-        stats = AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                                impressions=200, clicks=30)
+        stats = AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date,
+                                           impressions=200, clicks=30)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -387,13 +375,13 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
 
     def test_ordering(self):
         any_date = date(2019, 1, 1)
+        ad_1 = self.ad
+        ad_2 = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad 2")
+        ad_3 = Ad.objects.create(id=next(str_iterator), ad_group=self.ad_group, creative_name="Test Ad 3")
 
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, date=any_date, average_position=1,
-                                        video_views=1)
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=3, date=any_date, average_position=1,
-                                        video_views=2)
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=2, date=any_date, average_position=1,
-                                        video_views=3)
+        AdStatistic.objects.create(ad=ad_1, average_position=1, date=any_date, video_views=1)
+        AdStatistic.objects.create(ad=ad_2, average_position=1, date=any_date, video_views=3)
+        AdStatistic.objects.create(ad=ad_3, average_position=1, date=any_date, video_views=2)
 
         self.act(self.opportunity.id, any_date, any_date)
         data = self.get_data_dict(self.opportunity.id, any_date, any_date)
@@ -409,9 +397,9 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         period = len(impressions)
         date_from, date_to = any_date, any_date + timedelta(days=period)
         for index in range(period):
-            AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=1, average_position=1,
-                                            date=any_date + timedelta(days=index),
-                                            impressions=impressions[index])
+            AdStatistic.objects.create(ad=self.ad, average_position=1,
+                                       date=any_date + timedelta(days=index),
+                                       impressions=impressions[index])
 
         self.act(self.opportunity.id, date_from, date_to)
         data = self.get_data_dict(self.opportunity.id, date_from, date_to)
@@ -419,15 +407,3 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         item = data[0]
         columns = self.columns
         self.assertEqual(sum(impressions), item[columns.impressions])
-
-    def test_tv_screens(self):
-        any_date = date(2019, 1, 1)
-        AdGroupStatistic.objects.create(ad_group=self.ad_group, device_id=Device.CONNECTED_TV, average_position=1,
-                                        date=any_date)
-
-        self.act(self.opportunity.id, None, None)
-        data = self.get_data_dict(self.opportunity.id, None, None)
-        self.assertEqual(1, len(data))
-        item = data[0]
-        columns = self.columns
-        self.assertEqual("TV Screens", item[columns.type])

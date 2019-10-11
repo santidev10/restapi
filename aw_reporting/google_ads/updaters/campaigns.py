@@ -47,11 +47,13 @@ class CampaignUpdater(UpdateMixin):
 
         # Campaign performance segmented by date and all_conversions
         campaign_performance, click_type_data = self._get_campaign_performance()
-        self._create_instances(campaign_performance, click_type_data)
+        campaign_statistic_generator = self._instance_generator(campaign_performance, click_type_data)
+        CampaignStatistic.objects.safe_bulk_create(campaign_statistic_generator)
 
         # Campaign performance segmented by hour
         campaign_hourly_performance = self._get_campaign_hourly_performance()
-        self._create_hourly_instances(campaign_hourly_performance)
+        hourly_campaign_statistic_generator = self._hourly_instance_generator(campaign_hourly_performance)
+        CampaignHourlyStatistic.objects.bulk_create(hourly_campaign_statistic_generator)
 
         # Update account
         Account.objects.filter(id=self.account.id).update(hourly_updated_at=timezone.now())
@@ -92,7 +94,6 @@ class CampaignUpdater(UpdateMixin):
             start_date = last_entry.date
         else:
             start_date = min_date
-
         # Delete stale data
         self.existing_hourly_statistics.filter(date__gte=start_date).delete()
         hourly_performance_fields = self.format_query(constants.CAMPAIGN_HOURLY_PERFORMANCE_FIELDS)
@@ -101,13 +102,12 @@ class CampaignUpdater(UpdateMixin):
 
         return hourly_performance
 
-    def _create_instances(self, campaign_performance, click_type_data):
+    def _instance_generator(self, campaign_performance, click_type_data):
         """
         Generator to yield CampaignStatistics instances
         :param campaign_performance: Google ads campaign resource search response
         :return:
         """
-        campaign_statistics_to_create = []
         for row in campaign_performance:
             campaign_id = row.campaign.id.value
             budget_type, budget_value = self._get_budget_type_and_value(row)
@@ -135,7 +135,6 @@ class CampaignUpdater(UpdateMixin):
             statistics.update(self.get_base_stats(row))
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
             statistics.update(click_data)
-            campaign_statistics_to_create.append(CampaignStatistic(**statistics))
             try:
                 campaign = Campaign.objects.get(pk=campaign_id)
                 # Continue if the campaign's sync time is less than its update time, as it is pending to be synced with viewiq
@@ -148,18 +147,17 @@ class CampaignUpdater(UpdateMixin):
             except Campaign.DoesNotExist:
                 campaign_data["id"] = str(campaign_id)
                 Campaign.objects.create(**campaign_data)
-
             self.existing_campaigns.add(campaign_id)
-        CampaignStatistic.objects.safe_bulk_create(campaign_statistics_to_create)
 
-    def _create_hourly_instances(self, hourly_performance):
+            yield CampaignStatistic(**statistics)
+
+    def _hourly_instance_generator(self, hourly_performance):
         """
         Create CampaignHourlyStatistic objects
         :param hourly_performance: :param campaign_performance: Google ads campaign resource search response segmented by hour
         :return:
         """
         campaigns_to_create = []
-        hourly_statistics_to_create = []
         self.existing_campaigns = set(Campaign.objects.all().values_list("id", flat=True))
         for row in hourly_performance:
             campaign_id = str(row.campaign.id.value)
@@ -189,9 +187,8 @@ class CampaignUpdater(UpdateMixin):
                 clicks=row.metrics.clicks.value,
                 cost=float(row.metrics.cost_micros.value) / 10**6
             )
-            hourly_statistics_to_create.append(hourly_stat)
+            yield hourly_stat
         Campaign.objects.bulk_create(campaigns_to_create)
-        CampaignHourlyStatistic.objects.bulk_create(hourly_statistics_to_create)
 
     def _get_budget_type_and_value(self, row):
         budget_type = BudgetType.DAILY if row.campaign_budget.amount_micros.value is not None else BudgetType.TOTAL

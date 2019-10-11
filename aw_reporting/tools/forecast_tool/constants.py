@@ -11,6 +11,7 @@ DEVICE_FIELDS = (
     "device_mobile",
     "device_tablets",
     "device_other",
+    "device_tv_screens",
 )
 PARENT_FIELDS = (
     "parent_parent",

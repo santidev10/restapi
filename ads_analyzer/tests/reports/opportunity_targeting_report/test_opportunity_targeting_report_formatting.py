@@ -27,7 +27,8 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
     @generic_test([
         ("red", (.45, Color.RED), {}),
         ("yellow", (.55, Color.YELLOW), {}),
-        ("red", (.75, Color.GREEN), {}),
+        ("green", (.75, Color.GREEN), {}),
+        ("100%", (1., Color.GREEN), {}),
     ])
     def test_cost_delivery_percentage_background(self, value, color):
         any_date = date(2019, 1, 1)
@@ -44,7 +45,8 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
     @generic_test([
         ("red", (.45, Color.RED), {}),
         ("yellow", (.55, Color.YELLOW), {}),
-        ("red", (.75, Color.GREEN), {}),
+        ("green", (.75, Color.GREEN), {}),
+        ("100%", (1., Color.GREEN), {}),
     ])
     def test_delivery_percentage_background(self, value, color):
         any_date = date(2019, 1, 1)
@@ -61,7 +63,9 @@ class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunity
     @generic_test([
         ("red", (.25, Color.RED), {}),
         ("yellow", (.35, Color.YELLOW), {}),
-        ("red", (.45, Color.GREEN), {}),
+        ("green", (.45, Color.GREEN), {}),
+        ("100%", (1., Color.GREEN), {}),
+        ("150%", (1.5, Color.GREEN), {}),
     ])
     def test_margin_background(self, value, color):
         any_date = date(2019, 1, 1)

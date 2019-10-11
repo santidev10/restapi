@@ -32,7 +32,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                                    Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,)
+                                    Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,
+                                    Sections.CUSTOM_CAPTIONS)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
         try:

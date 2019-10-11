@@ -26,7 +26,15 @@ LOCK_NAME = "update_without_campaigns"
 
 @celery_app.task(expires=TaskExpiration.FULL_AW_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_UPDATE)
 def setup_update_without_campaigns():
-    start = time.time()
+    job = chain(
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        setup_cid_update_tasks.si()
+    )
+    return job()
+
+
+@celery_app.task
+def setup_cid_update_tasks():
     logger.error("Starting Google Ads update without campaigns")
     mcc_accounts = Account.objects.filter(can_manage_clients=True, is_active=True).values_list("id", flat=True)
     cid_update_tasks = itertools.chain.from_iterable(
@@ -35,14 +43,14 @@ def setup_update_without_campaigns():
     )
     cid_update_tasks = group_chorded(cid_update_tasks).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         cid_update_tasks,
         unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
-        finalize_update.si(start),
+        finalize_update.si(),
     )
     return job()
 
 
+@celery_app.task
 def account_update_all_except_campaigns(mcc_id):
     """
     Create task signatures with cid_update_all_except_campaigns for each account under mcc_id
@@ -61,10 +69,10 @@ def account_update_all_except_campaigns(mcc_id):
 
 
 @celery_app.task
-@retry(count=10, delay=20, exceptions=(Error, ))
+@retry(count=10, delay=5, exceptions=(Error, ))
 def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
     """
-    Update cid_id under mcc_id
+    Update single CID account
     """
     start = time.time()
     try:
@@ -78,9 +86,9 @@ def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
 
 
 @celery_app.task
-def finalize_update(start):
+def finalize_update():
     logger.error("Adding relations between reports and creation for AdGroups and Ads")
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    logger.error(f"Google Ads update without campaigns. Took: {time.time() - start}")
+    logger.error(f"Google Ads update without campaigns complete")
 
