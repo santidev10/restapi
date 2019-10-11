@@ -87,7 +87,7 @@ def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
 
 @celery_app.task
 def finalize_update():
-    logger.error("Adding relations between reports and creation for AdGroups and Ads")
+    logger.error("Adding relations between reports and ad_group and ad creations")
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
     logger.error(f"Google Ads update without campaigns complete")
