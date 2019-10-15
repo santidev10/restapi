@@ -133,13 +133,13 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .annotate(campaign_count=Count("placements__adwords_campaigns"))\
             .filter(campaign_count__gt=0)
 
-    def have_active_campaigns(self):
+    def have_campaigns_from(self, min_start_date):
         return self.get_queryset()\
-            .annotate(active_campaign_count=Count(
-                                         "placements__adwords_campaigns",
-                                         filter=Q(placements__adwords_campaigns__status=CampaignStatus.ELIGIBLE.value)
-                                     ))\
-            .filter(active_campaign_count__gt=0)
+            .annotate(campaign_count=Count(
+                "placements__adwords_campaigns",
+                filter=Q(placements__adwords_campaigns__start_date__gte=min_start_date)
+            ))\
+            .filter(campaign_count__gt=0)
 
 
 class Opportunity(models.Model, DemoEntityModelMixin):
