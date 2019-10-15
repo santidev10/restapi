@@ -37,7 +37,9 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
     pagination_class = Paginator
 
     def get_queryset(self):
-        return OpportunityTargetingReport.objects.filter(created_at__gte=self.get_expiration_datetime()) \
+        return OpportunityTargetingReport.objects.filter(
+            recipients=self.request.user,
+            created_at__gte=self.get_expiration_datetime())\
             .order_by("-created_at")
 
     def post(self, request, *args, **kwargs):

@@ -107,6 +107,7 @@ class SalesforceFields:
         TERRITORY = "Territory1__c"
         TYPES_OF_TARGETING = "Types_of__c"
         VIDEO_VIEWS = "CPV_Units_Purchased__c"
+        MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
 
     class Placement(Enum):
         AD_WORDS_PLACEMENT = "Adwords_Placement_IQ__c"
