@@ -364,7 +364,8 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             tags=data[Fields.TAGS] or "",
             types_of_targeting=data[Fields.TYPES_OF_TARGETING] or "",
             apex_deal=data.get(Fields.APEX_DEAL),
-            billing_server=data.get(Fields.BILLING_SERVER)
+            billing_server=data.get(Fields.BILLING_SERVER),
+            margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
         )
         if sales_email:
             res['sales_email'] = sales_email
