@@ -66,7 +66,7 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
-        self.create_admin_user()
+        self.user = self.create_admin_user()
 
     def test_empty(self):
         response = self._request()
@@ -94,6 +94,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 status=ReportStatus.SUCCESS.value
             )
 
+            report.recipients.add(self.user)
+
         response = self._request()
 
         self.assertEqual(1, response.json()["items_count"])
@@ -110,3 +112,20 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             },
             response.json()["items"][0]
         )
+
+    def test_empty_report_list(self):
+        opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
+        date_from = date(2019, 1, 1)
+        date_to = date(2019, 1, 2)
+        with patch.object(post_save, "send"):
+            OpportunityTargetingReport.objects.create(
+                opportunity=opportunity,
+                date_from=date_from,
+                date_to=date_to,
+                s3_file_key="example/report",
+                status=ReportStatus.SUCCESS.value
+            )
+
+        response = self._request()
+
+        self.assertEqual(0, response.json()["items_count"])
