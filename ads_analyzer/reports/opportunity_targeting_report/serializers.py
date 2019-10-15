@@ -79,7 +79,7 @@ class TargetTableSerializer(ModelSerializer):
     placement_name = CharField(source="ad_group__campaign__salesforce_placement__name")
     placement_start = DateField(source="ad_group__campaign__salesforce_placement__start")
     placement_end = DateField(source="ad_group__campaign__salesforce_placement__end")
-    margin_cap = ReadOnlyField(default="N/A")
+    margin_cap = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__margin_cap_required")
     cannot_roll_over = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over")
     rate_type = GoalTypeField(source="ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
@@ -257,6 +257,7 @@ class TargetTableSerializer(ModelSerializer):
             "ad_group__campaign__salesforce_placement__end",
             "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
             "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
+            "ad_group__campaign__salesforce_placement__opportunity__margin_cap_required",
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
