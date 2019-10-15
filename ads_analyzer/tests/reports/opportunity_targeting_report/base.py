@@ -78,6 +78,7 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
         self.opportunity = Opportunity.objects.create(
             id=next(str_iterator),
             name="Test opportunity #123",
+            margin_cap_required=True,
         )
 
         any_date = date(2019, 1, 1)

@@ -1,3 +1,6 @@
+from datetime import date
+from datetime import datetime
+
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -69,6 +72,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([], response.json())
 
     def test_single(self):
+        start_date = date(datetime.now().year, 12, 1)
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
             name="Test Opportunity"
@@ -81,7 +85,8 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         placement.refresh_from_db()
         Campaign.objects.create(
             salesforce_placement=placement,
-            status="eligible"
+            status="eligible",
+            start_date=start_date
         )
         response = self._request()
 
@@ -94,6 +99,29 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         Opportunity.objects.create(
             id=next(int_iterator),
             name="Test Opportunity"
+        )
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual([], response.json())
+
+    def test_no_last_years_opportunity(self):
+        start_date = date(datetime.now().year - 5, 12, 1)
+        opportunity = Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity"
+        )
+        opportunity.refresh_from_db()
+        placement = OpPlacement.objects.create(
+            id=next(int_iterator),
+            name="Test Placement",
+            opportunity=opportunity)
+        placement.refresh_from_db()
+        Campaign.objects.create(
+            salesforce_placement=placement,
+            status="eligible",
+            start_date=start_date
         )
 
         response = self._request()

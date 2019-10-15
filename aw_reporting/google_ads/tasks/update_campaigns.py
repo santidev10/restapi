@@ -29,7 +29,7 @@ LOCK_NAME = "update_campaigns"
 def setup_update_campaigns():
     mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.HOURLY_STATISTIC),
         setup_mcc_update_tasks.si(mcc_ids),
     )
     return job()
@@ -50,7 +50,7 @@ def setup_mcc_update_tasks(mcc_ids):
     account_update_tasks = group_chorded([
         mcc_account_update.si(mcc_id, index + 1, len(mcc_ids))
         for index, mcc_id in enumerate(mcc_ids, start=0)
-    ]).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
+    ]).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         account_update_tasks,
         setup_cid_update_tasks.si(mcc_ids),
@@ -68,10 +68,10 @@ def setup_cid_update_tasks(mcc_ids):
     campaign_update_tasks = itertools.chain.from_iterable(
         create_cid_tasks(mcc_id) for mcc_id in mcc_ids
     )
-    campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
+    campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         campaign_update_tasks,
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.HOURLY_STATISTIC),
         finalize_campaigns_update.si(),
     )
     return job()
@@ -101,7 +101,7 @@ def create_cid_tasks(mcc_id):
         except ValueError:
             continue
     task_signatures = [
-        cid_campaign_update.si(mcc_id, cid_account.id, index + 1, len(cid_accounts)).set(queue=Queue.GOOGLE_ADS_CAMPAIGNS)
+        cid_campaign_update.si(mcc_id, cid_account.id, index + 1, len(cid_accounts)).set(queue=Queue.HOURLY_STATISTIC)
         for index, cid_account in enumerate(cid_accounts, start=0)
     ]
     return task_signatures
@@ -124,6 +124,6 @@ def cid_campaign_update(mcc_id, cid_id, index, total):
 
 @celery_app.task
 def finalize_campaigns_update():
-    logger.error("Adding relations between reports and creations for Campaign.")
+    logger.error("Adding relations between reports and campaign creations")
     add_relation_between_report_and_creation_campaigns()
     logger.error(f"Campaign update complete")

@@ -85,7 +85,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 3600,
     },
     "pull-custom-transcripts": {
-        "task": "audit_tool.tasks.pull_custom_transcripts",
+        "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 600
     }
 }
@@ -101,14 +101,14 @@ class Queue:
     EXPORT = "export"
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
-    GOOGLE_ADS_CAMPAIGNS = "google_ads_campaigns"
+    HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
 
 
 CELERY_ROUTES_PREPARED = [
-    ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.GOOGLE_ADS_CAMPAIGNS}),
+    ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
-    ("aw_reporting.update.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
+    ("aw_reporting.update.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
