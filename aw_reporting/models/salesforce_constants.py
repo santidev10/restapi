@@ -107,6 +107,7 @@ class SalesforceFields:
         TERRITORY = "Territory1__c"
         TYPES_OF_TARGETING = "Types_of__c"
         VIDEO_VIEWS = "CPV_Units_Purchased__c"
+        MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
 
     class Placement(Enum):
         AD_WORDS_PLACEMENT = "Adwords_Placement_IQ__c"
@@ -126,7 +127,6 @@ class SalesforceFields:
         TECH_FEE_CAP = "Tech_Fee_Cap_if_applicable__c"
         TECH_FEE_TYPE = "Tech_Fee_Type__c"
         TOTAL_COST = "Total_Client_Costs__c"
-        MARGIN_CAP_REQUIRED = "CID_Google_Transparency_Required__c"
 
     class Flight(Enum):
         COST = "Total_Flight_Cost__c"
