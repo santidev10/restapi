@@ -825,7 +825,7 @@ class PacingReport:
         queryset = Campaign.objects.filter(
             salesforce_placement__flights=flight)
 
-        # status = "eligible" | "paused" | "ended"
+        # status = "serving" | "paused" | "ended"
         if status:
             if type(status) is str:
                 queryset = queryset.filter(status=status)

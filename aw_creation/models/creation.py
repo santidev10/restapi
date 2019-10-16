@@ -133,7 +133,7 @@ class AccountCreation(UniqueCreationItem):
     @property
     def status(self):
         campaign_ended_status = "ended"
-        campaign_eligible_status = "eligible"
+        campaign_eligible_status = "serving"
         account = self.account
         if account is not None:
             campaigns_queryset = account.campaigns.all()

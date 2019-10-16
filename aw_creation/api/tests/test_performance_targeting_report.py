@@ -46,7 +46,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
-        campaign = Campaign.objects.create(id="1", name="Campaign wow", status="eligible",
+        campaign = Campaign.objects.create(id="1", name="Campaign wow", status="serving",
                                            account=account, start_date=start, end_date=end)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign, video_views=1)
 
@@ -92,7 +92,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
-        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
+        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="serving",
                                            account=account, start_date=start, end_date=end)
         ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign, video_views=1)
 
@@ -136,7 +136,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         account = Account.objects.create(id=1, name="",
                                          skip_creating_account_creation=True)
         start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 2).date()
-        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="eligible",
+        campaign = Campaign.objects.create(id="999", name="Campaign wow", status="serving",
                                            account=account, start_date=start, end_date=end)
         ad_group = AdGroup.objects.create(id="666", name="", campaign=campaign, video_views=1)
 
@@ -175,10 +175,10 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
 
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
-        campaign1 = Campaign.objects.create(id="1", name="A campaign", status="eligible",
+        campaign1 = Campaign.objects.create(id="1", name="A campaign", status="serving",
                                             account=account, start_date=start, end_date=end)
         ad_group1 = AdGroup.objects.create(id=1, name="", campaign=campaign1, video_views=1)
-        campaign2 = Campaign.objects.create(id="2", name="B campaign", status="eligible",
+        campaign2 = Campaign.objects.create(id="2", name="B campaign", status="serving",
                                             account=account, start_date=start, end_date=end)
         ad_group2 = AdGroup.objects.create(id=2, name="", campaign=campaign2, video_views=1)
 
@@ -230,7 +230,7 @@ class PerformanceReportAPITestCase(ExtendedAPITestCase):
         start = datetime(2017, 1, 1).date()
         end = datetime(2017, 1, 2).date()
         campaign = Campaign.objects.create(
-            id="1", name="A campaign", status="eligible",
+            id="1", name="A campaign", status="serving",
             account=account, start_date=start, end_date=end)
         ad_group = AdGroup.objects.create(
             id=1, name="", campaign=campaign, video_views=1)

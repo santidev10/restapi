@@ -207,7 +207,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                         )
                     ) \
                     .exclude(campaigns_count=F("ended_campaigns_count")) \
-                    .exclude(account__campaigns__status="eligible") \
+                    .exclude(account__campaigns__status="serving") \
                     .distinct()
             elif status == AccountCreation.STATUS_RUNNING:
                 queryset = queryset \
@@ -223,7 +223,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                         )
                     ) \
                     .exclude(campaigns_count=F("ended_campaigns_count")) \
-                    .filter(account__campaigns__status="eligible") \
+                    .filter(account__campaigns__status="serving") \
                     .distinct()
             elif status == AccountCreation.STATUS_PENDING:
                 queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_managed=True)
