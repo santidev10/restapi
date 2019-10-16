@@ -271,7 +271,7 @@ LOGGING = {
     }
 }
 
-SERVER_EMAIL = "viewiq-no-reply@channelfactory.com"
+SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
 SENDER_EMAIL_ADDRESS = SERVER_EMAIL
 EMAIL_BACKEND = "django_ses.SESBackend"
 
