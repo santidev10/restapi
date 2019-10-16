@@ -21,7 +21,7 @@ def generic_test(args_list, debug_indexes=None):
             for msg, args, kwargs in args_list:
                 if msg is None:
                     msg = ", ".join([str(item) for item in args + (kwargs,)])
-                with self.subTest(msg=msg or str(args), **kwargs), transaction.atomic():
+                with self.subTest(msg=msg or str(args)), transaction.atomic():
                     sid = transaction.savepoint()
                     fn(self, *args, **kwargs)
                     transaction.savepoint_rollback(sid)
