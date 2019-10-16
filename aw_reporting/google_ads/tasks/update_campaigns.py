@@ -29,7 +29,7 @@ LOCK_NAME = "update_campaigns"
 def setup_update_campaigns():
     mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.HOURLY_STATISTIC),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=3, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.HOURLY_STATISTIC),
         setup_mcc_update_tasks.si(mcc_ids),
     )
     return job()
