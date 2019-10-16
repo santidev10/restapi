@@ -18,6 +18,7 @@ cryptography==2.7
 defusedxml==0.6.0
 django-celery-results==1.0.1
 django-filter==2.0.0
+django-ses==0.8.12
 Django==2.2.4
 djangorestframework-csv==2.1.0
 djangorestframework==3.8.2

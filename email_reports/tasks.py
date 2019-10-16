@@ -2,6 +2,7 @@ import logging
 import traceback
 
 from django.conf import settings
+from django.core.mail import send_mail
 
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
@@ -10,7 +11,6 @@ from email_reports.reports import DailyCampaignReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
 from saas import celery_app
-from utils.aws.ses_emailer import SESEmailer
 
 __all__ = [
     "send_daily_email_reports",
@@ -64,10 +64,10 @@ def notify_opportunity_targeting_report_is_ready(report_id):
     direct_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key)
     subject = f"Opportunity Targeting Report > {report.opportunity.name}: {report.date_from} - {report.date_to}"
     body = f"Report has been prepared. Download it by the following link {direct_link}"
-    emailer = SESEmailer()
     for email in report.recipients.all().values_list("email", flat=True):
-        emailer.send_email(
-            [email],
-            subject,
-            body,
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=None,
+            recipient_list=[email],
         )
