@@ -13,11 +13,13 @@ from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_captions
 from utils.lang import replace_apostrophes
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_custom_transcripts():
     init_es_connection()
     logger.info("Pulling custom transcripts.")

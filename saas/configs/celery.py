@@ -86,7 +86,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 600
+        "schedule": 1200
     }
 }
 CELERY_RESULT_BACKEND = "django-db"
@@ -126,6 +126,7 @@ class TaskExpiration:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+    CUSTOM_TRANSCRIPTS = timedelta(minutes=20).total_seconds()
 
 
 class TaskTimeout:
@@ -133,3 +134,4 @@ class TaskTimeout:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
+    CUSTOM_TRANSCRIPTS = timedelta(minutes=20).total_seconds()
