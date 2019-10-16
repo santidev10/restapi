@@ -12,7 +12,6 @@ from django.core.mail import send_mail
 from django.template.loader import get_template
 import requests
 
-from utils.aws.ses_emailer import SESEmailer
 from utils.lang import get_request_prefix
 
 IGNORE_EMAILS_TEMPLATE = {
@@ -87,7 +86,13 @@ def send_html_email(subject, to, text_header, text_content):
     Send email with html
     """
     html_email = generate_html_email(text_header, text_content)
-    SESEmailer().send_email(to, subject, html_email)
+    send_mail(
+        subject=subject,
+        message=None,
+        from_email=None,
+        recipient_list=[to],
+        html_message=html_email,
+    )
 
 
 def send_welcome_email(user, request):

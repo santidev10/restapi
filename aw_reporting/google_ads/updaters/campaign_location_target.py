@@ -18,7 +18,6 @@ class CampaignLocationTargetUpdater(UpdateMixin):
         self.ga_service = None
         self.account = account
         self.today = now_in_default_tz().date()
-        self.existing_statistics = GeoTargeting.objects.filter(campaign__account=account).values_list("campaign_id", "geo_target_id")
         self.existing_campaign_ids = set(Campaign.objects.filter(account=self.account).values_list("id", flat=True))
         # List of two item tuples (campaign_id, geo_target_id) of existing GeoTargeting objects of current account being processed
         self.existing_targeting = set(GeoTargeting.objects.filter(campaign__account=self.account).values_list("campaign_id", "geo_target_id"))

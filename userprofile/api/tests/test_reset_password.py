@@ -77,7 +77,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
                 headers={"content-type": "application/json"})
             token = re.search(
                 r"token=[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20}",
-                mail.outbox[i].body).group(0).replace("token=", "")
+                mail.outbox[i].alternatives[0][0]).group(0).replace("token=", "")
             response = self.client.post(
                 self.password_set_url,
                 data={"new_password": new_passwords[i],

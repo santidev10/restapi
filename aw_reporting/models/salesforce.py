@@ -7,7 +7,6 @@ from django.db.models import Count
 from django.db.models import Q
 
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.models.ad_words.constants import CampaignStatus
 from aw_reporting.models.base import BaseModel
 from aw_reporting.models.base import BaseQueryset
 from aw_reporting.models.salesforce_constants import SalesForceGoalType

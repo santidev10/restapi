@@ -78,7 +78,7 @@ class AdUpdater(UpdateMixin):
                 updated_ad_ids.add(ad_id)
                 ad_data = {
                     "headline": ad.text_ad.headline.value,
-                    "creative_name": ad.image_ad.name.value,
+                    "creative_name": ad.name.value,
                     "display_url": ad.display_url.value,
                     "status": "enabled" if self.ad_group_ad_status_enum.Name(row.ad_group_ad.status).lower() == "enabled" else "disabled",
                     "is_disapproved": self.ad_group_criterion_status_enum.Name(row.ad_group_ad.policy_summary.approval_status) == "DISAPPROVED"

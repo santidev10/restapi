@@ -1,8 +1,8 @@
+from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 import logging
 logger = logging.getLogger(__name__)
 from pid import PidFile
-from utils.aws.ses_emailer import SESEmailer
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditVideoProcessor
@@ -12,8 +12,6 @@ from django.conf import settings
 from django.utils import timezone
 
 class Command(BaseCommand):
-    emailer = SESEmailer()
-
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='export_queue.pid') as p:
             try:
@@ -58,4 +56,10 @@ class Command(BaseCommand):
         export_owner = self.export.owner
         if export_owner:
             recipients = [export_owner.email]
-        self.emailer.send_email(recipients, subject, body)
+        send_mail(
+            subject=subject,
+            message=None,
+            from_email=None,
+            recipient_list=recipients,
+            html_message=body,
+        )

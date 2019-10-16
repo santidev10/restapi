@@ -37,9 +37,8 @@ class VideoUpdater(UpdateMixin):
             max_date = max_acc_date
 
             video_performance = self._get_video_performance(min_date, max_date)
-            creative, statistics = self._prepare_instances(video_performance)
-            VideoCreative.objects.safe_bulk_create(creative)
-            VideoCreativeStatistic.objects.safe_bulk_create(statistics)
+            statistic_generator = self._prepare_instances(video_performance)
+            VideoCreativeStatistic.objects.safe_bulk_create(statistic_generator)
 
     def _get_video_performance(self, min_date, max_date):
         """
@@ -58,7 +57,6 @@ class VideoUpdater(UpdateMixin):
         :return: tuple (list) -> VideoCreative, VideoCreativeStatistic to create
         """
         video_creative_to_create = []
-        video_creative_statistics_to_create = []
         for row in video_performance:
             video_id = row.video.id.value
             ad_group_id = row.ad_group.id.value
@@ -75,5 +73,5 @@ class VideoUpdater(UpdateMixin):
                 "date": row.segments.date.value,
                 **self.get_base_stats(row)
             }
-            video_creative_statistics_to_create.append(VideoCreativeStatistic(**statistics))
-        return video_creative_to_create, video_creative_statistics_to_create
+            yield VideoCreativeStatistic(**statistics)
+        VideoCreative.objects.safe_bulk_create(video_creative_to_create)

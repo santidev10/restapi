@@ -271,11 +271,9 @@ LOGGING = {
     }
 }
 
-SENDER_EMAIL_ADDRESS = "chf-no-reply@channelfactory.com"
-NOTIFICATIONS_EMAIL_SENDER = "viewiq-notifications@channelfactory.com"
-EMAIL_HOST = "localhost"
-EMAIL_PORT = os.getenv("EMAIL_PORT", None) or 1025
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
+SENDER_EMAIL_ADDRESS = SERVER_EMAIL
+EMAIL_BACKEND = "django_ses.SESBackend"
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
 

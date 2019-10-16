@@ -40,7 +40,3 @@ CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = True
 DMP_CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
-
-from utils.utittests.aws_ses_patcher import ses_monkey_patch
-
-ses_monkey_patch()
