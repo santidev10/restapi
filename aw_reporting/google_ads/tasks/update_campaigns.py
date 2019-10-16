@@ -84,7 +84,7 @@ def mcc_account_update(mcc_id, index, total):
     Update single MCC account
     """
     mcc_account = Account.objects.get(id=mcc_id)
-    GoogleAdsUpdater().update_accounts_for_mcc(mcc_account)
+    GoogleAdsUpdater().update_accounts_for_mcc(mcc_account=mcc_account)
     logger.error(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
 
 

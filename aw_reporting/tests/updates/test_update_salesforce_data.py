@@ -744,9 +744,9 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
     def test_get_flight_pacing(self):
         self.assertEqual(Opportunity.objects.all().count(), 0)
-        opportunity_id = next(int_iterator)
-        placement_id = next(int_iterator)
-        flight_id = next(int_iterator)
+        opportunity_id = str(next(int_iterator))
+        placement_id = str(next(int_iterator))
+        flight_id = str(next(int_iterator))
         pacing = 0.234
 
         sf_mock = MockSalesforceConnection()

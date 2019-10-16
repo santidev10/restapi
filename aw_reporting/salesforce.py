@@ -66,7 +66,7 @@ class Connection:
         return response.content.decode('UTF-8')
 
     # --
-    def get_categories(self):
+    def get_categories(self, where=None):
         describe = self.describe('Opportunity')
 
         for f in describe.get('fields', []):
