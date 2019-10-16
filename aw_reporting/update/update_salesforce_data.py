@@ -114,11 +114,11 @@ def perform_get(sc):
             else:
                 to_update.append(model(**data))
         if to_update:
-            model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
-            logger.debug(f"Updated {len(to_update)} items for: {model}")
-            # send pre signals
+            # send pre_save signals for notifications
             for item in to_update:
                 pre_save.send(model, instance=item)
+            model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
+            logger.debug(f"Updated {len(to_update)} items for: {model}")
         if to_create:
             model.objects.safe_bulk_create(to_create)
             logger.debug(f"Created {len(to_create)} items for: {model}")
