@@ -42,7 +42,7 @@ def pull_custom_transcripts():
             logger.debug("Parsed video with id: {}".format(vid_id))
             logger.debug("Number of videos parsed: {}".format(counter))
             logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
-    logger.debug("Finished pulling 10,000 custom transcripts.")
+    logger.debug("Finished pulling 1,000 custom transcripts.")
 
 
 def get_video_soup(vid_id):
@@ -96,5 +96,5 @@ def get_unparsed_vids():
     )
     s = s.query(q1).query(q2).query(q3)
     s = s.sort({"stats.views": {"order": "desc"}})
-    s = s[:10000]
+    s = s[:1000]
     return s.execute()
