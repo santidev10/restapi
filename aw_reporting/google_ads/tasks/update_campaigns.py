@@ -42,7 +42,7 @@ def setup_mcc_update_tasks(mcc_ids):
     :param mcc_ids: list
     :return: list
     """
-    logger.error("Starting Google Ads update for campaigns")
+    logger.debug("Starting Google Ads update for campaigns")
     if not settings.IS_TEST:
         CFAccountConnector().update()
     detect_success_aw_read_permissions()
@@ -85,7 +85,7 @@ def mcc_account_update(mcc_id, index, total):
     """
     mcc_account = Account.objects.get(id=mcc_id)
     GoogleAdsUpdater().update_accounts_for_mcc(mcc_account)
-    logger.error(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
+    logger.debug(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
 
 
 def create_cid_tasks(mcc_id):
@@ -119,11 +119,11 @@ def cid_campaign_update(mcc_id, cid_id, index, total):
 
     updater = GoogleAdsUpdater()
     updater.update_campaigns(mcc_account, cid_account)
-    logger.error(f"CID CAMPAIGNS UPDATE COMPLETE {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
+    logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
 
 
 @celery_app.task
 def finalize_campaigns_update():
-    logger.error("Adding relations between reports and campaign creations")
+    logger.debug("Adding relations between reports and campaign creations")
     add_relation_between_report_and_creation_campaigns()
-    logger.error(f"Campaign update complete")
+    logger.debug(f"Campaign update complete")

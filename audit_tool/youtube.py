@@ -39,7 +39,7 @@ class Youtube:
                     data = r.json()
                     dmo.parse_page_to_items(data)
                 except Exception as e:
-                    logger.error("Requests Error (try 1/5):" + str(e))
+                    logger.error(f"Requests Error (try {i + 1}/5):" + str(e))
                     time.sleep(15)
                 else:
                     break
@@ -47,7 +47,7 @@ class Youtube:
         with ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as e:
             for n, v in enumerate(self.chunks):
                 e.submit(worker, v, n)
-        logger.error("Done")
+        logger.debug("Done")
 
     def download_channels(self, ids):
         DATA_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
@@ -72,7 +72,7 @@ class Youtube:
                         } for i in data.get("items", [])
                     ]
                 except Exception as e:
-                    logger.error("Requests Error (try 1/5):" + str(e))
+                    logger.error(f"Requests Error (try {i + 1}/5):" + str(e))
                     time.sleep(15)
                 else:
                     break

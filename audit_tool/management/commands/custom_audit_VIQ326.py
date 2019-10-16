@@ -61,20 +61,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         self.filename = options.get("filename")
-        logger.error("Starting audit VIQ-326")
+        logger.debug("Starting audit VIQ-326")
 
         reports = {}
         for row in self.load_file():
             reports[row.get("ExternalVideoId")] = row
         video_ids = reports.keys()
-        logger.error("loaded file")
+        logger.debug("loaded file")
 
         youtube = Youtube()
 
         # get video-data from Data API
         youtube.download(video_ids)
         videos = [i for i in youtube.get_all_items()]
-        logger.error("downloaded videos from youtube")
+        logger.debug("downloaded videos from youtube")
 
         # get channel-data from Data API
         channels_ids = set([v.channel_id for v in videos])
@@ -83,11 +83,11 @@ class Command(BaseCommand):
         for chunk in youtube.chunks:
             for item in chunk.get("items"):
                 channels[item.get("id")] = item
-        logger.error("downloaded channels from youtube")
+        logger.debug("downloaded channels from youtube")
 
         # get KW_Category
         self.KW_CATEGORY = {}
-        logger.error("start downloading categories")
+        logger.debug("start downloading categories")
 
         bad_words = BadWord.objects.all().values()
 
@@ -97,17 +97,17 @@ class Command(BaseCommand):
             if name not in self.KW_CATEGORY:
                 self.KW_CATEGORY[name] = set()
             self.KW_CATEGORY[name].add(category)
-        logger.error("done")
+        logger.debug("done")
 
         # parse by keywords
-        logger.error("start parsing")
+        logger.debug("start parsing")
         self.parse_videos_by_keywords(videos)
 
         # save results
         self.save_csv(videos, channels, reports)
         self.save_xlsx(videos, channels, reports)
 
-        logger.info("Done")
+        logger.debug("Done")
 
     def load_file(self):
         with open(self.filename) as f:

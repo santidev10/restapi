@@ -69,7 +69,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         except Exception:
             raise
         log_message = "Updating" if self.updating else "Generating"
-        logger.error("{} export: {}".format(log_message, segment.title))
+        logger.debug("{} export: {}".format(log_message, segment.title))
         export_manager = ExportContextManager(es_generator, export.columns)
         s3_key = self.get_s3_key(owner.id, segment.title)
         self.export_to_s3(export_manager, s3_key, get_key=False)
@@ -111,7 +111,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         )
         segment.statistics = statistics
         segment.save()
-        logger.error("Complete: {}".format(segment.title))
+        logger.debug("Complete: {}".format(segment.title))
 
     def _send_notification_email(self, email, segment_title, download_url):
         subject = "Custom Target List: {}".format(segment_title)

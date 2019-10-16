@@ -90,7 +90,7 @@ class PersistentSegmentImporter(object):
         # Wait until all items have been added to segment
         attempts = 1
         while attempts <= self.EXPORT_ATTEMPT_LIMIT:
-            logger.error(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
+            logger.info(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
             query = self.segment.get_segment_items_query()
             es_manager = self.segment.get_es_manager()
             segment_items_count = es_manager.search(query, limit=0).execute().hits.total
@@ -108,7 +108,7 @@ class PersistentSegmentImporter(object):
         # If all items are not added to segment after retries, manually verify if segment is ready for export
         if not exported:
             raise Exception(f"Unable to add all items to segment with uuid: {self.segment.uuid}. Export failed.")
-        logger.error(f"Finished segment import with uuid: {self.segment.uuid}")
+        logger.info(f"Finished segment import with uuid: {self.segment.uuid}")
 
     def _read_csv(self, path: str) -> list:
         """
