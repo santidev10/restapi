@@ -97,6 +97,9 @@ class AdGroupUpdater(UpdateMixin):
                     "status": ad_group_status_enum.Name(row.ad_group.status).lower(),
                     "type": ad_group_type_enum.Name(row.ad_group.type).lower(),
                     "campaign_id": campaign_id,
+                    "cpv_bid": row.ad_group.cpv_bid_micros.value if row.ad_group.cpv_bid_micros else None,
+                    "cpm_bid": row.ad_group.cpm_bid_micros.value if row.ad_group.cpm_bid_micros else None,
+                    "cpc_bid": row.ad_group.cpc_bid_micros.value if row.ad_group.cpc_bid_micros else None,
                 }
                 # Check for AdGroup existence with set membership instead of making database queries for efficiency
                 if ad_group_id in self.existing_ad_group_ids:
@@ -121,4 +124,6 @@ class AdGroupUpdater(UpdateMixin):
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME, ignore_a_few_records=True)
             statistics.update(click_data)
             yield AdGroupStatistic(**statistics)
+        import pdb
+        pdb.set_trace()
         AdGroup.objects.bulk_create(ad_groups_to_create)

@@ -39,6 +39,7 @@ class SheetTableStyles(Styles):
         CRITICAL = "CRITICAL"
         PERCENTAGE_SHORT = "PERCENTAGE_SHORT"
         PERCENTAGE_LONG = "PERCENTAGE_LONG"
+        MONEY = "MONEY"
 
     STYLE_DEFINITION = {
         _Styles.GOOD: {
@@ -56,6 +57,10 @@ class SheetTableStyles(Styles):
         _Styles.PERCENTAGE_LONG: {
             "num_format": "0.00%",
         },
+        _Styles.MONEY: {
+            "num_format": "$#,##0.00",
+        },
+
     }
 
     def _resolve_style_names(self, cursor, value, is_header, header) -> List[str]:
@@ -107,6 +112,11 @@ class SheetTableStyles(Styles):
         if is_header:
             return []
         return [self._Styles.PERCENTAGE_LONG]
+
+    def _get_max_bid_column_style_classes(self, value, is_header):
+        if is_header:
+            return []
+        return [self._Styles.MONEY]
 
 
 def calculate_range_stats(bounds, value):
