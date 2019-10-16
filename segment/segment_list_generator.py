@@ -1,24 +1,23 @@
 import logging
+import uuid
 from datetime import timedelta
 
-from django.utils import timezone
+from django.core.mail import send_mail
 from django.db.models import Q
-import uuid
+from django.utils import timezone
 
+import brand_safety.constants as constants
 from administration.notifications import generate_html_email
 from audit_tool.models import AuditCategory
 from brand_safety.auditors.utils import AuditUtils
-import brand_safety.constants as constants
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from segment.models import CustomSegmentFileUpload
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
+from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from utils.aws.ses_emailer import SESEmailer
-from segment.models import CustomSegmentFileUpload
-
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,6 @@ class SegmentListGenerator(object):
         """
         :param type: int -> Set configuration type (See run method)
         """
-        self.ses = SESEmailer()
         self.type = type
         self.processed_categories = set()
 
@@ -289,4 +287,10 @@ class SegmentListGenerator(object):
 
     def send_notification_email(self, email, subject, text_header, text_content):
         html_email = generate_html_email(text_header, text_content)
-        self.ses.send_email(email, subject, html_email)
+        send_mail(
+            subject=subject,
+            message=None,
+            from_email=None,
+            recipient_list=[email],
+            html_message=html_email,
+        )

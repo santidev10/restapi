@@ -247,6 +247,9 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             mock_ad_group_data.set("ad_group", "name", ad_group.name)
             mock_ad_group_data.set("ad_group", "status", 2, nested_key=None) # ENABLED
             mock_ad_group_data.set("ad_group", "type", 7, nested_key=None)  # VIDEO_BUMPER
+            mock_ad_group_data.set("ad_group", "cpv_bid_micros", 10000)
+            mock_ad_group_data.set("ad_group", "cpm_bid_micros", None)
+            mock_ad_group_data.set("ad_group", "cpc_bid_micros", None)
             mock_ad_group_data.set("metrics", "average_position", 1)
             mock_ad_group_data.set("metrics", "cost_micros", cost * 10 ** 6)
             mock_ad_group_data.set("metrics", "impressions", impression)
@@ -1301,6 +1304,9 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_ad_group_data.set("ad_group", "name", ad_group.name)
         mock_ad_group_data.set("ad_group", "status", 2, nested_key=None)
         mock_ad_group_data.set("ad_group", "type", 7, nested_key=None)
+        mock_ad_group_data.set("ad_group", "cpv_bid_micros", 10000)
+        mock_ad_group_data.set("ad_group", "cpm_bid_micros", None)
+        mock_ad_group_data.set("ad_group", "cpc_bid_micros", None)
         mock_ad_group_data.set("metrics", "average_position", 12)
         mock_ad_group_data.set("metrics", "cost_micros", 2 * 10 ** 6)
         mock_ad_group_data.set("metrics", "impressions", 4)

@@ -87,4 +87,4 @@ class CreateOpportunityTargetingReportSheetTestCase(CreateOpportunityTargetingRe
                                                     goal_type_id=SalesForceGoalType.CPV, ordered_rate=1.23,
                                                     start=pl_start, end=pl_end)
         self.campaign = Campaign.objects.create(salesforce_placement=self.placement, name="Test Campaign")
-        self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup")
+        self.ad_group = AdGroup.objects.create(campaign=self.campaign, name="Test AdGroup", cpv_bid=20000)

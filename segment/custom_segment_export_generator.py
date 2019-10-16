@@ -1,6 +1,7 @@
 import logging
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 from elasticsearch_dsl.search import Q
 
@@ -11,7 +12,6 @@ from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
 from utils.aws.export_context_manager import ExportContextManager
 from utils.aws.s3_exporter import S3Exporter
-from utils.aws.ses_emailer import SESEmailer
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.utils import retry_on_conflict
 
@@ -34,7 +34,6 @@ class CustomSegmentExportGenerator(S3Exporter):
         Generate / Update custom segment exports
         :param updating: If updating, then find existing custom segments and regenerate their exports
         """
-        self.ses = SESEmailer()
         self.updating = updating
         self.segment_item_ids = []
         self.limit = None
@@ -118,8 +117,13 @@ class CustomSegmentExportGenerator(S3Exporter):
         text_header = "Your Custom Target List {} is ready".format(segment_title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
         html_email = generate_html_email(text_header, text_content)
-
-        self.ses.send_email(email, subject, html_email)
+        send_mail(
+            subject=subject,
+            message=None,
+            from_email=None,
+            recipient_list=[email],
+            html_message=html_email,
+        )
 
     @staticmethod
     def has_next():
