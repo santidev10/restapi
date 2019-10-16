@@ -5,6 +5,7 @@ from unittest.case import skip
 from aw_reporting.models import Ad
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import SalesForceGoalType
+from utils.utittests.generic_test import generic_test
 from utils.utittests.patch_now import patch_now
 from utils.utittests.str_iterator import str_iterator
 from .base import ColumnsDeclaration
@@ -118,13 +119,33 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         columns = self.columns
         self.assertEqual(days_remaining, item[columns.days_remaining])
 
-    @skip("Not implemented")
-    def test_margin_cap(self):
-        raise NotImplementedError
+    @generic_test((
+            (None, tuple(), dict(margin_cap_required=True)),
+            (None, tuple(), dict(margin_cap_required=False)),
+    ))
+    def test_margin_cap(self, margin_cap_required):
+        self.opportunity.margin_cap_required = margin_cap_required
+        self.opportunity.save()
+        any_date = date(2019, 1, 1)
+        AdStatistic.objects.create(ad=self.ad, date=any_date, average_position=1)
 
-    @skip("Not implemented")
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(margin_cap_required, item[columns.margin_cap])
+
     def test_max_bid(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(self.ad_group.cpv_bid, item[columns.max_bid])
 
     def test_average_rate_cpv(self):
         any_date = date(2019, 1, 1)

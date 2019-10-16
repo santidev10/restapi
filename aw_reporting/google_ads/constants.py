@@ -80,7 +80,7 @@ CLICKS_PERFORMANCE_FIELDS = {
 
 AD_GROUP_PERFORMANCE_FIELDS = {
     "campaign": ("id",),
-    "ad_group": ("id", "name", "status", "type"),
+    "ad_group": ("id", "name", "status", "type", "cpc_bid_micros", "cpm_bid_micros", "cpv_bid_micros"),
     "metrics": ("active_view_impressions", "engagements") + COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
     "segments": ("ad_network_type", "date", "device")
 }

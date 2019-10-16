@@ -11,6 +11,6 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task()
 def update_geo_targets():
-    logger.error("Updating geo targets")
+    logger.debug("Updating geo targets")
     GoogleAdsUpdater.update_geo_targets()
-    logger.error("Geo targets update complete")
+    logger.debug("Geo targets update complete")

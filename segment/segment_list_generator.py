@@ -1,24 +1,23 @@
 import logging
+import uuid
 from datetime import timedelta
 
-from django.utils import timezone
+from django.core.mail import send_mail
 from django.db.models import Q
-import uuid
+from django.utils import timezone
 
+import brand_safety.constants as constants
 from administration.notifications import generate_html_email
 from audit_tool.models import AuditCategory
 from brand_safety.auditors.utils import AuditUtils
-import brand_safety.constants as constants
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from segment.models import CustomSegmentFileUpload
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
+from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from utils.aws.ses_emailer import SESEmailer
-from segment.models import CustomSegmentFileUpload
-
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,6 @@ class SegmentListGenerator(object):
         """
         :param type: int -> Set configuration type (See run method)
         """
-        self.ses = SESEmailer()
         self.type = type
         self.processed_categories = set()
 
@@ -64,13 +62,13 @@ class SegmentListGenerator(object):
         Generate brand suitable target lists with Youtube categories
         """
         for category in AuditCategory.objects.all():
-            logger.error(f"Processing audit category: id: {category.id}, name: {category.category_display}")
+            logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display}")
             if category.category_display not in self.processed_categories:
                 self._generate_channel_whitelist(category)
                 self._generate_video_whitelist(category)
                 self.processed_categories.add(category.category_display)
 
-        logger.error("Processing master whitelists and blacklists")
+        logger.debug("Processing master whitelists and blacklists")
         self._generate_master_channel_blacklist()
         self._generate_master_channel_whitelist()
 
@@ -276,7 +274,7 @@ class SegmentListGenerator(object):
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
         self.send_notification_email(segment.owner.email, subject, text_header, text_content)
         message = "updated" if updating else "generated"
-        logger.error(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
+        logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
     def persistent_segment_finalizer(self, segment, all_items):
         """
@@ -285,8 +283,14 @@ class SegmentListGenerator(object):
         segment.details = segment.calculate_statistics(items=all_items)
         segment.export_file(queryset=all_items)
         segment.save()
-        logger.error(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
+        logger.debug(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
 
     def send_notification_email(self, email, subject, text_header, text_content):
         html_email = generate_html_email(text_header, text_content)
-        self.ses.send_email(email, subject, html_email)
+        send_mail(
+            subject=subject,
+            message=None,
+            from_email=None,
+            recipient_list=[email],
+            html_message=html_email,
+        )

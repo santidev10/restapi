@@ -35,7 +35,7 @@ def setup_update_without_campaigns():
 
 @celery_app.task
 def setup_cid_update_tasks():
-    logger.error("Starting Google Ads update without campaigns")
+    logger.debug("Starting Google Ads update without campaigns")
     mcc_accounts = Account.objects.filter(can_manage_clients=True, is_active=True).values_list("id", flat=True)
     cid_update_tasks = itertools.chain.from_iterable(
         account_update_all_except_campaigns(mcc_id)
@@ -80,15 +80,15 @@ def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
         cid_account = Account.objects.get(id=cid_id)
         updater = GoogleAdsUpdater()
         updater.update_all_except_campaigns(mcc_account, cid_account)
-        logger.error(f"FINISH CID UPDATE WITHOUT CAMPAIGNS {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
+        logger.debug(f"FINISH CID UPDATE WITHOUT CAMPAIGNS {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
     except GoogleAdsUpdaterContinueException:
         logger.error(f"ERROR CID UPDATE WITHOUT CAMPAIGNS {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
 
 
 @celery_app.task
 def finalize_update():
-    logger.error("Adding relations between reports and ad_group and ad creations")
+    logger.debug("Adding relations between reports and ad_group and ad creations")
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    logger.error(f"Google Ads update without campaigns complete")
+    logger.debug(f"Google Ads update without campaigns complete")
 

@@ -34,15 +34,15 @@ def pull_custom_transcripts():
             transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
             if transcript_text != "":
                 AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
-                logger.error("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
+                logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
                 transcripts_counter += 1
             populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
             video_manager.upsert([vid_obj])
             counter += 1
-            logger.error("Parsed video with id: {}".format(vid_id))
-            logger.error("Number of videos parsed: {}".format(counter))
-            logger.error("Number of transcripts retrieved: {}".format(transcripts_counter))
-    logger.error("Finished pulling 10,000 custom transcripts.")
+            logger.debug("Parsed video with id: {}".format(vid_id))
+            logger.debug("Number of videos parsed: {}".format(counter))
+            logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
+    logger.debug("Finished pulling 10,000 custom transcripts.")
 
 
 def get_video_soup(vid_id):

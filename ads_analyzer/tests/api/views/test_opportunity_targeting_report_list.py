@@ -5,6 +5,7 @@ from django.db.models.signals import post_save
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
+from utils.utittests.s3_mock import mock_s3
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
@@ -81,6 +82,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             response.data
         )
 
+    @mock_s3
     def test_structure(self):
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
