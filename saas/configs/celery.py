@@ -126,7 +126,7 @@ class TaskExpiration:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
-    CUSTOM_TRANSCRIPTS = timedelta(minutes=20).total_seconds()
+    CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -134,4 +134,4 @@ class TaskTimeout:
     FULL_AW_ACCOUNT_UPDATE = timedelta(hours=1).total_seconds()
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
-    CUSTOM_TRANSCRIPTS = timedelta(minutes=20).total_seconds()
+    CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
