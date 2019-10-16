@@ -1,6 +1,7 @@
 import logging
 from saas import celery_app
 from pid import PidFile
+from pid import PidFileError
 import requests
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
@@ -21,30 +22,33 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_custom_transcripts():
-    init_es_connection()
-    logger.info("Pulling custom transcripts.")
-    with PidFile(piddir='.', pidname='pull_custom_transcripts.pid') as p:
-        unparsed_vids = get_unparsed_vids()
-        vid_ids = set([vid.main.id for vid in unparsed_vids])
-        counter = 0
-        transcripts_counter = 0
-        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                     upsert_sections=(Sections.CUSTOM_CAPTIONS,))
-        for vid_id in vid_ids:
-            vid_obj = video_manager.get_or_create([vid_id])[0]
-            transcript_soup = get_video_soup(vid_id)
-            transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
-            if transcript_text != "":
-                AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
-                logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
-                transcripts_counter += 1
-            populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
-            video_manager.upsert([vid_obj])
-            counter += 1
-            logger.debug("Parsed video with id: {}".format(vid_id))
-            logger.debug("Number of videos parsed: {}".format(counter))
-            logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
-    logger.debug("Finished pulling 1,000 custom transcripts.")
+    try:
+        with PidFile(piddir='.', pidname='pull_custom_transcripts.pid') as p:
+            init_es_connection()
+            logger.debug("Pulling custom transcripts.")
+            unparsed_vids = get_unparsed_vids()
+            vid_ids = set([vid.main.id for vid in unparsed_vids])
+            counter = 0
+            transcripts_counter = 0
+            video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+                                         upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+            for vid_id in vid_ids:
+                vid_obj = video_manager.get_or_create([vid_id])[0]
+                transcript_soup = get_video_soup(vid_id)
+                transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+                if transcript_text != "":
+                    AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
+                    logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
+                    transcripts_counter += 1
+                populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
+                video_manager.upsert([vid_obj])
+                counter += 1
+                logger.debug("Parsed video with id: {}".format(vid_id))
+                logger.debug("Number of videos parsed: {}".format(counter))
+                logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
+            logger.debug("Finished pulling 1,000 custom transcripts.")
+    except PidFileError:
+        pass
 
 
 def get_video_soup(vid_id):
