@@ -64,13 +64,13 @@ class SegmentListGenerator(object):
         Generate brand suitable target lists with Youtube categories
         """
         for category in AuditCategory.objects.all():
-            logger.error(f"Processing audit category: id: {category.id}, name: {category.category_display}")
+            logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display}")
             if category.category_display not in self.processed_categories:
                 self._generate_channel_whitelist(category)
                 self._generate_video_whitelist(category)
                 self.processed_categories.add(category.category_display)
 
-        logger.error("Processing master whitelists and blacklists")
+        logger.debug("Processing master whitelists and blacklists")
         self._generate_master_channel_blacklist()
         self._generate_master_channel_whitelist()
 
@@ -276,7 +276,7 @@ class SegmentListGenerator(object):
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
         self.send_notification_email(segment.owner.email, subject, text_header, text_content)
         message = "updated" if updating else "generated"
-        logger.error(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
+        logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
     def persistent_segment_finalizer(self, segment, all_items):
         """
@@ -285,7 +285,7 @@ class SegmentListGenerator(object):
         segment.details = segment.calculate_statistics(items=all_items)
         segment.export_file(queryset=all_items)
         segment.save()
-        logger.error(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
+        logger.debug(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
 
     def send_notification_email(self, email, subject, text_header, text_content):
         html_email = generate_html_email(text_header, text_content)

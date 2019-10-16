@@ -11,6 +11,6 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task()
 def update_audiences():
-    logger.error("Updating audiences")
+    logger.debug("Updating audiences")
     GoogleAdsUpdater.update_audiences()
-    logger.error("Audience update complete")
+    logger.debug("Audience update complete")
