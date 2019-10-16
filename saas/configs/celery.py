@@ -73,15 +73,15 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="0", minute="0"),
     },
     "update-videos-percentiles": {
-        "task": "video.tasks.update_videos_percentiles",
+        "task": "video.tasks.update_videos_percentiles.update_videos_percentiles",
         "schedule": 3600,
     },
     "update-channels-percentiles": {
-        "task": "channel.tasks.update_channels_percentiles",
+        "task": "channel.tasks.update_channels_percentiles.update_channels_percentiles",
         "schedule": 3600,
     },
     "update-keywords-percentiles": {
-        "task": "keywords.tasks.update_keywords_percentiles",
+        "task": "keywords.tasks.update_keywords_percentiles.update_keywords_percentiles",
         "schedule": 3600,
     },
     "pull-custom-transcripts": {

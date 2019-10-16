@@ -82,6 +82,7 @@ class TargetTableSerializer(ModelSerializer):
     placement_start = DateField(source="ad_group__campaign__salesforce_placement__start")
     placement_end = DateField(source="ad_group__campaign__salesforce_placement__end")
     margin_cap = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__margin_cap_required")
+    max_bid = IntegerField(source="ad_group__cpv_bid")
     cannot_roll_over = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over")
     rate_type = GoalTypeField(source="ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
@@ -233,6 +234,7 @@ class TargetTableSerializer(ModelSerializer):
             "placement_start",
             "placement_end",
             "margin_cap",
+            "max_bid",
             "cannot_roll_over",
             "rate_type",
             "contracted_rate",
@@ -255,10 +257,10 @@ class TargetTableSerializer(ModelSerializer):
         values_shared = (
             "ad_group__campaign__name",
             "ad_group__name",
+            "ad_group__cpv_bid",
             "ad_group__campaign__salesforce_placement__name",
             "ad_group__campaign__salesforce_placement__start",
             "ad_group__campaign__salesforce_placement__end",
-            "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
             "ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over",
             "ad_group__campaign__salesforce_placement__opportunity__margin_cap_required",
             "ad_group__campaign__salesforce_placement__goal_type_id",
@@ -375,10 +377,12 @@ class VideosTableSerializer(TargetTableSerializer):
     placement_name = CharField(source="ad__ad_group__campaign__salesforce_placement__name")
     placement_start = DateField(source="ad__ad_group__campaign__salesforce_placement__start")
     placement_end = DateField(source="ad__ad_group__campaign__salesforce_placement__end")
+    max_bid = IntegerField(source="ad__ad_group__cpv_bid")
     cannot_roll_over = BooleanField(source="ad__ad_group__campaign__salesforce_placement"
                                            "__opportunity__cannot_roll_over")
     rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad__ad_group__campaign__salesforce_placement__ordered_rate")
+    margin_cap = BooleanField(source="ad__ad_group__campaign__salesforce_placement__opportunity__margin_cap_required")
 
     @classmethod
     def _build_type_subquery(cls, queryset):
