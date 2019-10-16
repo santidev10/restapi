@@ -9,6 +9,7 @@ from django.db.models import F
 from django.db.models import OuterRef
 from django.db.models import Q
 from django.db.models import Subquery
+from django.db.models.signals import pre_save
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import Activity
@@ -115,6 +116,9 @@ def perform_get(sc):
         if to_update:
             model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
             logger.debug(f"Updated {len(to_update)} items for: {model}")
+            # send pre signals
+            for item in to_update:
+                pre_save.send(model, instance=item)
         if to_create:
             model.objects.safe_bulk_create(to_create)
             logger.debug(f"Created {len(to_create)} items for: {model}")
