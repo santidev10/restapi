@@ -120,7 +120,7 @@ class BrandSafetyAudit(object):
             if self.channel_batch_counter % 10 == 0:
                 # Update config in case it has been modified
                 self.audit_utils.update_config()
-        logger.error("Complete.")
+        logger.info("BrandSafetyAudit.run complete.")
 
     def _process_audits(self, channels: list) -> dict:
         """
@@ -413,7 +413,7 @@ class BrandSafetyAudit(object):
             data = BrandSafetyVideoSerializer(results, many=True).data
             video_audits = self.audit_videos(videos=data)
             self._index_results(video_audits, [])
-            logger.error("Indexed {} videos".format(len(video_audits)))
+            logger.info("BrandSafetyAudit. Indexed {} videos".format(len(video_audits)))
             results = self.video_manager.search(query, limit=5000).execute().hits
 
     def _set_blacklist_data(self, items, blacklist_type=0):
