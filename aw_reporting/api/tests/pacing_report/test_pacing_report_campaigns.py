@@ -55,7 +55,7 @@ class PacingReportTestCase(APITestCase):
         )
         campaign = Campaign.objects.create(
             id="4", name="Special K", salesforce_placement=placement,
-            start_date=start, end_date=end, status="eligible",
+            start_date=start, end_date=end, status="serving",
         )
         for i in range(5):
             CampaignStatistic.objects.create(campaign=campaign,
@@ -149,13 +149,13 @@ class PacingReportTestCase(APITestCase):
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_1,
-            status="eligible",
+            status="serving",
         )
         campaign_2 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_2,
-            status="eligible",
+            status="serving",
         )
 
         user_settings = {
@@ -203,25 +203,25 @@ class PacingReportTestCase(APITestCase):
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_1,
-            status="eligible",
+            status="serving",
         )
         campaign_2 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_2,
-            status="eligible",
+            status="serving",
         )
         campaign_3 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_3,
-            status="eligible",
+            status="serving",
         )
         campaign_4 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_4,
-            status="eligible",
+            status="serving",
         )
 
         user_settings = {
@@ -266,13 +266,13 @@ class PacingReportTestCase(APITestCase):
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_1,
-            status="eligible",
+            status="serving",
         )
         campaign_2 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_2,
-            status="eligible",
+            status="serving",
         )
 
         user_settings = {
@@ -322,13 +322,13 @@ class PacingReportTestCase(APITestCase):
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_1,
-            status="eligible",
+            status="serving",
         )
         campaign_2 = Campaign.objects.create(
             id=str(next(int_iterator)),
             salesforce_placement=placement,
             goal_allocation=allocation_2,
-            status="eligible",
+            status="serving",
         )
 
         user_settings = {

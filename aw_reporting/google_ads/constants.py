@@ -51,7 +51,7 @@ CUSTOMER_CLIENT_LINK_FIELDS = {
 
 AD_PERFORMANCE_FIELDS = {
     "ad_group": ("id",),
-    "ad_group_ad": ("ad.id", "ad.text_ad.headline", "ad.image_ad.name", "ad.display_url", "status", "policy_summary"),
+    "ad_group_ad": ("ad.id", "ad.text_ad.headline", "ad.name", "ad.display_url", "status", "policy_summary"),
     "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
     "segments": ("date",)
 }
