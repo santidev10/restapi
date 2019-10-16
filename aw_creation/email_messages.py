@@ -78,7 +78,7 @@ def send_tracking_tags_request(user, account_creation):
         )
         message = render_to_string("tracking_tags_message.txt", context)
         subject = TRACKING_TAGS_SUBJECT.format(**context)
-        send_mail(subject, message, settings.EMAIL_HOST_USER, [settings.MS_CHANNELFACTORY_EMAIL], fail_silently=False)
+        send_mail(subject, message, settings.SENDER_EMAIL_ADDRESS, [settings.MS_CHANNELFACTORY_EMAIL], fail_silently=False)
 
         # drop the changes flags
         AdCreation.objects.filter(id__in=ad_ids).update(**{f: False for f in is_changed_fields})

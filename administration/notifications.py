@@ -89,7 +89,7 @@ def send_html_email(subject, to, text_header, text_content):
     send_mail(
         subject=subject,
         message=None,
-        from_email=None,
+        from_email=settings.SENDER_EMAIL_ADDRESS,
         recipient_list=[to],
         html_message=html_email,
     )

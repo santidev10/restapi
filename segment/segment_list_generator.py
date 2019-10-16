@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.utils import timezone
@@ -290,7 +291,7 @@ class SegmentListGenerator(object):
         send_mail(
             subject=subject,
             message=None,
-            from_email=None,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             recipient_list=[email],
             html_message=html_email,
         )

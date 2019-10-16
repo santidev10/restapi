@@ -59,7 +59,7 @@ class Command(BaseCommand):
         send_mail(
             subject=subject,
             message=None,
-            from_email=None,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             recipient_list=recipients,
             html_message=body,
         )

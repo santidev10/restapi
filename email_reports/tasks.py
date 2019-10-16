@@ -68,6 +68,6 @@ def notify_opportunity_targeting_report_is_ready(report_id):
         send_mail(
             subject=subject,
             message=body,
-            from_email=None,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             recipient_list=[email],
         )
