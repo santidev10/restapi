@@ -124,6 +124,4 @@ class AdGroupUpdater(UpdateMixin):
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME, ignore_a_few_records=True)
             statistics.update(click_data)
             yield AdGroupStatistic(**statistics)
-        import pdb
-        pdb.set_trace()
         AdGroup.objects.bulk_create(ad_groups_to_create)
