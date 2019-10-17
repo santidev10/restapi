@@ -175,7 +175,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
                 settings[default_settings_key] = default_settings_value
         return settings
 
-    def email_user(self, subject, message, from_email=None, **kwargs):
+    def email_user(self, subject, message, from_email=settings.SENDER_EMAIL_ADDRESS, **kwargs):
         """
         Sends an email to this User.
         """

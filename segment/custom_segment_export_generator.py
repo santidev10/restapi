@@ -120,7 +120,7 @@ class CustomSegmentExportGenerator(S3Exporter):
         send_mail(
             subject=subject,
             message=None,
-            from_email=None,
+            from_email=settings.SENDER_EMAIL_ADDRESS,
             recipient_list=[email],
             html_message=html_email,
         )
