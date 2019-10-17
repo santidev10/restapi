@@ -349,6 +349,8 @@ class AuditExportApiView(APIView):
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
+            if "" in bad_word_categories:
+                bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
                 cols.extend(bad_word_categories)
         except Exception as e:
