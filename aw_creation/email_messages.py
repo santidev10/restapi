@@ -1,8 +1,9 @@
 from collections import defaultdict
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.template.loader import render_to_string
+
+from administration.notifications import send_email
 
 TRACKING_TAGS_SUBJECT = "ViewIQ Tags Needed for {account} by {first_name} {last_name}"
 
@@ -31,7 +32,7 @@ def send_tracking_tags_request(user, account_creation):
         ad_group_creation__campaign_creation__is_deleted=False,
         ad_group_creation__campaign_creation__account_creation__is_deleted=False,
     ).exclude(**{f: False for f in is_changed_fields}).values(
-        "id", "name", "ad_group_creation__id",  "ad_group_creation__name",
+        "id", "name", "ad_group_creation__id", "ad_group_creation__name",
         "ad_group_creation__campaign_creation__id", "ad_group_creation__campaign_creation__name",
         *all_tags_fields
     )
@@ -78,7 +79,12 @@ def send_tracking_tags_request(user, account_creation):
         )
         message = render_to_string("tracking_tags_message.txt", context)
         subject = TRACKING_TAGS_SUBJECT.format(**context)
-        send_mail(subject, message, settings.SENDER_EMAIL_ADDRESS, [settings.MS_CHANNELFACTORY_EMAIL], fail_silently=False)
+        send_email(
+            subject=subject,
+            message=message,
+            recipient_list=[settings.MS_CHANNELFACTORY_EMAIL],
+            fail_silently=False,
+        )
 
         # drop the changes flags
         AdCreation.objects.filter(id__in=ad_ids).update(**{f: False for f in is_changed_fields})

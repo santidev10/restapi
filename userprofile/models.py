@@ -9,7 +9,6 @@ from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import UserManager
 from django.contrib.postgres.fields import JSONField
 from django.core import validators
-from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
@@ -174,12 +173,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
             if default_settings_key not in settings:
                 settings[default_settings_key] = default_settings_value
         return settings
-
-    def email_user(self, subject, message, from_email=settings.SENDER_EMAIL_ADDRESS, **kwargs):
-        """
-        Sends an email to this User.
-        """
-        send_mail(subject, message, from_email, [self.email], **kwargs)
 
     def email_user_active(self, request):
         """
