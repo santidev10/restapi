@@ -1,15 +1,19 @@
-from django.core.mail import send_mail
-from django.core.management.base import BaseCommand
 import logging
-logger = logging.getLogger(__name__)
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
 from pid import PidFile
+
+from administration.notifications import send_email
+from audit_tool.api.views.audit_export import AuditExportApiView
+from audit_tool.api.views.audit_export import AuditS3Exporter
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditVideoProcessor
-from audit_tool.api.views.audit_export import AuditExportApiView
-from audit_tool.api.views.audit_export import AuditS3Exporter
-from django.conf import settings
-from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
@@ -56,10 +60,8 @@ class Command(BaseCommand):
         export_owner = self.export.owner
         if export_owner:
             recipients = [export_owner.email]
-        send_mail(
+        send_email(
             subject=subject,
-            message=None,
-            from_email=None,
             recipient_list=recipients,
             html_message=body,
         )
