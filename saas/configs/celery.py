@@ -13,9 +13,12 @@ RABBITMQ_API_PASSWORD = os.getenv("RABBITMQ_API_PASSWORD", "guest")
 
 RABBITMQ_API_URL = "{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
 CELERY_BROKER_URL = "amqp://{host}:{port}/restapi".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
+CELERY_RESULT_EXTENDED = True
 
 DMP_CELERY_BROKER_URL = "amqp://{host}:{port}/dmp".format(host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
-DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
+DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEND)
+DMP_CELERY_RESULT_EXTENDED = True
 
 CELERY_TIMEZONE = "UTC"
 
@@ -89,7 +92,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 600
     }
 }
-CELERY_RESULT_BACKEND = "django-db"
+
 
 # Suggestion from this thread https://github.com/celery/celery/issues/4226
 CELERY_BROKER_POOL_LIMIT = None
