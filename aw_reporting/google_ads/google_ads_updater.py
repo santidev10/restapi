@@ -98,9 +98,10 @@ class GoogleAdsUpdater(object):
         self.cid_account.save()
         recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    def update_accounts_for_mcc(self, mcc_account):
+    def update_accounts_for_mcc(self, mcc_account=None):
         """ Update /Save accounts managed by MCC """
-        self.mcc_account = mcc_account
+        if mcc_account:
+            self.mcc_account = mcc_account
         account_updater = AccountUpdater(self.mcc_account)
         self.execute_with_any_permission(account_updater)
 

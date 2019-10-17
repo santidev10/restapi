@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class KeywordUpdater(UpdateMixin):
-    RESOURCE_NAME = "keyword_view"
+    RESOURCE_NAME = "display_keyword_view"
 
     def __init__(self, account):
         self.client = None
@@ -26,15 +26,14 @@ class KeywordUpdater(UpdateMixin):
         self.ga_service = client.get_service("GoogleAdsService", version="v2")
 
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
+        if max_acc_date is None:
+            return
         self.drop_latest_stats(self.existing_statistics, self.today)
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
 
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
             max_date = max_acc_date
-
-            if not min_date or max_date:
-                return
 
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
@@ -57,7 +56,7 @@ class KeywordUpdater(UpdateMixin):
 
     def _instance_generator(self, keyword_performance, click_type_data):
         for row in keyword_performance:
-            keyword = row.ad_group.criterion.keyword.text.value
+            keyword = row.ad_group_criterion.keyword.text.value
             statistics = {
                 "keyword": keyword,
                 "date": row.segments.date.value,
