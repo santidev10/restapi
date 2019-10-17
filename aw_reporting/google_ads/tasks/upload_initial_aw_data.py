@@ -28,7 +28,7 @@ def upload_initial_aw_data_task(connection_pk):
     ).distinct()
 
     for mcc in mcc_to_update:
-        updater.update_accounts_for_mcc(mcc)
+        updater.update_accounts_for_mcc(mcc_account=mcc)
 
     accounts_to_update = Account.objects.filter(
         managers__mcc_permissions__aw_connection=connection,

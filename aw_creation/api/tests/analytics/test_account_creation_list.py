@@ -360,14 +360,14 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         # paused
         paused_account = create_account()
         Campaign.objects.create(name="paused 1", id="4", account=paused_account, status="paused")
-        Campaign.objects.create(name="eligible", id="5", account=paused_account, status="removed")
+        Campaign.objects.create(name="serving", id="5", account=paused_account, status="removed")
         Campaign.objects.create(name="paused 2", id="6", account=paused_account, status="paused")
         paused_account_creation = AccountCreation.objects.create(
             name="Paused", owner=self.user, account=paused_account, is_approved=True, sync_at=timezone.now())
         # running
         running_account = create_account()
         Campaign.objects.create(name="paused 1", id="7", account=running_account, status="removed")
-        Campaign.objects.create(name="eligible", id="8", account=running_account, status="eligible")
+        Campaign.objects.create(name="serving", id="8", account=running_account, status="serving")
         Campaign.objects.create(name="paused 2", id="9", account=running_account, status="paused")
         Campaign.objects.create(name="paused 2", id="10", account=running_account, status="ended")
         running_account_creation = AccountCreation.objects.create(

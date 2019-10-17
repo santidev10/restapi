@@ -47,7 +47,7 @@ def extract_placement_code(name):
 
 
 def get_quartile_views(row):
-    impressions = row.metrics.impressions.value
+    impressions = (row.metrics.impressions.value or 1) * 100
     quartiles = {
         "video_views_25_quartile": row.metrics.video_quartile_25_rate.value / 100 * impressions,
         "video_views_50_quartile": row.metrics.video_quartile_50_rate.value / 100 * impressions,

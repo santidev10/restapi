@@ -51,7 +51,7 @@ CUSTOMER_CLIENT_LINK_FIELDS = {
 
 AD_PERFORMANCE_FIELDS = {
     "ad_group": ("id",),
-    "ad_group_ad": ("ad.id", "ad.text_ad.headline", "ad.image_ad.name", "ad.display_url", "status", "policy_summary"),
+    "ad_group_ad": ("ad.id", "ad.text_ad.headline", "ad.name", "ad.display_url", "status", "policy_summary"),
     "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
     "segments": ("date",)
 }
@@ -80,7 +80,7 @@ CLICKS_PERFORMANCE_FIELDS = {
 
 AD_GROUP_PERFORMANCE_FIELDS = {
     "campaign": ("id",),
-    "ad_group": ("id", "name", "status", "type"),
+    "ad_group": ("id", "name", "status", "type", "cpc_bid_micros", "cpm_bid_micros", "cpv_bid_micros"),
     "metrics": ("active_view_impressions", "engagements") + COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
     "segments": ("ad_network_type", "date", "device")
 }

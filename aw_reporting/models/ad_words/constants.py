@@ -105,6 +105,7 @@ class CampaignStatus(ExtendedEnum):
     REMOVED = "removed"
     ELIGIBLE = "eligible"
     ENDED = "ended"
+    SERVING = "serving"
 
 
 DATE_FORMAT = "%Y-%m-%d"

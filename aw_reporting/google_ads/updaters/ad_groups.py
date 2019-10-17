@@ -52,10 +52,6 @@ class AdGroupUpdater(UpdateMixin):
             min_date, max_date,
             resource_name=self.RESOURCE_NAME
         )
-
-        min_date = str(min_date)
-        max_date = str(max_date)
-
         ad_group_performance = self._get_ad_group_performance(min_date, max_date)
         generator = self._generate_instances(ad_group_performance, click_type_data)
         AdGroupStatistic.objects.safe_bulk_create(generator)
@@ -97,6 +93,9 @@ class AdGroupUpdater(UpdateMixin):
                     "status": ad_group_status_enum.Name(row.ad_group.status).lower(),
                     "type": ad_group_type_enum.Name(row.ad_group.type).lower(),
                     "campaign_id": campaign_id,
+                    "cpv_bid": row.ad_group.cpv_bid_micros.value if row.ad_group.cpv_bid_micros else None,
+                    "cpm_bid": row.ad_group.cpm_bid_micros.value if row.ad_group.cpm_bid_micros else None,
+                    "cpc_bid": row.ad_group.cpc_bid_micros.value if row.ad_group.cpc_bid_micros else None,
                 }
                 # Check for AdGroup existence with set membership instead of making database queries for efficiency
                 if ad_group_id in self.existing_ad_group_ids:

@@ -1,6 +1,7 @@
 import logging
 from saas import celery_app
 from pid import PidFile
+from pid import PidFileError
 import requests
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
@@ -13,15 +14,22 @@ from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_captions
 from utils.lang import replace_apostrophes
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
+from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
 
 logger = logging.getLogger(__name__)
 
+LOCK_NAME = 'custom_transcripts'
 
-@celery_app.task()
+
+@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_custom_transcripts():
-    init_es_connection()
-    logger.info("Pulling custom transcripts.")
-    with PidFile(piddir='.', pidname='pull_custom_transcripts.pid') as p:
+    try:
+        lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        init_es_connection()
+        logger.debug("Pulling custom transcripts.")
         unparsed_vids = get_unparsed_vids()
         vid_ids = set([vid.main.id for vid in unparsed_vids])
         counter = 0
@@ -42,7 +50,10 @@ def pull_custom_transcripts():
             logger.debug("Parsed video with id: {}".format(vid_id))
             logger.debug("Number of videos parsed: {}".format(counter))
             logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
-    logger.debug("Finished pulling 10,000 custom transcripts.")
+        unlock(LOCK_NAME)
+        logger.debug("Finished pulling 1,000 custom transcripts.")
+    except Exception:
+        pass
 
 
 def get_video_soup(vid_id):
@@ -96,5 +107,5 @@ def get_unparsed_vids():
     )
     s = s.query(q1).query(q2).query(q3)
     s = s.sort({"stats.views": {"order": "desc"}})
-    s = s[:10000]
+    s = s[:1000]
     return s.execute()

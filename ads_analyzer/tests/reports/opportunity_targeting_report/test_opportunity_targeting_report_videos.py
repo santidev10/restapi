@@ -136,9 +136,16 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         columns = self.columns
         self.assertEqual(margin_cap_required, item[columns.margin_cap])
 
-    @skip("Not implemented")
     def test_max_bid(self):
-        raise NotImplementedError
+        any_date = date(2019, 1, 1)
+        AdStatistic.objects.create(ad=self.ad, average_position=1, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(self.ad_group.cpv_bid, item[columns.max_bid])
 
     def test_average_rate_cpv(self):
         any_date = date(2019, 1, 1)
