@@ -93,9 +93,12 @@ class AdGroupUpdater(UpdateMixin):
                     "status": ad_group_status_enum.Name(row.ad_group.status).lower(),
                     "type": ad_group_type_enum.Name(row.ad_group.type).lower(),
                     "campaign_id": campaign_id,
-                    "cpv_bid": row.ad_group.cpv_bid_micros.value if row.ad_group.cpv_bid_micros else None,
-                    "cpm_bid": row.ad_group.cpm_bid_micros.value if row.ad_group.cpm_bid_micros else None,
-                    "cpc_bid": row.ad_group.cpc_bid_micros.value if row.ad_group.cpc_bid_micros else None,
+                    "cpv_bid": float(row.ad_group.cpv_bid_micros.value) / 10 ** 6
+                    if row.ad_group.cpv_bid_micros and row.ad_group.cpv_bid_micros.value else None,
+                    "cpm_bid": float(row.ad_group.cpm_bid_micros.value) / 10 ** 6
+                    if row.ad_group.cpm_bid_micros and row.ad_group.cpm_bid_micros.value else None,
+                    "cpc_bid": float(row.ad_group.cpc_bid_micros.value) / 10 ** 6
+                    if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
                 }
                 # Check for AdGroup existence with set membership instead of making database queries for efficiency
                 if ad_group_id in self.existing_ad_group_ids:
