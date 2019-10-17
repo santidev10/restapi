@@ -200,7 +200,7 @@ class AuditSaveApiView(APIView):
         keywords = []
         categories = []
         io_string = StringIO(file)
-        reader = csv.reader(io_string, delimiter=",", quotechar="|")
+        reader = csv.reader(io_string, delimiter=',', quotechar='"')
         for row in reader:
             try:
                 word = row[0].lower().strip()
