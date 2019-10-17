@@ -38,7 +38,9 @@ from .serializers import VideosTableSerializer
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task
+@celery_app.task(autoretry_for=(OpportunityTargetingReport.DoesNotExist,),
+                 retry_kwargs={"max_retries": 5},
+                 retry_backoff=True)
 def create_opportunity_targeting_report(report_id):
     now = now_in_default_tz()
     report_entity = OpportunityTargetingReport.objects.get(pk=report_id)
