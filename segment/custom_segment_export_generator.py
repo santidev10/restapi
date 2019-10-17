@@ -1,20 +1,18 @@
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils import timezone
 from elasticsearch_dsl.search import Q
 
-from administration.notifications import generate_html_email
+from administration.notifications import send_html_email
 from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import SortDirections
 from segment.models import CustomSegmentFileUpload
 from segment.models.custom_segment_file_upload import CustomSegmentFileUploadQueueEmptyException
-from utils.aws.export_context_manager import ExportContextManager
-from utils.aws.s3_exporter import S3Exporter
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.utils import retry_on_conflict
-
+from utils.aws.export_context_manager import ExportContextManager
+from utils.aws.s3_exporter import S3Exporter
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +60,8 @@ class CustomSegmentExportGenerator(S3Exporter):
             self.limit = self.CHANNEL_LIMIT
         try:
             # Remove all items from this segment to generate relevant items
-            retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+            retry_on_conflict(segment.remove_all_from_segment, retry_amount=self.MAX_API_CALL_RETRY,
+                              sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
             query = Q(export.query)
             es_generator = self.es_generator(es_manager, query, sort_key, self.limit, serializer)
         except Exception:
@@ -75,7 +74,8 @@ class CustomSegmentExportGenerator(S3Exporter):
 
         # Add segment UUID to documents
         for batch in AuditUtils.batch(self.segment_item_ids, self.UPDATE_BATCH_SIZE):
-            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment.uuid, retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
+            retry_on_conflict(es_manager.add_to_segment_by_ids, batch, segment.uuid,
+                              retry_amount=self.MAX_API_CALL_RETRY, sleep_coeff=self.RETRY_SLEEP_COEFFICIENT)
         self._finalize_export(export, segment, owner, s3_key)
 
     @staticmethod
@@ -116,13 +116,11 @@ class CustomSegmentExportGenerator(S3Exporter):
         subject = "Custom Target List: {}".format(segment_title)
         text_header = "Your Custom Target List {} is ready".format(segment_title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=download_url)
-        html_email = generate_html_email(text_header, text_content)
-        send_mail(
+        send_html_email(
             subject=subject,
-            message=None,
-            from_email=None,
-            recipient_list=[email],
-            html_message=html_email,
+            to=email,
+            text_header=text_header,
+            text_content=text_content
         )
 
     @staticmethod

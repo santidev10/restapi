@@ -2,12 +2,11 @@ import logging
 import uuid
 from datetime import timedelta
 
-from django.core.mail import send_mail
 from django.db.models import Q
 from django.utils import timezone
 
 import brand_safety.constants as constants
-from administration.notifications import generate_html_email
+from administration.notifications import send_html_email
 from audit_tool.models import AuditCategory
 from brand_safety.auditors.utils import AuditUtils
 from es_components.constants import Sections
@@ -118,11 +117,15 @@ class SegmentListGenerator(object):
             category=constants.WHITELIST,
             is_master=False,
             audit_category_id=category_id,
-            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
+                                                                  S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
-        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(category_name).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
+            category_name).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+            self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
         # Clean old segments
@@ -139,12 +142,16 @@ class SegmentListGenerator(object):
             category=constants.WHITELIST,
             is_master=False,
             audit_category_id=category_id,
-            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name, S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
+            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
+                                                                  S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
         )
-        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(category_name).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
+            category_name).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+            self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
         self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
@@ -163,11 +170,14 @@ class SegmentListGenerator(object):
             audit_category_id=None
         )
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+            self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_master_video_whitelist, query=query, size=self.WHITELIST_SIZE)
-        self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
+        self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
+                                 master_list_type=constants.WHITELIST)
         self.persistent_segment_finalizer(new_master_video_whitelist, all_items)
 
     def _generate_master_video_blacklist(self):
@@ -183,12 +193,14 @@ class SegmentListGenerator(object):
             audit_category_id=None
         )
         query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(self.SENTIMENT_THRESHOLD).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
+            self.SENTIMENT_THRESHOLD).get() \
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_master_video_blacklist, query=query, size=self.BLACKLIST_SIZE)
-        self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
+        self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
+                                 master_list_type=constants.BLACKLIST)
         self.persistent_segment_finalizer(new_master_video_blacklist, all_items)
 
     def _generate_master_channel_whitelist(self):
@@ -203,11 +215,14 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category_id=None
         )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+            self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_master_channel_whitelist, query=query, size=self.WHITELIST_SIZE)
-        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True, master_list_type=constants.WHITELIST)
+        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
+                                 master_list_type=constants.WHITELIST)
         self.persistent_segment_finalizer(new_master_channel_whitelist, all_items)
 
     def _generate_master_channel_blacklist(self):
@@ -222,11 +237,14 @@ class SegmentListGenerator(object):
             is_master=True,
             audit_category_id=None
         )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+            self.MINIMUM_SUBSCRIBERS).get() \
+                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
         all_items = self.add_to_segment(new_master_channel_blacklist, query=query, size=self.BLACKLIST_SIZE)
-        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True, master_list_type=constants.BLACKLIST)
+        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
+                                 master_list_type=constants.BLACKLIST)
         self.persistent_segment_finalizer(new_master_channel_blacklist, all_items)
 
     def add_to_segment(self, segment, query=None, size=None):
@@ -248,13 +266,15 @@ class SegmentListGenerator(object):
             segment.add_to_segment(doc_ids=batch)
         return all_items
 
-    def _clean_old_segments(self, model, new_segment_uuid, category_id=None, is_master=False, master_list_type=constants.WHITELIST):
+    def _clean_old_segments(self, model, new_segment_uuid, category_id=None, is_master=False,
+                            master_list_type=constants.WHITELIST):
         """
         Delete old category segments and clean documents with old segment uuid
         """
         # Delete old persistent segments with same audit category and delete from Elasticsearch
         if is_master:
-            old_segments = model.objects.filter(category=master_list_type, is_master=True).exclude(uuid=new_segment_uuid)
+            old_segments = model.objects.filter(category=master_list_type, is_master=True).exclude(
+                uuid=new_segment_uuid)
         else:
             old_segments = model.objects.filter(audit_category_id=category_id).exclude(uuid=new_segment_uuid)
         # Delete old segment uuid's from documents
@@ -272,7 +292,12 @@ class SegmentListGenerator(object):
         subject = "Custom Target List: {}".format(segment.title)
         text_header = "Your Custom Target List {} is ready".format(segment.title)
         text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
-        self.send_notification_email(segment.owner.email, subject, text_header, text_content)
+        send_html_email(
+            subject=subject,
+            to=segment.owner.email,
+            text_header=text_header,
+            text_content=text_content,
+        )
         message = "updated" if updating else "generated"
         logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
@@ -283,14 +308,5 @@ class SegmentListGenerator(object):
         segment.details = segment.calculate_statistics(items=all_items)
         segment.export_file(queryset=all_items)
         segment.save()
-        logger.debug(f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
-
-    def send_notification_email(self, email, subject, text_header, text_content):
-        html_email = generate_html_email(text_header, text_content)
-        send_mail(
-            subject=subject,
-            message=None,
-            from_email=None,
-            recipient_list=[email],
-            html_message=html_email,
-        )
+        logger.debug(
+            f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")

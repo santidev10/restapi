@@ -2,8 +2,8 @@ import logging
 import traceback
 
 from django.conf import settings
-from django.core.mail import send_mail
 
+from administration.notifications import send_email
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
@@ -65,9 +65,8 @@ def notify_opportunity_targeting_report_is_ready(report_id):
     subject = f"Opportunity Targeting Report > {report.opportunity.name}: {report.date_from} - {report.date_to}"
     body = f"Report has been prepared. Download it by the following link {direct_link}"
     for email in report.recipients.all().values_list("email", flat=True):
-        send_mail(
+        send_email(
             subject=subject,
             message=body,
-            from_email=None,
             recipient_list=[email],
         )

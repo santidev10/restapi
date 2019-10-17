@@ -22,7 +22,6 @@ MIGRATION_MODULES = {
     "aw_reporting": None,
     "brand_safety": None,
     "contenttypes": None,
-    "django_celery_results": None,
     "email_reports": None,
     "keyword_tool": None,
     "segment": None,
