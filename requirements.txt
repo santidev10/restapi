@@ -9,14 +9,13 @@ boto==2.49.0
 botocore==1.10.84
 cached-property==1.5.1
 cachetools==3.1.1
-celery==4.2.1
+celery==4.3.0
 certifi==2018.10.15
 chardet==3.0.4
 coreapi==2.3.3
 coreschema==0.0.4
 cryptography==2.7
 defusedxml==0.6.0
-django-celery-results==1.0.1
 django-filter==2.0.0
 django-ses==0.8.12
 Django==2.2.4
@@ -64,7 +63,7 @@ PySocks==1.6.7
 python-dateutil==2.6.0
 pytz==2018.4
 PyYAML==5.1
-redis==3.0.0
+redis==3.3.11
 requests-oauthlib==1.2.0
 requests-toolbelt==0.9.1
 requests==2.19.1
