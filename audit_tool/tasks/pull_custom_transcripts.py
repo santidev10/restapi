@@ -1,7 +1,5 @@
 import logging
 from saas import celery_app
-from pid import PidFile
-from pid import PidFileError
 import requests
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
@@ -45,7 +43,7 @@ def pull_custom_transcripts():
                 logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
                 transcripts_counter += 1
             else:
-                AuditVideoTranscript.get_or_create(video_id=vid_id, language="")
+                AuditVideoTranscript.get_or_create(video_id=vid_id, language=None)
             populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
             video_manager.upsert([vid_obj])
             counter += 1
