@@ -1,3 +1,4 @@
+from datetime import date
 import itertools
 import logging
 import time
@@ -97,7 +98,9 @@ def create_cid_tasks(mcc_id):
     for account in Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True):
         try:
             int(account.id)
-            cid_accounts.append(account)
+            campaign_end_dates = account.campaigns.values_list("end_date", flat=True)
+            if all(end_date > date.today() for end_date in campaign_end_dates):
+                cid_accounts.append(account)
         except ValueError:
             continue
     task_signatures = [
