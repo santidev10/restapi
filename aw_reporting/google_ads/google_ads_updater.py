@@ -149,7 +149,8 @@ class GoogleAdsUpdater(object):
             # If no linked opportunities or any linked opportunity has not ended, update
             opportunities = Opportunity.objects.filter(aw_cid=account.id)
             opportunities_running = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
-            if opportunities_running or account.end_date is None or account.end_date > end_date_threshold:
+            account_end_date = account.end_date
+            if opportunities_running or account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
                     account = account.id
                 to_update.append(account)
