@@ -102,8 +102,10 @@ class BadWordListApiView(ListCreateAPIView):
                     if existing_word.deleted_at is not None:
                         existing_word.deleted_at = None
                         existing_word.save(update_fields=['deleted_at'])
-
-                        result = self.serializer_class(existing_word).data
+                        existing_word_serializer = self.serializer_class(existing_word, data=request.data)
+                        existing_word_serializer.is_valid(raise_exception=True)
+                        existing_word_serializer.save()
+                        result = existing_word_serializer.data
                         results.append(result)
                         status = HTTP_201_CREATED
                     else:
