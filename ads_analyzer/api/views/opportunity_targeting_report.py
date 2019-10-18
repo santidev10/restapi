@@ -29,7 +29,6 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.create_opportunity_report"),
-            IsAdminUser,
         ),
     )
 
