@@ -16,7 +16,6 @@ class OpportunityListAPIView(ListAPIView):
     permission_classes = (
         or_permission_classes(
             user_has_permission("userprofile.view_opportunity_list"),
-            IsAdminUser,
         ),
     )
     queryset = Opportunity.objects.have_campaigns_from(
