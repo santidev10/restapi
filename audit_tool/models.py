@@ -324,7 +324,7 @@ class AuditVideo(models.Model):
 
 class AuditVideoTranscript(models.Model):
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
-    language = models.ForeignKey(AuditLanguage, default=1, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
 
     class Meta:
@@ -333,7 +333,7 @@ class AuditVideoTranscript(models.Model):
     @staticmethod
     def get_or_create(video_id, language='en', transcript=None):
         v = AuditVideo.get_or_create(video_id)
-        lang = AuditLanguage.from_string(language)
+        lang = AuditLanguage.from_string(language) if language else None
         t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
         if transcript:
             t.transcript = transcript
