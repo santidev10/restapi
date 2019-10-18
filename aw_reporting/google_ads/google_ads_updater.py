@@ -146,16 +146,10 @@ class GoogleAdsUpdater(object):
                 int(account.id)
             except ValueError:
                 continue
-
             # If no linked opportunities or any linked opportunity has not ended, update
             opportunities = Opportunity.objects.filter(aw_cid=account.id)
             opportunities_running = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
-
-            # If account does not contain campaigns or has any running campaigns, update
-            campaign_end_dates = account.campaigns.values_list("end_date", flat=True)
-            has_running_campaigns = not campaign_end_dates or any(end_date is None or end_date > end_date_threshold for end_date in campaign_end_dates)
-
-            if opportunities_running or has_running_campaigns:
+            if opportunities_running or account.end_date is None or account.end_date > end_date_threshold:
                 if as_obj is False:
                     account = account.id
                 to_update.append(account)
