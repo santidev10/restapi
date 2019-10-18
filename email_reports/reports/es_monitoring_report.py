@@ -54,6 +54,7 @@ class ESMonitoringEmailReport(BaseEmailReport):
 
             self.monitoring_reports[manager.model.__name__] = report
 
+
     def _get_body(self):
         html = get_template("es_monitoring_data_report.html")
         html_content = html.render({"reports": self.monitoring_reports})
