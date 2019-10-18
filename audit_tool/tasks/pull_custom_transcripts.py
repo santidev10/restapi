@@ -44,6 +44,8 @@ def pull_custom_transcripts():
                 AuditVideoTranscript.get_or_create(video_id=vid_id, language="en", transcript=str(transcript_soup))
                 logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))
                 transcripts_counter += 1
+            else:
+                AuditVideoTranscript.get_or_create(video_id=vid_id, language="")
             populate_video_custom_captions(vid_obj, [transcript_text], ['en'])
             video_manager.upsert([vid_obj])
             counter += 1
