@@ -145,7 +145,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
-    aw_cid = models.CharField(max_length=60, null=True)
+    aw_cid = models.CharField(max_length=60, null=True, db_index=True)
     number = models.CharField(max_length=10, null=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
 

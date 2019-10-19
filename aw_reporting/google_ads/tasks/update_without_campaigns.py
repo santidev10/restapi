@@ -56,14 +56,10 @@ def account_update_all_except_campaigns(mcc_id):
     Create task signatures with cid_update_all_except_campaigns for each account under mcc_id
     :return: list -> Celery update tasks
     """
-    cid_accounts = Account.objects.filter(
-        managers=mcc_id,
-        can_manage_clients=False,
-        is_active=True
-    ).values_list("id", flat=True)
+    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update_for_mcc(mcc_id)
     task_signatures = [
-        cid_update_all_except_campaigns.si(cid, mcc_id, index + 1, len(cid_accounts)).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
-        for index, cid in enumerate(cid_accounts, start=0)
+        cid_update_all_except_campaigns.si(cid, mcc_id, index + 1, len(cid_account_ids)).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
+        for index, cid in enumerate(cid_account_ids, start=0)
     ]
     return task_signatures
 
