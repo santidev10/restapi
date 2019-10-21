@@ -96,7 +96,11 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:max",
         "stats.views:min",
         "brand_safety",
-        "stats.flags"
+        "stats.flags",
+        "custom_captions.items:exists",
+        "custom_captions.items:missing",
+        "captions:exists",
+        "captions:missing",
     )
 
     allowed_percentiles = (
