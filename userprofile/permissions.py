@@ -124,6 +124,7 @@ class Permissions:
             "video_details",
             "keyword_list",
             "keyword_details",
+            "transcripts_filter",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
             "channel_list",
@@ -209,6 +210,8 @@ class Permissions:
         # keyword section
         "keyword_list",
         "keyword_details",
+        # transcripts
+        "transcripts_filter",
         # tools section
         "view_pricing_tool",
         # dashboard section

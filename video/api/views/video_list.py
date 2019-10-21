@@ -140,6 +140,13 @@ class VideoListApiView(APIViewMixin, ListAPIView):
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
 
+        if not self.request.user.has_perm("userprofile.transcripts_filter") and \
+                not self.request.user.is_staff:
+            if "transcripts" in self.request.query_params:
+                self.request.query_params._mutable = True
+                self.request.query_params["transcripts"] = None
+                self.request.query_params._mutable = False
+
         if not BrandSafetyDataVisible().has_permission(self.request):
             if "brand_safety" in self.request.query_params:
                 self.request.query_params._mutable = True
