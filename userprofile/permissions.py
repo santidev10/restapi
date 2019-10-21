@@ -109,6 +109,7 @@ class PermissionGroupNames:
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
     AUDIT_FLAGGING = "Audit Flagging"
     ADS_ANALYZER = "Ads Analyzer"
+    TRANSCRIPTS = "Transcripts"
 
 
 class Permissions:
@@ -124,7 +125,6 @@ class Permissions:
             "video_details",
             "keyword_list",
             "keyword_details",
-            "transcripts_filter",
         )),
         (PermissionGroupNames.MEDIA_PLANNING, (
             "channel_list",
@@ -191,6 +191,9 @@ class Permissions:
             "view_opportunity_list",
             "create_opportunity_report",
         )),
+        (PermissionGroupNames.TRANSCRIPTS, (
+            "transcripts_filter",
+        ))
     )
 
     PERM_LIST = (
@@ -210,8 +213,6 @@ class Permissions:
         # keyword section
         "keyword_list",
         "keyword_details",
-        # transcripts
-        "transcripts_filter",
         # tools section
         "view_pricing_tool",
         # dashboard section
@@ -231,6 +232,8 @@ class Permissions:
         # Ads Analyzer
         "view_opportunity_list",
         "create_opportunity_report",
+        # Transcripts
+        "transcripts_filter",
     )
 
     @staticmethod
