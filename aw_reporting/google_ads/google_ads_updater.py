@@ -1,3 +1,5 @@
+from datetime import date
+from datetime import timedelta
 import logging
 import time
 
@@ -28,6 +30,8 @@ from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.updaters.videos import VideoUpdater
+from aw_reporting.models import Account
+from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 
 logger = logging.getLogger(__name__)
@@ -123,6 +127,34 @@ class GoogleAdsUpdater(object):
             else:
                 self.execute(updater, client)
         recalculate_de_norm_fields_for_account(self.cid_account.id)
+
+    @staticmethod
+    def get_accounts_to_update_for_mcc(mcc_id, end_date_threshold=None, as_obj=False):
+        """
+        Get current CID accounts to update
+        :param mcc_id: str
+        :param end_date_threshold: date obj
+        :param as_obj: bool
+        :return: list
+        """
+        to_update = []
+        end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
+        cid_accounts = Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True)
+        for account in cid_accounts:
+            try:
+                # Check if account has invalid Google Ads id
+                int(account.id)
+            except ValueError:
+                continue
+            # If no linked opportunities or any linked opportunity has not ended, update
+            opportunities = Opportunity.objects.filter(aw_cid=account.id)
+            opportunities_active = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
+            account_end_date = account.end_date
+            if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
+                if as_obj is False:
+                    account = account.id
+                to_update.append(account)
+        return to_update
 
     @staticmethod
     def update_audiences():

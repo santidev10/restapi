@@ -53,7 +53,7 @@ def pull_custom_transcripts(lang_codes):
                 logger.debug("Number of videos parsed: {}".format(counter))
                 logger.debug("Number of transcripts retrieved: {}".format(transcripts_counter))
             unlock(lang_lock)
-            logger.debug("Finished pulling 1,000 custom transcripts.")
+            logger.debug("Finished pulling 1,000 {} custom transcripts.".format(lang_code))
     except Exception:
         pass
 
