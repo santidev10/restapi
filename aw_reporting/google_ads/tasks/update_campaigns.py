@@ -1,3 +1,4 @@
+from datetime import date
 import itertools
 import logging
 import time
@@ -93,16 +94,10 @@ def create_cid_tasks(mcc_id):
     Create task signatures for all cid accounts under mcc_id
     :return: list -> Celery update tasks
     """
-    cid_accounts = []
-    for account in Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True):
-        try:
-            int(account.id)
-            cid_accounts.append(account)
-        except ValueError:
-            continue
+    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update_for_mcc(mcc_id)
     task_signatures = [
-        cid_campaign_update.si(mcc_id, cid_account.id, index + 1, len(cid_accounts)).set(queue=Queue.HOURLY_STATISTIC)
-        for index, cid_account in enumerate(cid_accounts, start=0)
+        cid_campaign_update.si(mcc_id, cid_id, index + 1, len(cid_account_ids)).set(queue=Queue.HOURLY_STATISTIC)
+        for index, cid_id in enumerate(cid_account_ids, start=0)
     ]
     return task_signatures
 

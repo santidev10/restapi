@@ -320,7 +320,15 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
-    "andrii.dobrovolskyi@sigma.software"
+    "andrii.dobrovolskyi@sigma.software",
+    "oleksandr.demianyshyn@sigma.software",
+    "sergey.zhiltsov@sigma.software",
+    "yaryna.kimak@sigma.software",
+    "andrew.vonpelt@channelfactory.com",
+    "kenneth.oh@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "george.su@channelfactory.com",
+    "sean.maguire@channelfactory.com"
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []

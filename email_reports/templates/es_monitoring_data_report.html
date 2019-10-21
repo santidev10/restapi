@@ -171,7 +171,7 @@
                         {% for value in data.updated_by_days.values %}
 
                             <td class="value">{{value|intcomma}}</td>
-                            <td class="value">{{value|percentage:report.info.index.docs_count}}</td>
+                            <td class="value">{{value|percentage:data.filled}}</td>
 
                         {% endfor %}
 

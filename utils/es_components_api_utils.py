@@ -195,6 +195,21 @@ class QueryGenerator:
             filters.append(query)
         return filters
 
+    def adapt_transcript_filters(self, filters, value):
+        if value is True or value == "true":
+            q1 = QueryBuilder().build()
+            q1 = q1.should().exists().field("custom_captions.items").get()
+            q2 = QueryBuilder().build()
+            q2 = q2.should().exists().field("captions").get()
+            filters.append(q1 | q2)
+        elif value is False or value == "false":
+            q1 = QueryBuilder().build()
+            filters.append(q1.must_not().exists().field("custom_captions.items").get())
+            q2 = QueryBuilder().build()
+            filters.append(q2.must_not().exists().field("captions").get())
+        else:
+            return
+
     def __get_filters_exists(self):
         filters = []
 
@@ -202,6 +217,10 @@ class QueryGenerator:
             value = self.query_params.get(field, None)
 
             if value is None:
+                continue
+
+            if field == "transcripts":
+                self.adapt_transcript_filters(filters, value)
                 continue
 
             query = QueryBuilder().build()
@@ -394,6 +413,12 @@ class ESFilterBackend(BaseFilterBackend):
         if "flags" in aggregations:
             flags_index = aggregations.index("flags")
             aggregations[flags_index] = "stats.flags"
+        if "transcripts" in aggregations:
+            aggregations.append("custom_captions.items:exists")
+            aggregations.append("custom_captions.items:missing")
+            aggregations.append("captions:exists")
+            aggregations.append("captions:missing")
+            aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg
                             for agg in aggregations
