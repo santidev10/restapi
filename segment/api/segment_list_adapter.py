@@ -1,0 +1,53 @@
+from django.http import Http404
+from rest_framework.generics import ListAPIView
+
+import brand_safety.constants as constants
+from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.constants import Sections
+from es_components.constants import SortDirections
+from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
+from utils.api_paginator import CustomPageNumberPaginator
+from utils.es_components_api_utils import ESQuerysetAdapter
+
+
+class SegmentListAPIViewAdapter(ListAPIView):
+    """
+    View to provide preview data for persistent segments
+    """
+    MAX_PAGE_SIZE = 10
+    DEFAULT_PAGE_SIZE = 5
+    SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
+    pagination_class = CustomPageNumberPaginator
+
+    def get_serializer_class(self):
+        segment_type = self.kwargs["segment_type"]
+        if segment_type == constants.CHANNEL:
+            serializer = ChannelWithBlackListSerializer
+        else:
+            serializer = VideoWithBlackListSerializer
+        return serializer
+
+    def get_queryset(self):
+        segment_type = self.kwargs["segment_type"]
+        pk = self.kwargs["pk"]
+        try:
+            segment = self.segment_model.objects.get(id=pk)
+        except self.segment_model.DoesNotExist:
+            return Http404
+        if segment_type == constants.CHANNEL:
+            es_manager = ChannelManager(self.SECTIONS)
+            sort_key = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
+        else:
+            es_manager = VideoManager(self.SECTIONS)
+            sort_key = {"stats.views": {"order": SortDirections.DESCENDING}}
+
+        self.request.query_params._mutable = True
+        self.request.query_params["page"] = self.request.query_params.get("page", 1)
+        self.request.query_params["size"] = self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
+
+        result = ESQuerysetAdapter(es_manager)
+        result.sort = sort_key
+        result.filter([segment.get_segment_items_query()])
+        return result

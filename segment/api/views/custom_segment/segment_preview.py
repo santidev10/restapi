@@ -1,9 +1,9 @@
 from segment.api.segment_list_adapter import SegmentListAPIViewAdapter
-from segment.utils import get_persistent_segment_model_by_type
+from segment.models import CustomSegment
 from utils.permissions import user_has_permission
 
 
-class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
+class SegmentPreviewAPIView(SegmentListAPIViewAdapter):
     """
     View to provide preview data for persistent segments
     """
@@ -13,6 +13,5 @@ class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
 
     @property
     def segment_model(self):
-        segment_type = self.kwargs["segment_type"]
-        segment_model = get_persistent_segment_model_by_type(segment_type)
-        return segment_model
+        return CustomSegment
+

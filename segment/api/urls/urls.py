@@ -50,8 +50,7 @@ urlpatterns_v2 = [
     url(r'^segments/export/(?P<pk>\d+)/$',
         SegmentExport.as_view(),
         name=Name.SEGMENT_LIST),
-
-    url(r'^segments/(?P<segment_type>{})/(?P<uuid>.+)/preview/$'.format(segment_types),
+    url(r'^segments/(?P<segment_type>{})/(?P<pk>.+)/preview/$'.format(segment_types),
         SegmentPreviewAPIView.as_view(),
         name=Name.SEGMENT_PREVIEW),
 ]
