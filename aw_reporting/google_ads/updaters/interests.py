@@ -182,7 +182,7 @@ class InterestUpdater(UpdateMixin):
         :return: Google ads search response
         """
         query_fields = self.format_query(constants.AUDIENCE_PERFORMANCE_FIELDS["performance"])
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         audience_performance = self.ga_service.search(self.account.id, query=query)
         return audience_performance
 

@@ -61,7 +61,7 @@ class AgeRangeUpdater(UpdateMixin):
             **constants.DAILY_STATISTIC_PERFORMANCE_FIELDS
         }
         age_range_statistics_fields = self.format_query(age_range_fields)
-        age_range_statistics_query = f"SELECT {age_range_statistics_fields} FROM age_range_view WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        age_range_statistics_query = f"SELECT {age_range_statistics_fields} FROM age_range_view WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         age_range_performance = self.ga_service.search(self.account.id, query=age_range_statistics_query, page_size=10)
         return age_range_performance
 

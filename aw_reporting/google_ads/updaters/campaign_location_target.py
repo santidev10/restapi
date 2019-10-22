@@ -43,7 +43,7 @@ class CampaignLocationTargetUpdater(UpdateMixin):
         :return: Google Ads search response
         """
         query_fields = self.format_query(constants.CAMPAIGN_LOCATION_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{date.today()}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{date.today()}'"
         campaign_loc_target_metrics = self.ga_service.search(self.account.id, query=query)
         return campaign_loc_target_metrics
 

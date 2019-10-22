@@ -64,7 +64,7 @@ class AdGroupUpdater(UpdateMixin):
         :return: Google Ads search response
         """
         query_fields = self.format_query(constants.AD_GROUP_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         ad_group_performance = self.ga_service.search(self.account.id, query=query)
         return ad_group_performance
 
