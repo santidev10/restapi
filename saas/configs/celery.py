@@ -89,7 +89,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 60
+        "schedule": 60,
+        'kwargs': dict(
+            lang_codes=['en'],
+        )
     }
 }
 

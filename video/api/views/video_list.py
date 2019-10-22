@@ -96,7 +96,11 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:max",
         "stats.views:min",
         "brand_safety",
-        "stats.flags"
+        "stats.flags",
+        "custom_captions.items:exists",
+        "custom_captions.items:missing",
+        "captions:exists",
+        "captions:missing",
     )
 
     allowed_percentiles = (
@@ -135,6 +139,13 @@ class VideoListApiView(APIViewMixin, ListAPIView):
             self.request.query_params["stats.flags"] = flags
             self.terms_filter += ("stats.flags",)
             self.request.query_params._mutable = False
+
+        if not self.request.user.has_perm("userprofile.transcripts_filter") and \
+                not self.request.user.is_staff:
+            if "transcripts" in self.request.query_params:
+                self.request.query_params._mutable = True
+                self.request.query_params["transcripts"] = None
+                self.request.query_params._mutable = False
 
         if not BrandSafetyDataVisible().has_permission(self.request):
             if "brand_safety" in self.request.query_params:
