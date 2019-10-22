@@ -62,11 +62,11 @@ class TopicUpdater(UpdateMixin):
                 topic_id = int(row.ad_group_criterion.topic.topic_constant.value.split("/")[-1])
                 topic_name = row.ad_group_criterion.topic.path[-1].value
             except (ValueError, IndexError):
-                logger.error(f"Unable to extract topic for cid: {self.account.id} ad_group_id: {row.ad_group.id.value} criterion_id: {row.ad_group_criterion.criterion_id.value}")
+                logger.warning(f"Unable to extract topic for cid: {self.account.id} ad_group_id: {row.ad_group.id.value} criterion_id: {row.ad_group_criterion.criterion_id.value}")
                 continue
             else:
                 if topic_id not in self.existing_topics:
-                    logger.error(f"Topic not found in existing topics: {topic_id}, {topic_name}")
+                    logger.warning(f"Topic not found in existing topics: {topic_id}, {topic_name}")
                     continue
                 # Check if topic name should be updated
                 if self.existing_topics[topic_id] != topic_name:

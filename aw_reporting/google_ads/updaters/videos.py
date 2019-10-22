@@ -71,7 +71,7 @@ class VideoUpdater(UpdateMixin):
                 "creative_id": video_id,
                 "ad_group_id": ad_group_id,
                 "date": row.segments.date.value,
-                **self.get_base_stats(row)
+                **self.get_base_stats(row, quartiles=True)
             }
             yield VideoCreativeStatistic(**statistics)
         VideoCreative.objects.safe_bulk_create(video_creative_to_create)
