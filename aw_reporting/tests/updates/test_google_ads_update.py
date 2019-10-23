@@ -11,6 +11,7 @@ from google.ads.google_ads.client import GoogleAdsClient
 from google.ads.google_ads.errors import GoogleAdsException
 from google.ads.google_ads.v1.services.enums import DeviceEnum
 from google.api_core.exceptions import GoogleAPIError
+from google.auth.exceptions import RefreshError
 from pytz import timezone
 from pytz import utc
 from unittest.mock import MagicMock
@@ -1338,6 +1339,15 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(Device.CONNECTED_TV, ad_group.statistics.first().device_id)
         self.assertTrue(ad_group.device_tv_screens)
 
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.execute")
+    def test_mcc_account_access_revoked(self, mock_execute):
+        account = self._create_account()
+        manager = account.managers.all()[0]
+
+        mock_execute.side_effect = RefreshError
+        GoogleAdsUpdater().update_accounts_for_mcc(manager)
+        manager.refresh_from_db()
+        self.assertFalse(manager.is_active)
 
 
 class FakeExceptionWithArgs:

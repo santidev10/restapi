@@ -106,7 +106,7 @@ class InterestUpdater(UpdateMixin):
                 try:
                     self._handle_user_interest(statistics, audience_id)
                 except InterestUpdaterMissingAudienceException:
-                    logger.error(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
+                    logger.warning(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
                     continue
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_AFFINITY:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.custom_affinity.custom_affinity.value)
@@ -115,7 +115,7 @@ class InterestUpdater(UpdateMixin):
                 # Ignore custom intent
                 continue
             else:
-                logger.error(
+                logger.warning(
                     f"Undefined criteria. ad_group_id: {ad_group_id}, criterion_id: {row.ad_group_criterion.criterion_id.value}, audience_type: {audience_type}"
                 )
 
@@ -182,7 +182,7 @@ class InterestUpdater(UpdateMixin):
         :return: Google ads search response
         """
         query_fields = self.format_query(constants.AUDIENCE_PERFORMANCE_FIELDS["performance"])
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         audience_performance = self.ga_service.search(self.account.id, query=query)
         return audience_performance
 

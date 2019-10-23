@@ -76,7 +76,7 @@ class CityUpdater(UpdateMixin):
         :return: iter
         """
         formatted = self.format_query(constants.CITY_MAIN_METRICS_PERFORMANCE_FIELDS)
-        query = f"SELECT {formatted} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {formatted} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         cities_statistics = self.ga_service.search(self.account.id, query=query)
         return cities_statistics
 

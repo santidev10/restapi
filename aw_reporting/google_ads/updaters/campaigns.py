@@ -63,22 +63,23 @@ class CampaignUpdater(UpdateMixin):
         Retrieve campaign performance
         :return: Google ads campaign resource search response
         """
+        # Delete stale data
+        self.drop_latest_stats(self.existing_statistics, self.today)
+
         # Find min and max dates
         now = now_in_default_tz()
         max_date = self.max_ready_date(now, tz_str=self.account.timezone)
 
         dates = self.existing_statistics.aggregate(max_date=Max("date"))
+        # Get latest date after dropping recent statistics
         min_date = dates["max_date"] + timedelta(days=1) if dates["max_date"] else constants.MIN_FETCH_DATE
-
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
             min_date, max_date,
             resource_name=self.RESOURCE_NAME
         )
-        # Delete stale data
-        self.drop_latest_stats(self.existing_statistics, self.today)
         campaign_query_fields = self.format_query(constants.CAMPAIGN_PERFORMANCE_FIELDS)
-        campaign_query = f"SELECT {campaign_query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        campaign_query = f"SELECT {campaign_query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         campaign_performance = self.ga_service.search(self.account.id, query=campaign_query)
 
         return campaign_performance, click_type_data
@@ -97,7 +98,7 @@ class CampaignUpdater(UpdateMixin):
         # Delete stale data
         self.existing_hourly_statistics.filter(date__gte=start_date).delete()
         hourly_performance_fields = self.format_query(constants.CAMPAIGN_HOURLY_PERFORMANCE_FIELDS)
-        hourly_query = f"SELECT {hourly_performance_fields} from {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{start_date}' AND '{self.today}'"
+        hourly_query = f"SELECT {hourly_performance_fields} from {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{start_date}' AND '{self.today}'"
         hourly_performance = self.ga_service.search(self.account.id, query=hourly_query)
 
         return hourly_performance
