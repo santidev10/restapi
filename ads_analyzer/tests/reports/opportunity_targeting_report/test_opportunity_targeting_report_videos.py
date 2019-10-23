@@ -145,7 +145,7 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.assertEqual(1, len(data))
         item = data[0]
         columns = self.columns
-        self.assertEqual(self.ad_group.cpv_bid, item[columns.max_bid])
+        self.assertEqual(self.ad_group.cpv_bid / 10 ** 6, item[columns.max_bid])
 
     def test_average_rate_cpv(self):
         any_date = date(2019, 1, 1)
