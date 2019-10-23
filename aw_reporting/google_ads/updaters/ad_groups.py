@@ -95,7 +95,7 @@ class AdGroupUpdater(UpdateMixin):
                     "campaign_id": campaign_id,
                     "cpv_bid": int(row.ad_group.cpv_bid_micros.value) if row.ad_group.cpv_bid_micros and row.ad_group.cpv_bid_micros.value else None,
                     "cpm_bid": int(row.ad_group.cpm_bid_micros.value) if row.ad_group.cpm_bid_micros and row.ad_group.cpm_bid_micros.value else None,
-                    "cpc_bid": int(row.ad_group.cpc_bid_micros.value)  if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
+                    "cpc_bid": int(row.ad_group.cpc_bid_micros.value) if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
                 }
                 # Check for AdGroup existence with set membership instead of making database queries for efficiency
                 if ad_group_id in self.existing_ad_group_ids:
