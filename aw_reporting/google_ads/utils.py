@@ -47,12 +47,12 @@ def extract_placement_code(name):
 
 
 def get_quartile_views(row):
-    impressions = (row.metrics.impressions.value or 1) * 100
+    impressions = row.metrics.impressions.value
     quartiles = {
-        "video_views_25_quartile": row.metrics.video_quartile_25_rate.value / 100 * impressions,
-        "video_views_50_quartile": row.metrics.video_quartile_50_rate.value / 100 * impressions,
-        "video_views_75_quartile": row.metrics.video_quartile_75_rate.value / 100 * impressions,
-        "video_views_100_quartile": row.metrics.video_quartile_100_rate.value / 100 * impressions
+        "video_views_25_quartile": row.metrics.video_quartile_25_rate.value * impressions,
+        "video_views_50_quartile": row.metrics.video_quartile_50_rate.value * impressions,
+        "video_views_75_quartile": row.metrics.video_quartile_75_rate.value * impressions,
+        "video_views_100_quartile": row.metrics.video_quartile_100_rate.value * impressions,
     }
     return quartiles
 

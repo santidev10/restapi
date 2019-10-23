@@ -59,7 +59,7 @@ class GenderUpdater(UpdateMixin):
             **DAILY_STATISTIC_PERFORMANCE_FIELDS
         }
         formatted = format_query(gender_fields)
-        gender_statistics_query = f"SELECT {formatted} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        gender_statistics_query = f"SELECT {formatted} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         gender_performance = self.ga_service.search(self.account.id, query=gender_statistics_query)
         return gender_performance
 

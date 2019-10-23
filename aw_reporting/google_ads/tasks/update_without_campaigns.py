@@ -86,5 +86,5 @@ def finalize_update():
     logger.debug("Adding relations between reports and ad_group and ad creations")
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    logger.debug(f"Google Ads update without campaigns complete")
+    logger.info(f"Google Ads update without campaigns complete")
 

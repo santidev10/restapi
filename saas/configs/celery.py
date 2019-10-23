@@ -29,7 +29,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "google_ads_update_without_campaigns": {
         "task": "aw_reporting.google_ads.tasks.update_without_campaigns.setup_update_without_campaigns",
-        "schedule": crontab(hour="5,13,21", minute="0"),  # each 8 hours including 6AM in LA
+        "schedule": crontab(hour="4,8,12,16,20", minute="0"),  # Every four hours
     },
     "google_ads_update_audiences": {
         "task": "aw_reporting.google_ads.tasks.update_audiences.update_audiences",
