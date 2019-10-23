@@ -201,8 +201,7 @@ class GoogleAdsUpdater(object):
                 return
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
         if updater.__class__ == AccountUpdater:
-            self.mcc_account.is_active = False
-            self.mcc_account.save()
+            Account.objects.filter(id=self.mcc_account.id).update(is_active=False)
             logger.info(f"Account access revoked for MCC: {self.mcc_account.id}")
 
         message = f"Unable to find AWConnection for MCC: {self.mcc_account.id} with updater: {updater.__class__.__name__}"
