@@ -109,6 +109,7 @@ class PermissionGroupNames:
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
     AUDIT_FLAGGING = "Audit Flagging"
     ADS_ANALYZER = "Ads Analyzer"
+    TRANSCRIPTS = "Transcripts"
 
 
 class Permissions:
@@ -190,6 +191,9 @@ class Permissions:
             "view_opportunity_list",
             "create_opportunity_report",
         )),
+        (PermissionGroupNames.TRANSCRIPTS, (
+            "transcripts_filter",
+        ))
     )
 
     PERM_LIST = (
@@ -228,6 +232,8 @@ class Permissions:
         # Ads Analyzer
         "view_opportunity_list",
         "create_opportunity_report",
+        # Transcripts
+        "transcripts_filter",
     )
 
     @staticmethod

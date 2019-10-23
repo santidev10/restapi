@@ -381,7 +381,8 @@ class AuditExportApiView(APIView):
             )
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = 0
-            for video in videos.filter(clean=False):
+            videos_filter = False if clean is False else True
+            for video in videos.filter(clean=videos_filter):
                 bad_videos_count[cid.channel.channel_id] +=1
                 if video.word_hits.get(node):
                     for bad_word in video.word_hits.get(node):
