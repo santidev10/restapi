@@ -195,6 +195,7 @@ class AuditProcessor(models.Model):
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
+            'export_status': self.get_export_status(),
         }
         files = self.params.get('files')
         if files:
@@ -209,6 +210,14 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def get_export_status(self):
+        e = AuditExporter.objects.filter(audit=self, completed__isnull=True).order_by("started")
+        if e.count() > 0:
+            if e[0].started:
+                return "Processing Export"
+            else:
+                return "Export Queued"
 
     def has_history(self):
         if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
@@ -391,6 +400,7 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner_id = IntegerField(null=True, blank=True)
+    started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
 
     @property
     def owner(self):
@@ -401,7 +411,6 @@ class AuditExporter(models.Model):
     def owner(self, owner):
         if owner:
             self.owner_id = owner.id
-
 
 class AuditProcessorCache(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
