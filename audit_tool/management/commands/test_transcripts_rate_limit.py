@@ -23,14 +23,14 @@ TASK_RETRY_COUNTS = 10
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='test_transcripts_rate_limit.pid') as p:
-            asyncio.run(pull_transcripts(['en'], 1000, 100))
+            pull_transcripts(['en'], 1000, 100)
 
 
-async def pull_transcripts(lang_codes, num_vids, num_runs):
-    counter = 0
+def pull_transcripts(lang_codes, num_vids, num_runs):
+    runs_counter = 0
     total_elapsed = 0
-    while counter < num_runs:
-        soups_parsed = 0
+    soups_parsed = 0
+    while runs_counter < num_runs:
         for lang_code in lang_codes:
             init_es_connection()
             print("Pulling custom transcripts.")
@@ -38,22 +38,21 @@ async def pull_transcripts(lang_codes, num_vids, num_runs):
             unparsed_vids = get_unparsed_vids(language, num_vids)
             vid_ids = set([vid.main.id for vid in unparsed_vids])
             start = time.perf_counter()
-            async with aiohttp.ClientSession() as session:
-                all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code, total_elapsed, soups_parsed)
+            all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code, total_elapsed, soups_parsed))
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
             soups_parsed += len(all_video_soups_dict)
             print(all_video_soups_dict)
-            print(f"Random video soup: {all_video_soups_dict[vid_ids.pop()]}")
             print(f"Requested {num_vids} transcripts in {elapsed} seconds.")
             print(f"Total soups retrieved: {soups_parsed}. Total time elapsed: {total_elapsed} seconds.")
-        counter += 1
-        print(f"Finished run {counter} of {num_runs}")
+        runs_counter += 1
+        print(f"Finished run {runs_counter} of {num_runs}")
 
 
-async def create_video_soups_dict(session: ClientSession, vid_ids: set, lang_code: str, total_elapsed, soups_parsed):
+async def create_video_soups_dict(vid_ids: set, lang_code: str, total_elapsed, soups_parsed):
     soups_dict = {}
-    await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict, total_elapsed, soups_parsed) for vid_id in vid_ids])
+    async with ClientSession() as session:
+        await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict, total_elapsed, soups_parsed) for vid_id in vid_ids])
     return soups_dict
 
 
