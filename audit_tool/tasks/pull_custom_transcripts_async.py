@@ -77,19 +77,19 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
                 soups_parsed += len(all_video_soups_dict)
-                logger.debug(f"Requested {num_vids} transcripts in {elapsed} seconds.")
-                logger.debug(f"Total videos retrieved for {lang_code}: {num_vids}. Total time elapsed: {total_elapsed} seconds.")
+                logger.debug(f"Upserted {num_vids} transcripts in {elapsed} seconds.")
+                logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
                 logger.debug(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
-                print(f"Requested {num_vids} transcripts in {elapsed} seconds.")
-                print(f"Total videos retrieved for {lang_code}: {num_vids}. Total time elapsed: {total_elapsed} seconds.")
+                print(f"Upserted {num_vids} transcripts in {elapsed} seconds.")
+                print(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
                 print(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
                 unlock(lang_lock)
             runs_counter += 1
-            logger.debug(f"Finished Run #{runs_counter} of {num_runs}.")
-            print(f"Finished Run #{runs_counter} of {num_runs}.")
+            logger.debug(f"Finished Run #{runs_counter} of {num_runs} Total Runs.")
+            print(f"Finished Run #{runs_counter} of {num_runs} Total Runs.")
             if runs_counter < num_runs:
                 logger.debug(f"Starting Run #{runs_counter + 1}.")
-                print(f"Starting Run #{runs_counter+1}.")
+                print(f"Starting Run #{runs_counter + 1}.")
     except Exception:
         pass
 
