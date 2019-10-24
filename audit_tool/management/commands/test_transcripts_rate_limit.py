@@ -24,7 +24,7 @@ class Command(BaseCommand):
             pull_transcripts(['en'], 1000, 100)
 
 
-def pull_transcripts(lang_codes, num_vids, num_runs):
+async def pull_transcripts(lang_codes, num_vids, num_runs):
     counter = 0
     while counter < num_runs:
         soups_parsed = 0
