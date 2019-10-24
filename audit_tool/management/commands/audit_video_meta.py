@@ -53,10 +53,14 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
+        try:
+            self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        except Exception as e:
+            self.machine_number = 0
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
             #self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -64,7 +68,7 @@ class Command(BaseCommand):
 
     def check_thread_limit_reached(self):
         if self.thread_id > 6:
-            if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).exists():
+            if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
     def process_audit(self, num=500):
