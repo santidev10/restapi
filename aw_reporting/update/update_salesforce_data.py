@@ -10,6 +10,7 @@ from django.db.models import OuterRef
 from django.db.models import Q
 from django.db.models import Subquery
 from django.db.models.signals import pre_save
+import pytz
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import Activity
@@ -41,14 +42,18 @@ WRITE_START = datetime(2016, 9, 1).date()
 
 
 @celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
-def update_salesforce_data(do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
-                           skip_flights=False, skip_placements=False, skip_opportunities=False):
+def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
+                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=1):
     logger.info("Salesforce update started")
     start = time.time()
     today = now_in_default_tz().date()
     sc = None
-    if do_get:
+    if do_delete:
         sc = SConnection()
+        perform_delete(sc=sc, delete_from_days=delete_from_days)
+
+    if do_get:
+        sc = sc or SConnection()
         perform_get(sc=sc)
 
     if do_update:
@@ -59,6 +64,22 @@ def update_salesforce_data(do_get=True, do_update=True, debug_update=False, oppo
 
     match_using_placement_numbers()
     logger.info(f"Salesforce update finished. Took: {time.time() - start}")
+
+
+def perform_delete(sc, delete_from_days=1):
+    today = datetime.now(pytz.UTC)
+    from_deleted = today - timedelta(days=delete_from_days)
+
+    for model, resource in [
+        (Opportunity, "Opportunity"),
+        (OpPlacement, "Placement__c"),
+        (Flight, "Flight__c"),
+    ]:
+        deleted_items = sc.get_deleted_items(resource, from_deleted, today)
+        to_delete = [record["id"] for record in deleted_items]
+        if to_delete:
+            model.objects.filter(id__in=to_delete).delete()
+            logger.debug(f"Deleted {model.__name__} entries: {to_delete}")
 
 
 def perform_get(sc):

@@ -149,6 +149,11 @@ class Connection:
         )
         return items
 
+    def get_deleted_items(self, name, start, end):
+        items = getattr(self.sf, name).deleted(start, end)
+        for record in items["deletedRecords"]:
+            yield record
+
     def get_items(self, name, fields, where):
         """
 
