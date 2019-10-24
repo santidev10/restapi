@@ -72,6 +72,7 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                     print(f"Number of videos parsed: {vid_counter}")
                     print(f"Number of transcripts retrieved: {transcripts_counter}")
                 video_manager.upsert(all_videos)
+                logger.debug(f"Upserted {len(all_videos)} videos.")
                 print(f"Upserted {len(all_videos)} videos.")
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
@@ -84,7 +85,11 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 print(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
                 unlock(lang_lock)
             runs_counter += 1
-            print(f"Finished Run #{runs_counter} of {num_runs}, Starting Run #{runs_counter+1}.")
+            logger.debug(f"Finished Run #{runs_counter} of {num_runs}.")
+            print(f"Finished Run #{runs_counter} of {num_runs}.")
+            if runs_counter < num_runs:
+                logger.debug(f"Starting Run #{runs_counter + 1}.")
+                print(f"Starting Run #{runs_counter+1}.")
     except Exception:
         pass
 
