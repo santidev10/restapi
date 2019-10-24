@@ -25,7 +25,7 @@ from rest_framework.status import HTTP_429_TOO_MANY_REQUESTS
 
 logger = logging.getLogger(__name__)
 
-LOCK_NAME = 'custom_transcripts'
+LOCK_NAME = 'custom_transcripts_async'
 
 TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
