@@ -1,3 +1,5 @@
+import logging
+
 from saas import celery_app
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -16,6 +18,7 @@ from video.constants import EXISTS_FILTER
 from video.constants import VIDEO_CSV_HEADERS
 from video.api.serializers.video_export import VideoListExportSerializer
 
+logger = logging.getLogger(__name__)
 
 
 class VideoListDataGenerator(ExportDataGenerator):
@@ -52,11 +55,16 @@ def export_videos_data(query_params, export_name, user_emails, export_url):
     from_email = settings.SENDER_EMAIL_ADDRESS
     bcc = []
 
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=from_email,
-        to=user_emails,
-        bcc=bcc,
-    )
-    email.send(fail_silently=False)
+    try:
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=user_emails,
+            bcc=bcc,
+        )
+        email.send(fail_silently=False)
+    except Exception as e:
+        logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
+    else:
+        logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")
