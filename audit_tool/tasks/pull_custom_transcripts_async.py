@@ -53,8 +53,9 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
                 start = time.perf_counter()
                 all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code, total_elapsed, soups_parsed))
-                for vid_id in vid_ids:
-                    vid_obj = video_manager.get_or_create([vid_id])[0]
+                all_videos = video_manager.get_or_create(list(vid_ids))
+                for vid_obj in all_videos:
+                    vid_id = vid_obj.main.id
                     transcript_soup = all_video_soups_dict[vid_id]
                     transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
                     if transcript_text != "":
@@ -63,7 +64,6 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                         print(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
                         transcripts_counter += 1
                     populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
-                    video_manager.upsert([vid_obj])
                     vid_counter += 1
                     logger.debug(f"Parsed video with id: {vid_id}")
                     logger.debug(f"Number of videos parsed: {vid_counter}")
@@ -71,13 +71,14 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                     print(f"Parsed video with id: {vid_id}")
                     print(f"Number of videos parsed: {vid_counter}")
                     print(f"Number of transcripts retrieved: {transcripts_counter}")
+                video_manager.upsert(all_videos)
+                print(f"Upserted {len(all_videos)} videos.")
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
                 soups_parsed += len(all_video_soups_dict)
                 logger.debug(f"Requested {num_vids} transcripts in {elapsed} seconds.")
                 logger.debug(f"Total videos retrieved for {lang_code}: {num_vids}. Total time elapsed: {total_elapsed} seconds.")
                 logger.debug(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
-                print(all_video_soups_dict)
                 print(f"Requested {num_vids} transcripts in {elapsed} seconds.")
                 print(f"Total videos retrieved for {lang_code}: {num_vids}. Total time elapsed: {total_elapsed} seconds.")
                 print(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
