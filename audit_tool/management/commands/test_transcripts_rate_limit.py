@@ -4,6 +4,7 @@ from elasticsearch_dsl import Q
 import asyncio
 import aiohttp
 from aiohttp import ClientSession
+import time
 
 from django.core.management.base import BaseCommand
 from pid import PidFile
@@ -27,6 +28,7 @@ class Command(BaseCommand):
 
 async def pull_transcripts(lang_codes, num_vids, num_runs):
     counter = 0
+    total_elapsed = 0
     while counter < num_runs:
         soups_parsed = 0
         for lang_code in lang_codes:
@@ -35,23 +37,27 @@ async def pull_transcripts(lang_codes, num_vids, num_runs):
             language = LANGUAGES[lang_code]
             unparsed_vids = get_unparsed_vids(language, num_vids)
             vid_ids = set([vid.main.id for vid in unparsed_vids])
+            start = time.perf_counter()
             async with aiohttp.ClientSession() as session:
-                all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code)
+                all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code, total_elapsed, soups_parsed)
+            elapsed = time.perf_counter() - start
+            total_elapsed += elapsed
             soups_parsed += len(all_video_soups_dict)
             print(all_video_soups_dict)
             print(f"Random video soup: {all_video_soups_dict[vid_ids.pop()]}")
-            print(f"Total soups retrieved: {soups_parsed}")
+            print(f"Requested {num_vids} transcripts in {elapsed} seconds.")
+            print(f"Total soups retrieved: {soups_parsed}. Total time elapsed: {total_elapsed} seconds.")
         counter += 1
         print(f"Finished run {counter} of {num_runs}")
 
 
-async def create_video_soups_dict(session: ClientSession, vid_ids: set, lang_code: str):
+async def create_video_soups_dict(session: ClientSession, vid_ids: set, lang_code: str, total_elapsed, soups_parsed):
     soups_dict = {}
-    await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict) for vid_id in vid_ids])
+    await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict, total_elapsed, soups_parsed) for vid_id in vid_ids])
     return soups_dict
 
 
-async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict):
+async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict, total_elapsed, soups_parsed):
     transcript_url = "http://video.google.com/timedtext?lang={}&v=".format(lang_code)
     vid_transcript_url = transcript_url + vid_id
     counter = 0
@@ -62,14 +68,18 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
                 await asyncio.sleep(TASK_RETRY_TIME)
                 counter += 1
                 print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                      f"Sleeping for {TASK_RETRY_TIME} seconds.")
+                      f"Sleeping for {TASK_RETRY_TIME} seconds."
+                      f"Total soups retrieved before failure: {soups_parsed}."
+                      f"Total time elapsed before: {total_elapsed} seconds.")
             else:
                 break
         except HTTP_429_TOO_MANY_REQUESTS:
             await asyncio.sleep(TASK_RETRY_TIME)
             counter += 1
             print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                  f"Sleeping for {TASK_RETRY_TIME} seconds.")
+                  f"Sleeping for {TASK_RETRY_TIME} seconds."
+                  f"Total soups retrieved before failure: {soups_parsed}."
+                  f"Total time elapsed before: {total_elapsed} seconds.")
     if transcript_response.status == 200:
         soup = bs(await transcript_response.text(), "xml")
         soups_dict[vid_id] = soup
