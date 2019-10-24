@@ -33,6 +33,7 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
+    MAX_ROWS = 750000
 
     def get(self, request):
         query_params = request.query_params
@@ -208,8 +209,12 @@ class AuditExportApiView(APIView):
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             count = video_meta.count()
+            if count > self.MAX_ROWS:
+                count = self.MAX_ROWS
             num_done = 0
             for v in video_meta:
+                if num_done > self.MAX_ROWS:
+                    continue
                 try:
                     language = v.language.language
                 except Exception as e:
