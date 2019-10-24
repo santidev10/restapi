@@ -57,7 +57,7 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_category__isnull=True).order_by("-id")
+        channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_view_count__isnull=True).order_by("-id")
         for c in channels[:5000]:
             db_videos = AuditVideo.objects.filter(channel=c.channel).values_list('id', flat=True)
             videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")
@@ -110,8 +110,9 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 try:
-                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
-                    db_channel_meta.default_language = db_lang
+                    if i['brandingSettings']['channel']['defaultLanguage']:
+                        db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                        db_channel_meta.default_language = db_lang
                 except Exception as e:
                     pass
                 country = i['brandingSettings']['channel'].get('country')
