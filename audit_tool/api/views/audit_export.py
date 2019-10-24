@@ -155,10 +155,10 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
-        if clean is None or clean == True:
-            hit_types = 'inclusion'
-        else:
+        if clean is False:
             hit_types = 'exclusion'
+        else:
+            hit_types = 'inclusion'
         cols = [
             "Video URL",
             "Name",
