@@ -212,12 +212,15 @@ class AuditProcessor(models.Model):
         return d
 
     def get_export_status(self):
+        res = {}
         e = AuditExporter.objects.filter(audit=self, completed__isnull=True).order_by("started")
         if e.count() > 0:
             if e[0].started:
-                return "Processing Export"
+                res['status'] = "Processing Export"
+                res['percent_done'] = e[0].percent_done
             else:
-                return "Export Queued"
+                res['status'] = "Export Queued"
+        return res
 
     def has_history(self):
         if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
@@ -401,6 +404,7 @@ class AuditExporter(models.Model):
     final = models.BooleanField(default=False, db_index=True)
     owner_id = IntegerField(null=True, blank=True)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    percent_done = models.IntegerField(default=0)
 
     @property
     def owner(self):

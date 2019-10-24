@@ -34,10 +34,10 @@ class Command(BaseCommand):
         if not audit_type:
             audit_type = self.audit.audit_type
         if audit_type == 2:
-            file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean)
+            file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
         else:
-            file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean)
+            file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
         if self.export.clean is not None:
             count = count.filter(clean=self.export.clean)
