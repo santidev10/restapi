@@ -60,7 +60,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
 
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Delivered_Ad_Ops__c=1, Total_Flight_Cost__c=0))
@@ -96,7 +96,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
 
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Delivered_Ad_Ops__c=delivered_units,
@@ -111,7 +111,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         self.assertIsNone(campaign.salesforce_placement)
 
-        update_salesforce_data(do_get=False, do_update=False)
+        update_salesforce_data(do_delete=False, do_get=False, do_update=False)
         campaign.refresh_from_db()
 
         self.assertIsNotNone(campaign.salesforce_placement)
@@ -122,7 +122,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         placement = OpPlacement.objects.create(opportunity=opportunity)
         Campaign.objects.create(salesforce_placement=placement)
 
-        update_salesforce_data(do_get=False, do_update=False)
+        update_salesforce_data(do_delete=False, do_get=False, do_update=False)
 
         self.assertEqual(placement.adwords_campaigns.count(), 1)
 
@@ -137,7 +137,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             )
         ])
         with patch_salesforce_connector(return_value=sf_mock):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(Opportunity.objects.all().count(), 1)
 
@@ -203,7 +203,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         flight.refresh_from_db()
         self.assertEqual(flight.ordered_units, new_ordered_units)
@@ -287,7 +287,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         flight.refresh_from_db()
         self.assertEqual(flight.total_cost, new_total_cost)
@@ -393,7 +393,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         ])
 
         with patch_salesforce_connector(return_value=sf_mock):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(len(mail.outbox), 0)
 
@@ -445,7 +445,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         flight.refresh_from_db()
         self.assertEqual(flight.ordered_units, new_ordered_units)
@@ -505,7 +505,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(SALESFORCE_UPDATES_ADDRESSES=[test_email]), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=False):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         flight.refresh_from_db()
         self.assertEqual(flight.total_cost, new_total_cost)
@@ -602,7 +602,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         ])
 
         with patch_salesforce_connector(return_value=sf_mock):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(len(mail.outbox), 0)
 
@@ -668,7 +668,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
@@ -737,7 +737,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(return_value=sf_mock), \
              override_settings(DEBUG_EMAIL_NOTIFICATIONS=True):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to[0], BaseEmailReport.DEBUG_PREFIX + ad_ops.email)
@@ -772,7 +772,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             )
         ])
         with patch_salesforce_connector(return_value=sf_mock):
-            update_salesforce_data(do_update=False)
+            update_salesforce_data(do_delete=False, do_update=False)
 
         self.assertEqual(Flight.objects.all().count(), 1)
         self.assertEqual(Flight.objects.all().first().pacing, pacing)
@@ -818,7 +818,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
 
         sf_mock().sf.Flight__c.update.assert_called_once_with(
             flight.id, dict(Pacing__c=pacing * 100))
@@ -866,7 +866,7 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
 
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(today):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
 
         sf_mock().sf.Flight__c.update.assert_not_called()
 
@@ -891,14 +891,14 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(update_until), \
              self.subTest("Update"):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
             sf_mock().sf.Flight__c.update.assert_called_once_with(flight.id, ANY)
 
         sf_mock = MagicMock()
         with patch_salesforce_connector(new=sf_mock), \
              patch_now(not_updated_since), \
              self.subTest("Not update"):
-            update_salesforce_data(do_get=False)
+            update_salesforce_data(do_delete=False, do_get=False)
             sf_mock().sf.Flight__c.update.assert_not_called()
 
     def test_does_not_remove_demo_data(self):
@@ -906,14 +906,14 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
         demo_flights_qs = Flight.objects.filter(placement__adwords_campaigns__account_id=DEMO_ACCOUNT_ID)
         flights_count = demo_flights_qs.count()
         with patch_salesforce_connector():
-            update_salesforce_data()
+            update_salesforce_data(do_delete=False)
         self.assertEqual(demo_flights_qs.count(), flights_count)
 
     def test_no_demo_data_update(self):
         recreate_demo_data()
         with patch_salesforce_connector() as connector:
             salesforce = connector().sf
-            update_salesforce_data()
+            update_salesforce_data(do_delete=False)
 
         with self.subTest("Opportunity"):
             salesforce.Opportunity.update.assert_not_called()
@@ -921,6 +921,83 @@ class UpdateSalesforceDataTestCase(TransactionTestCase):
             salesforce.Placement__c.update.assert_not_called()
         with self.subTest("Flights"):
             salesforce.Flight__c.update.assert_not_called()
+
+    def test_delete_removed_salesforce_items(self):
+        opp_1 = Opportunity.objects.create(
+            id=next(int_iterator)
+        )
+        placement_1 = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opp_1
+        )
+        flight_1 = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_1
+        )
+
+        opp_2 = Opportunity.objects.create(
+            id=next(int_iterator)
+        )
+        placement_2_a = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opp_2
+        )
+        placement_2_b = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opp_2
+        )
+        placement_2_c = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opp_2
+        )
+        flight_2_a = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_2_a
+        )
+        flight_2_b = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_2_b
+        )
+        flight_2_c = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_2_c
+        )
+
+        opp_3 = Opportunity.objects.create(
+            id=next(int_iterator)
+        )
+        placement_3 = OpPlacement.objects.create(
+            id=next(int_iterator),
+            opportunity=opp_3
+        )
+        flight_3_a = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_3
+        )
+        flight_3_b = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_3
+        )
+        flight_3_c = Flight.objects.create(
+            id=next(int_iterator),
+            placement=placement_3
+        )
+
+        sf_mock = MockSalesforceConnection()
+        sf_mock.add_mocked_items("Opportunity", [{"id": opp_1.id}])
+        sf_mock.add_mocked_items("Placement__c", [{"id": placement_2_b.id}, {"id": placement_2_c.id}])
+        sf_mock.add_mocked_items("Flight__c", [{"id": flight_3_b.id}, {"id": flight_3_c.id}])
+
+        with patch_salesforce_connector(return_value=sf_mock):
+            update_salesforce_data(do_delete=True, do_get=False, do_update=False)
+
+        self.assertFalse(Opportunity.objects.filter(id=opp_1.id).exists())
+        self.assertFalse(OpPlacement.objects.filter(id__in=[placement_1.id, placement_2_b.id, placement_2_c.id]).exists())
+        self.assertFalse(Flight.objects.filter(id__in=[flight_1.id, flight_2_b.id, flight_2_c.id, flight_3_b.id, flight_3_c.id]).exists())
+
+        self.assertTrue(Opportunity.objects.filter(id__in=[opp_2.id, opp_3.id]).exists())
+        self.assertTrue(OpPlacement.objects.filter(id__in=[placement_2_a.id, placement_3.id]).exists())
+        self.assertTrue(Flight.objects.filter(id__in=[flight_2_a.id, flight_3_a.id]).exists())
 
 
 class MockSalesforceConnection(Connection):
@@ -938,6 +1015,9 @@ class MockSalesforceConnection(Connection):
         return {
             "fields": [{"name": "Client_Vertical__c", "picklistValues": []}]
         }
+
+    def get_deleted_items(self, name, start, end):
+        return self.get_items(name, None, None)
 
 
 def opportunity_data(**kwargs):
