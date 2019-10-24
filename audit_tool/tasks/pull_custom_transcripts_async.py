@@ -36,6 +36,8 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
     runs_counter = 0
     total_elapsed = 0
     soups_parsed = 0
+    vid_counter = 0
+    transcripts_counter = 0
     try:
         while runs_counter < num_runs:
             for lang_code in lang_codes:
@@ -47,8 +49,6 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 language = LANGUAGES[lang_code]
                 unparsed_vids = get_unparsed_vids(language, num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
-                counter = 0
-                transcripts_counter = 0
                 video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
                 start = time.perf_counter()
@@ -64,12 +64,12 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                         transcripts_counter += 1
                     populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
                     video_manager.upsert([vid_obj])
-                    counter += 1
+                    vid_counter += 1
                     logger.debug(f"Parsed video with id: {vid_id}")
-                    logger.debug(f"Number of videos parsed: {counter}")
+                    logger.debug(f"Number of videos parsed: {vid_counter}")
                     logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
                     print(f"Parsed video with id: {vid_id}")
-                    print(f"Number of videos parsed: {counter}")
+                    print(f"Number of videos parsed: {vid_counter}")
                     print(f"Number of transcripts retrieved: {transcripts_counter}")
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
