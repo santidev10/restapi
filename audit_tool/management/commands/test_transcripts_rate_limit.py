@@ -63,6 +63,8 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
                 counter += 1
                 print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                       f"Sleeping for {TASK_RETRY_TIME} seconds.")
+            else:
+                break
         except HTTP_429_TOO_MANY_REQUESTS:
             await asyncio.sleep(TASK_RETRY_TIME)
             counter += 1
