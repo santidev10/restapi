@@ -17,7 +17,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 
 
-class SegmentPreviewApiViewTestCase(ExtendedAPITestCase):
+class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase):
     SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS]
 
     def _get_url(self, segment_type, pk):
@@ -51,17 +51,65 @@ class SegmentPreviewApiViewTestCase(ExtendedAPITestCase):
     def test_persistent_segment_channel_segment_preview(self):
         self.create_admin_user()
         items = 5
-        _id = next(int_iterator)
         segment = PersistentSegmentChannel.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
-            id=_id,
+            id=next(int_iterator),
         )
-        mock_data = self.get_mock_data(5, "channel", str(segment.uuid))
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
         ChannelManager(sections=self.SECTIONS).upsert(mock_data)
         sleep(1)
-        url = self._get_url("channel", segment.id) + "?page=1&size=5"
+        url = self._get_url("channel", segment.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), items)
         self.assertTrue(all(str(segment.uuid) in item["segments"]["uuid"] for item in response.data["items"]))
+
+    def test_persistent_segment_video_segment_preview(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), items)
+        self.assertTrue(all(str(segment.uuid) in item["segments"]["uuid"] for item in response.data["items"]))
+
+    def test_negative_page(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id) + "?page=-1"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["current_page"], 1)
+
+    def test_negative_size(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id) + "?size=-10"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["current_page"], 1)

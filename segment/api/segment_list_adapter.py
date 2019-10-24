@@ -44,8 +44,16 @@ class SegmentListAPIViewAdapter(ListAPIView):
             sort_key = {"stats.views": {"order": SortDirections.DESCENDING}}
 
         self.request.query_params._mutable = True
-        self.request.query_params["page"] = self.request.query_params.get("page", 1)
-        self.request.query_params["size"] = self.request.query_params.get("size", self.DEFAULT_PAGE_SIZE)
+        page = self.request.query_params.get("page", 0)
+        size = self.request.query_params.get("size", 0)
+        if page <= 0:
+            page = 1
+        if size <= 0:
+            size = self.DEFAULT_PAGE_SIZE
+        if size > self.MAX_PAGE_SIZE:
+            size = self.MAX_PAGE_SIZE
+        self.request.query_params["page"] = page
+        self.request.query_params["size"] = size
 
         result = ESQuerysetAdapter(es_manager)
         result.sort = sort_key

@@ -1,83 +1,118 @@
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from time import sleep
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 import uuid
 
+from es_components.constants import Sections
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
+from es_components.models import Channel
+from es_components.models import Video
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
-from segment.models.persistent import PersistentSegmentChannel
-from segment.models.persistent import PersistentSegmentVideo
-from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.models.custom_segment import CustomSegment
-from segment.api.views.brand_safety.brand_safety_list import PersistentSegmentListApiView
+from segment.models import CustomSegment
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
 
 
 class SegmentPreviewApiViewTestCase(ExtendedAPITestCase):
-    THRESHOLD = PersistentSegmentListApiView.MINIMUM_ITEMS_COUNT
+    SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS]
 
-    def _get_url(self, segment_type, segment_uuid):
+    def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_PREVIEW,
-                       kwargs=dict(segment_type=segment_type, uuid=segment_uuid))
+                       kwargs=dict(segment_type=segment_type, pk=pk))
 
-    def test_persistent_segment_channel_segment_preview(self):
+    @staticmethod
+    def get_mock_data(count, data_type, uuid):
+        if data_type == "video":
+            model = Video
+        else:
+            model = Channel
+        data = []
+        for i in range(count):
+            item = {
+                "meta": {
+                    "id": data_type + str(i)
+                },
+                "brand_safety": {
+                    "overall_score": 100 - i
+                },
+                "segments": {
+                    "uuid": [uuid]
+                }
+            }
+            if data_type == "channel":
+                item["brand_safety"]["videos_scored"] = i
+            data.append(model(**item))
+        return data
+
+    def test_segment_channel_segment_preview(self):
         self.create_admin_user()
-        segment = PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(),
-            title="test_title",
-
-        )
-        with patch("segment.api.views.shared.segment_preview.ChannelWithBlackListSerializer"), \
-                patch("segment.api.views.shared.segment_preview.ChannelManager"):
-            url = self._get_url("channel", segment.uuid)
-            response = self.client.get(url)
-            print(response)
-            self.assertEqual(len(response.data["items"]), 5)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_persistent_segment_video_segment_preview(self):
-        self.create_admin_user()
-        segment = PersistentSegmentVideo.objects.create(
-            uuid=uuid.uuid4(),
-            title="test_title",
-
-        )
-        with patch("segment.api.views.shared.segment_preview.VideoWithBlackListSerializer"), \
-                patch("segment.api.views.shared.segment_preview.VideoManager"):
-            url = self._get_url("video", segment.uuid) + "?size=10"
-            response = self.client.get(url)
-            self.assertEqual(len(response.data["items"]), 10)
-            self.assertEqual(response.status_code, HTTP_200_OK)
-
-    def test_custom_channel_segment_preview(self):
-        self.create_admin_user()
+        items = 5
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
-            segment_type="channel"
-
+            id=next(int_iterator),
+            list_type="whitelist"
         )
-        with patch("segment.api.views.shared.segment_preview.ChannelWithBlackListSerializer"), \
-                patch("segment.api.views.shared.segment_preview.ChannelManager"):
-            url = self._get_url("channel", segment.uuid)
-            response = self.client.get(url)
-            print(response)
-            self.assertEqual(len(response.data["items"]), 5)
-            self.assertEqual(response.status_code, HTTP_200_OK)
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), items)
+        self.assertTrue(all(str(segment.uuid) in item["segments"]["uuid"] for item in response.data["items"]))
 
-    def test_custom_video_segment_preview(self):
+    def test_segment_video_segment_preview(self):
         self.create_admin_user()
+        items = 5
         segment = CustomSegment.objects.create(
             uuid=uuid.uuid4(),
             title="test_title",
-            segment_type="video"
-
+            id=next(int_iterator),
+            list_type="whitelist"
         )
-        with patch("segment.api.views.shared.segment_preview.VideoWithBlackListSerializer"), \
-                patch("segment.api.views.shared.segment_preview.VideoManager"):
-            url = self._get_url("video", segment.uuid) + "?size=10"
-            response = self.client.get(url)
-            self.assertEqual(len(response.data["items"]), 10)
-            self.assertEqual(response.status_code, HTTP_200_OK)
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(len(response.data["items"]), items)
+        self.assertTrue(all(str(segment.uuid) in item["segments"]["uuid"] for item in response.data["items"]))
+
+    def test_negative_page(self):
+        self.create_admin_user()
+        items = 5
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+            list_type="whitelist"
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id) + "?page=-1"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["current_page"], 1)
+
+    def test_negative_size(self):
+        self.create_admin_user()
+        items = 5
+        segment = CustomSegment.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+            list_type="whitelist"
+        )
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id) + "?size=-10"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["current_page"], 1)
