@@ -2,7 +2,7 @@ import logging
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
 import asyncio
-import time
+import aiohttp
 from aiohttp import ClientSession
 
 from django.core.management.base import BaseCommand
@@ -21,10 +21,13 @@ TASK_RETRY_COUNTS = 10
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='test_transcripts_rate_limit.pid') as p:
-            pull_transcripts(['en'], 1000, 100)
+            loop = asyncio.get_event_loop()
+            connector = aiohttp.TCPConnector(limit=100)
+            with aiohttp.ClientSession(loop=loop, connector=connector) as session:
+                pull_transcripts(session, ['en'], 1000, 100, loop)
 
 
-def pull_transcripts(lang_codes, num_vids, num_runs):
+async def pull_transcripts(session, lang_codes, num_vids, num_runs, loop):
     counter = 0
     while counter < num_runs:
         soups_parsed = 0
@@ -34,18 +37,18 @@ def pull_transcripts(lang_codes, num_vids, num_runs):
             language = LANGUAGES[lang_code]
             unparsed_vids = get_unparsed_vids(language, num_vids)
             vid_ids = set([vid.main.id for vid in unparsed_vids])
-            all_video_soups_dict = await create_video_soups_dict(vid_ids, lang_code)
+            all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code)
             soups_parsed += len(all_video_soups_dict)
+            print(all_video_soups_dict)
             print(f"Random video soup: {all_video_soups_dict[vid_ids.pop()]}")
             print(f"Total soups retrieved: {soups_parsed}")
         counter += 1
         print(f"Finished run {counter} of {num_runs}")
 
 
-async def create_video_soups_dict(vid_ids: set, lang_code: str):
+async def create_video_soups_dict(session: ClientSession, vid_ids: set, lang_code: str):
     soups_dict = {}
-    async with ClientSession() as session:
-        await asyncio.gather(*[update_soup_dict(vid_id, lang_code, session, soups_dict) for vid_id in vid_ids])
+    await asyncio.gather(*[update_soup_dict(vid_id, lang_code, session, soups_dict) for vid_id in vid_ids])
     return soups_dict
 
 
