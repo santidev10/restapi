@@ -24,7 +24,7 @@ class Command(BaseCommand):
             pull_transcripts(['en'], 1000, 100)
 
 
-async def pull_transcripts(lang_codes, num_vids, num_runs):
+def pull_transcripts(lang_codes, num_vids, num_runs):
     counter = 0
     while counter < num_runs:
         soups_parsed = 0
@@ -57,12 +57,12 @@ async def update_soup_dict(vid_id: str, lang_code: str, session: ClientSession, 
         try:
             transcript_response = await session.request(method="GET", url=vid_transcript_url)
             if transcript_response.status == HTTP_429_TOO_MANY_REQUESTS:
-                time.sleep(TASK_RETRY_TIME)
+                await asyncio.sleep(TASK_RETRY_TIME)
                 counter += 1
                 print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                       f"Sleeping for {TASK_RETRY_TIME} seconds.")
         except HTTP_429_TOO_MANY_REQUESTS:
-            time.sleep(TASK_RETRY_TIME)
+            await asyncio.sleep(TASK_RETRY_TIME)
             counter += 1
             print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                   f"Sleeping for {TASK_RETRY_TIME} seconds.")
