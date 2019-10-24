@@ -18,16 +18,14 @@ LOCK_NAME = 'custom_transcripts'
 TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
 
+
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='test_transcripts_rate_limit.pid') as p:
-            loop = asyncio.get_event_loop()
-            connector = aiohttp.TCPConnector(limit=100)
-            with aiohttp.ClientSession(loop=loop, connector=connector) as session:
-                pull_transcripts(session, ['en'], 1000, 100, loop)
+            asyncio.run(pull_transcripts(['en'], 1000, 100))
 
 
-async def pull_transcripts(session, lang_codes, num_vids, num_runs, loop):
+async def pull_transcripts(lang_codes, num_vids, num_runs):
     counter = 0
     while counter < num_runs:
         soups_parsed = 0
@@ -37,7 +35,8 @@ async def pull_transcripts(session, lang_codes, num_vids, num_runs, loop):
             language = LANGUAGES[lang_code]
             unparsed_vids = get_unparsed_vids(language, num_vids)
             vid_ids = set([vid.main.id for vid in unparsed_vids])
-            all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code)
+            async with aiohttp.ClientSession() as session:
+                all_video_soups_dict = await create_video_soups_dict(session, vid_ids, lang_code)
             soups_parsed += len(all_video_soups_dict)
             print(all_video_soups_dict)
             print(f"Random video soup: {all_video_soups_dict[vid_ids.pop()]}")
@@ -48,11 +47,11 @@ async def pull_transcripts(session, lang_codes, num_vids, num_runs, loop):
 
 async def create_video_soups_dict(session: ClientSession, vid_ids: set, lang_code: str):
     soups_dict = {}
-    await asyncio.gather(*[update_soup_dict(vid_id, lang_code, session, soups_dict) for vid_id in vid_ids])
+    await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict) for vid_id in vid_ids])
     return soups_dict
 
 
-async def update_soup_dict(vid_id: str, lang_code: str, session: ClientSession, soups_dict):
+async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict):
     transcript_url = "http://video.google.com/timedtext?lang={}&v=".format(lang_code)
     vid_transcript_url = transcript_url + vid_id
     counter = 0
