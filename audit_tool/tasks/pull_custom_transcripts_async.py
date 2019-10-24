@@ -31,7 +31,7 @@ TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
 
 
-# @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
+@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
     runs_counter = 0
     total_elapsed = 0
@@ -39,8 +39,8 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
     try:
         while runs_counter < num_runs:
             for lang_code in lang_codes:
-                # lang_lock = "{}__{}".format(LOCK_NAME, lang_code)
-                # lock(lock_name=lang_lock, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+                lang_lock = "{}__{}".format(LOCK_NAME, lang_code)
+                lock(lock_name=lang_lock, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
                 init_es_connection()
                 logger.debug("Pulling custom transcripts.")
                 print("Pulling custom transcripts.")
@@ -53,24 +53,24 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
                 start = time.perf_counter()
                 all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code, total_elapsed, soups_parsed))
-                # for vid_id in vid_ids:
-                #     vid_obj = video_manager.get_or_create([vid_id])[0]
-                #     transcript_soup = all_video_soups_dict[vid_id]
-                #     transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
-                #     if transcript_text != "":
-                #         AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code, transcript=str(transcript_soup))
-                #         logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                #         print(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                #         transcripts_counter += 1
-                #     populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
-                #     video_manager.upsert([vid_obj])
-                #     counter += 1
-                #     logger.debug(f"Parsed video with id: {vid_id}")
-                #     logger.debug(f"Number of videos parsed: {counter}")
-                #     logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
-                #     print(f"Parsed video with id: {vid_id}")
-                #     print(f"Number of videos parsed: {counter}")
-                #     print(f"Number of transcripts retrieved: {transcripts_counter}")
+                for vid_id in vid_ids:
+                    vid_obj = video_manager.get_or_create([vid_id])[0]
+                    transcript_soup = all_video_soups_dict[vid_id]
+                    transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+                    if transcript_text != "":
+                        AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code, transcript=str(transcript_soup))
+                        logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+                        print(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+                        transcripts_counter += 1
+                    populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
+                    video_manager.upsert([vid_obj])
+                    counter += 1
+                    logger.debug(f"Parsed video with id: {vid_id}")
+                    logger.debug(f"Number of videos parsed: {counter}")
+                    logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
+                    print(f"Parsed video with id: {vid_id}")
+                    print(f"Number of videos parsed: {counter}")
+                    print(f"Number of transcripts retrieved: {transcripts_counter}")
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
                 soups_parsed += len(all_video_soups_dict)
@@ -81,7 +81,7 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 print(f"Requested {num_vids} transcripts in {elapsed} seconds.")
                 print(f"Total videos retrieved for {lang_code}: {num_vids}. Total time elapsed: {total_elapsed} seconds.")
                 print(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
-                # unlock(lang_lock)
+                unlock(lang_lock)
             runs_counter += 1
             print(f"Finished Run #{runs_counter} of {num_runs}, Starting Run #{runs_counter+1}.")
     except Exception:
