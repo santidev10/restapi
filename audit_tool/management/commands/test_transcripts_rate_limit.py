@@ -20,7 +20,7 @@ TASK_RETRY_COUNTS = 10
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        with PidFile(piddir='.', pidname='export_queue.pid') as p:
+        with PidFile(piddir='.', pidname='test_transcripts_rate_limit.pid') as p:
             pull_transcripts(['en'], 1000, 100)
 
 
