@@ -104,6 +104,42 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
     def create_click_report_key(resource_name, date):
         return f"{resource_name}/{date}"
 
+    def test_existing_mcc_account_doesnt_reset_defaults(self):
+        mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            name="MCC",
+            can_manage_clients=True,
+            currency_code="YEN"
+        )
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
+        managed_mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            name="Original Name",
+            can_manage_clients=True,
+            is_active=False,
+        )
+        managed_mcc_account.managers.add(mcc_account.id)
+        mock_customer_client_data = MockGoogleAdsAPIResponse()
+        mock_customer_client_data.set("customer_client", "id", managed_mcc_account.id)
+        mock_customer_client_data.set("customer_client", "descriptive_name", "Changed Name")
+        mock_customer_client_data.set("customer_client", "currency_code", "USD")
+        mock_customer_client_data.set("customer_client", "time_zone", "UTC")
+        mock_customer_client_data.set("customer_client", "manager", True)
+        mock_customer_client_data.set("customer_client", "test_account", False)
+        mock_customer_client_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = AccountUpdater(mcc_account)
+        updater.get_client_customer_accounts = MagicMock(return_value=mock_customer_client_data)
+        updater.update(client)
+
+        managed_mcc_account.refresh_from_db()
+        self.assertTrue(managed_mcc_account.is_active is False)
+        self.assertTrue(managed_mcc_account.name == "Changed Name")
+        self.assertTrue(managed_mcc_account.currency_code == "USD")
+
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
         today = now.date()
