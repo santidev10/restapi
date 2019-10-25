@@ -308,8 +308,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(1.0 * num_done / count * 100)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -459,8 +460,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(1.0 * num_done / count * 100)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
