@@ -14,12 +14,15 @@ from audit_tool.models import AuditVideoProcessor
 
 logger = logging.getLogger(__name__)
 
-
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='export_queue.pid') as p:
             try:
-                self.export = AuditExporter.objects.filter(completed__isnull=True).order_by("id")[0]
+                self.machine_number = settings.AUDIT_MACHINE_NUMBER
+            except Exception as e:
+                self.machine_number = 0
+            try:
+                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[self.machine_number]
                 self.audit = self.export.audit
             except Exception as e:
                 logger.exception(e)
