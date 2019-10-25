@@ -400,11 +400,11 @@ class AuditExportApiView(APIView):
                             hit_words[cid.channel.channel_id].add(word_hit)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        count = channel_meta.count()
-        num_done = 0
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
+            count = channel_meta.count()
+            num_done = 0
             for v in channel_meta:
                 try:
                     language = v.language.language
@@ -460,7 +460,7 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count * 100)
+                    export.percent_done = int(num_done / count * 100.0)
                     export.save(update_fields=['percent_done'])
                     print("export at {}".format(export.percent_done))
 
