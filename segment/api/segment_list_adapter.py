@@ -33,15 +33,10 @@ class SegmentListAPIViewAdapter(ListAPIView):
 
     def get_queryset(self):
         pk = self.kwargs["pk"]
-        segment_type = self.kwargs["segment_type"]
-        if segment_type == "video":
-            sort = "stats.views:desc"
-        else:
-            sort = "stats.subscribers:desc"
         try:
             segment = self.segment_model.objects.get(id=pk)
         except self.segment_model.DoesNotExist:
-            return Http404
+            raise Http404
         self.request.query_params._mutable = True
         page = self.request.query_params.get("page", 0)
         size = self.request.query_params.get("size", 0)
