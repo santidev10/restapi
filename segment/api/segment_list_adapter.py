@@ -63,6 +63,6 @@ class SegmentListAPIViewAdapter(ListAPIView):
         self.request.query_params["size"] = size
 
         result = ESQuerysetAdapter(segment.es_manager)
-        result.order_by(sort)
+        result.sort = [segment.SORT_KEY]
         result.filter([segment.get_segment_items_query()])
         return result
