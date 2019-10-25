@@ -41,7 +41,7 @@ def pull_custom_transcripts(lang_codes):
             for vid_id in vid_ids:
                 vid_obj = video_manager.get_or_create([vid_id])[0]
                 transcript_soup = get_video_soup(vid_id, lang_code)
-                transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+                transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
                 if transcript_text != "":
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code, transcript=str(transcript_soup))
                     logger.debug("VIDEO WITH ID {} HAS A CUSTOM TRANSCRIPT.".format(vid_id))

@@ -57,7 +57,7 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 for vid_obj in all_videos:
                     vid_id = vid_obj.main.id
                     transcript_soup = all_video_soups_dict[vid_id]
-                    transcript_text = replace_apostrophes(transcript_soup.text) if transcript_soup else ""
+                    transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
                     if transcript_text != "":
                         AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code, transcript=str(transcript_soup))
                         logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
