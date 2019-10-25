@@ -30,7 +30,6 @@ class CustomSegmentSerializer(ModelSerializer):
             "statistics",
             "title",
             "title_hash",
-            "uuid",
         )
 
     def create(self, validated_data):

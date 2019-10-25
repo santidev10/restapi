@@ -37,7 +37,6 @@ class PersistentSegmentSerializer(ModelSerializer):
             "updated_at",
             "category",
             "is_master",
-            "uuid",
         )
 
     def get_statistics(self, obj):

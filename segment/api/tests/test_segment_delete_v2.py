@@ -35,7 +35,6 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     @patch("segment.models.CustomSegment.remove_all_from_segment")
-    @patch("segment.custom_segment_export_generator.CustomSegmentExportGenerator.delete_export")
     def test_success(self, mock_delete_export, mock_remove_from_segment):
         mock_delete_export.return_value = {}
         mock_remove_from_segment.return_value = {}
