@@ -7,6 +7,7 @@ import uuid
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
@@ -15,7 +16,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 
 
-class SegmentPreviewApiViewTestCase(ExtendedAPITestCase):
+class SegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS, Sections.STATS]
 
     def _get_url(self, segment_type, pk):

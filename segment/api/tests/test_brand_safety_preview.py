@@ -9,6 +9,7 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
+from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models.persistent import PersistentSegmentChannel
@@ -17,7 +18,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 
 
-class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase):
+class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS, Sections.STATS]
 
     def _get_url(self, segment_type, pk):
