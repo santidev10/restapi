@@ -72,6 +72,11 @@ class TransformField(CharField):
         value = self.transform_function(value)
         return super().to_representation(value)
 
+class AdsFloatField(FloatField):
+    def to_representation(self, value):
+        value = value / 10 ** 6
+        return super().to_representation(value)
+
 
 class TargetTableSerializer(ModelSerializer):
     name = ReadOnlyField(default="N/A")
@@ -82,7 +87,7 @@ class TargetTableSerializer(ModelSerializer):
     placement_start = DateField(source="ad_group__campaign__salesforce_placement__start")
     placement_end = DateField(source="ad_group__campaign__salesforce_placement__end")
     margin_cap = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__margin_cap_required")
-    max_bid = IntegerField(source="ad_group__cpv_bid")
+    max_bid = AdsFloatField(source="ad_group__cpv_bid")
     cannot_roll_over = BooleanField(source="ad_group__campaign__salesforce_placement__opportunity__cannot_roll_over")
     rate_type = GoalTypeField(source="ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
@@ -377,7 +382,7 @@ class VideosTableSerializer(TargetTableSerializer):
     placement_name = CharField(source="ad__ad_group__campaign__salesforce_placement__name")
     placement_start = DateField(source="ad__ad_group__campaign__salesforce_placement__start")
     placement_end = DateField(source="ad__ad_group__campaign__salesforce_placement__end")
-    max_bid = IntegerField(source="ad__ad_group__cpv_bid")
+    max_bid = AdsFloatField(source="ad__ad_group__cpv_bid")
     cannot_roll_over = BooleanField(source="ad__ad_group__campaign__salesforce_placement"
                                            "__opportunity__cannot_roll_over")
     rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
