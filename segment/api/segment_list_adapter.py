@@ -1,5 +1,7 @@
 from django.http import Http404
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 import brand_safety.constants as constants
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
@@ -30,22 +32,27 @@ class SegmentListAPIViewAdapter(ListAPIView):
         return serializer
 
     def get_queryset(self):
-        segment_type = self.kwargs["segment_type"]
         pk = self.kwargs["pk"]
+        segment_type = self.kwargs["segment_type"]
+        if segment_type == "video":
+            sort = "stats.views:desc"
+        else:
+            sort = "stats.subscribers:desc"
         try:
             segment = self.segment_model.objects.get(id=pk)
         except self.segment_model.DoesNotExist:
             return Http404
-        if segment_type == constants.CHANNEL:
-            es_manager = ChannelManager(self.SECTIONS)
-            sort_key = {"stats.subscribers": {"order": SortDirections.DESCENDING}}
-        else:
-            es_manager = VideoManager(self.SECTIONS)
-            sort_key = {"stats.views": {"order": SortDirections.DESCENDING}}
-
         self.request.query_params._mutable = True
         page = self.request.query_params.get("page", 0)
         size = self.request.query_params.get("size", 0)
+        try:
+            page = int(page)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data=f"Invalid page number: {page}")
+        try:
+            size = int(size)
+        except ValueError:
+            return Response(status=HTTP_400_BAD_REQUEST, data=f"Invalid page number: {size}")
         if page <= 0:
             page = 1
         if size <= 0:
@@ -55,7 +62,7 @@ class SegmentListAPIViewAdapter(ListAPIView):
         self.request.query_params["page"] = page
         self.request.query_params["size"] = size
 
-        result = ESQuerysetAdapter(es_manager)
-        result.sort = sort_key
+        result = ESQuerysetAdapter(segment.es_manager)
+        result.order_by(sort)
         result.filter([segment.get_segment_items_query()])
         return result

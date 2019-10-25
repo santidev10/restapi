@@ -10,7 +10,6 @@ import brand_safety.constants as constants
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import get_persistent_segment_model_by_type
 from segment.segment_list_generator import SegmentListGenerator
@@ -55,10 +54,10 @@ class PersistentSegmentImporter(object):
         # Set es_manager
         if self.data_type == constants.VIDEO:
             self.es_manager = VideoManager(upsert_sections=(Sections.SEGMENTS,))
-            segment_max_size = CustomSegmentExportGenerator.VIDEO_LIMIT
+            segment_max_size = SegmentListGenerator.CUSTOM_VIDEO_SIZE
         elif self.data_type == constants.CHANNEL:
             self.es_manager = ChannelManager(upsert_sections=(Sections.SEGMENTS,))
-            segment_max_size = CustomSegmentExportGenerator.CHANNEL_LIMIT
+            segment_max_size = SegmentListGenerator.CUSTOM_CHANNEL_SIZE
         else:
             raise ValueError("Allowed data types: {}".format(self.ALLOWED_DATA_TYPES))
 

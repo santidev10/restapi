@@ -18,7 +18,7 @@ from utils.utittests.int_iterator import int_iterator
 
 
 class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase):
-    SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS]
+    SECTIONS = [Sections.BRAND_SAFETY, Sections.SEGMENTS, Sections.STATS]
 
     def _get_url(self, segment_type, pk):
         return reverse(Namespace.SEGMENT + ":" + Name.PERSISTENT_SEGMENT_PREVIEW,
@@ -28,19 +28,25 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase):
     def get_mock_data(count, data_type, uuid):
         if data_type == "video":
             model = Video
+            stats_field = "views"
         else:
             model = Channel
+            stats_field = "subscribers"
         data = []
         for i in range(count):
+            value = 100 - i
             item = {
                 "meta": {
                     "id": data_type + str(i)
                 },
                 "brand_safety": {
-                    "overall_score": 100 - i
+                    "overall_score": value
                 },
                 "segments": {
                     "uuid": [uuid]
+                },
+                "stats": {
+                    stats_field: value
                 }
             }
             if data_type == "channel":
@@ -113,3 +119,37 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["current_page"], 1)
+
+    def test_sorted_videos_by_views(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id)
+        response = self.client.get(url)
+        view_counts = [item["stats"]["views"] for item in response.data["items"]]
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(sorted(view_counts, reverse=True), view_counts)
+
+    def test_sorted_channels_by_subscribers(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id)
+        response = self.client.get(url)
+        view_counts = [item["stats"]["subscribers"] for item in response.data["items"]]
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(sorted(view_counts, reverse=True), view_counts)
