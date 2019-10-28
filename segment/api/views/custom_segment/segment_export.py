@@ -4,7 +4,6 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from segment.models import CustomSegment
-from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 
 
 class SegmentExport(APIView):

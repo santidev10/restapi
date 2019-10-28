@@ -67,3 +67,10 @@ def generate_search_with_params(manager, query, sort=None):
         search = search.sort(sort)
     search = search.params(preserve_order=True)
     return search
+
+
+def validate_threshold(threshold):
+    err = None
+    if not 0 <= threshold <= 100:
+        err = "Score threshold must be between 0 and 100, inclusive."
+    return err

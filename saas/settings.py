@@ -270,8 +270,8 @@ LOGGING = {
     }
 }
 
-SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
-SENDER_EMAIL_ADDRESS = SERVER_EMAIL
+SERVER_EMAIL = "emergency-viewiq@channelfactory.com"
+SENDER_EMAIL_ADDRESS = "viewiq-notifications@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
