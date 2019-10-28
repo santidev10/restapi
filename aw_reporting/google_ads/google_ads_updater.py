@@ -1,10 +1,11 @@
 from datetime import date
 from datetime import timedelta
 import logging
+import json
 import time
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
-
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
 from google.api_core.exceptions import InternalServerError
@@ -33,6 +34,7 @@ from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
+from utils.es_components_cache import cached_method
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class GoogleAdsAuthErrors:
 
 
 class GoogleAdsUpdater(object):
+    CACHE_KEY_PREFIX = "restapi.GoogleAdsUpdater"
     MAX_RETRIES = 5
     SLEEP_COEFF = 2
 
@@ -87,13 +90,12 @@ class GoogleAdsUpdater(object):
         self.cid_account.save()
         recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    def update_campaigns(self, mcc_account, cid_account):
+    def update_campaigns(self, cid_account):
         """
         Update / Save campaigns for all accounts managed by
             Run in separate process on a more frequent interval than other reporting data
         :return:
         """
-        self.mcc_account = mcc_account
         self.cid_account = cid_account
 
         campaign_updater = CampaignUpdater(self.cid_account)
@@ -149,6 +151,23 @@ class GoogleAdsUpdater(object):
             # If no linked opportunities or any linked opportunity has not ended, update
             opportunities = Opportunity.objects.filter(aw_cid=account.id)
             opportunities_active = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
+            account_end_date = account.end_date
+            if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
+                if as_obj is False:
+                    account = account.id
+                to_update.append(account)
+        return to_update
+
+    @cached_method(timeout=60 * 60)
+    def get_accounts_to_update(self, end_date_threshold=None, as_obj=False):
+        to_update = []
+        end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
+        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by("id")
+        for account in cid_accounts:
+            # If no linked opportunities or any linked opportunity has not ended, update
+            opportunities = Opportunity.objects.filter(aw_cid=account.id)
+            opportunities_active = not opportunities or any(
+                opp.end is None or opp.end > end_date_threshold for opp in opportunities)
             account_end_date = account.end_date
             if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
@@ -274,6 +293,13 @@ class GoogleAdsUpdater(object):
                 else:
                     raise err
 
+    def get_cache_key(self, part, options):
+        options = dict(
+            options=options,
+        )
+        key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
+        key = f"{self.CACHE_KEY_PREFIX}.{part}"
+        return key, key_json
 
 # Exception has been handled and should continue processing next account
 class GoogleAdsUpdaterContinueException(Exception):

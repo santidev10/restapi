@@ -1,5 +1,3 @@
-from datetime import date
-import itertools
 import logging
 import time
 
@@ -12,37 +10,40 @@ from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
 from aw_reporting.models import Account
+from audit_tool.models import APIScriptTracker
 from saas import celery_app
 from saas.configs.celery import Queue
-from saas.configs.celery import TaskExpiration
-from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import lock
-from utils.celery.tasks import unlock
 from utils.exception import retry
 
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_campaigns"
+MAX_TASK_COUNT = 5
 
 
-@celery_app.task(expires=TaskExpiration.HOURLY_AW_UPDATE, soft_time_limit=TaskTimeout.HOURLY_AW_UPDATE)
+@celery_app.task
 def setup_update_campaigns():
-    mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
+    """
+    This task should only ever be called once, or recalled after failing
+    Update tasks are setup by finalize_campaigns_update with updated cursor value
+    """
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.HOURLY_AW_UPDATE).set(queue=Queue.HOURLY_STATISTIC),
-        setup_mcc_update_tasks.si(mcc_ids),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=None).set(queue=Queue.HOURLY_STATISTIC),
+        setup_mcc_update_tasks.si(),
     )
     return job()
 
 
 @celery_app.task
-def setup_mcc_update_tasks(mcc_ids):
+def setup_mcc_update_tasks():
     """
     Update permissions and setup task signatures to update all MCC accounts
     :param mcc_ids: list
     :return: list
     """
+    mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
     logger.info("Starting Google Ads update for campaigns")
     if not settings.IS_TEST:
         CFAccountConnector().update()
@@ -54,25 +55,32 @@ def setup_mcc_update_tasks(mcc_ids):
     ]).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         account_update_tasks,
-        setup_cid_update_tasks.si(mcc_ids),
+        setup_cid_update_tasks.si(),
     )
     return job()
 
 
 @celery_app.task
-def setup_cid_update_tasks(mcc_ids):
+def setup_cid_update_tasks():
     """
     Setup task signatures to update all CID accounts under all MCC accounts
     :param mcc_ids:
     :return:
     """
-    campaign_update_tasks = itertools.chain.from_iterable(
-        create_cid_tasks(mcc_id) for mcc_id in mcc_ids
-    )
-    campaign_update_tasks = group_chorded(campaign_update_tasks).set(queue=Queue.HOURLY_STATISTIC)
+    cursor, _ = APIScriptTracker.objects.get_or_create(name=LOCK_NAME)
+    logger.error(f"cursor, {cursor.cursor}")
+    # Batch update tasks
+    cid_account_ids = GoogleAdsUpdater().get_accounts_to_update()[cursor.cursor:MAX_TASK_COUNT + cursor.cursor]
+    logger.error(cid_account_ids)
+
+    task_signatures = [
+        cid_campaign_update.si(cid_id).set(queue=Queue.HOURLY_STATISTIC)
+        for cid_id in cid_account_ids
+    ]
+
+    campaign_update_tasks = group_chorded(task_signatures).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         campaign_update_tasks,
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.HOURLY_STATISTIC),
         finalize_campaigns_update.si(),
     )
     return job()
@@ -89,36 +97,27 @@ def mcc_account_update(mcc_id, index, total):
     logger.debug(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
 
 
-def create_cid_tasks(mcc_id):
-    """
-    Create task signatures for all cid accounts under mcc_id
-    :return: list -> Celery update tasks
-    """
-    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update_for_mcc(mcc_id)
-    task_signatures = [
-        cid_campaign_update.si(mcc_id, cid_id, index + 1, len(cid_account_ids)).set(queue=Queue.HOURLY_STATISTIC)
-        for index, cid_id in enumerate(cid_account_ids, start=0)
-    ]
-    return task_signatures
-
-
 @celery_app.task
 @retry(count=10, delay=5, exceptions=(Error, ))
-def cid_campaign_update(mcc_id, cid_id, index, total):
+def cid_campaign_update(cid_id):
     """
     Update single CID account
     """
     start = time.time()
-    mcc_account = Account.objects.get(id=mcc_id)
     cid_account = Account.objects.get(id=cid_id)
-
     updater = GoogleAdsUpdater()
-    updater.update_campaigns(mcc_account, cid_account)
-    logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
+    updater.update_campaigns(cid_account)
+    logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE FOR CID: {cid_id}. Took: {time.time() - start}")
 
 
 @celery_app.task
 def finalize_campaigns_update():
-    logger.debug("Adding relations between reports and campaign creations")
     add_relation_between_report_and_creation_campaigns()
-    logger.info(f"Campaign update complete")
+    cursor = APIScriptTracker.objects.get(name=LOCK_NAME)
+    if cursor.cursor > Account.objects.filter(can_manage_clients=False, is_active=True).count():
+        cursor.cursor = 0
+    else:
+        cursor.cursor = cursor.cursor + MAX_TASK_COUNT
+    cursor.save()
+    setup_mcc_update_tasks.delay()
+

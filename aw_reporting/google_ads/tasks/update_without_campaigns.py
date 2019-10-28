@@ -1,4 +1,3 @@
-import itertools
 import logging
 import time
 
@@ -10,10 +9,9 @@ from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdaterContinueException
 from aw_reporting.models import Account
+from audit_tool.models import APIScriptTracker
 from saas import celery_app
 from saas.configs.celery import Queue
-from saas.configs.celery import TaskExpiration
-from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -22,12 +20,13 @@ from utils.exception import retry
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_without_campaigns"
+MAX_TASK_COUNT = 50
 
 
-@celery_app.task(expires=TaskExpiration.FULL_AW_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_UPDATE)
+@celery_app.task
 def setup_update_without_campaigns():
     job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=None).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         setup_cid_update_tasks.si()
     )
     return job()
@@ -36,14 +35,15 @@ def setup_update_without_campaigns():
 @celery_app.task
 def setup_cid_update_tasks():
     logger.debug("Starting Google Ads update without campaigns")
-    mcc_accounts = Account.objects.filter(can_manage_clients=True, is_active=True).values_list("id", flat=True)
-    cid_update_tasks = itertools.chain.from_iterable(
-        account_update_all_except_campaigns(mcc_id)
-        for mcc_id in mcc_accounts
-    )
-    cid_update_tasks = group_chorded(cid_update_tasks).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
+    cursor, _ = APIScriptTracker.objects.get_or_create(name=LOCK_NAME)
+    cid_account_ids = GoogleAdsUpdater().get_accounts_to_update()[cursor.cursor:MAX_TASK_COUNT + cursor.cursor]
+    task_signatures = [
+        cid_update_all_except_campaigns.si(cid_id).set(queue=Queue.HOURLY_STATISTIC)
+        for cid_id in cid_account_ids
+    ]
+    update_tasks = group_chorded(task_signatures).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
-        cid_update_tasks,
+        update_tasks,
         unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
         finalize_update.si(),
     )
@@ -83,8 +83,13 @@ def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
 
 @celery_app.task
 def finalize_update():
-    logger.debug("Adding relations between reports and ad_group and ad creations")
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    logger.info(f"Google Ads update without campaigns complete")
+    cursor = APIScriptTracker.objects.get(name=LOCK_NAME)
+    if cursor.cursor > Account.objects.filter(can_manage_clients=False, is_active=True).count():
+        cursor.cursor = 0
+    else:
+        cursor.cursor = cursor.cursor + MAX_TASK_COUNT
+    setup_cid_update_tasks.delay()
+
 
