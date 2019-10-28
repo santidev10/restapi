@@ -369,7 +369,6 @@ class AuditExportApiView(APIView):
             "Brand Safety Score",
         ]
         try:
-            if do
             bad_word_categories = set(audit.params['exclusion_category'])
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
