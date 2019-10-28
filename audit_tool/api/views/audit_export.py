@@ -156,10 +156,15 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
+        do_hit_words = False
         if clean is False:
             hit_types = 'exclusion'
+            if self.audit.params.get('exclusion'):
+                do_hit_words = True
         else:
             hit_types = 'inclusion'
+            if self.audit.params.get('inclusion'):
+                do_hit_words = True
         cols = [
             "Video URL",
             "Name",
@@ -202,7 +207,8 @@ class AuditExportApiView(APIView):
         videos = videos.select_related("video")
         for vid in videos:
             video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
+            if do_hit_words:
+                hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'w+', newline='') as myfile:
@@ -251,7 +257,10 @@ class AuditExportApiView(APIView):
                     default_audio_language = v.default_audio_language.language
                 except Exception as e:
                     default_audio_language = ""
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
+                all_hit_words = ""
+                unique_hit_words = ""
+                if do_hit_words:
+                    all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 video_audit_score = auditor.audit_video({
                     "id": v.video.video_id,
                     "title": v.name,
@@ -360,6 +369,7 @@ class AuditExportApiView(APIView):
             "Brand Safety Score",
         ]
         try:
+            if do
             bad_word_categories = set(audit.params['exclusion_category'])
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
