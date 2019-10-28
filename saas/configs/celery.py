@@ -91,7 +91,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60,
         'kwargs': dict(
-            lang_codes=['en', 'es'],
+            lang_codes=['en'],
             num_vids=3000
         )
     }
