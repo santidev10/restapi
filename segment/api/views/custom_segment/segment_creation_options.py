@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from audit_tool.models import AuditCategory
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
-from segment.api.views import SegmentListCreateApiViewV2
+from segment.utils import validate_threshold
 
 
 class SegmentCreationOptionsApiView(APIView):
@@ -57,6 +57,6 @@ class SegmentCreationOptionsApiView(APIView):
         if unexpected:
             err = "Unexpected fields: {}".format(", ".join(set(received) - set(expected)))
         else:
-            err = SegmentListCreateApiViewV2.validate_threshold(data.get("score_threshold", 0))
+            err = validate_threshold(data.get("score_threshold", 0))
         if err:
             raise ValueError(err)

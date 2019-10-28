@@ -1,3 +1,5 @@
+import logging
+
 from saas import celery_app
 from django.conf import settings
 from django.core.mail import EmailMessage
@@ -12,6 +14,8 @@ from highlights.api.views.channels import ORDERING_FIELDS
 from highlights.api.views.channels import TERMS_FILTER
 from channel.constants import CHANNEL_CSV_HEADERS
 from channel.api.serializers.channel_export import ChannelListExportSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class HighlightsChannelListDataGenerator(ExportDataGenerator):
@@ -46,12 +50,16 @@ def export_channels_data(query_params, export_name, user_emails, export_url):
     # E-mail
     from_email = settings.SENDER_EMAIL_ADDRESS
     bcc = []
-
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=from_email,
-        to=user_emails,
-        bcc=bcc,
-    )
-    email.send(fail_silently=False)
+    try:
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=user_emails,
+            bcc=bcc,
+        )
+        email.send(fail_silently=False)
+    except Exception as e:
+        logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
+    else:
+        logger.info(f"RESEARCH EXPORT: Email was sent to {user_emails}.")

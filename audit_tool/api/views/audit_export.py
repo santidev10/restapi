@@ -33,6 +33,7 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
+    MAX_ROWS = 750000
 
     def get(self, request):
         query_params = request.query_params
@@ -136,7 +137,7 @@ class AuditExportApiView(APIView):
         except Exception as e:
             return ""
 
-    def export_videos(self, audit, audit_id=None, clean=None):
+    def export_videos(self, audit, audit_id=None, clean=None, export=None):
         clean_string = 'none'
         if clean is not None:
             clean_string = 'true' if clean else 'false'
@@ -207,7 +208,13 @@ class AuditExportApiView(APIView):
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
+            count = video_meta.count()
+            if count > self.MAX_ROWS:
+                count = self.MAX_ROWS
+            num_done = 0
             for v in video_meta:
+                if num_done > self.MAX_ROWS:
+                    continue
                 try:
                     language = v.language.language
                 except Exception as e:
@@ -299,6 +306,10 @@ class AuditExportApiView(APIView):
                     except Exception as e:
                         pass
                 wr.writerow(data)
+                num_done += 1
+                if export and num_done % 500 == 0:
+                    export.percent_done = int(1.0 * num_done / count)
+                    export.save(update_fields=['percent_done'])
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -310,7 +321,7 @@ class AuditExportApiView(APIView):
             os.remove(myfile.name)
         return s3_file_name, download_file_name
 
-    def export_channels(self, audit, audit_id=None, clean=None):
+    def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
             audit_id = audit.id
         clean_string = 'none'
@@ -328,7 +339,7 @@ class AuditExportApiView(APIView):
             final=True
         )
         if exports.count() > 0:
-            return exports[0].file_name, _
+            return exports[0].file_name, None
         self.get_categories()
         cols = [
             "Channel Title",
@@ -361,7 +372,6 @@ class AuditExportApiView(APIView):
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
-        # channels = channels.select_related("channel")
         bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
@@ -389,6 +399,8 @@ class AuditExportApiView(APIView):
                             hit_words[cid.channel.channel_id].add(word_hit)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
+        count = channel_meta.count()
+        num_done = 0
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
@@ -445,6 +457,10 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
                 wr.writerow(data)
+                num_done += 1
+                if export and num_done % 500 == 0:
+                    export.percent_done = int(1.0 * num_done / count)
+                    export.save(update_fields=['percent_done'])
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex

@@ -14,12 +14,15 @@ from audit_tool.models import AuditVideoProcessor
 
 logger = logging.getLogger(__name__)
 
-
 class Command(BaseCommand):
     def handle(self, *args, **options):
         with PidFile(piddir='.', pidname='export_queue.pid') as p:
             try:
-                self.export = AuditExporter.objects.filter(completed__isnull=True).order_by("id")[0]
+                self.machine_number = settings.AUDIT_MACHINE_NUMBER
+            except Exception as e:
+                self.machine_number = 0
+            try:
+                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[self.machine_number]
                 self.audit = self.export.audit
             except Exception as e:
                 logger.exception(e)
@@ -29,13 +32,15 @@ class Command(BaseCommand):
     def process_export(self):
         export_funcs = AuditExportApiView()
         audit_type = self.audit.params.get('audit_type_original')
+        self.export.started = timezone.now()
+        self.export.save(update_fields=['started'])
         if not audit_type:
             audit_type = self.audit.audit_type
         if audit_type == 2:
-            file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean)
+            file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
         else:
-            file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean)
+            file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
         if self.export.clean is not None:
             count = count.filter(clean=self.export.clean)

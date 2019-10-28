@@ -56,8 +56,17 @@ class AccountUpdater(UpdateMixin):
             for account in accounts_to_create:
                 post_save.send(Account, instance=account, created=True)
         except Exception as e:
+            # Only save if doesn't exist
             for account in accounts_to_create:
-                account.save()
+                updated = Account.objects.filter(id=account.id).update(
+                    name=account.name,
+                    currency_code=account.currency_code,
+                    timezone=account.timezone,
+                    can_manage_clients=account.can_manage_clients,
+                    is_test_account=account.is_test_account,
+                )
+                if not updated:
+                    account.save()
         all_managed_accounts = [cid.id for cid in accounts_to_update] + [cid.id for cid in accounts_to_create]
         self.mcc_account.managers.add(*Account.objects.filter(id__in=all_managed_accounts))
         self.mcc_account.update_time = timezone.now()
