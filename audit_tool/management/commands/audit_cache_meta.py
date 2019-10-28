@@ -35,6 +35,7 @@ class Command(BaseCommand):
             # if loops < max_loops:
             #     sleep(15)
         AuditProcessorCache.objects.all().exclude(audit__in=audits).delete()
+        AuditProcessor.objects.filter(completed__isnull=False, pause__lt=0).update(pause=0)
         logger.info("Done {} audits.".format(count))
 
     def do_audit_meta(self, audit):
