@@ -92,7 +92,7 @@ def perform_get(sc):
         (Contact, 'get_contacts', None),
         (SFAccount, 'get_accounts', None),
         (Category, 'get_categories', None),
-        (Opportunity, 'get_opportunities', f"CloseDate > {yesterday}"),
+        (Opportunity, 'get_opportunities', f"MAX_Placement_End_Date__c > {yesterday}"),
         (OpPlacement, 'get_placements', f"Placement_End_Date__c > {yesterday}"),
         (Flight, 'get_flights', f"Flight_End_Date__c > {yesterday}"),
         (Activity, 'get_activities', None),

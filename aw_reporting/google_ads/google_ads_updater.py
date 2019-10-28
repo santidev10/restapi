@@ -190,13 +190,10 @@ class GoogleAdsUpdater(object):
                 permission.can_read = False
                 permission.save()
                 continue
-
             except RefreshError:
                 continue
-
             except Exception as e:
-                logger.error(f"UNHANDLED Exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
-
+                logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
             else:
                 return
         # If exhausted entire list of AWConnections, then was unable to find credentials to update
@@ -207,7 +204,7 @@ class GoogleAdsUpdater(object):
         message = f"Unable to find AWConnection for MCC: {self.mcc_account.id} with updater: {updater.__class__.__name__}"
         if self.cid_account:
             message += f" for CID: {self.cid_account.id}"
-        logger.error(message)
+        logger.warning(message)
 
     def execute(self, updater, client):
         """
@@ -226,7 +223,7 @@ class GoogleAdsUpdater(object):
 
             # Invalid client
             if error == GoogleAdsAuthErrors.USER_PERMISSION_DENIED:
-                logger.error(
+                logger.warning(
                     f"Invalid client: login_customer_id: {client.login_customer_id}, {e}"
                 )
                 raise GoogleAdsUpdaterPermissionDenied
@@ -236,31 +233,26 @@ class GoogleAdsUpdater(object):
                 self.cid_account.save()
             elif error == GoogleAdsAuthErrors.UNSPECIFIED:
                 # Issue with customer resource
-                logger.error(e)
+                logger.warning(e)
                 raise GoogleAdsUpdaterContinueException
             else:
                 # Uncaught GoogleAdsException
-                logger.error(f"UNCAUGHT GoogleAdsException EXCEPTION: {e}")
+                logger.error(f"Uncaught GoogleAdsException: {e}")
 
         # Google Ads API Interval exceptions
         except (ResourceExhausted, RetryError, InternalServerError, GoogleAPIError) as e:
-            # Retry on Google Ads API server errors
-            logger.error(f"retrying: {e}")
             try:
                 self._retry(updater, client)
-            except GoogleAdsUpdaterContinueException as e:
-                logger.error(str(e))
-                raise
             except Exception as e:
-                logger.error(f"MAX RETRIES EXCEEDED: CID: {self.cid_account}, {e}")
+                logger.warning(f"Max retries exceeded: CID: {self.cid_account}, {e}")
 
         except Exception as e:
             try:
                 cid = updater.account.id
             except AttributeError:
                 cid = "None"
-            logger.error(
-                f"Unable to update with {updater.__class__.__name__} for cid: {cid} for mcc: {self.mcc_account.id}. ERR: {e}"
+            logger.warning(
+                f"Unable to update with {updater.__class__.__name__} for cid: {cid} for mcc: {self.mcc_account.id}.\n{e}"
             )
 
     def _retry(self, updater, client):
@@ -271,20 +263,16 @@ class GoogleAdsUpdater(object):
         :return:
         """
         tries_count = 0
-        try:
-            while tries_count <= self.MAX_RETRIES:
-                try:
-                    updater.update(client)
-                except Exception as err:
-                    logger.error(f"On try {tries_count} of {self.MAX_RETRIES}")
-                    tries_count += 1
-                    if tries_count <= self.MAX_RETRIES:
-                        sleep = tries_count ** self.SLEEP_COEFF
-                        time.sleep(sleep)
-                    else:
-                        logger.error(f"MAX RETRIES EXCEEDED: {err}")
-        except Exception as err:
-            logger.error(f"UNHANDLED RETRY EXCEPTION: {err}")
+        while tries_count <= self.MAX_RETRIES:
+            try:
+                updater.update(client)
+            except Exception as err:
+                tries_count += 1
+                if tries_count <= self.MAX_RETRIES:
+                    sleep = tries_count ** self.SLEEP_COEFF
+                    time.sleep(sleep)
+                else:
+                    raise err
 
 
 # Exception has been handled and should continue processing next account
