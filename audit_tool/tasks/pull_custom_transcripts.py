@@ -32,7 +32,6 @@ TASK_RETRY_COUNTS = 10
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_custom_transcripts(lang_codes, num_vids):
     total_elapsed = 0
-    soups_parsed = 0
     vid_counter = 0
     transcripts_counter = 0
     try:
@@ -46,7 +45,7 @@ def pull_custom_transcripts(lang_codes, num_vids):
             video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                          upsert_sections=(Sections.CUSTOM_CAPTIONS,))
             start = time.perf_counter()
-            all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code, total_elapsed, soups_parsed))
+            all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code))
             all_videos = video_manager.get_or_create(list(vid_ids))
             for vid_obj in all_videos:
                 vid_id = vid_obj.main.id
@@ -64,7 +63,6 @@ def pull_custom_transcripts(lang_codes, num_vids):
             video_manager.upsert(all_videos)
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
-            soups_parsed += len(all_video_soups_dict)
             logger.debug(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
             logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         unlock(LOCK_NAME)
@@ -73,31 +71,25 @@ def pull_custom_transcripts(lang_codes, num_vids):
         pass
 
 
-async def create_video_soups_dict(vid_ids: set, lang_code: str, total_elapsed, soups_parsed):
+async def create_video_soups_dict(vid_ids: set, lang_code: str):
     soups_dict = {}
     async with ClientSession() as session:
-        await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict, total_elapsed, soups_parsed) for vid_id in vid_ids])
+        await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict) for vid_id in vid_ids])
     return soups_dict
 
 
-async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict, total_elapsed, soups_parsed):
+async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict):
     transcript_url = "http://video.google.com/timedtext?lang={}&v=".format(lang_code)
     vid_transcript_url = transcript_url + vid_id
     counter = 0
     while counter < TASK_RETRY_COUNTS:
         try:
             transcript_response = await session.request(method="GET", url=vid_transcript_url)
-            if transcript_response.status == "429":
+            if transcript_response.status == 429:
                 await asyncio.sleep(TASK_RETRY_TIME)
                 counter += 1
                 logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                      f"Sleeping for {TASK_RETRY_TIME} seconds."
-                      f"Total soups retrieved before failure: {soups_parsed}."
-                      f"Total time elapsed before: {total_elapsed} seconds.")
-                print(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                      f"Sleeping for {TASK_RETRY_TIME} seconds."
-                      f"Total soups retrieved before failure: {soups_parsed}."
-                      f"Total time elapsed before: {total_elapsed} seconds.")
+                      f"Sleeping for {TASK_RETRY_TIME} seconds.")
             else:
                 break
         except HTTPTooManyRequests:
@@ -105,12 +97,6 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
             counter += 1
             logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                   f"Sleeping for {TASK_RETRY_TIME} seconds."
-                  f"Total soups retrieved before failure: {soups_parsed}."
-                  f"Total time elapsed before: {total_elapsed} seconds.")
-            print((f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                  f"Sleeping for {TASK_RETRY_TIME} seconds."
-                  f"Total soups retrieved before failure: {soups_parsed}."
-                  f"Total time elapsed before: {total_elapsed} seconds."))
         except Exception as e:
             logger.debug(e)
             raise e
