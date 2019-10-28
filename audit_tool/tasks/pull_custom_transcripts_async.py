@@ -1,10 +1,8 @@
 import logging
 from saas import celery_app
-import requests
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
 import asyncio
-import aiohttp
 import time
 from aiohttp import ClientSession
 
@@ -45,7 +43,6 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                 lock(lock_name=lang_lock, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
                 init_es_connection()
                 logger.debug("Pulling custom transcripts.")
-                print("Pulling custom transcripts.")
                 language = LANGUAGES[lang_code]
                 unparsed_vids = get_unparsed_vids(language, num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
@@ -68,28 +65,19 @@ def pull_custom_transcripts_async(lang_codes, num_vids, num_runs):
                     logger.debug(f"Parsed video with id: {vid_id}")
                     logger.debug(f"Number of videos parsed: {vid_counter}")
                     logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
-                    print(f"Parsed video with id: {vid_id}")
-                    print(f"Number of videos parsed: {vid_counter}")
-                    print(f"Number of transcripts retrieved: {transcripts_counter}")
                 video_manager.upsert(all_videos)
                 logger.debug(f"Upserted {len(all_videos)} videos.")
-                print(f"Upserted {len(all_videos)} videos.")
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
                 soups_parsed += len(all_video_soups_dict)
                 logger.debug(f"Upserted {num_vids} transcripts in {elapsed} seconds.")
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
                 logger.debug(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
-                print(f"Upserted {num_vids} transcripts in {elapsed} seconds.")
-                print(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
-                print(f"Finished Run #{runs_counter} of {num_runs} for {lang_code}.")
                 unlock(lang_lock)
             runs_counter += 1
             logger.debug(f"Finished Run #{runs_counter} of {num_runs} Total Runs.")
-            print(f"Finished Run #{runs_counter} of {num_runs} Total Runs.")
             if runs_counter < num_runs:
                 logger.debug(f"Starting Run #{runs_counter + 1}.")
-                print(f"Starting Run #{runs_counter + 1}.")
     except Exception:
         pass
 
