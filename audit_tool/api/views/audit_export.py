@@ -33,6 +33,7 @@ class AuditExportApiView(APIView):
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
+    MAX_ROWS = 750000
 
     def get(self, request):
         query_params = request.query_params
@@ -155,10 +156,15 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
+        do_hit_words = False
         if clean is False:
             hit_types = 'exclusion'
+            if self.audit.params.get('exclusion'):
+                do_hit_words = True
         else:
             hit_types = 'inclusion'
+            if self.audit.params.get('inclusion'):
+                do_hit_words = True
         cols = [
             "Video URL",
             "Name",
@@ -201,15 +207,20 @@ class AuditExportApiView(APIView):
         videos = videos.select_related("video")
         for vid in videos:
             video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
+            if do_hit_words:
+                hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
             count = video_meta.count()
+            if count > self.MAX_ROWS:
+                count = self.MAX_ROWS
             num_done = 0
             for v in video_meta:
+                if num_done > self.MAX_ROWS:
+                    continue
                 try:
                     language = v.language.language
                 except Exception as e:
@@ -246,7 +257,10 @@ class AuditExportApiView(APIView):
                     default_audio_language = v.default_audio_language.language
                 except Exception as e:
                     default_audio_language = ""
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
+                all_hit_words = ""
+                unique_hit_words = ""
+                if do_hit_words:
+                    all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 video_audit_score = auditor.audit_video({
                     "id": v.video.video_id,
                     "title": v.name,
@@ -303,8 +317,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(1.0 * num_done / count * 100)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -394,11 +409,11 @@ class AuditExportApiView(APIView):
                             hit_words[cid.channel.channel_id].add(word_hit)
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        count = channel_meta.count()
-        num_done = 0
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
+            count = channel_meta.count()
+            num_done = 0
             for v in channel_meta:
                 try:
                     language = v.language.language
@@ -454,8 +469,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(num_done / count * 100.0)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
