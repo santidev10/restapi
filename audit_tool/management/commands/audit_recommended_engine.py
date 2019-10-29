@@ -62,9 +62,13 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
+        try:
+            self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        except Exception as e:
+            self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/7)]
+                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[self.machine_number]
                 self.language = self.audit.params.get('language')
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
@@ -89,8 +93,6 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
-        if thread_id % 7 == 0:
-            thread_id = 0
         if pending_videos.count() == 0:
             if thread_id == 0:
                 pending_videos = self.process_seed_list()
@@ -261,7 +263,7 @@ class Command(BaseCommand):
             if int(db_video_meta.category.category) not in self.category:
                 return False
         if self.related_audits:
-            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits, clean=True).exists():
                 return False
         if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM): #if video is blacklisted
             return False

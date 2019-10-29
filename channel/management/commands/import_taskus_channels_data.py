@@ -53,6 +53,6 @@ class Command(BaseCommand):
                                 pass
                         monetized = True if row[6].lower().strip() == "monetized" else None
                         scalable = row[7].capitalize().strip()
-                        language = row[8].capitalize().strip() if row[8] != "Unknown"
+                        language = row[8].capitalize().strip() if row[8] != "Unknown" else ""
         except PidFileError:
             raise PidFileError

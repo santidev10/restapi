@@ -64,7 +64,7 @@ class AdGroupUpdater(UpdateMixin):
         :return: Google Ads search response
         """
         query_fields = self.format_query(constants.AD_GROUP_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         ad_group_performance = self.ga_service.search(self.account.id, query=query)
         return ad_group_performance
 
@@ -93,12 +93,9 @@ class AdGroupUpdater(UpdateMixin):
                     "status": ad_group_status_enum.Name(row.ad_group.status).lower(),
                     "type": ad_group_type_enum.Name(row.ad_group.type).lower(),
                     "campaign_id": campaign_id,
-                    "cpv_bid": float(row.ad_group.cpv_bid_micros.value) / 10 ** 6
-                    if row.ad_group.cpv_bid_micros and row.ad_group.cpv_bid_micros.value else None,
-                    "cpm_bid": float(row.ad_group.cpm_bid_micros.value) / 10 ** 6
-                    if row.ad_group.cpm_bid_micros and row.ad_group.cpm_bid_micros.value else None,
-                    "cpc_bid": float(row.ad_group.cpc_bid_micros.value) / 10 ** 6
-                    if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
+                    "cpv_bid": int(row.ad_group.cpv_bid_micros.value) if row.ad_group.cpv_bid_micros and row.ad_group.cpv_bid_micros.value else None,
+                    "cpm_bid": int(row.ad_group.cpm_bid_micros.value) if row.ad_group.cpm_bid_micros and row.ad_group.cpm_bid_micros.value else None,
+                    "cpc_bid": int(row.ad_group.cpc_bid_micros.value) if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
                 }
                 # Check for AdGroup existence with set membership instead of making database queries for efficiency
                 if ad_group_id in self.existing_ad_group_ids:

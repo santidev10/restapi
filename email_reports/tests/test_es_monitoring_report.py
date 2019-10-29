@@ -44,11 +44,19 @@ class ESMonitoringTestCase(TestCase, ESTestCase):
     def test_send_email_no_docs_found(self):
         send_daily_email_reports(reports=["ESMonitoringEmailReport"], debug=False)
 
-        self.assertEqual(len(mail.outbox), 1)
-        email = mail.outbox[0]
-        text_body = email.body
+        self.assertEqual(len(mail.outbox), 3)
+        email_multi_alternatives = mail.outbox[-1]
+        text_body = email_multi_alternatives.body
 
-        self.assertIsNotNone(email.alternatives[0][0])
+        self.assertIn(
+            "Less than 1% of general_data, stats data has been updated during the last day", mail.outbox[0].body
+        )
+
+        self.assertIn(
+            "Less than 1% of general_data, stats data has been updated during the last day", mail.outbox[1].body
+        )
+
+        self.assertIsNotNone(email_multi_alternatives.alternatives[0][0])
 
         self.assertIn("No new general_data,stats,ads_stats,analytics,captions,cms,main sections in the last 3 days",
                       text_body)

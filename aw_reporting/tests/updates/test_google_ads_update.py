@@ -11,6 +11,7 @@ from google.ads.google_ads.client import GoogleAdsClient
 from google.ads.google_ads.errors import GoogleAdsException
 from google.ads.google_ads.v1.services.enums import DeviceEnum
 from google.api_core.exceptions import GoogleAPIError
+from google.auth.exceptions import RefreshError
 from pytz import timezone
 from pytz import utc
 from unittest.mock import MagicMock
@@ -102,6 +103,42 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
     @staticmethod
     def create_click_report_key(resource_name, date):
         return f"{resource_name}/{date}"
+
+    def test_existing_mcc_account_doesnt_reset_defaults(self):
+        mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            name="MCC",
+            can_manage_clients=True,
+            currency_code="YEN"
+        )
+        AWAccountPermission.objects.create(account=mcc_account,
+                                           aw_connection=AWConnection.objects.create(),
+                                           can_read=True)
+        managed_mcc_account = Account.objects.create(
+            id=next(int_iterator),
+            name="Original Name",
+            can_manage_clients=True,
+            is_active=False,
+        )
+        managed_mcc_account.managers.add(mcc_account.id)
+        mock_customer_client_data = MockGoogleAdsAPIResponse()
+        mock_customer_client_data.set("customer_client", "id", managed_mcc_account.id)
+        mock_customer_client_data.set("customer_client", "descriptive_name", "Changed Name")
+        mock_customer_client_data.set("customer_client", "currency_code", "USD")
+        mock_customer_client_data.set("customer_client", "time_zone", "UTC")
+        mock_customer_client_data.set("customer_client", "manager", True)
+        mock_customer_client_data.set("customer_client", "test_account", False)
+        mock_customer_client_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = AccountUpdater(mcc_account)
+        updater.get_client_customer_accounts = MagicMock(return_value=mock_customer_client_data)
+        updater.update(client)
+
+        managed_mcc_account.refresh_from_db()
+        self.assertTrue(managed_mcc_account.is_active is False)
+        self.assertTrue(managed_mcc_account.name == "Changed Name")
+        self.assertTrue(managed_mcc_account.currency_code == "USD")
 
     def test_update_campaign_aggregated_stats(self):
         now = datetime(2018, 1, 1, 15, tzinfo=utc)
@@ -1338,6 +1375,15 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(Device.CONNECTED_TV, ad_group.statistics.first().device_id)
         self.assertTrue(ad_group.device_tv_screens)
 
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.execute")
+    def test_mcc_account_access_revoked(self, mock_execute):
+        account = self._create_account()
+        manager = account.managers.all()[0]
+
+        mock_execute.side_effect = RefreshError
+        GoogleAdsUpdater().update_accounts_for_mcc(manager)
+        manager.refresh_from_db()
+        self.assertFalse(manager.is_active)
 
 
 class FakeExceptionWithArgs:

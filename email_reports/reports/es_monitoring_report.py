@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import get_template
 from django.template.defaultfilters import striptags
+from django.core.mail import EmailMessage
 
 from email_reports.reports.base import BaseEmailReport
 from es_components.managers import ChannelManager
@@ -22,6 +23,7 @@ class ESMonitoringEmailReport(BaseEmailReport):
 
     def send(self):
         self._collect_report()
+        self.send_alerts()
 
         html_content = self._get_body()
         text_content = striptags(html_content)
@@ -36,6 +38,31 @@ class ESMonitoringEmailReport(BaseEmailReport):
         )
         msg.attach_alternative(html_content, "text/html")
         msg.send(fail_silently=False)
+
+
+    def _send_alert_email(self, model_name, alert_message):
+        subject = f"DMP ALERT: {self.cluster} [{self.today}]"
+        body = f"{model_name}: {alert_message}"
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
+            to=settings.ES_MONITORING_EMAIL_ADDRESSES,
+            bcc=[],
+        )
+        email.send(fail_silently=False)
+
+
+    def send_alerts(self):
+        for model_name, report in self.monitoring_reports.items():
+            alerts = report.get("alerts")
+
+            if not alerts:
+                continue
+
+            for alert in alerts:
+                self._send_alert_email(model_name, alert)
+
 
     def _collect_report(self):
         managers = [

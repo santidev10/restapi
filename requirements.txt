@@ -1,3 +1,4 @@
+aiohttp==3.6.2
 amqp==2.5.1
 anyjson==0.3.3
 appdirs==1.4.3

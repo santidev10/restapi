@@ -46,7 +46,7 @@ class VideoUpdater(UpdateMixin):
         :return: Google ads video resource search response
         """
         query_fields = self.format_query(constants.VIDEO_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE segments.date BETWEEN '{min_date}' AND '{max_date}'"
+        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         video_performance = self.ga_service.search(self.account.id, query=query)
         return video_performance
 
@@ -71,7 +71,7 @@ class VideoUpdater(UpdateMixin):
                 "creative_id": video_id,
                 "ad_group_id": ad_group_id,
                 "date": row.segments.date.value,
-                **self.get_base_stats(row)
+                **self.get_base_stats(row, quartiles=True)
             }
             yield VideoCreativeStatistic(**statistics)
         VideoCreative.objects.safe_bulk_create(video_creative_to_create)
