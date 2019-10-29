@@ -1,14 +1,11 @@
 from django.http import Http404
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView
-from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 import brand_safety.constants as constants
 from channel.api.serializers.channel_with_blacklist_data import ChannelWithBlackListSerializer
-from es_components.managers import ChannelManager
-from es_components.managers import VideoManager
 from es_components.constants import Sections
-from es_components.constants import SortDirections
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -33,26 +30,21 @@ class SegmentListAPIViewAdapter(ListAPIView):
 
     def get_queryset(self):
         pk = self.kwargs["pk"]
-        segment_type = self.kwargs["segment_type"]
-        if segment_type == "video":
-            sort = "stats.views:desc"
-        else:
-            sort = "stats.subscribers:desc"
         try:
             segment = self.segment_model.objects.get(id=pk)
         except self.segment_model.DoesNotExist:
-            return Http404
+            raise Http404
         self.request.query_params._mutable = True
         page = self.request.query_params.get("page", 0)
         size = self.request.query_params.get("size", 0)
         try:
             page = int(page)
         except ValueError:
-            return Response(status=HTTP_400_BAD_REQUEST, data=f"Invalid page number: {page}")
+            raise ValidationError(code=HTTP_400_BAD_REQUEST, detail=f"Invalid page number: {page}")
         try:
             size = int(size)
         except ValueError:
-            return Response(status=HTTP_400_BAD_REQUEST, data=f"Invalid page number: {size}")
+            raise ValidationError(code=HTTP_400_BAD_REQUEST, detail=f"Invalid page size: {size}")
         if page <= 0:
             page = 1
         if size <= 0:

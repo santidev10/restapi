@@ -2,6 +2,8 @@ from time import sleep
 
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_404_NOT_FOUND
 import uuid
 
 from es_components.constants import Sections
@@ -154,3 +156,63 @@ class PersistentSegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         view_counts = [item["stats"]["subscribers"] for item in response.data["items"]]
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(sorted(view_counts, reverse=True), view_counts)
+
+    def test_invalid_page(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id) + "?page=2v"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_invalid_size(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id) + "?page=9a"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_channel_segment_not_found(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentChannel.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "channel", str(segment.uuid))
+        ChannelManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("channel", segment.id + 1)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
+    def test_video_segment_not_found(self):
+        self.create_admin_user()
+        items = 5
+        segment = PersistentSegmentVideo.objects.create(
+            uuid=uuid.uuid4(),
+            title="test_title",
+            id=next(int_iterator),
+        )
+        mock_data = self.get_mock_data(items, "video", str(segment.uuid))
+        VideoManager(sections=self.SECTIONS).upsert(mock_data)
+        sleep(1)
+        url = self._get_url("video", segment.id + 1)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
