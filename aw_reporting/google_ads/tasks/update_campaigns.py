@@ -5,11 +5,11 @@ from celery import chain
 from django.conf import settings
 from django.db import Error
 
-from audit_tool.models import APIScriptTracker
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
+from aw_reporting.google_ads.utils import get_batch_cid_accounts
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
@@ -65,10 +65,8 @@ def setup_cid_update_tasks():
     Setup task signatures to update all CID accounts under all MCC accounts
     :return:
     """
-    cursor, _ = APIScriptTracker.objects.get_or_create(name=LOCK_NAME)
     # Batch update tasks
-    limit = MAX_TASK_COUNT + cursor.cursor
-    cid_account_ids = GoogleAdsUpdater().get_accounts_to_update()[cursor.cursor:limit]
+    cid_account_ids = get_batch_cid_accounts(hourly_update=True, limit=MAX_TASK_COUNT)
     task_signatures = [
         cid_campaign_update.si(cid_id).set(queue=Queue.HOURLY_STATISTIC)
         for cid_id in cid_account_ids
@@ -113,11 +111,4 @@ def finalize_campaigns_update():
     :return:
     """
     add_relation_between_report_and_creation_campaigns()
-    cursor = APIScriptTracker.objects.get(name=LOCK_NAME)
-    next_cursor = cursor.cursor + MAX_TASK_COUNT
-    # Reset cursor if greater than length of amount of accounts
-    if next_cursor > len(GoogleAdsUpdater().get_accounts_to_update()):
-        next_cursor = 0
-    cursor.cursor = next_cursor
-    cursor.save()
-
+    logger.debug("Google Ads account and campaign update complete")

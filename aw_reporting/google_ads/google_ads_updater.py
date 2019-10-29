@@ -85,9 +85,9 @@ class GoogleAdsUpdater(object):
         for update_class in self.main_updaters:
             updater = update_class(self.cid_account)
             self.execute_with_any_permission(updater)
+        recalculate_de_norm_fields_for_account(self.cid_account.id)
         self.cid_account.update_time = timezone.now()
         self.cid_account.save()
-        recalculate_de_norm_fields_for_account(self.cid_account.id)
 
     def update_campaigns(self, cid_account):
         """
@@ -96,7 +96,6 @@ class GoogleAdsUpdater(object):
         :return:
         """
         self.cid_account = cid_account
-
         campaign_updater = CampaignUpdater(self.cid_account)
         self.execute_with_any_permission(campaign_updater)
         self.cid_account.hourly_updated_at = timezone.now()
@@ -126,26 +125,34 @@ class GoogleAdsUpdater(object):
             else:
                 self.execute(updater, client)
         recalculate_de_norm_fields_for_account(self.cid_account.id)
+        self.cid_account.update_time = timezone.now()
+        self.cid_account.save()
 
-    @cached_method(timeout=60 * 60)
-    def get_accounts_to_update(self, end_date_threshold=None, as_obj=False):
+    @staticmethod
+    def get_accounts_to_update(hourly_update=True, end_date_threshold=None, as_obj=False):
         """
         Get current CID accounts to update
             Ordered by amount of campaigns accounts have
+        :param hourly_update: bool
+            If hourly_update is True, then order accounts by hourly updated at
+            Else, order accounts by full_update at
+
+            hourly_updated_at ordering used by Google Ads hourly account / campaign update
+            full_updated_at ordering used by Google Ads update all without campaigns
         :param end_date_threshold: date obj
         :param as_obj: bool
         :return: list
         """
         to_update = []
         end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
-        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).annotate(num_campaigns=Count("campaigns")).order_by("-num_campaigns")
+        if hourly_update:
+            order_by_field = "hourly_updated_at"
+        else:
+            order_by_field = "update_time"
+        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(order_by_field)
         for account in cid_accounts:
-            # If no linked opportunities or any linked opportunity has not ended, update
-            opportunities = Opportunity.objects.filter(aw_cid=account.id)
-            opportunities_active = not opportunities or any(
-                opp.end is None or opp.end > end_date_threshold for opp in opportunities)
             account_end_date = account.end_date
-            if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
+            if account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
                     account = account.id
                 to_update.append(account)

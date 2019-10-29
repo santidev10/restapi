@@ -10,6 +10,7 @@ import pytz
 
 from aw_reporting.google_ads.constants import GEO_TARGET_CONSTANT_FIELDS
 from aw_reporting.google_ads.google_ads_api import get_client
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AWAccountPermission
@@ -162,3 +163,16 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
+
+
+def get_batch_cid_accounts(hourly_update, limit):
+    """
+    Get CID accounts to update
+        IF hourly update is True, order accounts by hourly_updated_at
+        Else, order accounts by update_at
+    :param hourly_update: bool
+    :param limit: int
+    :return:
+    """
+    cid_accounts = GoogleAdsUpdater.get_accounts_to_update(hourly_update)[:limit]
+    return cid_accounts
