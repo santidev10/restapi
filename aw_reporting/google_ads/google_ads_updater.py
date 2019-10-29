@@ -5,7 +5,7 @@ import json
 import time
 
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Count
+from django.db.models import F
 from django.utils import timezone
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
@@ -129,7 +129,7 @@ class GoogleAdsUpdater(object):
         self.cid_account.save()
 
     @staticmethod
-    def get_accounts_to_update(hourly_update=True, end_date_threshold=None, as_obj=False):
+    def get_accounts_to_update(hourly_update=True, end_date_threshold=None, as_obj=False, size=None):
         """
         Get current CID accounts to update
             Ordered by amount of campaigns accounts have
@@ -149,13 +149,15 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
-        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(order_by_field)
+        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
         for account in cid_accounts:
             account_end_date = account.end_date
             if account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
                     account = account.id
                 to_update.append(account)
+        if size:
+            to_update = to_update[:size]
         return to_update
 
     @staticmethod

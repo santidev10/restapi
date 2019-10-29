@@ -29,7 +29,6 @@ from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLo
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
-from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
@@ -60,10 +59,7 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models.ad_words.constants import AgeRange
 from aw_reporting.models.ad_words.constants import Device
-from aw_reporting.models.ad_words.constants import Gender
-from aw_reporting.models.ad_words.constants import Parent
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.exception import ExceptionWithArgs
 from utils.utittests.generic_test import generic_test
@@ -1383,6 +1379,22 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         GoogleAdsUpdater().update_accounts_for_mcc(manager)
         manager.refresh_from_db()
         self.assertFalse(manager.is_active)
+
+    def test_hourly_batch_process_gets_all_accounts(self):
+        accounts_size = 25
+        batch_size = 5
+        accounts_created = set()
+        accounts_seen = set()
+        for i in range(accounts_size):
+            cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            accounts_created.add(cid.id)
+        for i in range(len(accounts_created) // batch_size):
+            to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=False, size=batch_size, as_obj=True)
+            for acc in to_update:
+                acc.update_time = datetime.now()
+                acc.save()
+                accounts_seen.add(acc.id)
+        self.assertEqual(accounts_created, accounts_seen)
 
 
 class FakeExceptionWithArgs:

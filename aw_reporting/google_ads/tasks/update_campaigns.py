@@ -9,7 +9,6 @@ from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
-from aw_reporting.google_ads.utils import get_batch_cid_accounts
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
@@ -66,7 +65,7 @@ def setup_cid_update_tasks():
     :return:
     """
     # Batch update tasks
-    cid_account_ids = get_batch_cid_accounts(hourly_update=True, limit=MAX_TASK_COUNT)
+    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=MAX_TASK_COUNT)
     task_signatures = [
         cid_campaign_update.si(cid_id).set(queue=Queue.HOURLY_STATISTIC)
         for cid_id in cid_account_ids
