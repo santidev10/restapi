@@ -32,7 +32,7 @@ class Command(BaseCommand):
             raise ValidationError("Argument 'filename' is required.")
 
         try:
-            with PidFile("import_taskus_data", piddir=".") as pid:
+            with PidFile("import_taskus_data.pid", piddir=".") as pid:
                 channel_manager = ChannelManager(sections=(Sections.TASK_US_DATA,),
                                              upsert_sections=(Sections.TASK_US_DATA,))
                 with open(file_name, "r") as f:
