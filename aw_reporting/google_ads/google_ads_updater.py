@@ -1,10 +1,12 @@
 from datetime import date
 from datetime import timedelta
 import logging
+import json
 import time
 
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import F
 from django.utils import timezone
-
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
 from google.api_core.exceptions import InternalServerError
@@ -31,8 +33,10 @@ from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.models import Account
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
+from utils.es_components_cache import cached_method
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,7 @@ class GoogleAdsAuthErrors:
 
 
 class GoogleAdsUpdater(object):
+    CACHE_KEY_PREFIX = "restapi.GoogleAdsUpdater"
     MAX_RETRIES = 5
     SLEEP_COEFF = 2
 
@@ -67,47 +72,40 @@ class GoogleAdsUpdater(object):
         CampaignLocationTargetUpdater,
     )
 
-    def __init__(self, cid_account=None, mcc_account=None):
-        self.mcc_account = mcc_account
+    def __init__(self, cid_account=None):
         self.cid_account = cid_account
         self.auth_error_enum = AuthorizationErrorEnum().AuthorizationError
 
-    def update_all_except_campaigns(self, mcc_account, cid_account):
+    def update_all_except_campaigns(self, cid_account):
         """
         Update / Save all reporting data except Campaign data
         :return:
         """
-        self.mcc_account = mcc_account
         self.cid_account = cid_account
-
         for update_class in self.main_updaters:
             updater = update_class(self.cid_account)
             self.execute_with_any_permission(updater)
+        recalculate_de_norm_fields_for_account(self.cid_account.id)
         self.cid_account.update_time = timezone.now()
         self.cid_account.save()
-        recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    def update_campaigns(self, mcc_account, cid_account):
+    def update_campaigns(self, cid_account):
         """
         Update / Save campaigns for all accounts managed by
             Run in separate process on a more frequent interval than other reporting data
         :return:
         """
-        self.mcc_account = mcc_account
         self.cid_account = cid_account
-
         campaign_updater = CampaignUpdater(self.cid_account)
         self.execute_with_any_permission(campaign_updater)
         self.cid_account.hourly_updated_at = timezone.now()
         self.cid_account.save()
         recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    def update_accounts_for_mcc(self, mcc_account=None):
+    def update_accounts_for_mcc(self, mcc_account):
         """ Update /Save accounts managed by MCC """
-        if mcc_account:
-            self.mcc_account = mcc_account
-        account_updater = AccountUpdater(self.mcc_account)
-        self.execute_with_any_permission(account_updater)
+        account_updater = AccountUpdater(mcc_account)
+        self.execute_with_any_permission(account_updater, mcc_account=mcc_account)
 
     def full_update(self, cid_account, any_permission=False, client=None):
         """
@@ -127,33 +125,39 @@ class GoogleAdsUpdater(object):
             else:
                 self.execute(updater, client)
         recalculate_de_norm_fields_for_account(self.cid_account.id)
+        self.cid_account.update_time = timezone.now()
+        self.cid_account.save()
 
     @staticmethod
-    def get_accounts_to_update_for_mcc(mcc_id, end_date_threshold=None, as_obj=False):
+    def get_accounts_to_update(hourly_update=True, end_date_threshold=None, as_obj=False, size=None):
         """
         Get current CID accounts to update
-        :param mcc_id: str
+            Ordered by amount of campaigns accounts have
+        :param hourly_update: bool
+            If hourly_update is True, then order accounts by hourly updated at
+            Else, order accounts by full_update at
+
+            hourly_updated_at ordering used by Google Ads hourly account / campaign update
+            full_updated_at ordering used by Google Ads update all without campaigns
         :param end_date_threshold: date obj
         :param as_obj: bool
         :return: list
         """
         to_update = []
         end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
-        cid_accounts = Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True)
+        if hourly_update:
+            order_by_field = "hourly_updated_at"
+        else:
+            order_by_field = "update_time"
+        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
         for account in cid_accounts:
-            try:
-                # Check if account has invalid Google Ads id
-                int(account.id)
-            except ValueError:
-                continue
-            # If no linked opportunities or any linked opportunity has not ended, update
-            opportunities = Opportunity.objects.filter(aw_cid=account.id)
-            opportunities_active = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
             account_end_date = account.end_date
-            if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
+            if account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
                     account = account.id
                 to_update.append(account)
+        if size:
+            to_update = to_update[:size]
         return to_update
 
     @staticmethod
@@ -168,20 +172,27 @@ class GoogleAdsUpdater(object):
         geo_target_updater = GeoTargetUpdater()
         geo_target_updater.update(client)
 
-    def execute_with_any_permission(self, updater):
+    def execute_with_any_permission(self, updater, mcc_account=None):
         """
         Run update procedure with any available permission with error handling
         :param updater: Updater class object
+        :param mcc_account:
         :return:
         """
-        permissions = self.mcc_account.mcc_permissions.filter(
-            can_read=True, aw_connection__revoked_access=False,
-        )
+        if mcc_account:
+            permissions = AWAccountPermission.objects.filter(
+                account=mcc_account
+            )
+        else:
+            permissions = AWAccountPermission.objects.filter(
+                account__in=self.cid_account.managers.all()
+            )
+        permissions = permissions.filter(can_read=True, aw_connection__revoked_access=False,)
         for permission in permissions:
             aw_connection = permission.aw_connection
             try:
                 client = get_client(
-                    login_customer_id=str(self.mcc_account.id),
+                    login_customer_id=permission.account.id,
                     refresh_token=aw_connection.refresh_token
                 )
                 self.execute(updater, client)
@@ -190,24 +201,20 @@ class GoogleAdsUpdater(object):
                 permission.can_read = False
                 permission.save()
                 continue
-
             except RefreshError:
                 continue
-
             except Exception as e:
-                logger.error(f"UNHANDLED Exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
-
+                logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
             else:
                 return
-        # If exhausted entire list of AWConnections, then was unable to find credentials to update
-        if updater.__class__ == AccountUpdater:
-            Account.objects.filter(id=self.mcc_account.id).update(is_active=False)
-            logger.info(f"Account access revoked for MCC: {self.mcc_account.id}")
 
-        message = f"Unable to find AWConnection for MCC: {self.mcc_account.id} with updater: {updater.__class__.__name__}"
+        # If exhausted entire list of AWConnections, then was unable to find credentials to update
+        if updater.__class__ == AccountUpdater and mcc_account:
+            Account.objects.filter(id=mcc_account.id).update(is_active=False)
+            logger.info(f"Account access revoked for MCC: {mcc_account.id}")
+
         if self.cid_account:
-            message += f" for CID: {self.cid_account.id}"
-        logger.error(message)
+            logger.warning(f"Unable to find AWConnection for CID: {self.cid_account.id} with updater: {updater.__class__.__name__}")
 
     def execute(self, updater, client):
         """
@@ -219,14 +226,12 @@ class GoogleAdsUpdater(object):
         """
         try:
             updater.update(client)
-
         # Client / request exceptions
         except GoogleAdsException as e:
             error = self.auth_error_enum(e.failure.errors[0].error_code.authorization_error).name
-
             # Invalid client
             if error == GoogleAdsAuthErrors.USER_PERMISSION_DENIED:
-                logger.error(
+                logger.warning(
                     f"Invalid client: login_customer_id: {client.login_customer_id}, {e}"
                 )
                 raise GoogleAdsUpdaterPermissionDenied
@@ -236,31 +241,26 @@ class GoogleAdsUpdater(object):
                 self.cid_account.save()
             elif error == GoogleAdsAuthErrors.UNSPECIFIED:
                 # Issue with customer resource
-                logger.error(e)
+                logger.warning(e)
                 raise GoogleAdsUpdaterContinueException
             else:
                 # Uncaught GoogleAdsException
-                logger.error(f"UNCAUGHT GoogleAdsException EXCEPTION: {e}")
+                logger.error(f"Uncaught GoogleAdsException: {e}")
 
         # Google Ads API Interval exceptions
         except (ResourceExhausted, RetryError, InternalServerError, GoogleAPIError) as e:
-            # Retry on Google Ads API server errors
-            logger.error(f"retrying: {e}")
             try:
                 self._retry(updater, client)
-            except GoogleAdsUpdaterContinueException as e:
-                logger.error(str(e))
-                raise
             except Exception as e:
-                logger.error(f"MAX RETRIES EXCEEDED: CID: {self.cid_account}, {e}")
+                logger.warning(f"Max retries exceeded: CID: {self.cid_account}, {e}")
 
         except Exception as e:
-            try:
-                cid = updater.account.id
-            except AttributeError:
+            if self.cid_account:
+                cid = self.cid_account.id
+            else:
                 cid = "None"
-            logger.error(
-                f"Unable to update with {updater.__class__.__name__} for cid: {cid} for mcc: {self.mcc_account.id}. ERR: {e}"
+            logger.warning(
+                f"Unable to update with {updater.__class__.__name__} for cid: {cid}.\n{e}"
             )
 
     def _retry(self, updater, client):
@@ -271,20 +271,24 @@ class GoogleAdsUpdater(object):
         :return:
         """
         tries_count = 0
-        try:
-            while tries_count <= self.MAX_RETRIES:
-                try:
-                    updater.update(client)
-                except Exception as err:
-                    logger.error(f"On try {tries_count} of {self.MAX_RETRIES}")
-                    tries_count += 1
-                    if tries_count <= self.MAX_RETRIES:
-                        sleep = tries_count ** self.SLEEP_COEFF
-                        time.sleep(sleep)
-                    else:
-                        logger.error(f"MAX RETRIES EXCEEDED: {err}")
-        except Exception as err:
-            logger.error(f"UNHANDLED RETRY EXCEPTION: {err}")
+        while tries_count <= self.MAX_RETRIES:
+            try:
+                updater.update(client)
+            except Exception as err:
+                tries_count += 1
+                if tries_count <= self.MAX_RETRIES:
+                    sleep = tries_count ** self.SLEEP_COEFF
+                    time.sleep(sleep)
+                else:
+                    raise err
+
+    def get_cache_key(self, part, options):
+        options = dict(
+            options=options,
+        )
+        key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
+        key = f"{self.CACHE_KEY_PREFIX}.{part}"
+        return key, key_json
 
 
 # Exception has been handled and should continue processing next account

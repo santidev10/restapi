@@ -33,7 +33,7 @@ class Command(BaseCommand):
             mcc_accounts = account.managers.all()
             for mcc in mcc_accounts:
                 try:
-                    updater = GoogleAdsUpdater(mcc_account=mcc)
+                    updater = GoogleAdsUpdater()
                     updater.full_update(account, any_permission=True)
                 except Exception as e:
                     logger.error(f"Exception while executing full_account_update for CID: {_id}. {e}")

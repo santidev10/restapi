@@ -1,4 +1,3 @@
-import itertools
 import logging
 import time
 
@@ -12,79 +11,66 @@ from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdaterContinueE
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
-from saas.configs.celery import TaskExpiration
-from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import group_chorded
-from utils.celery.tasks import lock
+from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 from utils.exception import retry
+
 
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_without_campaigns"
+MAX_TASK_COUNT = 50
 
 
-@celery_app.task(expires=TaskExpiration.FULL_AW_UPDATE, soft_time_limit=TaskTimeout.FULL_AW_UPDATE)
+@celery_app.task
 def setup_update_without_campaigns():
-    job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=60, expire=TaskExpiration.FULL_AW_UPDATE).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
-        setup_cid_update_tasks.si()
-    )
-    return job()
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60 * 2).acquire(blocking=False)
+    if is_acquired:
+        setup_cid_update_tasks.delay()
 
 
 @celery_app.task
 def setup_cid_update_tasks():
     logger.debug("Starting Google Ads update without campaigns")
-    mcc_accounts = Account.objects.filter(can_manage_clients=True, is_active=True).values_list("id", flat=True)
-    cid_update_tasks = itertools.chain.from_iterable(
-        account_update_all_except_campaigns(mcc_id)
-        for mcc_id in mcc_accounts
-    )
-    cid_update_tasks = group_chorded(cid_update_tasks).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
+    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=MAX_TASK_COUNT)
+    task_signatures = [
+        cid_update_all_except_campaigns.si(cid_id).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
+        for cid_id in cid_account_ids
+    ]
+    update_tasks = group_chorded(task_signatures).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
     job = chain(
-        cid_update_tasks,
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        update_tasks,
         finalize_update.si(),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
     )
     return job()
 
 
 @celery_app.task
-def account_update_all_except_campaigns(mcc_id):
-    """
-    Create task signatures with cid_update_all_except_campaigns for each account under mcc_id
-    :return: list -> Celery update tasks
-    """
-    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update_for_mcc(mcc_id)
-    task_signatures = [
-        cid_update_all_except_campaigns.si(cid, mcc_id, index + 1, len(cid_account_ids)).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
-        for index, cid in enumerate(cid_account_ids, start=0)
-    ]
-    return task_signatures
-
-
-@celery_app.task
 @retry(count=10, delay=5, exceptions=(Error, ))
-def cid_update_all_except_campaigns(cid_id, mcc_id, index, total):
+def cid_update_all_except_campaigns(cid_id):
     """
     Update single CID account
     """
     start = time.time()
     try:
-        mcc_account = Account.objects.get(id=mcc_id)
         cid_account = Account.objects.get(id=cid_id)
         updater = GoogleAdsUpdater()
-        updater.update_all_except_campaigns(mcc_account, cid_account)
-        logger.debug(f"FINISH CID UPDATE WITHOUT CAMPAIGNS {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
+        updater.update_all_except_campaigns(cid_account)
+        logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
     except GoogleAdsUpdaterContinueException:
-        logger.error(f"ERROR CID UPDATE WITHOUT CAMPAIGNS {index}/{total} FOR CID: {cid_id} MCC: {mcc_id}. Took: {time.time() - start}")
+        pass
 
 
 @celery_app.task
 def finalize_update():
-    logger.debug("Adding relations between reports and ad_group and ad creations")
+    """
+    Call finalize methods
+    Sets up the next batch of update tasks
+    :return:
+    """
     add_relation_between_report_and_creation_ad_groups()
     add_relation_between_report_and_creation_ads()
-    logger.info(f"Google Ads update without campaigns complete")
+    logger.debug("Google Ads update without campaigns complete")
 

@@ -12,6 +12,7 @@ from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Campaign
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
 from aw_reporting.tests.updates.test_google_ads_update import UpdateGoogleAdsTestCase
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
@@ -103,3 +104,19 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
                 patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc", new=MagicMock):
             setup_update_campaigns()
             mock_update_campaigns.assert_not_called()
+
+    def test_hourly_batch_process_gets_all_accounts(self):
+        accounts_size = 25
+        batch_size = 5
+        accounts_created = set()
+        accounts_seen = set()
+        for i in range(accounts_size):
+            cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            accounts_created.add(cid.id)
+        for i in range(len(accounts_created) // batch_size):
+            to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=batch_size, as_obj=True)
+            for acc in to_update:
+                acc.hourly_updated_at = datetime.now()
+                acc.save()
+                accounts_seen.add(acc.id)
+        self.assertEqual(accounts_created, accounts_seen)

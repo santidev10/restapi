@@ -162,3 +162,4 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
+
