@@ -5,6 +5,7 @@ import json
 import time
 
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Count
 from django.utils import timezone
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
@@ -130,13 +131,14 @@ class GoogleAdsUpdater(object):
     def get_accounts_to_update(self, end_date_threshold=None, as_obj=False):
         """
         Get current CID accounts to update
+            Ordered by amount of campaigns accounts have
         :param end_date_threshold: date obj
         :param as_obj: bool
         :return: list
         """
         to_update = []
         end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
-        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by("id")
+        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).annotate(num_campaigns=Count("campaigns")).order_by("-num_campaigns")
         for account in cid_accounts:
             # If no linked opportunities or any linked opportunity has not ended, update
             opportunities = Opportunity.objects.filter(aw_cid=account.id)

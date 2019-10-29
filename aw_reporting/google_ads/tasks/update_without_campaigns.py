@@ -21,12 +21,12 @@ from utils.exception import retry
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_without_campaigns"
-MAX_TASK_COUNT = 20
+MAX_TASK_COUNT = 50
 
 
 @celery_app.task
 def setup_update_without_campaigns():
-    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60).acquire(blocking=False)
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60 * 2).acquire(blocking=False)
     if is_acquired:
         setup_cid_update_tasks.delay()
 
@@ -63,7 +63,7 @@ def cid_update_all_except_campaigns(cid_id):
         updater.update_all_except_campaigns(cid_account)
         logger.debug(f"FINISH CID UPDATE WITHOUT CAMPAIGNS FOR CID: {cid_id} Took: {time.time() - start}")
     except GoogleAdsUpdaterContinueException:
-        logger.warning(f"ERROR CID UPDATE WITHOUT CAMPAIGNS FOR CID: {cid_id}")
+        pass
 
 
 @celery_app.task

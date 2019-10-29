@@ -21,7 +21,7 @@ from utils.exception import retry
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_campaigns"
-MAX_TASK_COUNT = 50
+MAX_TASK_COUNT = 100
 
 
 @celery_app.task
