@@ -471,7 +471,7 @@ class AuditExportApiView(APIView):
                 try:
                     if len(bad_word_categories) > 0:
                         bad_word_category_dict = {}
-                        bad_words = hit_words[v.channel.channel_id] if clean is None else bad_hit_words[v.channel.channel_id]
+                        bad_words = hit_words[v.channel.channel_id] if clean is not None else bad_hit_words[v.channel.channel_id]
                         for word in bad_words:
                             try:
                                 word_index = audit.params['exclusion'].index(word)
