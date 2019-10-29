@@ -263,7 +263,7 @@ class Command(BaseCommand):
             if int(db_video_meta.category.category) not in self.category:
                 return False
         if self.related_audits:
-            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits, clean=True).exists():
                 return False
         if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM): #if video is blacklisted
             return False

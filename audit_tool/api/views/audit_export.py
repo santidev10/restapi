@@ -156,10 +156,15 @@ class AuditExportApiView(APIView):
         # if 'export_{}'.format(clean_string) in audit.params:
         #     return audit.params['export_{}'.format(clean_string)], file_name
         self.get_categories()
+        do_hit_words = False
         if clean is False:
             hit_types = 'exclusion'
+            if self.audit.params.get('exclusion'):
+                do_hit_words = True
         else:
             hit_types = 'inclusion'
+            if self.audit.params.get('inclusion'):
+                do_hit_words = True
         cols = [
             "Video URL",
             "Name",
@@ -202,7 +207,8 @@ class AuditExportApiView(APIView):
         videos = videos.select_related("video")
         for vid in videos:
             video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
+            if do_hit_words:
+                hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'w+', newline='') as myfile:
@@ -251,7 +257,10 @@ class AuditExportApiView(APIView):
                     default_audio_language = v.default_audio_language.language
                 except Exception as e:
                     default_audio_language = ""
-                all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
+                all_hit_words = ""
+                unique_hit_words = ""
+                if do_hit_words:
+                    all_hit_words, unique_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=clean)
                 video_audit_score = auditor.audit_video({
                     "id": v.video.video_id,
                     "title": v.name,
@@ -308,8 +317,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(1.0 * num_done / count * 100)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -358,6 +368,9 @@ class AuditExportApiView(APIView):
             "{} Words".format("Bad" if clean is False else "Good"),
             "Brand Safety Score",
         ]
+        if clean is None:
+            cols.insert(-1, "Unique Bad Words")
+            cols.insert(-1, "Bad Words")
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
             if "" in bad_word_categories:
@@ -368,6 +381,8 @@ class AuditExportApiView(APIView):
             pass
         channel_ids = []
         hit_words = {}
+        good_hit_words = {}
+        bad_hit_words = {}
         video_count = {}
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
@@ -380,9 +395,13 @@ class AuditExportApiView(APIView):
                 if clean is False:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
                     node = 'exclusion'
-                else:
+                elif clean is True:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
                     node = 'inclusion'
+                elif clean is None:
+                    good_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
+                    bad_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
+                    node = 'all'
             except Exception as e:
                 hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
@@ -391,19 +410,25 @@ class AuditExportApiView(APIView):
             )
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
-            videos_filter = False if clean is False else True
-            for video in videos.filter(clean=videos_filter):
-                if video.word_hits.get(node):
-                    for word_hit in video.word_hits.get(node):
-                        if word_hit not in hit_words[cid.channel.channel_id]:
-                            hit_words[cid.channel.channel_id].add(word_hit)
+            if node == 'all':
+                for video in videos.filter(clean=True):
+                    if video.word_hits.get('inclusion'):
+                        good_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('inclusion')))
+                for video in videos.filter(clean=False):
+                    if video.word_hits.get('exclusion'):
+                        bad_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('exclusion')))
+            else:
+                videos_filter = False if clean is False else True
+                for video in videos.filter(clean=videos_filter):
+                    if video.word_hits.get(node):
+                        hit_words[cid.channel.channel_id].union(set(video.word_hits.get(node)))
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
-        count = channel_meta.count()
-        num_done = 0
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerow(cols)
+            count = channel_meta.count()
+            num_done = 0
             for v in channel_meta:
                 try:
                     language = v.language.language
@@ -431,14 +456,17 @@ class AuditExportApiView(APIView):
                     v.last_uploaded_view_count if v.last_uploaded_view_count else '',
                     last_category,
                     bad_videos_count[v.channel.channel_id],
-                    len(hit_words[v.channel.channel_id]),
-                    ','.join(hit_words[v.channel.channel_id]),
+                    len(hit_words[v.channel.channel_id]) if clean is not None else len(good_hit_words[v.channel.channel_id]),
+                    ','.join(hit_words[v.channel.channel_id]) if clean is not None else ','.join(good_hit_words[v.channel.channel_id]),
                     channel_brand_safety_score
                 ]
+                if clean is not None:
+                    data.insert(-1, len(bad_hit_words[v.channel.channel_id]))
+                    data.insert(-1, ','.join(bad_hit_words[v.channel.channel_id]))
                 try:
                     if len(bad_word_categories) > 0:
                         bad_word_category_dict = {}
-                        bad_words = hit_words[v.channel.channel_id]
+                        bad_words = hit_words[v.channel.channel_id] if clean is None else bad_hit_words[v.channel.channel_id]
                         for word in bad_words:
                             try:
                                 word_index = audit.params['exclusion'].index(word)
@@ -459,8 +487,9 @@ class AuditExportApiView(APIView):
                 wr.writerow(data)
                 num_done += 1
                 if export and num_done % 500 == 0:
-                    export.percent_done = int(1.0 * num_done / count)
+                    export.percent_done = int(num_done / count * 100.0)
                     export.save(update_fields=['percent_done'])
+                    print("export at {}".format(export.percent_done))
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex

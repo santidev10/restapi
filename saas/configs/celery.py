@@ -92,6 +92,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60,
         'kwargs': dict(
             lang_codes=['en'],
+            num_vids=3000
         )
     }
 }
