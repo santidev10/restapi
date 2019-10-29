@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime
 import logging
 
 from aw_reporting.google_ads import constants
@@ -16,12 +16,10 @@ logger = logging.getLogger(__name__)
 class AdGroupUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group"
 
-    def __init__(self, account, start_date=None, end_date=None):
+    def __init__(self, account):
         self.client = None
         self.ga_service = None
         self.account = account
-        self.start_date = start_date
-        self.end_date = end_date
         self.existing_statistics = AdGroupStatistic.objects.filter(ad_group__campaign__account=account)
         self.existing_ad_group_ids = set(AdGroup.objects.filter(campaign__account=account).values_list("id", flat=True))
         self.existing_campaign_ids = set(Campaign.objects.filter(account=account).values_list("id", flat=True))
@@ -32,20 +30,10 @@ class AdGroupUpdater(UpdateMixin):
 
         now = now_in_default_tz()
         max_available_date = self.max_ready_date(now, tz_str=self.account.timezone)
-        start_date = self.start_date
-        end_date = self.end_date
-        today = now.date()
 
-        # If valid, start date and end date provided, drop stats in date range and update with new data
-        if start_date and end_date and start_date < end_date:
-            self.drop_custom_stats(self.existing_statistics, start_date, end_date)
-            min_date = start_date
-            max_date = end_date
-        else:
-            self.drop_latest_stats(self.existing_statistics, today)
-            min_date, max_date = self.get_account_border_dates(self.account)
-            # Update ad groups and daily stats only if there have been changes
-            min_date, max_date = (max_date + timedelta(days=1), max_available_date) if max_date else (constants.MIN_FETCH_DATE, max_available_date)
+        min_date, max_date = self.get_account_border_dates(self.account)
+        # Update ad groups and daily stats only if there have been changes
+        min_date, max_date = max_date, max_available_date if max_date else (constants.MIN_FETCH_DATE, max_available_date)
 
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
@@ -53,8 +41,7 @@ class AdGroupUpdater(UpdateMixin):
             resource_name=self.RESOURCE_NAME
         )
         ad_group_performance = self._get_ad_group_performance(min_date, max_date)
-        generator = self._generate_instances(ad_group_performance, click_type_data)
-        AdGroupStatistic.objects.safe_bulk_create(generator)
+        self._generate_instances(ad_group_performance, click_type_data, min_date)
 
     def _get_ad_group_performance(self, min_date, max_date):
         """
@@ -68,7 +55,7 @@ class AdGroupUpdater(UpdateMixin):
         ad_group_performance = self.ga_service.search(self.account.id, query=query)
         return ad_group_performance
 
-    def _generate_instances(self, ad_group_performance, click_type_data):
+    def _generate_instances(self, ad_group_performance, click_type_data, min_stat_date):
         """
         Method to create and update AdGroup and AdGroupStatistic objects
         :param ad_group_performance: Google ads ad_group resource search response
@@ -76,8 +63,14 @@ class AdGroupUpdater(UpdateMixin):
         """
         ad_group_status_enum = self.client.get_type("AdGroupStatusEnum", version="v2").AdGroupStatus
         ad_group_type_enum = self.client.get_type("AdGroupTypeEnum", version="v2").AdGroupType
+        existing_stats_for_min_date = {
+            (s.ad_group_id, str(s.date), s.device_id, int(s.ad_network)): s.id for s
+            in AdGroupStatistic.objects.filter(ad_group__campaign__account=self.account, date=min_stat_date)
+        }
         updated_ad_groups = set()
         ad_groups_to_create = []
+        ad_statistics_to_update = []
+        ad_statistics_to_create = []
         for row in ad_group_performance:
             ad_group_id = str(row.ad_group.id.value)
             campaign_id = str(row.campaign.id.value)
@@ -119,5 +112,19 @@ class AdGroupUpdater(UpdateMixin):
             # Update statistics with click performance obtained in get_clicks_report
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME, ignore_a_few_records=True)
             statistics.update(click_data)
-            yield AdGroupStatistic(**statistics)
+
+            stat_obj = AdGroupStatistic(**statistics)
+            stat_date = datetime.strptime(statistics["date"], "%Y-%m-%d").date()
+            stat_unique_constraint = (statistics["ad_group_id"], statistics["date"], statistics["device_id"], statistics["ad_network"])
+            stat_id = existing_stats_for_min_date.get(stat_unique_constraint)
+
+            if stat_date < min_stat_date:
+                continue
+            elif stat_date == min_stat_date and stat_id is not None:
+                stat_obj.id = stat_id
+                ad_statistics_to_update.append(stat_obj)
+            else:
+                ad_statistics_to_create.append(stat_obj)
         AdGroup.objects.bulk_create(ad_groups_to_create)
+        AdGroupStatistic.objects.safe_bulk_create(ad_statistics_to_create)
+        AdGroupStatistic.objects.bulk_update(ad_statistics_to_update, fields=constants.STATS_MODELS_UPDATE_FIELDS)

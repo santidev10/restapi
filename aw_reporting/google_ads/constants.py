@@ -13,6 +13,8 @@ from aw_reporting.models.ad_words.constants import Parent
 
 GET_DF = "%Y-%m-%d"
 MIN_FETCH_DATE = settings.MIN_AW_FETCH_DATE
+CLICKS_MODEL_UPDATE_FIELDS = ("clicks_website", "clicks_call_to_action_overlay", "clicks_app_store", "clicks_cards", "clicks_end_cap")
+STATS_MODELS_UPDATE_FIELDS = CLICKS_MODEL_UPDATE_FIELDS + ("active_view_impressions", "engagements", "impressions", "video_views", "clicks", "cost", "conversions", "all_conversions", "view_through", "video_views_25_quartile", "video_views_50_quartile", "video_views_75_quartile", "video_views_100_quartile")
 
 # Mapping of google ads api response objects to CHF models
 YOUTUBE_CHANNEL = "YOUTUBE_CHANNEL"

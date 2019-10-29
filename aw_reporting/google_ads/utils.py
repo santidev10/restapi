@@ -15,7 +15,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Campaign
 
-AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 3
 
 logger = logging.getLogger(__name__)
 
@@ -162,4 +162,9 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
+
+
+def get_date_from_stability_stats_days(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT):
+    date = datetime.now() - timedelta(days=days)
+    return date
 
