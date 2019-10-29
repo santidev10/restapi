@@ -159,11 +159,11 @@ class AuditExportApiView(APIView):
         do_hit_words = False
         if clean is False:
             hit_types = 'exclusion'
-            if self.audit.params.get('exclusion'):
+            if audit.params.get('exclusion'):
                 do_hit_words = True
         else:
             hit_types = 'inclusion'
-            if self.audit.params.get('inclusion'):
+            if audit.params.get('inclusion'):
                 do_hit_words = True
         cols = [
             "Video URL",
