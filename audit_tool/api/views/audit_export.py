@@ -465,7 +465,7 @@ class AuditExportApiView(APIView):
                     ','.join(hit_words[v.channel.channel_id]) if clean is not None else ','.join(good_hit_words[v.channel.channel_id]),
                     channel_brand_safety_score
                 ]
-                if clean is not None:
+                if clean is None:
                     data.insert(-1, len(bad_hit_words[v.channel.channel_id]))
                     data.insert(-1, ','.join(bad_hit_words[v.channel.channel_id]))
                 try:
