@@ -6,6 +6,7 @@ import time
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import F
+from django.db.models import Q
 from django.utils import timezone
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
@@ -149,8 +150,15 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
-        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+        cid_accounts = Account.objects \
+            .exclude(Q(id__icontains="demo") | Q(name__icontains="demo")) \
+            .filter(can_manage_clients=False, is_active=True) \
+            .order_by(F(order_by_field).asc(nulls_first=True))
         for account in cid_accounts:
+            try:
+                int(account.id)
+            except ValueError:
+                continue
             account_end_date = account.end_date
             if account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
