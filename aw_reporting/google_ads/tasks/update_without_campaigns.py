@@ -14,6 +14,7 @@ from saas import celery_app
 from saas.configs.celery import Queue
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import unlock
 from utils.exception import retry
 
 
@@ -44,6 +45,7 @@ def setup_cid_update_tasks():
     job = chain(
         update_tasks,
         finalize_update.si(),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
     )
     return job()
 
@@ -80,4 +82,4 @@ def finalize_update():
         next_cursor = 0
     cursor.cursor = next_cursor
     cursor.save()
-    setup_update_without_campaigns.delay()
+

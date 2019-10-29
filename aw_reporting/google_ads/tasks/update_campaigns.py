@@ -15,12 +15,13 @@ from saas import celery_app
 from saas.configs.celery import Queue
 from utils.celery.tasks import group_chorded
 from utils.celery.tasks import REDIS_CLIENT
+from utils.celery.tasks import unlock
 from utils.exception import retry
 
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_campaigns"
-MAX_TASK_COUNT = 100
+MAX_TASK_COUNT = 50
 
 
 @celery_app.task
@@ -76,6 +77,7 @@ def setup_cid_update_tasks():
     job = chain(
         campaign_update_tasks,
         finalize_campaigns_update.si(),
+        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.HOURLY_STATISTIC),
     )
     return job()
 
@@ -118,5 +120,4 @@ def finalize_campaigns_update():
         next_cursor = 0
     cursor.cursor = next_cursor
     cursor.save()
-    setup_update_campaigns.delay()
 
