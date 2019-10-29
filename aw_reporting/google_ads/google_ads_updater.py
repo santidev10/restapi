@@ -32,6 +32,7 @@ from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.models import Account
+from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.es_components_cache import cached_method
@@ -70,19 +71,16 @@ class GoogleAdsUpdater(object):
         CampaignLocationTargetUpdater,
     )
 
-    def __init__(self, cid_account=None, mcc_account=None):
-        self.mcc_account = mcc_account
+    def __init__(self, cid_account=None):
         self.cid_account = cid_account
         self.auth_error_enum = AuthorizationErrorEnum().AuthorizationError
 
-    def update_all_except_campaigns(self, mcc_account, cid_account):
+    def update_all_except_campaigns(self, cid_account):
         """
         Update / Save all reporting data except Campaign data
         :return:
         """
-        self.mcc_account = mcc_account
         self.cid_account = cid_account
-
         for update_class in self.main_updaters:
             updater = update_class(self.cid_account)
             self.execute_with_any_permission(updater)
@@ -104,12 +102,10 @@ class GoogleAdsUpdater(object):
         self.cid_account.save()
         recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    def update_accounts_for_mcc(self, mcc_account=None):
+    def update_accounts_for_mcc(self, mcc_account):
         """ Update /Save accounts managed by MCC """
-        if mcc_account:
-            self.mcc_account = mcc_account
-        account_updater = AccountUpdater(self.mcc_account)
-        self.execute_with_any_permission(account_updater)
+        account_updater = AccountUpdater(mcc_account)
+        self.execute_with_any_permission(account_updater, mcc_account=mcc_account)
 
     def full_update(self, cid_account, any_permission=False, client=None):
         """
@@ -130,36 +126,14 @@ class GoogleAdsUpdater(object):
                 self.execute(updater, client)
         recalculate_de_norm_fields_for_account(self.cid_account.id)
 
-    @staticmethod
-    def get_accounts_to_update_for_mcc(mcc_id, end_date_threshold=None, as_obj=False):
+    @cached_method(timeout=60 * 60)
+    def get_accounts_to_update(self, end_date_threshold=None, as_obj=False):
         """
         Get current CID accounts to update
-        :param mcc_id: str
         :param end_date_threshold: date obj
         :param as_obj: bool
         :return: list
         """
-        to_update = []
-        end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
-        cid_accounts = Account.objects.filter(managers=mcc_id, can_manage_clients=False, is_active=True)
-        for account in cid_accounts:
-            try:
-                # Check if account has invalid Google Ads id
-                int(account.id)
-            except ValueError:
-                continue
-            # If no linked opportunities or any linked opportunity has not ended, update
-            opportunities = Opportunity.objects.filter(aw_cid=account.id)
-            opportunities_active = not opportunities or any(opp.end is None or opp.end > end_date_threshold for opp in opportunities)
-            account_end_date = account.end_date
-            if opportunities_active or account_end_date is None or account_end_date > end_date_threshold:
-                if as_obj is False:
-                    account = account.id
-                to_update.append(account)
-        return to_update
-
-    @cached_method(timeout=60 * 60)
-    def get_accounts_to_update(self, end_date_threshold=None, as_obj=False):
         to_update = []
         end_date_threshold = end_date_threshold or date.today() - timedelta(days=1)
         cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by("id")
@@ -187,20 +161,27 @@ class GoogleAdsUpdater(object):
         geo_target_updater = GeoTargetUpdater()
         geo_target_updater.update(client)
 
-    def execute_with_any_permission(self, updater):
+    def execute_with_any_permission(self, updater, mcc_account=None):
         """
         Run update procedure with any available permission with error handling
         :param updater: Updater class object
+        :param mcc_account:
         :return:
         """
-        permissions = self.mcc_account.mcc_permissions.filter(
-            can_read=True, aw_connection__revoked_access=False,
-        )
+        if mcc_account:
+            permissions = AWAccountPermission.objects.filter(
+                account=mcc_account
+            )
+        else:
+            permissions = AWAccountPermission.objects.filter(
+                account__in=self.cid_account.managers.all()
+            )
+        permissions = permissions.filter(can_read=True, aw_connection__revoked_access=False,)
         for permission in permissions:
             aw_connection = permission.aw_connection
             try:
                 client = get_client(
-                    login_customer_id=str(self.mcc_account.id),
+                    login_customer_id=permission.account.id,
                     refresh_token=aw_connection.refresh_token
                 )
                 self.execute(updater, client)
@@ -215,15 +196,14 @@ class GoogleAdsUpdater(object):
                 logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
             else:
                 return
-        # If exhausted entire list of AWConnections, then was unable to find credentials to update
-        if updater.__class__ == AccountUpdater:
-            Account.objects.filter(id=self.mcc_account.id).update(is_active=False)
-            logger.info(f"Account access revoked for MCC: {self.mcc_account.id}")
 
-        message = f"Unable to find AWConnection for MCC: {self.mcc_account.id} with updater: {updater.__class__.__name__}"
+        # If exhausted entire list of AWConnections, then was unable to find credentials to update
+        if updater.__class__ == AccountUpdater and mcc_account:
+            Account.objects.filter(id=mcc_account.id).update(is_active=False)
+            logger.info(f"Account access revoked for MCC: {mcc_account.id}")
+
         if self.cid_account:
-            message += f" for CID: {self.cid_account.id}"
-        logger.warning(message)
+            logger.warning(f"Unable to find AWConnection for CID: {self.cid_account.id} with updater: {updater.__class__.__name__}")
 
     def execute(self, updater, client):
         """
@@ -235,11 +215,9 @@ class GoogleAdsUpdater(object):
         """
         try:
             updater.update(client)
-
         # Client / request exceptions
         except GoogleAdsException as e:
             error = self.auth_error_enum(e.failure.errors[0].error_code.authorization_error).name
-
             # Invalid client
             if error == GoogleAdsAuthErrors.USER_PERMISSION_DENIED:
                 logger.warning(
@@ -266,12 +244,12 @@ class GoogleAdsUpdater(object):
                 logger.warning(f"Max retries exceeded: CID: {self.cid_account}, {e}")
 
         except Exception as e:
-            try:
-                cid = updater.account.id
-            except AttributeError:
+            if self.cid_account:
+                cid = self.cid_account.id
+            else:
                 cid = "None"
             logger.warning(
-                f"Unable to update with {updater.__class__.__name__} for cid: {cid} for mcc: {self.mcc_account.id}.\n{e}"
+                f"Unable to update with {updater.__class__.__name__} for cid: {cid}.\n{e}"
             )
 
     def _retry(self, updater, client):
@@ -300,6 +278,7 @@ class GoogleAdsUpdater(object):
         key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
         key = f"{self.CACHE_KEY_PREFIX}.{part}"
         return key, key_json
+
 
 # Exception has been handled and should continue processing next account
 class GoogleAdsUpdaterContinueException(Exception):

@@ -5,22 +5,22 @@ from celery import chain
 from django.conf import settings
 from django.db import Error
 
+from audit_tool.models import APIScriptTracker
 from aw_creation.tasks import add_relation_between_report_and_creation_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.utils import detect_success_aw_read_permissions
 from aw_reporting.models import Account
-from audit_tool.models import APIScriptTracker
 from saas import celery_app
 from saas.configs.celery import Queue
 from utils.celery.tasks import group_chorded
-from utils.celery.tasks import lock
+from utils.celery.tasks import REDIS_CLIENT
 from utils.exception import retry
 
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = "update_campaigns"
-MAX_TASK_COUNT = 5
+MAX_TASK_COUNT = 100
 
 
 @celery_app.task
@@ -29,11 +29,9 @@ def setup_update_campaigns():
     This task should only ever be called once, or recalled after failing
     Update tasks are setup by finalize_campaigns_update with updated cursor value
     """
-    job = chain(
-        lock.si(lock_name=LOCK_NAME, countdown=60, max_retries=None).set(queue=Queue.HOURLY_STATISTIC),
-        setup_mcc_update_tasks.si(),
-    )
-    return job()
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60).acquire(blocking=False)
+    if is_acquired:
+        setup_mcc_update_tasks.delay()
 
 
 @celery_app.task
@@ -44,7 +42,7 @@ def setup_mcc_update_tasks():
     :return: list
     """
     mcc_ids = list(Account.objects.filter(can_manage_clients=True, is_active=True).order_by("id").values_list("id", flat=True))
-    logger.info("Starting Google Ads update for campaigns")
+    logger.debug("Starting Google Ads update for campaigns")
     if not settings.IS_TEST:
         CFAccountConnector().update()
     detect_success_aw_read_permissions()
@@ -64,20 +62,16 @@ def setup_mcc_update_tasks():
 def setup_cid_update_tasks():
     """
     Setup task signatures to update all CID accounts under all MCC accounts
-    :param mcc_ids:
     :return:
     """
     cursor, _ = APIScriptTracker.objects.get_or_create(name=LOCK_NAME)
-    logger.error(f"cursor, {cursor.cursor}")
     # Batch update tasks
-    cid_account_ids = GoogleAdsUpdater().get_accounts_to_update()[cursor.cursor:MAX_TASK_COUNT + cursor.cursor]
-    logger.error(cid_account_ids)
-
+    limit = MAX_TASK_COUNT + cursor.cursor
+    cid_account_ids = GoogleAdsUpdater().get_accounts_to_update()[cursor.cursor:limit]
     task_signatures = [
         cid_campaign_update.si(cid_id).set(queue=Queue.HOURLY_STATISTIC)
         for cid_id in cid_account_ids
     ]
-
     campaign_update_tasks = group_chorded(task_signatures).set(queue=Queue.HOURLY_STATISTIC)
     job = chain(
         campaign_update_tasks,
@@ -105,19 +99,24 @@ def cid_campaign_update(cid_id):
     """
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
-    updater = GoogleAdsUpdater()
-    updater.update_campaigns(cid_account)
+    GoogleAdsUpdater().update_campaigns(cid_account)
     logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE FOR CID: {cid_id}. Took: {time.time() - start}")
 
 
 @celery_app.task
 def finalize_campaigns_update():
+    """
+    Call finalize methods
+    Sets up the next batch of update tasks
+    :return:
+    """
     add_relation_between_report_and_creation_campaigns()
     cursor = APIScriptTracker.objects.get(name=LOCK_NAME)
-    if cursor.cursor > Account.objects.filter(can_manage_clients=False, is_active=True).count():
-        cursor.cursor = 0
-    else:
-        cursor.cursor = cursor.cursor + MAX_TASK_COUNT
+    next_cursor = cursor.cursor + MAX_TASK_COUNT
+    # Reset cursor if greater than length of amount of accounts
+    if next_cursor > len(GoogleAdsUpdater().get_accounts_to_update()):
+        next_cursor = 0
+    cursor.cursor = next_cursor
     cursor.save()
-    setup_mcc_update_tasks.delay()
+    setup_update_campaigns.delay()
 

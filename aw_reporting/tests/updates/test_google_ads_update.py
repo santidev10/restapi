@@ -990,7 +990,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         with patch_now(now), \
                 patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now_utc), \
                 patch.object(updater, "main_updaters", return_value=[]):
-            updater.update_all_except_campaigns(Account.objects.get(can_manage_clients=True), account)
+            updater.update_all_except_campaigns(account)
 
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
@@ -1076,8 +1076,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         mock_update.side_effect = exception
         with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            mcc_id = Account.objects.get(can_manage_clients=True).id
-            cid_campaign_update(mcc_id, account.id, index=0 + 1, total=1)
+            cid_campaign_update(account.id)
 
         account.refresh_from_db()
         self.assertFalse(account.is_active)
@@ -1094,7 +1093,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
             mcc_id = Account.objects.get(can_manage_clients=True).id
-            cid_campaign_update(mcc_id, account.id, index=0 + 1, total=1)
+            cid_campaign_update(account.id)
 
     @patch.object(CampaignUpdater, "update")
     def test_retry_on_error(self, mock_execute):
