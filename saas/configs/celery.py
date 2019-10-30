@@ -23,6 +23,11 @@ DMP_CELERY_RESULT_EXTENDED = True
 
 CELERY_TIMEZONE = "UTC"
 
+try:
+    custom_transcripts_lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
+except Exception as e:
+    custom_transcripts_lang_codes = ['en']
+
 CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
         "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",
@@ -92,7 +97,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60,
         'kwargs': dict(
-            lang_codes=settings.CUSTOM_TRANSCRIPTS_LANGUAGES,
+            lang_codes=custom_transcripts_lang_codes,
             num_vids=3000
         )
     }
