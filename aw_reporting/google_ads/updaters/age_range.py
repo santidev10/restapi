@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class AgeRangeUpdater(UpdateMixin):
     RESOURCE_NAME = "age_range_view"
-    UPDATE_FIELDS = constants.STATS_MODELS_UPDATE_FIELDS
+    UPDATE_FIELDS = constants.STATS_MODELS_COMBINED_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -75,8 +75,8 @@ class AgeRangeUpdater(UpdateMixin):
             (s.age_range_id, int(s.ad_group_id), str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
         }
-        age_range_stats_to_create = []
-        age_range_stats_to_update = []
+        stats_to_create = []
+        stats_to_update = []
         for row in age_range_metrics:
             ad_group_id = row.ad_group.id.value
             statistics = {
@@ -94,9 +94,9 @@ class AgeRangeUpdater(UpdateMixin):
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
 
             if stat_id is None:
-                age_range_stats_to_create.append(stat_obj)
+                stats_to_create.append(stat_obj)
             else:
                 stat_obj.id = stat_id
-                age_range_stats_to_update.append(stat_obj)
-        AgeRangeStatistic.objects.safe_bulk_create(age_range_stats_to_create)
-        AgeRangeStatistic.objects.bulk_update(age_range_stats_to_update, fields=self.UPDATE_FIELDS)
+                stats_to_update.append(stat_obj)
+        AgeRangeStatistic.objects.safe_bulk_create(stats_to_create)
+        AgeRangeStatistic.objects.bulk_update(stats_to_update, fields=self.UPDATE_FIELDS)

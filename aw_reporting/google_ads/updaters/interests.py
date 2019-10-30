@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import RemarkList
@@ -25,6 +26,7 @@ class GoogleAdsAudienceTypes:
 
 class InterestUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group_audience_view"
+    UPDATE_FIELDS = constants.STATS_MODELS_COMBINED_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -32,19 +34,18 @@ class InterestUpdater(UpdateMixin):
         self.criterion_type_enum = None
         self.account = account
         self.today = now_in_default_tz().date()
-        self.existing_audience_stats = AudienceStatistic.objects.filter(
-            ad_group__campaign__account=account
-        )
-        self.existing_remark_stats = RemarkStatistic.objects.filter(
-            ad_group__campaign__account=account
-        )
+        self.existing_audience_stats = AudienceStatistic.objects.filter(ad_group__campaign__account=account)
+        self.existing_remark_stats = RemarkStatistic.objects.filter(ad_group__campaign__account=account)
         # Coerce to ints since Google ads api response for id fields are ints
         self.existing_remarketing_ids = set([int(_id) for _id in RemarkList.objects.values_list("id", flat=True)])
         self.existing_audience_interest_ids = set([int(_id) for _id in Audience.objects.values_list("id", flat=True)])
-        self.audience_statistics_to_create = []
         self.remarketing_to_create = []
-        self.remarketing_statistics_to_create = []
         self.custom_audiences_to_create = []
+
+        self.remarketing_stats_to_create = []
+        self.remarketing_stats_to_update = []
+        self.audience_stats_to_create = []
+        self.audience_stats_to_update = []
 
     def update(self, client):
         self.client = client
@@ -55,9 +56,6 @@ class InterestUpdater(UpdateMixin):
         if max_acc_date is None:
             return
 
-        self.drop_latest_stats(self.existing_audience_stats, self.today)
-        self.drop_latest_stats(self.existing_remark_stats, self.today)
-
         # Get most recent statistics dates
         audience_max_date = self.existing_audience_stats.aggregate(max_date=Max("date")).get("max_date")
         remark_max_date = self.existing_remark_stats.aggregate(max_date=Max("date")).get("max_date")
@@ -67,7 +65,7 @@ class InterestUpdater(UpdateMixin):
             saved_max_date = max(audience_max_date, remark_max_date)
         else:
             saved_max_date = audience_max_date or remark_max_date
-        min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+        min_date = (saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
         max_date = max_acc_date
 
         click_type_data = self.get_clicks_report(
@@ -77,14 +75,34 @@ class InterestUpdater(UpdateMixin):
         )
         audience_user_lists = self._get_audience_user_lists()
         audience_performance = self._get_audience_performance(min_date, max_date)
-        self._process(audience_user_lists, audience_performance, click_type_data)
+        self._process(audience_user_lists, audience_performance, click_type_data, min_date)
 
-    def _process(self, audience_user_lists, audience_performance, click_type_data):
+    def _process(self, audience_user_lists, audience_performance, click_type_data, min_date):
         user_list_names = {
             row.user_list.id.value: row.user_list.name.value
             for row in audience_user_lists
         }
+        self.existing_remark_stats = {
+            (int(s.remark_id), int(s.ad_group_id), str(s.date)): s.id for s
+            in self.existing_remark_stats.filter(date__gte=min_date)
+        }
+        self.existing_audience_stats = {
+            (s.audience_id, int(s.ad_group_id), str(s.date)): s.id for s
+            in self.existing_audience_stats.filter(date__gte=min_date)
+        }
 
+        self.remark_config = {
+            "field": "remark_id",
+            "create_container": self.remarketing_stats_to_create,
+            "update_container": self.remarketing_stats_to_update,
+            "existing_stats": self.existing_remark_stats,
+        }
+        self.audience_config = {
+            "field": "audience_id",
+            "create_container": self.audience_stats_to_create,
+            "update_container": self.audience_stats_to_update,
+            "existing_stats": self.existing_audience_stats,
+        }
         for row in audience_performance:
             ad_group_id = row.ad_group.id.value
             statistics = {
@@ -95,34 +113,51 @@ class InterestUpdater(UpdateMixin):
             }
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
             statistics.update(click_data)
-
             audience_type = self.criterion_type_enum.Name(row.ad_group_criterion.type)
+
             if audience_type == GoogleAdsAudienceTypes.USER_LIST:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.user_list.user_list.value)
                 user_list_name = user_list_names.get(audience_id)
-                self._handle_user_list(statistics, audience_id, user_list_name)
+                stat_obj, config = self._handle_user_list(statistics, audience_id, user_list_name)
+
             elif audience_type == GoogleAdsAudienceTypes.USER_INTEREST:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.user_interest.user_interest_category.value)
                 try:
-                    self._handle_user_interest(statistics, audience_id)
+                    stat_obj, config = self._handle_user_interest(statistics, audience_id)
                 except InterestUpdaterMissingAudienceException:
                     logger.warning(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
                     continue
+
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_AFFINITY:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.custom_affinity.custom_affinity.value)
-                self._handle_custom_affinity(statistics, audience_id)
+                stat_obj, config = self._handle_custom_affinity(statistics, audience_id)
+
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_INTENT:
                 # Ignore custom intent
                 continue
+
             else:
                 logger.warning(
                     f"Undefined criteria. ad_group_id: {ad_group_id}, criterion_id: {row.ad_group_criterion.criterion_id.value}, audience_type: {audience_type}"
                 )
+                continue
+
+            stat_unique_constraint = (getattr(stat_obj, config["field"]), stat_obj.ad_group_id, stat_obj.date)
+            stat_id = config["existing_stats"].get(stat_unique_constraint)
+
+            if stat_id is None:
+                config["create_container"].append(stat_obj)
+            else:
+                stat_obj.id = stat_id
+                config["update_container"].append(stat_obj)
 
         RemarkList.objects.safe_bulk_create(self.remarketing_to_create)
-        RemarkStatistic.objects.safe_bulk_create(self.remarketing_statistics_to_create)
         Audience.objects.safe_bulk_create(self.custom_audiences_to_create)
-        AudienceStatistic.objects.safe_bulk_create(self.audience_statistics_to_create)
+
+        RemarkStatistic.objects.safe_bulk_create(self.remarketing_stats_to_create)
+        RemarkStatistic.objects.bulk_update(self.remarketing_stats_to_update, fields=self.UPDATE_FIELDS)
+        AudienceStatistic.objects.safe_bulk_create(self.audience_stats_to_create)
+        AudienceStatistic.objects.bulk_update(self.audience_stats_to_update, fields=self.UPDATE_FIELDS)
 
     def _handle_user_list(self, statistics, audience_id, user_list_name):
         """
@@ -137,7 +172,7 @@ class InterestUpdater(UpdateMixin):
         if audience_id not in self.existing_remarketing_ids:
             self.existing_remarketing_ids.add(audience_id)
             self.remarketing_to_create.append(RemarkList(id=audience_id, name=user_list_name))
-        self.remarketing_statistics_to_create.append(RemarkStatistic(**statistics))
+        return RemarkStatistic(**statistics), self.remark_config
 
     def _handle_user_interest(self, statistics, audience_id):
         """
@@ -149,7 +184,7 @@ class InterestUpdater(UpdateMixin):
         if audience_id not in self.existing_audience_interest_ids:
             raise InterestUpdaterMissingAudienceException
         statistics.update(audience_id=audience_id)
-        self.audience_statistics_to_create.append(AudienceStatistic(**statistics))
+        return AudienceStatistic(**statistics), self.audience_config
 
     def _handle_custom_affinity(self, statistics, audience_id):
         """
@@ -164,7 +199,7 @@ class InterestUpdater(UpdateMixin):
                 Audience(id=audience_id, name=name, type=Audience.CUSTOM_AFFINITY_TYPE)
             )
         statistics.update(audience_id=audience_id)
-        self.audience_statistics_to_create.append(AudienceStatistic(**statistics))
+        return AudienceStatistic(**statistics), self.audience_config
 
     def _get_audience_user_lists(self):
         """

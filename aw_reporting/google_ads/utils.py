@@ -15,7 +15,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Campaign
 
-AD_WORDS_STABILITY_STATS_DAYS_COUNT = 3
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 7
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from utils.datetime import now_in_default_tz
 
 class AdUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group_ad"
-    UPDATE_FIELDS = constants.STATS_MODELS_UPDATE_FIELDS
+    UPDATE_FIELDS = constants.STATS_MODELS_COMBINED_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -72,8 +72,8 @@ class AdUpdater(UpdateMixin):
         """
         updated_ad_ids = set()
         ads_to_create = []
-        ad_statistics_to_update = []
-        ad_statistics_to_create = []
+        stats_to_update = []
+        stats_to_create = []
         existing_stats_from_min_date = {
             (int(s.ad_id), str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
@@ -114,9 +114,9 @@ class AdUpdater(UpdateMixin):
 
             if stat_id is not None:
                 stat_obj.id = stat_id
-                ad_statistics_to_update.append(stat_obj)
+                stats_to_update.append(stat_obj)
             else:
-                ad_statistics_to_create.append(stat_obj)
+                stats_to_create.append(stat_obj)
         Ad.objects.safe_bulk_create(ads_to_create)
-        AdStatistic.objects.safe_bulk_create(ad_statistics_to_create)
-        AdStatistic.objects.bulk_update(ad_statistics_to_update, fields=self.UPDATE_FIELDS)
+        AdStatistic.objects.safe_bulk_create(stats_to_create)
+        AdStatistic.objects.bulk_update(stats_to_update, fields=self.UPDATE_FIELDS)

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class CampaignUpdater(UpdateMixin):
     RESOURCE_NAME = "campaign"
-    CAMPAIGN_STAT_UPDATE_FIELDS = constants.STATS_MODELS_UPDATE_FIELDS
+    CAMPAIGN_STAT_UPDATE_FIELDS = constants.STATS_MODELS_COMBINED_UPDATE_FIELDS
     CAMPAIGN_HOURLY_STAT_UPDATE_FIELDS = ("video_views", "impressions", "clicks", "cost")
 
     def __init__(self, account):

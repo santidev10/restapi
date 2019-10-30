@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class AdGroupUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group"
-    UPDATE_FIELDS = ("active_view_impressions", "engagements") + constants.STATS_MODELS_UPDATE_FIELDS
+    UPDATE_FIELDS = ("active_view_impressions", "engagements") + constants.STATS_MODELS_COMBINED_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -37,7 +37,7 @@ class AdGroupUpdater(UpdateMixin):
 
         min_date, max_date = self.get_account_border_dates(self.account)
         # Update ad groups and daily stats only if there have been changes
-        min_date, max_date = (max_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)), max_available_date if max_date else (constants.MIN_FETCH_DATE, max_available_date)
+        min_date, max_date = (max_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT), max_available_date) if max_date else (constants.MIN_FETCH_DATE, max_available_date)
 
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
@@ -73,8 +73,8 @@ class AdGroupUpdater(UpdateMixin):
         }
         updated_ad_groups = set()
         ad_groups_to_create = []
-        ad_statistics_to_update = []
-        ad_statistics_to_create = []
+        stats_to_update = []
+        stats_to_create = []
         for row in ad_group_performance:
             ad_group_id = str(row.ad_group.id.value)
             campaign_id = str(row.campaign.id.value)
@@ -123,9 +123,9 @@ class AdGroupUpdater(UpdateMixin):
 
             if stat_id is not None:
                 stat_obj.id = stat_id
-                ad_statistics_to_update.append(stat_obj)
+                stats_to_update.append(stat_obj)
             else:
-                ad_statistics_to_create.append(stat_obj)
+                stats_to_create.append(stat_obj)
         AdGroup.objects.bulk_create(ad_groups_to_create)
-        AdGroupStatistic.objects.safe_bulk_create(ad_statistics_to_create)
-        AdGroupStatistic.objects.bulk_update(ad_statistics_to_update, fields=self.UPDATE_FIELDS)
+        AdGroupStatistic.objects.safe_bulk_create(stats_to_create)
+        AdGroupStatistic.objects.bulk_update(stats_to_update, fields=self.UPDATE_FIELDS)
