@@ -3,6 +3,7 @@ import re
 from datetime import timedelta
 
 from celery.schedules import crontab
+from django.conf import settings
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
@@ -91,7 +92,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60,
         'kwargs': dict(
-            lang_codes=['en'],
+            lang_codes=settings.CUSTOM_TRANSCRIPTS_LANGUAGES,
             num_vids=3000
         )
     }
