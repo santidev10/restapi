@@ -46,7 +46,7 @@ def pull_custom_transcripts(lang_codes, num_vids):
                                          upsert_sections=(Sections.CUSTOM_CAPTIONS,))
             start = time.perf_counter()
             all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code))
-            all_videos = video_manager.get_or_create(list(vid_ids))
+            all_videos = video_manager.get(list(vid_ids))
             for vid_obj in all_videos:
                 vid_id = vid_obj.main.id
                 transcript_soup = all_video_soups_dict[vid_id]

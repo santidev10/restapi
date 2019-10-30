@@ -52,8 +52,8 @@ class Command(BaseCommand):
                             if iab_category_2:
                                 current_channel_data['categories'].append(iab_category_2)
                             moderation = row[3].lower().strip()
-                            if moderation != "gray area":
-                                current_channel_data['safe'] = True if moderation == "safe" else False
+                            if moderation and moderation != "gray area":
+                                current_channel_data['is_safe'] = True if moderation == "safe" else False
                             if moderation == "unsafe":
                                 try:
                                     flag = BlacklistItem.get_or_create(channel_id, BlacklistItem.CHANNEL_ITEM)
@@ -63,19 +63,25 @@ class Command(BaseCommand):
                                 except Exception:
                                     pass
                             content_type = row[5].upper().strip()
-                            current_channel_data['content_type'] = content_type
+                            is_user_generated_content = True if content_type == "UGC" else False
+                            if content_type:
+                                current_channel_data['is_user_generated_content'] = is_user_generated_content
                             monetized = True if row[6].lower().strip() == "monetized" else None
                             if monetized:
                                 current_channel_data['monetized'] = monetized
                             scalable = row[7].capitalize().strip()
-                            current_channel_data['scalability'] = scalable
+                            if scalable:
+                                current_channel_data['scalable'] = True if scalable == "Scalable" else False
                             language = row[8].capitalize().strip() if row[8] != "Unknown" else ""
-                            current_channel_data['language'] = language
+                            if language:
+                                current_channel_data['language'] = language
                             channels_taskus_data_dict[channel_id] = current_channel_data
                         except Exception as e:
                             continue
-                all_channels = channel_manager.get_or_create(list(all_channel_ids))
+                all_channels = channel_manager.get(list(all_channel_ids))
+                all_channels = list(filter(None, all_channels))
                 for channel in all_channels:
                     populate_channel_task_us_data(channel, channels_taskus_data_dict[channel.main.id])
+                channel_manager.upsert(all_channels)
         except PidFileError:
             raise PidFileError
