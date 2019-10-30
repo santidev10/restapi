@@ -157,8 +157,13 @@ class GoogleAdsUpdater(object):
         for account in cid_accounts:
             try:
                 int(account.id)
+                if "demo" in account.id.lower() or "demo" in account.name.lower():
+                    continue
             except ValueError:
                 continue
+            except AttributeError:
+                # Account name is None
+                pass
             account_end_date = account.end_date
             if account_end_date is None or account_end_date > end_date_threshold:
                 if as_obj is False:
