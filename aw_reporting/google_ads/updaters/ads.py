@@ -4,6 +4,7 @@ from django.db.models import Max
 
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models import Ad
 from aw_reporting.models import AdStatistic
 from utils.datetime import now_in_default_tz
@@ -11,6 +12,7 @@ from utils.datetime import now_in_default_tz
 
 class AdUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group_ad"
+    UPDATE_FIELDS = constants.STATS_MODELS_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -33,13 +35,13 @@ class AdUpdater(UpdateMixin):
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
         if max_acc_date is None:
             return
-        self.drop_latest_stats(self.existing_statistics, self.today)
+
         # Get newest Ad statistics dates for account
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
 
         # Only update if Ad statistics is older than AdGroup statistics
         if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
 
             click_type_data = self.get_clicks_report(
@@ -48,8 +50,7 @@ class AdUpdater(UpdateMixin):
                 resource_name=self.RESOURCE_NAME
             )
             ad_performance = self._get_ad_performance(min_date, max_date)
-            generator = self._generate_instances(ad_performance, click_type_data)
-            AdStatistic.objects.safe_bulk_create(generator)
+            self._generate_instances(ad_performance, click_type_data, min_date)
 
     def _get_ad_performance(self, min_date, max_date):
         """
@@ -63,7 +64,7 @@ class AdUpdater(UpdateMixin):
         ad_performance = self.ga_service.search(self.account.id, query=query)
         return ad_performance
 
-    def _generate_instances(self, ad_performance: iter, click_type_data: dict):
+    def _generate_instances(self, ad_performance: iter, click_type_data: dict, min_stat_date):
         """
         Generator that yields GenderStatistic instances
         :param ad_performance: iter -> Google ads ad_group_ad resource search response
@@ -71,6 +72,12 @@ class AdUpdater(UpdateMixin):
         """
         updated_ad_ids = set()
         ads_to_create = []
+        ad_statistics_to_update = []
+        ad_statistics_to_create = []
+        existing_stats_from_min_date = {
+            (int(s.ad_id), str(s.date)): s.id for s
+            in self.existing_statistics.filter(date__gte=min_stat_date)
+        }
         for row in ad_performance:
             ad = row.ad_group_ad.ad
             ad_id = ad.id.value
@@ -100,6 +107,16 @@ class AdUpdater(UpdateMixin):
             # Update statistics with click performance obtained in get_clicks_report
             click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
             statistics.update(click_data)
-            yield AdStatistic(**statistics)
-        Ad.objects.safe_bulk_create(ads_to_create)
 
+            stat_obj = AdStatistic(**statistics)
+            stat_unique_constraint = (statistics["ad_id"], statistics["date"])
+            stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
+            if stat_id is not None:
+                stat_obj.id = stat_id
+                ad_statistics_to_update.append(stat_obj)
+            else:
+                ad_statistics_to_create.append(stat_obj)
+        Ad.objects.safe_bulk_create(ads_to_create)
+        AdStatistic.objects.safe_bulk_create(ad_statistics_to_create)
+        AdStatistic.objects.bulk_update(ad_statistics_to_update, fields=self.UPDATE_FIELDS)
