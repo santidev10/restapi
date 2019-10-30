@@ -159,11 +159,11 @@ class AuditExportApiView(APIView):
         do_hit_words = False
         if clean is False:
             hit_types = 'exclusion'
-            if self.audit.params.get('exclusion'):
+            if audit.params.get('exclusion'):
                 do_hit_words = True
         else:
             hit_types = 'inclusion'
-            if self.audit.params.get('inclusion'):
+            if audit.params.get('inclusion'):
                 do_hit_words = True
         cols = [
             "Video URL",
@@ -404,6 +404,8 @@ class AuditExportApiView(APIView):
                     node = 'all'
             except Exception as e:
                 hit_words[cid.channel.channel_id] = set()
+                good_hit_words[cid.channel.channel_id] = set()
+                bad_hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
                 audit_id=audit_id,
                 video__channel_id=cid.channel_id
@@ -413,15 +415,18 @@ class AuditExportApiView(APIView):
             if node == 'all':
                 for video in videos.filter(clean=True):
                     if video.word_hits.get('inclusion'):
-                        good_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('inclusion')))
+                        good_hit_words[cid.channel.channel_id] = \
+                            good_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('inclusion')))
                 for video in videos.filter(clean=False):
                     if video.word_hits.get('exclusion'):
-                        bad_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('exclusion')))
+                        bad_hit_words[cid.channel.channel_id] = \
+                            bad_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('exclusion')))
             else:
                 videos_filter = False if clean is False else True
                 for video in videos.filter(clean=videos_filter):
                     if video.word_hits.get(node):
-                        hit_words[cid.channel.channel_id].union(set(video.word_hits.get(node)))
+                        hit_words[cid.channel.channel_id] = \
+                            hit_words[cid.channel.channel_id].union(set(video.word_hits.get(node)))
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'w+', newline='') as myfile:
@@ -460,13 +465,13 @@ class AuditExportApiView(APIView):
                     ','.join(hit_words[v.channel.channel_id]) if clean is not None else ','.join(good_hit_words[v.channel.channel_id]),
                     channel_brand_safety_score
                 ]
-                if clean is not None:
+                if clean is None:
                     data.insert(-1, len(bad_hit_words[v.channel.channel_id]))
                     data.insert(-1, ','.join(bad_hit_words[v.channel.channel_id]))
                 try:
                     if len(bad_word_categories) > 0:
                         bad_word_category_dict = {}
-                        bad_words = hit_words[v.channel.channel_id] if clean is None else bad_hit_words[v.channel.channel_id]
+                        bad_words = hit_words[v.channel.channel_id] if clean is not None else bad_hit_words[v.channel.channel_id]
                         for word in bad_words:
                             try:
                                 word_index = audit.params['exclusion'].index(word)
