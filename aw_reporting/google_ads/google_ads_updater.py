@@ -151,7 +151,6 @@ class GoogleAdsUpdater(object):
         else:
             order_by_field = "update_time"
         cid_accounts = Account.objects \
-            .exclude(Q(id__icontains="demo") | Q(name__icontains="demo")) \
             .filter(can_manage_clients=False, is_active=True) \
             .order_by(F(order_by_field).asc(nulls_first=True))
         for account in cid_accounts:
