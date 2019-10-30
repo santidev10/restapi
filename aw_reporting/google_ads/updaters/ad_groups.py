@@ -3,6 +3,7 @@ from datetime import timedelta
 import logging
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.constants import AD_NETWORK_ENUM_TO_STR
 from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
@@ -67,7 +68,7 @@ class AdGroupUpdater(UpdateMixin):
         ad_group_status_enum = self.client.get_type("AdGroupStatusEnum", version="v2").AdGroupStatus
         ad_group_type_enum = self.client.get_type("AdGroupTypeEnum", version="v2").AdGroupType
         existing_stats_from_min_date = {
-            (s.ad_group_id, str(s.date), s.device_id, int(s.ad_network)): s.id for s
+            (s.ad_group_id, str(s.date), s.device_id, s.ad_network): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
         }
         updated_ad_groups = set()
@@ -103,7 +104,7 @@ class AdGroupUpdater(UpdateMixin):
 
             statistics = {
                 "date": row.segments.date.value,
-                "ad_network": row.segments.ad_network_type,
+                "ad_network": AD_NETWORK_ENUM_TO_STR.get(row.segments.ad_network_type, AD_NETWORK_ENUM_TO_STR[6]),
                 "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 "ad_group_id": ad_group_id,
                 "average_position": 0.0,
@@ -117,9 +118,9 @@ class AdGroupUpdater(UpdateMixin):
             statistics.update(click_data)
 
             stat_obj = AdGroupStatistic(**statistics)
-            stat_date = datetime.strptime(statistics["date"], "%Y-%m-%d").date()
             stat_unique_constraint = (statistics["ad_group_id"], statistics["date"], statistics["device_id"], statistics["ad_network"])
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
             if stat_id is not None:
                 stat_obj.id = stat_id
                 ad_statistics_to_update.append(stat_obj)

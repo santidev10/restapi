@@ -1,5 +1,6 @@
 from django.conf import settings
 
+from google.ads.google_ads.v2.services.enums import AdNetworkTypeEnum
 from google.ads.google_ads.v2.services.enums import AgeRangeTypeEnum
 from google.ads.google_ads.v2.services.enums import DeviceEnum
 from google.ads.google_ads.v2.services.enums import GenderTypeEnum
@@ -198,3 +199,15 @@ PARENT_ENUM_TO_ID = {
     ParentalStatusTypeEnum.ParentalStatusType.NOT_A_PARENT: Parent.NOT_A_PARENT,
     ParentalStatusTypeEnum.ParentalStatusType.UNDETERMINED: Parent.UNDETERMINED,
 }
+
+AD_NETWORK_ENUM_TO_STR = {
+    AdNetworkTypeEnum.AdNetworkType.UNSPECIFIED: "unspecified",
+    AdNetworkTypeEnum.AdNetworkType.UNKNOWN: "unknown",
+    AdNetworkTypeEnum.AdNetworkType.SEARCH: "Search Network",
+    AdNetworkTypeEnum.AdNetworkType.SEARCH_PARTNERS: "Search Partners",
+    AdNetworkTypeEnum.AdNetworkType.CONTENT: "Display Network",
+    AdNetworkTypeEnum.AdNetworkType.YOUTUBE_SEARCH: "YouTube Search",
+    AdNetworkTypeEnum.AdNetworkType.YOUTUBE_WATCH: "YouTube Videos",
+    AdNetworkTypeEnum.AdNetworkType.MIXED: "Cross-network"
+}
+
