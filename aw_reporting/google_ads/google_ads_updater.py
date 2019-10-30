@@ -15,6 +15,7 @@ from google.api_core.exceptions import RetryError
 from google.api_core.exceptions import ResourceExhausted
 from google.auth.exceptions import RefreshError
 
+from aw_reporting.models import Opportunity
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
@@ -34,7 +35,6 @@ from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
-from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.es_components_cache import cached_method
 
@@ -132,6 +132,7 @@ class GoogleAdsUpdater(object):
     def get_accounts_to_update(hourly_update=True, end_date_threshold=None, as_obj=False, size=None):
         """
         Get current CID accounts to update
+            First retrieves all active Opportunities and linked Google Ads accounts
             Ordered by amount of campaigns accounts have
         :param hourly_update: bool
             If hourly_update is True, then order accounts by hourly updated at
@@ -149,13 +150,15 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
-        cid_accounts = Account.objects.filter(can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
-        for account in cid_accounts:
-            account_end_date = account.end_date
-            if account_end_date is None or account_end_date > end_date_threshold:
-                if as_obj is False:
-                    account = account.id
-                to_update.append(account)
+
+        active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
+        active_account_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None]
+        active_accounts = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+
+        for account in active_accounts:
+            if as_obj is False:
+                account = account.id
+            to_update.append(account)
         if size:
             to_update = to_update[:size]
         return to_update
