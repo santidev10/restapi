@@ -36,7 +36,6 @@ from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
-from utils.es_components_cache import cached_method
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +109,9 @@ class GoogleAdsUpdater(object):
     def full_update(self, cid_account, any_permission=False, client=None):
         """
         Full Google ads update with all Updaters
-        :param mcc_account:
-        :param cid_accounts:
+        :param cid_account: Account
+        :param any_permission: bool -> To use all existing permissions
+        :param client: GoogleAds client
         :return:
         """
         self.cid_account = cid_account
@@ -142,6 +142,7 @@ class GoogleAdsUpdater(object):
             full_updated_at ordering used by Google Ads update all without campaigns
         :param end_date_threshold: date obj
         :param as_obj: bool
+        :param size: int -> How many items to return from start of list
         :return: list
         """
         to_update = []
@@ -150,11 +151,9 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
-
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
         active_account_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None]
         active_accounts = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
-
         for account in active_accounts:
             if as_obj is False:
                 account = account.id

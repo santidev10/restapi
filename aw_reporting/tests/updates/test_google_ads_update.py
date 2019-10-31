@@ -1396,6 +1396,25 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
                 accounts_seen.add(acc.id)
         self.assertEqual(accounts_created, accounts_seen)
 
+    def test_ignore_invalid_account_ids_or_demo_accounts(self):
+        accounts_size = 5
+        Account.objects.create(id="demo", name="Demo", is_active=True, can_manage_clients=False)
+        Account.objects.create(id="Demo", name="demo", is_active=True, can_manage_clients=False)
+        Account.objects.create(id="invalid", name="Demo", is_active=True, can_manage_clients=False)
+        Account.objects.create(id=str(next(int_iterator)), name="demo", is_active=True, can_manage_clients=False)
+        Account.objects.create(id=str(next(int_iterator)), name="Demo", is_active=True, can_manage_clients=False)
+        for i in range(accounts_size):
+            Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+        to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=False, size=10, as_obj=True)
+        self.assertFalse(any("demo" in acc.id.lower() or "demo" in (acc.name or "") for acc in to_update))
+        errs = 0
+        for acc in to_update:
+            try:
+                int(acc.id)
+            except ValueError:
+                errs += 1
+        self.assertEqual(errs, 0)
+
 
 class FakeExceptionWithArgs:
     def __init__(self, search_string):

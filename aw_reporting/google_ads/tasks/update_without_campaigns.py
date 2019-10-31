@@ -33,7 +33,7 @@ def setup_update_without_campaigns():
 @celery_app.task
 def setup_cid_update_tasks():
     logger.debug("Starting Google Ads update without campaigns")
-    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=MAX_TASK_COUNT)
+    cid_account_ids = GoogleAdsUpdater.get_accounts_to_update(hourly_update=False, size=MAX_TASK_COUNT)
     task_signatures = [
         cid_update_all_except_campaigns.si(cid_id).set(queue=Queue.DELIVERY_STATISTIC_UPDATE)
         for cid_id in cid_account_ids
