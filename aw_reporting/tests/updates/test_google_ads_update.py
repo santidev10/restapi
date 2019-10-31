@@ -51,6 +51,7 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models import ParentStatuses
 from aw_reporting.models import RemarkList
@@ -214,8 +215,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, test_click_data))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=mock_hourly_performance_response)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, test_click_data, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response, date.today()))
 
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
@@ -299,7 +300,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             mock_ad_group_data.set("metrics", "active_view_impressions", avi)
             mock_ad_group_data.set("segments", "date", str(dt))
             mock_ad_group_data.set("segments", "device", 2, nested_key=None) # MOBILE
-            mock_ad_group_data.set("segments", "ad_network_type", 6) # YOUTUBE_WATCH
+            mock_ad_group_data.set("segments", "ad_network_type", 6, nested_key=None) # YOUTUBE_WATCH
             mock_ad_group_data.add_row()
 
         test_click_data = {}
@@ -411,8 +412,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=mock_hourly_performance_response)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response, date.today()))
 
         updater.update(client)
         campaign.refresh_from_db()
@@ -684,8 +685,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
 
@@ -931,14 +932,13 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertEqual(min_date, MIN_FETCH_DATE)
+        self.assertTrue(min_date < yesterday)
         self.assertEqual(max_date, date.today())
 
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime.now(utc)
         today = now.date()
         last_statistic_date = today - timedelta(weeks=54)
-        request_start_date = last_statistic_date + timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account, update_time=now, sync_time=now)
         ad_group = AdGroup.objects.create(id=1,
@@ -963,7 +963,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertEqual(min_date, request_start_date)
+        self.assertTrue(min_date < last_statistic_date)
         self.assertEqual(max_date, date.today())
 
     @generic_test([
@@ -1149,8 +1149,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
         updater.update(client)
 
         campaign.refresh_from_db()
@@ -1199,8 +1199,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
         updater.update(client)
 
         campaign.refresh_from_db()
@@ -1355,7 +1355,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         mock_ad_group_data.set("metrics", "active_view_impressions", 12)
         mock_ad_group_data.set("segments", "date", str(dt))
         mock_ad_group_data.set("segments", "device", DeviceEnum.Device.CONNECTED_TV, nested_key=None)
-        mock_ad_group_data.set("segments", "ad_network_type", 6)
+        mock_ad_group_data.set("segments", "ad_network_type", 6, nested_key=None)
         mock_ad_group_data.add_row()
 
         client = GoogleAdsClient("", "")
@@ -1385,8 +1385,10 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         batch_size = 5
         accounts_created = set()
         accounts_seen = set()
+        op_end = date.today()
         for i in range(accounts_size):
             cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
             accounts_created.add(cid.id)
         for i in range(len(accounts_created) // batch_size):
             to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=False, size=batch_size, as_obj=True)
@@ -1398,11 +1400,16 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
     def test_ignore_invalid_account_ids_or_demo_accounts(self):
         accounts_size = 5
-        Account.objects.create(id="demo", name="Demo", is_active=True, can_manage_clients=False)
-        Account.objects.create(id="Demo", name="demo", is_active=True, can_manage_clients=False)
-        Account.objects.create(id="invalid", name="Demo", is_active=True, can_manage_clients=False)
-        Account.objects.create(id=str(next(int_iterator)), name="demo", is_active=True, can_manage_clients=False)
-        Account.objects.create(id=str(next(int_iterator)), name="Demo", is_active=True, can_manage_clients=False)
+        a1 = Account.objects.create(id="demo", name="Demo", is_active=True, can_manage_clients=False)
+        a2 = Account.objects.create(id="Demo", name="demo", is_active=True, can_manage_clients=False)
+        a3 = Account.objects.create(id="invalid", name="Demo", is_active=True, can_manage_clients=False)
+        a4 = Account.objects.create(id=str(next(int_iterator)), name="demo", is_active=True, can_manage_clients=False)
+        a5 = Account.objects.create(id=str(next(int_iterator)), name="Demo", is_active=True, can_manage_clients=False)
+        Opportunity.objects.create(id=next(int_iterator), name=a1.name, aw_cid=a1.id)
+        Opportunity.objects.create(id=next(int_iterator), name=a2.name, aw_cid=a2.id)
+        Opportunity.objects.create(id=next(int_iterator), name=a3.name, aw_cid=a3.id)
+        Opportunity.objects.create(id=next(int_iterator), name=a4.name, aw_cid=a4.id)
+        Opportunity.objects.create(id=next(int_iterator), name=a5.name, aw_cid=a5.id)
         for i in range(accounts_size):
             Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
         to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=False, size=10, as_obj=True)

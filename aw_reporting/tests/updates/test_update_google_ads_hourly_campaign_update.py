@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from unittest.mock import MagicMock
@@ -11,6 +12,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Campaign
+from aw_reporting.models import Opportunity
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
@@ -74,8 +76,8 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=([], {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=mock_campaign_hourly_data)
+        updater._get_campaign_performance = MagicMock(return_value=([], {}, date.today()))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_campaign_hourly_data, date.today()))
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
 
@@ -89,8 +91,8 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         with patch("aw_reporting.google_ads.updaters.campaigns.timezone.now", return_value=now):
             client = GoogleAdsClient("", "")
             updater = CampaignUpdater(account)
-            updater._get_campaign_performance = MagicMock(return_value=([], {}))
-            updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+            updater._get_campaign_performance = MagicMock(return_value=([], {}, date.today()))
+            updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
             updater.update(client)
             recalculate_de_norm_fields_for_account(account.id)
 
@@ -110,8 +112,10 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         batch_size = 5
         accounts_created = set()
         accounts_seen = set()
+        op_end = date.today() - timedelta(days=1)
         for i in range(accounts_size):
             cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
             accounts_created.add(cid.id)
         for i in range(len(accounts_created) // batch_size):
             to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=batch_size, as_obj=True)
