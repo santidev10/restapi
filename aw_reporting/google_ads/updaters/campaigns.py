@@ -127,7 +127,7 @@ class CampaignUpdater(UpdateMixin):
             }
             statistics = {
                 "date": row.segments.date.value,
-                "campaign_id": row.campaign.id.value,
+                "campaign_id": campaign_id,
                 "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 **self.get_quartile_views(row)
             }
