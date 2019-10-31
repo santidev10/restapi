@@ -78,7 +78,6 @@ class CampaignUpdater(UpdateMixin):
         campaign_query_fields = self.format_query(constants.CAMPAIGN_PERFORMANCE_FIELDS)
         campaign_query = f"SELECT {campaign_query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
         campaign_performance = self.ga_service.search(self.account.id, query=campaign_query)
-
         return campaign_performance, click_type_data, min_date
 
     def _get_campaign_hourly_performance(self):
@@ -95,7 +94,6 @@ class CampaignUpdater(UpdateMixin):
         hourly_performance_fields = self.format_query(constants.CAMPAIGN_HOURLY_PERFORMANCE_FIELDS)
         hourly_query = f"SELECT {hourly_performance_fields} from {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{start_date}' AND '{self.today}'"
         hourly_performance = self.ga_service.search(self.account.id, query=hourly_query)
-
         return hourly_performance, start_date
 
     def _instance_generator(self, campaign_performance, click_type_data, min_stat_date):
@@ -160,7 +158,6 @@ class CampaignUpdater(UpdateMixin):
             else:
                 stat_obj.id = stat_id
                 campaign_stats_to_update.append(stat_obj)
-
         CampaignStatistic.objects.safe_bulk_create(campaign_stats_to_create)
         CampaignStatistic.objects.bulk_update(campaign_stats_to_update, fields=self.CAMPAIGN_STAT_UPDATE_FIELDS)
 
@@ -215,7 +212,6 @@ class CampaignUpdater(UpdateMixin):
             else:
                 hourly_stat.id = stat_id
                 hourly_stats_to_update.append(hourly_stat)
-
         Campaign.objects.bulk_create(campaigns_to_create)
         CampaignHourlyStatistic.objects.bulk_create(hourly_stats_to_create)
         CampaignHourlyStatistic.objects.bulk_update(hourly_stats_to_update, fields=self.CAMPAIGN_HOURLY_STAT_UPDATE_FIELDS)

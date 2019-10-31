@@ -20,24 +20,17 @@ class Command(BaseCommand):
         parser.add_argument(
             "--mcc",
             help="Comma separated MCC account ids to update",
-            default="3386233102"
         )
 
     def handle(self, *args, **options):
-        cid_ids = options["ids"].split(",")
-        mcc_ids = options["mcc"].split(",")
+        cid_ids = (options["ids"] or "").split(",")
+        mcc_ids = (options["mcc"] or "").split(",")
         for mcc in Account.objects.filter(id__in=mcc_ids):
             GoogleAdsUpdater().update_accounts_for_mcc(mcc_account=mcc)
-        for _id in cid_ids:
-            account = Account.objects.get(id=_id)
-            mcc_accounts = account.managers.all()
-            for mcc in mcc_accounts:
-                try:
-                    updater = GoogleAdsUpdater()
-                    updater.full_update(account, any_permission=True)
-                except Exception as e:
-                    logger.error(f"Exception while executing full_account_update for CID: {_id}. {e}")
-                    continue
+        for cid in cid_ids:
+            account = Account.objects.get(id=cid)
+            updater = GoogleAdsUpdater()
+            updater.full_update(account, any_permission=True)
 
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()

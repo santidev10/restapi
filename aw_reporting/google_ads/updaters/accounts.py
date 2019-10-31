@@ -47,7 +47,6 @@ class AccountUpdater(UpdateMixin):
                 accounts_to_update.append(account_obj)
             else:
                 accounts_to_create.append(account_obj)
-
         Account.objects.bulk_update(accounts_to_update, ["name", "currency_code", "timezone", "can_manage_clients"])
         try:
             with transaction.atomic():
