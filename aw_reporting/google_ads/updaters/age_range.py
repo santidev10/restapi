@@ -46,7 +46,7 @@ class AgeRangeUpdater(UpdateMixin):
                 resource_name=self.RESOURCE_NAME
             )
             age_range_performance = self._get_age_range_performance(min_date, max_date)
-            self._instance_generator(age_range_performance, click_type_data, min_date)
+            self._create_instances(age_range_performance, click_type_data, min_date)
 
     def _get_age_range_performance(self, min_date, max_date):
         """
@@ -64,7 +64,7 @@ class AgeRangeUpdater(UpdateMixin):
         age_range_performance = self.ga_service.search(self.account.id, query=age_range_statistics_query, page_size=10)
         return age_range_performance
 
-    def _instance_generator(self, age_range_metrics, click_type_data, min_stat_date):
+    def _create_instances(self, age_range_metrics, click_type_data, min_stat_date):
         """
         Generator to yield AgeRangeStatistic instances
         :param age_range_metrics: iter -> Google ads ad_group resource search response
@@ -72,13 +72,13 @@ class AgeRangeUpdater(UpdateMixin):
         :return:
         """
         existing_stats_from_min_date = {
-            (s.age_range_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.age_range_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
         }
         stats_to_create = []
         stats_to_update = []
         for row in age_range_metrics:
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             statistics = {
                 "ad_group_id": ad_group_id,
                 "age_range_id": AGE_RANGE_ENUM_TO_ID.get(row.ad_group_criterion.age_range.type, AgeRange.UNDETERMINED),

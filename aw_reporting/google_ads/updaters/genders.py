@@ -48,7 +48,7 @@ class GenderUpdater(UpdateMixin):
                 resource_name=self.RESOURCE_NAME
             )
             gender_performance = self._get_gender_performance(min_date, max_date)
-            self._instance_generator(gender_performance, click_type_data, min_date)
+            self._create_instances(gender_performance, click_type_data, min_date)
 
     def _get_gender_performance(self, min_date, max_date):
         """
@@ -64,20 +64,20 @@ class GenderUpdater(UpdateMixin):
         gender_performance = self.ga_service.search(self.account.id, query=gender_statistics_query)
         return gender_performance
 
-    def _instance_generator(self, gender_performance, click_type_data, min_date):
+    def _create_instances(self, gender_performance, click_type_data, min_date):
         """
         Generator that yields GenderStatistic instances to be created
         :param gender_performance: iter -> Google Ads ad_group resource search response
         :return: GenderStatistic instance
         """
         existing_stats_from_min_date = {
-            (s.gender_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.gender_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
         stats_to_update = []
         for row in gender_performance:
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             statistics = {
                 "gender_id": GENDER_ENUM_TO_ID.get(row.ad_group_criterion.gender.type, Gender.UNDETERMINED),
                 "date": row.segments.date.value,

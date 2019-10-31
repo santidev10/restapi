@@ -54,7 +54,6 @@ class PlacementUpdater(UpdateMixin):
             placement_metrics = self._get_placement_metrics(min_date, max_date)
             self._create_instances(placement_metrics, YTVideoStatistic, self.existing_video_statistics, min_date, stat_type=constants.YOUTUBE_VIDEO)
 
-
     def _get_placement_metrics(self, min_date, max_date):
         """
         Retrieve detail_placement_view resource performance
@@ -72,7 +71,7 @@ class PlacementUpdater(UpdateMixin):
         :return: tuple (lists) -> YTChannelStatistic, YTVideoStatistic
         """
         existing_stats_from_min_date = {
-            (int(s.ad_group_id), s.yt_id, s.device_id, str(s.date)): s.id for s
+            (s.ad_group_id, s.yt_id, s.device_id, str(s.date)): s.id for s
             in existing_stats.filter(date__gte=min_date)
         }
         stats_to_create = []
@@ -91,14 +90,16 @@ class PlacementUpdater(UpdateMixin):
             statistics = {
                 "yt_id": yt_id,
                 "date": row.segments.date.value,
-                "ad_group_id": row.ad_group.id.value,
+                "ad_group_id": str(row.ad_group.id.value),
                 "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))
+
             stat_obj = model(**statistics)
             stat_unique_constraint = (stat_obj.ad_group_id, stat_obj.yt_id, stat_obj.device_id, stat_obj.date)
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
             if stat_id is None:
                 stats_to_create.append(stat_obj)
             else:

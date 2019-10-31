@@ -34,14 +34,13 @@ class KeywordUpdater(UpdateMixin):
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
-
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
                 min_date, max_date,
                 resource_name=self.RESOURCE_NAME
             )
             keyword_performance = self._get_keyword_performance(min_date, max_date)
-            self._instance_generator(keyword_performance, click_type_data, min_date)
+            self._create_instances(keyword_performance, click_type_data, min_date)
 
     def _get_keyword_performance(self, min_date, max_date):
         """
@@ -53,9 +52,9 @@ class KeywordUpdater(UpdateMixin):
         keyword_performance = self.ga_service.search(self.account.id, query=query)
         return keyword_performance
 
-    def _instance_generator(self, keyword_performance, click_type_data, min_date):
+    def _create_instances(self, keyword_performance, click_type_data, min_date):
         existing_stats_from_min_date = {
-            (s.keyword, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.keyword, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
@@ -65,7 +64,7 @@ class KeywordUpdater(UpdateMixin):
             statistics = {
                 "keyword": keyword,
                 "date": row.segments.date.value,
-                "ad_group_id": row.ad_group.id.value,
+                "ad_group_id": str(row.ad_group.id.value),
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))

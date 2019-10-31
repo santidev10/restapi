@@ -33,18 +33,16 @@ class TopicUpdater(UpdateMixin):
         if max_acc_date is None:
             return
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
-
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
-
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
                 min_date, max_date,
                 resource_name=self.RESOURCE_NAME
             )
             topic_performance = self._get_topic_performance(min_date, max_date)
-            self._instance_generator(topic_performance, click_type_data, min_date)
+            self._create_instances(topic_performance, click_type_data, min_date)
 
     def _get_topic_performance(self, min_date, max_date):
         """
@@ -56,19 +54,20 @@ class TopicUpdater(UpdateMixin):
         topic_performance = self.ga_service.search(self.account.id, query=query)
         return topic_performance
 
-    def _instance_generator(self, topic_performance, click_type_data, min_date):
+    def _create_instances(self, topic_performance, click_type_data, min_date):
         existing_stats_from_min_date = {
-            (s.topic_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.topic_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
         stats_to_update = []
         for row in topic_performance:
+            ad_group_id = str(row.ad_group.id.value)
             try:
                 topic_id = int(row.ad_group_criterion.topic.topic_constant.value.split("/")[-1])
                 topic_name = row.ad_group_criterion.topic.path[-1].value
             except (ValueError, IndexError):
-                logger.warning(f"Unable to extract topic for cid: {self.account.id} ad_group_id: {row.ad_group.id.value} criterion_id: {row.ad_group_criterion.criterion_id.value}")
+                logger.warning(f"Unable to extract topic for cid: {self.account.id} ad_group_id: {ad_group_id} criterion_id: {row.ad_group_criterion.criterion_id.value}")
                 continue
             else:
                 if topic_id not in self.existing_topics:
@@ -80,7 +79,7 @@ class TopicUpdater(UpdateMixin):
                 statistics = {
                     "topic_id": topic_id,
                     "date": row.segments.date.value,
-                    "ad_group_id": row.ad_group.id.value,
+                    "ad_group_id": ad_group_id,
                     **self.get_quartile_views(row)
                 }
                 statistics.update(self.get_base_stats(row))
@@ -90,6 +89,7 @@ class TopicUpdater(UpdateMixin):
                 stat_obj = TopicStatistic(**statistics)
                 stat_unique_constraint = (stat_obj.topic_id, stat_obj.ad_group_id, stat_obj.date)
                 stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
                 if stat_id is None:
                     stats_to_create.append(stat_obj)
                 else:

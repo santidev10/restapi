@@ -153,13 +153,13 @@ class CityUpdater(UpdateMixin):
         :return:
         """
         existing_stats_from_min_date = {
-            (s.city_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.city_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
         stats_to_update = []
         for row in cities_statistics:
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             city_id = self._extract_city_id(row.segments.geo_target_city.value)
             if city_id not in top_cities:
                 continue

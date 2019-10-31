@@ -95,7 +95,7 @@ AUDIENCE_PERFORMANCE_FIELDS = {
     },
     "performance": {
         "ad_group": ("id",),
-        "ad_group_criterion": ("criterion_id", "user_list.user_list", "type", "user_interest.user_interest_category", "custom_affinity.custom_affinity"),
+        "ad_group_criterion": ("criterion_id", "user_list.user_list", "type", "user_interest.user_interest_category", "custom_affinity.custom_affinity", "custom_intent.custom_intent"),
         "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
         "segments": ("date",),
     }

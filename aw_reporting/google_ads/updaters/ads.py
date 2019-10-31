@@ -22,7 +22,7 @@ class AdUpdater(UpdateMixin):
         self.account = account
         self.today = now_in_default_tz().date()
         self.existing_statistics = AdStatistic.objects.filter(ad__ad_group__campaign__account=account)
-        self.existing_ad_ids = set([int(_id) for _id in Ad.objects.filter(ad_group__campaign__account=account).values_list("id", flat=True)])
+        self.existing_ad_ids = set(Ad.objects.filter(ad_group__campaign__account=account).values_list("id", flat=True))
 
     def update(self, client):
         self.client = client
@@ -47,7 +47,7 @@ class AdUpdater(UpdateMixin):
                 resource_name=self.RESOURCE_NAME
             )
             ad_performance = self._get_ad_performance(min_date, max_date)
-            self._generate_instances(ad_performance, click_type_data, min_date)
+            self._create_instances(ad_performance, click_type_data, min_date)
 
     def _get_ad_performance(self, min_date, max_date):
         """
@@ -61,7 +61,7 @@ class AdUpdater(UpdateMixin):
         ad_performance = self.ga_service.search(self.account.id, query=query)
         return ad_performance
 
-    def _generate_instances(self, ad_performance: iter, click_type_data: dict, min_stat_date):
+    def _create_instances(self, ad_performance: iter, click_type_data: dict, min_stat_date):
         """
         Generator that yields GenderStatistic instances
         :param ad_performance: iter -> Google ads ad_group_ad resource search response
@@ -72,12 +72,12 @@ class AdUpdater(UpdateMixin):
         stats_to_update = []
         stats_to_create = []
         existing_stats_from_min_date = {
-            (int(s.ad_id), str(s.date)): s.id for s
+            (s.ad_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
         }
         for row in ad_performance:
             ad = row.ad_group_ad.ad
-            ad_id = ad.id.value
+            ad_id = str(ad.id.value)
             if ad_id not in updated_ad_ids:
                 updated_ad_ids.add(ad_id)
                 ad_data = {

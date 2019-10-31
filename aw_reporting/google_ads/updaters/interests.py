@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from datetime import timedelta
 
 from django.db.models import Max
@@ -37,8 +36,8 @@ class InterestUpdater(UpdateMixin):
         self.existing_audience_stats = AudienceStatistic.objects.filter(ad_group__campaign__account=account)
         self.existing_remark_stats = RemarkStatistic.objects.filter(ad_group__campaign__account=account)
         # Coerce to ints since Google ads api response for id fields are ints
-        self.existing_remarketing_ids = set([int(_id) for _id in RemarkList.objects.values_list("id", flat=True)])
-        self.existing_audience_interest_ids = set([int(_id) for _id in Audience.objects.values_list("id", flat=True)])
+        self.existing_remarketing_ids = set(RemarkList.objects.values_list("id", flat=True))
+        self.existing_audience_interest_ids = set([str(_id) for _id in Audience.objects.values_list("id", flat=True).values_list("id", flat=True)])
         self.remarketing_to_create = []
         self.custom_audiences_to_create = []
 
@@ -65,7 +64,7 @@ class InterestUpdater(UpdateMixin):
             saved_max_date = max(audience_max_date, remark_max_date)
         else:
             saved_max_date = audience_max_date or remark_max_date
-        min_date = (saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+        min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
         max_date = max_acc_date
 
         click_type_data = self.get_clicks_report(
@@ -83,11 +82,11 @@ class InterestUpdater(UpdateMixin):
             for row in audience_user_lists
         }
         self.existing_remark_stats = {
-            (int(s.remark_id), int(s.ad_group_id), str(s.date)): s.id for s
+            (s.remark_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_remark_stats.filter(date__gte=min_date)
         }
         self.existing_audience_stats = {
-            (s.audience_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (str(s.audience_id), s.ad_group_id, str(s.date)): s.id for s
             in self.existing_audience_stats.filter(date__gte=min_date)
         }
 
@@ -104,7 +103,7 @@ class InterestUpdater(UpdateMixin):
             "existing_stats": self.existing_audience_stats,
         }
         for row in audience_performance:
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             statistics = {
                 "date": row.segments.date.value,
                 "ad_group_id": ad_group_id,
@@ -133,8 +132,8 @@ class InterestUpdater(UpdateMixin):
                 stat_obj, config = self._handle_custom_affinity(statistics, audience_id)
 
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_INTENT:
-                # Ignore custom intent
-                continue
+                audience_id = self._extract_audience_id(row.ad_group_criterion.custom_intent.custom_intent.value)
+                stat_obj, config = self._handle_custom_intent(statistics, audience_id)
 
             else:
                 logger.warning(
@@ -201,6 +200,21 @@ class InterestUpdater(UpdateMixin):
         statistics.update(audience_id=audience_id)
         return AudienceStatistic(**statistics), self.audience_config
 
+    def _handle_custom_intent(self, statistics, audience_id):
+        """
+        Mutates statistics and adds Audience, AudienceStatistic instances to create
+        :param statistics: dict -> Statistics of Google ads row being processed
+        :param audience_id: int -> Google ads audience id
+        """
+        if audience_id not in self.existing_audience_interest_ids:
+            name = f"customintent::{audience_id}"
+            self.existing_audience_interest_ids.add(audience_id)
+            self.custom_audiences_to_create.append(
+                Audience(id=audience_id, name=name, type=Audience.CUSTOM_INTENT)
+            )
+        statistics.update(audience_id=audience_id)
+        return AudienceStatistic(**statistics), self.audience_config
+
     def _get_audience_user_lists(self):
         """
         Query for ad_group_audience view user lists
@@ -230,7 +244,7 @@ class InterestUpdater(UpdateMixin):
         interest_id = None
         if not user_interest_resource_name:
             return interest_id
-        interest_id = int(user_interest_resource_name.split("/")[-1])
+        interest_id = user_interest_resource_name.split("/")[-1]
         return interest_id
 
 

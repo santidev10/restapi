@@ -40,18 +40,18 @@ class ParentUpdater(UpdateMixin):
             max_date = max_acc_date
 
             parent_performance = self._get_parent_performance(min_date, max_date)
-            self._instance_generator(parent_performance, min_date)
+            self._create_instances(parent_performance, min_date)
         self.reset_denorm_flag(ad_group_ids=self.ad_group_ids)
 
-    def _instance_generator(self, parent_metrics, min_date):
+    def _create_instances(self, parent_metrics, min_date):
         existing_stats_from_min_date = {
-            (s.parent_status_id, int(s.ad_group_id), str(s.date)): s.id for s
+            (s.parent_status_id, s.ad_group_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
         stats_to_update = []
         for row in parent_metrics:
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             self.ad_group_ids.add(ad_group_id)
             statistics = {
                 "parent_status_id": constants.PARENT_ENUM_TO_ID.get(row.ad_group_criterion.parental_status.type, Parent.PARENT),
@@ -64,6 +64,7 @@ class ParentUpdater(UpdateMixin):
             stat_obj = ParentStatistic(**statistics)
             stat_unique_constraint = (stat_obj.parent_status_id, stat_obj.ad_group_id, stat_obj.date)
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
             if stat_id is None:
                 stats_to_create.append(stat_obj)
             else:

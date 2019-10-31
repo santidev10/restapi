@@ -22,7 +22,7 @@ class VideoUpdater(UpdateMixin):
         self.today = now_in_default_tz().date()
         self.existing_statistics = VideoCreativeStatistic.objects.filter(ad_group__campaign__account=account)
         self.existing_video_creative_ids = set(VideoCreative.objects.values_list("id", flat=True))
-        self.existing_ad_group_ids = set([int(_id) for _id in AdGroup.objects.filter(campaign__account=self.account).values_list("id", flat=True)])
+        self.existing_ad_group_ids = set(AdGroup.objects.filter(campaign__account=self.account).values_list("id", flat=True))
 
     def update(self, client):
         self.client = client
@@ -56,7 +56,7 @@ class VideoUpdater(UpdateMixin):
         :return: tuple (list) -> VideoCreative, VideoCreativeStatistic to create
         """
         existing_stats_from_min_date = {
-            (int(s.ad_group_id), s.creative_id, str(s.date)): s.id for s
+            (s.ad_group_id, s.creative_id, str(s.date)): s.id for s
             in self.existing_statistics.filter(date__gte=min_date)
         }
         stats_to_create = []
@@ -64,7 +64,7 @@ class VideoUpdater(UpdateMixin):
         video_creative_to_create = []
         for row in video_performance:
             video_id = row.video.id.value
-            ad_group_id = row.ad_group.id.value
+            ad_group_id = str(row.ad_group.id.value)
             if video_id not in self.existing_video_creative_ids:
                 self.existing_video_creative_ids.add(video_id)
                 video_creative_to_create.append(

@@ -50,11 +50,11 @@ class CampaignUpdater(UpdateMixin):
 
         # Campaign performance segmented by date and all_conversions
         campaign_performance, click_type_data, min_stat_date = self._get_campaign_performance()
-        self._instance_generator(campaign_performance, click_type_data, min_stat_date)
+        self._create_instances(campaign_performance, click_type_data, min_stat_date)
 
         # Campaign performance segmented by hour
         campaign_hourly_performance, hourly_min_stat_date = self._get_campaign_hourly_performance()
-        self._hourly_instance_generator(campaign_hourly_performance, hourly_min_stat_date)
+        self._create_hourly_instances(campaign_hourly_performance, hourly_min_stat_date)
 
         # Update account
         Account.objects.filter(id=self.account.id).update(hourly_updated_at=timezone.now())
@@ -96,7 +96,7 @@ class CampaignUpdater(UpdateMixin):
         hourly_performance = self.ga_service.search(self.account.id, query=hourly_query)
         return hourly_performance, start_date
 
-    def _instance_generator(self, campaign_performance, click_type_data, min_stat_date):
+    def _create_instances(self, campaign_performance, click_type_data, min_stat_date):
         """
         Generator to yield CampaignStatistics instances
         :param campaign_performance: Google ads campaign resource search response
@@ -105,11 +105,11 @@ class CampaignUpdater(UpdateMixin):
         campaign_stats_to_create = []
         campaign_stats_to_update = []
         existing_stats_from_min_date = {
-            (int(s.campaign_id), str(s.date), s.device_id): s.id for s
+            (s.campaign_id, str(s.date), s.device_id): s.id for s
             in self.existing_statistics.filter(date__gte=min_stat_date)
         }
         for row in campaign_performance:
-            campaign_id = row.campaign.id.value
+            campaign_id = str(row.campaign.id.value)
             budget_type, budget_value = self._get_budget_type_and_value(row)
             budget = float(row.campaign_budget.amount_micros.value if budget_type == BudgetType.DAILY else row.campaign_budget.total_amount_micros.value) / 10 ** 6
             campaign_status, campaign_serving_status = self._get_campaign_statuses(row)
@@ -145,7 +145,7 @@ class CampaignUpdater(UpdateMixin):
                     setattr(campaign, field, value)
                 campaign.save()
             except Campaign.DoesNotExist:
-                campaign_data["id"] = str(campaign_id)
+                campaign_data["id"] = campaign_id
                 Campaign.objects.create(**campaign_data)
             self.existing_campaigns.add(campaign_id)
 
@@ -161,7 +161,7 @@ class CampaignUpdater(UpdateMixin):
         CampaignStatistic.objects.safe_bulk_create(campaign_stats_to_create)
         CampaignStatistic.objects.bulk_update(campaign_stats_to_update, fields=self.CAMPAIGN_STAT_UPDATE_FIELDS)
 
-    def _hourly_instance_generator(self, hourly_performance, min_stat_date):
+    def _create_hourly_instances(self, hourly_performance, min_stat_date):
         """
         Create CampaignHourlyStatistic objects
         :param hourly_performance: :param campaign_performance: Google ads campaign resource search response segmented by hour
