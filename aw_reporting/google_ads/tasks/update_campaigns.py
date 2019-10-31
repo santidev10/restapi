@@ -86,7 +86,7 @@ def mcc_account_update(mcc_id, index, total):
     Update single MCC account
     """
     mcc_account = Account.objects.get(id=mcc_id)
-    GoogleAdsUpdater().update_accounts_for_mcc(mcc_account=mcc_account)
+    GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
     logger.debug(f"ACCOUNTS UPDATE COMPLETE {index}/{total} FOR MCC: {mcc_id}")
 
 
@@ -98,7 +98,7 @@ def cid_campaign_update(cid_id):
     """
     start = time.time()
     cid_account = Account.objects.get(id=cid_id)
-    GoogleAdsUpdater().update_campaigns(cid_account)
+    GoogleAdsUpdater(cid_account).update_campaigns()
     logger.debug(f"CID CAMPAIGNS UPDATE COMPLETE FOR CID: {cid_id}. Took: {time.time() - start}")
 
 

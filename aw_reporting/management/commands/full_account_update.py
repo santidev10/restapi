@@ -25,12 +25,16 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         cid_ids = (options["ids"] or "").split(",")
         mcc_ids = (options["mcc"] or "").split(",")
+
+        mcc_updater = GoogleAdsUpdater(None)
         for mcc in Account.objects.filter(id__in=mcc_ids):
-            GoogleAdsUpdater().update_accounts_for_mcc(mcc_account=mcc)
+            mcc_updater.update_accounts_as_mcc(mcc_account=mcc)
+
+        cid_updater = GoogleAdsUpdater(None)
         for cid in cid_ids:
             account = Account.objects.get(id=cid)
-            updater = GoogleAdsUpdater()
-            updater.full_update(account, any_permission=True)
+            cid_updater.account = account
+            cid_updater.full_update(any_permission=True)
 
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()

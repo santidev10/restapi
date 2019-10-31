@@ -101,7 +101,7 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
     def test_skip_inactive_account(self):
         self._create_account(is_active=False)
         with patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_campaigns") as mock_update_campaigns, \
-                patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc", new=MagicMock):
+                patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_as_mcc", new=MagicMock):
             setup_update_campaigns()
             mock_update_campaigns.assert_not_called()
 

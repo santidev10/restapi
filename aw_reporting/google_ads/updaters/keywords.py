@@ -81,6 +81,5 @@ class KeywordUpdater(UpdateMixin):
             else:
                 stat_obj.id = stat_id
                 stats_to_update.append(stat_obj)
-
         KeywordStatistic.objects.safe_bulk_create(stats_to_create)
         KeywordStatistic.objects.bulk_update(stats_to_update, fields=self.UPDATE_FIELDS)

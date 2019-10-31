@@ -982,11 +982,11 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         now_utc = now.astimezone(tz=utc)
         expected_update_time = now_utc
 
-        updater = GoogleAdsUpdater()
+        updater = GoogleAdsUpdater(account)
         with patch_now(now), \
                 patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now_utc), \
                 patch.object(updater, "main_updaters", return_value=[]):
-            updater.update_all_except_campaigns(account)
+            updater.update_all_except_campaigns()
 
         account.refresh_from_db()
         self.assertEqual(account.update_time, expected_update_time)
@@ -1055,7 +1055,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         account.refresh_from_db()
 
     @patch("aw_reporting.google_ads.tasks.update_campaigns.cid_campaign_update")
-    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc")
+    @patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_as_mcc")
     def test_skip_inactive_account(self, mock_updater, mock_cid_account_update):
         self._create_account(is_active=False)
         setup_update_campaigns()
@@ -1100,11 +1100,11 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         account = self._create_account(id=test_account_id, is_active=True)
 
         client = GoogleAdsClient("", "")
-        updater = GoogleAdsUpdater()
+        updater = GoogleAdsUpdater(account)
         mock_updater = MagicMock()
         updater.main_updaters = (mock_updater, )
         updater.MAX_RETRIES = 2
-        updater.full_update(account, client=client)
+        updater.full_update(client=client)
         self.assertGreater(mock_execute.call_count, 1)
 
     def test_budget_daily(self):
@@ -1376,7 +1376,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         manager = account.managers.all()[0]
 
         mock_execute.side_effect = RefreshError
-        GoogleAdsUpdater().update_accounts_for_mcc(manager)
+        GoogleAdsUpdater(manager).update_accounts_as_mcc()
         manager.refresh_from_db()
         self.assertFalse(manager.is_active)
 

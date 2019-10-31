@@ -19,7 +19,6 @@ def upload_initial_aw_data_task(connection_pk):
     :return:
     """
     connection = AWConnection.objects.get(pk=connection_pk)
-    updater = GoogleAdsUpdater()
     client = get_client(refresh_token=connection.refresh_token)
 
     mcc_to_update = Account.objects.filter(
@@ -27,8 +26,9 @@ def upload_initial_aw_data_task(connection_pk):
         update_time__isnull=True,  # they were not updated before
     ).distinct()
 
+    mcc_updater = GoogleAdsUpdater(None)
     for mcc in mcc_to_update:
-        updater.update_accounts_for_mcc(mcc_account=mcc)
+        mcc_updater.update_accounts_as_mcc(mcc_account=mcc)
 
     accounts_to_update = Account.objects.filter(
         managers__mcc_permissions__aw_connection=connection,
@@ -41,9 +41,9 @@ def upload_initial_aw_data_task(connection_pk):
         # Try updating with each manager id as login_customer_id
         for manager in account.managers.all():
             try:
-                updater.mcc_account = manager
+                updater = GoogleAdsUpdater(account)
                 client.login_customer_id = manager.id
-                updater.full_update(account, client=client)
+                updater.full_update(client=client)
             except Exception as e:
                 # Try next manager id
                 logger.error(e)

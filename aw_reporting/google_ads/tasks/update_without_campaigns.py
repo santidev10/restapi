@@ -7,7 +7,6 @@ from django.db import Error
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdaterContinueException
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
@@ -54,13 +53,10 @@ def cid_update_all_except_campaigns(cid_id):
     Update single CID account
     """
     start = time.time()
-    try:
-        cid_account = Account.objects.get(id=cid_id)
-        updater = GoogleAdsUpdater()
-        updater.update_all_except_campaigns(cid_account)
-        logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
-    except GoogleAdsUpdaterContinueException:
-        pass
+    cid_account = Account.objects.get(id=cid_id)
+    updater = GoogleAdsUpdater(cid_account)
+    updater.update_all_except_campaigns()
+    logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
 
 
 @celery_app.task
