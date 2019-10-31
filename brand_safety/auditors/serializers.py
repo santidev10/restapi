@@ -31,6 +31,7 @@ class BrandSafetyChannelSerializer(Serializer):
 class BrandSafetyVideoSerializer(Serializer):
     id = CharField(source="main.id")
     channel_id = CharField(source="channel.id", default="")
+    channel_title = CharField(source="channel.title", default="")
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
     tags = SerializerMethodField()

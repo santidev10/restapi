@@ -69,7 +69,7 @@ class BrandSafetyAudit(object):
         self.video_manager = VideoManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
                       Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
-            upsert_sections=(Sections.BRAND_SAFETY,)
+            upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
     def _set_discovery_config(self):
@@ -133,6 +133,9 @@ class BrandSafetyAudit(object):
             "channel_audits": []
         }
         for channel in channels:
+            # Ignore channels that can not be indexed without required fields
+            if not channel.get("id"):
+                continue
             video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
             channel["video_audits"] = video_audits
 
@@ -194,12 +197,15 @@ class BrandSafetyAudit(object):
                 video = video.to_dict()
             except AttributeError:
                 pass
+            if not video.get("id") or not video.get("channel_id") or not video.get("channel_title"):
+                # Ignore videos that can not be indexed without required fields
+                continue
             try:
                 blacklist_data = self.blacklist_data_ref.get(video["id"], {})
                 audit = self.audit_video(video, blacklist_data=blacklist_data)
                 video_audits.append(audit)
             except KeyError as e:
-                # Ignore videos without full data
+                # Ignore videos without full data in accessed audit
                 continue
         return video_audits
 
@@ -246,11 +252,14 @@ class BrandSafetyAudit(object):
             # Don't score channels without videos
             if data.get("video_audits") is None:
                 continue
+            if not data.get("id"):
+                # Ignore channels that can not be indexed without required fields
+                continue
             try:
                 audit = self.audit_channel(data)
                 channel_audits.append(audit)
             except KeyError as e:
-                # Ignore channels without full data
+                # Ignore channels without full data accessed during audit
                 continue
         return channel_audits
 
@@ -318,14 +327,16 @@ class BrandSafetyAudit(object):
             self.channel_batch_counter += 1
 
     def _create_update_query(self, cursor_id):
-        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
+        query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
         query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(self.UPDATE_TIME_THRESHOLD).get()
         return query
 
     def _create_discovery_query(self, cursor_id):
-        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
+        query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
         query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()

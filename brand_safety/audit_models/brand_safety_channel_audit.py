@@ -121,9 +121,7 @@ class BrandSafetyChannelAudit(object):
         """
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
         es_data = {
-            "meta": {
-                "id": self.metadata["id"],
-            },
+            "id": self.metadata["id"],
             "brand_safety": {
                 "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
                 "videos_scored": brand_safety_score.videos_scored,
