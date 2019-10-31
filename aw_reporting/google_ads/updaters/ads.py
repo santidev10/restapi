@@ -27,15 +27,13 @@ class AdUpdater(UpdateMixin):
     def update(self, client):
         self.client = client
         self.ga_service = client.get_service("GoogleAdsService", version="v2")
-        self.ad_group_criterion_status_enum = client.get_type("AdGroupCriterionApprovalStatusEnum",
-                                                              version="v2").AdGroupCriterionApprovalStatus
+        self.ad_group_criterion_status_enum = client.get_type("AdGroupCriterionApprovalStatusEnum", version="v2").AdGroupCriterionApprovalStatus
         self.ad_group_ad_status_enum = client.get_type("AdGroupAdStatusEnum", version="v2").AdGroupAdStatus
 
         # Get oldest and newest AdGroup statistics dates for account
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
         if max_acc_date is None:
             return
-
         # Get newest Ad statistics dates for account
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
 
@@ -43,7 +41,6 @@ class AdUpdater(UpdateMixin):
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
-
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
                 min_date, max_date,
@@ -109,7 +106,7 @@ class AdUpdater(UpdateMixin):
             statistics.update(click_data)
 
             stat_obj = AdStatistic(**statistics)
-            stat_unique_constraint = (statistics["ad_id"], statistics["date"])
+            stat_unique_constraint = (stat_obj.ad_id, stat_obj.date)
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
 
             if stat_id is not None:

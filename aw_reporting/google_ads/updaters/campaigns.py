@@ -67,7 +67,6 @@ class CampaignUpdater(UpdateMixin):
         # Find min and max dates
         now = now_in_default_tz()
         max_date = self.max_ready_date(now, tz_str=self.account.timezone)
-
         dates = self.existing_statistics.aggregate(max_date=Max("date"))
         # Get latest date after dropping recent statistics
         min_date = dates["max_date"] - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) if dates["max_date"] else constants.MIN_FETCH_DATE

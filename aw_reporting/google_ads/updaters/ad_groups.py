@@ -38,7 +38,6 @@ class AdGroupUpdater(UpdateMixin):
         min_date, max_date = self.get_account_border_dates(self.account)
         # Update ad groups and daily stats only if there have been changes
         min_date, max_date = (max_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT), max_available_date) if max_date else (constants.MIN_FETCH_DATE, max_available_date)
-
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
             min_date, max_date,
@@ -118,9 +117,8 @@ class AdGroupUpdater(UpdateMixin):
             statistics.update(click_data)
 
             stat_obj = AdGroupStatistic(**statistics)
-            stat_unique_constraint = (statistics["ad_group_id"], statistics["date"], statistics["device_id"], statistics["ad_network"])
+            stat_unique_constraint = (stat_obj.ad_group_id, stat_obj.date, stat_obj.device_id, stat_obj.ad_network)
             stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
-
             if stat_id is not None:
                 stat_obj.id = stat_id
                 stats_to_update.append(stat_obj)

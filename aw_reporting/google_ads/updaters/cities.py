@@ -7,6 +7,7 @@ import logging
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
+from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from utils.datetime import now_in_default_tz
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class CityUpdater(UpdateMixin):
     RESOURCE_NAME = "geographic_view"
+    UPDATE_FIELDS = constants.BASE_STATISTIC_MODEL_UPDATE_FIELDS
 
     def __init__(self, account):
         self.client = None
@@ -32,17 +34,13 @@ class CityUpdater(UpdateMixin):
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
         if max_acc_date is None:
             return
-
-        self.drop_latest_stats(self.existing_statistics, self.today)
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
-
         if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
 
             # Finally query and generate for city statistics and merge statistical data with city type data
             geo_location_cities_metrics = self._get_city_performance()
-
             top_cities = self._get_top_cities(geo_location_cities_metrics)
             existing_top_cities = set(GeoTarget.objects.filter(id__in=top_cities).values_list("id", flat=True))
 
@@ -55,8 +53,7 @@ class CityUpdater(UpdateMixin):
             if not min_date:
                 return
             cities_statistics = self._get_cities_statistics(min_date, max_date)
-            statistics_generator = self._instance_generator(cities_statistics, top_cities, latest_dates)
-            CityStatistic.objects.safe_bulk_create(statistics_generator)
+            self._create_instances(cities_statistics, top_cities, latest_dates, min_date)
 
     def _get_city_performance(self):
         """
@@ -148,13 +145,19 @@ class CityUpdater(UpdateMixin):
             top_cities.append(city_id)
         return set(top_cities)
 
-    def _instance_generator(self, cities_statistics, top_cities, latest_dates):
+    def _create_instances(self, cities_statistics, top_cities, latest_dates, min_date):
         """
         Generator to yield CityStatistic instances
         :param cities_statistics: iter -> Google ads search response
         :param top_cities: set ->
         :return:
         """
+        existing_stats_from_min_date = {
+            (s.city_id, int(s.ad_group_id), str(s.date)): s.id for s
+            in self.existing_statistics.filter(date__gte=min_date)
+        }
+        stats_to_create = []
+        stats_to_update = []
         for row in cities_statistics:
             ad_group_id = row.ad_group.id.value
             city_id = self._extract_city_id(row.segments.geo_target_city.value)
@@ -164,13 +167,24 @@ class CityUpdater(UpdateMixin):
             row_date = datetime.strptime(row.segments.date.value, "%Y-%m-%d").date()
             if date and row_date <= date:
                 continue
-            stats = {
+            statistics = {
                 "city_id": int(city_id),
                 "date": row.segments.date.value,
                 "ad_group_id": ad_group_id
             }
-            stats.update(self.get_base_stats(row))
-            yield CityStatistic(**stats)
+            statistics.update(self.get_base_stats(row))
+
+            stat_obj = CityStatistic(**statistics)
+            stat_unique_constraint = (stat_obj.city_id, stat_obj.ad_group_id, stat_obj.date)
+            stat_id = existing_stats_from_min_date.get(stat_unique_constraint)
+
+            if stat_id is not None:
+                stat_obj.id = stat_id
+                stats_to_update.append(stat_obj)
+            else:
+                stats_to_create.append(stat_obj)
+        CityStatistic.objects.safe_bulk_create(stats_to_create)
+        CityStatistic.objects.bulk_update(stats_to_update, fields=self.UPDATE_FIELDS)
 
     def _extract_city_id(self, geo_target_city_resource):
         city_id = geo_target_city_resource.split("/")[-1]

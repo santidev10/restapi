@@ -34,7 +34,7 @@ class TopicUpdater(UpdateMixin):
             return
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
 
-        if saved_max_date is None or saved_max_date <= max_acc_date:
+        if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
 
