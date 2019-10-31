@@ -391,21 +391,28 @@ class AuditExportApiView(APIView):
         for cid in channels:
             channel_ids.append(cid.channel_id)
             node = ''
-            try:
-                if clean is False:
+            if clean is False:
+                try:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
                     node = 'exclusion'
-                elif clean is True:
+                except Exception as e:
+                    hit_words[cid.channel.channel_id] = set()
+            elif clean is True:
+                try:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
                     node = 'inclusion'
-                elif clean is None:
+                except Exception as e:
+                    hit_words[cid.channel.channel_id] = set()
+            elif clean is None:
+                try:
                     good_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
+                except Exception as e:
+                    good_hit_words[cid.channel.channel_id] = set()
+                try:
                     bad_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
-                    node = 'all'
-            except Exception as e:
-                hit_words[cid.channel.channel_id] = set()
-                good_hit_words[cid.channel.channel_id] = set()
-                bad_hit_words[cid.channel.channel_id] = set()
+                except Exception as e:
+                    bad_hit_words[cid.channel.channel_id] = set()
+                node = 'all'
             videos = AuditVideoProcessor.objects.filter(
                 audit_id=audit_id,
                 video__channel_id=cid.channel_id
