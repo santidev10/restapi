@@ -14,17 +14,17 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            "--ids",
+            "--cids",
             help="Comma separated CID account ids to update"
         )
         parser.add_argument(
-            "--mcc",
+            "--mccs",
             help="Comma separated MCC account ids to update",
         )
 
     def handle(self, *args, **options):
-        cid_ids = (options["ids"] or "").split(",")
-        mcc_ids = (options["mcc"] or "").split(",")
+        cid_ids = (options["cids"] or "").split(",")
+        mcc_ids = (options["mccs"] or "").split(",")
 
         mcc_updater = GoogleAdsUpdater(None)
         for mcc in Account.objects.filter(id__in=mcc_ids):
