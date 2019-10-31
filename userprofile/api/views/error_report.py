@@ -20,7 +20,7 @@ class ErrorReportApiView(APIView):
         """
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        to = settings.CONTACT_FORM_EMAIL_ADDRESSES
+        to = settings.UI_ERROR_REPORT_EMAIL_ADDRESSES
         host = request.get_host()
         subject = "UI Error Report from: {}".format(host)
         message = "User {email} has experienced an error on {host}: \n\n" \
