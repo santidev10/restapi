@@ -29,7 +29,7 @@ def setup_update_campaigns():
     This task should only ever be called once, or recalled after failing
     Update tasks are setup by finalize_campaigns_update with updated cursor value
     """
-    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60).acquire(blocking=False)
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, timeout=60 * 60 * 2).acquire(blocking=False)
     if is_acquired:
         setup_mcc_update_tasks.delay()
 
