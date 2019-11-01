@@ -22,7 +22,7 @@ class Command(BaseCommand):
             except Exception as e:
                 self.machine_number = 0
             try:
-                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")
+                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[0]
                 self.audit = self.export.audit
             except Exception as e:
                 logger.exception(e)
