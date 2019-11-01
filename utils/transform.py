@@ -9,7 +9,3 @@ def populate_video_custom_captions(video, transcript_texts=[], transcript_langua
         for text, language_code in zip(transcript_texts, transcript_languages) if text != ""
     ]
     video.populate_custom_captions(transcripts_checked=True, items=transcripts)
-
-
-def populate_channel_task_us_data(channel, channel_data):
-    channel.populate_task_us_data(**channel_data)
