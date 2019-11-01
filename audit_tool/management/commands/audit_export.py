@@ -22,7 +22,7 @@ class Command(BaseCommand):
             except Exception as e:
                 self.machine_number = 0
             try:
-                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[self.machine_number]
+                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")
                 self.audit = self.export.audit
             except Exception as e:
                 logger.exception(e)
@@ -30,10 +30,10 @@ class Command(BaseCommand):
             self.process_export()
 
     def process_export(self):
-        export_funcs = AuditExportApiView()
-        audit_type = self.audit.params.get('audit_type_original')
         self.export.started = timezone.now()
         self.export.save(update_fields=['started'])
+        export_funcs = AuditExportApiView()
+        audit_type = self.audit.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit.audit_type
         if audit_type == 2:
