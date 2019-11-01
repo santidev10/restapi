@@ -1,11 +1,10 @@
 import logging
-from datetime import timedelta
 
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models.ad_words.constants import Parent
 from utils.datetime import now_in_default_tz
@@ -35,9 +34,9 @@ class ParentUpdater(UpdateMixin):
             return
 
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
-        if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+        if saved_max_date is None or saved_max_date <= max_acc_date:
             max_date = max_acc_date
+            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_date) if saved_max_date else min_acc_date
 
             parent_performance = self._get_parent_performance(min_date, max_date)
             self._create_instances(parent_performance, min_date)

@@ -1,17 +1,15 @@
-from datetime import datetime
-from datetime import timedelta
 import logging
 
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.constants import AD_NETWORK_ENUM_TO_STR
 from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models.ad_words.constants import Device
 from utils.datetime import now_in_default_tz
-from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +35,11 @@ class AdGroupUpdater(UpdateMixin):
 
         min_date, max_date = self.get_account_border_dates(self.account)
         # Update ad groups and daily stats only if there have been changes
-        # min_date, max_date = (max_date - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT), max_available_date) if max_date else (constants.MIN_FETCH_DATE, max_available_date)
+        if max_date:
+            min_date, max_date = calculate_min_date_to_update(max_date, max_available_date), max_available_date
+        else:
+            min_date, max_date = constants.MIN_FETCH_DATE, max_available_date
+
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
             min_date, max_date,

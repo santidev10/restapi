@@ -8,6 +8,7 @@ from django.db.models import Max
 
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from utils.datetime import now_in_default_tz
 
@@ -36,10 +37,10 @@ class CityUpdater(UpdateMixin):
             return
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
         if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
             max_date = max_acc_date
+            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_date)
 
-            # Finally query and generate for city statistics and merge statistical data with city type data
+            # Query and generate for city statistics and merge statistical data with city type data
             geo_location_cities_metrics = self._get_city_performance()
             top_cities = self._get_top_cities(geo_location_cities_metrics)
             existing_top_cities = set(GeoTarget.objects.filter(id__in=top_cities).values_list("id", flat=True))

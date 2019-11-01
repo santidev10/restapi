@@ -1,9 +1,7 @@
-from datetime import timedelta
-
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
-from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import YTChannelStatistic
@@ -41,9 +39,9 @@ class PlacementUpdater(UpdateMixin):
         else:
             saved_max_date = channel_saved_max_date or video_saved_max_date
 
-        if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+        if saved_max_date is None or saved_max_date <= max_acc_date:
             max_date = max_acc_date
+            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_date) if saved_max_date else min_acc_date
 
             # As Out-Of-Memory errors prevention we have to download this report twice
             # and save to the DB only the necessary records at each load.

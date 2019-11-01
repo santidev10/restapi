@@ -9,7 +9,7 @@ import pytz
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
-from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.models import Account
 from aw_reporting.models import ACTION_STATUSES
 from aw_reporting.models import Campaign
@@ -68,8 +68,8 @@ class CampaignUpdater(UpdateMixin):
         now = now_in_default_tz()
         max_date = self.max_ready_date(now, tz_str=self.account.timezone)
         dates = self.existing_statistics.aggregate(max_date=Max("date"))
-        # Get latest date after dropping recent statistics
-        min_date = dates["max_date"] - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT) if dates["max_date"] else constants.MIN_FETCH_DATE
+        min_date = calculate_min_date_to_update(dates["max_date"], max_date) if dates["max_date"] else constants.MIN_FETCH_DATE
+
         click_type_data = self.get_clicks_report(
             self.client, self.ga_service, self.account,
             min_date, max_date,

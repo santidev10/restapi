@@ -1,14 +1,13 @@
-from datetime import timedelta
 import logging
 
 from django.db.models import Max
 
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.google_ads.utils import calculate_min_date_to_update
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models.ad_words.constants import AgeRange
 from aw_reporting.google_ads.constants import AGE_RANGE_ENUM_TO_ID
-from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -36,10 +35,10 @@ class AgeRangeUpdater(UpdateMixin):
             return
         saved_max_date = self.existing_statistics.aggregate(
             max_date=Max("date")).get("max_date")
-        if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = (saved_max_date if saved_max_date else min_acc_date) - timedelta(days=AD_WORDS_STABILITY_STATS_DAYS_COUNT)
+        if saved_max_date is None or saved_max_date <= max_acc_date:
             max_date = max_acc_date
-            
+            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_acc_date) if saved_max_date else min_acc_date
+
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
                 min_date, max_date,
