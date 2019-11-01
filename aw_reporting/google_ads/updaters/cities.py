@@ -36,7 +36,7 @@ class CityUpdater(UpdateMixin):
         saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
         if saved_max_date is None or saved_max_date <= max_acc_date:
             max_date = max_acc_date
-            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_date)
+            min_date = calculate_min_date_to_update(saved_max_date, self.today, limit=max_date) if saved_max_date else min_acc_date
 
             # Query and generate for city statistics and merge statistical data with city type data
             geo_location_cities_metrics = self._get_city_performance()
