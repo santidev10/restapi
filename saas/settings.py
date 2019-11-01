@@ -332,6 +332,11 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "sean.maguire@channelfactory.com"
 ]
 
+UI_ERROR_REPORT_EMAIL_ADDRESSES = [
+    "sean.maguire@channelfactory.com",
+    "servando.berna@channelfactory.com",
+]
+
 SALESFORCE_UPDATES_ADDRESSES = []
 SALESFORCE_UPDATE_DELAY_DAYS = 5
 
