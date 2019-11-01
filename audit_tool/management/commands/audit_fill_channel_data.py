@@ -43,7 +43,7 @@ class Command(BaseCommand):
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
-            num = 2000
+            num = 200
             start = self.thread_id * num
             for channel in pending_channels.order_by("-id")[start:start+num]:
                 channels[channel.channel.channel_id] = channel

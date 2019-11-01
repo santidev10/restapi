@@ -291,7 +291,6 @@ class AuditChannel(models.Model):
             except IntegrityError as e:
                 return AuditChannel.objects.get(channel_id=channel_id)
 
-
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -310,7 +309,6 @@ class AuditChannelMeta(models.Model):
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
-
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
