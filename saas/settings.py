@@ -320,6 +320,20 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "sean.maguire@channelfactory.com",
 ]
 
+EMERGENCY_EMAIL_ADDRESSES = [
+    "andrii.dobrovolskyi@sigma.software",
+    "oleksandr.demianyshyn@sigma.software",
+    "yaryna.kimak@sigma.software",
+    "maria.konareva@sigma.software",
+    "vira.horbushko@sigma.software",
+    "kenneth.oh@channelfactory.com",
+    "bryan.ngo@channelfactory.com",
+    "george.su@channelfactory.com",
+    "sean.maguire@channelfactory.com",
+    "andrew.vonpelt@channelfactory.com",
+    "jonathan.tabak@channelfactory.com"
+]
+
 ES_MONITORING_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
     "oleksandr.demianyshyn@sigma.software",
