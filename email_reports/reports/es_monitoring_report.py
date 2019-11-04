@@ -46,7 +46,7 @@ class ESMonitoringEmailReport(BaseEmailReport):
             subject=subject,
             body=body,
             from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
-            to=settings.ES_MONITORING_EMAIL_ADDRESSES,
+            to=settings.EMERGENCY_EMAIL_ADDRESSES,
             bcc=[],
         )
         email.send(fail_silently=False)
