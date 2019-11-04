@@ -43,7 +43,7 @@ def upload_initial_aw_data_task(connection_pk):
             try:
                 updater = GoogleAdsUpdater(account)
                 client.login_customer_id = manager.id
-                updater.full_update(client=client)
+                updater.full_update(mcc_account=manager)
             except Exception as e:
                 # Try next manager id
                 logger.error(e)

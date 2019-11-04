@@ -34,7 +34,7 @@ class Command(BaseCommand):
         for cid in cid_ids:
             account = Account.objects.get(id=cid)
             cid_updater.account = account
-            cid_updater.full_update(any_permission=True)
+            cid_updater.full_update()
 
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()

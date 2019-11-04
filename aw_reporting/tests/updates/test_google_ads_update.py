@@ -32,7 +32,6 @@ from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
-from aw_reporting.google_ads.tasks.update_without_campaigns import cid_update_all_except_campaigns
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -1101,13 +1100,13 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         test_account_id = "test_account_id"
         account = self._create_account(id=test_account_id, is_active=True)
 
-        client = GoogleAdsClient("", "")
-        updater = GoogleAdsUpdater(account)
-        mock_updater = MagicMock()
-        updater.main_updaters = (mock_updater, )
-        updater.MAX_RETRIES = 2
-        updater.full_update(client=client)
-        self.assertGreater(mock_execute.call_count, 1)
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client"):
+            updater = GoogleAdsUpdater(account)
+            mock_updater = MagicMock()
+            updater.main_updaters = (mock_updater, )
+            updater.MAX_RETRIES = 2
+            updater.full_update()
+            self.assertGreater(mock_execute.call_count, 1)
 
     def test_retry_on_page_token_error(self):
         account = self._create_account(is_active=True)

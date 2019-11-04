@@ -111,21 +111,19 @@ class GoogleAdsUpdater(object):
         account_updater = AccountUpdater(self.account)
         self.execute_with_any_permission(account_updater, mcc_account=self.account)
 
-    def full_update(self, any_permission=False, client=None):
+    def full_update(self, mcc_account=None):
         """
         Full Google ads update with all Updaters
-        :param cid_account: Account
-        :param any_permission: bool -> To use all existing permissions
-        :param client: GoogleAds client
+        :param mcc_account: Account
         :return:
         """
         self.main_updaters = (CampaignUpdater,) + self.main_updaters
         for update_class in self.main_updaters:
             updater = update_class(self.account)
-            if any_permission:
-                self.execute_with_any_permission(updater)
+            if mcc_account:
+                self.execute_with_any_permission(updater, mcc_account=mcc_account)
             else:
-                self.execute(updater, client)
+                self.execute_with_any_permission(updater)
         recalculate_de_norm_fields_for_account(self.account.id)
         self.account.update_time = timezone.now()
         self.account.save()
@@ -224,6 +222,7 @@ class GoogleAdsUpdater(object):
                         )
                         permission.can_read = False
                         permission.save()
+                        continue
                     # Customer is not valid
                     elif auth_error == GoogleAdsErrors.CUSTOMER_NOT_ENABLED:
                         self.account.is_active = False
@@ -238,6 +237,7 @@ class GoogleAdsUpdater(object):
                             refresh_token=aw_connection.refresh_token
                         )
                         self._retry(updater, client)
+                return
 
             except RefreshError:
                 continue
