@@ -17,7 +17,8 @@ from segment.utils import validate_threshold
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
-    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories"]
+    REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories",
+                       "minimum_sentiment"]
     ALLOWED_SORTS = {
         "items",
         "created_at",
@@ -101,8 +102,10 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         validated = {}
         self._validate_fields(data)
         validate_threshold(data["score_threshold"])
+        validate_threshold(data["minimum_sentiment"])
         validated["minimum_option"] = self.validate_numeric(data["minimum_option"])
         validated["score_threshold"] = self.validate_numeric(data["score_threshold"])
+        validated["minimum_sentiment"] = self.validate_numeric(data["minimum_sentiment"])
         validated["segment_type"] = kwargs["segment_type"]
         validated["owner"] = request.user.id
         validated["title_hash"] = get_hash_name(data["title"].lower().strip())
