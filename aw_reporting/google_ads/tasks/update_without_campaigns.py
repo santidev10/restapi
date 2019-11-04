@@ -41,7 +41,7 @@ def setup_cid_update_tasks():
     job = chain(
         update_tasks,
         finalize_update.si(),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        unlock.si(lock_name=LOCK_NAME, fail_silently=True).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
     )
     return job()
 

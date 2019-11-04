@@ -963,7 +963,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertTrue(min_date < last_statistic_date)
+        self.assertTrue(min_date <= last_statistic_date)
         self.assertEqual(max_date, date.today())
 
     @generic_test([

@@ -74,7 +74,7 @@ def setup_cid_update_tasks():
     job = chain(
         campaign_update_tasks,
         finalize_campaigns_update.si(),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.HOURLY_STATISTIC),
+        unlock.si(lock_name=LOCK_NAME, fail_silently=True).set(queue=Queue.HOURLY_STATISTIC),
     )
     return job()
 
