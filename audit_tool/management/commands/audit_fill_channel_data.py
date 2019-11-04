@@ -97,6 +97,8 @@ class Command(BaseCommand):
                 return
             for i in data['items']:
                 db_channel_meta = channels[i['id']]
+                if not i.get('brandingSettings'):
+                    continue
                 try:
                     db_channel_meta.name = i['brandingSettings']['channel']['title']
                 except Exception as e:
@@ -115,7 +117,11 @@ class Command(BaseCommand):
                         db_channel_meta.default_language = db_lang
                 except Exception as e:
                     pass
-                country = i['brandingSettings']['channel'].get('country')
+                try:
+                    country = i['brandingSettings']['channel'].get('country')
+                except Exception as e:
+                    country = None
+                    pass
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
