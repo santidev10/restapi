@@ -8,6 +8,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import F
 from django.utils import timezone
 from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
+from google.ads.google_ads.v2.services.enums import RequestErrorEnum
 from google.ads.google_ads.errors import GoogleAdsException
 from google.api_core.exceptions import InternalServerError
 from google.api_core.exceptions import GoogleAPIError
@@ -41,7 +42,7 @@ from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_f
 logger = logging.getLogger(__name__)
 
 
-class GoogleAdsAuthErrors:
+class GoogleAdsErrors:
     USER_PERMISSION_DENIED = "USER_PERMISSION_DENIED"
     AUTHORIZATION_ERROR = "AUTHORIZATION_ERROR"
     CUSTOMER_NOT_ENABLED = "CUSTOMER_NOT_ENABLED"
@@ -50,6 +51,8 @@ class GoogleAdsAuthErrors:
     OAUTH_TOKEN_REVOKED = "OAUTH_TOKEN_REVOKED"
     CUSTOMER_NOT_FOUND = "CUSTOMER_NOT_FOUND"
     NOT_ADS_USER = "NOT_ADS_USER"
+    INVALID_PAGE_TOKEN = "INVALID_PAGE_TOKEN"
+    EXPIRED_PAGE_TOKEN = "EXPIRED_PAGE_TOKEN"
 
 
 class GoogleAdsUpdater(object):
@@ -75,6 +78,7 @@ class GoogleAdsUpdater(object):
     def __init__(self, account):
         self.account = account
         self.auth_error_enum = AuthorizationErrorEnum().AuthorizationError
+        self.request_error_enum = RequestErrorEnum().RequestError
 
     def update_all_except_campaigns(self):
         """
@@ -205,15 +209,42 @@ class GoogleAdsUpdater(object):
                     refresh_token=aw_connection.refresh_token
                 )
                 self.execute(updater, client)
-            # Permission denied, continue to try next
-            except GoogleAdsUpdaterPermissionDenied:
-                permission.can_read = False
-                permission.save()
-                continue
+
+            # General Google Ads errors
+            except GoogleAdsException as e:
+                auth_error_code = getattr(e.failure.errors[0].error_code, "authorization_error", None)
+                request_error_code = getattr(e.failure.errors[0].error_code, "request_error", None)
+
+                if auth_error_code:
+                    auth_error = self.auth_error_enum(auth_error_code).name
+                    # Invalid client
+                    if auth_error == GoogleAdsErrors.USER_PERMISSION_DENIED:
+                        logger.warning(
+                            f"Invalid client: login_customer_id: {self.account.id}, {e}"
+                        )
+                        permission.can_read = False
+                        permission.save()
+                    # Customer is not valid
+                    elif auth_error == GoogleAdsErrors.CUSTOMER_NOT_ENABLED:
+                        self.account.is_active = False
+                        self.account.save()
+
+                elif request_error_code:
+                    request_error = self.request_error_enum(request_error_code).name
+                    # Page token errors occur when account is not processed quickly enough. Retry
+                    if request_error == GoogleAdsErrors.EXPIRED_PAGE_TOKEN or GoogleAdsErrors.INVALID_PAGE_TOKEN:
+                        client = get_client(
+                            login_customer_id=permission.account.id,
+                            refresh_token=aw_connection.refresh_token
+                        )
+                        self._retry(updater, client)
+
             except RefreshError:
                 continue
+
             except Exception as e:
                 logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
+
             else:
                 return
 
@@ -226,7 +257,7 @@ class GoogleAdsUpdater(object):
 
     def execute(self, updater, client):
         """
-        Handle invocation of update methods with error handling
+        Handle invocation of update methods with retry for Google Ads server errors
             All updaters must implement an "update" method
         :param updater: Updater class object
         :param client:
@@ -234,24 +265,8 @@ class GoogleAdsUpdater(object):
         """
         try:
             updater.update(client)
-        # Client / request exceptions
-        except GoogleAdsException as e:
-            error = self.auth_error_enum(e.failure.errors[0].error_code.authorization_error).name
-            # Invalid client
-            if error == GoogleAdsAuthErrors.USER_PERMISSION_DENIED:
-                logger.warning(
-                    f"Invalid client: login_customer_id: {client.login_customer_id}, {e}"
-                )
-                raise GoogleAdsUpdaterPermissionDenied
-            # Customer is not valid
-            elif error == GoogleAdsAuthErrors.CUSTOMER_NOT_ENABLED:
-                self.account.is_active = False
-                self.account.save()
-            else:
-                raise e
-
-        # Google Ads API Interval exceptions
-        except (ResourceExhausted, RetryError, InternalServerError, GoogleAPIError) as e:
+        # Google Ads API Internal exceptions
+        except (ResourceExhausted, RetryError, InternalServerError, GoogleAPIError):
             try:
                 self._retry(updater, client)
             except Exception as e:
@@ -275,6 +290,8 @@ class GoogleAdsUpdater(object):
                     time.sleep(sleep)
                 else:
                     raise err
+            else:
+                return
 
     def get_cache_key(self, part, options):
         options = dict(

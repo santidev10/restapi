@@ -32,6 +32,7 @@ from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
+from aw_reporting.google_ads.tasks.update_without_campaigns import cid_update_all_except_campaigns
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
 from aw_reporting.models import ALL_GENDERS
@@ -215,8 +216,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, test_click_data, date.today()))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response, date.today()))
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, test_click_data))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=mock_hourly_performance_response)
 
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
@@ -412,8 +413,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response, date.today()))
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response))
 
         updater.update(client)
         campaign.refresh_from_db()
@@ -685,8 +686,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
 
@@ -932,13 +933,14 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertTrue(min_date < yesterday)
+        self.assertEqual(min_date, MIN_FETCH_DATE)
         self.assertEqual(max_date, date.today())
 
     def test_ad_group_update_requests_report_by_yesterday(self):
         now = datetime.now(utc)
         today = now.date()
         last_statistic_date = today - timedelta(weeks=54)
+        request_start_date = last_statistic_date + timedelta(days=1)
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account, update_time=now, sync_time=now)
         ad_group = AdGroup.objects.create(id=1,
@@ -963,7 +965,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         args = updater._get_ad_group_performance.mock_calls[0][1]
         min_date, max_date = args
 
-        self.assertTrue(min_date <= last_statistic_date)
+        self.assertEqual(min_date, request_start_date)
         self.assertEqual(max_date, date.today())
 
     @generic_test([
@@ -1107,6 +1109,28 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         updater.full_update(client=client)
         self.assertGreater(mock_execute.call_count, 1)
 
+    def test_retry_on_page_token_error(self):
+        account = self._create_account(is_active=True)
+
+        exception = GoogleAdsException(None, None, MagicMock(), None)
+        err = SimpleNamespace(error_code=SimpleNamespace())
+        err.error_code.request_error = 8  # RequestErrorEnum: EXPIRED_PAGE_TOKEN
+        exception.failure.errors = [err]
+
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client"):
+            google_ads_updater = GoogleAdsUpdater(account)
+            mock_report_updater = MagicMock()
+            google_ads_updater.main_updaters = (mock_report_updater,)
+
+            google_ads_updater.SLEEP_COEFF = 0
+            google_ads_updater.MAX_RETRIES = 2
+            google_ads_updater.execute = MagicMock()
+            google_ads_updater.execute.side_effect = exception
+            google_ads_updater._retry = MagicMock()
+            google_ads_updater.update_all_except_campaigns()
+
+            self.assertGreater(google_ads_updater._retry.call_count, 0)
+
     def test_budget_daily(self):
         now = datetime.now(utc)
         today = now.date()
@@ -1149,8 +1173,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
         updater.update(client)
 
         campaign.refresh_from_db()
@@ -1199,8 +1223,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}, date.today()))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([], date.today()))
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
         updater.update(client)
 
         campaign.refresh_from_db()
