@@ -84,24 +84,21 @@
                 <table>
                     <tr>
                         <th colspan="100%" class="model-caption">
-                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.main.deleted|intcomma}})</b>
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}})</b>
                         </th>
                     </tr>
                     <tr>
                         <th class="field">Field</th>
                         <th colspan="2">Filled</th>
                         <th colspan="2">Missed</th>
-                        <th colspan="2">Deleted</th>
                     </tr>
-                    {% for field, data in report.info.performance.items %}
+                    {% for field, data in report.info.performance.info_by_sections.items %}
                     <tr>
                         <td class="field">{{field}}</td>
                         <td class="value">{{data.filled|intcomma}}</td>
                         <td class="value">{{data.filled|percentage:report.info.index.docs_count}}</td>
                         <td class="value">{{data.missed|intcomma}}</td>
                         <td class="value">{{data.missed|percentage:report.info.index.docs_count}}</td>
-                        <td class="value">{{data.deleted|intcomma}}</td>
-                        <td class="value">{{data.deleted|percentage:report.info.index.docs_count}}</td>
                     </tr>
                     {% endfor %}
                 </table>
@@ -119,7 +116,7 @@
                 <table class="inner-table">
                     <tr>
                         <th colspan="100%" class="model-caption">
-                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.main.deleted|intcomma}})</b>
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}})</b>
                         </th>
                     </tr>
                     <tr>
@@ -130,7 +127,7 @@
                         <th colspan="2">last 30 days</th>
                         <th colspan="2">last 365 days</th>
                     </tr>
-                    {% for field, data in report.info.performance.items %}
+                    {% for field, data in report.info.performance.info_by_sections.items %}
                     <tr>
                         <td class="field">{{field}}</td>
 
@@ -156,7 +153,13 @@
                 <table>
                     <tr>
                         <th colspan="100%" class="model-caption">
-                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.main.deleted|intcomma}})</b>
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}}
+
+                                {% if report.info.performance.general.skipped is not None %}
+                                   , skipped: {{report.info.performance.general.skipped|intcomma}})</b>
+                                {% else %}
+                                    )</b>
+                                {% endif %}
                         </th>
                     </tr>
                     <tr>
@@ -167,7 +170,7 @@
                         <th colspan="2">last 30 days</th>
                         <th colspan="2">last 365 days</th>
                     </tr>
-                    {% for field, data in report.info.performance.items %}
+                    {% for field, data in report.info.performance.info_by_sections.items %}
                     <tr>
                         <td class="field">{{field}}</td>
 
