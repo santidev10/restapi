@@ -66,7 +66,7 @@ def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_up
     logger.info(f"Salesforce update finished. Took: {time.time() - start}")
 
 
-def perform_delete(sc, delete_from_days=1):
+def perform_delete(sc, delete_from_days):
     today = datetime.now(pytz.UTC)
     from_deleted = today - timedelta(days=delete_from_days)
 

@@ -43,12 +43,3 @@ class MockGoogleAdsAPIResponse(object):
         except AttributeError:
             attr = None
         return attr
-#
-#
-# class GoogleAdsRow(SimpleNamespace):
-#     def __getattribute__(self, name):
-#         try:
-#             attr = object.__getattribute__(self, name)
-#         except AttributeError:
-#             attr = None
-#         return attr

@@ -39,7 +39,6 @@ class ESMonitoringEmailReport(BaseEmailReport):
         msg.attach_alternative(html_content, "text/html")
         msg.send(fail_silently=False)
 
-
     def _send_alert_email(self, model_name, alert_message):
         subject = f"DMP ALERT: {self.cluster} [{self.today}]"
         body = f"{model_name}: {alert_message}"
@@ -47,11 +46,10 @@ class ESMonitoringEmailReport(BaseEmailReport):
             subject=subject,
             body=body,
             from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
-            to=settings.ES_MONITORING_EMAIL_ADDRESSES,
+            to=settings.EMERGENCY_EMAIL_ADDRESSES,
             bcc=[],
         )
         email.send(fail_silently=False)
-
 
     def send_alerts(self):
         for model_name, report in self.monitoring_reports.items():
@@ -62,7 +60,6 @@ class ESMonitoringEmailReport(BaseEmailReport):
 
             for alert in alerts:
                 self._send_alert_email(model_name, alert)
-
 
     def _collect_report(self):
         managers = [

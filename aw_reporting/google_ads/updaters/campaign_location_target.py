@@ -30,6 +30,7 @@ class CampaignLocationTargetUpdater(UpdateMixin):
         min_date = min_acc_date or settings.MIN_AW_FETCH_DATE
         yesterday = now_in_default_tz().date() - timedelta(days=1)
         week_ago = yesterday - timedelta(days=7)
+
         if self.existing_targeting and (max_acc_date is None or max_acc_date < week_ago):
             # Don't update if there is no data or the data is old
             return

@@ -15,7 +15,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Campaign
 
-AD_WORDS_STABILITY_STATS_DAYS_COUNT = 11
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 7
 
 logger = logging.getLogger(__name__)
 
@@ -162,4 +162,27 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
+
+
+def calculate_min_date_to_update(from_date, to_date, limit=None):
+    """
+    Calculate number of days that have elapsed and which to gather metrics for from AD_WORDS_STABILITY_STATS_DAYS_COUNT
+    Reduce the number of days to gather metrics for from from_date to reduce update redundancy
+    :param from_date: start date
+    :param to_date: end date
+    :param limit: Date that will be used as the max date for the query
+        If provided, calculated min_date should never more than one day than limit to avoid throwing
+        Google Ads API invalid date range error
+    :return:
+    """
+    days_elapsed = (to_date - from_date).days
+    stability_days = (AD_WORDS_STABILITY_STATS_DAYS_COUNT - days_elapsed)
+    if stability_days < 0:
+        stability_days = 0
+    min_date = from_date - timedelta(days=stability_days)
+    if limit and min_date > limit:
+        min_date = limit + timedelta(days=1)
+    return min_date
+
+
 

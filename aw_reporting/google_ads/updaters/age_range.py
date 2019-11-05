@@ -39,7 +39,7 @@ class AgeRangeUpdater(UpdateMixin):
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
             max_date = max_acc_date
-            
+
             click_type_data = self.get_clicks_report(
                 self.client, self.ga_service, self.account,
                 min_date, max_date,
@@ -81,6 +81,7 @@ class AgeRangeUpdater(UpdateMixin):
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))
-            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
+            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row,
+                                                             resource_name=self.RESOURCE_NAME)
             statistics.update(click_data)
             yield AgeRangeStatistic(**statistics)

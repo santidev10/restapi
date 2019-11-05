@@ -215,8 +215,8 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
                 patch(view_path + ".AccountUpdater.get_accessible_customers", new=lambda *_, **k: mock_customer_client_data), \
                 patch(view_path + ".upload_initial_aw_data_task", new=MagicMock()), \
-                patch("aw_reporting.google_ads.tasks.upload_initial_aw_data.get_client", new=MagicMock()), \
-                patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.update_accounts_for_mcc", new=MagicMock()), \
+                patch("aw_reporting.google_ads.google_ads_updater.get_client", new=MagicMock()), \
+                patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.update_accounts_as_mcc", new=MagicMock()), \
                 patch("aw_reporting.google_ads.updaters.campaigns.CampaignUpdater.update") as mock_update:
             # Patch CampaignUpdater since it is the first updater class used
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
