@@ -81,7 +81,7 @@ def send_admin_notification(channel_id):
     send_mail(subject, message, sender, to, fail_silently=False)
 
 
-def send_html_email(subject, to, text_header, text_content):
+def send_html_email(subject, to, text_header, text_content, from_email=None):
     """
     Send email with html
     """
@@ -90,6 +90,7 @@ def send_html_email(subject, to, text_header, text_content):
         subject=subject,
         recipient_list=[to],
         html_message=html_email,
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS
     )
 
 
