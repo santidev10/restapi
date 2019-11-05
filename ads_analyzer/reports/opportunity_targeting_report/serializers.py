@@ -52,6 +52,7 @@ __all__ = [
 
 INTEREST_STR = {
     Audience.CUSTOM_AFFINITY_TYPE: "Interests - CAA",
+    Audience.CUSTOM_INTENT_TYPE: "Interests - Custom Intent",
     Audience.AFFINITY_TYPE: "Interests - Affinity",
     Audience.IN_MARKET_TYPE: "Interests - In market",
 }
