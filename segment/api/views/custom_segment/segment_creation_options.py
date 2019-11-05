@@ -21,7 +21,15 @@ class SegmentCreationOptionsApiView(APIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(err))
         data["segment_type"] = kwargs["segment_type"]
         query_builder = BrandSafetyQueryBuilder(data)
-        query_builder.query_body['bool']['filter']['bool']['must']
+        minimum_sentiment = data.get("minimum_sentiment", 0)
+        sentiment_query = {
+            "range": {
+                "stats.sentiment": {
+                    "gte": minimum_sentiment
+                }
+            }
+        }
+        query_builder.query_body['bool']['filter']['bool']['must'].append(sentiment_query)
         result = query_builder.execute()
         data = {
             "items": result.hits.total or 0,
