@@ -686,7 +686,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
         updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
         updater.update(client)
         recalculate_de_norm_fields_for_account(account.id)
 
@@ -1173,7 +1173,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         client = GoogleAdsClient("", "")
         updater = CampaignUpdater(account)
         updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
         updater.update(client)
 
         campaign.refresh_from_db()
