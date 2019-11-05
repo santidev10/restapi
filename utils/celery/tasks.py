@@ -30,9 +30,13 @@ def lock(task, lock_name, expire=DEFAULT_REDIS_LOCK_EXPIRE, **kwargs):
 
 
 @celery_app.task
-def unlock(lock_name):
-    token = REDIS_CLIENT.get(lock_name)
-    REDIS_CLIENT.lock(lock_name).do_release(token)
+def unlock(lock_name, fail_silently=False):
+    try:
+        token = REDIS_CLIENT.get(lock_name)
+        REDIS_CLIENT.lock(lock_name).do_release(token)
+    except Exception as e:
+        if not fail_silently:
+            raise e
 
 
 def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_retries=60):

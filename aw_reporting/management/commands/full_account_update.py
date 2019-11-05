@@ -14,30 +14,27 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            "--ids",
+            "--cids",
             help="Comma separated CID account ids to update"
         )
         parser.add_argument(
-            "--mcc",
+            "--mccs",
             help="Comma separated MCC account ids to update",
-            default="3386233102"
         )
 
     def handle(self, *args, **options):
-        cid_ids = options["ids"].split(",")
-        mcc_ids = options["mcc"].split(",")
+        cid_ids = (options["cids"] or "").split(",")
+        mcc_ids = (options["mccs"] or "").split(",")
+
+        mcc_updater = GoogleAdsUpdater(None)
         for mcc in Account.objects.filter(id__in=mcc_ids):
-            GoogleAdsUpdater().update_accounts_for_mcc(mcc_account=mcc)
-        for _id in cid_ids:
-            account = Account.objects.get(id=_id)
-            mcc_accounts = account.managers.all()
-            for mcc in mcc_accounts:
-                try:
-                    updater = GoogleAdsUpdater()
-                    updater.full_update(account, any_permission=True)
-                except Exception as e:
-                    logger.error(f"Exception while executing full_account_update for CID: {_id}. {e}")
-                    continue
+            mcc_updater.update_accounts_as_mcc(mcc_account=mcc)
+
+        cid_updater = GoogleAdsUpdater(None)
+        for cid in cid_ids:
+            account = Account.objects.get(id=cid)
+            cid_updater.account = account
+            cid_updater.full_update()
 
         add_relation_between_report_and_creation_campaigns()
         add_relation_between_report_and_creation_ad_groups()
