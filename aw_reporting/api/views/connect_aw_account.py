@@ -17,7 +17,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
-from aw_reporting.google_ads.google_ads_updater import GoogleAdsAuthErrors
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsErrors
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.utils import get_google_access_token_info
@@ -147,9 +147,9 @@ class ConnectAWAccountApiView(APIView):
                 error = auth_error_enum(e.failure.errors[0].error_code.authorization_error).name
 
                 # Customer is not valid
-                if error == GoogleAdsAuthErrors.NOT_ADS_USER:
+                if error == GoogleAdsErrors.NOT_ADS_USER:
                     fault_string = "AdWords account does not exist"
-                elif error in (GoogleAdsAuthErrors.OAUTH_TOKEN_EXPIRED, GoogleAdsAuthErrors.OAUTH_TOKEN_REVOKED):
+                elif error in (GoogleAdsErrors.OAUTH_TOKEN_EXPIRED, GoogleAdsErrors.OAUTH_TOKEN_REVOKED):
                     fault_string = "Token has been expired or revoked"
                 else:
                     fault_string = str(e)

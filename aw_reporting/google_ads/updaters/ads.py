@@ -102,4 +102,3 @@ class AdUpdater(UpdateMixin):
             statistics.update(click_data)
             yield AdStatistic(**statistics)
         Ad.objects.safe_bulk_create(ads_to_create)
-

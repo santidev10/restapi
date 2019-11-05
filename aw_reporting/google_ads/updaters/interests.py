@@ -106,16 +106,18 @@ class InterestUpdater(UpdateMixin):
                 try:
                     self._handle_user_interest(statistics, audience_id)
                 except InterestUpdaterMissingAudienceException:
-                    logger.warning(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
+                    logger.error(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
                     continue
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_AFFINITY:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.custom_affinity.custom_affinity.value)
                 self._handle_custom_affinity(statistics, audience_id)
+
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_INTENT:
-                # Ignore custom intent
-                continue
+                audience_id = self._extract_audience_id(row.ad_group_criterion.custom_intent.custom_intent.value)
+                self._handle_custom_intent(statistics, audience_id)
+
             else:
-                logger.warning(
+                logger.error(
                     f"Undefined criteria. ad_group_id: {ad_group_id}, criterion_id: {row.ad_group_criterion.criterion_id.value}, audience_type: {audience_type}"
                 )
 
@@ -162,6 +164,21 @@ class InterestUpdater(UpdateMixin):
             self.existing_audience_interest_ids.add(audience_id)
             self.custom_audiences_to_create.append(
                 Audience(id=audience_id, name=name, type=Audience.CUSTOM_AFFINITY_TYPE)
+            )
+        statistics.update(audience_id=audience_id)
+        self.audience_statistics_to_create.append(AudienceStatistic(**statistics))
+
+    def _handle_custom_intent(self, statistics, audience_id):
+        """
+        Mutates statistics and adds Audience, AudienceStatistic instances to create
+        :param statistics: dict -> Statistics of Google ads row being processed
+        :param audience_id: int -> Google ads audience id
+        """
+        if audience_id not in self.existing_audience_interest_ids:
+            name = f"customintent::{audience_id}"
+            self.existing_audience_interest_ids.add(audience_id)
+            self.custom_audiences_to_create.append(
+                Audience(id=audience_id, name=name, type=Audience.CUSTOM_INTENT)
             )
         statistics.update(audience_id=audience_id)
         self.audience_statistics_to_create.append(AudienceStatistic(**statistics))
