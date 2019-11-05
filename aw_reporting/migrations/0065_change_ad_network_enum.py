@@ -15,6 +15,10 @@ def change_enum_to_str(apps, schema_editor):
     AdGroupStatistic.objects.filter(ad_network="7").update(ad_network="Cross-network")
 
 
+def reverse_code(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -22,5 +26,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(change_enum_to_str),
+        migrations.RunPython(change_enum_to_str, reverse_code),
     ]
