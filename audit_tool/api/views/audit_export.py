@@ -394,15 +394,15 @@ class AuditExportApiView(APIView):
             if clean is False:
                 try:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
-                    node = 'exclusion'
                 except Exception as e:
                     hit_words[cid.channel.channel_id] = set()
+                node = 'exclusion'
             elif clean is True:
                 try:
                     hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
-                    node = 'inclusion'
                 except Exception as e:
                     hit_words[cid.channel.channel_id] = set()
+                node = 'inclusion'
             elif clean is None:
                 try:
                     good_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
@@ -429,8 +429,7 @@ class AuditExportApiView(APIView):
                         bad_hit_words[cid.channel.channel_id] = \
                             bad_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('exclusion')))
             else:
-                videos_filter = False if clean is False else True
-                for video in videos.filter(clean=videos_filter):
+                for video in videos.filter(clean=clean):
                     if video.word_hits.get(node):
                         hit_words[cid.channel.channel_id] = \
                             hit_words[cid.channel.channel_id].union(set(video.word_hits.get(node)))
