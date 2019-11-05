@@ -28,7 +28,6 @@ class BrandSafetyQueryBuilder(object):
         self.score_threshold = self.score_threshold if self.list_type == "whitelist" else self._map_blacklist_severity(self.score_threshold)
         self.languages = data.get("languages", [])
         self.minimum_option = data.get("minimum_option", 0)
-        self.minimum_sentiment = data.get("minimum_sentiment")
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
         self.options = self._get_segment_options()

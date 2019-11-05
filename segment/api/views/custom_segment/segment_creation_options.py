@@ -21,6 +21,7 @@ class SegmentCreationOptionsApiView(APIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(err))
         data["segment_type"] = kwargs["segment_type"]
         query_builder = BrandSafetyQueryBuilder(data)
+        query_builder.query_body['bool']['filter']['bool']['must']
         result = query_builder.execute()
         data = {
             "items": result.hits.total or 0,
