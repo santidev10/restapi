@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone
+from django.conf import settings
 
 import brand_safety.constants as constants
 from administration.notifications import send_html_email
@@ -297,6 +298,7 @@ class SegmentListGenerator(object):
             to=segment.owner.email,
             text_header=text_header,
             text_content=text_content,
+            from_email=settings.EXPORTS_EMAIL_ADDRESS
         )
         message = "updated" if updating else "generated"
         logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")

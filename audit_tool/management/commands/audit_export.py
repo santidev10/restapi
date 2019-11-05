@@ -77,6 +77,7 @@ class Command(BaseCommand):
             recipients = [export_owner.email]
         send_email(
             subject=subject,
+            from_email=settings.EXPORTS_EMAIL_ADDRESS,
             recipient_list=recipients,
             html_message=body,
         )
