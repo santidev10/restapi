@@ -52,7 +52,7 @@ def export_videos_data(query_params, export_name, user_emails, export_url):
            f"NOTE: url to download report is valid during next 2 weeks\n"
 
     # E-mail
-    from_email = settings.SENDER_EMAIL_ADDRESS
+    from_email = settings.EXPORTS_EMAIL_ADDRESS
     bcc = []
 
     try:
