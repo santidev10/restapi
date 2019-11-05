@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 from unittest.mock import MagicMock
@@ -11,6 +12,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Campaign
+from aw_reporting.models import Opportunity
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
@@ -101,7 +103,7 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
     def test_skip_inactive_account(self):
         self._create_account(is_active=False)
         with patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_campaigns") as mock_update_campaigns, \
-                patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_for_mcc", new=MagicMock):
+                patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_as_mcc", new=MagicMock):
             setup_update_campaigns()
             mock_update_campaigns.assert_not_called()
 
@@ -110,8 +112,10 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         batch_size = 5
         accounts_created = set()
         accounts_seen = set()
+        op_end = date.today() - timedelta(days=1)
         for i in range(accounts_size):
             cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
             accounts_created.add(cid.id)
         for i in range(len(accounts_created) // batch_size):
             to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=batch_size, as_obj=True)

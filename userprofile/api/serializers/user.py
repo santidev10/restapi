@@ -20,6 +20,7 @@ class UserSerializer(ModelSerializer):
     has_disapproved_ad = SerializerMethodField()
     last_name = CharField(max_length=255, required=True)
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
+    user_type = CharField(max_length=255)
     token = SerializerMethodField()
 
     class Meta:
@@ -48,6 +49,7 @@ class UserSerializer(ModelSerializer):
             "profile_image_url",
             "token",
             "has_accepted_GDPR",
+            "user_type",
         )
         read_only_fields = (
             "is_staff",

@@ -7,7 +7,6 @@ from django.db import Error
 from aw_creation.tasks import add_relation_between_report_and_creation_ad_groups
 from aw_creation.tasks import add_relation_between_report_and_creation_ads
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdaterContinueException
 from aw_reporting.models import Account
 from saas import celery_app
 from saas.configs.celery import Queue
@@ -25,7 +24,7 @@ MAX_TASK_COUNT = 50
 
 @celery_app.task
 def setup_update_without_campaigns():
-    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60 * 2).acquire(blocking=False)
+    is_acquired = REDIS_CLIENT.lock(LOCK_NAME, 60 * 60 * 4).acquire(blocking=False)
     if is_acquired:
         setup_cid_update_tasks.delay()
 
@@ -42,7 +41,7 @@ def setup_cid_update_tasks():
     job = chain(
         update_tasks,
         finalize_update.si(),
-        unlock.si(lock_name=LOCK_NAME).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
+        unlock.si(lock_name=LOCK_NAME, fail_silently=True).set(queue=Queue.DELIVERY_STATISTIC_UPDATE),
     )
     return job()
 
@@ -54,13 +53,10 @@ def cid_update_all_except_campaigns(cid_id):
     Update single CID account
     """
     start = time.time()
-    try:
-        cid_account = Account.objects.get(id=cid_id)
-        updater = GoogleAdsUpdater()
-        updater.update_all_except_campaigns(cid_account)
-        logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
-    except GoogleAdsUpdaterContinueException:
-        pass
+    cid_account = Account.objects.get(id=cid_id)
+    updater = GoogleAdsUpdater(cid_account)
+    updater.update_all_except_campaigns()
+    logger.debug(f"Finish update without campaigns for CID: {cid_id} Took: {time.time() - start}")
 
 
 @celery_app.task

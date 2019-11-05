@@ -64,6 +64,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "token",
                 "is_active",
                 "has_accepted_GDPR",
+                "user_type",
             }
         )
 

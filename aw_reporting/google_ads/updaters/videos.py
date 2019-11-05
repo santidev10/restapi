@@ -53,7 +53,7 @@ class VideoUpdater(UpdateMixin):
     def _prepare_instances(self, video_performance) -> tuple:
         """
         Prepare VideoCreative and VideoCreativeStatistic instances to create
-        :param video_metrics: Google ads video resource search response
+        :param video_performance: Google ads video resource search response
         :return: tuple (list) -> VideoCreative, VideoCreativeStatistic to create
         """
         video_creative_to_create = []
