@@ -8,6 +8,10 @@ def change_campaign_status_eligible_to_serving(apps, schema_editor):
     Campaign.objects.filter(status="eligible").update(status="serving")
 
 
+def reverse_code(apps, schema_editor):
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -15,5 +19,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(change_campaign_status_eligible_to_serving)
+        migrations.RunPython(change_campaign_status_eligible_to_serving, reverse_code)
     ]

@@ -31,11 +31,11 @@ except Exception as e:
 CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
         "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",
-        "schedule": crontab(hour="*", minute="*"),
+        "schedule": crontab(hour="*", minute="*/5"),
     },
     "google_ads_update_without_campaigns": {
         "task": "aw_reporting.google_ads.tasks.update_without_campaigns.setup_update_without_campaigns",
-        "schedule": crontab(hour="*", minute="*"),
+        "schedule": crontab(hour="*", minute="*/5"),
     },
     "google_ads_update_audiences": {
         "task": "aw_reporting.google_ads.tasks.update_audiences.update_audiences",
@@ -48,7 +48,7 @@ CELERY_BEAT_SCHEDULE = {
     "full-sf-update": {
         "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
         "schedule": crontab(hour="*", minute="0"),
-        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
+        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1", do_delete=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
     "daily_email_notifications": {
         "task": "email_reports.tasks.send_daily_email_reports",

@@ -62,7 +62,8 @@ class Audience(BaseModel):
     CUSTOM_AFFINITY_TYPE = "custom-affinity"
     AFFINITY_TYPE = "affinity"
     IN_MARKET_TYPE = "in-market"
-    TYPES = (CUSTOM_AFFINITY_TYPE, AFFINITY_TYPE, IN_MARKET_TYPE)
+    CUSTOM_INTENT = "custom-intent"
+    TYPES = (CUSTOM_AFFINITY_TYPE, AFFINITY_TYPE, IN_MARKET_TYPE, CUSTOM_INTENT)
 
     def __str__(self):
         return "%s" % self.name

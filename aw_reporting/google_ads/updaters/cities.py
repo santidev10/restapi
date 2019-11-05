@@ -114,7 +114,7 @@ class CityUpdater(UpdateMixin):
         """
         Gets the top 10 performant cities to use for filtering of new statistics to create
         :param geo_location_performance: iter -> Google ads search response
-        :return: set -> Google ads geo_target_city ids 
+        :return: set -> Google ads geo_target_city ids
         """
         top_cities = []
         top_number = 10
