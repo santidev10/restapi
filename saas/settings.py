@@ -60,6 +60,7 @@ PROJECT_APPS = (
     "related_tool",
     "segment",
     "userprofile",
+    "cache",
 )
 
 THIRD_PARTY_APPS = (
