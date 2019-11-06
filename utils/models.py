@@ -2,8 +2,6 @@
 Utils models module
 """
 from django.db.models import Model, DateTimeField
-from django.db import models
-from django.contrib.postgres.fields import JSONField
 
 
 class Timestampable(Model):
@@ -15,9 +13,3 @@ class Timestampable(Model):
 
     class Meta:
         abstract = True
-
-#
-# class CacheItem(Timestampable):
-#     key = models.CharField(max_length=255, unique=True)
-#     value = JSONField(default=dict)
-#
