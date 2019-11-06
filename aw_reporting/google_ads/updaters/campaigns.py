@@ -1,14 +1,20 @@
+from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
 
 from django.db.models import Max
+from django.db import transaction
 from django.utils import timezone
 import logging
 import pytz
 
+from aw_reporting.adwords_reports import campaign_performance_report
+from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS
 from aw_reporting.google_ads import constants
 from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.models import Account
 from aw_reporting.models import ACTION_STATUSES
 from aw_reporting.models import Campaign
@@ -16,9 +22,20 @@ from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models.ad_words.constants import BudgetType
 from aw_reporting.models.ad_words.constants import Device
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from utils.datetime import now_in_default_tz
 
+
 logger = logging.getLogger(__name__)
+
+
+TRACKING_CLICK_TYPES = (
+    ("Website", "clicks_website"),
+    ("Call-to-Action overlay", "clicks_call_to_action_overlay"),
+    ("App store", "clicks_app_store"),
+    ("Cards", "clicks_cards"),
+    ("End cap", "clicks_end_cap")
+)
 
 
 class CampaignUpdater(UpdateMixin):
@@ -28,175 +45,248 @@ class CampaignUpdater(UpdateMixin):
         self.account = account
         self.today = datetime.now(tz=pytz.timezone(account.timezone)).date()
         self.existing_campaigns = set()
-        self.existing_statistics = CampaignStatistic.objects.filter(campaign__account=account)
-        self.existing_hourly_statistics = CampaignHourlyStatistic.objects.filter(campaign__account=account)
-        # Will be set by update method
         self.client = None
-        self.ga_service = None
-        self.channel_type_enum = None
-        self.campaign_status_enum = None
-        self.campaign_serving_status_enum = None
 
-    def update(self, client):
-        self.client = client
-        self.ga_service = client.get_service("GoogleAdsService", version="v2")
-        self.channel_type_enum = self.client.get_type("AdvertisingChannelTypeEnum", version="v2").AdvertisingChannelType
-        self.campaign_status_enum = self.client.get_type("CampaignStatusEnum", version="v2").CampaignStatus
-        self.campaign_serving_status_enum = self.client.get_type("CampaignServingStatusEnum",
-                                                                 version="v2").CampaignServingStatus
-
-        # Campaign performance segmented by date and all_conversions
-        campaign_performance, click_type_data = self._get_campaign_performance()
-        campaign_statistic_generator = self._instance_generator(campaign_performance, click_type_data)
-        CampaignStatistic.objects.safe_bulk_create(campaign_statistic_generator)
-
-        # Campaign performance segmented by hour
-        campaign_hourly_performance = self._get_campaign_hourly_performance()
-        hourly_campaign_statistic_generator = self._hourly_instance_generator(campaign_hourly_performance)
-        CampaignHourlyStatistic.objects.bulk_create(hourly_campaign_statistic_generator)
-
+    def update(self, *args, **kwargs):
+        self.client = get_web_app_client(
+            refresh_token=load_web_app_settings()["cf_refresh_token"],
+            client_customer_id=self.account.id
+        )
+        self.update_campaigns()
+        self.update_hourly_campaigns()
         # Update account
         Account.objects.filter(id=self.account.id).update(hourly_updated_at=timezone.now())
 
-    def _get_campaign_performance(self):
-        """
-        Retrieve campaign performance
-        :return: Google ads campaign resource search response
-        """
-        # Delete stale data
-        self.drop_latest_stats(self.existing_statistics, self.today)
-
-        # Find min and max dates
+    def update_campaigns(self):
         now = now_in_default_tz()
+        today = now.date()
         max_date = self.max_ready_date(now, tz_str=self.account.timezone)
 
-        dates = self.existing_statistics.aggregate(max_date=Max("date"))
-        # Get latest date after dropping recent statistics
-        min_date = dates["max_date"] + timedelta(days=1) if dates["max_date"] else constants.MIN_FETCH_DATE
-        click_type_data = self.get_clicks_report(
-            self.client, self.ga_service, self.account,
-            min_date, max_date,
-            resource_name=self.RESOURCE_NAME
+        stats_queryset = CampaignStatistic.objects.filter(
+            campaign__account=self.account
         )
-        campaign_query_fields = self.format_query(constants.CAMPAIGN_PERFORMANCE_FIELDS)
-        campaign_query = f"SELECT {campaign_query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
-        campaign_performance = self.ga_service.search(self.account.id, query=campaign_query)
+        self.drop_latest_stats(stats_queryset, today)
 
-        return campaign_performance, click_type_data
+        # lets find min and max dates for the report request
+        dates = stats_queryset.aggregate(max_date=Max("date"))
+        min_date = dates["max_date"] + timedelta(days=1) \
+            if dates["max_date"] \
+            else constants.MIN_FETCH_DATE
+        report = campaign_performance_report(
+            self.client,
+            dates=(min_date, max_date),
+            include_zero_impressions=False,
+            additional_fields=("Device", "Date"),
+        )
+        click_type_fields = (
+            "CampaignId",
+            "Date",
+            "Clicks",
+            "ClickType",
+        )
+        click_type_report = campaign_performance_report(
+            self.client, dates=(min_date, max_date), fields=click_type_fields, include_zero_impressions=False)
+        click_type_data = self.format_click_types_report(click_type_report, "CampaignId", "CampaignId")
+        insert_stat = []
+        for row_obj in report:
+            campaign_id = row_obj.CampaignId
+            try:
+                end_date = datetime.strptime(row_obj.EndDate, constants.GET_DF)
+            except ValueError:
+                end_date = None
 
-    def _get_campaign_hourly_performance(self):
-        """
-        Retrieve campaign hourly performance
-        :return: Google Ads search response
-        """
-        min_date = self.today - timedelta(days=10)
-        last_entry = self.existing_hourly_statistics.filter(date__lt=min_date).order_by("-date").first()
-        if last_entry:
-            start_date = last_entry.date
-        else:
-            start_date = min_date
-        # Delete stale data
-        self.existing_hourly_statistics.filter(date__gte=start_date).delete()
-        hourly_performance_fields = self.format_query(constants.CAMPAIGN_HOURLY_PERFORMANCE_FIELDS)
-        hourly_query = f"SELECT {hourly_performance_fields} from {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{start_date}' AND '{self.today}'"
-        hourly_performance = self.ga_service.search(self.account.id, query=hourly_query)
+            if row_obj.CampaignStatus in ACTION_STATUSES:
+                status = row_obj.CampaignStatus
+            else:
+                status = "serving" if row_obj.ServingStatus == "eligible" else row_obj.ServingStatus
 
-        return hourly_performance
-
-    def _instance_generator(self, campaign_performance, click_type_data):
-        """
-        Generator to yield CampaignStatistics instances
-        :param campaign_performance: Google ads campaign resource search response
-        :return:
-        """
-        for row in campaign_performance:
-            campaign_id = row.campaign.id.value
-            budget_type, budget_value = self._get_budget_type_and_value(row)
-            budget = float(row.campaign_budget.amount_micros.value if budget_type == BudgetType.DAILY else row.campaign_budget.total_amount_micros.value) / 10 ** 6
-            campaign_status, campaign_serving_status = self._get_campaign_statuses(row)
-            campaign_data = {
+            name = row_obj.CampaignName
+            placement_code = self.extract_placement_code(name)
+            budget_type = BudgetType.DAILY if row_obj.TotalAmount.strip() == "--" else BudgetType.TOTAL
+            budget_str = row_obj.Amount if budget_type == BudgetType.DAILY else row_obj.TotalAmount
+            budget = float(budget_str) / 1000000
+            stats = {
                 "de_norm_fields_are_recalculated": False,
-                "name": row.campaign.name.value,
+                "name": name,
                 "account": self.account,
-                "type": self.channel_type_enum.Name(row.campaign.advertising_channel_type),
-                "start_date": row.campaign.start_date.value,
-                "end_date": row.campaign.end_date.value,
+                "type": row_obj.AdvertisingChannelType,
+                "start_date": datetime.strptime(row_obj.StartDate, constants.GET_DF),
+                "end_date": end_date,
                 "budget": budget,
                 "budget_type": budget_type.value,
-                "status": campaign_status if campaign_status in ACTION_STATUSES else campaign_serving_status,
-                "placement_code": self.extract_placement_code(row.campaign.name.value)
+                "status": status,
+                "placement_code": placement_code
             }
-            statistics = {
-                "date": row.segments.date.value,
-                "campaign_id": row.campaign.id.value,
-                "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
-                **self.get_quartile_views(row)
+
+            statistic_data = {
+                "date": row_obj.Date,
+                "campaign_id": row_obj.CampaignId,
+                "device_id": get_device_id_by_name(row_obj.Device),
+
+                "video_views_25_quartile": self.quart_views(row_obj, 25),
+                "video_views_50_quartile": self.quart_views(row_obj, 50),
+                "video_views_75_quartile": self.quart_views(row_obj, 75),
+                "video_views_100_quartile": self.quart_views(row_obj, 100),
             }
-            # Update statistics with click performance obtained in get_clicks_report
-            statistics.update(self.get_base_stats(row))
-            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
-            statistics.update(click_data)
+            statistic_data.update(self.get_base_stats(row_obj))
+            self.update_stats_with_click_type_data(
+                statistic_data, click_type_data, row_obj, unique_field_name="CampaignId", ref_id_name="CampaignId")
+
+            insert_stat.append(CampaignStatistic(**statistic_data))
+
             try:
                 campaign = Campaign.objects.get(pk=campaign_id)
+
                 # Continue if the campaign's sync time is less than its update time, as it is pending to be synced with viewiq
                 if campaign.sync_time and campaign.sync_time < campaign.update_time:
                     continue
-                # Update campaign data
-                for field, value in campaign_data.items():
+
+                for field, value in stats.items():
                     setattr(campaign, field, value)
                 campaign.save()
             except Campaign.DoesNotExist:
-                campaign_data["id"] = str(campaign_id)
-                Campaign.objects.create(**campaign_data)
-            self.existing_campaigns.add(campaign_id)
+                stats["id"] = campaign_id
+                Campaign.objects.create(**stats)
 
-            yield CampaignStatistic(**statistics)
+        if insert_stat:
+            CampaignStatistic.objects.safe_bulk_create(insert_stat)
 
-    def _hourly_instance_generator(self, hourly_performance):
-        """
-        Create CampaignHourlyStatistic objects
-        :param hourly_performance: :param campaign_performance: Google ads campaign resource search response segmented by hour
-        :return:
-        """
-        campaigns_to_create = []
-        self.existing_campaigns = set(Campaign.objects.all().values_list("id", flat=True))
-        for row in hourly_performance:
-            campaign_id = str(row.campaign.id.value)
-            campaign_status, campaign_serving_status = self._get_campaign_statuses(row)
-            if campaign_id not in self.existing_campaigns:
-                campaign = Campaign(
-                    id=campaign_id,
-                    name=row.campaign.name.value,
-                    account=self.account,
-                    type=self.channel_type_enum.Name(row.campaign.advertising_channel_type),
-                    start_date=row.campaign.start_date.value,
-                    end_date=row.campaign.end_date.value,
-                    budget=float(row.campaign_budget.amount_micros.value) / 10 ** 6,
-                    status=campaign_status if campaign_status in ACTION_STATUSES else campaign_serving_status,
-                    impressions=1,
-                    # to show this item on the accounts lists Track/Filters
+    def update_hourly_campaigns(self):
+        statistic_queryset = CampaignHourlyStatistic.objects.filter(
+            campaign__account=self.account)
+
+        today = datetime.now(tz=pytz.timezone(self.account.timezone)).date()
+        min_date = today - timedelta(days=10)
+
+        last_entry = statistic_queryset.filter(date__lt=min_date) \
+            .order_by("-date").first()
+
+        start_date = min_date
+        if last_entry:
+            start_date = last_entry.date
+
+        statistic_to_drop = statistic_queryset.filter(date__gte=start_date)
+
+        report = campaign_performance_report(
+            self.client,
+            dates=(start_date, today),
+            fields=["CampaignId", "CampaignName", "StartDate", "EndDate",
+                    "AdvertisingChannelType", "Amount", "CampaignStatus",
+                    "ServingStatus", "Date", "HourOfDay"
+                    ] + list(MAIN_STATISTICS_FILEDS[:4]),
+            include_zero_impressions=False)
+
+        if not report:
+            return
+
+        campaign_ids = list(
+            self.account.campaigns.values_list("id", flat=True)
+        )
+        create_campaign = []
+        create_stat = []
+        for row in report:
+            campaign_id = row.CampaignId
+            if campaign_id not in campaign_ids:
+                campaign_ids.append(campaign_id)
+                try:
+                    end_date = datetime.strptime(row.EndDate, constants.GET_DF)
+                except ValueError:
+                    end_date = None
+                create_campaign.append(
+                    Campaign(
+                        id=campaign_id,
+                        name=row.CampaignName,
+                        account=self.account,
+                        type=row.AdvertisingChannelType,
+                        start_date=datetime.strptime(row.StartDate, constants.GET_DF),
+                        end_date=end_date,
+                        budget=float(row.Amount) / 1000000,
+                        status=row.CampaignStatus if row.CampaignStatus in ACTION_STATUSES else row.ServingStatus,
+                        impressions=1,
+                        # to show this item on the accounts lists Track/Filters
+                    )
                 )
-                campaigns_to_create.append(campaign)
-                self.existing_campaigns.add(campaign_id)
 
-            hourly_stat = CampaignHourlyStatistic(
-                date=row.segments.date.value,
-                hour=row.segments.hour.value,
-                campaign_id=campaign_id,
-                video_views=row.metrics.video_views.value,
-                impressions=row.metrics.impressions.value,
-                clicks=row.metrics.clicks.value,
-                cost=float(row.metrics.cost_micros.value) / 10**6
+            create_stat.append(
+                CampaignHourlyStatistic(
+                    date=row.Date,
+                    hour=row.HourOfDay,
+                    campaign_id=row.CampaignId,
+                    video_views=row.VideoViews,
+                    impressions=row.Impressions,
+                    clicks=row.Clicks,
+                    cost=float(row.Cost) / 1000000,
+                )
             )
-            yield hourly_stat
-        Campaign.objects.bulk_create(campaigns_to_create)
 
-    def _get_budget_type_and_value(self, row):
-        budget_type = BudgetType.DAILY if row.campaign_budget.amount_micros.value is not None else BudgetType.TOTAL
-        budget_value = float(row.campaign_budget.amount_micros.value if budget_type == BudgetType.DAILY else row.campaign_budget.total_amount_micros.value) / 10 ** 6
-        return budget_type, budget_value
+        with transaction.atomic():
+            if create_campaign:
+                Campaign.objects.bulk_create(create_campaign)
 
-    def _get_campaign_statuses(self, row):
-        campaign_status = self.campaign_status_enum.Name(row.campaign.status).lower()
-        campaign_serving_status = self.campaign_serving_status_enum.Name(row.campaign.serving_status).lower()
-        return campaign_status, campaign_serving_status
+            statistic_to_drop.delete()
+
+            if create_stat:
+                CampaignHourlyStatistic.objects.bulk_create(create_stat)
+
+    def format_click_types_report(self, report, unique_field_name, ref_id_name="AdGroupId"):
+        """
+        :param report: click types report
+        :param unique_field_name: Device, Age, Gender, Location, etc.
+        :param ref_id_name:
+        :return {"ad_group_id+unique_field+date": [Row(), Row() ...], ... }
+        """
+        if not report:
+            return {}
+        tracking_click_types = dict(TRACKING_CLICK_TYPES)
+        report = [row for row in report if row.ClickType in tracking_click_types.keys()]
+        result = defaultdict(list)
+        for row in report:
+            key = self.prepare_click_type_key(row, ref_id_name, unique_field_name)
+            value = {"click_type": tracking_click_types.get(row.ClickType), "clicks": int(row.Clicks)}
+            result[key] = result[key] + [value]
+        return result
+
+    def update_stats_with_click_type_data(
+            self, stats, click_type_data, row_obj, unique_field_name, ignore_a_few_records=False,
+            ref_id_name="AdGroupId"):
+        if click_type_data:
+            key = self.prepare_click_type_key(row_obj, ref_id_name, unique_field_name)
+            if ignore_a_few_records:
+                try:
+                    key_data = click_type_data.pop(key)
+                except KeyError:
+                    return stats
+            else:
+                key_data = click_type_data.get(key)
+            if key_data:
+                for obj in key_data:
+                    stats[obj.get("click_type")] = obj.get("clicks")
+        return stats
+
+    def prepare_click_type_key(self,row, ref_id_name, unique_field_name):
+        return "{}{}{}".format(getattr(row, ref_id_name), getattr(row, unique_field_name), row.Date)
+
+    def quart_views(self, row, n):
+        per = getattr(row, "VideoQuartile%dRate" % n)
+        impressions = int(row.Impressions)
+        return float(per.rstrip("%")) / 100 * impressions
+
+    def get_base_stats(self, row, quartiles=False):
+        stats = dict(
+            impressions=int(row.Impressions),
+            video_views=int(row.VideoViews),
+            clicks=int(row.Clicks),
+            cost=float(row.Cost) / 1000000,
+            conversions=float(row.Conversions.replace(",", "")),
+            all_conversions=float(row.AllConversions.replace(",", ""))
+            if hasattr(row, "AllConversions") else 0,
+            view_through=int(row.ViewThroughConversions),
+        )
+        if quartiles:
+            stats.update(
+                video_views_25_quartile=self.quart_views(row, 25),
+                video_views_50_quartile=self.quart_views(row, 50),
+                video_views_75_quartile=self.quart_views(row, 75),
+                video_views_100_quartile=self.quart_views(row, 100),
+            )
+        return stats

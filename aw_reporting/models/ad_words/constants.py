@@ -84,7 +84,7 @@ _DEVICE_REPRESENTATION = {
     Device.MOBILE: "Mobile devices with full browsers",
     Device.TABLET: "Tablets with full browsers",
     Device.OTHER: "Other",
-    Device.CONNECTED_TV: "TV Screens",
+    Device.CONNECTED_TV: "Devices streaming video content to TV screens"
 }
 
 
