@@ -124,6 +124,7 @@ class AuditProcessor(models.Model):
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
+    temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
@@ -192,6 +193,7 @@ class AuditProcessor(models.Model):
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
             'stopped': self.params.get('stopped'),
+            'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
