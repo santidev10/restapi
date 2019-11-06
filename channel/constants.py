@@ -1,6 +1,6 @@
 TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
                 "custom_properties.preferred", "analytics.verified", "cms.cms_title",
-                "stats.channel_group", "main.id")
+                "stats.channel_group", "main.id", "general_data.iab_categories")
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 

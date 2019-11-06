@@ -87,6 +87,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
+        "general_data.iab_categories",
         "stats.flags:exists",
         "stats.flags:missing",
         "stats.channel_subscribers:max",

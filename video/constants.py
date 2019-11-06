@@ -1,7 +1,7 @@
 TERMS_FILTER = ("general_data.country", "general_data.language", "general_data.category",
                 "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
-                "channel.id", "general_data.tags", "main.id",)
+                "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",)
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
