@@ -178,7 +178,7 @@ class InterestUpdater(UpdateMixin):
             name = f"customintent::{audience_id}"
             self.existing_audience_interest_ids.add(audience_id)
             self.custom_audiences_to_create.append(
-                Audience(id=audience_id, name=name, type=Audience.CUSTOM_INTENT)
+                Audience(id=audience_id, name=name, type=Audience.CUSTOM_INTENT_TYPE)
             )
         statistics.update(audience_id=audience_id)
         self.audience_statistics_to_create.append(AudienceStatistic(**statistics))

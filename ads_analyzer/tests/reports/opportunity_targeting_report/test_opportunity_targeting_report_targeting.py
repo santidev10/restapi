@@ -178,9 +178,22 @@ class CreateOpportunityTargetingReportTargetDataTestCase(CreateOpportunityTarget
         self.assertEqual(audience_name, item[columns.target])
         self.assertEqual("Interests - CAA", item[columns.type])
 
-    @skip("Not implemented")
     def test_interests_custom_intent_general_data(self):
-        raise NotImplemented
+        any_date = date(2019, 1, 1)
+        self.opportunity.cannot_roll_over = True
+        self.opportunity.save()
+
+        audience_name = "Test Audience"
+        audience = Audience.objects.create(type=Audience.CUSTOM_INTENT_TYPE, name=audience_name)
+        AudienceStatistic.objects.create(audience=audience, ad_group=self.ad_group, date=any_date)
+
+        self.act(self.opportunity.id, any_date, any_date)
+        data = self.get_data_dict(self.opportunity.id, any_date, any_date)
+        self.assertEqual(1, len(data))
+        item = data[0]
+        columns = self.columns
+        self.assertEqual(audience_name, item[columns.target])
+        self.assertEqual("Interests - Custom Intent", item[columns.type])
 
     @skip("Not implemented")
     def test_interests_detailed_demographic_general_data(self):
