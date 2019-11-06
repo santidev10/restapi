@@ -10,8 +10,7 @@ from segment.utils import validate_threshold
 
 
 class SegmentCreationOptionsApiView(APIView):
-    OPTIONAL_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "youtube_categories",
-                       "minimum_sentiment"]
+    OPTIONAL_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "youtube_categories"]
 
     def get(self, request, *args, **kwargs):
         data = self._map_query_params(request.query_params)
@@ -21,15 +20,6 @@ class SegmentCreationOptionsApiView(APIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(err))
         data["segment_type"] = kwargs["segment_type"]
         query_builder = BrandSafetyQueryBuilder(data)
-        minimum_sentiment = data.get("minimum_sentiment", 0)
-        sentiment_query = {
-            "range": {
-                "stats.sentiment": {
-                    "gte": minimum_sentiment
-                }
-            }
-        }
-        query_builder.query_body['bool']['filter']['bool']['must'].append(sentiment_query)
         result = query_builder.execute()
         data = {
             "items": result.hits.total or 0,
@@ -44,8 +34,6 @@ class SegmentCreationOptionsApiView(APIView):
         query_params["languages"] = query_params["languages"].split(",") if query_params.get("languages") else []
         query_params["minimum_option"] = int(query_params["minimum_option"]) if query_params.get("minimum_option") else 0
         query_params["score_threshold"] = int(query_params["score_threshold"]) if query_params.get("score_threshold") else 0
-        query_params["minimum_sentiment"] = int(query_params["minimum_sentiment"]) if query_params.get(
-            "minimum_sentiment") else 0
 
         youtube_categories = query_params["youtube_categories"].split(",") if query_params.get("youtube_categories") else []
         query_params["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(youtube_categories)
