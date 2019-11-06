@@ -112,6 +112,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
+        "stats.sentiment:percentiles",
     )
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
