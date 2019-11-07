@@ -5,3 +5,4 @@ from .audit_resume import AuditResumeApiView
 from .audit_stop import AuditStopApiView
 from .audit_flag import AuditFlagApiView
 from .audit_history import AuditHistoryApiView
+from .audit_pause import AuditPauseApiView

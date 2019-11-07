@@ -53,7 +53,7 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
@@ -136,7 +136,6 @@ class Command(BaseCommand):
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
 
-
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
@@ -165,13 +164,14 @@ class Command(BaseCommand):
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
-            self.get_videos(acp)
-        acp.processed = timezone.now()
-        if db_channel_meta.name:
-            acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed', 'word_hits'])
+        if db_channel.processed:
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
+            if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
+                self.get_videos(acp)
+            acp.processed = timezone.now()
+            if db_channel_meta.name:
+                acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
+            acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel

@@ -124,6 +124,7 @@ class AuditProcessor(models.Model):
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
+    temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
@@ -192,6 +193,7 @@ class AuditProcessor(models.Model):
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
             'stopped': self.params.get('stopped'),
+            'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
@@ -291,7 +293,6 @@ class AuditChannel(models.Model):
             except IntegrityError as e:
                 return AuditChannel.objects.get(channel_id=channel_id)
 
-
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -310,7 +311,6 @@ class AuditChannelMeta(models.Model):
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
-
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
