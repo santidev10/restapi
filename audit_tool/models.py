@@ -203,7 +203,7 @@ class AuditProcessor(models.Model):
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'export_status': self.get_export_status(),
-            'source': self.SOURCE_TYPES[self.source],
+            'source': self.SOURCE_TYPES[str(self.source)],
         }
         files = self.params.get('files')
         if files:
