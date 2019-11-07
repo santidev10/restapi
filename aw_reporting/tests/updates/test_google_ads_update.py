@@ -30,6 +30,7 @@ from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLo
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
+from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
@@ -52,6 +53,7 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models import ParentStatuses
@@ -140,7 +142,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
     @skip
     def test_update_campaign_aggregated_stats(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(
@@ -236,7 +238,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
 
     @skip
     def test_fulfil_placement_code_on_campaign(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1,
@@ -486,7 +488,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
 
     def test_update_ad_group_aggregated_stats(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -591,7 +593,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(ad_group.clicks_end_cap, end_cap_clicks * dates_len)
 
     def test_pull_campaign_location_targeting(self):
-        now = datetime(2018, 1, 15, 15, tzinfo=utc)
+        now = datetime.now(utc)
+        today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         geo_target = GeoTarget.objects.create(id=123, name="test name")
@@ -627,7 +630,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(list(campaign_geo_targets), [geo_target.id])
 
     def test_pull_parent_statuses(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account,
@@ -689,7 +692,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertTrue(campaign.parent_undetermined)
 
     def test_audiences_custom_affinity(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -729,7 +732,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(Audience.objects.get(id=audience_id).type, Audience.CUSTOM_AFFINITY_TYPE)
 
     def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -852,7 +855,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             self.assertEqual(actual, expected)
 
     def test_get_ad_is_disapproved(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -909,7 +912,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertTrue(is_disapproved(DISAPPROVED_ID_1))
 
     def test_get_ad_skip_missing_groups(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -962,7 +965,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
                  "gender_female", "gender_male", "gender_undetermined", \
                  "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
                  "parent_not_parent", "parent_parent", "parent_undetermined"
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         yesterday = today - timedelta(days=1)
         account = self._create_account(now)
@@ -1018,7 +1021,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
                  "gender_female", "gender_male", "gender_undetermined", \
                  "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
                  "parent_not_parent", "parent_parent", "parent_undetermined"
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         account = self._create_account(now)
         common_values = {field: True for field in fields}
         campaign = Campaign.objects.create(id=1, account=account, **common_values)
@@ -1345,7 +1348,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertGreater(account.keyword_count, 0)
 
     def test_update_ad_group_device_tv_screen(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -1454,6 +1457,73 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             except ValueError:
                 errs += 1
         self.assertEqual(errs, 0)
+
+    def test_group_placement_min_date(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(
+            id=1,
+            campaign=campaign,
+            de_norm_fields_are_recalculated=True,
+            cost=1,
+            impressions=1,
+            video_views=1,
+            clicks=1,
+            engagements=1,
+            active_view_impressions=1,
+            name="test",
+        )
+        min_ad_group_stat = AdGroupStatistic.objects.create(
+            date=today - timedelta(days=10),
+            ad_group=ad_group,
+            average_position=0,
+        )
+        max_ad_group_stat = AdGroupStatistic.objects.create(
+            date=today - timedelta(days=5),
+            ad_group=ad_group,
+            average_position=0,
+        )
+        YTChannelStatistic.objects.create(
+            yt_id="test",
+            date=min_ad_group_stat.date - timedelta(days=1),
+            ad_group=ad_group,
+            video_views_25_quartile=1,
+            video_views_50_quartile=2,
+            video_views_75_quartile=3,
+            video_views_100_quartile=4,
+        )
+        client = GoogleAdsClient("", "")
+        updater = PlacementUpdater(account)
+        updater._update_managed_statistics = MagicMock(return_value=[])
+        updater._get_group_placement_metrics = MagicMock(return_value=[])
+
+        updater.get_clicks_report = MagicMock(return_value={})
+        updater.update(client)
+
+        args = updater._get_group_placement_metrics.mock_calls[0][1]
+        min_date, max_date = args
+
+        self.assertTrue(updater._get_group_placement_metrics.call_count > 1)
+        self.assertEqual(min_date, min_ad_group_stat.date)
+        self.assertEqual(max_date, max_ad_group_stat.date)
+
+    def test_get_accounts_to_update(self):
+        now = datetime.now(utc)
+        today = now.date()
+        ended = today - timedelta(days=31)
+        acc = Account.objects.create(id=next(int_iterator), name="account_1")
+
+        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
+        op_2 = Opportunity.objects.create(id=next(int_iterator), name="test_2", aw_cid=acc.id, end=today)
+
+        pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_2, number="test_pl", end=today)
+        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl, account=acc)
+
+        to_update = GoogleAdsUpdater.get_accounts_to_update()
+        self.assertTrue(str(acc.id) in to_update)
+
 
 
 class FakeExceptionWithArgs:

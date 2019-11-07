@@ -174,34 +174,21 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
             return build_csv_byte_stream(fields, test_report_data)
 
         downloader_mock.DownloadReportAsStream.side_effect = mock_download
-
-        with patch("aw_reporting.google_ads.updaters.campaigns.get_web_app_client",
-                   return_value=aw_client_mock):
-            CampaignUpdater(account).update_hourly_campaigns()
+        updater = CampaignUpdater(account)
+        updater.client = aw_client_mock
+        updater.update_hourly_campaigns()
 
         self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
 
-    def test_should_not_change_update_time_adwords(self):
+    def test_change_update_time_adwords(self):
         test_timezone_str = "America/Los_Angeles"
         now = datetime(2018, 2, 2, 23, 55).replace(tzinfo=utc)
         account = self._create_account(tz=test_timezone_str)
-
-        aw_client_mock = MagicMock()
-        downloader_mock = aw_client_mock.GetReportDownloader()
-
-        def mock_download(report, *_, **__):
-            fields = report["selector"]["fields"]
-            return build_csv_byte_stream(fields, [])
-
-        downloader_mock.DownloadReportAsStream.side_effect = mock_download
-
         with patch_now(now), \
-             patch("aw_reporting.google_ads.updaters.campaigns.get_web_app_client", return_value=aw_client_mock):
-            updater = CampaignUpdater(account)
-            updater.now = now
-            CampaignUpdater(account).update_hourly_campaigns()
-
+                patch("aw_reporting.google_ads.google_ads_updater.CampaignUpdater"), \
+                patch("aw_reporting.google_ads.google_ads_updater.timezone") as mock_timezone:
+            mock_timezone.now.return_value = now
+            updater = GoogleAdsUpdater(account)
+            updater.update_campaigns()
         account.refresh_from_db()
-        self.assertIsNone(account.update_time)
         self.assertEqual(account.hourly_updated_at, now)
-

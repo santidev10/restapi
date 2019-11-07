@@ -43,7 +43,7 @@ WRITE_START = datetime(2016, 9, 1).date()
 
 @celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
 def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
-                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=7):
+                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14):
     logger.info("Salesforce update started")
     start = time.time()
     today = now_in_default_tz().date()
@@ -85,7 +85,7 @@ def perform_delete(sc, delete_from_days):
 def perform_get(sc):
     opportunity_ids = set()
     placement_ids = set()
-    end_date_threshold = datetime.today().date() - timedelta(days=7)
+    end_date_threshold = datetime.today().date() - timedelta(days=14)
     for model, method, condition in [
         (UserRole, 'get_user_roles', None),
         (User, 'get_users', None),
@@ -262,7 +262,8 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if e.value.errorCode != "ENTITY_IS_DELETED":
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -288,6 +289,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
         except Exception as e:
+
             logger.critical("Unhandled exception: %s" % str(e))
         else:
             if r == 204:

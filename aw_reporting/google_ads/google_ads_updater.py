@@ -133,8 +133,11 @@ class GoogleAdsUpdater(object):
     def get_accounts_to_update(hourly_update=True, end_date_from_days=AD_WORDS_STABILITY_STATS_DAYS_COUNT, as_obj=False, size=None):
         """
         Get current CID accounts to update
-            First retrieves all active Opportunities and linked Google Ads accounts
-            Ordered by amount of campaigns accounts have
+            Retrieves all active Placements and linked CID accounts
+            Retrieves all active Opportunities and linked CID accounts
+            Need to query from both models since in some cases, a CID will be
+                linked through a placement but not through an Opportunity
+            Ordered by last updated
         :param hourly_update: bool
             If hourly_update is True, then order accounts by hourly updated at
             Else, order accounts by full_update at
@@ -153,18 +156,14 @@ class GoogleAdsUpdater(object):
         else:
             order_by_field = "update_time"
 
-        active_campaigns = []
-        for pl in OpPlacement.objects.filter(end__gte=end_date_threshold):
-            active_campaigns.extend(pl.adwords_campaigns.all())
-        active_accounts = Account.objects.filter(campaigns=active_campaigns)
+        active_account_ids = set(OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account", flat=True).distinct())
+        active_from_placements = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
-        active_accounts = Account.objects.filter(campaigns__salesforce_placement_end__gte=end_date_threshold)
-        active_accounts = Campaign.objects.filter(salesforce_placement__gte=end_date_threshold)
+        active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
+        active_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_account_ids]
+        active_from_opportunities = Account.objects.filter(id__in=active_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
-        # active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
-        # active_account_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None]
-        active_accounts = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
-        for account in active_accounts:
+        for account in active_from_placements | active_from_opportunities:
             try:
                 int(account.id)
                 if "demo" in account.name.lower():

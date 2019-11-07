@@ -149,10 +149,18 @@ PARENT_PERFORMANCE_FIELDS = {
 }
 
 PLACEMENT_PERFORMANCE_FIELDS = {
-    "ad_group": ("id",),
-    "ad_group_criterion": ("placement.url", "type", "youtube_channel.channel_id", "youtube_video.video_id"),
-    "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
-    "segments": ("date", "device"),
+    "managed": {
+        "ad_group": ("id",),
+        "ad_group_criterion": ("placement.url", "type", "youtube_channel.channel_id", "youtube_video.video_id"),
+        "metrics": COMPLETED_FIELDS + MAIN_STATISTICS_FIELDS,
+        "segments": ("date", "device"),
+    },
+    "group": {
+        "ad_group": ("id",),
+        "group_placement_view": ("display_name", "placement", "placement_type", "target_url"),
+        "metrics": MAIN_STATISTICS_FIELDS,
+        "segments": ("date", "device"),
+    }
 }
 
 TOPIC_PERFORMANCE_FIELDS = {

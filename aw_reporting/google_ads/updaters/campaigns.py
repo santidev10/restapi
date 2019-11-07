@@ -11,7 +11,6 @@ import pytz
 from aw_reporting.adwords_reports import campaign_performance_report
 from aw_reporting.adwords_reports import MAIN_STATISTICS_FILEDS
 from aw_reporting.google_ads import constants
-from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.adwords_api import load_web_app_settings
@@ -21,7 +20,6 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models.ad_words.constants import BudgetType
-from aw_reporting.models.ad_words.constants import Device
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from utils.datetime import now_in_default_tz
 
