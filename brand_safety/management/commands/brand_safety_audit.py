@@ -32,16 +32,8 @@ class Command(BaseCommand):
             help="Type of audit to be executed",
         )
         parser.add_argument(
-            "--manual",
-            help="Manual brand safety scoring, video or channel"
-        )
-        parser.add_argument(
             "--ids",
             help="Manual brand safety scoring, should provide ids to update"
-        )
-        parser.add_argument(
-            "--videos",
-            help="Score only videos"
         )
 
     def handle(self, *args, **kwargs):

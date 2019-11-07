@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 from brand_safety.models import BadWordCategory
@@ -106,7 +108,8 @@ class BrandSafetyVideoAudit(object):
                 "categories": {
                     category: {
                         "category_score": category_score,
-                        "keywords": []
+                        "keywords": [],
+                        "severity_counts": defaultdict(int)
                     }
                     for category, category_score in brand_safety_score.category_scores.items()
                 }
@@ -120,5 +123,9 @@ class BrandSafetyVideoAudit(object):
             # Pop category as we do not need to store in categories section, only needed for key access
             category = keyword_data.pop("category")
             es_data["brand_safety"]["categories"][category]["keywords"].append(keyword_data)
+
+            # Increment category severity hit counts
+            severity = str(self.score_mapping.get(keyword_data["keyword"], 1))
+            es_data["brand_safety"]["categories"][category]["severity_counts"][severity] += 1
         video = Video(**es_data)
         return video
