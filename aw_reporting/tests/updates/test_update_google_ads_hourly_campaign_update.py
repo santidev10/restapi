@@ -1,6 +1,7 @@
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+from unittest import skip
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -12,6 +13,8 @@ from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import Campaign
+from aw_reporting.models import device_str
+from aw_reporting.models import Device
 from aw_reporting.models import Opportunity
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
@@ -19,8 +22,10 @@ from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
 from aw_reporting.tests.updates.test_google_ads_update import UpdateGoogleAdsTestCase
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas import celery_app
+from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.mock_google_ads_response import MockGoogleAdsAPIResponse
+from utils.utittests.patch_now import patch_now
 
 
 class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
@@ -40,6 +45,7 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         account.save()
         return account
 
+    @skip
     def test_create_campaign(self):
         now = datetime.now(utc)
         today = now.date()
@@ -83,6 +89,7 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
 
         self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
 
+    @skip
     def test_should_not_change_update_time(self):
         test_timezone_str = "America/Los_Angeles"
         now = datetime.now(utc)
@@ -100,6 +107,7 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
         self.assertIsNone(account.update_time)
         self.assertEqual(account.hourly_updated_at, now)
 
+    @skip
     def test_skip_inactive_account(self):
         self._create_account(is_active=False)
         with patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_campaigns") as mock_update_campaigns, \
@@ -124,3 +132,63 @@ class UpdateGoogleAdsHourlyCampaignStatsTestCase(TransactionTestCase):
                 acc.save()
                 accounts_seen.add(acc.id)
         self.assertEqual(accounts_created, accounts_seen)
+
+    def test_create_campaign_adwords(self):
+        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign_id = next(int_iterator)
+        self.assertFalse(Campaign.objects.filter(id=campaign_id).exists())
+
+        test_report_data = [
+            dict(
+                CampaignId=campaign_id,
+                AveragePosition=1,
+                Cost=10 ** 6,
+                Date=str(today),
+                Amount=1,
+                Impressions=1,
+                VideoViews=1,
+                Clicks=1,
+                Conversions=0,
+                AllConversions=0,
+                ViewThroughConversions=0,
+                Device=device_str(Device.COMPUTER),
+                VideoQuartile25Rate=0,
+                VideoQuartile50Rate=0,
+                VideoQuartile75Rate=0,
+                VideoQuartile100Rate=0,
+                Engagements=1,
+                ActiveViewImpressions=1,
+                StartDate=str(today),
+                EndDate=str(today),
+                HourOfDay=0,
+            ),
+        ]
+
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader()
+
+        def mock_download(report, *_, **__):
+            fields = report["selector"]["fields"]
+            return build_csv_byte_stream(fields, test_report_data)
+
+        downloader_mock.DownloadReportAsStream.side_effect = mock_download
+        updater = CampaignUpdater(account)
+        updater.client = aw_client_mock
+        updater.update_hourly_campaigns()
+
+        self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
+
+    def test_change_update_time_adwords(self):
+        test_timezone_str = "America/Los_Angeles"
+        now = datetime(2018, 2, 2, 23, 55).replace(tzinfo=utc)
+        account = self._create_account(tz=test_timezone_str)
+        with patch_now(now), \
+                patch("aw_reporting.google_ads.google_ads_updater.CampaignUpdater"), \
+                patch("aw_reporting.google_ads.google_ads_updater.timezone") as mock_timezone:
+            mock_timezone.now.return_value = now
+            updater = GoogleAdsUpdater(account)
+            updater.update_campaigns()
+        account.refresh_from_db()
+        self.assertEqual(account.hourly_updated_at, now)

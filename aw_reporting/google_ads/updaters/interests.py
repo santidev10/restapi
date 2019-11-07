@@ -106,7 +106,7 @@ class InterestUpdater(UpdateMixin):
                 try:
                     self._handle_user_interest(statistics, audience_id)
                 except InterestUpdaterMissingAudienceException:
-                    logger.error(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
+                    logger.warning(f"Audience {audience_id} not found for cid: {self.account.id}, ad_group_id: {ad_group_id}")
                     continue
             elif audience_type == GoogleAdsAudienceTypes.CUSTOM_AFFINITY:
                 audience_id = self._extract_audience_id(row.ad_group_criterion.custom_affinity.custom_affinity.value)
@@ -117,7 +117,7 @@ class InterestUpdater(UpdateMixin):
                 self._handle_custom_intent(statistics, audience_id)
 
             else:
-                logger.error(
+                logger.warning(
                     f"Undefined criteria. ad_group_id: {ad_group_id}, criterion_id: {row.ad_group_criterion.criterion_id.value}, audience_type: {audience_type}"
                 )
 

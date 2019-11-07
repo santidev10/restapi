@@ -47,7 +47,7 @@ class CityUpdater(UpdateMixin):
             existing_top_cities = set(GeoTarget.objects.filter(id__in=top_cities).values_list("id", flat=True))
 
             if len(top_cities) != len(existing_top_cities):
-                logger.error(f"Missed geo targets with ids: {top_cities - existing_top_cities}")
+                logger.warning(f"Missed geo targets with ids: {top_cities - existing_top_cities}")
                 top_cities = existing_top_cities
 
             # Recheck min and max dates to check if we already have statistics for every city
