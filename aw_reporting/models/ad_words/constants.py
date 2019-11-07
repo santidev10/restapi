@@ -84,7 +84,7 @@ _DEVICE_REPRESENTATION = {
     Device.MOBILE: "Mobile devices with full browsers",
     Device.TABLET: "Tablets with full browsers",
     Device.OTHER: "Other",
-    Device.CONNECTED_TV: "Devices streaming video content to TV screens"
+    Device.CONNECTED_TV: "TV screens"
 }
 
 
@@ -148,6 +148,8 @@ def get_device_id_by_name(device_repr):
     for device_id, device_name in _DEVICE_REPRESENTATION.items():
         if device_repr == device_name:
             return device_id
+        if device_repr == "Devices streaming video content to TV screens" or device_repr == "TV screens":
+            return Device.CONNECTED_TV
     logger.debug("Undefined device name <{}>".format(device_repr))
     return Device._UNDETERMINED
 

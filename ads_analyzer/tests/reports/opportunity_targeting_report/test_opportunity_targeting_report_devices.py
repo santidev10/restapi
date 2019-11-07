@@ -446,4 +446,4 @@ class CreateOpportunityTargetingReportDevicesDataTestCase(CreateOpportunityTarge
         self.assertEqual(1, len(data))
         item = data[0]
         columns = self.columns
-        self.assertEqual("Devices streaming video content to TV screens", item[columns.type])
+        self.assertEqual("TV Screens", item[columns.type])
