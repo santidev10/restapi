@@ -1,4 +1,7 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock
+from unittest.mock import patch
+from unittest import skip
 
 from datetime import date
 from datetime import datetime
@@ -14,8 +17,6 @@ from google.api_core.exceptions import GoogleAPIError
 from google.auth.exceptions import RefreshError
 from pytz import timezone
 from pytz import utc
-from unittest.mock import MagicMock
-from unittest.mock import patch
 
 from aw_creation.models import AccountCreation
 from aw_reporting.google_ads.constants import MIN_FETCH_DATE
@@ -29,6 +30,7 @@ from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLo
 from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
+from aw_reporting.google_ads.updaters.placements import PlacementUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
@@ -51,6 +53,7 @@ from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models import ParentStatuses
@@ -137,8 +140,9 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertTrue(managed_mcc_account.name == "Changed Name")
         self.assertTrue(managed_mcc_account.currency_code == "USD")
 
+    @skip
     def test_update_campaign_aggregated_stats(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(
@@ -232,8 +236,259 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(campaign.clicks_cards, cards_clicks * dates_len)
         self.assertEqual(campaign.clicks_end_cap, end_cap_clicks * dates_len)
 
+    @skip
+    def test_fulfil_placement_code_on_campaign(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1,
+                                           account=account,
+                                           placement_code=None,
+                                           name="test",
+                                           )
+        test_code = "PL1234567"
+        mock_hourly_performance_response = MockGoogleAdsAPIResponse()
+        mock_campaign_data = MockGoogleAdsAPIResponse()
+        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id),
+                               nested_key=None)
+        mock_campaign_data.set("campaign", "id", campaign.id)
+        mock_campaign_data.set("campaign", "name", f"{campaign.name} {test_code}")
+        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
+        mock_campaign_data.set("campaign", "start_date", str(today))
+        mock_campaign_data.set("campaign", "end_date", str(today))
+        mock_campaign_data.set("campaign_budget", "amount_micros", 0)
+        mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
+        mock_campaign_data.set("metrics", "impressions", 0)
+        mock_campaign_data.set("metrics", "video_views", 0)
+        mock_campaign_data.set("metrics", "clicks", 0)
+        mock_campaign_data.set("metrics", "conversions", 0)
+        mock_campaign_data.set("metrics", "all_conversions", 0)
+        mock_campaign_data.set("metrics", "view_through_conversions", 0)
+        mock_campaign_data.set("metrics", "cost_micros", 0)
+        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
+        mock_campaign_data.set("segments", "date", str(today))
+        mock_campaign_data.set("segments", "device", 0, nested_key=None)
+        mock_campaign_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = CampaignUpdater(account)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response))
+
+        updater.update(client)
+        campaign.refresh_from_db()
+        recalculate_de_norm_fields_for_account(account.id)
+
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.placement_code, test_code)
+
+    @skip
+    def test_device_enum_mapping(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account()
+        campaign = Campaign.objects.create(id=1, account=account)
+
+        device_response = [1, 2, 3, 4, 5]
+        expected_device_values = list(range(-1, 4))
+        mock_campaign_data = MockGoogleAdsAPIResponse()
+        for device_id in device_response:
+            mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id),
+                                   nested_key=None)
+            mock_campaign_data.set("campaign", "id", campaign.id)
+            mock_campaign_data.set("campaign", "name", "test")
+            mock_campaign_data.set("campaign", "status", 2, nested_key=None)
+            mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
+            mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
+            mock_campaign_data.set("segments", "date", today)
+            mock_campaign_data.set("campaign", "start_date", today),
+            mock_campaign_data.set("campaign", "end_date", today),
+            mock_campaign_data.set("campaign_budget", "amount_micros", 1 * 10 ** 6)
+            mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
+            mock_campaign_data.set("metrics", "impressions", 1)
+            mock_campaign_data.set("metrics", "video_views", 1)
+            mock_campaign_data.set("metrics", "clicks", 1)
+            mock_campaign_data.set("metrics", "conversions", 0)
+            mock_campaign_data.set("metrics", "all_conversions", 0)
+            mock_campaign_data.set("metrics", "view_through_conversions", 0)
+            mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
+            mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
+            mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
+            mock_campaign_data.set("segments", "device", device_id, nested_key=None)
+            mock_campaign_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = CampaignUpdater(account)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater.update(client)
+        recalculate_de_norm_fields_for_account(account.id)
+
+        statistics = CampaignStatistic.objects.all().order_by("device_id")
+        for index, expected in enumerate(expected_device_values):
+            actual = statistics[index].device_id
+            self.assertEqual(actual, expected)
+
+    @skip
+    @patch.object(CampaignUpdater, "update")
+    def test_mark_account_as_inactive(self, mock_update):
+        account = self._create_account(is_active=True)
+
+        exception = GoogleAdsException(None, None, MagicMock(), None)
+        err = SimpleNamespace(error_code=SimpleNamespace())
+        err.error_code.authorization_error = 24  # AuthorizationErrorEnum: CUSTOMER_NOT_ENABLED
+        exception.failure.errors = [err]
+
+        mock_update.side_effect = exception
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
+            cid_campaign_update(account.id)
+
+        account.refresh_from_db()
+        self.assertFalse(account.is_active)
+
+    @skip
+    @patch.object(CampaignUpdater, "update")
+    def test_success_on_account_update_error(self, mock_update):
+        account = self._create_account(is_active=True)
+
+        exception = ValueError("Test error")
+        # Set attributes for google_ads_updater.execute method
+        # Normal usage with updater methods will have these attributes set
+        mock_update.__self__ = SimpleNamespace(__class__=SimpleNamespace())
+        mock_update.side_effect = exception
+
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
+            mcc_id = Account.objects.get(can_manage_clients=True).id
+            cid_campaign_update(account.id)
+
+    @skip
+    @patch.object(CampaignUpdater, "update")
+    def test_retry_on_error(self, mock_execute):
+        mock_execute.__self__ = SimpleNamespace(__class__=SimpleNamespace())
+        mock_execute.side_effect = GoogleAPIError
+
+        test_account_id = "test_account_id"
+        account = self._create_account(id=test_account_id, is_active=True)
+
+        with patch("aw_reporting.google_ads.google_ads_updater.get_client"):
+            updater = GoogleAdsUpdater(account)
+            mock_updater = MagicMock()
+            updater.main_updaters = (mock_updater,)
+            updater.MAX_RETRIES = 2
+            updater.full_update()
+            self.assertGreater(mock_execute.call_count, 1)
+
+    @skip
+    def test_budget_daily(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+
+        mock_campaign_data = MockGoogleAdsAPIResponse()
+        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id), nested_key=None)
+        mock_campaign_data.set("campaign", "id", campaign.id)
+        mock_campaign_data.set("campaign", "name", "test")
+        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
+        mock_campaign_data.set("segments", "date", statistic_date)
+        mock_campaign_data.set("campaign", "start_date", str(campaign.start_date))
+        mock_campaign_data.set("campaign", "end_date", str(campaign.end_date))
+        mock_campaign_data.set("campaign_budget", "amount_micros", test_budget * 10 ** 6)
+        mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
+        mock_campaign_data.set("metrics", "impressions", 1)
+        mock_campaign_data.set("metrics", "video_views", 1)
+        mock_campaign_data.set("metrics", "clicks", 1)
+        mock_campaign_data.set("metrics", "conversions", 0)
+        mock_campaign_data.set("metrics", "all_conversions", 0)
+        mock_campaign_data.set("metrics", "view_through_conversions", 0)
+        mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
+        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
+        mock_campaign_data.set("segments", "device", 0, nested_key=None)
+        mock_campaign_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = CampaignUpdater(account)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
+        updater.update(client)
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.DAILY.value)
+
+    @skip
+    def test_budget_total(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(
+            id=next(int_iterator),
+            account=account,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=5),
+            sync_time=datetime.now(tz=utc) + timedelta(days=5),
+        )
+        test_budget = 23
+        statistic_date = today - timedelta(days=2)
+
+        mock_campaign_data = MockGoogleAdsAPIResponse()
+        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id), nested_key=None)
+        mock_campaign_data.set("campaign", "id", campaign.id)
+        mock_campaign_data.set("campaign", "name", "test")
+        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
+        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
+        mock_campaign_data.set("segments", "date", str(statistic_date))
+        mock_campaign_data.set("campaign", "start_date", str(campaign.start_date))
+        mock_campaign_data.set("campaign", "end_date", str(campaign.end_date))
+        mock_campaign_data.set("campaign_budget", "amount_micros", None)
+        mock_campaign_data.set("campaign_budget", "total_amount_micros", test_budget * 10 ** 6)
+        mock_campaign_data.set("metrics", "impressions", 1)
+        mock_campaign_data.set("metrics", "video_views", 1)
+        mock_campaign_data.set("metrics", "clicks", 1)
+        mock_campaign_data.set("metrics", "conversions", 0)
+        mock_campaign_data.set("metrics", "all_conversions", 0)
+        mock_campaign_data.set("metrics", "view_through_conversions", 0)
+        mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
+        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
+        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
+        mock_campaign_data.set("segments", "device", 0, nested_key=None)
+        mock_campaign_data.add_row()
+
+        client = GoogleAdsClient("", "")
+        updater = CampaignUpdater(account)
+        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
+        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
+        updater.update(client)
+
+        campaign.refresh_from_db()
+        self.assertAlmostEqual(campaign.budget, test_budget)
+        self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
+
     def test_update_ad_group_aggregated_stats(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -338,7 +593,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(ad_group.clicks_end_cap, end_cap_clicks * dates_len)
 
     def test_pull_campaign_location_targeting(self):
-        now = datetime(2018, 1, 15, 15, tzinfo=utc)
+        now = datetime.now(utc)
+        today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
         geo_target = GeoTarget.objects.create(id=123, name="test name")
@@ -373,57 +629,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             .values_list("geo_target_id", flat=True)
         self.assertEqual(list(campaign_geo_targets), [geo_target.id])
 
-    def test_fulfil_placement_code_on_campaign(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
-        today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(id=1,
-                                           account=account,
-                                           placement_code=None,
-                                           name="test",
-                                           )
-        test_code = "PL1234567"
-        mock_hourly_performance_response = MockGoogleAdsAPIResponse()
-        mock_campaign_data = MockGoogleAdsAPIResponse()
-        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id), nested_key=None)
-        mock_campaign_data.set("campaign", "id", campaign.id)
-        mock_campaign_data.set("campaign", "name", f"{campaign.name} {test_code}")
-        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
-        mock_campaign_data.set("campaign", "start_date", str(today))
-        mock_campaign_data.set("campaign", "end_date", str(today))
-        mock_campaign_data.set("campaign_budget", "amount_micros", 0)
-        mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
-        mock_campaign_data.set("metrics", "impressions", 0)
-        mock_campaign_data.set("metrics", "video_views", 0)
-        mock_campaign_data.set("metrics", "clicks", 0)
-        mock_campaign_data.set("metrics", "conversions", 0)
-        mock_campaign_data.set("metrics", "all_conversions", 0)
-        mock_campaign_data.set("metrics", "view_through_conversions", 0)
-        mock_campaign_data.set("metrics", "cost_micros", 0)
-        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
-        mock_campaign_data.set("segments", "date", str(today))
-        mock_campaign_data.set("segments", "device", 0, nested_key=None)
-        mock_campaign_data.add_row()
-
-        client = GoogleAdsClient("", "")
-        updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=(mock_hourly_performance_response))
-
-        updater.update(client)
-        campaign.refresh_from_db()
-        recalculate_de_norm_fields_for_account(account.id)
-
-        campaign.refresh_from_db()
-        self.assertEqual(campaign.placement_code, test_code)
-
     def test_pull_parent_statuses(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account,
@@ -485,7 +692,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertTrue(campaign.parent_undetermined)
 
     def test_audiences_custom_affinity(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -525,7 +732,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertEqual(Audience.objects.get(id=audience_id).type, Audience.CUSTOM_AFFINITY_TYPE)
 
     def test_no_crash_on_missing_ad_group_id_in_getting_status(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -647,56 +854,8 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             actual = statistics[index].age_range_id
             self.assertEqual(actual, expected)
 
-    def test_device_enum_mapping(self):
-        now = datetime.now(utc)
-        today = now.date()
-        account = self._create_account()
-        campaign = Campaign.objects.create(id=1, account=account)
-
-        device_response = [1, 2, 3, 4, 5]
-        expected_device_values = list(range(-1, 4))
-        mock_campaign_data = MockGoogleAdsAPIResponse()
-        for device_id in device_response:
-            mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id),
-                                   nested_key=None)
-            mock_campaign_data.set("campaign", "id", campaign.id)
-            mock_campaign_data.set("campaign", "name", "test")
-            mock_campaign_data.set("campaign", "status", 2, nested_key=None)
-            mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
-            mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
-            mock_campaign_data.set("segments", "date", today)
-            mock_campaign_data.set("campaign", "start_date", today),
-            mock_campaign_data.set("campaign", "end_date", today),
-            mock_campaign_data.set("campaign_budget", "amount_micros", 1 * 10 ** 6)
-            mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
-            mock_campaign_data.set("metrics", "impressions", 1)
-            mock_campaign_data.set("metrics", "video_views", 1)
-            mock_campaign_data.set("metrics", "clicks", 1)
-            mock_campaign_data.set("metrics", "conversions", 0)
-            mock_campaign_data.set("metrics", "all_conversions", 0)
-            mock_campaign_data.set("metrics", "view_through_conversions", 0)
-            mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
-            mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
-            mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
-            mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
-            mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
-            mock_campaign_data.set("segments", "device", device_id, nested_key=None)
-            mock_campaign_data.add_row()
-
-        client = GoogleAdsClient("", "")
-        updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
-        updater.update(client)
-        recalculate_de_norm_fields_for_account(account.id)
-
-        statistics = CampaignStatistic.objects.all().order_by("device_id")
-        for index, expected in enumerate(expected_device_values):
-            actual = statistics[index].device_id
-            self.assertEqual(actual, expected)
-
     def test_get_ad_is_disapproved(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -753,7 +912,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertTrue(is_disapproved(DISAPPROVED_ID_1))
 
     def test_get_ad_skip_missing_groups(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -806,7 +965,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
                  "gender_female", "gender_male", "gender_undetermined", \
                  "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
                  "parent_not_parent", "parent_parent", "parent_undetermined"
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         yesterday = today - timedelta(days=1)
         account = self._create_account(now)
@@ -862,7 +1021,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
                  "gender_female", "gender_male", "gender_undetermined", \
                  "has_channels", "has_interests", "has_keywords", "has_remarketing", "has_topics", "has_videos", \
                  "parent_not_parent", "parent_parent", "parent_undetermined"
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         account = self._create_account(now)
         common_values = {field: True for field in fields}
         campaign = Campaign.objects.create(id=1, account=account, **common_values)
@@ -1062,52 +1221,6 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         setup_update_campaigns()
         mock_cid_account_update.assert_not_called()
 
-    @patch.object(CampaignUpdater, "update")
-    def test_mark_account_as_inactive(self, mock_update):
-        account = self._create_account(is_active=True)
-
-        exception = GoogleAdsException(None, None, MagicMock(), None)
-        err = SimpleNamespace(error_code=SimpleNamespace())
-        err.error_code.authorization_error = 24 # AuthorizationErrorEnum: CUSTOMER_NOT_ENABLED
-        exception.failure.errors = [err]
-
-        mock_update.side_effect = exception
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            cid_campaign_update(account.id)
-
-        account.refresh_from_db()
-        self.assertFalse(account.is_active)
-
-    @patch.object(CampaignUpdater, "update")
-    def test_success_on_account_update_error(self, mock_update):
-        account = self._create_account(is_active=True)
-
-        exception = ValueError("Test error")
-        # Set attributes for google_ads_updater.execute method
-        # Normal usage with updater methods will have these attributes set
-        mock_update.__self__ = SimpleNamespace(__class__=SimpleNamespace())
-        mock_update.side_effect = exception
-
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            mcc_id = Account.objects.get(can_manage_clients=True).id
-            cid_campaign_update(account.id)
-
-    @patch.object(CampaignUpdater, "update")
-    def test_retry_on_error(self, mock_execute):
-        mock_execute.__self__ = SimpleNamespace(__class__=SimpleNamespace())
-        mock_execute.side_effect = GoogleAPIError
-
-        test_account_id = "test_account_id"
-        account = self._create_account(id=test_account_id, is_active=True)
-
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client"):
-            updater = GoogleAdsUpdater(account)
-            mock_updater = MagicMock()
-            updater.main_updaters = (mock_updater, )
-            updater.MAX_RETRIES = 2
-            updater.full_update()
-            self.assertGreater(mock_execute.call_count, 1)
-
     def test_retry_on_page_token_error(self):
         account = self._create_account(is_active=True)
 
@@ -1129,106 +1242,6 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             google_ads_updater.update_all_except_campaigns()
 
             self.assertGreater(google_ads_updater._retry.call_count, 0)
-
-    def test_budget_daily(self):
-        now = datetime.now(utc)
-        today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(
-            id=next(int_iterator),
-            account=account,
-            start_date=today - timedelta(days=5),
-            end_date=today + timedelta(days=5),
-            sync_time=datetime.now(tz=utc) + timedelta(days=5),
-        )
-        test_budget = 23
-        statistic_date = today - timedelta(days=2)
-
-        mock_campaign_data = MockGoogleAdsAPIResponse()
-        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id), nested_key=None)
-        mock_campaign_data.set("campaign", "id", campaign.id)
-        mock_campaign_data.set("campaign", "name", "test")
-        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
-        mock_campaign_data.set("segments", "date", statistic_date)
-        mock_campaign_data.set("campaign", "start_date", str(campaign.start_date))
-        mock_campaign_data.set("campaign", "end_date", str(campaign.end_date))
-        mock_campaign_data.set("campaign_budget", "amount_micros", test_budget * 10 ** 6)
-        mock_campaign_data.set("campaign_budget", "total_amount_micros", None)
-        mock_campaign_data.set("metrics", "impressions", 1)
-        mock_campaign_data.set("metrics", "video_views", 1)
-        mock_campaign_data.set("metrics", "clicks", 1)
-        mock_campaign_data.set("metrics", "conversions", 0)
-        mock_campaign_data.set("metrics", "all_conversions", 0)
-        mock_campaign_data.set("metrics", "view_through_conversions", 0)
-        mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
-        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
-        mock_campaign_data.set("segments", "device", 0, nested_key=None)
-        mock_campaign_data.add_row()
-
-        client = GoogleAdsClient("", "")
-        updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=[])
-        updater.update(client)
-
-        campaign.refresh_from_db()
-        self.assertAlmostEqual(campaign.budget, test_budget)
-        self.assertEqual(campaign.budget_type, BudgetType.DAILY.value)
-
-    def test_budget_total(self):
-        now = datetime.now(utc)
-        today = now.date()
-        account = self._create_account(now)
-        campaign = Campaign.objects.create(
-            id=next(int_iterator),
-            account=account,
-            start_date=today - timedelta(days=5),
-            end_date=today + timedelta(days=5),
-            sync_time=datetime.now(tz=utc) + timedelta(days=5),
-        )
-        test_budget = 23
-        statistic_date = today - timedelta(days=2)
-
-        mock_campaign_data = MockGoogleAdsAPIResponse()
-        mock_campaign_data.set("campaign", "resource_name", self.create_resource_name("campaign", campaign.id), nested_key=None)
-        mock_campaign_data.set("campaign", "id", campaign.id)
-        mock_campaign_data.set("campaign", "name", "test")
-        mock_campaign_data.set("campaign", "status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "serving_status", 2, nested_key=None)
-        mock_campaign_data.set("campaign", "advertising_channel_type", 0, nested_key=None)
-        mock_campaign_data.set("segments", "date", str(statistic_date))
-        mock_campaign_data.set("campaign", "start_date", str(campaign.start_date))
-        mock_campaign_data.set("campaign", "end_date", str(campaign.end_date))
-        mock_campaign_data.set("campaign_budget", "amount_micros", None)
-        mock_campaign_data.set("campaign_budget", "total_amount_micros", test_budget * 10 ** 6)
-        mock_campaign_data.set("metrics", "impressions", 1)
-        mock_campaign_data.set("metrics", "video_views", 1)
-        mock_campaign_data.set("metrics", "clicks", 1)
-        mock_campaign_data.set("metrics", "conversions", 0)
-        mock_campaign_data.set("metrics", "all_conversions", 0)
-        mock_campaign_data.set("metrics", "view_through_conversions", 0)
-        mock_campaign_data.set("metrics", "cost_micros", 1 * 10 ** 6)
-        mock_campaign_data.set("metrics", "video_quartile_25_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_50_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_75_rate", 0)
-        mock_campaign_data.set("metrics", "video_quartile_100_rate", 0)
-        mock_campaign_data.set("segments", "device", 0, nested_key=None)
-        mock_campaign_data.add_row()
-
-        client = GoogleAdsClient("", "")
-        updater = CampaignUpdater(account)
-        updater._get_campaign_performance = MagicMock(return_value=(mock_campaign_data, {}))
-        updater._get_campaign_hourly_performance = MagicMock(return_value=([]))
-        updater.update(client)
-
-        campaign.refresh_from_db()
-        self.assertAlmostEqual(campaign.budget, test_budget)
-        self.assertEqual(campaign.budget_type, BudgetType.TOTAL.value)
 
     def test_account_name_limit(self):
         """
@@ -1335,7 +1348,7 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
         self.assertGreater(account.keyword_count, 0)
 
     def test_update_ad_group_device_tv_screen(self):
-        now = datetime(2018, 1, 1, 15, tzinfo=utc)
+        now = datetime.now(utc)
         today = now.date()
         account = self._create_account(now)
         campaign = Campaign.objects.create(id=1, account=account)
@@ -1444,6 +1457,73 @@ class UpdateGoogleAdsTestCase(TransactionTestCase):
             except ValueError:
                 errs += 1
         self.assertEqual(errs, 0)
+
+    def test_group_placement_min_date(self):
+        now = datetime.now(utc)
+        today = now.date()
+        account = self._create_account(now)
+        campaign = Campaign.objects.create(id=1, account=account)
+        ad_group = AdGroup.objects.create(
+            id=1,
+            campaign=campaign,
+            de_norm_fields_are_recalculated=True,
+            cost=1,
+            impressions=1,
+            video_views=1,
+            clicks=1,
+            engagements=1,
+            active_view_impressions=1,
+            name="test",
+        )
+        min_ad_group_stat = AdGroupStatistic.objects.create(
+            date=today - timedelta(days=10),
+            ad_group=ad_group,
+            average_position=0,
+        )
+        max_ad_group_stat = AdGroupStatistic.objects.create(
+            date=today - timedelta(days=5),
+            ad_group=ad_group,
+            average_position=0,
+        )
+        YTChannelStatistic.objects.create(
+            yt_id="test",
+            date=min_ad_group_stat.date - timedelta(days=1),
+            ad_group=ad_group,
+            video_views_25_quartile=1,
+            video_views_50_quartile=2,
+            video_views_75_quartile=3,
+            video_views_100_quartile=4,
+        )
+        client = GoogleAdsClient("", "")
+        updater = PlacementUpdater(account)
+        updater._update_managed_statistics = MagicMock(return_value=[])
+        updater._get_group_placement_metrics = MagicMock(return_value=[])
+
+        updater.get_clicks_report = MagicMock(return_value={})
+        updater.update(client)
+
+        args = updater._get_group_placement_metrics.mock_calls[0][1]
+        min_date, max_date = args
+
+        self.assertTrue(updater._get_group_placement_metrics.call_count > 1)
+        self.assertEqual(min_date, min_ad_group_stat.date)
+        self.assertEqual(max_date, max_ad_group_stat.date)
+
+    def test_get_accounts_to_update(self):
+        now = datetime.now(utc)
+        today = now.date()
+        ended = today - timedelta(days=31)
+        acc = Account.objects.create(id=next(int_iterator), name="account_1")
+
+        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
+        op_2 = Opportunity.objects.create(id=next(int_iterator), name="test_2", aw_cid=acc.id, end=today)
+
+        pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_2, number="test_pl", end=today)
+        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl, account=acc)
+
+        to_update = GoogleAdsUpdater.get_accounts_to_update()
+        self.assertTrue(str(acc.id) in to_update)
+
 
 
 class FakeExceptionWithArgs:

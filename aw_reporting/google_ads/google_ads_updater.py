@@ -36,6 +36,7 @@ from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 
@@ -132,8 +133,11 @@ class GoogleAdsUpdater(object):
     def get_accounts_to_update(hourly_update=True, end_date_from_days=AD_WORDS_STABILITY_STATS_DAYS_COUNT, as_obj=False, size=None):
         """
         Get current CID accounts to update
-            First retrieves all active Opportunities and linked Google Ads accounts
-            Ordered by amount of campaigns accounts have
+            Retrieves all active Placements and linked CID accounts
+            Retrieves all active Opportunities and linked CID accounts
+            Need to query from both models since in some cases, a CID will be
+                linked through a placement but not through an Opportunity
+            Ordered by last updated
         :param hourly_update: bool
             If hourly_update is True, then order accounts by hourly updated at
             Else, order accounts by full_update at
@@ -151,10 +155,15 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
+
+        active_ids_from_placements = set(OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account", flat=True).distinct())
+        active_accounts_from_placements = Account.objects.filter(id__in=active_ids_from_placements, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
-        active_account_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None]
-        active_accounts = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
-        for account in active_accounts:
+        active_ids_from_opportunities = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_ids_from_placements]
+        active_accounts_from_opportunities = Account.objects.filter(id__in=active_ids_from_opportunities, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+
+        for account in active_accounts_from_placements | active_accounts_from_opportunities:
             try:
                 int(account.id)
                 if "demo" in account.name.lower():
@@ -244,6 +253,7 @@ class GoogleAdsUpdater(object):
 
             except Exception as e:
                 logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
+                return
 
             else:
                 return
