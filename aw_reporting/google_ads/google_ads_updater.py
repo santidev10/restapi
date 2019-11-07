@@ -156,14 +156,14 @@ class GoogleAdsUpdater(object):
         else:
             order_by_field = "update_time"
 
-        active_account_ids = set(OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account", flat=True).distinct())
-        active_from_placements = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+        active_ids_from_placements = set(OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account", flat=True).distinct())
+        active_accounts_from_placements = Account.objects.filter(id__in=active_ids_from_placements, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
-        active_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_account_ids]
-        active_from_opportunities = Account.objects.filter(id__in=active_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+        active_ids_from_opportunities = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_ids_from_placements]
+        active_accounts_from_opportunities = Account.objects.filter(id__in=active_ids_from_opportunities, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
-        for account in active_from_placements | active_from_opportunities:
+        for account in active_accounts_from_placements | active_accounts_from_opportunities:
             try:
                 int(account.id)
                 if "demo" in account.name.lower():
