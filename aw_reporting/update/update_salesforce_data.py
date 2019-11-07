@@ -188,7 +188,10 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Opportunity.update(opportunity.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -220,7 +223,10 @@ def update_placements(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Placement__c.update(placement.id, update, )
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -262,7 +268,9 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
-                if e.value.errorCode != "ENTITY_IS_DELETED":
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
                     logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
@@ -289,8 +297,10 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
         except Exception as e:
-
-            logger.critical("Unhandled exception: %s" % str(e))
+            if getattr(e, "status", 0) == 404:
+                logger.warning(str(e))
+            else:
+                logger.critical("Unhandled exception: %s" % str(e))
         else:
             if r == 204:
                 logger.debug(
