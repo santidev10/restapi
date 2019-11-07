@@ -342,8 +342,9 @@ class ESQuerysetAdapter:
     @cached_method(timeout=7200)
     def get_aggregations(self):
         if self.cached_aggregations:
-            aggregations = {key: self.cached_aggregations[key] for key in self.cached_aggregations
-                            if key in self.aggregations}
+            aggregations = {aggregation: self.cached_aggregations[aggregation]
+                            for aggregation in self.cached_aggregations
+                            if aggregation in self.aggregations}
             return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
