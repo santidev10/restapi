@@ -253,6 +253,7 @@ class GoogleAdsUpdater(object):
 
             except Exception as e:
                 logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
+                return
 
             else:
                 return

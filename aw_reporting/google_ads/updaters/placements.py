@@ -24,7 +24,7 @@ class PlacementUpdater(UpdateMixin):
         self.min_acc_date = None
         self.account = account
         self.today = now_in_default_tz().date()
-        self.refresh_date = self.today - timedelta(days=3)
+        self.refresh_date = self.today - timedelta(days=7)
         self.existing_channel_statistics = YTChannelStatistic.objects.filter(ad_group__campaign__account=account)
         self.existing_video_statistics = YTVideoStatistic.objects.filter(ad_group__campaign__account=account)
 
@@ -41,10 +41,13 @@ class PlacementUpdater(UpdateMixin):
     def _update_managed_statistics(self):
         if self.max_acc_date is None:
             return
-        self.drop_custom_stats(self.existing_channel_statistics, self.refresh_date, self.today)
-        self.drop_custom_stats(self.existing_video_statistics, self.refresh_date, self.today)
-        channel_saved_max_date = self.existing_channel_statistics.aggregate(max_date=Max("date")).get("max_date")
-        video_saved_max_date = self.existing_video_statistics.aggregate(max_date=Max("date"), ).get("max_date")
+        channel_managed_stats = self.existing_channel_statistics.filter(placement_type=0)
+        video_managed_stats = self.existing_video_statistics.filter(placement_type=0)
+
+        self.drop_custom_stats(channel_managed_stats, self.refresh_date, self.today)
+        self.drop_custom_stats(video_managed_stats, self.refresh_date, self.today)
+        channel_saved_max_date = channel_managed_stats.aggregate(max_date=Max("date")).get("max_date")
+        video_saved_max_date = video_managed_stats.aggregate(max_date=Max("date"), ).get("max_date")
 
         if channel_saved_max_date and video_saved_max_date:
             saved_max_date = max(channel_saved_max_date, video_saved_max_date)
@@ -69,23 +72,12 @@ class PlacementUpdater(UpdateMixin):
     def _update_group_statistics(self):
         if self.max_acc_date is None:
             return
-        channel_group_stats = self.existing_channel_statistics\
-            .filter(
-                video_views_25_quartile=0,
-                video_views_50_quartile=0,
-                video_views_75_quartile=0,
-                video_views_100_quartile=0,
-            )
-        video_group_stats = self.existing_video_statistics \
-            .filter(
-                video_views_25_quartile=0,
-                video_views_50_quartile=0,
-                video_views_75_quartile=0,
-                video_views_100_quartile=0,
-            )
-        self.drop_custom_stats(channel_group_stats, self.refresh_date, self.today)
+        group_channel_stats = self.existing_channel_statistics.filter(placement_type=1)
+        video_group_stats = self.existing_video_statistics.filter(placement_type=1)
+
+        self.drop_custom_stats(group_channel_stats, self.refresh_date, self.today)
         self.drop_custom_stats(video_group_stats, self.refresh_date, self.today)
-        channel_saved_max_date = channel_group_stats.aggregate(max_date=Max("date")).get("max_date")
+        channel_saved_max_date = group_channel_stats.aggregate(max_date=Max("date")).get("max_date")
         video_saved_max_date = video_group_stats.aggregate(max_date=Max("date"), ).get("max_date")
 
         if channel_saved_max_date and video_saved_max_date:
@@ -147,6 +139,7 @@ class PlacementUpdater(UpdateMixin):
                 "date": row.segments.date.value,
                 "ad_group_id": row.ad_group.id.value,
                 "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
+                "placement_type": 0,
                 **self.get_quartile_views(row)
             }
             statistics.update(self.get_base_stats(row))
@@ -168,6 +161,7 @@ class PlacementUpdater(UpdateMixin):
                 "yt_id": yt_id,
                 "date": row.segments.date.value,
                 "ad_group_id": row.ad_group.id.value,
+                "placement_type": 1,
                 "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
             }
             statistics.update(self.get_base_stats(row))
