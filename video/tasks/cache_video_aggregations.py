@@ -63,6 +63,11 @@ def cache_video_aggregations():
         "custom_captions.items:missing",
         "captions:exists",
         "captions:missing",
+        "custom_captions.items:exists",
+        "custom_captions.items:missing",
+        "captions:exists",
+        "captions:missing",
+        "stats.flags"
     ]
 
     video_aggregations_key = "video_aggregations"

@@ -169,4 +169,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetAdapter(VideoManager(sections))
+        return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)
