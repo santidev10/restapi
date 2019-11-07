@@ -26,6 +26,8 @@ from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
 from utils.permissions import BrandSafetyDataVisible
 
+from cache.models import CacheItem
+
 
 class VideoListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
@@ -111,6 +113,10 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
     )
+
+    aggregations_key = "video_aggregations"
+    cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=aggregations_key)
+    cached_aggregations = cached_aggregations_object.value
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 

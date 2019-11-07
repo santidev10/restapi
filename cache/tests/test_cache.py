@@ -10,7 +10,8 @@ class CacheTestCase(TestCase):
         self.item_2 = CacheItem.objects.create(key="test2", value=dict(val="testval2"))
 
     def test_unique_cache_key(self):
-        self.assertRaises(IntegrityError, CacheItem.objects.create(key="test1", value=dict()))
+        with self.assertRaises(IntegrityError):
+            CacheItem.objects.create(key="test1", value=dict())
 
     def test_cache_key_and_value(self):
         self.assertEqual(self.item_1.key, "test1")
