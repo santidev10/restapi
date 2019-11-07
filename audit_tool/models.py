@@ -114,6 +114,10 @@ class AuditProcessor(models.Model):
         '1': 'Video Meta Processor',
         '2': 'Channel Meta Processor',
     }
+    SOURCE_TYPES = {
+        '0': 'Audit Tool',
+        '1': 'Custom Target List Creator',
+    }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
@@ -126,6 +130,7 @@ class AuditProcessor(models.Model):
     pause = models.IntegerField(default=0, db_index=True)
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
+    source = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
         exports = []
@@ -198,6 +203,7 @@ class AuditProcessor(models.Model):
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'export_status': self.get_export_status(),
+            'source': self.SOURCE_TYPES[self.source],
         }
         files = self.params.get('files')
         if files:
