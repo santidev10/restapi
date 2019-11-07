@@ -74,13 +74,13 @@ class BrandSafetyAudit(object):
 
     def _set_discovery_config(self):
         self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
-        self.CHANNEL_POOL_BATCH_SIZE = 10
+        self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_discovery_query
 
     def _set_update_config(self):
         self.MAX_POOL_COUNT = 4 * self.POOL_MULTIPLIER
-        self.CHANNEL_POOL_BATCH_SIZE = 15
+        self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_update_query
 
