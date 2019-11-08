@@ -400,7 +400,6 @@ class AuditChannelProcessor(models.Model):
     class Meta:
         unique_together = ("audit", "channel")
 
-
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
