@@ -5,14 +5,14 @@ import re
 
 from django.db.models import Max
 from django.db.models import Min
-from google.ads.google_ads.errors import GoogleAdsException
 import pytz
 
+from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.constants import GEO_TARGET_CONSTANT_FIELDS
-from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Campaign
 
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 7
@@ -133,27 +133,23 @@ def reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
 
 
 def detect_success_aw_read_permissions():
-    """
-    Check and update permissions
-    """
-    from aw_reporting.google_ads.updaters.accounts import AccountUpdater
+    from aw_reporting.models import AWAccountPermission
     for permission in AWAccountPermission.objects.filter(
-        can_read=False,
-        account__is_active=True,
-        aw_connection__revoked_access=False,
+            can_read=False,
+            account__is_active=True,
+            aw_connection__revoked_access=False,
     ):
         try:
-            client = get_client(
+            client = get_web_app_client(
                 refresh_token=permission.aw_connection.refresh_token,
-                login_customer_id=str(permission.account_id),
+                client_customer_id=permission.account_id,
             )
         except Exception as e:
-            logger.error(f"detect_success_aw_read_permissions failed, {e}")
+            logger.error(e)
         else:
             try:
-                # Try retrieving directly accessible customers
-                AccountUpdater.get_accessible_customers(client)
-            except GoogleAdsException:
+                get_all_customers(client, page_size=1, limit=1)
+            except AccountInactiveError:
                 account = permission.account
                 account.is_active = False
                 account.save()
@@ -162,7 +158,3 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
-
-
-
-
