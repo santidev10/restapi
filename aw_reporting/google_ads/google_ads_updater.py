@@ -16,6 +16,7 @@ from google.api_core.exceptions import RetryError
 from google.api_core.exceptions import ResourceExhausted
 from google.auth.exceptions import RefreshError
 
+from aw_reporting.adwords_api import get_web_app_client
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
@@ -211,9 +212,9 @@ class GoogleAdsUpdater(object):
         for permission in permissions:
             aw_connection = permission.aw_connection
             try:
-                client = get_client(
-                    login_customer_id=permission.account.id,
-                    refresh_token=aw_connection.refresh_token
+                client = get_web_app_client(
+                    refresh_token=aw_connection.refresh_token,
+                    client_customer_id=self.account.id,
                 )
                 self.execute(updater, client)
 
