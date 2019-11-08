@@ -11,13 +11,16 @@ from django.db import Error
 from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
 from google.ads.google_ads.client import GoogleAdsClient
-from google.ads.google_ads.errors import GoogleAdsException
+from googleads.errors import AdWordsReportBadRequestError
+from requests import HTTPError
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from pytz import timezone
 from pytz import utc
 
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AD_GROUP_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import AD_PERFORMANCE_REPORT_FIELDS
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.adwords_reports import CAMPAIGN_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 from aw_reporting.adwords_reports import DateRangeType
@@ -878,7 +881,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now_utc), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client"):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client"),\
+             patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.execute_with_any_permission"):
             updater = GoogleAdsUpdater(account)
             updater.full_update()
 
@@ -989,19 +993,19 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         setup_update_campaigns()
         mock_cid_account_update.assert_not_called()
 
-    @patch.object(CampaignUpdater, "update")
-    def test_mark_account_as_inactive(self, mock_update):
+    def test_mark_account_as_inactive(self):
         account = self._create_account(is_active=True)
 
-        exception = GoogleAdsException(None, None, MagicMock(), None)
-        err = SimpleNamespace(error_code=SimpleNamespace())
-        err.error_code.authorization_error = 24  # AuthorizationErrorEnum: CUSTOMER_NOT_ENABLED
-        exception.failure.errors = [err]
+        exception = AdWordsReportBadRequestError(AWErrorType.NOT_ACTIVE, "<null>", None, HTTP_400_BAD_REQUEST,
+                                                 HTTPError(), 'XML Body')
 
-        mock_update.side_effect = exception
-        with patch("aw_reporting.google_ads.google_ads_updater.get_client", return_value=MagicMock()):
-            mcc_id = Account.objects.get(can_manage_clients=True).id
-            cid_campaign_update(account.id)
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+            # setup_update_campaigns()
+            GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
         self.assertFalse(account.is_active)

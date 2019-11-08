@@ -104,7 +104,7 @@ class AdGroupUpdater(UpdateMixin):
                     "ad_network": row_obj.AdNetworkType1,
                     "device_id": get_device_id_by_name(row_obj.Device),
                     "ad_group_id": ad_group_id,
-                    "average_position": row_obj.AveragePosition,
+                    "average_position": 0,
                     "engagements": row_obj.Engagements,
                     "active_view_impressions": row_obj.ActiveViewImpressions,
                     "video_views_25_quartile": quart_views(row_obj, 25),

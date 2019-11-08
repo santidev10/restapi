@@ -89,7 +89,7 @@ class AdUpdater(UpdateMixin):
                 stats = {
                     "date": row_obj.Date,
                     "ad_id": ad_id,
-                    "average_position": row_obj.AveragePosition,
+                    "average_position": 0,
                     "video_views_25_quartile": quart_views(row_obj, 25),
                     "video_views_50_quartile": quart_views(row_obj, 50),
                     "video_views_75_quartile": quart_views(row_obj, 75),

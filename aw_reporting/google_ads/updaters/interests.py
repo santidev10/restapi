@@ -24,6 +24,7 @@ class AudienceAWType:
     REMARK = "boomuserlist"
     USER_VERTICAL = "uservertical"
     CUSTOM_AFFINITY = "customaffinity"
+    CUSTOM_INTENT = "custominmarket"
 
 
 class InterestUpdater(UpdateMixin):
@@ -115,6 +116,18 @@ class InterestUpdater(UpdateMixin):
 
                     stats.update(audience_id=au_id)
                     bulk_aud_stats.append(AudienceStatistic(**stats))
+
+                elif au_type == AudienceAWType.CUSTOM_INTENT:
+                    if int(au_id) not in interest_ids:
+                        interest_ids |= {int(au_id)}
+                        bulk_custom_audiences.append(Audience(
+                            id=au_id, name=row_obj.Criteria,
+                            type=Audience.CUSTOM_INTENT_TYPE
+                        ))
+
+                    stats.update(audience_id=au_id)
+                    bulk_aud_stats.append(AudienceStatistic(**stats))
+
                 else:
                     logger.warning(
                         "Undefined criteria = %s" % row_obj.Criteria)

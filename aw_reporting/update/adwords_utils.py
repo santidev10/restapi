@@ -61,10 +61,10 @@ def get_base_stats(row, quartiles=False):
     )
     if quartiles:
         stats.update(
-            video_views_25_quartile=self.quart_views(row, 25),
-            video_views_50_quartile=self.quart_views(row, 50),
-            video_views_75_quartile=self.quart_views(row, 75),
-            video_views_100_quartile=self.quart_views(row, 100),
+            video_views_25_quartile=quart_views(row, 25),
+            video_views_50_quartile=quart_views(row, 50),
+            video_views_75_quartile=quart_views(row, 75),
+            video_views_100_quartile=quart_views(row, 100),
         )
     return stats
 

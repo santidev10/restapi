@@ -4,25 +4,16 @@ from datetime import timedelta
 from django.db.models import Max
 import pytz
 
-from aw_reporting.google_ads import constants
-from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models.ad_words.constants import Device
 from aw_reporting.adwords_reports import placement_performance_report
-from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
 from aw_reporting.update.adwords_utils import quart_views
-from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
-from utils.datetime import now_in_default_tz
 
 
 class PlacementUpdater(UpdateMixin):
-    MANAGED_RESOURCE_NAME = "managed_placement_view"
-    GROUP_RESOURCE_NAME = "group_placement_view"
-
     def __init__(self, account):
         self.account = account
         self.today = datetime.now(tz=pytz.timezone(account.timezone)).date()
