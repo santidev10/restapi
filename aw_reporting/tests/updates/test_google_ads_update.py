@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
+from django.test import override_settings
 from django.test import TransactionTestCase
-from google.ads.google_ads.client import GoogleAdsClient
 from googleads.errors import AdWordsReportBadRequestError
 from requests import HTTPError
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -62,12 +62,10 @@ from aw_reporting.google_ads.updaters.interests import AudienceAWType
 from aw_reporting.google_ads.constants import MIN_FETCH_DATE
 from aw_reporting.google_ads.tasks.update_campaigns import cid_campaign_update
 from aw_reporting.google_ads.tasks.update_campaigns import setup_update_campaigns
-from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
 from aw_reporting.google_ads.updaters.campaign_location_target import CampaignLocationTargetUpdater
 from aw_reporting.google_ads.updaters.campaigns import CampaignUpdater
-from aw_reporting.google_ads.updaters.cf_account_connection import CFAccountConnector
 from aw_reporting.google_ads.updaters.interests import InterestUpdater
 from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
@@ -76,7 +74,6 @@ from utils.exception import ExceptionWithArgs
 from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.generic_test import generic_test
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.mock_google_ads_response import MockGoogleAdsAPIResponse
 from utils.utittests.patch_now import patch_now
 from utils.utittests.redis_mock import MockRedis
 
@@ -923,46 +920,29 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             self.assertEqual(selector.get("dateRange", {}).get("max"), date_formatted(expected_max_date),
                              payload["reportName"])
 
-    def test_pre_process_chf_account_has_account_creation(self):
-        chf_acc_id = "test_id"
-        self.assertFalse(Account.objects.all().exists())
-        self.assertFalse(AccountCreation.objects.all().exists())
-        mock_accessible_accounts_data = MockGoogleAdsAPIResponse()
-        mock_accessible_accounts_data.set("customer_client", "id", chf_acc_id)
-        mock_accessible_accounts_data.set("customer_client", "descriptive_name", "test_customer_name")
-        mock_accessible_accounts_data.set("customer_client", "manager", True)
-        mock_accessible_accounts_data.set("customer_client", "test_account", False)
-        mock_accessible_accounts_data.set("customer_client", "currency_code", "USD")
-        mock_accessible_accounts_data.set("customer_client", "time_zone", "PST")
-        mock_accessible_accounts_data.add_row()
-        updater = CFAccountConnector()
-        updater.get_customer_data = MagicMock(return_value=mock_accessible_accounts_data)
-        updater.update()
-
-        self.assertTrue(Account.objects.filter(id=chf_acc_id).exists())
-        self.assertTrue(AccountCreation.objects.filter(account_id=chf_acc_id).exists())
-
     def test_creates_account_creation_for_customer_accounts(self):
-        account = self._create_account()
-        account.delete()
+        self._create_account().delete()
+        mcc = Account.objects.get(can_manage_clients=True)
         test_account_id = next(int_iterator)
         self.assertFalse(Account.objects.filter(id=test_account_id).exists())
 
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", test_account_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "Test cid")
-        mock_customer_client_data.set("customer_client", "currency_code", "USD")
-        mock_customer_client_data.set("customer_client", "time_zone", "UTC")
-        mock_customer_client_data.set("customer_client", "manager", False)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="",
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
 
-        mcc_accounts = Account.objects.filter(is_active=True, can_manage_clients=True)
-        client = GoogleAdsClient("", "")
-        for mcc in mcc_accounts:
-            updater = AccountUpdater(mcc)
-            updater.get_client_customer_accounts = MagicMock(return_value=mock_customer_client_data)
-            updater.update(client)
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+            GoogleAdsUpdater(mcc).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(AccountCreation.objects.filter(account_id=test_account_id).exists())
@@ -1144,19 +1124,21 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         test_account_id = next(int_iterator)
         self.assertFalse(Account.objects.filter(id=test_account_id).exists())
 
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", test_account_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "N" * name_limit)
-        mock_customer_client_data.set("customer_client", "currency_code", "USD")
-        mock_customer_client_data.set("customer_client", "time_zone", "UTC")
-        mock_customer_client_data.set("customer_client", "manager", False)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="N" * name_limit,
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
 
-        client = GoogleAdsClient("", "")
-        updater = AccountUpdater(mcc_account)
-        updater.get_client_customer_accounts = MagicMock(return_value=mock_customer_client_data)
-        updater.update(client)
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+            GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
         self.assertTrue(len(Account.objects.get(id=test_account_id).name), name_limit)
@@ -1174,14 +1156,15 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             can_read=True
         )
         test_account_id = next(int_iterator)
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", test_account_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "name")
-        mock_customer_client_data.set("customer_client", "currency_code", "USD")
-        mock_customer_client_data.set("customer_client", "time_zone", "UTC")
-        mock_customer_client_data.set("customer_client", "manager", False)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
+        test_customers = [
+            dict(
+                customerId=test_account_id,
+                name="name",
+                currencyCode="",
+                dateTimeZone="UTC",
+                canManageClients=False,
+            ),
+        ]
 
         origin_method = CursorWrapper.execute
 
@@ -1199,11 +1182,15 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                     raise error
             return origin_method(inst, query, params)
 
-        with patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute):
-            client = GoogleAdsClient("", "")
-            updater = AccountUpdater(mcc_account)
-            updater.get_client_customer_accounts = MagicMock(return_value=mock_customer_client_data)
-            updater.update(client)
+        aw_client_mock = MagicMock()
+        service_mock = aw_client_mock.GetService()
+        service_mock.get.return_value = dict(entries=test_customers, totalNumEntries=len(test_customers))
+        downloader_mock = aw_client_mock.GetReportDownloader()
+        downloader_mock.DownloadReportAsStream.return_value = build_csv_byte_stream((), [])
+
+        with patch.object(CursorWrapper, "execute", autospec=True, side_effect=mock_db_execute), \
+                patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+            GoogleAdsUpdater(mcc_account).update_accounts_as_mcc()
 
         self.assertTrue(Account.objects.filter(id=test_account_id).exists())
 

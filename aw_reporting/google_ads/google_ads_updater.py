@@ -256,12 +256,11 @@ class GoogleAdsUpdater(object):
             updater.update(client)
         except RefreshError:
             raise
-        # AdWords Ads API Internal exceptions
-        except (AdManagerReportError,):
+        except Exception:
             try:
                 self._retry(updater, client)
-            except Exception as e:
-                logger.warning(f"Max retries exceeded: CID: {self.account}, {e}")
+            except Exception:
+                raise
 
     def _retry(self, updater, client):
         """

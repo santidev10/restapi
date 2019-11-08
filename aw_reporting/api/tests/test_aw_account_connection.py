@@ -14,17 +14,14 @@ from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.api.urls.names import Name
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
-from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from saas import celery_app
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.mock_google_ads_response import MockGoogleAdsAPIResponse
 from utils.utittests.reverse import reverse
 
 
@@ -33,7 +30,6 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
 
     def setUp(self):
         self.user = self.create_test_user()
-        celery_app.conf.update(CELERY_ALWAYS_EAGER=True)
 
     def test_fail_get(self):
         response = self.client.get(self._url)
@@ -58,31 +54,32 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
                 redirect_url="https://saas.channelfactory.com"
             ))
         )
-        mock_id = 7046445553
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", mock_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "MCC Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", "Europe/Kiev")
-        mock_customer_client_data.set("customer_client", "manager", True)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
-        mock_customer_client_data.set("customer_client", "id", mock_id + 1)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", "Europe/Kiev")
-        mock_customer_client_data.set("customer_client", "manager", False)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=7046445553,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+            dict(
+                customerId=7046445552,
+                currencyCode="UAH",
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="Account",
+                companyName=None,
+                canManageClients=False,  # !!
+                testAccount=False,
+            ),
+        ]
         view_path = "aw_reporting.api.views.connect_aw_account"
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_google_access_token_info",
                       new=lambda _: dict(email=test_email)), \
-                patch(view_path + ".AccountUpdater.get_accessible_customers",
-                      new=lambda *_, **k: mock_customer_client_data), \
-                patch(view_path + ".get_client", return_value=MagicMock()), \
+                patch(view_path + ".get_customers",
+                      new=lambda *_, **k: test_customers), \
                 patch(view_path +
                       ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
@@ -118,22 +115,22 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         self.assertFalse(Account.objects.all().exists())
         self.assertFalse(AccountCreation.objects.all().exists())
         account_id = next(int_iterator)
-
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", account_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "MCC Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", "Europe/Kiev")
-        mock_customer_client_data.set("customer_client", "manager", True)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=account_id,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
         test_email = "test@mail.com"
         view_path = "aw_reporting.api.views.connect_aw_account"
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
-                patch(view_path + ".get_client", return_value=MagicMock()), \
-                patch(view_path + ".AccountUpdater.get_accessible_customers", new=lambda *_, **k: mock_customer_client_data), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
                 patch(view_path + ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
@@ -156,20 +153,20 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         account_id = next(int_iterator)
         test_email = "test@mail.com"
         view_path = "aw_reporting.api.views.connect_aw_account"
-
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", account_id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "MCC Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", "Europe/Kiev")
-        mock_customer_client_data.set("customer_client", "manager", True)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=account_id,
+                dateTimeZone="Europe/Kiev",
+                descriptiveName="MCC Account",
+                companyName=None,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
-                patch(view_path + ".AccountUpdater.get_accessible_customers", new=lambda *_, **k: mock_customer_client_data), \
-                patch(view_path + ".get_client", return_value=MagicMock()), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
                 patch(view_path + ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
@@ -178,8 +175,6 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE))
         self.assertTrue(user.has_custom_user_group(PermissionGroupNames.SELF_SERVICE_TRENDS))
 
-    @patch("aw_reporting.api.views.connect_aw_account.get_client", new=MagicMock())
-    @patch("aw_reporting.google_ads.tasks.upload_initial_aw_data.get_client", new=MagicMock())
     def test_handle_inactive_account(self):
         tz = "UTC"
         mcc_account = Account.objects.create(id=next(int_iterator), timezone=tz,
@@ -191,16 +186,21 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         account = Account.objects.create(id=next(int_iterator), timezone=tz)
         account.managers.add(mcc_account)
         account.save()
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=mcc_account.id,
+                dateTimeZone=tz,
+                descriptiveName="MCC Account",
+                companyName=mcc_account.name,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
 
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", mcc_account.id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "MCC Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", tz)
-        mock_customer_client_data.set("customer_client", "manager", True)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
+        query_params = QueryDict("", mutable=True)
+        query_params.update(redirect_url="https://saas.channelfactory.com")
+        url = "?".join([self._url, query_params.urlencode()])
         exception = AdWordsReportBadRequestError(
             AWErrorType.NOT_ACTIVE,
             "<null>",
@@ -209,26 +209,18 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
             HTTPError(),
             "XML Body"
         )
-
-        query_params = QueryDict("", mutable=True)
-        query_params.update(redirect_url="https://saas.channelfactory.com")
-        url = "?".join([self._url, query_params.urlencode()])
-
         test_email = "test@email.com"
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
         view_path = "aw_reporting.api.views.connect_aw_account"
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
-                patch(view_path + ".AccountUpdater.get_accessible_customers", new=lambda *_, **k: mock_customer_client_data), \
-                patch(view_path + ".upload_initial_aw_data_task", new=MagicMock()), \
-                patch("aw_reporting.google_ads.google_ads_updater.get_client", new=MagicMock()), \
-                patch("aw_reporting.google_ads.google_ads_updater.GoogleAdsUpdater.update_accounts_as_mcc", new=MagicMock()), \
-                patch("aw_reporting.google_ads.updaters.campaigns.CampaignUpdater.update") as mock_update:
-            # Patch CampaignUpdater since it is the first updater class used
+                patch("aw_reporting.adwords_api.adwords.AdWordsClient", return_value=aw_client_mock):
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
-            mock_update.side_effect = exception
             response = self.client.post(url, dict(code="1111"))
-            # Manually invoke since normally ran as an async celery task in view
-            upload_initial_aw_data_task(test_email)
+
         self.assertEqual(response.status_code, HTTP_200_OK)
         account.refresh_from_db()
         self.assertFalse(account.is_active)
@@ -245,23 +237,25 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         account.managers.add(mcc_account)
         account.save()
 
-        mock_customer_client_data = MockGoogleAdsAPIResponse()
-        mock_customer_client_data.set("customer_client", "id", mcc_account.id)
-        mock_customer_client_data.set("customer_client", "descriptive_name", "MCC Account")
-        mock_customer_client_data.set("customer_client", "currency_code", "UAH")
-        mock_customer_client_data.set("customer_client", "time_zone", tz)
-        mock_customer_client_data.set("customer_client", "manager", True)
-        mock_customer_client_data.set("customer_client", "test_account", False)
-        mock_customer_client_data.add_row()
-
+        test_customers = [
+            dict(
+                currencyCode="UAH",
+                customerId=mcc_account.id,
+                dateTimeZone=tz,
+                descriptiveName="MCC Account",
+                companyName=mcc_account.name,
+                canManageClients=True,
+                testAccount=False,
+            ),
+        ]
         view_path = "aw_reporting.api.views.connect_aw_account"
+
         query_params = QueryDict("", mutable=True)
         query_params.update(redirect_url="https://saas.channelfactory.com")
         url = "?".join([self._url, query_params.urlencode()])
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
-                patch(view_path + ".get_client", return_value=MagicMock()), \
+                patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email="test@mail.com")), \
-                patch(view_path + ".AccountUpdater.get_accessible_customers", return_value=mock_customer_client_data), \
                 patch.object(GoogleAdsUpdater, "full_update") as account_update_mock:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
