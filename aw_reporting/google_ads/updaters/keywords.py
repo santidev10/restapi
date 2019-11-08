@@ -3,9 +3,15 @@ from datetime import timedelta
 
 from django.db.models import Max
 
-from aw_reporting.google_ads import constants
+from aw_reporting.adwords_reports import keywords_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
+from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
+from aw_reporting.update.adwords_utils import format_click_types_report
+from aw_reporting.update.adwords_utils import get_base_stats
+from aw_reporting.update.adwords_utils import quart_views
+from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -15,55 +21,50 @@ class KeywordUpdater(UpdateMixin):
     RESOURCE_NAME = "display_keyword_view"
 
     def __init__(self, account):
-        self.client = None
-        self.ga_service = None
         self.account = account
         self.today = now_in_default_tz().date()
-        self.existing_statistics = KeywordStatistic.objects.filter(ad_group__campaign__account=account)
 
     def update(self, client):
-        self.client = client
-        self.ga_service = client.get_service("GoogleAdsService", version="v2")
-
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
         if max_acc_date is None:
             return
-        self.drop_latest_stats(self.existing_statistics, self.today)
-        saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
+
+        stats_queryset = KeywordStatistic.objects.filter(
+            ad_group__campaign__account=self.account)
+        self.drop_latest_stats(stats_queryset, self.today)
+
+        saved_max_date = stats_queryset.aggregate(
+            max_date=Max("date")).get("max_date")
 
         if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+            min_date = saved_max_date + timedelta(days=1) \
+                if saved_max_date else min_acc_date
             max_date = max_acc_date
 
-            click_type_data = self.get_clicks_report(
-                self.client, self.ga_service, self.account,
-                min_date, max_date,
-                resource_name=self.RESOURCE_NAME
+            report = keywords_performance_report(
+                client,
+                dates=(min_date, max_date),
             )
-            keyword_performance = self._get_keyword_performance(min_date, max_date)
-            generator = self._instance_generator(keyword_performance, click_type_data)
+            click_type_report = keywords_performance_report(
+                client, dates=(min_date, max_date), fields=DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS)
+            click_type_data = format_click_types_report(click_type_report,
+                                                        DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+            generator = self._generate_stat_instances(KeywordStatistic, report, click_type_data)
             KeywordStatistic.objects.safe_bulk_create(generator)
 
-    def _get_keyword_performance(self, min_date, max_date):
-        """
-        Retrieve keyword performance
-        :return: Google ads keyword_view resource search response
-        """
-        query_fields = self.format_query(constants.KEYWORD_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
-        keyword_performance = self.ga_service.search(self.account.id, query=query)
-        return keyword_performance
-
-    def _instance_generator(self, keyword_performance, click_type_data):
-        for row in keyword_performance:
-            keyword = row.ad_group_criterion.keyword.text.value
-            statistics = {
+    def _generate_stat_instances(self, model, report, click_type_data):
+        for row_obj in report:
+            keyword = row_obj.Criteria
+            stats = {
                 "keyword": keyword,
-                "date": row.segments.date.value,
-                "ad_group_id": row.ad_group.id.value,
-                **self.get_quartile_views(row)
+                "date": row_obj.Date,
+                "ad_group_id": row_obj.AdGroupId,
+                "video_views_25_quartile": quart_views(row_obj, 25),
+                "video_views_50_quartile": quart_views(row_obj, 50),
+                "video_views_75_quartile": quart_views(row_obj, 75),
+                "video_views_100_quartile": quart_views(row_obj, 100),
             }
-            statistics.update(self.get_base_stats(row))
-            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name="ad_group")
-            statistics.update(click_data)
-            yield KeywordStatistic(**statistics)
+            stats.update(get_base_stats(row_obj))
+            update_stats_with_click_type_data(
+                stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
+            yield model(**stats)

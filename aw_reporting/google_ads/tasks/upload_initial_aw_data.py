@@ -1,8 +1,7 @@
 import logging
 
-from django.utils import timezone
-
-from aw_reporting.google_ads.google_ads_api import get_client
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.models import Account
 from aw_reporting.models import AWConnection
@@ -19,7 +18,9 @@ def upload_initial_aw_data_task(connection_pk):
     :return:
     """
     connection = AWConnection.objects.get(pk=connection_pk)
-    client = get_client(refresh_token=connection.refresh_token)
+    client = get_web_app_client(
+        refresh_token=connection.refresh_token,
+    )
 
     mcc_to_update = Account.objects.filter(
         mcc_permissions__aw_connection=connection,
@@ -38,17 +39,10 @@ def upload_initial_aw_data_task(connection_pk):
     )
 
     for account in accounts_to_update:
-        # Try updating with each manager id as login_customer_id
-        for manager in account.managers.all():
-            try:
-                updater = GoogleAdsUpdater(account)
-                client.login_customer_id = manager.id
-                updater.full_update(mcc_account=manager)
-            except Exception as e:
-                # Try next manager id
-                logger.error(e)
-                continue
-            else:
-                break
-        account.update_time = timezone.now()
-        account.save()
+        client.SetClientCustomerId(account.id)
+        try:
+            updater = GoogleAdsUpdater(account)
+            updater.full_update()
+        except AccountInactiveError:
+            account.is_active = False
+            account.save()
