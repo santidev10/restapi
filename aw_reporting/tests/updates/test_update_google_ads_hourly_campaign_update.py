@@ -1,4 +1,6 @@
+from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -13,6 +15,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import Device
 from aw_reporting.models import device_str
+from aw_reporting.models import Opportunity
 from utils.utittests.csv import build_csv_byte_stream
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
@@ -115,3 +118,21 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
             setup_update_campaigns()
 
         downloader_mock.assert_not_called()
+
+    def test_hourly_batch_process_gets_all_accounts(self):
+        accounts_size = 25
+        batch_size = 5
+        accounts_created = set()
+        accounts_seen = set()
+        op_end = date.today() - timedelta(days=1)
+        for i in range(accounts_size):
+            cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
+            accounts_created.add(cid.id)
+        for i in range(len(accounts_created) // batch_size):
+            to_update = GoogleAdsUpdater.get_accounts_to_update(hourly_update=True, size=batch_size, as_obj=True)
+            for acc in to_update:
+                acc.hourly_updated_at = datetime.now()
+                acc.save()
+                accounts_seen.add(acc.id)
+        self.assertEqual(accounts_created, accounts_seen)

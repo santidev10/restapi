@@ -46,6 +46,8 @@ from aw_reporting.models import Device
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import GeoTarget
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models import ParentStatuses
 from aw_reporting.models import RemarkList
@@ -1226,6 +1228,22 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         self.assertGreater(account.interest_count, 0)
         self.assertGreater(account.topic_count, 0)
         self.assertGreater(account.keyword_count, 0)
+
+    def test_get_accounts_to_update(self):
+        now = datetime.now(utc)
+        today = now.date()
+        ended = today - timedelta(days=31)
+        acc = Account.objects.create(id=next(int_iterator), name="account_1")
+
+        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=acc.id, end=ended)
+        op_2 = Opportunity.objects.create(id=next(int_iterator), name="test_2", aw_cid=acc.id, end=today)
+
+        pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_2, number="test_pl", end=today)
+        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                       account=acc)
+
+        to_update = GoogleAdsUpdater.get_accounts_to_update()
+        self.assertTrue(str(acc.id) in to_update)
 
 
 class FakeExceptionWithArgs:
