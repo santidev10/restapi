@@ -2,15 +2,16 @@ import json
 from unittest.mock import MagicMock
 from unittest.mock import patch
 from urllib.parse import urlencode
-from types import SimpleNamespace
 
 from django.http import QueryDict
-from google.ads.google_ads.errors import GoogleAdsException
+from googleads.errors import AdWordsReportBadRequestError
+from requests import HTTPError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from .base import AwReportingAPITestCase
 from aw_creation.models import AccountCreation
+from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.api.urls.names import Name
 from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
@@ -200,10 +201,14 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         mock_customer_client_data.set("customer_client", "test_account", False)
         mock_customer_client_data.add_row()
 
-        ga_exception = GoogleAdsException(None, None, MagicMock(), None)
-        err = SimpleNamespace(error_code=SimpleNamespace())
-        err.error_code.authorization_error = 24  # AuthorizationErrorEnum: CUSTOMER_NOT_ENABLED
-        ga_exception.failure.errors = [err]
+        exception = AdWordsReportBadRequestError(
+            AWErrorType.NOT_ACTIVE,
+            "<null>",
+            None,
+            HTTP_400_BAD_REQUEST,
+            HTTPError(),
+            "XML Body"
+        )
 
         query_params = QueryDict("", mutable=True)
         query_params.update(redirect_url="https://saas.channelfactory.com")
@@ -220,7 +225,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
                 patch("aw_reporting.google_ads.updaters.campaigns.CampaignUpdater.update") as mock_update:
             # Patch CampaignUpdater since it is the first updater class used
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
-            mock_update.side_effect = ga_exception
+            mock_update.side_effect = exception
             response = self.client.post(url, dict(code="1111"))
             # Manually invoke since normally ran as an async celery task in view
             upload_initial_aw_data_task(test_email)
