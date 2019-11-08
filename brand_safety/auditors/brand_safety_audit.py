@@ -1,5 +1,6 @@
 import logging
 import multiprocessing as mp
+import sys
 
 from audit_tool.models import BlacklistItem
 from brand_safety.constants import BRAND_SAFETY_SCORE
@@ -36,6 +37,7 @@ class BrandSafetyAudit(object):
     ES_LIMIT = 10000
     MINIMUM_SUBSCRIBER_COUNT = 1000
     SLEEP = 2
+    MAX_CYCLE_COUNT = 10 # Number of update cycles before terminating to relieve memory
     channel_batch_counter = 1
 
     def __init__(self, *_, **kwargs):
@@ -79,7 +81,7 @@ class BrandSafetyAudit(object):
         self.query_creator = self._create_discovery_query
 
     def _set_update_config(self):
-        self.MAX_POOL_COUNT = 4 * self.POOL_MULTIPLIER
+        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
         self.CHANNEL_POOL_BATCH_SIZE = 5
         self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
         self.query_creator = self._create_update_query
@@ -120,6 +122,9 @@ class BrandSafetyAudit(object):
             if self.channel_batch_counter % 10 == 0:
                 # Update config in case it has been modified
                 self.audit_utils.update_config()
+
+            if self.channel_batch_counter > self.MAX_CYCLE_COUNT:
+                sys.exit()
         logger.info("BrandSafetyAudit.run complete.")
 
     def _process_audits(self, channels: list) -> dict:
