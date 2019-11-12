@@ -53,13 +53,30 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
                 self.process_audit()
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
+
+    # def clean_list(self, in_list):
+    #     out_list = []
+    #     for word in in_list:
+    #         if word not in out_list:
+    #             do_add = True
+    #             new_parts = word.split(" ")
+    #             if len(new_parts) > 1:
+    #                 last_part = new_parts[-1]
+    #                 for w in out_list:
+    #                     existing_parts = w.split(" ")
+    #                     if len(existing_parts) > 1:
+    #                         if last_part == existing_parts[0]:
+    #                             do_add = False
+    #             if do_add:
+    #                 out_list.append(word)
+    #     return out_list
 
     def process_audit(self, num=1000):
         self.load_inclusion_list()

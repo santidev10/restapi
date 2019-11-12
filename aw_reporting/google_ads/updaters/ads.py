@@ -1,104 +1,113 @@
+from datetime import datetime
 from datetime import timedelta
 
 from django.db.models import Max
+import pytz
 
-from aw_reporting.google_ads import constants
+from aw_reporting.adwords_reports import ad_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import Ad
 from aw_reporting.models import AdStatistic
-from utils.datetime import now_in_default_tz
+from aw_reporting.update.adwords_utils import format_click_types_report
+from aw_reporting.update.adwords_utils import get_base_stats
+from aw_reporting.update.adwords_utils import quart_views
+from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 
 
 class AdUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group_ad"
 
     def __init__(self, account):
-        self.client = None
-        self.ga_service = None
-        self.ad_group_criterion_status_enum = None
-        self.ad_group_ad_status_enum = None
         self.account = account
-        self.today = now_in_default_tz().date()
-        self.existing_statistics = AdStatistic.objects.filter(ad__ad_group__campaign__account=account)
-        self.existing_ad_ids = set([int(_id) for _id in Ad.objects.filter(ad_group__campaign__account=account).values_list("id", flat=True)])
+        self.today = datetime.now(tz=pytz.timezone(account.timezone)).date()
 
     def update(self, client):
-        self.client = client
-        self.ga_service = client.get_service("GoogleAdsService", version="v2")
-        self.ad_group_criterion_status_enum = client.get_type("AdGroupCriterionApprovalStatusEnum",
-                                                              version="v2").AdGroupCriterionApprovalStatus
-        self.ad_group_ad_status_enum = client.get_type("AdGroupAdStatusEnum", version="v2").AdGroupAdStatus
-
-        # Get oldest and newest AdGroup statistics dates for account
         min_acc_date, max_acc_date = self.get_account_border_dates(self.account)
         if max_acc_date is None:
             return
-        self.drop_latest_stats(self.existing_statistics, self.today)
-        # Get newest Ad statistics dates for account
-        saved_max_date = self.existing_statistics.aggregate(max_date=Max("date")).get("max_date")
+        click_type_report_fields = (
+            "AdGroupId",
+            "Date",
+            "Id",
+            "Clicks",
+            "ClickType",
+        )
+        report_unique_field_name = "Id"
+        stats_queryset = AdStatistic.objects.filter(
+            ad__ad_group__campaign__account=self.account)
+        self.drop_latest_stats(stats_queryset, self.today)
 
-        # Only update if Ad statistics is older than AdGroup statistics
+        saved_max_date = stats_queryset.aggregate(
+            max_date=Max("date")).get("max_date")
+
         if saved_max_date is None or saved_max_date < max_acc_date:
-            min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
+            min_date = saved_max_date + timedelta(days=1) \
+                if saved_max_date else min_acc_date
             max_date = max_acc_date
 
-            click_type_data = self.get_clicks_report(
-                self.client, self.ga_service, self.account,
-                min_date, max_date,
-                resource_name=self.RESOURCE_NAME
+            ad_ids = list(
+                Ad.objects.filter(
+                    ad_group__campaign__account=self.account
+                ).values_list("id", flat=True)
             )
-            ad_performance = self._get_ad_performance(min_date, max_date)
-            generator = self._generate_instances(ad_performance, click_type_data)
-            AdStatistic.objects.safe_bulk_create(generator)
 
-    def _get_ad_performance(self, min_date, max_date):
-        """
-        Retrieve ads performance
-        :param min_date: str -> 2012-01-01
-        :param max_date: str -> 2012-12-31
-        :return: Google Ads search response
-        """
-        query_fields = self.format_query(constants.AD_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
-        ad_performance = self.ga_service.search(self.account.id, query=query)
-        return ad_performance
+            report = ad_performance_report(
+                client,
+                dates=(min_date, max_date),
+            )
+            click_type_report = ad_performance_report(client, dates=(min_date, max_date),
+                                                      fields=click_type_report_fields)
+            click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+            create_ad = []
+            create_stat = []
+            updated_ads = []
+            for row_obj in report:
+                ad_id = row_obj.Id
+                # update ads
+                if ad_id not in updated_ads:
+                    updated_ads.append(ad_id)
 
-    def _generate_instances(self, ad_performance: iter, click_type_data: dict):
-        """
-        Generator that yields GenderStatistic instances
-        :param ad_performance: iter -> Google ads ad_group_ad resource search response
-        :return:
-        """
-        updated_ad_ids = set()
-        ads_to_create = []
-        for row in ad_performance:
-            ad = row.ad_group_ad.ad
-            ad_id = ad.id.value
-            if ad_id not in updated_ad_ids:
-                updated_ad_ids.add(ad_id)
-                ad_data = {
-                    "headline": ad.text_ad.headline.value,
-                    "creative_name": ad.name.value,
-                    "display_url": ad.display_url.value,
-                    "status": "enabled" if self.ad_group_ad_status_enum.Name(row.ad_group_ad.status).lower() == "enabled" else "disabled",
-                    "is_disapproved": self.ad_group_criterion_status_enum.Name(row.ad_group_ad.policy_summary.approval_status) == "DISAPPROVED"
+                    stats = {
+                        "headline": row_obj.Headline,
+                        "creative_name": row_obj.ImageCreativeName,
+                        "display_url": row_obj.DisplayUrl,
+                        "status": row_obj.Status,
+                        "is_disapproved": self.is_ad_disapproved(row_obj)
+                    }
+                    kwargs = {
+                        "id": ad_id, "ad_group_id": row_obj.AdGroupId
+                    }
+
+                    if ad_id in ad_ids:
+                        Ad.objects.filter(**kwargs).update(**stats)
+                    else:
+                        ad_ids.append(ad_id)
+                        stats.update(kwargs)
+                        create_ad.append(Ad(**stats))
+                # -- update ads
+                # insert stats
+                stats = {
+                    "date": row_obj.Date,
+                    "ad_id": ad_id,
+                    "average_position": 0,
+                    "video_views_25_quartile": quart_views(row_obj, 25),
+                    "video_views_50_quartile": quart_views(row_obj, 50),
+                    "video_views_75_quartile": quart_views(row_obj, 75),
+                    "video_views_100_quartile": quart_views(row_obj, 100),
                 }
-                kwargs = {"id": ad_id, "ad_group_id": row.ad_group.id.value}
-                if ad_id in self.existing_ad_ids:
-                    Ad.objects.filter(**kwargs).update(**ad_data)
-                else:
-                    self.existing_ad_ids.add(ad_id)
-                    ad_data.update(kwargs)
-                    ads_to_create.append(Ad(**ad_data))
-            statistics = {
-                "date": row.segments.date.value,
-                "ad_id": ad_id,
-                "average_position": 0.0,
-                **self.get_quartile_views(row)
-            }
-            statistics.update(self.get_base_stats(row))
-            # Update statistics with click performance obtained in get_clicks_report
-            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME)
-            statistics.update(click_data)
-            yield AdStatistic(**statistics)
-        Ad.objects.safe_bulk_create(ads_to_create)
+                stats.update(
+                    get_base_stats(row_obj)
+                )
+                update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name)
+                create_stat.append(AdStatistic(**stats))
+
+            if create_ad:
+                Ad.objects.safe_bulk_create(create_ad)
+
+            if create_stat:
+                AdStatistic.objects.safe_bulk_create(create_stat)
+
+    def is_ad_disapproved(self, campaign_row):
+        return campaign_row.CombinedApprovalStatus == "disapproved" \
+            if hasattr(campaign_row, "CombinedApprovalStatus") \
+            else False

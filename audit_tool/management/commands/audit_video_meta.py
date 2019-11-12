@@ -10,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -37,6 +38,7 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
+    acps = {}
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
@@ -60,7 +62,7 @@ class Command(BaseCommand):
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
             #self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -216,12 +218,35 @@ class Command(BaseCommand):
             avp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
+            else:
+                self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
             is_there, hits = self.check_exists(full_string, self.exclusion_list)
             avp.word_hits['exclusion'] = hits
             if is_there:
+                self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
+
+    def append_to_channel(self, avp, hits, node):
+        if self.audit.params['audit_type_original'] == 1:
+            return
+        channel_id = avp.video.channel_id
+        if str(channel_id) not in self.acps:
+            try:
+                self.acps[str(channel_id)] = AuditChannelProcessor.objects.get(
+                    audit_id=avp.audit_id,
+                    channel_id=channel_id,
+                )
+            except Exception as e:
+                return
+        acp = self.acps[str(channel_id)]
+        if node not in acp.word_hits:
+            acp.word_hits[node] = []
+        for word in hits:
+            if word not in acp.word_hits[node]:
+                acp.word_hits[node].append(word)
+        acp.save(update_fields=['word_hits'])
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
