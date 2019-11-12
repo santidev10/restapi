@@ -364,12 +364,12 @@ class AuditExportApiView(APIView):
             "Last Video Views",
             "Last Video Category",
             "Num Bad Videos",
-            "Unique Bad Words (channel)",
-            "Unique Bad Words (videos)",
-            "Bad Words (channel)",
-            "Bad Words (video)",
-            "Good Words (channel)",
-            "Good Words (video)",
+            "Unique Exclusion Words (channel)",
+            "Unique Exclusion Words (videos)",
+            "Exclusion Words (channel)",
+            "Exclusion Words (video)",
+            "Inclusion Words (channel)",
+            "Inclusion Words (video)",
             "Brand Safety Score",
         ]
         # if clean is None:
@@ -460,7 +460,6 @@ class AuditExportApiView(APIView):
                     language,
                     v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
                     v.last_uploaded_view_count if v.last_uploaded_view_count else '',
-
                     last_category,
                     bad_videos_count[v.channel.channel_id],
                     len(bad_hit_words[v.channel.channel_id]),
