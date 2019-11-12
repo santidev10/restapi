@@ -65,7 +65,7 @@ class Command(BaseCommand):
                             elif moderation == "unsafe":
                                 current_channel_taskus_data['is_safe'] = False
                                 flag = BlacklistItem.get_or_create(channel_id, BlacklistItem.CHANNEL_ITEM)
-                                flag_category = BadWordCategory.from_string(row[4])
+                                flag_category = BadWordCategory.from_string(row[4].lower().strip())
                                 flag.blacklist_category = {flag_category.id: 100}
                                 flag.save()
                         except Exception:
