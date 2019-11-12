@@ -387,7 +387,6 @@ class AuditVideoProcessor(models.Model):
     class Meta:
         unique_together = ("audit", "video")
 
-
 class AuditChannelProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     channel = models.ForeignKey(AuditChannel, db_index=True, related_name='avp_channel', on_delete=models.CASCADE)
@@ -399,7 +398,6 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
-
 
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
