@@ -23,7 +23,7 @@ from aiohttp.web import HTTPTooManyRequests
 
 logger = logging.getLogger(__name__)
 
-LOCK_NAME = 'custom_transcripts'
+LOCK_NAME = 'custom_transcripts_no_lang'
 
 TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
@@ -68,6 +68,7 @@ def pull_custom_transcripts(lang_codes, num_vids):
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
+            print(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids("", num_vids)
             vid_languages = {vid.main.id: vid.general_data.language for vid in unparsed_vids}
             vid_lang_codes = {}
@@ -103,8 +104,6 @@ def pull_custom_transcripts(lang_codes, num_vids):
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
             logger.debug(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
-            logger.debug(
-                f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         unlock(LOCK_NAME)
         logger.debug("Finished pulling custom transcripts task.")
     except Exception as e:
