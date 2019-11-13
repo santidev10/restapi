@@ -32,7 +32,6 @@ class Command(BaseCommand):
             file_name = kwargs["filename"]
         except KeyError:
             raise ValidationError("Argument 'filename' is required.")
-
         try:
             with PidFile("import_taskus_data.pid", piddir=".") as pid:
                 init_es_connection()
@@ -43,6 +42,7 @@ class Command(BaseCommand):
                 all_channel_ids = set()
                 channels_taskus_data_dict = {}
                 channels_iab_categories_dict = {}
+                counter = 0
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
                     reader = csv.reader(f)
                     next(reader)
@@ -96,9 +96,14 @@ class Command(BaseCommand):
                             pass
                         channels_taskus_data_dict[channel_id] = current_channel_taskus_data
                         channels_iab_categories_dict[channel_id] = current_channel_iab_categories
+                        counter += 1
+                        print(f"Number of rows parsed: {counter}")
                 all_channels = channel_manager.get(list(all_channel_ids))
                 all_channels = list(filter(None, all_channels))
+                channel_counter = 0
+                vid_counter = 0
                 for channel in all_channels:
+                    vid_counter += 1
                     channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
                     channel.populate_general_data(iab_categories=channels_iab_categories_dict[channel.main.id])
                     videos_filter = video_manager.by_channel_ids_query(channel.main.id)
@@ -107,7 +112,10 @@ class Command(BaseCommand):
                     for video in channel_videos:
                         video.populate_general_data(iab_categories=channels_iab_categories_dict[channel.main.id])
                         upsert_videos.append(video)
+                        vid_counter += 1
                     video_manager.upsert(upsert_videos)
+                    print(f"Number of channels parsed: {channel_counter}")
+                    print(f"Number of videos parsed: {vid_counter}")
                 channel_manager.upsert(all_channels)
         except PidFileError:
             raise PidFileError
