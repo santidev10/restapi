@@ -23,7 +23,7 @@ from aiohttp.web import HTTPTooManyRequests
 
 logger = logging.getLogger(__name__)
 
-LOCK_NAME = 'custom_transcripts_no_lang'
+LOCK_NAME = 'custom_transcripts'
 
 TASK_RETRY_TIME = 60
 TASK_RETRY_COUNTS = 10
