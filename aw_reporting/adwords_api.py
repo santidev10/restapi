@@ -50,6 +50,14 @@ def _get_client(developer_token, client_id, client_secret, user_agent,
     return client_obj
 
 
+def get_default_web_app_client(**kwargs):
+    api_settings = load_web_app_settings()
+    api_settings["refresh_token"] = api_settings.pop("cf_refresh_token")
+    api_settings["client_customer_id"] = api_settings.pop("cf_account_id")
+    api_settings.update(kwargs)
+    return _get_client(**api_settings)
+
+
 def get_web_app_client(**kwargs):
     api_settings = load_web_app_settings()
     api_settings.update(kwargs)
