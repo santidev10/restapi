@@ -79,7 +79,7 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
 
         downloader_mock.DownloadReportAsStream.side_effect = mock_download
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_default_web_app_client", return_value=aw_client_mock):
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             GoogleAdsUpdater(account).update_campaigns()
 
         self.assertTrue(Campaign.objects.filter(id=campaign_id).exists())
@@ -100,7 +100,7 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
 
         with patch_now(now), \
              patch("aw_reporting.google_ads.google_ads_updater.timezone.now", return_value=now), \
-             patch("aw_reporting.google_ads.google_ads_updater.get_default_web_app_client", return_value=aw_client_mock):
+             patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
@@ -113,7 +113,7 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
         downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
         downloader_mock.return_value = build_csv_byte_stream([], [])
 
-        with patch("aw_reporting.google_ads.google_ads_updater.get_default_web_app_client", return_value=aw_client_mock), \
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock), \
              patch("aw_reporting.google_ads.tasks.update_campaigns.GoogleAdsUpdater.update_accounts_as_mcc"):
             setup_update_campaigns()
 
