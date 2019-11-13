@@ -68,7 +68,6 @@ def pull_custom_transcripts(lang_codes, num_vids):
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
-            print(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids("", num_vids)
             vid_languages = {vid.main.id: vid.general_data.language for vid in unparsed_vids}
             vid_lang_codes = {}
