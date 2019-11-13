@@ -71,25 +71,25 @@ class Command(BaseCommand):
                         except Exception:
                             pass
                         try:
-                            content_type = row[6].upper().strip()
+                            content_type = row[5].upper().strip()
                             is_user_generated_content = True if content_type == "UGC" else False
                             current_channel_taskus_data['is_user_generated_content'] = is_user_generated_content
                         except Exception:
                             pass
                         try:
-                            monetized = True if row[7].lower().strip() == "monetized" else None
+                            monetized = True if row[6].lower().strip() == "monetized" else None
                             if monetized:
                                 current_channel_taskus_data['monetized'] = monetized
                         except Exception:
                             pass
                         try:
-                            scalable = row[8].capitalize().strip()
+                            scalable = row[7].capitalize().strip()
                             if scalable:
                                 current_channel_taskus_data['scalable'] = True if scalable == "Scalable" else False
                         except Exception:
                             pass
                         try:
-                            language = row[9].capitalize().strip() if row[9] != "Unknown" else ""
+                            language = row[8].capitalize().strip() if row[8] != "Unknown" else ""
                             if language:
                                 current_channel_taskus_data['language'] = language
                         except Exception:
