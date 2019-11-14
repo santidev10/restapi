@@ -52,6 +52,7 @@ PROJECT_APPS = (
     "aw_creation",
     "aw_reporting",
     "brand_safety",
+    "cache",
     "channel",
     "email_reports",
     "healthcheck",
@@ -60,7 +61,6 @@ PROJECT_APPS = (
     "related_tool",
     "segment",
     "userprofile",
-    "cache",
 )
 
 THIRD_PARTY_APPS = (
