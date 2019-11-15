@@ -28,6 +28,11 @@ try:
 except Exception as e:
     custom_transcripts_lang_codes = ['en']
 
+try:
+    custom_transcripts_num_vids = settings.CUSTOM_TRANSCRIPTS_RATE
+except Exception as e:
+    custom_transcripts_num_vids = 1000
+
 CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
         "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",
@@ -98,7 +103,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60,
         'kwargs': dict(
             lang_codes=custom_transcripts_lang_codes,
-            num_vids=3000
+            num_vids=custom_transcripts_num_vids
         )
     }
 }
