@@ -26,13 +26,16 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    max_pool_count = None
+    # Number of channels to provide to pool from _channel_generator
     channel_master_batch_size = None
+    # Number of processes in pool
+    max_pool_count = None
+    # Multiplier for max_pool_count, increases during work off hours
     pool_multiplier = None
 
     WORKING_HOURS_POOL_MULTIPLIER = 1
     OFF_HOURS_POOL_MULTIPLIER = 2
-    # Dynamically set in run method for each batch
+    # Number of channels for each process
     CHANNEL_POOL_BATCH_SIZE = 5
     # Threshold in which a channel should be updated
     UPDATE_TIME_THRESHOLD = "now-7d/d"
@@ -45,7 +48,7 @@ class BrandSafetyAudit(object):
     batch_counter = 0
 
     def __init__(self, *_, **kwargs):
-        self._set_max_pool_and_batch_size()
+        self._reset_max_pool_and_batch_size()
         self.audit_utils = AuditUtils()
 
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
@@ -72,7 +75,12 @@ class BrandSafetyAudit(object):
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
-    def _set_max_pool_and_batch_size(self):
+    def _reset_max_pool_and_batch_size(self):
+        """
+        Reset max_pool_count depending on hour of day
+        channel_master_batch_size is set accordingly to provide appropriate amount of channels for pool to process
+        :return:
+        """
         self.max_pool_count = 2 if "rc" in settings.HOST else 4
         self.channel_master_batch_size = self.max_pool_count * self.CHANNEL_POOL_BATCH_SIZE
 
@@ -111,7 +119,7 @@ class BrandSafetyAudit(object):
                 # Update config in case it has been modified
                 self.audit_utils.update_config()
 
-            self._set_max_pool_and_batch_size()
+            self._reset_max_pool_and_batch_size()
 
     def _process_audits(self, channels: list) -> dict:
         """
@@ -310,12 +318,12 @@ class BrandSafetyAudit(object):
                 
             channels = BrandSafetyChannelSerializer(results, many=True).data
             data = self._get_channel_batch_data(channels)
+            self.batch_counter += 1
             yield data
-
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
-            self.batch_counter += 1
+
 
     def _create_update_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
