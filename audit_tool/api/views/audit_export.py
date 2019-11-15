@@ -331,6 +331,16 @@ class AuditExportApiView(APIView):
             os.remove(myfile.name)
         return s3_file_name, download_file_name
 
+    def check_legacy(self, audit):
+        empty_channel_avps = AuditVideoProcessor.objects.filter(audit=audit, channel__isnull=True)
+        if empty_channel_avps.exists():
+            for avp in empty_channel_avps:
+                try:
+                    avp.channel = avp.video.channel
+                    avp.save(update_fields=['channel'])
+                except Exception as e:
+                    pass
+            
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
             audit_id = audit.id
@@ -390,6 +400,7 @@ class AuditExportApiView(APIView):
         bad_video_hit_words = {}
         good_video_hit_words = {}
         video_count = {}
+        self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
@@ -456,9 +467,6 @@ class AuditExportApiView(APIView):
                     ','.join(good_video_hit_words[v.channel.channel_id]),
                     channel_brand_safety_score
                 ]
-                # if clean is None:
-                #     data.insert(-1, len(bad_hit_words[v.channel.channel_id]))
-                #     data.insert(-1, ','.join(bad_hit_words[v.channel.channel_id]))
                 try:
                     if len(bad_word_categories) > 0:
                         bad_word_category_dict = {}
