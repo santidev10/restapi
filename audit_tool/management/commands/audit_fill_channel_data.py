@@ -12,6 +12,7 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from utils.utils import convert_subscriber_count
+from django.utils import timezone
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -37,7 +38,8 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='audit_fill_channels{}.pid'.format(self.thread_id)) as p:
             count = 0
-            pending_channels = AuditChannelMeta.objects.filter(channel__processed=False)#.select_related("channel")
+            AuditChannel.objects.filter(processed=True, processed_time__isnull=True).update(processed_time=timezone.now())
+            pending_channels = AuditChannelMeta.objects.filter(channel__processed_time__isnull=True)
             if pending_channels.count() == 0:
                 logger.info("No channels to fill.")
                 self.fill_recent_video_timestamp()
@@ -139,7 +141,7 @@ class Command(BaseCommand):
                     self.calc_language((db_channel_meta))
                 except Exception as e:
                     logger.info("problem saving channel")
-            AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
+            AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
         except Exception as e:
             logger.exception(e)
 
