@@ -98,6 +98,8 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting to process seed list on thread 0")
         else:
+            channels = pending_channels.values_list('channel_id', flat=True)
+            AuditChannel.objects.filter(channel_id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
@@ -109,7 +111,7 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 raise Exception("not first thread but audit is done")
-        pending_channels = pending_channels.filter(channel__processed=True)
+        pending_channels = pending_channels.filter(channel__processed_time__isnull=False)
         start = self.thread_id * num
         counter = 0
         for channel in pending_channels[start:start+num]:
