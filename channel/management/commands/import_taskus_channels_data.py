@@ -135,7 +135,7 @@ class Command(BaseCommand):
                                 print(f"row_counter: {row_counter}")
                             print(f"Number of channels upserted: {channel_counter}")
                             print(f"Number of videos upserted: {vid_counter}")
-                            all_channels = set()
+                            all_channel_ids = set()
                             channels_taskus_data_dict = {}
                             channels_iab_categories_dict = {}
                         rows_parsed += 1
