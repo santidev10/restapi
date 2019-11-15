@@ -51,6 +51,7 @@ class Command(BaseCommand):
                 row_counter = row_number
                 channel_counter = 0
                 vid_counter = 0
+                rows_parsed = 0
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
                     reader = csv.reader(f)
                     next(reader)
@@ -59,7 +60,7 @@ class Command(BaseCommand):
                         row_number -= 1
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
-                        print(f"Row {row_counter}: {channel_id}")
+                        print(f"Row {rows_parsed}: {channel_id}")
                         all_channel_ids.add(channel_id)
                         current_channel_taskus_data = dict()
                         iab_category_1 = row[1].strip()
@@ -137,6 +138,7 @@ class Command(BaseCommand):
                             all_channels = set()
                             channels_taskus_data_dict = {}
                             channels_iab_categories_dict = {}
-                        print(f"Number of rows parsed: {row_counter}")
+                        rows_parsed += 1
+                        print(f"Number of rows parsed: {rows_parsed}")
         except PidFileError:
             raise PidFileError
