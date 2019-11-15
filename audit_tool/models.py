@@ -282,6 +282,7 @@ class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
     processed = models.BooleanField(default=False, db_index=True)
+    processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
     def get_or_create(channel_id, create=True):
@@ -380,6 +381,7 @@ class AuditVideoProcessor(models.Model):
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True,
                                      related_name='avp_video_source', on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, related_name='avp_audit_channel', on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default=dict, null=True)
