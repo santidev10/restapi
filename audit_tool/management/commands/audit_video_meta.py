@@ -205,6 +205,7 @@ class Command(BaseCommand):
                     db_channel_meta.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
+                avp.channel = db_video.channel
                 avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):

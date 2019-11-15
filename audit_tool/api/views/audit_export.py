@@ -410,24 +410,10 @@ class AuditExportApiView(APIView):
                 bad_video_hit_words[cid.channel.channel_id] = set()
             videos = AuditVideoProcessor.objects.filter(
                 audit_id=audit_id,
-                video__channel_id=cid.channel_id
+                channel_id=cid.channel_id
             )
             video_count[cid.channel.channel_id] = videos.count()
             bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
-            # if node == 'all':
-            #     for video in videos.filter(clean=True):
-            #         if video.word_hits.get('inclusion'):
-            #             good_hit_words[cid.channel.channel_id] = \
-            #                 good_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('inclusion')))
-            #     for video in videos.filter(clean=False):
-            #         if video.word_hits.get('exclusion'):
-            #             bad_hit_words[cid.channel.channel_id] = \
-            #                 bad_hit_words[cid.channel.channel_id].union(set(video.word_hits.get('exclusion')))
-            # else:
-            #     for video in videos.filter(clean=clean):
-            #         if video.word_hits.get(node):
-            #             hit_words[cid.channel.channel_id] = \
-            #                 hit_words[cid.channel.channel_id].union(set(video.word_hits.get(node)))
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         with open(file_name, 'w+', newline='') as myfile:
