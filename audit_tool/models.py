@@ -282,6 +282,7 @@ class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
     processed = models.BooleanField(default=False, db_index=True)
+    processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
     def get_or_create(channel_id, create=True):
