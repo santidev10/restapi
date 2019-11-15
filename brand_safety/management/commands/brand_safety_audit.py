@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Retrieve and audit comments.'
     QUEUE = "queue"
     MANUAL = "manual"
     DISCOVERY = "discovery"
@@ -32,16 +31,8 @@ class Command(BaseCommand):
             help="Type of audit to be executed",
         )
         parser.add_argument(
-            "--manual",
-            help="Manual brand safety scoring, video or channel"
-        )
-        parser.add_argument(
             "--ids",
             help="Manual brand safety scoring, should provide ids to update"
-        )
-        parser.add_argument(
-            "--videos",
-            help="Score only videos"
         )
 
     def handle(self, *args, **kwargs):
@@ -95,8 +86,11 @@ class Command(BaseCommand):
         :param options:
         :return:
         """
-        manual_type = options["manual"]
         manual_ids = options["ids"].strip().split(",")
+        try:
+            manual_type = VIDEO if len(manual_ids[0]) < 20 else CHANNEL
+        except IndexError:
+            return
         auditor = BrandSafetyAudit(discovery=False)
         config = {
             CHANNEL: auditor.manual_channel_audit,

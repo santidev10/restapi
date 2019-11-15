@@ -20,6 +20,7 @@ from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from brand_safety.languages import LANGUAGES, LANG_CODES
 from aiohttp.web import HTTPTooManyRequests
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,15 @@ TASK_RETRY_COUNTS = 10
 
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
-def pull_custom_transcripts(lang_codes, num_vids):
+def pull_custom_transcripts():
+    try:
+        lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
+    except Exception as e:
+        lang_codes = ['en']
+    try:
+        num_vids = settings.CUSTOM_TRANSCRIPTS_RATE
+    except Exception as e:
+        num_vids = 1000
     total_elapsed = 0
     vid_counter = 0
     transcripts_counter = 0
