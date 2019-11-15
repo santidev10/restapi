@@ -86,8 +86,11 @@ class Command(BaseCommand):
         :param options:
         :return:
         """
-        manual_type = options["manual"]
         manual_ids = options["ids"].strip().split(",")
+        try:
+            manual_type = VIDEO if len(manual_ids[0]) < 20 else CHANNEL
+        except IndexError:
+            return
         auditor = BrandSafetyAudit(discovery=False)
         config = {
             CHANNEL: auditor.manual_channel_audit,

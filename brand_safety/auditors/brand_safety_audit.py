@@ -2,6 +2,8 @@ import logging
 import multiprocessing as mp
 import sys
 
+from django.conf import settings
+
 from audit_tool.models import BlacklistItem
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.constants import BLACKLIST_DATA
@@ -24,28 +26,31 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
+    max_pool_count = None
+    channel_master_batch_size = None
+    pool_multiplier = None
+
     WORKING_HOURS_POOL_MULTIPLIER = 1
     OFF_HOURS_POOL_MULTIPLIER = 2
     # Dynamically set in run method for each batch
-    POOL_MULTIPLIER = WORKING_HOURS_POOL_MULTIPLIER
-    MAX_POOL_COUNT = None
-    CHANNEL_POOL_BATCH_SIZE = None
-    CHANNEL_MASTER_BATCH_SIZE = None
-    # Hours in which a channel should be updated
+    CHANNEL_POOL_BATCH_SIZE = 5
+    # Threshold in which a channel should be updated
     UPDATE_TIME_THRESHOLD = "now-7d/d"
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
     MINIMUM_SUBSCRIBER_COUNT = 1000
+    MINIMUM_VIEW_COUNT = 1000
     SLEEP = 2
-    MAX_CYCLE_COUNT = 10 # Number of update cycles before terminating to relieve memory
-    channel_batch_counter = 1
+    MAX_CYCLE_COUNT = 20 # Number of update cycles before terminating to relieve memory
+    batch_counter = 0
 
     def __init__(self, *_, **kwargs):
+        self._set_max_pool_and_batch_size()
         self.audit_utils = AuditUtils()
 
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
         # else main run method should not be called since it relies on an APIScriptTracker instance
-        self.query_creator = None
+        self.query_creator = self._create_discovery_query if kwargs["discovery"] else self._create_update_query
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
         self.blacklist_data_ref = {}
@@ -56,14 +61,7 @@ class BrandSafetyAudit(object):
             self.is_manual = False
         except KeyError:
             self.is_manual = True
-        if kwargs["discovery"]:
-            self.discovery = True
-            self.config_setter = self._set_discovery_config
-        else:
-            self.discovery = False
-            self.config_setter = self._set_update_config
-        # Set inital config
-        self.config_setter()
+
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
             upsert_sections=(Sections.BRAND_SAFETY,)
@@ -74,22 +72,9 @@ class BrandSafetyAudit(object):
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
-    def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
-        self.CHANNEL_POOL_BATCH_SIZE = 5
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self.query_creator = self._create_discovery_query
-
-    def _set_update_config(self):
-        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
-        self.CHANNEL_POOL_BATCH_SIZE = 5
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self.query_creator = self._create_update_query
-
-    def _set_manual_config(self):
-        self.MAX_POOL_COUNT = 2 * self.POOL_MULTIPLIER
-        self.CHANNEL_POOL_BATCH_SIZE = 5
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+    def _set_max_pool_and_batch_size(self):
+        self.max_pool_count = 2 if "rc" in settings.HOST else 4
+        self.channel_master_batch_size = self.max_pool_count * self.CHANNEL_POOL_BATCH_SIZE
 
     def run(self):
         """
@@ -108,10 +93,10 @@ class BrandSafetyAudit(object):
                 continue
 
             # Dynamically set config / pool count for each batch
-            self.POOL_MULTIPLIER = self.WORKING_HOURS_POOL_MULTIPLIER if self.audit_utils.is_working_hours() else self.OFF_HOURS_POOL_MULTIPLIER
-            self.config_setter()
+            self.pool_multiplier = self.WORKING_HOURS_POOL_MULTIPLIER if self.audit_utils.is_working_hours() else self.OFF_HOURS_POOL_MULTIPLIER
+            self.max_pool_count = self.max_pool_count * self.pool_multiplier
 
-            pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+            pool = mp.Pool(processes=self.max_pool_count)
             results = pool.map(self._process_audits, self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
 
             # Extract nested results from each process and index into es
@@ -119,13 +104,14 @@ class BrandSafetyAudit(object):
             # Index items
             self._index_results(video_audits, channel_audits)
 
-            if self.channel_batch_counter % 10 == 0:
+            if self.batch_counter > self.MAX_CYCLE_COUNT:
+                sys.exit()
+
+            if self.batch_counter % 5 == 0:
                 # Update config in case it has been modified
                 self.audit_utils.update_config()
 
-            if self.channel_batch_counter > self.MAX_CYCLE_COUNT:
-                sys.exit()
-        logger.info("BrandSafetyAudit.run complete.")
+            self._set_max_pool_and_batch_size()
 
     def _process_audits(self, channels: list) -> dict:
         """
@@ -316,7 +302,7 @@ class BrandSafetyAudit(object):
         cursor_id = cursor_id or ""
         while True:
             query = self.query_creator(cursor_id)
-            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
+            response = self.channel_manager.search(query, limit=self.channel_master_batch_size, sort=("-stats.subscribers",)).execute()
             results = [item for item in response.hits if item.main.id != cursor_id]
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
@@ -329,11 +315,12 @@ class BrandSafetyAudit(object):
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
-            self.channel_batch_counter += 1
+            self.batch_counter += 1
 
     def _create_update_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
         query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must().range().field("stats.observed_videos_count").gt(0).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
         query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(self.UPDATE_TIME_THRESHOLD).get()
@@ -342,6 +329,7 @@ class BrandSafetyAudit(object):
     def _create_discovery_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
         query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must().range().field("stats.observed_videos_count").gt(0).get()
         query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
@@ -393,7 +381,7 @@ class BrandSafetyAudit(object):
         channel_data = self._get_channel_batch_data(serialized)
 
         if len(channel_data) > 20:
-            pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+            pool = mp.Pool(processes=self.max_pool_count)
             results = pool.map(self._process_audits, self.audit_utils.batch(channel_data, self.CHANNEL_POOL_BATCH_SIZE))
         else:
             # Nest results for _extract_results method
@@ -423,13 +411,19 @@ class BrandSafetyAudit(object):
 
     def audit_all_videos(self):
         query = QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get() \
-            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
+            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get() \
+            & QueryBuilder().build().must().range().field("stats.views").gte(self.MINIMUM_VIEW_COUNT).get()
         results = self.video_manager.search(query, limit=5000).execute().hits
         while results:
             data = BrandSafetyVideoSerializer(results, many=True).data
             video_audits = self.audit_videos(videos=data)
             self._index_results(video_audits, [])
             logger.info("BrandSafetyAudit. Indexed {} videos".format(len(video_audits)))
+
+            self.batch_counter += 1
+            if self.batch_counter > self.MAX_CYCLE_COUNT:
+                sys.exit()
+
             results = self.video_manager.search(query, limit=5000).execute().hits
 
     def _set_blacklist_data(self, items, blacklist_type=0):
