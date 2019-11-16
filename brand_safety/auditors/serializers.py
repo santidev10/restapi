@@ -62,5 +62,5 @@ class BrandSafetyVideoSerializer(Serializer):
                 if item.language_code == vid_lang_code:
                     text = item.text
                     break
-        transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
+        transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript

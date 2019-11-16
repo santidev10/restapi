@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 from brand_safety import constants
 from brand_safety.audit_models.brand_safety_video_score import BrandSafetyVideoScore
 from brand_safety.models import BadWordCategory
@@ -109,7 +107,7 @@ class BrandSafetyVideoAudit(object):
                     category: {
                         "category_score": category_score,
                         "keywords": [],
-                        "severity_counts": defaultdict(int)
+                        "severity_counts": self.audit_utils.default_zero_score
                     }
                     for category, category_score in brand_safety_score.category_scores.items()
                 }
