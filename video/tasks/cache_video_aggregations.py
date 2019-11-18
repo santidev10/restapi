@@ -1,3 +1,5 @@
+import logging
+
 from saas import celery_app
 from cache.models import CacheItem
 from es_components.constants import Sections
@@ -8,6 +10,8 @@ from es_components.constants import TimestampFields
 
 forced_filter_oudated_days = FORCED_FILTER_OUDATED_DAYS
 forced_filter_section_oudated = Sections.MAIN
+
+logger = logging.getLogger(__name__)
 
 def _filter_nonexistent_section(section):
     return QueryBuilder().build().must_not().exists().field(section).get()
@@ -28,6 +32,8 @@ def forced_filters():
 
 @celery_app.task()
 def cache_video_aggregations():
+    print("Starting video aggregations caching.")
+    logger.error("Starting video aggregations caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                 Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
                 Sections.CUSTOM_CAPTIONS)
@@ -75,10 +81,15 @@ def cache_video_aggregations():
 
     forced_filter = forced_filters()
 
+    logger.error("Collecting aggregations.")
+    print("Collecting aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=forced_filter),
         properties=aggregation_params
     )
-
+    logger.error("Saving aggregations.")
+    print("Saving aggregations.")
     cached_video_aggregations.value = aggregations
     cached_video_aggregations.save()
+    logger.error("Finished video aggregations caching.")
+    print("Finished video aggregations caching.")

@@ -91,7 +91,7 @@ CELERY_BEAT_SCHEDULE = {
     #     "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
     #     "schedule": 60
     # },
-    "cache-video_aggregations": {
+    "cache-video-aggregations": {
         "task": "video.tasks.cache_video_aggregations.cache_video_aggregations",
         "schedule": 3600,
     }
@@ -110,7 +110,7 @@ class Queue:
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
-    CACHE_VIDEO_AGGREGATIONS = "cache-video_aggregations"
+    CACHE_VIDEO_AGGREGATIONS = "cache_video_aggregations"
 
 
 CELERY_ROUTES_PREPARED = [
