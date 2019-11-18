@@ -114,6 +114,10 @@ class AuditProcessor(models.Model):
         '1': 'Video Meta Processor',
         '2': 'Channel Meta Processor',
     }
+    SOURCE_TYPES = {
+        '0': 'Audit Tool',
+        '1': 'Custom Target List Creator',
+    }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
@@ -124,7 +128,9 @@ class AuditProcessor(models.Model):
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
+    temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
+    source = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
         exports = []
@@ -192,10 +198,12 @@ class AuditProcessor(models.Model):
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
             'stopped': self.params.get('stopped'),
+            'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'export_status': self.get_export_status(),
+            'source': self.SOURCE_TYPES[str(self.source)],
         }
         files = self.params.get('files')
         if files:
@@ -274,6 +282,7 @@ class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
     processed = models.BooleanField(default=False, db_index=True)
+    processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
     def get_or_create(channel_id, create=True):
@@ -290,7 +299,6 @@ class AuditChannel(models.Model):
                 )
             except IntegrityError as e:
                 return AuditChannel.objects.get(channel_id=channel_id)
-
 
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
@@ -310,7 +318,6 @@ class AuditChannelMeta(models.Model):
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
-
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -374,13 +381,13 @@ class AuditVideoProcessor(models.Model):
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True,
                                      related_name='avp_video_source', on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, related_name='avp_audit_channel', on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "video")
-
 
 class AuditChannelProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -393,7 +400,6 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
-
 
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)

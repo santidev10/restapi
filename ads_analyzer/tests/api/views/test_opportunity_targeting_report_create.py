@@ -201,13 +201,20 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             date_from=date_from,
             date_to=date_to,
         ))
+        response_json = response.json()
+
         self.assertEqual(
             dict(
                 status="ready",
                 message=ANY,
-                download_link=OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key)
+                download_link=ANY
             ),
-            response.json()
+            response_json
+        )
+
+        self.assertEqual(
+            OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key).split("&X-Amz-Signature")[0],
+            response_json.get("download_link").split('&X-Amz-Signature')[0]
         )
 
     def test_report_expire(self):

@@ -43,7 +43,7 @@ WRITE_START = datetime(2016, 9, 1).date()
 
 @celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
 def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
-                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=1):
+                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14):
     logger.info("Salesforce update started")
     start = time.time()
     today = now_in_default_tz().date()
@@ -85,16 +85,16 @@ def perform_delete(sc, delete_from_days):
 def perform_get(sc):
     opportunity_ids = set()
     placement_ids = set()
-    yesterday = datetime.today().date() - timedelta(days=1)
+    end_date_threshold = datetime.today().date() - timedelta(days=14)
     for model, method, condition in [
         (UserRole, 'get_user_roles', None),
         (User, 'get_users', None),
         (Contact, 'get_contacts', None),
         (SFAccount, 'get_accounts', None),
         (Category, 'get_categories', None),
-        (Opportunity, 'get_opportunities', f"MAX_Placement_End_Date__c > {yesterday}"),
-        (OpPlacement, 'get_placements', f"Placement_End_Date__c > {yesterday}"),
-        (Flight, 'get_flights', f"Flight_End_Date__c > {yesterday}"),
+        (Opportunity, 'get_opportunities', f"MAX_Placement_End_Date__c > {end_date_threshold}"),
+        (OpPlacement, 'get_placements', f"Placement_End_Date__c > {end_date_threshold}"),
+        (Flight, 'get_flights', f"Flight_End_Date__c > {end_date_threshold}"),
         (Activity, 'get_activities', None),
     ]:
         logger.debug("Getting %s items" % model.__name__)
@@ -188,7 +188,10 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Opportunity.update(opportunity.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -220,7 +223,10 @@ def update_placements(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Placement__c.update(placement.id, update, )
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -262,7 +268,10 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -288,7 +297,10 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
         except Exception as e:
-            logger.critical("Unhandled exception: %s" % str(e))
+            if getattr(e, "status", 0) == 404:
+                logger.warning(str(e))
+            else:
+                logger.critical("Unhandled exception: %s" % str(e))
         else:
             if r == 204:
                 logger.debug(

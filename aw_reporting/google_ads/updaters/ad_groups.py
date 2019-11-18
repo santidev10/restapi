@@ -1,14 +1,16 @@
 from datetime import timedelta
 import logging
 
-from aw_reporting.google_ads import constants
-from aw_reporting.google_ads.constants import AD_NETWORK_ENUM_TO_STR
-from aw_reporting.google_ads.constants import DEVICE_ENUM_TO_ID
+from aw_reporting.adwords_reports import ad_group_performance_report
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
-from aw_reporting.models.ad_words.constants import Device
+from aw_reporting.models.ad_words.constants import get_device_id_by_name
+from aw_reporting.update.adwords_utils import format_click_types_report
+from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
+from aw_reporting.update.adwords_utils import quart_views
+from aw_reporting.update.adwords_utils import get_base_stats
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -17,108 +19,106 @@ logger = logging.getLogger(__name__)
 class AdGroupUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group"
 
-    def __init__(self, account, start_date=None, end_date=None):
-        self.client = None
-        self.ga_service = None
+    def __init__(self, account):
         self.account = account
-        self.start_date = start_date
-        self.end_date = end_date
-        self.existing_statistics = AdGroupStatistic.objects.filter(ad_group__campaign__account=account)
-        self.existing_ad_group_ids = set(AdGroup.objects.filter(campaign__account=account).values_list("id", flat=True))
-        self.existing_campaign_ids = set(Campaign.objects.filter(account=account).values_list("id", flat=True))
 
-    def update(self, client):
-        self.client = client
-        self.ga_service = client.get_service("GoogleAdsService", version="v2")
+    def update(self, client, start_date=None, end_date=None):
+        click_type_report_fields = (
+            "AdGroupId",
+            "Date",
+            "Device",
+            "Clicks",
+            "ClickType",
+        )
+        report_unique_field_name = "Device"
 
         now = now_in_default_tz()
         max_available_date = self.max_ready_date(now, tz_str=self.account.timezone)
-        start_date = self.start_date
-        end_date = self.end_date
         today = now.date()
-
-        # If valid, start date and end date provided, drop stats in date range and update with new data
-        if start_date and end_date and start_date < end_date:
-            self.drop_custom_stats(self.existing_statistics, start_date, end_date)
-            min_date = start_date
-            max_date = end_date
-        else:
-            self.drop_latest_stats(self.existing_statistics, today)
-            min_date, max_date = self.get_account_border_dates(self.account)
-            # Update ad groups and daily stats only if there have been changes
-            min_date, max_date = (max_date + timedelta(days=1), max_available_date) if max_date else (constants.MIN_FETCH_DATE, max_available_date)
-
-        click_type_data = self.get_clicks_report(
-            self.client, self.ga_service, self.account,
-            min_date, max_date,
-            resource_name=self.RESOURCE_NAME
+        stats_queryset = AdGroupStatistic.objects.filter(
+            ad_group__campaign__account=self.account
         )
-        ad_group_performance = self._get_ad_group_performance(min_date, max_date)
-        generator = self._generate_instances(ad_group_performance, click_type_data)
-        AdGroupStatistic.objects.safe_bulk_create(generator)
+        if start_date and end_date and start_date < end_date:
+            self.drop_custom_stats(stats_queryset, start_date, end_date)
+            dates = (start_date, end_date)
 
-    def _get_ad_group_performance(self, min_date, max_date):
-        """
-        Retrieve ad_group performance
-        :param min_date: str -> 2012-01-01
-        :param max_date: str -> 2012-12-31
-        :return: Google Ads search response
-        """
-        query_fields = self.format_query(constants.AD_GROUP_PERFORMANCE_FIELDS)
-        query = f"SELECT {query_fields} FROM {self.RESOURCE_NAME} WHERE metrics.impressions > 0 AND segments.date BETWEEN '{min_date}' AND '{max_date}'"
-        ad_group_performance = self.ga_service.search(self.account.id, query=query)
-        return ad_group_performance
+        else:
+            self.drop_latest_stats(stats_queryset, today)
+            min_date, max_date = self.get_account_border_dates(self.account)
 
-    def _generate_instances(self, ad_group_performance, click_type_data):
-        """
-        Method to create and update AdGroup and AdGroupStatistic objects
-        :param ad_group_performance: Google ads ad_group resource search response
-        :return:
-        """
-        ad_group_status_enum = self.client.get_type("AdGroupStatusEnum", version="v2").AdGroupStatus
-        ad_group_type_enum = self.client.get_type("AdGroupTypeEnum", version="v2").AdGroupType
-        updated_ad_groups = set()
-        ad_groups_to_create = []
-        for row in ad_group_performance:
-            ad_group_id = str(row.ad_group.id.value)
-            campaign_id = str(row.campaign.id.value)
+            # we update ad groups and daily stats only if there have been changes
+            dates = (max_date + timedelta(days=1), max_available_date) \
+                if max_date \
+                else (self.MIN_FETCH_DATE, max_available_date)
 
-            if campaign_id not in self.existing_campaign_ids:
-                logger.warning(f"CID: {self.account.id} Campaign {campaign_id} is missed. Skipping AdGroup {ad_group_id}")
-                continue
-            if ad_group_id not in updated_ad_groups:
-                updated_ad_groups.add(ad_group_id)
-                ad_group_data = {
-                    "de_norm_fields_are_recalculated": False,
-                    "name": row.ad_group.name.value,
-                    "status": ad_group_status_enum.Name(row.ad_group.status).lower(),
-                    "type": ad_group_type_enum.Name(row.ad_group.type).lower(),
-                    "campaign_id": campaign_id,
-                    "cpv_bid": int(row.ad_group.cpv_bid_micros.value) if row.ad_group.cpv_bid_micros and row.ad_group.cpv_bid_micros.value else None,
-                    "cpm_bid": int(row.ad_group.cpm_bid_micros.value) if row.ad_group.cpm_bid_micros and row.ad_group.cpm_bid_micros.value else None,
-                    "cpc_bid": int(row.ad_group.cpc_bid_micros.value) if row.ad_group.cpc_bid_micros and row.ad_group.cpc_bid_micros.value else None,
+        report = ad_group_performance_report(
+            client, dates=dates)
+        if report:
+            click_type_report = ad_group_performance_report(client, dates=dates, fields=click_type_report_fields)
+            click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
+
+            ad_group_ids = list(AdGroup.objects.filter(
+                campaign__account=self.account).values_list("id", flat=True))
+            campaign_ids = list(Campaign.objects.filter(
+                account=self.account).values_list("id", flat=True))
+
+            create_ad_groups = []
+            create_stats = []
+            updated_ad_groups = []
+
+            for row_obj in report:
+                ad_group_id = row_obj.AdGroupId
+                campaign_id = row_obj.CampaignId
+
+                if campaign_id not in campaign_ids:
+                    logger.warning("Campaign {campaign_id} is missed."
+                                   " Skipping AdGroup {ad_group_id}"
+                                   "".format(ad_group_id=ad_group_id,
+                                             campaign_id=campaign_id)
+                                   )
+                    continue
+
+                # update ad groups
+                if ad_group_id not in updated_ad_groups:
+                    updated_ad_groups.append(ad_group_id)
+
+                    stats = {
+                        "de_norm_fields_are_recalculated": False,
+                        "name": row_obj.AdGroupName,
+                        "status": row_obj.AdGroupStatus,
+                        "type": row_obj.AdGroupType,
+                        "campaign_id": campaign_id,
+                    }
+
+                    if ad_group_id in ad_group_ids:
+                        AdGroup.objects.filter(
+                            pk=ad_group_id).update(**stats)
+                    else:
+                        ad_group_ids.append(ad_group_id)
+                        stats["id"] = ad_group_id
+                        create_ad_groups.append(AdGroup(**stats))
+                # --update ad groups
+                # insert stats
+                stats = {
+                    "date": row_obj.Date,
+                    "ad_network": row_obj.AdNetworkType1,
+                    "device_id": get_device_id_by_name(row_obj.Device),
+                    "ad_group_id": ad_group_id,
+                    "average_position": 0,
+                    "engagements": row_obj.Engagements,
+                    "active_view_impressions": row_obj.ActiveViewImpressions,
+                    "video_views_25_quartile": quart_views(row_obj, 25),
+                    "video_views_50_quartile": quart_views(row_obj, 50),
+                    "video_views_75_quartile": quart_views(row_obj, 75),
+                    "video_views_100_quartile": quart_views(row_obj, 100),
                 }
-                # Check for AdGroup existence with set membership instead of making database queries for efficiency
-                if ad_group_id in self.existing_ad_group_ids:
-                    AdGroup.objects.filter(pk=ad_group_id).update(**ad_group_data)
-                else:
-                    self.existing_ad_group_ids.add(ad_group_id)
-                    ad_group_data["id"] = ad_group_id
-                    ad_groups_to_create.append(AdGroup(**ad_group_data))
+                stats.update(get_base_stats(row_obj))
+                update_stats_with_click_type_data(
+                    stats, click_type_data, row_obj, report_unique_field_name, ignore_a_few_records=True)
+                create_stats.append(AdGroupStatistic(**stats))
 
-            statistics = {
-                "date": row.segments.date.value,
-                "ad_network": AD_NETWORK_ENUM_TO_STR.get(row.segments.ad_network_type, AD_NETWORK_ENUM_TO_STR[6]),
-                "device_id": DEVICE_ENUM_TO_ID.get(row.segments.device, Device.COMPUTER),
-                "ad_group_id": ad_group_id,
-                "average_position": 0.0,
-                "engagements": row.metrics.engagements.value if row.metrics.engagements else 0,
-                "active_view_impressions": row.metrics.active_view_impressions.value if row.metrics.active_view_impressions else 0,
-                **self.get_quartile_views(row)
-            }
-            statistics.update(self.get_base_stats(row))
-            # Update statistics with click performance obtained in get_clicks_report
-            click_data = self.get_stats_with_click_type_data(statistics, click_type_data, row, resource_name=self.RESOURCE_NAME, ignore_a_few_records=True)
-            statistics.update(click_data)
-            yield AdGroupStatistic(**statistics)
-        AdGroup.objects.bulk_create(ad_groups_to_create)
+            if create_ad_groups:
+                AdGroup.objects.bulk_create(create_ad_groups)
+
+            if create_stats:
+                AdGroupStatistic.objects.safe_bulk_create(create_stats)

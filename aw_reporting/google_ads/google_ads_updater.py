@@ -1,21 +1,17 @@
 from datetime import date
 from datetime import timedelta
 import logging
-import json
 import time
 
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import F
 from django.utils import timezone
-from google.ads.google_ads.v2.services.enums import AuthorizationErrorEnum
-from google.ads.google_ads.v2.services.enums import RequestErrorEnum
-from google.ads.google_ads.errors import GoogleAdsException
-from google.api_core.exceptions import InternalServerError
-from google.api_core.exceptions import GoogleAPIError
-from google.api_core.exceptions import RetryError
-from google.api_core.exceptions import ResourceExhausted
+from oauth2client.client import HttpAccessTokenRefreshError
 from google.auth.exceptions import RefreshError
+from googleads.errors import AdManagerReportError
+from suds import WebFault
 
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
@@ -36,6 +32,7 @@ from aw_reporting.google_ads.updaters.videos import VideoUpdater
 from aw_reporting.google_ads.utils import AD_WORDS_STABILITY_STATS_DAYS_COUNT
 from aw_reporting.models import Account
 from aw_reporting.models import AWAccountPermission
+from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 
@@ -77,8 +74,6 @@ class GoogleAdsUpdater(object):
 
     def __init__(self, account):
         self.account = account
-        self.auth_error_enum = AuthorizationErrorEnum().AuthorizationError
-        self.request_error_enum = RequestErrorEnum().RequestError
 
     def update_all_except_campaigns(self):
         """
@@ -132,8 +127,11 @@ class GoogleAdsUpdater(object):
     def get_accounts_to_update(hourly_update=True, end_date_from_days=AD_WORDS_STABILITY_STATS_DAYS_COUNT, as_obj=False, size=None):
         """
         Get current CID accounts to update
-            First retrieves all active Opportunities and linked Google Ads accounts
-            Ordered by amount of campaigns accounts have
+            Retrieves all active Placements and linked CID accounts
+            Retrieves all active Opportunities and linked CID accounts
+            Need to query from both models since in some cases, a CID will be
+                linked through a placement but not through an Opportunity
+            Ordered by last updated
         :param hourly_update: bool
             If hourly_update is True, then order accounts by hourly updated at
             Else, order accounts by full_update at
@@ -151,10 +149,15 @@ class GoogleAdsUpdater(object):
             order_by_field = "hourly_updated_at"
         else:
             order_by_field = "update_time"
+
+        active_ids_from_placements = set(OpPlacement.objects.filter(end__gte=end_date_threshold).values_list("adwords_campaigns__account", flat=True).distinct())
+        active_accounts_from_placements = Account.objects.filter(id__in=active_ids_from_placements, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
-        active_account_ids = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None]
-        active_accounts = Account.objects.filter(id__in=active_account_ids, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
-        for account in active_accounts:
+        active_ids_from_opportunities = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_ids_from_placements]
+        active_accounts_from_opportunities = Account.objects.filter(id__in=active_ids_from_opportunities, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
+
+        for account in active_accounts_from_placements | active_accounts_from_opportunities:
             try:
                 int(account.id)
                 if "demo" in account.name.lower():
@@ -202,49 +205,35 @@ class GoogleAdsUpdater(object):
         for permission in permissions:
             aw_connection = permission.aw_connection
             try:
-                client = get_client(
-                    login_customer_id=permission.account.id,
-                    refresh_token=aw_connection.refresh_token
+                client = get_web_app_client(
+                    refresh_token=aw_connection.refresh_token,
+                    client_customer_id=self.account.id,
                 )
                 self.execute(updater, client)
-
-            # General Google Ads errors
-            except GoogleAdsException as e:
-                auth_error_code = getattr(e.failure.errors[0].error_code, "authorization_error", None)
-                request_error_code = getattr(e.failure.errors[0].error_code, "request_error", None)
-
-                if auth_error_code:
-                    auth_error = self.auth_error_enum(auth_error_code).name
-                    # Invalid client
-                    if auth_error == GoogleAdsErrors.USER_PERMISSION_DENIED:
-                        logger.warning(
-                            f"Invalid client: login_customer_id: {self.account.id}, {e}"
-                        )
-                        permission.can_read = False
-                        permission.save()
-                        continue
-                    # Customer is not valid
-                    elif auth_error == GoogleAdsErrors.CUSTOMER_NOT_ENABLED:
-                        self.account.is_active = False
-                        self.account.save()
-
-                elif request_error_code:
-                    request_error = self.request_error_enum(request_error_code).name
-                    # Page token errors occur when account is not processed quickly enough. Retry
-                    if request_error == GoogleAdsErrors.EXPIRED_PAGE_TOKEN or GoogleAdsErrors.INVALID_PAGE_TOKEN:
-                        client = get_client(
-                            login_customer_id=permission.account.id,
-                            refresh_token=aw_connection.refresh_token
-                        )
-                        self._retry(updater, client)
-                return
 
             except RefreshError:
                 continue
 
-            except Exception as e:
-                logger.error(f"Unhandled exception in GoogleAdsUpdater.execute_with_any_permission: {e}")
+            except AccountInactiveError:
+                self.account.is_active = False
+                self.account.save()
 
+            except HttpAccessTokenRefreshError as e:
+                logger.warning((permission, e))
+                aw_connection.revoked_access = True
+                aw_connection.save()
+
+            except WebFault as e:
+                if "AuthorizationError.USER_PERMISSION_DENIED" in \
+                        e.fault.faultstring:
+                    logger.warning((permission, e))
+                    permission.can_read = False
+                    permission.save()
+                else:
+                    raise
+
+            except Exception as e:
+                logger.error(f"Unhandled error in execute_with_any_permission: {e}")
             else:
                 return
 
@@ -265,12 +254,13 @@ class GoogleAdsUpdater(object):
         """
         try:
             updater.update(client)
-        # Google Ads API Internal exceptions
-        except (ResourceExhausted, RetryError, InternalServerError, GoogleAPIError):
+        except RefreshError:
+            raise
+        except Exception:
             try:
                 self._retry(updater, client)
-            except Exception as e:
-                logger.warning(f"Max retries exceeded: CID: {self.account}, {e}")
+            except Exception:
+                raise
 
     def _retry(self, updater, client):
         """
@@ -292,14 +282,6 @@ class GoogleAdsUpdater(object):
                     raise err
             else:
                 return
-
-    def get_cache_key(self, part, options):
-        options = dict(
-            options=options,
-        )
-        key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
-        key = f"{self.CACHE_KEY_PREFIX}.{part}"
-        return key, key_json
 
 
 # Unable to oauth for mcc

@@ -3,7 +3,6 @@ import re
 from datetime import timedelta
 
 from celery.schedules import crontab
-from django.conf import settings
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
@@ -22,11 +21,6 @@ DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEN
 DMP_CELERY_RESULT_EXTENDED = True
 
 CELERY_TIMEZONE = "UTC"
-
-try:
-    custom_transcripts_lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
-except Exception as e:
-    custom_transcripts_lang_codes = ['en']
 
 CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
@@ -95,11 +89,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 60,
-        'kwargs': dict(
-            lang_codes=custom_transcripts_lang_codes,
-            num_vids=3000
-        )
+        "schedule": 60
     }
 }
 

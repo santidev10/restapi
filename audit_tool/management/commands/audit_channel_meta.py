@@ -53,13 +53,30 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
                 self.process_audit()
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
+
+    # def clean_list(self, in_list):
+    #     out_list = []
+    #     for word in in_list:
+    #         if word not in out_list:
+    #             do_add = True
+    #             new_parts = word.split(" ")
+    #             if len(new_parts) > 1:
+    #                 last_part = new_parts[-1]
+    #                 for w in out_list:
+    #                     existing_parts = w.split(" ")
+    #                     if len(existing_parts) > 1:
+    #                         if last_part == existing_parts[0]:
+    #                             do_add = False
+    #             if do_add:
+    #                 out_list.append(word)
+    #     return out_list
 
     def process_audit(self, num=1000):
         self.load_inclusion_list()
@@ -81,6 +98,8 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting to process seed list on thread 0")
         else:
+            channels = pending_channels.values_list('channel_id', flat=True)
+            AuditChannel.objects.filter(channel_id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
@@ -92,7 +111,7 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 raise Exception("not first thread but audit is done")
-        pending_channels = pending_channels.filter(channel__processed=True)
+        pending_channels = pending_channels.filter(channel__processed_time__isnull=False)
         start = self.thread_id * num
         counter = 0
         for channel in pending_channels[start:start+num]:
@@ -136,7 +155,6 @@ class Command(BaseCommand):
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
 
-
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
         if not seed_list:
@@ -165,13 +183,14 @@ class Command(BaseCommand):
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
-            self.get_videos(acp)
-        acp.processed = timezone.now()
-        if db_channel_meta.name:
-            acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed', 'word_hits'])
+        if db_channel.processed:
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
+            if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
+                self.get_videos(acp)
+            acp.processed = timezone.now()
+            if db_channel_meta.name:
+                acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
+            acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel

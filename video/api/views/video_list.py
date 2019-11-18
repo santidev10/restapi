@@ -102,6 +102,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "custom_captions.items:missing",
         "captions:exists",
         "captions:missing",
+        "stats.sentiment:max",
+        "stats.sentiment:min",
     )
 
     allowed_percentiles = (
@@ -111,6 +113,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.channel_subscribers:percentiles",
         "stats.last_day_views:percentiles",
         "stats.views:percentiles",
+        "stats.sentiment:percentiles",
     )
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM

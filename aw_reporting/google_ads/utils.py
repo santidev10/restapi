@@ -5,14 +5,14 @@ import re
 
 from django.db.models import Max
 from django.db.models import Min
-from google.ads.google_ads.errors import GoogleAdsException
 import pytz
 
+from aw_reporting.adwords_api import get_all_customers
+from aw_reporting.adwords_api import get_web_app_client
+from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.constants import GEO_TARGET_CONSTANT_FIELDS
-from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import Campaign
 
 AD_WORDS_STABILITY_STATS_DAYS_COUNT = 7
@@ -133,27 +133,23 @@ def reset_denorm_flag(ad_group_ids=None, campaign_ids=None):
 
 
 def detect_success_aw_read_permissions():
-    """
-    Check and update permissions
-    """
-    from aw_reporting.google_ads.updaters.accounts import AccountUpdater
+    from aw_reporting.models import AWAccountPermission
     for permission in AWAccountPermission.objects.filter(
-        can_read=False,
-        account__is_active=True,
-        aw_connection__revoked_access=False,
+            can_read=False,
+            account__is_active=True,
+            aw_connection__revoked_access=False,
     ):
         try:
-            client = get_client(
+            client = get_web_app_client(
                 refresh_token=permission.aw_connection.refresh_token,
-                login_customer_id=str(permission.account_id),
+                client_customer_id=permission.account_id,
             )
         except Exception as e:
-            logger.error(f"detect_success_aw_read_permissions failed, {e}")
+            logger.error(e)
         else:
             try:
-                # Try retrieving directly accessible customers
-                AccountUpdater.get_accessible_customers(client)
-            except GoogleAdsException:
+                get_all_customers(client, page_size=1, limit=1)
+            except AccountInactiveError:
                 account = permission.account
                 account.is_active = False
                 account.save()
@@ -162,27 +158,3 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
-
-
-def calculate_min_date_to_update(from_date, to_date, limit=None):
-    """
-    Calculate number of days that have elapsed and which to gather metrics for from AD_WORDS_STABILITY_STATS_DAYS_COUNT
-    Reduce the number of days to gather metrics for from from_date to reduce update redundancy
-    :param from_date: start date
-    :param to_date: end date
-    :param limit: Date that will be used as the max date for the query
-        If provided, calculated min_date should never more than one day than limit to avoid throwing
-        Google Ads API invalid date range error
-    :return:
-    """
-    days_elapsed = (to_date - from_date).days
-    stability_days = (AD_WORDS_STABILITY_STATS_DAYS_COUNT - days_elapsed)
-    if stability_days < 0:
-        stability_days = 0
-    min_date = from_date - timedelta(days=stability_days)
-    if limit and min_date > limit:
-        min_date = limit + timedelta(days=1)
-    return min_date
-
-
-
