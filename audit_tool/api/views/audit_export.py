@@ -487,7 +487,9 @@ class AuditExportApiView(APIView):
             num_done += 1
             rows.append(data)
             if export and num_done % 500 == 0:
-                export.percent_done = int(num_done / count * 100.0)
+                export.percent_done = int(num_done / count * 100.0) - 5
+                if export.percent_done < 0:
+                    export.percent_done = 0
                 export.save(update_fields=['percent_done'])
                 print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
