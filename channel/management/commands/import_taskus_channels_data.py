@@ -52,6 +52,7 @@ class Command(BaseCommand):
                 channel_counter = 0
                 vid_counter = 0
                 rows_parsed = 0
+                channels_row_dict = {}
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
                     reader = csv.reader(f)
                     next(reader)
@@ -60,6 +61,8 @@ class Command(BaseCommand):
                         row_number -= 1
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
+                        channels_row_dict[channel_id] = row_counter
+                        row_counter += 1
                         print(f"Row {row_counter}: {channel_id}")
                         all_channel_ids.add(channel_id)
                         current_channel_taskus_data = dict()
@@ -128,17 +131,18 @@ class Command(BaseCommand):
                                         vid_counter += 1
                                     video_manager.upsert(upsert_videos)
                                     channel_manager.upsert([channel])
-                                    row_counter += 1
+                                    channel_row_number = channels_row_dict[channel.main.id]
                                     with open(row_file_name, "w+") as row_file:
-                                        row_file.write(str(row_counter))
-                                    print(f"Upserted videos and channel for {channel.main.id}")
-                                    print(f"Number of channels with videos parsed: {channel_counter}")
-                                    print(f"row_counter: {row_counter}")
-                                print(f"Number of channels upserted: {channel_counter}")
-                                print(f"Number of videos upserted: {vid_counter}")
+                                        row_file.write(str(channel_row_number))
+                                    print(f"Upserted videos and channel data for {channel.main.id}")
+                                    print(f"Number of channels upserted: {channel_counter}")
+                                    print(f"Number of videos upserted: {vid_counter}")
+                                    print(f"Upserted channels/videos up to Row #{channel_row_number}")
                                 all_channel_ids = set()
                                 channels_taskus_data_dict = {}
                                 channels_iab_categories_dict = {}
+                                channels_row_dict = {}
+                                return
                         except Exception as e:
                             raise e
                         rows_parsed += 1
