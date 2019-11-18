@@ -68,7 +68,7 @@ class Command(BaseCommand):
                         current_channel_taskus_data = dict()
                         iab_category_1 = row[1].strip().replace(" and ", " & ")
                         try:
-                            iab_category_2 = row[2].strip()
+                            iab_category_2 = row[2].strip().replace(" and ", " & ")
                         except Exception:
                             iab_category_2 = None
                         current_channel_iab_categories = [iab_category_1]
