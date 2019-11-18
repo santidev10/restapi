@@ -60,7 +60,7 @@ class Command(BaseCommand):
                         row_number -= 1
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
-                        print(f"Row {rows_parsed}: {channel_id}")
+                        print(f"Row {row_counter}: {channel_id}")
                         all_channel_ids.add(channel_id)
                         current_channel_taskus_data = dict()
                         iab_category_1 = row[1].strip()
@@ -109,35 +109,38 @@ class Command(BaseCommand):
                             pass
                         channels_taskus_data_dict[channel_id] = current_channel_taskus_data
                         channels_iab_categories_dict[channel_id] = current_channel_iab_categories
-                        if len(all_channel_ids) >= 1000:
-                            all_channels = channel_manager.get(list(all_channel_ids))
-                            all_channels = list(filter(None, all_channels))
-                            for channel in all_channels:
-                                channel_counter += 1
-                                channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
-                                channel.populate_general_data(
-                                    iab_categories=channels_iab_categories_dict[channel.main.id])
-                                videos_filter = video_manager.by_channel_ids_query(channel.main.id)
-                                channel_videos = video_manager.search(filters=videos_filter).scan()
-                                upsert_videos = []
-                                for video in channel_videos:
-                                    video.populate_general_data(
+                        try:
+                            if len(all_channel_ids) >= 1000:
+                                all_channels = channel_manager.get(list(all_channel_ids))
+                                all_channels = list(filter(None, all_channels))
+                                for channel in all_channels:
+                                    channel_counter += 1
+                                    channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
+                                    channel.populate_general_data(
                                         iab_categories=channels_iab_categories_dict[channel.main.id])
-                                    upsert_videos.append(video)
-                                    vid_counter += 1
-                                video_manager.upsert(upsert_videos)
-                                channel_manager.upsert([channel])
-                                row_counter += 1
-                                with open(row_file_name, "w+") as row_file:
-                                    row_file.write(str(row_counter))
-                                print(f"Upserted videos and channel for {channel.main.id}")
-                                print(f"Number of channels with videos parsed: {channel_counter}")
-                                print(f"row_counter: {row_counter}")
-                            print(f"Number of channels upserted: {channel_counter}")
-                            print(f"Number of videos upserted: {vid_counter}")
-                            all_channel_ids = set()
-                            channels_taskus_data_dict = {}
-                            channels_iab_categories_dict = {}
+                                    videos_filter = video_manager.by_channel_ids_query(channel.main.id)
+                                    channel_videos = video_manager.search(filters=videos_filter).scan()
+                                    upsert_videos = []
+                                    for video in channel_videos:
+                                        video.populate_general_data(
+                                            iab_categories=channels_iab_categories_dict[channel.main.id])
+                                        upsert_videos.append(video)
+                                        vid_counter += 1
+                                    video_manager.upsert(upsert_videos)
+                                    channel_manager.upsert([channel])
+                                    row_counter += 1
+                                    with open(row_file_name, "w+") as row_file:
+                                        row_file.write(str(row_counter))
+                                    print(f"Upserted videos and channel for {channel.main.id}")
+                                    print(f"Number of channels with videos parsed: {channel_counter}")
+                                    print(f"row_counter: {row_counter}")
+                                print(f"Number of channels upserted: {channel_counter}")
+                                print(f"Number of videos upserted: {vid_counter}")
+                                all_channel_ids = set()
+                                channels_taskus_data_dict = {}
+                                channels_iab_categories_dict = {}
+                        except Exception as e:
+                            raise e
                         rows_parsed += 1
                         print(f"Number of rows parsed: {rows_parsed}")
         except PidFileError:
