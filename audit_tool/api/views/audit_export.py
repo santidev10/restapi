@@ -382,9 +382,6 @@ class AuditExportApiView(APIView):
             "Inclusion Words (video)",
             "Brand Safety Score",
         ]
-        # if clean is None:
-        #     cols.insert(-1, "Unique Bad Words")
-        #     cols.insert(-1, "Bad Words")
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
             if "" in bad_word_categories:
@@ -394,7 +391,6 @@ class AuditExportApiView(APIView):
         except Exception as e:
             pass
         channel_ids = []
-        hit_words = {}
         good_hit_words = {}
         bad_hit_words = {}
         bad_video_hit_words = {}
@@ -427,73 +423,75 @@ class AuditExportApiView(APIView):
             bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
+        rows = [cols]
+        count = channel_meta.count()
+        num_done = 0
+        for v in channel_meta:
+            try:
+                language = v.language.language
+            except Exception as e:
+                language = ""
+            try:
+                country = v.country.country
+            except Exception as e:
+                country = ""
+            try:
+                last_category = v.last_uploaded_category.category_display
+            except Exception as e:
+                last_category = ""
+            channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
+            data = [
+                v.name,
+                "https://www.youtube.com/channel/" + v.channel.channel_id,
+                v.view_count if v.view_count else "",
+                v.subscribers,
+                video_count[v.channel.channel_id],
+                v.video_count,
+                country,
+                language,
+                v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
+                v.last_uploaded_view_count if v.last_uploaded_view_count else '',
+                last_category,
+                bad_videos_count[v.channel.channel_id],
+                len(bad_hit_words[v.channel.channel_id]),
+                len(bad_video_hit_words[v.channel.channel_id]),
+                ','.join(bad_hit_words[v.channel.channel_id]),
+                ','.join(bad_video_hit_words[v.channel.channel_id]),
+                ','.join(good_hit_words[v.channel.channel_id]),
+                ','.join(good_video_hit_words[v.channel.channel_id]),
+                channel_brand_safety_score
+            ]
+            try:
+                if len(bad_word_categories) > 0:
+                    bad_word_category_dict = {}
+                    bad_words = bad_hit_words[v.channel.channel_id].union(bad_video_hit_words[v.channel.channel_id])
+                    for word in bad_words:
+                        try:
+                            word_index = audit.params['exclusion'].index(word)
+                            category = audit.params['exclusion_category'][word_index]
+                            if category in bad_word_category_dict:
+                                bad_word_category_dict[category].append(word)
+                            else:
+                                bad_word_category_dict[category] = [word]
+                        except Exception as e:
+                            pass
+                    for category in bad_word_categories:
+                        if category in bad_word_category_dict:
+                            data.append(len(bad_word_category_dict[category]))
+                        else:
+                            data.append(0)
+            except Exception as e:
+                pass
+            num_done += 1
+            rows.append(data)
+            if export and num_done % 500 == 0:
+                export.percent_done = int(num_done / count * 100.0)
+                export.save(update_fields=['percent_done'])
+                print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerow(cols)
-            count = channel_meta.count()
-            num_done = 0
-            for v in channel_meta:
-                try:
-                    language = v.language.language
-                except Exception as e:
-                    language = ""
-                try:
-                    country = v.country.country
-                except Exception as e:
-                    country = ""
-                try:
-                    last_category = v.last_uploaded_category.category_display
-                except Exception as e:
-                    last_category = ""
-                channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
-                data = [
-                    v.name,
-                    "https://www.youtube.com/channel/" + v.channel.channel_id,
-                    v.view_count if v.view_count else "",
-                    v.subscribers,
-                    video_count[v.channel.channel_id],
-                    v.video_count,
-                    country,
-                    language,
-                    v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
-                    v.last_uploaded_view_count if v.last_uploaded_view_count else '',
-                    last_category,
-                    bad_videos_count[v.channel.channel_id],
-                    len(bad_hit_words[v.channel.channel_id]),
-                    len(bad_video_hit_words[v.channel.channel_id]),
-                    ','.join(bad_hit_words[v.channel.channel_id]),
-                    ','.join(bad_video_hit_words[v.channel.channel_id]),
-                    ','.join(good_hit_words[v.channel.channel_id]),
-                    ','.join(good_video_hit_words[v.channel.channel_id]),
-                    channel_brand_safety_score
-                ]
-                try:
-                    if len(bad_word_categories) > 0:
-                        bad_word_category_dict = {}
-                        bad_words = bad_hit_words[v.channel.channel_id].union(bad_video_hit_words[v.channel.channel_id])
-                        for word in bad_words:
-                            try:
-                                word_index = audit.params['exclusion'].index(word)
-                                category = audit.params['exclusion_category'][word_index]
-                                if category in bad_word_category_dict:
-                                    bad_word_category_dict[category].append(word)
-                                else:
-                                    bad_word_category_dict[category] = [word]
-                            except Exception as e:
-                                pass
-                        for category in bad_word_categories:
-                            if category in bad_word_category_dict:
-                                data.append(len(bad_word_category_dict[category]))
-                            else:
-                                data.append(0)
-                except Exception as e:
-                    pass
-                wr.writerow(data)
-                num_done += 1
-                if export and num_done % 500 == 0:
-                    export.percent_done = int(num_done / count * 100.0)
-                    export.save(update_fields=['percent_done'])
-                    print("export at {}".format(export.percent_done))
+            for row in rows:
+                wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
