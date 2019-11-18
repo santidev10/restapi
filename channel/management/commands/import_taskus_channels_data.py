@@ -45,7 +45,7 @@ class Command(BaseCommand):
                                                  upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA))
                 video_manager = VideoManager(sections=(Sections.GENERAL_DATA),
                                              upsert_sections=(Sections.GENERAL_DATA))
-                all_channel_ids = set()
+                all_channel_ids = []
                 channels_taskus_data_dict = {}
                 channels_iab_categories_dict = {}
                 row_counter = row_number
@@ -62,9 +62,9 @@ class Command(BaseCommand):
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
                         channels_row_dict[channel_id] = row_counter
-                        row_counter += 1
                         print(f"Row {row_counter}: {channel_id}")
-                        all_channel_ids.add(channel_id)
+                        row_counter += 1
+                        all_channel_ids.append(channel_id)
                         current_channel_taskus_data = dict()
                         iab_category_1 = row[1].strip()
                         try:
@@ -114,7 +114,7 @@ class Command(BaseCommand):
                         channels_iab_categories_dict[channel_id] = current_channel_iab_categories
                         try:
                             if len(all_channel_ids) >= 1000:
-                                all_channels = channel_manager.get(list(all_channel_ids))
+                                all_channels = channel_manager.get(all_channel_ids)
                                 all_channels = list(filter(None, all_channels))
                                 for channel in all_channels:
                                     channel_counter += 1
@@ -138,7 +138,7 @@ class Command(BaseCommand):
                                     print(f"Number of channels upserted: {channel_counter}")
                                     print(f"Number of videos upserted: {vid_counter}")
                                     print(f"Upserted channels/videos up to Row #{channel_row_number}")
-                                all_channel_ids = set()
+                                all_channel_ids = []
                                 channels_taskus_data_dict = {}
                                 channels_iab_categories_dict = {}
                                 channels_row_dict = {}
