@@ -66,7 +66,7 @@ class Command(BaseCommand):
                         row_counter += 1
                         all_channel_ids.append(channel_id)
                         current_channel_taskus_data = dict()
-                        iab_category_1 = row[1].strip()
+                        iab_category_1 = row[1].strip().replace(" and ", " & ")
                         try:
                             iab_category_2 = row[2].strip()
                         except Exception:
