@@ -143,6 +143,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "general_data.country",
         "general_data.top_category",
         "general_data.top_language",
+        "general_data.iab_categories",
         "social.facebook_likes:max",
         "social.facebook_likes:min",
         "social.instagram_followers:max",
@@ -182,7 +183,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
 
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS)
+                    Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
+                    Sections.TASK_US_DATA)
         try:
             channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         except UserChannelsNotAvailable:
