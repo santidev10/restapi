@@ -119,8 +119,11 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     )
 
     aggregations_key = "video_aggregations"
-    cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=aggregations_key)
-    cached_aggregations = cached_aggregations_object.value
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=aggregations_key)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
