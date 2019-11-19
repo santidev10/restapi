@@ -331,8 +331,7 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "andrew.vonpelt@channelfactory.com",
-    "jonathan.tabak@channelfactory.com"
+    "andrew.vonpelt@channelfactory.com"
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
