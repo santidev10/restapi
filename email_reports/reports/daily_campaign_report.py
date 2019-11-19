@@ -1,3 +1,6 @@
+import boto
+import logging
+
 from datetime import date
 from datetime import timedelta
 
@@ -17,6 +20,8 @@ from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
+
+logger = logging.getLogger(__name__)
 
 spend_units_fields = ("today_goal", "yesterday_delivered",
                       "before_yesterday_delivered",
@@ -130,7 +135,13 @@ class DailyCampaignReport(BaseEmailReport):
                 reply_to="",
             )
             msg.attach_alternative(html_content, "text/html")
-            msg.send()
+
+            try:
+                msg.send()
+            except boto.ses.exceptions.SESIllegalAddressError:
+                logger.error("SESIllegalAddressError during sending daily campaign report: email - %s",
+                             self.get_to(to_emails))
+                continue
 
             # save the email
             SavedEmail.objects.create(id=context["email_uid"],
