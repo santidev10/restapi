@@ -82,6 +82,7 @@ def cache_video_aggregations():
     forced_filter = forced_filters()
 
     logger.debug("Collecting aggregations.")
+    print("Collecting aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=forced_filter),
         properties=aggregation_params
@@ -90,3 +91,4 @@ def cache_video_aggregations():
     cached_video_aggregations.value = aggregations
     cached_video_aggregations.save()
     logger.debug("Finished video aggregations caching.")
+    print("Finished video aggregations caching.")
