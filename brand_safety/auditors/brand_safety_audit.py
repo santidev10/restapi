@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+import itertools
 import logging
 import multiprocessing as mp
 import sys
@@ -36,7 +38,7 @@ class BrandSafetyAudit(object):
     WORKING_HOURS_POOL_MULTIPLIER = 1
     OFF_HOURS_POOL_MULTIPLIER = 2
     # Number of channels for each process
-    CHANNEL_POOL_BATCH_SIZE = 5
+    CHANNEL_POOL_BATCH_SIZE = 2
     # Threshold in which a channel should be updated
     UPDATE_TIME_THRESHOLD = "now-7d/d"
     CHANNEL_BATCH_COUNTER_LIMIT = 500
@@ -45,7 +47,12 @@ class BrandSafetyAudit(object):
     MINIMUM_VIEW_COUNT = 1000
     SLEEP = 2
     MAX_CYCLE_COUNT = 20 # Number of update cycles before terminating to relieve memory
+    MAX_THREAD_POOL = 10
     batch_counter = 0
+
+    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags", "brand_safety.updated_at")
+    VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
+                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
     def __init__(self, *_, **kwargs):
         self._reset_max_pool_and_batch_size()
@@ -184,7 +191,7 @@ class BrandSafetyAudit(object):
         if videos and channels:
             raise ValueError("You must either provide video data to audit or channels to retrieve video data for.")
         if videos is None:
-            videos = self._get_channel_videos(channels)
+            videos = self._get_channel_videos_executor(channels)
         if get_blacklist_data:
             video_ids = [item["id"] for item in videos]
             self.blacklist_data_ref = {
@@ -262,19 +269,27 @@ class BrandSafetyAudit(object):
                 continue
         return channel_audits
 
-    def _get_channel_videos(self, channel_ids: list) -> list:
+    def _get_channel_videos_executor(self, channel_ids: list) -> list:
         """
         Get videos for channels
-        :param channels: dict -> channel_id, channel_metadata
+        :param channel_ids: list -> channel_id str
         :return:
         """
-        all_results = []
-        for batch in self.audit_utils.batch(channel_ids, 3):
-            query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
-            results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
-            all_results.extend(results)
+        with ThreadPoolExecutor(max_workers=self.MAX_THREAD_POOL) as executor:
+            results = executor.map(self._query_channel_videos, self.audit_utils.batch(channel_ids, self.CHANNEL_POOL_BATCH_SIZE))
+        all_results = list(itertools.chain.from_iterable(results))
         data = BrandSafetyVideoSerializer(all_results, many=True).data
         return data
+
+    def _query_channel_videos(self, channel_ids):
+        """
+        Target for channel video query thread pool
+        :param channel_ids: list
+        :return:
+        """
+        query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
+        results = self.video_manager.search(query, limit=self.ES_LIMIT).source(self.VIDEO_FIELDS).execute().hits
+        return results
 
     def _extract_results(self, results: list):
         """
@@ -310,7 +325,7 @@ class BrandSafetyAudit(object):
         cursor_id = cursor_id or ""
         while True:
             query = self.query_creator(cursor_id)
-            response = self.channel_manager.search(query, limit=self.channel_master_batch_size, sort=("-stats.subscribers",)).execute()
+            response = self.channel_manager.search(query, limit=self.channel_master_batch_size, sort=("-stats.subscribers",)).source(self.CHANNEL_FIELDS).execute()
             results = [item for item in response.hits if item.main.id != cursor_id]
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
@@ -323,7 +338,6 @@ class BrandSafetyAudit(object):
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
-
 
     def _create_update_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
@@ -360,7 +374,7 @@ class BrandSafetyAudit(object):
             channel_data[c_id] = channel
 
         # Get videos for channels
-        videos = self._get_channel_videos(list(channel_data.keys()))
+        videos = self._get_channel_videos_executor(list(channel_data.keys()))
         for video in videos:
             try:
                 channel_id = video["channel_id"]
