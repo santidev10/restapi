@@ -32,8 +32,7 @@ def forced_filters():
 
 @celery_app.task()
 def cache_video_aggregations():
-    print("Starting video aggregations caching.")
-    logger.error("Starting video aggregations caching.")
+    logger.debug("Starting video aggregations caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                 Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
                 Sections.CUSTOM_CAPTIONS)
@@ -52,6 +51,7 @@ def cache_video_aggregations():
         "cms.cms_title",
         "general_data.category",
         "general_data.country",
+        "general_data.iab_categories",
         "general_data.language",
         "general_data.youtube_published_at:max",
         "general_data.youtube_published_at:min",
@@ -81,15 +81,12 @@ def cache_video_aggregations():
 
     forced_filter = forced_filters()
 
-    logger.error("Collecting aggregations.")
-    print("Collecting aggregations.")
+    logger.debug("Collecting aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=forced_filter),
         properties=aggregation_params
     )
-    logger.error("Saving aggregations.")
-    print("Saving aggregations.")
+    logger.debug("Saving aggregations.")
     cached_video_aggregations.value = aggregations
     cached_video_aggregations.save()
-    logger.error("Finished video aggregations caching.")
-    print("Finished video aggregations caching.")
+    logger.debug("Finished video aggregations caching.")
