@@ -41,13 +41,16 @@ class Command(BaseCommand):
         try:
             with PidFile("import_taskus_data.pid", piddir=".") as pid:
                 init_es_connection()
-                channel_manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA),
-                                                 upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA))
-                video_manager = VideoManager(sections=(Sections.GENERAL_DATA),
-                                             upsert_sections=(Sections.GENERAL_DATA))
+                channel_manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,
+                                                           Sections.MONETIZATION),
+                                                 upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,
+                                                                  Sections.MONETIZATION))
+                video_manager = VideoManager(sections=(Sections.GENERAL_DATA,),
+                                             upsert_sections=(Sections.GENERAL_DATA,))
                 all_channel_ids = []
                 channels_taskus_data_dict = {}
                 channels_iab_categories_dict = {}
+                channels_monetization_dict = {}
                 row_counter = row_number
                 channel_counter = 0
                 vid_counter = 0
@@ -93,9 +96,9 @@ class Command(BaseCommand):
                         except Exception:
                             pass
                         try:
-                            monetized = True if row[6].lower().strip() == "monetized" else None
-                            if monetized:
-                                current_channel_taskus_data['monetized'] = monetized
+                            is_monetizable = True if row[6].lower().strip() == "monetized" else None
+                            if is_monetizable:
+                                channels_monetization_dict[channel_id] = is_monetizable
                         except Exception:
                             pass
                         try:
@@ -120,7 +123,12 @@ class Command(BaseCommand):
                                     channel_counter += 1
                                     channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
                                     channel.populate_general_data(
-                                        iab_categories=channels_iab_categories_dict[channel.main.id])
+                                        iab_categories=channels_iab_categories_dict[channel.main.id]
+                                    )
+                                    if channel.main.id in channels_monetization_dict:
+                                        channel.populate_monetization(
+                                            is_monetizable=channels_monetization_dict[channel.main.id]
+                                        )
                                     videos_filter = video_manager.by_channel_ids_query(channel.main.id)
                                     channel_videos = video_manager.search(filters=videos_filter).scan()
                                     upsert_videos = []
@@ -142,6 +150,7 @@ class Command(BaseCommand):
                                 channels_taskus_data_dict = {}
                                 channels_iab_categories_dict = {}
                                 channels_row_dict = {}
+                                channels_monetization_dict = {}
                                 return
                         except Exception as e:
                             raise e
