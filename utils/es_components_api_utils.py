@@ -187,6 +187,7 @@ class QueryGenerator:
             {
                 "multi_match": {
                     "query": search_phrase,
+                    "type": "phrase",
                     "fields": fields
                 }
             }
