@@ -36,7 +36,7 @@ class Command(BaseCommand):
         audit_type = self.audit.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit.audit_type
-        if audit_type == 2:
+        if audit_type == 2 and not self.audit.export_as_videos:
             try:
                 file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             except Exception as e:
