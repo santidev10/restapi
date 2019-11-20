@@ -39,7 +39,7 @@ class AuditExportApiView(APIView):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         clean = query_params["clean"] if "clean" in query_params else None
-        export_as_videos = query_params["export_as_videos"] if "export_as_videos" in query_params else None
+        export_as_videos = query_params["export_as_videos"] if "export_as_videos" in query_params else False
 
         # Validate audit_id
         if audit_id is None:
@@ -49,11 +49,10 @@ class AuditExportApiView(APIView):
                 clean = bool(strtobool(clean))
             except ValueError:
                 clean = None
-        if export_as_videos is not None:
-            try:
-                export_as_videos = bool(strtobool(export_as_videos))
-            except ValueError:
-                export_as_videos = False
+        try:
+            export_as_videos = bool(strtobool(export_as_videos))
+        except ValueError:
+            export_as_videos = False
 
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
