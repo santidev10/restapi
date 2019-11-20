@@ -345,7 +345,7 @@ class ESQuerysetAdapter:
         if self.cached_aggregations:
             aggregations = {aggregation: self.cached_aggregations[aggregation]
                             for aggregation in self.cached_aggregations
-                            if aggregation in self.aggregations + ['flags']}
+                            if aggregation in self.aggregations + ['flags', 'transcripts:missing', 'transcripts:exists']}
             return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
