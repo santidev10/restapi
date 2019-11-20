@@ -19,6 +19,9 @@ from utils.es_components_api_utils import ESQuerysetAdapter
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
+from cache.models import CacheItem
+from cache.constants import KEYWORD_AGGREGATIONS_KEY
+
 
 class KeywordListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
@@ -70,6 +73,12 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
         "stats.competition:percentiles",
     )
 
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
+
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.STATS,)
 
@@ -84,4 +93,4 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["main.id"] = keyword_ids
                 self.terms_filter = self.terms_filter + ("main.id",)
 
-        return ESQuerysetAdapter(KeywordManager(sections))
+        return ESQuerysetAdapter(KeywordManager(sections), cached_aggregations=self.cached_aggregations)
