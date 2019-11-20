@@ -329,7 +329,7 @@ class ESQuerysetAdapter:
         self.search_limit = search_limit
         return self
 
-    @cached_method(timeout=900)
+    # @cached_method(timeout=900)
     def get_data(self, start=0, end=None):
         data = self.manager.search(
             filters=self.filter_query,
@@ -345,7 +345,7 @@ class ESQuerysetAdapter:
         if self.cached_aggregations:
             aggregations = {aggregation: self.cached_aggregations[aggregation]
                             for aggregation in self.cached_aggregations
-                            if aggregation in self.aggregations + ['flags', 'transcripts:missing', 'transcripts:exists']}
+                            if aggregation in self.aggregations}
             return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
@@ -418,13 +418,14 @@ class ESFilterBackend(BaseFilterBackend):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
         if "flags" in aggregations:
-            flags_index = aggregations.index("flags")
-            aggregations[flags_index] = "stats.flags"
+            aggregations.append("stats.flags")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
             aggregations.append("custom_captions.items:missing")
             aggregations.append("captions:exists")
             aggregations.append("captions:missing")
+            aggregations.append("transcripts:exists")
+            aggregations.append("transcripts:missing")
             aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg
