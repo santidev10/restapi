@@ -52,6 +52,7 @@ PROJECT_APPS = (
     "aw_creation",
     "aw_reporting",
     "brand_safety",
+    "cache",
     "channel",
     "email_reports",
     "healthcheck",

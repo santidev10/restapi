@@ -1,1 +1,2 @@
 from .update_videos_percentiles import update_videos_percentiles
+from .cache_video_aggregations import cache_video_aggregations

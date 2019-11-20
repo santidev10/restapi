@@ -1,1 +1,2 @@
 from .update_keywords_percentiles import update_keywords_percentiles
+from .cache_keyword_aggregations import cache_keyword_aggregations

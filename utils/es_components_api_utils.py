@@ -287,7 +287,7 @@ class ESDictSerializer(Serializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *args, **kwargs):
+    def __init__(self, manager, cached_aggregations=None, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -296,6 +296,7 @@ class ESQuerysetAdapter:
         self.percentiles = None
         self.fields_to_load = None
         self.search_limit = None
+        self.cached_aggregations = cached_aggregations
 
     @cached_method(timeout=7200)
     def count(self):
@@ -341,6 +342,11 @@ class ESQuerysetAdapter:
 
     @cached_method(timeout=7200)
     def get_aggregations(self):
+        if self.cached_aggregations:
+            aggregations = {aggregation: self.cached_aggregations[aggregation]
+                            for aggregation in self.cached_aggregations
+                            if aggregation in self.aggregations}
+            return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
             properties=self.aggregations,

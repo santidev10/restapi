@@ -90,6 +90,10 @@ CELERY_BEAT_SCHEDULE = {
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60
+    },
+    "cache-video-aggregations": {
+        "task": "video.tasks.cache_video_aggregations.cache_video_aggregations",
+        "schedule": crontab(hour="*/4", minute="0"),
     }
 }
 
@@ -106,6 +110,7 @@ class Queue:
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
+    CACHE_VIDEO_AGGREGATIONS = "cache_video_aggregations"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -116,6 +121,7 @@ CELERY_ROUTES_PREPARED = [
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
     ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
+    ("video.tasks.cache_video_aggregations.*", {"queue": Queue.CACHE_VIDEO_AGGREGATIONS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
