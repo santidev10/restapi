@@ -98,6 +98,10 @@ CELERY_BEAT_SCHEDULE = {
     "cache-channel-aggregations": {
         "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
         "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-keyword-aggregations": {
+        "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
+        "schedule": crontab(hour="*/4", minute="0"),
     }
 }
 
