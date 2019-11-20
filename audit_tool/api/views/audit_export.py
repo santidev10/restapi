@@ -148,12 +148,12 @@ class AuditExportApiView(APIView):
             name = audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(audit.export_as_videos))
+        file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_videos))
         exports = AuditExporter.objects.filter(
             audit=audit,
             clean=clean,
             final=True,
-            export_as_videos=audit.export_as_videos
+            export_as_videos=export.export_as_videos
         )
         if exports.count() > 0:
             return exports[0].file_name, _
