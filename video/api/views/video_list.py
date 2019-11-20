@@ -27,6 +27,7 @@ from video.constants import HISTORY_FIELDS
 from utils.permissions import BrandSafetyDataVisible
 
 from cache.models import CacheItem
+from cache.constants import VIDEO_AGGREGATIONS_KEY
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -118,9 +119,8 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:percentiles",
     )
 
-    aggregations_key = "video_aggregations"
     try:
-        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=aggregations_key)
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
         cached_aggregations = cached_aggregations_object.value
     except Exception as e:
         cached_aggregations = None
