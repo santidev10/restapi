@@ -329,7 +329,7 @@ class ESQuerysetAdapter:
         self.search_limit = search_limit
         return self
 
-    # @cached_method(timeout=900)
+    @cached_method(timeout=900)
     def get_data(self, start=0, end=None):
         data = self.manager.search(
             filters=self.filter_query,
