@@ -8,6 +8,8 @@ from es_components.query_builder import QueryBuilder
 from es_components.constants import FORCED_FILTER_OUDATED_DAYS
 from es_components.constants import TimestampFields
 
+from cache.constants import VIDEO_AGGREGATIONS_KEY
+
 forced_filter_oudated_days = FORCED_FILTER_OUDATED_DAYS
 forced_filter_section_oudated = Sections.MAIN
 
@@ -69,25 +71,21 @@ def cache_video_aggregations():
         "custom_captions.items:missing",
         "captions:exists",
         "captions:missing",
-        "custom_captions.items:exists",
-        "custom_captions.items:missing",
-        "captions:exists",
-        "captions:missing",
-        "stats.flags"
+        "stats.sentiment:max",
+        "stats.sentiment:min"
     ]
 
-    video_aggregations_key = "video_aggregations"
-    cached_video_aggregations, _ = CacheItem.objects.get_or_create(key=video_aggregations_key)
+    cached_video_aggregations, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
 
     forced_filter = forced_filters()
 
-    logger.debug("Collecting aggregations.")
-    print("Collecting aggregations.")
+    logger.debug("Collecting video aggregations.")
+    print("Collecting video aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=forced_filter),
         properties=aggregation_params
     )
-    logger.debug("Saving aggregations.")
+    logger.debug("Saving video aggregations.")
     cached_video_aggregations.value = aggregations
     cached_video_aggregations.save()
     logger.debug("Finished video aggregations caching.")

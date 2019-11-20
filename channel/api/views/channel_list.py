@@ -23,6 +23,9 @@ from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from utils.permissions import BrandSafetyDataVisible
 
+from cache.models import CacheItem
+from cache.constants import CHANNEL_AGGREGATIONS_KEY
+
 
 class ChannelsNotFound(Exception):
     pass
@@ -175,6 +178,12 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "stats.views_per_video:percentiles",
     )
 
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
+
     def get_serializer_class(self):
         if self.request and self.request.user and (
                 self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
@@ -205,7 +214,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
-        result = ESQuerysetAdapter(ChannelManager(sections))
+        result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
 
         return result
 
