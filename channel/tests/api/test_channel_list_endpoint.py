@@ -16,6 +16,8 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
+import brand_safety.constants as constants
+
 
 class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     url = reverse(ChannelPathName.CHANNEL_LIST, [Namespace.CHANNEL])
@@ -105,11 +107,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
-        high_risk_url = self.url + "?brand_safety=High%20Risk"
-        risky_url = self.url + "?brand_safety=Risky"
-        low_risk_url = self.url + "?brand_safety=Low%20Risk"
-        safe_url = self.url + "?brand_safety=Safe"
-        high_risk_and_safe_url = high_risk_url + "%2CSafe"
+        high_risk_url = self.url + "?brand_safety=Unsuitable"
+        risky_url = self.url + "?brand_safety=Low%20Suitability"
+        low_risk_url = self.url + "?brand_safety=Medium%Suitability"
+        safe_url = self.url + "?brand_safety=Suitable"
+        high_risk_and_safe_url = high_risk_url + "%2CSuitable"
         high_risk_response = self.client.get(high_risk_url)
         risky_response = self.client.get(risky_url)
         low_risk_response = self.client.get(low_risk_url)
