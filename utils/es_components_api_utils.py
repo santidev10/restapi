@@ -15,6 +15,8 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from elasticsearch_dsl import Q
 
+import brand_safety.constants as constants
+
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
 
@@ -24,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 class BrandSafetyParamAdapter:
     scores = {
-        "high risk": "0,69",
-        "risky": "70,79",
-        "low risk": "80,89",
-        "safe": "90,100"
+        constants.HIGH_RISK: "0,69",
+        constants.RISKY: "70,79",
+        constants.LOW_RISK: "80,89",
+        constants.SAFE: "90,100"
 
     }
     parameter = "brand_safety"
@@ -37,7 +39,7 @@ class BrandSafetyParamAdapter:
         parameter = query_params.get(self.parameter)
         if parameter:
             brand_safety_overall_score = []
-            labels = query_params[self.parameter].lower().split(",")
+            labels = query_params[self.parameter].title().split(",")
             for label in labels:
                 score = self.scores.get(label)
                 if score:
@@ -342,7 +344,7 @@ class ESQuerysetAdapter:
 
     @cached_method(timeout=7200)
     def get_aggregations(self):
-        if self.cached_aggregations:
+        if self.cached_aggregations and self.aggregations:
             aggregations = {aggregation: self.cached_aggregations[aggregation]
                             for aggregation in self.cached_aggregations
                             if aggregation in self.aggregations}

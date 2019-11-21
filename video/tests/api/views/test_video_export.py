@@ -19,6 +19,8 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.s3_mock import mock_s3
 from video.api.urls.names import Name
 
+import brand_safety.constants as constants
+
 EXPECT_MESSSAGE = "File is in queue for preparing. After it is finished exporting, " \
                   "you will receive message via email."
 
@@ -279,7 +281,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety="High Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -301,7 +303,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
         VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY)).upsert([videos[1]])
 
-        self._request_collect_file(brand_safety="High Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
