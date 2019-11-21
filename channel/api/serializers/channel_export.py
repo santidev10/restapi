@@ -1,8 +1,11 @@
+from math import floor
+
 from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
+from rest_framework.serializers import SerializerMethodField
 
 from utils.api.fields import CharFieldListBased
 
@@ -26,8 +29,12 @@ class ChannelListExportSerializer(Serializer):
     sentiment = FloatField(source="stats.sentiment")
     engage_rate = FloatField(source="stats.engage_rate")
     last_video_published_at = DateTimeField(source="stats.last_video_published_at")
-    brand_safety_score = IntegerField(source="brand_safety.overall_score")
     video_view_rate = FloatField(source="ads_stats.video_view_rate")
     ctr = FloatField(source="ads_stats.ctr")
     ctr_v = FloatField(source="ads_stats.ctr_v")
     average_cpv = FloatField(source="ads_stats.average_cpv")
+    brand_safety_score = SerializerMethodField()
+
+    def get_brand_safety_score(self, doc):
+        score = floor((doc.brand_safety.overall_score or 0) / 10)
+        return score

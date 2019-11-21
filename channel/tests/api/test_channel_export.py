@@ -357,3 +357,29 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_brand_safety_score_mapped(self, *args):
+        user = self.create_admin_user()
+        user.add_custom_user_permission("video_list")
+
+        manager = ChannelManager(upsert_sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+
+        channels[0].populate_brand_safety(overall_score=22)
+        channels[1].populate_brand_safety(overall_score=99)
+
+        manager.upsert(channels)
+
+        self._request_collect_file(brand_safety="Low Risk")
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)
+
+        print(data)
+
+        self.assertEqual(9, int(data[1][7]))
+        self.assertEqual(2, int(data[2][7]))
