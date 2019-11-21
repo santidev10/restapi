@@ -7,6 +7,7 @@ from .calculations import CLIENT_COST_REQUIRED_FIELDS
 from .calculations import all_stats_aggregator
 from .calculations import aw_placement_annotation
 from .calculations import base_stats_aggregator
+from .calculations import extended_base_stats_aggregator
 from .calculations import client_cost_ad_group_statistic_required_annotation
 from .calculations import client_cost_campaign_required_annotation
 from .calculations import dict_add_calculated_stats

@@ -28,6 +28,7 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
+from aw_reporting.models import CONVERSIONS
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -99,6 +100,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
     def get_queryset(self, **filters):
         user = self.request.user
+
         queryset = AccountCreation.objects.user_related(user) \
             .annotate(
             is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
@@ -121,6 +123,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
+
         return queryset.order_by("-is_demo", "is_ended", sort_by)
 
     def filter_queryset(self, queryset):
@@ -243,7 +246,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
-                    if metric in BASE_STATS:
+                    if metric in BASE_STATS + CONVERSIONS:
                         annotate_key = "sum_{}".format(metric)
                         annotates[annotate_key] = Sum(
                             "account__campaigns__{}".format(metric))
