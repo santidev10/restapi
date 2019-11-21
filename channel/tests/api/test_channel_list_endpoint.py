@@ -109,7 +109,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
         high_risk_url = self.url + "?brand_safety=Unsuitable"
         risky_url = self.url + "?brand_safety=Low%20Suitability"
-        low_risk_url = self.url + "?brand_safety=Medium%Suitability"
+        low_risk_url = self.url + "?brand_safety=Medium%20Suitability"
         safe_url = self.url + "?brand_safety=Suitable"
         high_risk_and_safe_url = high_risk_url + "%2CSuitable"
         high_risk_response = self.client.get(high_risk_url)
