@@ -99,7 +99,7 @@ class Command(BaseCommand):
                 raise Exception("waiting to process seed list on thread 0")
         else:
             channels = pending_channels.values_list('channel_id', flat=True)
-            AuditChannel.objects.filter(channel_id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
+            AuditChannel.objects.filter(id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:

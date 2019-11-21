@@ -26,6 +26,9 @@ from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
 from utils.permissions import BrandSafetyDataVisible
 
+from cache.models import CacheItem
+from cache.constants import VIDEO_AGGREGATIONS_KEY
+
 
 class VideoListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
@@ -104,6 +107,9 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "captions:missing",
         "stats.sentiment:max",
         "stats.sentiment:min",
+        "transcripts:exists",
+        "transcripts:missing",
+        "flags"
     )
 
     allowed_percentiles = (
@@ -115,6 +121,12 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:percentiles",
         "stats.sentiment:percentiles",
     )
+
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
@@ -167,4 +179,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetAdapter(VideoManager(sections))
+        return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)

@@ -40,7 +40,7 @@ services:
 
   celery_worker:
     image: viewiq-restapi
-    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic"]
+    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic,cache_aggregations"]
     depends_on:
       - rabbitmq
       - pg

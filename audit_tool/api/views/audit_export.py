@@ -39,6 +39,7 @@ class AuditExportApiView(APIView):
         query_params = request.query_params
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         clean = query_params["clean"] if "clean" in query_params else None
+        export_as_videos = bool(strtobool(query_params["export_as_videos"])) if "export_as_videos" in query_params else False
 
         # Validate audit_id
         if audit_id is None:
@@ -48,7 +49,6 @@ class AuditExportApiView(APIView):
                 clean = bool(strtobool(clean))
             except ValueError:
                 clean = None
-
         try:
             audit = AuditProcessor.objects.get(id=audit_id)
         except Exception as e:
@@ -57,14 +57,16 @@ class AuditExportApiView(APIView):
         a = AuditExporter.objects.filter(
             audit=audit,
             clean=clean,
-            final=True
+            final=True,
+            export_as_videos=export_as_videos
         )
         if a.count() == 0:
             try:
                 a = AuditExporter.objects.get(
-                        audit=audit,
-                        clean=clean,
-                        completed__isnull=True
+                    audit=audit,
+                    clean=clean,
+                    completed__isnull=True,
+                    export_as_videos=export_as_videos,
                 )
                 return Response({
                     'message': 'export still pending.',
@@ -74,7 +76,8 @@ class AuditExportApiView(APIView):
                 a = AuditExporter.objects.create(
                     audit=audit,
                     clean=clean,
-                    owner_id=request.user.id
+                    owner_id=request.user.id,
+                    export_as_videos=export_as_videos
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',
@@ -145,11 +148,12 @@ class AuditExportApiView(APIView):
             name = audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
+        file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_videos))
         exports = AuditExporter.objects.filter(
             audit=audit,
             clean=clean,
-            final=True
+            final=True,
+            export_as_videos=export.export_as_videos
         )
         if exports.count() > 0:
             return exports[0].file_name, _

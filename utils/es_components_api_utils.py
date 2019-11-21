@@ -287,7 +287,7 @@ class ESDictSerializer(Serializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *args, **kwargs):
+    def __init__(self, manager, cached_aggregations=None, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -296,6 +296,7 @@ class ESQuerysetAdapter:
         self.percentiles = None
         self.fields_to_load = None
         self.search_limit = None
+        self.cached_aggregations = cached_aggregations
 
     @cached_method(timeout=7200)
     def count(self):
@@ -341,6 +342,11 @@ class ESQuerysetAdapter:
 
     @cached_method(timeout=7200)
     def get_aggregations(self):
+        if self.cached_aggregations and self.aggregations:
+            aggregations = {aggregation: self.cached_aggregations[aggregation]
+                            for aggregation in self.cached_aggregations
+                            if aggregation in self.aggregations}
+            return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
             properties=self.aggregations,
@@ -412,13 +418,14 @@ class ESFilterBackend(BaseFilterBackend):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
         if "flags" in aggregations:
-            flags_index = aggregations.index("flags")
-            aggregations[flags_index] = "stats.flags"
+            aggregations.append("stats.flags")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
             aggregations.append("custom_captions.items:missing")
             aggregations.append("captions:exists")
             aggregations.append("captions:missing")
+            aggregations.append("transcripts:exists")
+            aggregations.append("transcripts:missing")
             aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg
