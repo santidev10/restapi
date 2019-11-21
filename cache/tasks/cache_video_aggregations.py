@@ -15,11 +15,14 @@ forced_filter_section_oudated = Sections.MAIN
 
 logger = logging.getLogger(__name__)
 
+
 def _filter_nonexistent_section(section):
     return QueryBuilder().build().must_not().exists().field(section).get()
 
+
 def filter_alive():
     return _filter_nonexistent_section(Sections.DELETED)
+
 
 def forced_filters():
     # "now-1d/d" time format is used
