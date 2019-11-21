@@ -342,7 +342,7 @@ class ESQuerysetAdapter:
 
     @cached_method(timeout=7200)
     def get_aggregations(self):
-        if self.cached_aggregations:
+        if self.cached_aggregations and self.aggregations:
             aggregations = {aggregation: self.cached_aggregations[aggregation]
                             for aggregation in self.cached_aggregations
                             if aggregation in self.aggregations}
