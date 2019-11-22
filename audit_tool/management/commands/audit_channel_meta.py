@@ -37,6 +37,8 @@ class Command(BaseCommand):
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
                                   "&maxResults={num_videos}&type=video"
+    CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
+                                  "?key={key}&forUsername={username}&part=id"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -60,23 +62,6 @@ class Command(BaseCommand):
                 self.process_audit()
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
-
-    # def clean_list(self, in_list):
-    #     out_list = []
-    #     for word in in_list:
-    #         if word not in out_list:
-    #             do_add = True
-    #             new_parts = word.split(" ")
-    #             if len(new_parts) > 1:
-    #                 last_part = new_parts[-1]
-    #                 for w in out_list:
-    #                     existing_parts = w.split(" ")
-    #                     if len(existing_parts) > 1:
-    #                         if last_part == existing_parts[0]:
-    #                             do_add = False
-    #             if do_add:
-    #                 out_list.append(word)
-    #     return out_list
 
     def process_audit(self, num=1000):
         self.load_inclusion_list()
@@ -135,18 +120,15 @@ class Command(BaseCommand):
         vids = []
         for row in reader:
             seed = row[0]
-            if 'youtube.com/channel/' in seed:
-                v_id = seed.split("/")[-1]
-                if '?' in v_id:
-                    v_id = v_id.split("?")[0]
-                if v_id:
-                    channel = AuditChannel.get_or_create(v_id)
-                    AuditChannelMeta.objects.get_or_create(channel=channel)
-                    acp, _ = AuditChannelProcessor.objects.get_or_create(
-                            audit=self.audit,
-                            channel=channel,
-                    )
-                    vids.append(acp)
+            v_id = self.get_channel_id(seed)
+            if v_id:
+                channel = AuditChannel.get_or_create(v_id)
+                AuditChannelMeta.objects.get_or_create(channel=channel)
+                acp, _ = AuditChannelProcessor.objects.get_or_create(
+                        audit=self.audit,
+                        channel=channel,
+                )
+                vids.append(acp)
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -154,6 +136,29 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
+
+    def get_channel_id(self, seed):
+        if 'youtube.com/channel/' in seed:
+            v_id = seed.split("/")[-1]
+            if '?' in v_id:
+                v_id = v_id.split("?")[0]
+            return v_id
+        if 'youtube.com/user/' in seed:
+            if seed[-1] == '/':
+                seed = seed[:-1]
+            username = seed.split("/")[-1]
+            url = self.CONVERT_USERNAME_API_URL.format(
+                key=self.DATA_API_KEY,
+                username=username
+            )
+            try:
+                r = requests.get(url)
+                if r.status_code == 200:
+                    data = r.json()
+                    channel_id = data['items'][0]['id']
+                    return channel_id
+            except Exception as e:
+                pass
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')

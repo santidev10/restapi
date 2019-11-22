@@ -98,6 +98,7 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
     cost = StatField()
     clicks = StatField()
     video_view_rate = StatField()
+    all_conversions = StatField()
 
     average_cpv = StatField()
     average_cpm = StatField()

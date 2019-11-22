@@ -184,7 +184,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
         second_annotates = {}
         having = {}
         for metric in (
-                "impressions", "video_views", "clicks", "cost",
+                "impressions", "video_views", "clicks", "cost", "all_conversions",
                 "video_view_rate",
                 "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
