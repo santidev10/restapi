@@ -9,6 +9,7 @@ from es_components.constants import FORCED_FILTER_OUDATED_DAYS
 from es_components.constants import TimestampFields
 
 from cache.constants import KEYWORD_AGGREGATIONS_KEY
+from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 
 forced_filter_oudated_days = FORCED_FILTER_OUDATED_DAYS
 forced_filter_section_oudated = Sections.MAIN
@@ -42,15 +43,7 @@ def cache_keyword_aggregations():
 
     manager = KeywordManager(sections)
 
-    aggregation_params = [
-        "stats.search_volume:min",
-        "stats.search_volume:max",
-        "stats.average_cpc:min",
-        "stats.average_cpc:max",
-        "stats.competition:min",
-        "stats.competition:max",
-        "stats.is_viral"
-    ]
+    aggregation_params = ALLOWED_KEYWORD_AGGREGATIONS
 
     cached_keyword_aggregations, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
 

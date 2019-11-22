@@ -6,6 +6,7 @@ from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 
 from cache.constants import VIDEO_AGGREGATIONS_KEY
+from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 
 logger = logging.getLogger(__name__)
 
@@ -19,39 +20,7 @@ def cache_video_aggregations():
 
     manager = VideoManager(sections)
 
-    aggregation_params = [
-        "ads_stats.average_cpv:max",
-        "ads_stats.average_cpv:min",
-        "ads_stats.ctr_v:max",
-        "ads_stats.ctr_v:min",
-        "ads_stats.video_view_rate:max",
-        "ads_stats.video_view_rate:min",
-        "analytics:exists",
-        "analytics:missing",
-        "cms.cms_title",
-        "general_data.category",
-        "general_data.country",
-        "general_data.iab_categories",
-        "general_data.language",
-        "general_data.youtube_published_at:max",
-        "general_data.youtube_published_at:min",
-        "stats.flags:exists",
-        "stats.flags:missing",
-        "stats.channel_subscribers:max",
-        "stats.channel_subscribers:min",
-        "stats.last_day_views:max",
-        "stats.last_day_views:min",
-        "stats.views:max",
-        "stats.views:min",
-        "brand_safety",
-        "stats.flags",
-        "custom_captions.items:exists",
-        "custom_captions.items:missing",
-        "captions:exists",
-        "captions:missing",
-        "stats.sentiment:max",
-        "stats.sentiment:min"
-    ]
+    aggregation_params = ALLOWED_VIDEO_AGGREGATIONS
 
     cached_video_aggregations, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
 
