@@ -147,6 +147,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "general_data.top_category",
         "general_data.top_language",
         "general_data.iab_categories",
+        "monetization.is_monetizable:exists",
         "social.facebook_likes:max",
         "social.facebook_likes:min",
         "social.instagram_followers:max",
