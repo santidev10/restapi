@@ -4,35 +4,10 @@ from saas import celery_app
 from cache.models import CacheItem
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
-from es_components.query_builder import QueryBuilder
-from es_components.constants import FORCED_FILTER_OUDATED_DAYS
-from es_components.constants import TimestampFields
 
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 
-forced_filter_oudated_days = FORCED_FILTER_OUDATED_DAYS
-forced_filter_section_oudated = Sections.MAIN
-
 logger = logging.getLogger(__name__)
-
-
-def _filter_nonexistent_section(section):
-    return QueryBuilder().build().must_not().exists().field(section).get()
-
-
-def filter_alive():
-    return _filter_nonexistent_section(Sections.DELETED)
-
-
-def forced_filters():
-    # "now-1d/d" time format is used
-    # it avoids being tied to the current point in time and makes it possible to cache request/response
-    outdated_seconds = forced_filter_oudated_days * 86400
-    updated_at = f"now-{outdated_seconds}s/s"
-    field_updated_at = f"{forced_filter_section_oudated}.{TimestampFields.UPDATED_AT}"
-    filter_range = QueryBuilder().build().must().range().field(field_updated_at) \
-        .gt(updated_at).get()
-    return filter_alive() & filter_range
 
 
 @celery_app.task()
@@ -102,12 +77,10 @@ def cache_channel_aggregations():
 
     cached_channel_aggregations, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
 
-    forced_filter = forced_filters()
-
     logger.debug("Collecting channel aggregations.")
     print("Collecting channel aggregations.")
     aggregations = manager.get_aggregation(
-        search=manager.search(filters=forced_filter),
+        search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
     )
     logger.debug("Saving channel aggregations.")
