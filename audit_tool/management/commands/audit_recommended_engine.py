@@ -170,7 +170,7 @@ class Command(BaseCommand):
         return vids
 
     def get_avp_from_url(self, seed):
-        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed):
+        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
             return
         v_id = seed.replace(",", "").split("/")[-1]
         if '?v=' in v_id:
