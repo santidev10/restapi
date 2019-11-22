@@ -36,5 +36,9 @@ class ChannelListExportSerializer(Serializer):
     brand_safety_score = SerializerMethodField()
 
     def get_brand_safety_score(self, doc):
-        score = floor((doc.brand_safety.overall_score or 0) / 10)
+        overall_score = doc.brand_safety.overall_score
+        if overall_score:
+            score = floor(doc.brand_safety.overall_score / 10)
+        else:
+            score = overall_score
         return score

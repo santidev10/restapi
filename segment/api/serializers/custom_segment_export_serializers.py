@@ -54,5 +54,9 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return language
 
     def get_overall_score(self, obj):
-        score = floor((obj.brand_safety.overall_score or 0) / 10)
+        overall_score = obj.brand_safety.overall_score
+        if overall_score:
+            score = floor(obj.brand_safety.overall_score / 10)
+        else:
+            score = overall_score
         return score
