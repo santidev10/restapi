@@ -50,7 +50,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
                      "CampaignOverPacing", "ESMonitoringEmailReport"],
-            debug=os.getenv("EMAIL_NOTIFICATIONS_DEBUG", "1") == "1",
         ),
     },
     "weekday-campaign-reports": {
@@ -59,7 +58,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["DailyCampaignReport"],
             roles="Account Manager",
-            debug=True,
         ),
     },
     "weekend-campaign-reports": {
@@ -68,7 +66,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["DailyCampaignReport"],
             roles="Account Manager,Ad Ops Manager",
-            debug=True,
         ),
     },
     "recreate-demo-data": {

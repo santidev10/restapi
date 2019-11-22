@@ -19,6 +19,8 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
+import brand_safety.constants as constants
+
 from utils.utittests.s3_mock import mock_s3
 
 EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
@@ -306,7 +308,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
 
-        self._request_collect_file(brand_safety="High Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -328,7 +330,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
 
-        self._request_collect_file(brand_safety="High Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)

@@ -42,6 +42,7 @@ from utils.utittests.reverse import reverse
 class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     details_keys = {
         "account",
+        "all_conversions",
         "average_cpm",
         "average_cpv",
         "brand",

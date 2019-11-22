@@ -28,7 +28,7 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import extended_base_stats_aggregator
 from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
@@ -91,6 +91,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
     cost_method = SerializerMethodField()
     updated_at = SerializerMethodField()
     # analytic data
+    all_conversions = StatField()
     impressions = StatField()
     video_views = StatField()
     cost = StatField()
@@ -116,6 +117,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         model = AccountCreation
         fields = (
             "account",
+            "all_conversions",
             "average_cpm",
             "average_cpv",
             "brand",
@@ -207,7 +209,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         data = queryset \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      **base_stats_aggregator())
+                      **extended_base_stats_aggregator())
         dates = queryset.annotate(
             statistic_min_date=Min("statistics__date"),
             statistic_max_date=Max("statistics__date"),

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task
 def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, fake_tech_fee_cap=None, roles=None,
-                             debug=True):
+                             debug=settings.DEBUG_EMAIL_NOTIFICATIONS):
     kwargs = dict(
         host=settings.HOST,
         debug=debug,
