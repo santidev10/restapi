@@ -187,8 +187,14 @@ def base_stats_aggregator(prefix=None):
         ),
         sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"),
-        sum_cost=Sum("cost"),
+        sum_cost=Sum("cost")
     )
+
+
+def extended_base_stats_aggregator(prefix=None):
+    _base_stats_aggregator = base_stats_aggregator(prefix)
+    _base_stats_aggregator.update(sum_all_conversions=Sum("all_conversions"))
+    return _base_stats_aggregator
 
 
 def aw_placement_annotation(*keys, prefix=""):

@@ -1,13 +1,14 @@
 from aw_creation.api.serializers.analytics.base_account_creation_serializer import BaseAccountCreationSerializer
-from aw_reporting.models import base_stats_aggregator
+from aw_reporting.models import extended_base_stats_aggregator
 
 
 class AnalyticsAccountCreationListSerializer(BaseAccountCreationSerializer):
-    stats_aggregations = base_stats_aggregator()
+    stats_aggregations = extended_base_stats_aggregator()
 
     class Meta(BaseAccountCreationSerializer.Meta):
         fields = (
             "account",
+            "all_conversions",
             "average_cpm",
             "average_cpv",
             "clicks",

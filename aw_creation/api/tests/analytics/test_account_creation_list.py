@@ -39,6 +39,7 @@ from utils.utittests.reverse import reverse
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase):
     details_keys = {
         "account",
+        "all_conversions",
         "average_cpm",
         "average_cpv",
         "clicks",
@@ -294,7 +295,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
         Campaign.objects.create(
             id=1, name="", account=account,
-            impressions=10, video_views=10, clicks=10, cost=10,
+            impressions=10, video_views=10, clicks=10, cost=10, all_conversions=10
         )
         account = Account.objects.create(id=2, name="",
                                          skip_creating_account_creation=True)
@@ -304,7 +305,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
         Campaign.objects.create(
             id=2, name="", account=account,
-            impressions=4, video_views=2, clicks=1, cost=1,
+            impressions=4, video_views=2, clicks=1, cost=1, all_conversions=5
         )
         # --
         test_filters = (
@@ -314,6 +315,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
             ("cost", 1, 2, 2, 10),
             ("video_view_rate", 50, 75, 75, 100),
             ("ctr_v", 25, 50, 75, 100),
+            ("all_conversions", 1, 6, 6, 11)
         )
 
         user_settings = {
