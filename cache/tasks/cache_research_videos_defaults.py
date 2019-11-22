@@ -39,21 +39,18 @@ def cache_research_videos_defaults():
 
     manager = VideoManager(sections)
 
-    queryset_adapter = ESQuerysetAdapter()
+    queryset_adapter = ESQuerysetAdapter(manager, cached_aggregations=cached_aggregations)
 
     queryset_adapter.aggregations = []
-    queryset_adapter.cached_aggregations = cached_aggregations
     queryset_adapter.fields_to_load = fields_to_load
     queryset_adapter.filter_query = [manager.forced_filters()]
-    queryset_adapter.manager = manager
     queryset_adapter.percentiles = []
     queryset_adapter.sort = sort
 
-    logger.debug("Caching default research videos counts, filters, and aggregations.")
-    print("Caching default research videos counts, filters, and aggregations.")
+    logger.debug("Caching default research videos count and filters.")
+    print("Caching default research videos count and filters.")
     queryset_adapter.count()
     queryset_adapter.get_data(0, 50)
-    queryset_adapter.get_aggregations()
 
     logger.debug("Finished default research videos caching.")
     print("Finished default research videos caching.")
