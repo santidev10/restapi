@@ -11,29 +11,7 @@ from es_components.constants import TimestampFields
 from cache.constants import KEYWORD_AGGREGATIONS_KEY
 from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 
-forced_filter_oudated_days = FORCED_FILTER_OUDATED_DAYS
-forced_filter_section_oudated = Sections.MAIN
-
 logger = logging.getLogger(__name__)
-
-
-def _filter_nonexistent_section(section):
-    return QueryBuilder().build().must_not().exists().field(section).get()
-
-
-def filter_alive():
-    return _filter_nonexistent_section(Sections.DELETED)
-
-
-def forced_filters():
-    # "now-1d/d" time format is used
-    # it avoids being tied to the current point in time and makes it possible to cache request/response
-    outdated_seconds = forced_filter_oudated_days * 86400
-    updated_at = f"now-{outdated_seconds}s/s"
-    field_updated_at = f"{forced_filter_section_oudated}.{TimestampFields.UPDATED_AT}"
-    filter_range = QueryBuilder().build().must().range().field(field_updated_at) \
-        .gt(updated_at).get()
-    return filter_alive() & filter_range
 
 
 @celery_app.task()
@@ -47,12 +25,10 @@ def cache_keyword_aggregations():
 
     cached_keyword_aggregations, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
 
-    forced_filter = forced_filters()
-
     logger.debug("Collecting keyword aggregations.")
     print("Collecting keyword aggregations.")
     aggregations = manager.get_aggregation(
-        search=manager.search(filters=forced_filter),
+        search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
     )
     logger.debug("Saving keyword aggregations.")
