@@ -270,7 +270,7 @@ class AuditExportApiView(APIView):
                 "tags": v.keywords,
             }, full_audit=False)
             data = [
-                "https://www.youtube.com/video/" + v.video.video_id,
+                "https://www.youtube.com/v/" + v.video.video_id,
                 v.name,
                 language,
                 category,
@@ -282,7 +282,7 @@ class AuditExportApiView(APIView):
                 self.clean_duration(v.duration) if v.duration else "",
                 v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
                 v.video.channel.auditchannelmeta.name if v.video.channel else "",
-                v.video.channel.channel_id if v.video.channel else "",
+                "https://www.youtube.com/channel/" + v.video.channel.channel_id if v.video.channel else "",
                 channel_lang,
                 v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
                 country,
