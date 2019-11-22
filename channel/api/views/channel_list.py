@@ -194,7 +194,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                    Sections.TASK_US_DATA)
+                    Sections.TASK_US_DATA, Sections.MONETIZATION)
         try:
             channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         except UserChannelsNotAvailable:
