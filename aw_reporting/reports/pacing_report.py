@@ -572,6 +572,10 @@ class PacingReport:
         queryset = Opportunity.objects.get_queryset_for_user(user) \
             .filter(probability=100)
 
+        queryset = queryset\
+            .annotate(campaigns=Sum("placements__adwords_campaigns"))\
+            .exclude(campaigns__lte=0)
+
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
         if start and end:
