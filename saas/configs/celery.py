@@ -99,6 +99,14 @@ CELERY_BEAT_SCHEDULE = {
     "cache-keyword-aggregations": {
         "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
         "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-research-videos-defaults": {
+        "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
+        "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-research-channels-defaults": {
+        "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
+        "schedule": crontab(hour="*/4", minute="0"),
     }
 }
 
@@ -115,7 +123,7 @@ class Queue:
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
-    CACHE_AGGREGATIONS = "cache_aggregations"
+    CACHE_RESEARCH = "cache_research"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -126,7 +134,7 @@ CELERY_ROUTES_PREPARED = [
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
     ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
-    ("cache.tasks.*", {"queue": Queue.CACHE_AGGREGATIONS}),
+    ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
