@@ -1,7 +1,11 @@
+from math import floor
+
 from rest_framework.serializers import CharField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+
 from brand_safety.languages import LANGUAGES
+from utils.brand_safety import map_brand_safety_score
 
 
 class CustomSegmentChannelExportSerializer(Serializer):
@@ -12,7 +16,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
     Language = SerializerMethodField("get_language")
     Category = CharField(source="general_data.top_category")
     Subscribers = CharField(source="stats.subscribers")
-    Overall_Score = CharField(source="brand_safety.overall_score")
+    Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
@@ -25,6 +29,10 @@ class CustomSegmentChannelExportSerializer(Serializer):
             language = LANGUAGES.get(brand_safety_language, brand_safety_language)
         return language
 
+    def get_overall_score(self, obj):
+        score = map_brand_safety_score(obj.brand_safety.overall_score)
+        return score
+
 
 class CustomSegmentVideoExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score")
@@ -34,7 +42,7 @@ class CustomSegmentVideoExportSerializer(Serializer):
     Language = SerializerMethodField("get_language")
     Category = CharField(source="general_data.category")
     Views = CharField(source="stats.views")
-    Overall_Score = CharField(source="brand_safety.overall_score")
+    Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/watch?v={obj.main.id}"
@@ -46,3 +54,7 @@ class CustomSegmentVideoExportSerializer(Serializer):
         else:
             language = LANGUAGES.get(brand_safety_language, brand_safety_language)
         return language
+
+    def get_overall_score(self, obj):
+        score = map_brand_safety_score(obj.brand_safety.overall_score)
+        return score

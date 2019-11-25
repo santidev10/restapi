@@ -14,6 +14,7 @@ from es_components.models import Channel
 from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
+from utils.brand_safety import map_brand_safety_score
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
@@ -197,7 +198,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.stats.sentiment,
             channel.stats.engage_rate,
             channel.stats.last_video_published_at.isoformat().replace("+00:00", "Z"),
-            channel.brand_safety.overall_score,
+            map_brand_safety_score(channel.brand_safety.overall_score),
             channel.ads_stats.video_view_rate,
             channel.ads_stats.ctr,
             channel.ads_stats.ctr_v,
@@ -359,3 +360,24 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_brand_safety_score_mapped(self, *args):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_brand_safety(overall_score=49)
+        channels[0].populate_stats(observed_videos_count=100)
+        channels[1].populate_brand_safety(overall_score=62)
+        channels[1].populate_stats(observed_videos_count=100)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
+
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)
+        rows = sorted(data[1:], key=lambda x: x[12])
+        self.assertEqual(4, int(rows[0][12]))
+        self.assertEqual(6, int(rows[1][12]))
