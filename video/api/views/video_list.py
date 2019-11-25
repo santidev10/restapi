@@ -28,6 +28,7 @@ from utils.permissions import BrandSafetyDataVisible
 
 from cache.models import CacheItem
 from cache.constants import VIDEO_AGGREGATIONS_KEY
+from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
 
 
 class VideoListApiView(APIViewMixin, ListAPIView):
@@ -75,42 +76,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     exists_filter = EXISTS_FILTER
     params_adapters = (BrandSafetyParamAdapter,)
 
-    allowed_aggregations = (
-        "ads_stats.average_cpv:max",
-        "ads_stats.average_cpv:min",
-        "ads_stats.ctr_v:max",
-        "ads_stats.ctr_v:min",
-        "ads_stats.video_view_rate:max",
-        "ads_stats.video_view_rate:min",
-        "analytics:exists",
-        "analytics:missing",
-        "cms.cms_title",
-        "general_data.category",
-        "general_data.country",
-        "general_data.language",
-        "general_data.youtube_published_at:max",
-        "general_data.youtube_published_at:min",
-        "general_data.iab_categories",
-        "stats.flags:exists",
-        "stats.flags:missing",
-        "stats.channel_subscribers:max",
-        "stats.channel_subscribers:min",
-        "stats.last_day_views:max",
-        "stats.last_day_views:min",
-        "stats.views:max",
-        "stats.views:min",
-        "brand_safety",
-        "stats.flags",
-        "custom_captions.items:exists",
-        "custom_captions.items:missing",
-        "captions:exists",
-        "captions:missing",
-        "stats.sentiment:max",
-        "stats.sentiment:min",
-        "transcripts:exists",
-        "transcripts:missing",
-        "flags"
-    )
+    allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
