@@ -147,16 +147,20 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
 
     def _get_stats(self, account_creation_ids):
         stats = {}
-        campaign_filter = {CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids}
+        campaign_filter = {
+            CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
+        }
 
-        queryset = Campaign.objects.filter(**campaign_filter).values(CAMPAIGN_ACCOUNT_ID_KEY).order_by(CAMPAIGN_ACCOUNT_ID_KEY)
+        queryset = Campaign.objects\
+            .filter(**campaign_filter)\
+            .values(CAMPAIGN_ACCOUNT_ID_KEY)\
+            .order_by(CAMPAIGN_ACCOUNT_ID_KEY)
 
         data = queryset \
              \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **self.stats_aggregations)
-
         dates = queryset.annotate(
             statistic_min_date=Min("statistics__date"),
             statistic_max_date=Max("statistics__date"),
