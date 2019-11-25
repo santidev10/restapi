@@ -39,21 +39,18 @@ class Command(BaseCommand):
         except KeyError:
             raise ValidationError("Argument 'filename' is required.")
         try:
-            with PidFile("import_taskus_data.pid", piddir=".") as pid:
+            with PidFile("upsert_taskus_channels_data.pid", piddir=".") as pid:
                 init_es_connection()
                 channel_manager = ChannelManager(sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,
-                                                           Sections.MONETIZATION),
+                                                           Sections.MONETIZATION, Sections.CUSTOM_PROPERTIES),
                                                  upsert_sections=(Sections.TASK_US_DATA, Sections.GENERAL_DATA,
                                                                   Sections.MONETIZATION, Sections.CUSTOM_PROPERTIES))
-                video_manager = VideoManager(sections=(Sections.GENERAL_DATA,),
-                                             upsert_sections=(Sections.GENERAL_DATA,))
                 all_channel_ids = []
                 channels_taskus_data_dict = {}
                 channels_iab_categories_dict = {}
                 channels_monetization_dict = {}
                 row_counter = row_number
                 channel_counter = 0
-                vid_counter = 0
                 rows_parsed = 0
                 channels_row_dict = {}
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
@@ -115,10 +112,11 @@ class Command(BaseCommand):
                             pass
                         channels_taskus_data_dict[channel_id] = current_channel_taskus_data
                         channels_iab_categories_dict[channel_id] = current_channel_iab_categories
+                        rows_parsed += 1
+                        print(f"Number of rows parsed: {rows_parsed}")
                         try:
                             if len(all_channel_ids) >= 1000:
-                                all_channels = channel_manager.get(all_channel_ids)
-                                all_channels = list(filter(None, all_channels))
+                                all_channels = channel_manager.get_or_create(all_channel_ids)
                                 for channel in all_channels:
                                     channel_counter += 1
                                     channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
@@ -130,23 +128,13 @@ class Command(BaseCommand):
                                         channel.populate_monetization(
                                             is_monetizable=channels_monetization_dict[channel.main.id]
                                         )
-                                    videos_filter = video_manager.by_channel_ids_query(channel.main.id)
-                                    channel_videos = video_manager.search(filters=videos_filter).scan()
-                                    upsert_videos = []
-                                    for video in channel_videos:
-                                        video.populate_general_data(
-                                            iab_categories=channels_iab_categories_dict[channel.main.id])
-                                        upsert_videos.append(video)
-                                        vid_counter += 1
-                                    video_manager.upsert(upsert_videos)
-                                    channel_manager.upsert([channel])
-                                    channel_row_number = channels_row_dict[channel.main.id]
-                                    with open(row_file_name, "w+") as row_file:
-                                        row_file.write(str(channel_row_number))
-                                    print(f"Upserted videos and channel data for {channel.main.id}")
-                                    print(f"Number of channels upserted: {channel_counter}")
-                                    print(f"Number of videos upserted: {vid_counter}")
-                                    print(f"Upserted channels/videos up to Row #{channel_row_number}")
+                                    print(f"Updated fields for {channel.main.id}")
+                                    print(f"Parsed {channel_counter} channels.")
+                                channel_manager.upsert(all_channels)
+                                with open(row_file_name, "w+") as row_file:
+                                    row_file.write(str(row_counter))
+                                print(f"Upserted {channel_counter} channels.")
+                                print(f"Upserted channels up to Row #{row_counter}")
                                 all_channel_ids = []
                                 channels_taskus_data_dict = {}
                                 channels_iab_categories_dict = {}
@@ -155,7 +143,5 @@ class Command(BaseCommand):
                                 return
                         except Exception as e:
                             raise e
-                        rows_parsed += 1
-                        print(f"Number of rows parsed: {rows_parsed}")
         except PidFileError:
             raise PidFileError
