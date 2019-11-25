@@ -256,7 +256,7 @@ class AuditExportApiView(APIView):
                 "tags": v.keywords,
             }, full_audit=False)
             data = [
-                "https://www.youtube.com/v/" + v.video.video_id,
+                "https://www.youtube.com/video/" + v.video.video_id,
                 v.name,
                 language,
                 category,
