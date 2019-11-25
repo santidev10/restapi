@@ -1,3 +1,4 @@
+from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
@@ -23,6 +24,7 @@ from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
@@ -39,6 +41,7 @@ from utils.utittests.reverse import reverse
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase):
     details_keys = {
         "account",
+        "all_conversions",
         "average_cpm",
         "average_cpv",
         "clicks",
@@ -292,20 +295,30 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         AccountCreation.objects.create(
             name="Maximum", owner=self.user, account=account,
         )
-        Campaign.objects.create(
+        campaign = Campaign.objects.create(
             id=1, name="", account=account,
-            impressions=10, video_views=10, clicks=10, cost=10,
+            impressions=10, video_views=10, clicks=10, cost=10
         )
+        ad_group_1 = AdGroup.objects.create(
+            id=1, campaign=campaign, cost=10)
+        AdGroupStatistic.objects.create(
+            date=date(2018, 1, 1), ad_group=ad_group_1,
+            cost=10, average_position=1, all_conversions=10)
         account = Account.objects.create(id=2, name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         AccountCreation.objects.create(
             name="Minimum", owner=self.user, account=account,
         )
-        Campaign.objects.create(
+        campaign_2 = Campaign.objects.create(
             id=2, name="", account=account,
-            impressions=4, video_views=2, clicks=1, cost=1,
+            impressions=4, video_views=2, clicks=1, cost=1
         )
+        ad_group_2 = AdGroup.objects.create(
+            id=2, campaign=campaign_2, cost=1)
+        AdGroupStatistic.objects.create(
+            date=date(2018, 1, 1), ad_group=ad_group_2,
+            cost=1, average_position=1, all_conversions=5)
         # --
         test_filters = (
             ("impressions", 1, 5, 2, 11),
@@ -314,6 +327,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
             ("cost", 1, 2, 2, 10),
             ("video_view_rate", 50, 75, 75, 100),
             ("ctr_v", 25, 50, 75, 100),
+            ("all_conversions", 1, 6, 6, 11)
         )
 
         user_settings = {

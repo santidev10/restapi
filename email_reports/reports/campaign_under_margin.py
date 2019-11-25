@@ -1,3 +1,6 @@
+import boto
+import logging
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -7,6 +10,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
+
+logger = logging.getLogger(__name__)
 
 
 class CampaignUnderMargin(BaseEmailReport):
@@ -56,4 +61,9 @@ class CampaignUnderMargin(BaseEmailReport):
                     headers={'X-Priority': 2},
                     reply_to="",
                 )
-                msg.send(fail_silently=False)
+
+                try:
+                    msg.send(fail_silently=False)
+                except boto.ses.exceptions.SESIllegalAddressError:
+                    logger.error("SESIllegalAddressError during sending campaign under margin report: email - %s",
+                                 self.get_to(to_recipients))

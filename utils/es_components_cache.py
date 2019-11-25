@@ -24,7 +24,11 @@ def cached_method(timeout):
                 else None
             if data is None:
                 data = method(obj, *args, **kwargs)
-                set_to_cache(obj, part=part, options=options, data=data, timeout=timeout)
+                if len(obj.filter_query) == 1 and (obj.filter_query[0] == obj.manager.forced_filters()):
+                    time_out = 14300
+                else:
+                    time_out = timeout
+                set_to_cache(obj, part=part, options=options, data=data, timeout=time_out)
             return data
 
         return wrapped

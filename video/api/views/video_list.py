@@ -26,6 +26,10 @@ from video.constants import EXISTS_FILTER
 from video.constants import HISTORY_FIELDS
 from utils.permissions import BrandSafetyDataVisible
 
+from cache.models import CacheItem
+from cache.constants import VIDEO_AGGREGATIONS_KEY
+from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
+
 
 class VideoListApiView(APIViewMixin, ListAPIView):
     permission_classes = (
@@ -72,38 +76,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     exists_filter = EXISTS_FILTER
     params_adapters = (BrandSafetyParamAdapter,)
 
-    allowed_aggregations = (
-        "ads_stats.average_cpv:max",
-        "ads_stats.average_cpv:min",
-        "ads_stats.ctr_v:max",
-        "ads_stats.ctr_v:min",
-        "ads_stats.video_view_rate:max",
-        "ads_stats.video_view_rate:min",
-        "analytics:exists",
-        "analytics:missing",
-        "cms.cms_title",
-        "general_data.category",
-        "general_data.country",
-        "general_data.language",
-        "general_data.youtube_published_at:max",
-        "general_data.youtube_published_at:min",
-        "stats.flags:exists",
-        "stats.flags:missing",
-        "stats.channel_subscribers:max",
-        "stats.channel_subscribers:min",
-        "stats.last_day_views:max",
-        "stats.last_day_views:min",
-        "stats.views:max",
-        "stats.views:min",
-        "brand_safety",
-        "stats.flags",
-        "custom_captions.items:exists",
-        "custom_captions.items:missing",
-        "captions:exists",
-        "captions:missing",
-        "stats.sentiment:max",
-        "stats.sentiment:min",
-    )
+    allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
     allowed_percentiles = (
         "ads_stats.average_cpv:percentiles",
@@ -114,6 +87,12 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.views:percentiles",
         "stats.sentiment:percentiles",
     )
+
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
@@ -166,4 +145,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         if self.request.user.is_staff or \
                 self.request.user.has_perm("userprofile.video_audience"):
             sections += (Sections.ANALYTICS,)
-        return ESQuerysetAdapter(VideoManager(sections))
+        return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)
