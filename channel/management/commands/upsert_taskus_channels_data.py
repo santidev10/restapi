@@ -28,7 +28,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        row_file_name = "taskus_row_number.txt"
+        row_file_name = "taskus_channels_parsing_row_number.txt"
         try:
             with open(row_file_name, "r") as f:
                 row_number = int(f.readline())
@@ -52,7 +52,6 @@ class Command(BaseCommand):
                 row_counter = row_number
                 channel_counter = 0
                 rows_parsed = 0
-                channels_row_dict = {}
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
                     reader = csv.reader(f)
                     next(reader)
@@ -61,7 +60,6 @@ class Command(BaseCommand):
                         row_number -= 1
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
-                        channels_row_dict[channel_id] = row_counter
                         print(f"Row {row_counter}: {channel_id}")
                         row_counter += 1
                         all_channel_ids.append(channel_id)
@@ -138,7 +136,6 @@ class Command(BaseCommand):
                                 all_channel_ids = []
                                 channels_taskus_data_dict = {}
                                 channels_iab_categories_dict = {}
-                                channels_row_dict = {}
                                 channels_monetization_dict = {}
                                 return
                         except Exception as e:
