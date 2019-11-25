@@ -45,6 +45,6 @@ def map_brand_safety_score(score):
         try:
             mapped = floor(int(score) / 10)
         except ValueError:
-            mapped = score
+            pass
     return mapped
 
