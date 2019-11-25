@@ -59,9 +59,9 @@ class Command(BaseCommand):
                         row_number -= 1
                     for row in reader:
                         channel_id = row[0].split('/')[-2]
-                        iab_category_1 = row[1].strip().replace(" and ", " & ")
+                        iab_category_1 = row[1].strip().replace(" and ", " & ").title()
                         try:
-                            iab_category_2 = row[2].strip().replace(" and ", " & ")
+                            iab_category_2 = row[2].strip().replace(" and ", " & ").title()
                         except Exception:
                             iab_category_2 = None
                         current_channel_iab_categories = [iab_category_1]
