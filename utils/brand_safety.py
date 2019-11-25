@@ -1,5 +1,6 @@
-import brand_safety.constants as constants
+from math import floor
 
+import brand_safety.constants as constants
 
 def get_brand_safety_label(score):
     """
@@ -25,8 +26,25 @@ def get_brand_safety_label(score):
 
 def get_brand_safety_data(score):
     label = get_brand_safety_label(score)
+    mapped_score = map_brand_safety_score(score)
     data = {
-        "score": score,
+        "score": mapped_score,
         "label": label
     }
     return data
+
+
+def map_brand_safety_score(score):
+    """
+    Map brand safety score of 0-100 to 0-10
+    :param score: int
+    :return: int
+    """
+    mapped = score
+    if mapped is not None:
+        try:
+            mapped = floor(int(score) / 10)
+        except ValueError:
+            pass
+    return mapped
+
