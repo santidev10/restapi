@@ -42,6 +42,9 @@ def map_brand_safety_score(score):
     """
     mapped = score
     if mapped is not None:
-        mapped = floor(score / 10)
+        try:
+            mapped = floor(int(score) / 10)
+        except ValueError:
+            mapped = score
     return mapped
 
