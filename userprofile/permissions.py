@@ -110,6 +110,7 @@ class PermissionGroupNames:
     AUDIT_FLAGGING = "Audit Flagging"
     ADS_ANALYZER = "Ads Analyzer"
     TRANSCRIPTS = "Transcripts"
+    MONETIZATION = "Monetization"
 
 
 class Permissions:
@@ -193,6 +194,9 @@ class Permissions:
         )),
         (PermissionGroupNames.TRANSCRIPTS, (
             "transcripts_filter",
+        )),
+        (PermissionGroupNames.MONETIZATION, (
+            "monetization",
         ))
     )
 
@@ -234,6 +238,8 @@ class Permissions:
         "create_opportunity_report",
         # Transcripts
         "transcripts_filter",
+        # is_monetizable filter
+        "monetization",
     )
 
     @staticmethod

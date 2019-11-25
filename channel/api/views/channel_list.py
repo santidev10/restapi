@@ -212,6 +212,11 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["brand_safety"] = None
                 self.request.query_params._mutable = False
 
+        if not user_has_permission("userprofile.monetization") and "monetization.is_monetizable" in self.request.query_params:
+            self.request.query_params._mutable = True
+            del self.request.query_params["monetization.is_monetizable"]
+            self.request.query_params._mutable = False
+
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
