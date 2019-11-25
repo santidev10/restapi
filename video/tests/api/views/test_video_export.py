@@ -327,11 +327,11 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         manager.upsert(videos)
 
-        self._request_collect_file(brand_safety="Low Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-
-        self.assertEqual(8, int(data[1][7]))
-        self.assertEqual(5, int(data[2][7]))
+        rows = sorted(data[1:], key=lambda x: x[7])
+        self.assertEqual(5, int(rows[0][7]))
+        self.assertEqual(8, int(rows[1][7]))

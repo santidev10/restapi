@@ -1,11 +1,11 @@
-from math import floor
-
 from rest_framework.fields import CharField
 from rest_framework.fields import DateTimeField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+
+from utils.brand_safety import map_brand_safety_score
 
 
 class YTVideoLinkFromID(CharField):
@@ -29,9 +29,5 @@ class VideoListExportSerializer(Serializer):
     brand_safety_score = SerializerMethodField()
 
     def get_brand_safety_score(self, doc):
-        overall_score = doc.brand_safety.overall_score
-        if overall_score:
-            score = floor(doc.brand_safety.overall_score / 10)
-        else:
-            score = overall_score
+        score = map_brand_safety_score(doc.brand_safety.overall_score)
         return score

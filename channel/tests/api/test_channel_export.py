@@ -364,24 +364,19 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
     def test_brand_safety_score_mapped(self, *args):
-        user = self.create_admin_user()
-        user.add_custom_user_permission("video_list")
-
-        manager = ChannelManager(upsert_sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+        self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_brand_safety(overall_score=49)
+        channels[0].populate_stats(observed_videos_count=100)
+        channels[1].populate_brand_safety(overall_score=62)
+        channels[1].populate_stats(observed_videos_count=100)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
-        channels[0].populate_brand_safety(overall_score=22)
-        channels[1].populate_brand_safety(overall_score=99)
-
-        manager.upsert(channels)
-
-        self._request_collect_file(brand_safety="Low Risk")
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-
-        print(data)
-
-        self.assertEqual(9, int(data[1][7]))
-        self.assertEqual(2, int(data[2][7]))
+        rows = sorted(data[1:], key=lambda x: x[12])
+        self.assertEqual(4, int(rows[0][12]))
+        self.assertEqual(6, int(rows[1][12]))

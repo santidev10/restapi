@@ -1,8 +1,8 @@
 from django.test import TestCase
 
 import brand_safety.constants as constants
-from utils.brand_safety_view_decorator import get_brand_safety_data
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety import get_brand_safety_data
+from utils.brand_safety import get_brand_safety_label
 
 
 class BrandSafetyDecoratorTestCase(TestCase):

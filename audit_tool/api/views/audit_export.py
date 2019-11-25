@@ -23,6 +23,7 @@ from utils.aws.s3_exporter import S3Exporter
 import boto3
 from botocore.client import Config
 from utils.permissions import user_has_permission
+from utils.brand_safety import map_brand_safety_score
 
 
 class AuditExportApiView(APIView):
@@ -255,6 +256,7 @@ class AuditExportApiView(APIView):
                 "description": v.description,
                 "tags": v.keywords,
             }, full_audit=False)
+            mapped_score = map_brand_safety_score(video_audit_score)
             data = [
                 "https://www.youtube.com/v/" + v.video.video_id,
                 v.name,
@@ -280,7 +282,7 @@ class AuditExportApiView(APIView):
                 all_bad_hit_words,
                 unique_bad_hit_words,
                 video_count if video_count else "",
-                video_audit_score,
+                mapped_score,
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -435,6 +437,7 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 last_category = ""
             channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
+            mapped_score = map_brand_safety_score(channel_brand_safety_score)
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + v.channel.channel_id,
@@ -454,7 +457,7 @@ class AuditExportApiView(APIView):
                 ','.join(bad_video_hit_words[v.channel.channel_id]),
                 ','.join(good_hit_words[v.channel.channel_id]),
                 ','.join(good_video_hit_words[v.channel.channel_id]),
-                channel_brand_safety_score
+                mapped_score
             ]
             try:
                 if len(bad_word_categories) > 0:

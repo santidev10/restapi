@@ -1,14 +1,13 @@
 """
 Segment api serializers module
 """
-from math import floor
-
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
+from utils.brand_safety import map_brand_safety_score
 
 
 class PersistentSegmentVideoExportSerializer(Serializer):
@@ -35,11 +34,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
         return language
 
     def get_overall_score(self, obj):
-        overall_score = obj.brand_safety.overall_score
-        if overall_score:
-            score = floor(obj.brand_safety.overall_score / 10)
-        else:
-            score = overall_score
+        score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
 
@@ -70,9 +65,5 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         return language
 
     def get_overall_score(self, obj):
-        overall_score = obj.brand_safety.overall_score
-        if overall_score:
-            score = floor(obj.brand_safety.overall_score / 10)
-        else:
-            score = overall_score
+        score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
