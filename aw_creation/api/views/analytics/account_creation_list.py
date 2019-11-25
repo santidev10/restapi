@@ -246,10 +246,17 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             for is_max, option in enumerate(("min", "max")):
                 filter_value = filters.get("{}_{}".format(option, metric))
                 if filter_value:
-                    if metric in BASE_STATS + CONVERSIONS:
+                    if metric in BASE_STATS:
                         annotate_key = "sum_{}".format(metric)
                         annotates[annotate_key] = Sum(
                             "account__campaigns__{}".format(metric))
+                        having["{}__{}".format(
+                            annotate_key, "lte" if is_max else "gte")
+                        ] = filter_value
+                    elif metric in CONVERSIONS:
+                        annotate_key = "sum_{}".format(metric)
+                        annotates[annotate_key] = Sum(
+                            "account__campaigns__ad_groups__statistics__{}".format(metric))
                         having["{}__{}".format(
                             annotate_key, "lte" if is_max else "gte")
                         ] = filter_value
