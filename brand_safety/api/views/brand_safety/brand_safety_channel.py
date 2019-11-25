@@ -17,7 +17,6 @@ from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
 from utils.brand_safety import get_brand_safety_data
-from utils.brand_safety import get_brand_safety_label
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
