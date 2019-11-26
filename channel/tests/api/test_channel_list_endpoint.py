@@ -105,11 +105,11 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         sleep(1)
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
         ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
-        high_risk_url = self.url + "?brand_safety=High%20Risk"
-        risky_url = self.url + "?brand_safety=Risky"
-        low_risk_url = self.url + "?brand_safety=Low%20Risk"
-        safe_url = self.url + "?brand_safety=Safe"
-        high_risk_and_safe_url = high_risk_url + "%2CSafe"
+        high_risk_url = self.url + "?brand_safety=Unsuitable"
+        risky_url = self.url + "?brand_safety=Low%20Suitability"
+        low_risk_url = self.url + "?brand_safety=Medium%20Suitability"
+        safe_url = self.url + "?brand_safety=Suitable"
+        high_risk_and_safe_url = high_risk_url + "%2CSuitable"
         high_risk_response = self.client.get(high_risk_url)
         risky_response = self.client.get(risky_url)
         low_risk_response = self.client.get(low_risk_url)
@@ -154,3 +154,28 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(len(response.data.get('items')), len(default_similar_channels))
 
+    def test_ignore_monetization_filter_no_permission(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url)
+        self.assertEqual(len(response.data["items"]), len(channels))
+        self.assertTrue(all(item.get("monetization") is None for item in response.data["items"]))
+
+    def test_monetization_filter_has_permission(self):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url + "?monetization.is_monetizable=true")
+        data = response.data["items"]
+        doc = data[0]
+        self.assertTrue(len(data) == 1)
+        self.assertTrue(doc["main"]["id"] == channels[0].main.id)
+        self.assertTrue(doc["monetization"]["is_monetizable"] is True)

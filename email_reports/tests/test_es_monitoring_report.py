@@ -55,5 +55,3 @@ class ESMonitoringTestCase(TestCase, ESTestCase):
 
         self.assertIsNotNone(email_multi_alternatives.alternatives[0][0])
 
-        self.assertIn("No new general_data,stats,ads_stats,analytics,captions,cms,main sections in the last 3 days",
-                      text_body)

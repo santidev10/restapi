@@ -19,6 +19,7 @@ from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_creation.models import AccountCreation
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
+from aw_reporting.models import CONVERSIONS
 from userprofile.constants import UserSettingsKey
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.permissions import UserHasDashboardPermission
@@ -184,7 +185,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
         second_annotates = {}
         having = {}
         for metric in (
-                "impressions", "video_views", "clicks", "cost",
+                "impressions", "video_views", "clicks", "cost", "all_conversions",
                 "video_view_rate",
                 "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
@@ -194,6 +195,13 @@ class DashboardAccountCreationListApiView(ListAPIView):
                         annotate_key = "sum_{}".format(metric)
                         annotates[annotate_key] = Sum(
                             "account__campaigns__{}".format(metric))
+                        having["{}__{}".format(
+                            annotate_key, "lte" if is_max else "gte")
+                        ] = filter_value
+                    elif metric in CONVERSIONS:
+                        annotate_key = "sum_{}".format(metric)
+                        annotates[annotate_key] = Sum(
+                            "account__campaigns__ad_groups__statistics__{}".format(metric))
                         having["{}__{}".format(
                             annotate_key, "lte" if is_max else "gte")
                         ] = filter_value

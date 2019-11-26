@@ -50,7 +50,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
                      "CampaignOverPacing", "ESMonitoringEmailReport"],
-            debug=os.getenv("EMAIL_NOTIFICATIONS_DEBUG", "1") == "1",
         ),
     },
     "weekday-campaign-reports": {
@@ -59,7 +58,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["DailyCampaignReport"],
             roles="Account Manager",
-            debug=True,
         ),
     },
     "weekend-campaign-reports": {
@@ -68,7 +66,6 @@ CELERY_BEAT_SCHEDULE = {
         "kwargs": dict(
             reports=["DailyCampaignReport"],
             roles="Account Manager,Ad Ops Manager",
-            debug=True,
         ),
     },
     "recreate-demo-data": {
@@ -90,6 +87,26 @@ CELERY_BEAT_SCHEDULE = {
     "pull-custom-transcripts": {
         "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60
+    },
+    "cache-video-aggregations": {
+        "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
+        "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-channel-aggregations": {
+        "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
+        "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-keyword-aggregations": {
+        "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
+        "schedule": crontab(hour="*/4", minute="0"),
+    },
+    "cache-research-videos-defaults": {
+        "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
+        "schedule": crontab(hour="*/2", minute="0"),
+    },
+    "cache-research-channels-defaults": {
+        "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
+        "schedule": crontab(hour="*/2", minute="0"),
     }
 }
 
@@ -106,6 +123,7 @@ class Queue:
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
+    CACHE_RESEARCH = "cache_research"
 
 
 CELERY_ROUTES_PREPARED = [
@@ -116,6 +134,7 @@ CELERY_ROUTES_PREPARED = [
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
     ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
+    ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError

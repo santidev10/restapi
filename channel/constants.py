@@ -12,7 +12,7 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
                 "general_data.youtube_published_at")
 
-EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics")
+EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics", "monetization.is_monetizable")
 
 CHANNEL_CSV_HEADERS = [
     "title",

@@ -39,3 +39,6 @@ class AnalyticsAccountCreationDetailsSerializer(AnalyticsAccountCreationListSeri
                     clicks_data[key] = 0
             stats_value.update(clicks_data)
         return stats
+
+    def _fields_to_exclude(self):
+        return ("all_conversions",)

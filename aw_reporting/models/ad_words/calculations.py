@@ -187,7 +187,7 @@ def base_stats_aggregator(prefix=None):
         ),
         sum_video_views=Sum("video_views"),
         sum_clicks=Sum("clicks"),
-        sum_cost=Sum("cost"),
+        sum_cost=Sum("cost")
     )
 
 
