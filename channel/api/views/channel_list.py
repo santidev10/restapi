@@ -194,7 +194,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     def get_queryset(self):
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                    Sections.TASK_US_DATA, Sections.MONETIZATION)
+                    Sections.TASK_US_DATA)
         try:
             channels_ids = self.get_own_channel_ids(self.request.user, deepcopy(self.request.query_params))
         except UserChannelsNotAvailable:
@@ -212,16 +212,20 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["brand_safety"] = None
                 self.request.query_params._mutable = False
 
-        if not user_has_permission("userprofile.monetization") and "monetization.is_monetizable" in self.request.query_params:
+        if self.request.user.has_perm("userprofile.monetization_filter"):
+            sections += (Sections.MONETIZATION,)
+        else:
             self.request.query_params._mutable = True
-            del self.request.query_params["monetization.is_monetizable"]
+            try:
+                del self.request.query_params["monetization.is_monetizable"]
+            except KeyError:
+                pass
             self.request.query_params._mutable = False
 
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
-
         return result
 
     @staticmethod

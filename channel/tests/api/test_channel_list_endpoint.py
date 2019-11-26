@@ -16,8 +16,6 @@ from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
-import brand_safety.constants as constants
-
 
 class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
     url = reverse(ChannelPathName.CHANNEL_LIST, [Namespace.CHANNEL])
@@ -156,3 +154,27 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(len(response.data.get('items')), len(default_similar_channels))
 
+    def test_ignore_monetization_filter_no_permission(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url)
+        self.assertTrue(all(item.get("monetization") is None for item in response.data["items"]))
+
+    def test_monetization_filter_has_permission(self):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url + "?monetization.is_monetizable=true")
+        data = response.data["items"]
+        doc = data[0]
+        self.assertTrue(len(data) == 1)
+        self.assertTrue(doc["main"]["id"] == channels[0].main.id)
+        self.assertTrue(doc["monetization"]["is_monetizable"] is True)

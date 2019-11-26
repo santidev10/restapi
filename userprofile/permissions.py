@@ -196,7 +196,7 @@ class Permissions:
             "transcripts_filter",
         )),
         (PermissionGroupNames.MONETIZATION, (
-            "monetization",
+            "monetization_filter",
         ))
     )
 
@@ -238,8 +238,8 @@ class Permissions:
         "create_opportunity_report",
         # Transcripts
         "transcripts_filter",
-        # is_monetizable filter
-        "monetization",
+        # Monetization
+        "monetization_filter",
     )
 
     @staticmethod
