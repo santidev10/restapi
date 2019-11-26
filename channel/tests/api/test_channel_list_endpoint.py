@@ -163,6 +163,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
 
         response = self.client.get(self.url)
+        self.assertEqual(len(response.data["items"]), len(channels))
         self.assertTrue(all(item.get("monetization") is None for item in response.data["items"]))
 
     def test_monetization_filter_has_permission(self):
