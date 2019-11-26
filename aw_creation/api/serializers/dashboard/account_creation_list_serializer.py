@@ -17,6 +17,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
 from aw_creation.api.serializers.common.struck_field import StruckField
+from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
@@ -28,7 +29,6 @@ from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import extended_base_stats_aggregator
 from aw_reporting.models import client_cost_campaign_required_annotation
 from aw_reporting.models import dict_add_calculated_stats
 from aw_reporting.models import dict_norm_base_stats
@@ -209,7 +209,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         data = queryset \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      **extended_base_stats_aggregator())
+                      **stats_aggregator(ad_group_stats_prefix="ad_groups__statistics__"))
         dates = queryset.annotate(
             statistic_min_date=Min("statistics__date"),
             statistic_max_date=Max("statistics__date"),

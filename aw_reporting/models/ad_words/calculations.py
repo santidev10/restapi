@@ -191,12 +191,6 @@ def base_stats_aggregator(prefix=None):
     )
 
 
-def extended_base_stats_aggregator(prefix=None):
-    _base_stats_aggregator = base_stats_aggregator(prefix)
-    _base_stats_aggregator.update(sum_all_conversions=Sum("all_conversions"))
-    return _base_stats_aggregator
-
-
 def aw_placement_annotation(*keys, prefix=""):
     return dict((
         (key, F(prefix + "salesforce_placement__" + key)) for key in keys

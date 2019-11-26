@@ -21,6 +21,7 @@ from utils.permissions import user_has_permission
 
 from cache.models import CacheItem
 from cache.constants import KEYWORD_AGGREGATIONS_KEY
+from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS
 
 
 class KeywordListApiView(APIViewMixin, ListAPIView):
@@ -57,15 +58,7 @@ class KeywordListApiView(APIViewMixin, ListAPIView):
     match_phrase_filter = MATCH_PHRASE_FILTER
     params_adapters = (KeywordViralParamAdapter,)
 
-    allowed_aggregations = (
-        "stats.search_volume:min",
-        "stats.search_volume:max",
-        "stats.average_cpc:min",
-        "stats.average_cpc:max",
-        "stats.competition:min",
-        "stats.competition:max",
-        "stats.is_viral"
-    )
+    allowed_aggregations = ALLOWED_KEYWORD_AGGREGATIONS
 
     allowed_percentiles = (
         "stats.search_volume:percentiles",
