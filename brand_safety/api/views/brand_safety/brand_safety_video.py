@@ -10,7 +10,7 @@ from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety import get_brand_safety_data
 
 
 class BrandSafetyVideoAPIView(APIView):
@@ -29,19 +29,19 @@ class BrandSafetyVideoAPIView(APIView):
         category_mapping = BadWordCategory.get_category_mapping()
         try:
             video_data = AuditUtils.get_items([video_id], self.video_manager)[0]
-            brand_safety_data = video_data.brand_safety
+            brand_safety_section = video_data.brand_safety
         except (IndexError, AttributeError):
             raise Http404
-        video_score = brand_safety_data.overall_score
+        brand_safety_data = get_brand_safety_data(brand_safety_section.overall_score)
         video_brand_safety_data = {
-            "score": video_score,
-            "label": get_brand_safety_label(video_score),
+            "score": brand_safety_data["score"],
+            "label": brand_safety_data["label"],
             "total_unique_flagged_words": 0,
             "category_flagged_words": defaultdict(set),
         }
         # Map category ids to category names and aggregate all keywords for each category
         all_keywords = set()
-        categories = brand_safety_data.categories.to_dict()
+        categories = brand_safety_section.categories.to_dict()
         for category_id, data in categories.items():
             if str(category_id) in BadWordCategory.EXCLUDED:
                 continue

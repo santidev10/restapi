@@ -109,7 +109,6 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
     params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter,)
-
     allowed_aggregations = ALLOWED_CHANNEL_AGGREGATIONS
 
     allowed_percentiles = (
@@ -158,11 +157,20 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["brand_safety"] = None
                 self.request.query_params._mutable = False
 
+        if self.request.user.has_perm("userprofile.monetization_filter"):
+            sections += (Sections.MONETIZATION,)
+        else:
+            self.request.query_params._mutable = True
+            try:
+                del self.request.query_params["monetization.is_monetizable"]
+            except KeyError:
+                pass
+            self.request.query_params._mutable = False
+
         if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
             sections += (Sections.ANALYTICS,)
 
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
-
         return result
 
     @staticmethod

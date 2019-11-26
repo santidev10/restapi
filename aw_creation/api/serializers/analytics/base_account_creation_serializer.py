@@ -151,9 +151,9 @@ class BaseAccountCreationSerializer(ModelSerializer, ExcludeFieldsMixin):
             CAMPAIGN_ACCOUNT_ID_KEY + "__in": account_creation_ids
         }
 
-        queryset = Campaign.objects \
-            .filter(**campaign_filter) \
-            .values(CAMPAIGN_ACCOUNT_ID_KEY) \
+        queryset = Campaign.objects\
+            .filter(**campaign_filter)\
+            .values(CAMPAIGN_ACCOUNT_ID_KEY)\
             .order_by(CAMPAIGN_ACCOUNT_ID_KEY)
 
         data = queryset \

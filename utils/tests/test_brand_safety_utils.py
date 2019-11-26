@@ -1,8 +1,8 @@
 from django.test import TestCase
 
 import brand_safety.constants as constants
-from utils.brand_safety_view_decorator import get_brand_safety_data
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety import get_brand_safety_data
+from utils.brand_safety import get_brand_safety_label
 
 
 class BrandSafetyDecoratorTestCase(TestCase):
@@ -71,7 +71,7 @@ class BrandSafetyDecoratorTestCase(TestCase):
             "label": constants.HIGH_RISK
         }
         test_5 = {
-            "score": 1000,
+            "score": 100,
             "label": constants.SAFE
         }
         test_6 = {
@@ -90,11 +90,11 @@ class BrandSafetyDecoratorTestCase(TestCase):
             "score": "5P",
             "label": None
         }
-        self.assertEqual(get_brand_safety_data(test_1["score"]), test_1)
-        self.assertEqual(get_brand_safety_data(test_2["score"]), test_2)
-        self.assertEqual(get_brand_safety_data(test_3["score"]), test_3)
-        self.assertEqual(get_brand_safety_data(test_4["score"]), test_4)
-        self.assertEqual(get_brand_safety_data(test_5["score"]), test_5)
+        self.assertEqual(get_brand_safety_data(test_1["score"]), {"score": 9, "label": test_1["label"]})
+        self.assertEqual(get_brand_safety_data(test_2["score"]), {"score": 8, "label": test_2["label"]})
+        self.assertEqual(get_brand_safety_data(test_3["score"]), {"score": 7, "label": test_3["label"]})
+        self.assertEqual(get_brand_safety_data(test_4["score"]), {"score": 6, "label": test_4["label"]})
+        self.assertEqual(get_brand_safety_data(test_5["score"]), {"score": 10, "label": test_5["label"]})
         self.assertEqual(get_brand_safety_data(test_6["score"]), test_6)
         self.assertEqual(get_brand_safety_data(test_7["score"]), test_7)
         self.assertEqual(get_brand_safety_data(test_8["score"]), test_8)

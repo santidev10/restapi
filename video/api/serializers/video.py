@@ -5,7 +5,7 @@ from itertools import zip_longest
 
 from rest_framework.fields import SerializerMethodField
 
-from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.brand_safety import get_brand_safety_data
 from utils.es_components_api_utils import ESDictSerializer
 from brand_safety.languages import LANG_CODES
 

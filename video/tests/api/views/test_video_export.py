@@ -1,4 +1,5 @@
 from datetime import datetime
+from math import floor
 from unittest import mock
 
 import pytz
@@ -310,3 +311,27 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1:]
 
         self.assertEqual(2, len(data))
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_brand_safety_score_mapped(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("video_list")
+
+        manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
+        videos = [Video(next(int_iterator)) for _ in range(2)]
+
+        videos[0].populate_brand_safety(overall_score=54)
+        videos[1].populate_brand_safety(overall_score=87)
+
+        manager.upsert(videos)
+
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)
+        rows = sorted(data[1:], key=lambda x: x[7])
+        self.assertEqual(5, int(rows[0][7]))
+        self.assertEqual(8, int(rows[1][7]))
