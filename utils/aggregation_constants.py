@@ -51,7 +51,8 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
         "stats.views_per_video:max",
         "stats.views_per_video:min",
         "brand_safety",
-        "stats.channel_group"
+        "stats.channel_group",
+        "monetization.is_monetizable:exists"
     )
 
 ALLOWED_VIDEO_AGGREGATIONS = (
