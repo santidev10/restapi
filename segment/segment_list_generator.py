@@ -83,7 +83,9 @@ class SegmentListGenerator(object):
         while dequeue_export:
             segment = dequeue_export.segment
             segment.remove_all_from_segment()
+
             all_items = self.add_to_segment(segment, query=dequeue_export.query_obj, size=segment.LIST_SIZE)
+
             self.custom_list_finalizer(segment, dequeue_export, all_items)
             dequeue_export = CustomSegmentFileUpload.objects.filter(completed_at=None).first()
 
@@ -290,17 +292,18 @@ class SegmentListGenerator(object):
         segment.export_file(updating=updating, queryset=all_items)
         segment.save()
         export.refresh_from_db()
-        subject = "Custom Target List: {}".format(segment.title)
-        text_header = "Your Custom Target List {} is ready".format(segment.title)
-        text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
-        send_html_email(
-            subject=subject,
-            to=segment.owner.email,
-            text_header=text_header,
-            text_content=text_content,
-            from_email=settings.EXPORTS_EMAIL_ADDRESS
-        )
-        message = "updated" if updating else "generated"
+        if updating is False:
+            subject = "Custom Target List: {}".format(segment.title)
+            text_header = "Your Custom Target List {} is ready".format(segment.title)
+            text_content = "<a href={download_url}>Click here to download</a>".format(download_url=export.download_url)
+            send_html_email(
+                subject=subject,
+                to=segment.owner.email,
+                text_header=text_header,
+                text_content=text_content,
+                from_email=settings.EXPORTS_EMAIL_ADDRESS
+            )
+            message = "updated" if updating else "generated"
         logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
     def persistent_segment_finalizer(self, segment, all_items):

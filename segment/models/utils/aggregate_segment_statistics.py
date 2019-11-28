@@ -12,6 +12,7 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
     """
     filters = {
         "yt_id__in": yt_ids,
+        "impressions__gte": 1000,
     }
     aggregated = {
         "cost": 0,
@@ -21,7 +22,7 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
         "video_clicks": 0,
         "video_impressions": 0,
     }
-    queryset = related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
+    queryset = related_aw_statistics_model.objects.select_related("ad_group").only("ad_group__video_views").filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
     queryset.query.clear_ordering(force_empty=True)
     for statistic in queryset:
         for field, value in statistic.items():

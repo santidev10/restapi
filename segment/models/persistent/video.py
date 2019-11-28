@@ -4,7 +4,6 @@ PersistentSegmentVideo models module
 from django.db.models import ForeignKey
 from django.db.models import CASCADE
 
-from audit_tool.models import AuditCategory
 from aw_reporting.models import YTVideoStatistic
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
@@ -17,12 +16,14 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import VIEWS_FIELD
 from segment.api.serializers import PersistentSegmentVideoExportSerializer
+from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
 
 
 class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
+    SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
     segment_type = PersistentSegmentType.VIDEO
     serializer = PersistentSegmentVideoExportSerializer
     objects = PersistentSegmentManager()

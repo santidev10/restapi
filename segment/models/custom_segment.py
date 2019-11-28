@@ -33,6 +33,8 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.models.utils.calculate_segment_statistics import calculate_statistics
 from segment.models.utils.export_context_manager import ExportContextManager
 from segment.models.segment_mixin import SegmentMixin
+from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
+from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from utils.models import Timestampable
 from segment.models.utils.segment_exporter import SegmentExporter
 
@@ -56,12 +58,14 @@ class CustomSegment(SegmentMixin, Timestampable):
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
+            self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
+            self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.serializer = CustomSegmentChannelExportSerializer
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
