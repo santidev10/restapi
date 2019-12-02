@@ -17,7 +17,7 @@ def cache_research_videos_defaults():
     logger.debug("Starting default research videos caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                 Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                Sections.CUSTOM_CAPTIONS)
+                Sections.CUSTOM_CAPTIONS, Sections.ANALYTICS)
 
     fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'analytics', 'ads_stats', 'captions',
                     'cms.cms_title', 'stats.subscribers', 'stats.last_video_published_at', 'stats.engage_rate',
@@ -52,6 +52,5 @@ def cache_research_videos_defaults():
     print("Caching default research videos count and filters.")
     queryset_adapter.count()
     queryset_adapter.get_data(0, 50)
-
     logger.debug("Finished default research videos caching.")
     print("Finished default research videos caching.")

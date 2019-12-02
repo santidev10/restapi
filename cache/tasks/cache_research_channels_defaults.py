@@ -17,7 +17,7 @@ def cache_research_channels_defaults():
     logger.debug("Starting default research channels caching.")
     sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                 Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                Sections.TASK_US_DATA)
+                Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.ANALYTICS)
 
     fields_to_load = ['main', 'social', 'custom_properties', 'ads_stats', 'analytics.updated_at', 'analytics.cms_title',
                       'analytics.traffic_source', 'analytics.age', 'analytics.country', 'analytics.gender',
@@ -55,6 +55,5 @@ def cache_research_channels_defaults():
     print("Caching default research channels count and filters.")
     queryset_adapter.count()
     queryset_adapter.get_data(0, 50)
-
     logger.debug("Finished default research channels caching.")
     print("Finished default research channels caching.")

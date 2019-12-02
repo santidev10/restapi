@@ -102,11 +102,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cache-research-videos-defaults": {
         "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
-        "schedule": crontab(hour="*/2", minute="0"),
+        "schedule": crontab(minute="*/30"),
     },
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(hour="*/2", minute="0"),
+        "schedule": crontab(minute="*/30"),
     }
 }
 
