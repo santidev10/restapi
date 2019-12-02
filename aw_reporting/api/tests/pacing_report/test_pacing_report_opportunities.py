@@ -1184,3 +1184,19 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])
+
+    def test_exclude_opportunities_no_campaigns(self):
+        any_date = date(2019, 1, 1)
+        account = Account.objects.create(id=next(int_iterator))
+        opp_1 = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
+        Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=pl_1, start_date=any_date, end_date=any_date)
+
+        opp_2 = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], str(opp_1.id))
