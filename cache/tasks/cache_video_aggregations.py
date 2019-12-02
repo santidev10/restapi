@@ -16,7 +16,7 @@ def cache_video_aggregations():
     logger.debug("Starting video aggregations caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                 Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                Sections.CUSTOM_CAPTIONS)
+                Sections.CUSTOM_CAPTIONS, Sections.ANALYTICS)
 
     manager = VideoManager(sections)
 
