@@ -14,6 +14,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import Opportunity
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Flight
+from aw_reporting.models import Campaign
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
 
@@ -93,6 +94,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
+        )
         update = dict(
             cpm_buffer=1,
             cpv_buffer=2
@@ -114,6 +118,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         flight = Flight.objects.create(
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
         )
         url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
         response = self.client.get(url)
@@ -139,6 +146,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
+        )
         url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
         response = self.client.get(url)
         cpm_buffer = self.pacing_report.big_goal_factor
@@ -162,6 +172,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         flight = Flight.objects.create(
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
         )
         url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
         response = self.client.get(url)
@@ -187,6 +200,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
         )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
+        )
         url = "{}?search={}".format(reverse(Namespace.AW_REPORTING + ":" + Name.PacingReport.OPPORTUNITIES), opportunity.name)
         response = self.client.get(url)
         cpm_buffer = self.pacing_report.big_goal_factor
@@ -210,6 +226,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         flight = Flight.objects.create(
             id="1", placement=placement, name="F",
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100
+        )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
         )
         update = dict(
             cpm_buffer=10,
@@ -236,6 +255,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         flight = Flight.objects.create(
             id="1", placement=placement, name="F", total_cost=100,
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
+        )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement, name="C"
         )
         update = dict(
             cpv_buffer=10,
@@ -270,6 +292,9 @@ class PacingReportOpportunityBufferTestCase(APITestCase):
         flight_cpv = Flight.objects.create(
             id="2", placement=placement_cpv, name="F", total_cost=200,
             start=now - timedelta(days=1), end=now + timedelta(days=1), ordered_units=100, delivered=50
+        )
+        Campaign.objects.create(
+            id="1", salesforce_placement=placement_cpm, name="C"
         )
         update = dict(
             cpm_buffer=20,

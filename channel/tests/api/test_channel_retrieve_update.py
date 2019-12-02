@@ -172,3 +172,22 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         for field in extra_fields:
             with self.subTest(field):
                 self.assertIn(field, response.data)
+
+    def test_ignore_monetization_filter_no_permission(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_details")
+        channel = Channel(f"test_channel_id_{next(int_iterator)}")
+        channel.populate_monetization(is_monetizable=True)
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert([channel])
+        url = self._get_url(channel.main.id) + "?fields=main.id%2Cmonetization.is_monetizable"
+        response = self.client.get(url)
+        self.assertIsNone(response.data.get("monetization"))
+
+    def test_monetization_filter_has_permission(self):
+        self.create_admin_user()
+        channel = Channel(f"test_channel_id_{next(int_iterator)}")
+        channel.populate_monetization(is_monetizable=True)
+        ChannelManager([Sections.GENERAL_DATA, Sections.AUTH, Sections.MONETIZATION]).upsert([channel])
+        url = self._get_url(channel.main.id) + "?fields=main.id%2Cmonetization.is_monetizable"
+        response = self.client.get(url)
+        self.assertIsNotNone(response.data.get("monetization"))
