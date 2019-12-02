@@ -115,7 +115,7 @@ class Command(BaseCommand):
                         rows_parsed += 1
                         print(f"Number of rows parsed: {rows_parsed}")
                         try:
-                            if len(all_channel_ids) >= 1000:
+                            if len(all_channel_ids) >= 10000:
                                 all_channels = channel_manager.get_or_create(all_channel_ids)
                                 for channel in all_channels:
                                     chan_id = channel.main.id
@@ -132,6 +132,7 @@ class Command(BaseCommand):
                                         try:
                                             audit_channel = AuditChannelMeta.objects.get(channel__channel_id=chan_id)
                                             audit_channel.monetised = True
+                                            audit_channel.save()
                                         except ObjectDoesNotExist:
                                             pass
                                     print(f"Updated fields for {chan_id}")
