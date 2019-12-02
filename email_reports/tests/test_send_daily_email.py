@@ -209,13 +209,15 @@ class SendDailyEmailsTestCase(APITestCase):
         today = now.date()
         SavedEmail.objects.all().delete()
 
-        Opportunity.objects.create(
+        opp = Opportunity.objects.create(
             id="solo", name="Opportunity",
             ad_ops_manager=ad_ops,
             start=today - timedelta(days=2),
             end=today + timedelta(days=2),
             probability=100,
         )
+        placement = OpPlacement.objects.create(name="pl", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
 
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
@@ -240,9 +242,9 @@ class SendDailyEmailsTestCase(APITestCase):
             end=today + timedelta(days=2),
             probability=100,
         )
-        OpPlacement.objects.create(opportunity=opportunity,
+        placement = OpPlacement.objects.create(opportunity=opportunity,
                                    goal_type_id=SalesForceGoalType.CPV)
-
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
@@ -269,9 +271,9 @@ class SendDailyEmailsTestCase(APITestCase):
             end=today + timedelta(days=2),
             probability=100,
         )
-        OpPlacement.objects.create(opportunity=opportunity,
+        placement = OpPlacement.objects.create(opportunity=opportunity,
                                    goal_type_id=SalesForceGoalType.CPM)
-
+        Campaign.objects.create(salesforce_placement=placement)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
@@ -298,13 +300,14 @@ class SendDailyEmailsTestCase(APITestCase):
             end=today + timedelta(days=2),
             probability=100,
         )
-        OpPlacement.objects.create(id="1",
+        pl_1 = OpPlacement.objects.create(id="1",
                                    opportunity=opportunity,
                                    goal_type_id=SalesForceGoalType.CPV)
-        OpPlacement.objects.create(id="2",
+        pl_2 = OpPlacement.objects.create(id="2",
                                    opportunity=opportunity,
                                    goal_type_id=SalesForceGoalType.CPM)
-
+        Campaign.objects.create(id=1, name="c", salesforce_placement=pl_1)
+        Campaign.objects.create(id=2 ,name="c", salesforce_placement=pl_2)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
@@ -328,9 +331,9 @@ class SendDailyEmailsTestCase(APITestCase):
             end=today + timedelta(days=2),
             probability=100,
         )
-        OpPlacement.objects.create(opportunity=opportunity,
+        placement = OpPlacement.objects.create(opportunity=opportunity,
                                    goal_type_id=SalesForceGoalType.HARD_COST)
-
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
@@ -554,13 +557,15 @@ class SendDailyEmailsTestCase(APITestCase):
                                      role=am_role)
         am = User.objects.create(id="2", name="Paul", email="2@mail.cz",
                                  role=am_role)
-        Opportunity.objects.create(
+        opp = Opportunity.objects.create(
             id="1",
             ad_ops_manager=ad_ops,
             account_manager=am,
             start=now - timedelta(days=3),
             end=now + timedelta(days=2),
             probability=100)
+        placement = OpPlacement.objects.create(name="pl", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"],
                                      roles=OpportunityManager.ACCOUNT_MANAGER,
