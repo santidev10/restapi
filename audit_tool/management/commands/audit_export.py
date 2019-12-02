@@ -15,8 +15,14 @@ from audit_tool.models import AuditVideoProcessor
 logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
+    def add_arguments(self, parser):
+        parser.add_argument('thread_id', type=int)
+
     def handle(self, *args, **options):
-        with PidFile(piddir='.', pidname='export_queue.pid') as p:
+        self.thread_id = options.get('thread_id')
+        if not self.thread_id:
+            self.thread_id = 0
+        with PidFile(piddir='.', pidname='export_queue_{}.pid'.format(self.thread_id)) as p:
             try:
                 self.machine_number = settings.AUDIT_MACHINE_NUMBER
             except Exception as e:

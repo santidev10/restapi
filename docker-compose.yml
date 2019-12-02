@@ -19,7 +19,7 @@ services:
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
-      APM_ENABLED: 1
+      APM_ENABLED: 0
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
     depends_on:
       rabbitmq:
@@ -40,7 +40,7 @@ services:
 
   celery_worker:
     image: viewiq-restapi
-    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic,cache_aggregations"]
+    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic,cache_research"]
     depends_on:
       - rabbitmq
       - pg

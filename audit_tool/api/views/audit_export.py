@@ -23,6 +23,7 @@ from utils.aws.s3_exporter import S3Exporter
 import boto3
 from botocore.client import Config
 from utils.permissions import user_has_permission
+from utils.brand_safety import map_brand_safety_score
 
 
 class AuditExportApiView(APIView):
@@ -255,8 +256,9 @@ class AuditExportApiView(APIView):
                 "description": v.description,
                 "tags": v.keywords,
             }, full_audit=False)
+            mapped_score = map_brand_safety_score(video_audit_score)
             data = [
-                "https://www.youtube.com/v/" + v.video.video_id,
+                "https://www.youtube.com/video/" + v.video.video_id,
                 v.name,
                 language,
                 category,
@@ -280,7 +282,7 @@ class AuditExportApiView(APIView):
                 all_bad_hit_words,
                 unique_bad_hit_words,
                 video_count if video_count else "",
-                video_audit_score,
+                mapped_score,
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -376,6 +378,7 @@ class AuditExportApiView(APIView):
             "Inclusion Words (channel)",
             "Inclusion Words (video)",
             "Brand Safety Score",
+            "Monetised",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -435,6 +438,10 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 last_category = ""
             channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
+            mapped_score = map_brand_safety_score(channel_brand_safety_score)
+            if not v.monetised:
+                pass
+                #PUT CODE HERE TO GO TO ELASTIC SEARCH AND CHECK
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + v.channel.channel_id,
@@ -444,8 +451,8 @@ class AuditExportApiView(APIView):
                 v.video_count,
                 country,
                 language,
-                v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else '',
-                v.last_uploaded_view_count if v.last_uploaded_view_count else '',
+                v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
+                v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
                 bad_videos_count[v.channel.channel_id],
                 len(bad_hit_words[v.channel.channel_id]),
@@ -454,7 +461,8 @@ class AuditExportApiView(APIView):
                 ','.join(bad_video_hit_words[v.channel.channel_id]),
                 ','.join(good_hit_words[v.channel.channel_id]),
                 ','.join(good_video_hit_words[v.channel.channel_id]),
-                channel_brand_safety_score
+                mapped_score,
+                'true' if v.monetised else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
