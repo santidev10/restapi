@@ -45,7 +45,10 @@ class Command(BaseCommand):
             audit_type = audit.audit_type
         if audit_type == 0:  # recommendation engine
             meta['total'] = audit.max_recommended
-            count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).count()
+            if not audit.params.get('max_recommended_type') or audit.params.get('max_recommended_type') == 'video':
+                count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).count()
+            else:
+                count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).values('video__channel_id').distinct().count()
             meta['count'] = count
         elif audit_type == 1:  # process videos
             meta['total'] = AuditVideoProcessor.objects.filter(audit=audit).count()
