@@ -12,7 +12,6 @@ from es_components.constants import Sections
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError
-from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 
 from audit_tool.models import AuditChannel
@@ -134,7 +133,7 @@ class Command(BaseCommand):
                                             audit_channel = AuditChannel.get_or_create(chan_id, create=False).auditchannelmeta
                                             audit_channel.monetised = True
                                             audit_channel.save()
-                                        except ObjectDoesNotExist:
+                                        except Exception as e:
                                             pass
                                     print(f"Updated fields for {chan_id}")
                                     print(f"Parsed {channel_counter} channels.")
