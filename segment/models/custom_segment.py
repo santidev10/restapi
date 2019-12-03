@@ -21,17 +21,13 @@ from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
 from es_components.constants import Sections
-from es_components.constants import SEGMENTS_UUID_FIELD
 from es_components.constants import VIEWS_FIELD
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
-from segment.models.utils.calculate_segment_statistics import calculate_statistics
-from segment.models.utils.export_context_manager import ExportContextManager
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS

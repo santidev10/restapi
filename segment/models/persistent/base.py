@@ -66,10 +66,13 @@ class BasePersistentSegment(Timestampable):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_BUCKET_NAME)
 
-    def export_file(self, queryset=None):
+    def export_file(self, queryset=None, filename=None):
         now = timezone.now()
         s3_key = self.get_s3_key(datetime=now)
-        self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
+        if filename:
+            self.s3_exporter.export_file_to_s3(filename, s3_key)
+        else:
+            self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
         PersistentSegmentFileUpload.objects.create(segment_uuid=self.uuid, filename=s3_key, created_at=now)
 
     @property

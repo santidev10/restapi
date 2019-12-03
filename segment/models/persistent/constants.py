@@ -251,5 +251,5 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
     "Stranger Things": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/StrangerThings.jpg",
 }
 
-CHANNEL_SOURCE_FIELDS = ["main.id", "general_data.title", "general_data.top_language", "brand_safety.audited_videos", "stats.last_30day_views", "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_views", "general_data.thumbnail_image_url", "brand_safety.language", "general_data.top_category", "brand_safety.overall_score"]
+CHANNEL_SOURCE_FIELDS = ["main.id", "general_data.title", "general_data.top_language", "brand_safety.videos_scored", "stats.observed_videos_dislikes", "stats.last_30day_views", "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_views", "stats.observed_videos_likes", "general_data.thumbnail_image_url", "brand_safety.language", "general_data.top_category", "brand_safety.overall_score"]
 VIDEO_SOURCE_FIELDS = ["main.id", "general_data.title", "general_data.top_language", "stats.subscribers", "stats.views"]

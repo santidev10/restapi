@@ -14,10 +14,12 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models import CustomSegmentFileUpload
 from segment.models.persistent import PersistentSegmentChannel
+from segment.models.persistent import PersistentSegmentFileUpload
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import CATEGORY_THUMBNAIL_IMAGE_URLS
 from segment.models.persistent.constants import PersistentSegmentTitles
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from segment.tasks.generate_segment import generate_segment
 
 logger = logging.getLogger(__name__)
 
@@ -130,10 +132,9 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
-        # Clean old segments
+        results = generate_segment(new_category_segment, query, new_category_segment.LIST_SIZE)
+        self.persistent_segment_finalizer(new_category_segment, all_items, results)
         self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
-        self.persistent_segment_finalizer(new_category_segment, all_items)
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
@@ -156,9 +157,9 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_category_segment, query=query, size=self.WHITELIST_SIZE)
+        results = generate_segment(new_category_segment, query, new_category_segment.LIST_SIZE)
+        self.persistent_segment_finalizer(new_category_segment, results)
         self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
-        self.persistent_segment_finalizer(new_category_segment, all_items)
 
     def _generate_master_video_whitelist(self):
         """
@@ -178,10 +179,10 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_master_video_whitelist, query=query, size=self.WHITELIST_SIZE)
+        results = generate_segment(new_master_video_whitelist, query, new_master_video_whitelist.LIST_SIZE)
+        self.persistent_segment_finalizer(new_master_video_whitelist, results)
         self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
                                  master_list_type=constants.WHITELIST)
-        self.persistent_segment_finalizer(new_master_video_whitelist, all_items)
 
     def _generate_master_video_blacklist(self):
         """
@@ -201,10 +202,10 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_master_video_blacklist, query=query, size=self.BLACKLIST_SIZE)
+        results = generate_segment(new_master_video_blacklist, query, new_master_video_blacklist.LIST_SIZE)
+        self.persistent_segment_finalizer(new_master_video_blacklist, results)
         self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
                                  master_list_type=constants.BLACKLIST)
-        self.persistent_segment_finalizer(new_master_video_blacklist, all_items)
 
     def _generate_master_channel_whitelist(self):
         """
@@ -223,10 +224,10 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_master_channel_whitelist, query=query, size=self.WHITELIST_SIZE)
+        results = generate_segment(new_master_channel_whitelist, query, new_master_channel_whitelist.LIST_SIZE)
+        self.persistent_segment_finalizer(new_master_channel_whitelist, results)
         self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
                                  master_list_type=constants.WHITELIST)
-        self.persistent_segment_finalizer(new_master_channel_whitelist, all_items)
 
     def _generate_master_channel_blacklist(self):
         """
@@ -245,10 +246,10 @@ class SegmentListGenerator(object):
                 & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
             self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        all_items = self.add_to_segment(new_master_channel_blacklist, query=query, size=self.BLACKLIST_SIZE)
+        results = generate_segment(new_master_channel_blacklist, query, new_master_channel_blacklist.LIST_SIZE)
+        self.persistent_segment_finalizer(new_master_channel_blacklist, results)
         self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
                                  master_list_type=constants.BLACKLIST)
-        self.persistent_segment_finalizer(new_master_channel_blacklist, all_items)
 
     def add_to_segment(self, segment, query=None, size=None):
         """
@@ -306,12 +307,13 @@ class SegmentListGenerator(object):
             message = "updated" if updating else "generated"
         logger.debug(f"Successfully {message} export for custom list: id: {segment.id}, title: {segment.title}")
 
-    def persistent_segment_finalizer(self, segment, all_items):
+    def persistent_segment_finalizer(self, segment, details):
         """
         Finalize operations for PersistentSegment objects (Brand Suitable Target lists)
         """
-        segment.details = segment.calculate_statistics(items=all_items)
-        segment.export_file(queryset=all_items)
+        download_url = details.pop("download_url")
+        segment.details = details
         segment.save()
+        PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=download_url, created_at=timezone.now())
         logger.debug(
             f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
