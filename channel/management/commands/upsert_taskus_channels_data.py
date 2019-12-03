@@ -11,7 +11,8 @@ from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 
 from audit_tool.models import AuditChannel
