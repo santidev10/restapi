@@ -4,10 +4,11 @@ import os
 import tempfile
 
 from django.conf import settings
-from utils.utils import chunks_generator
 
+from saas import celery_app
 from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
 from utils.brand_safety import map_brand_safety_score
+from utils.utils import chunks_generator
 
 BATCH_SIZE = 1000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100

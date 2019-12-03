@@ -107,6 +107,14 @@ CELERY_BEAT_SCHEDULE = {
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
         "schedule": crontab(hour="*/2", minute="0"),
+    },
+    "update_custom_segment": {
+        "task": "segment.tasks.update_custom_segment.update_custom_segment",
+        "schedule": crontab(minute="*"),
+    },
+    "generate_persistent_segments": {
+        "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
+        "schedule": crontab(day_of_week="0"),
     }
 }
 
