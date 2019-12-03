@@ -15,7 +15,7 @@ from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.conf import settings
 
-from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannel, AuditChannelMeta
 
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ class Command(BaseCommand):
                                             is_monetizable=channels_monetization_dict[chan_id]
                                         )
                                         try:
-                                            audit_channel = AuditChannelMeta.objects.get(channel__channel_id=chan_id)
+                                            audit_channel = AuditChannel.get_or_create(chan_id, create=False).auditchannelmeta
                                             audit_channel.monetised = True
                                             audit_channel.save()
                                         except ObjectDoesNotExist:
