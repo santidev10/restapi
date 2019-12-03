@@ -108,6 +108,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             id="1", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=.01,
         )
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         flight = Flight.objects.create(
             id="1", name="", placement=placement, ordered_units=1000,
             total_cost=10, start=today, end=today,
@@ -255,6 +256,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=.01,
             dynamic_placement=DynamicPlacementType.BUDGET,
         )
+        Campaign.objects.create(id=1, name="c", salesforce_placement=placement_1)
         Flight.objects.create(
             id="1", name="", placement=placement_1, start=today, end=today,
         )
@@ -264,6 +266,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST,
             dynamic_placement=DynamicPlacementType.SERVICE_FEE,
         )
+        Campaign.objects.create(id=2, name="c", salesforce_placement=placement_2)
         Flight.objects.create(
             id="2", name="", placement=placement_2, start=today, end=today,
         )
@@ -273,6 +276,7 @@ class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST,
             dynamic_placement=DynamicPlacementType.BUDGET,
         )
+        Campaign.objects.create(name="c", salesforce_placement=placement_3)
         Flight.objects.create(
             id="3", name="", placement=placement_3, start=today, end=today,
         )

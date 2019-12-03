@@ -16,7 +16,7 @@ def cache_channel_aggregations():
     logger.debug("Starting channel aggregations caching.")
     sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                 Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
-                Sections.TASK_US_DATA)
+                Sections.TASK_US_DATA, Sections.ANALYTICS, Sections.MONETIZATION)
 
     manager = ChannelManager(sections)
 

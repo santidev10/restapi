@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
+from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import Max
@@ -618,6 +619,10 @@ class PacingReport:
         apex_deal = get.get("apex_deal")
         if apex_deal is not None and apex_deal.isdigit():
             queryset = queryset.filter(apex_deal=bool(int(apex_deal)))
+
+        queryset = queryset \
+            .annotate(campaigns=Count("placements__adwords_campaigns")) \
+            .exclude(campaigns__lte=0)
 
         return queryset.order_by("name", "id").distinct()
 
