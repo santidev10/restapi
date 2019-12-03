@@ -4,9 +4,6 @@ from saas import celery_app
 from cache.models import CacheItem
 from es_components.constants import Sections
 from es_components.managers.keyword import KeywordManager
-from es_components.query_builder import QueryBuilder
-from es_components.constants import FORCED_FILTER_OUDATED_DAYS
-from es_components.constants import TimestampFields
 
 from cache.constants import KEYWORD_AGGREGATIONS_KEY
 from utils.aggregation_constants import ALLOWED_KEYWORD_AGGREGATIONS

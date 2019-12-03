@@ -17,15 +17,16 @@ def cache_research_videos_defaults():
     logger.debug("Starting default research videos caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                 Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
-                Sections.CUSTOM_CAPTIONS)
+                Sections.CUSTOM_CAPTIONS, Sections.ANALYTICS)
 
-    fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'analytics', 'ads_stats',
-                      'captions', 'cms.cms_title', 'stats.subscribers', 'stats.last_video_published_at',
-                      'stats.engage_rate', 'stats.sentiment', 'stats.views', 'stats.comments', 'stats.likes',
-                      'stats.dislikes', 'stats.last_*_views', 'stats.last_*_likes', 'stats.views_per_video',
-                      'general_data.country', 'stats.last_*_comments', 'stats.flags', 'stats.views_history',
-                      'stats.likes_history', 'stats.dislikes_history', 'stats.comments_history', 'stats.historydate',
-                      'brand_safety', 'custom_captions', 'general_data.iab_categories']
+    fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'analytics', 'ads_stats', 'captions',
+                      'cms.cms_title', 'stats.subscribers', 'stats.last_video_published_at', 'stats.engage_rate',
+                      'stats.sentiment', 'stats.views', 'stats.comments', 'stats.likes', 'stats.dislikes',
+                      'stats.last_*_views', 'stats.last_*_likes', 'stats.views_per_video', 'general_data.country',
+                      'stats.last_*_comments', 'stats.flags', 'stats.views_history', 'stats.likes_history',
+                      'stats.dislikes_history', 'stats.comments_history', 'stats.historydate', 'brand_safety',
+                      'custom_captions', 'general_data.iab_categories']
+
     sort = [
         {'stats.views': {'order': 'desc'}},
         {'main.id': {'order': 'asc'}}
@@ -51,6 +52,5 @@ def cache_research_videos_defaults():
     print("Caching default research videos count and filters.")
     queryset_adapter.count()
     queryset_adapter.get_data(0, 50)
-
     logger.debug("Finished default research videos caching.")
     print("Finished default research videos caching.")
