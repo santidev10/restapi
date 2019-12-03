@@ -8,14 +8,13 @@ from pid import PidFileError
 
 from es_components.connections import init_es_connection
 from es_components.managers.channel import ChannelManager
-from es_components.managers.video import VideoManager
 from es_components.constants import Sections
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.conf import settings
 
-from audit_tool.models import AuditChannel, AuditChannelMeta
+from audit_tool.models import AuditChannel
 
 
 logger = logging.getLogger(__name__)
