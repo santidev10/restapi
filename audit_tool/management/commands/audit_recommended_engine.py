@@ -100,8 +100,15 @@ class Command(BaseCommand):
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
             done = False
-            if pending_videos.filter(clean=True).count() > self.audit.max_recommended or pending_videos.count() > self.MAX_VIDS:
-                done =  True
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            if not max_recommended_type:
+                max_recommended_type = 'video'
+            if max_recommended_type == 'video' and (pending_videos.filter(clean=True).count() > self.audit.max_recommended or pending_videos.count() > self.MAX_VIDS):
+                done = True
+            elif max_recommended_type == 'channel':
+                unique_channels = pending_videos.filter(clean=True).values('video__channel_id').distinct()
+                if unique_channels.count() > self.audit.max_recommended or pending_videos.count() > self.MAX_VIDS:
+                    done = True
             pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 done =  True
