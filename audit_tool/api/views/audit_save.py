@@ -35,6 +35,7 @@ class AuditSaveApiView(APIView):
         max_dislikes = int(query_params["max_dislikes"]) if "max_dislikes" in query_params else None
         min_date = query_params["min_date"] if "min_date" in query_params else None
         num_videos = int(query_params["num_videos"]) if "num_videos" in query_params else None
+        max_recommended_type = query_params["max_recommended_type"] if "max_recommended_type" in query_params else "video"
         if min_date:
             if '/' not in min_date:
                 raise ValidationError("format of min_date must be mm/dd/YYYY")
@@ -94,6 +95,7 @@ class AuditSaveApiView(APIView):
             'min_views': min_views,
             'max_dislikes': max_dislikes,
             'num_videos': num_videos,
+            'max_recommended_type': max_recommended_type,
             'files': {
                 'inclusion': None,
                 'exclusion': None,
@@ -163,6 +165,7 @@ class AuditSaveApiView(APIView):
             audit.params['category'] = category
             audit.params['related_audits'] = related_audits
             audit.params['num_videos'] = num_videos
+            audit.params['max_recommended_type'] = max_recommended_type
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
