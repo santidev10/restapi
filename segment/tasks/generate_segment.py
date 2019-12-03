@@ -5,25 +5,24 @@ import tempfile
 
 from django.conf import settings
 
-from saas import celery_app
+from es_components.constants import Sections
 from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
 from utils.brand_safety import map_brand_safety_score
 from utils.utils import chunks_generator
 
 BATCH_SIZE = 1000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
-STATISTICS_IDS_SIZE = 200
+STATISTICS_IDS_SIZE = 100
 
 
 def generate_segment(segment, query, size):
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        scan = segment.es_manager.model.search().query(query).sort(segment.SORT_KEY).source(segment.SOURCE_FIELDS).params(preserve_order=True).scan()
+        sorts = [segment.SORT_KEY, {f"{Sections.MONETIZATION}.is_monetizable": "asc"}]
+        scan = segment.es_manager.model.search().query(query).sort(*sorts).source(segment.SOURCE_FIELDS).params(preserve_order=True).scan()
         seen = 0
         item_ids = []
         top_three_items = []
-        # Documents to update with segment uuid, only used for preview
-        document_segment_items = []
         aggregations = defaultdict(int)
 
         for batch in chunks_generator(scan, size=BATCH_SIZE):
@@ -42,10 +41,6 @@ def generate_segment(segment, query, size):
                             "title": item.general_data.title,
                             "image_url": item.general_data.thumbnail_image_url
                         })
-
-                    if len(document_segment_items) < DOCUMENT_SEGMENT_ITEMS_SIZE:
-                        document_segment_items.append(item.main.id)
-
                     item_ids.append(item.main.id)
                     row = segment.serializer(item).data
                     writer.writerow(row)
@@ -71,7 +66,7 @@ def generate_segment(segment, query, size):
         aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))
         aggregated_statistics = aggregate_segment_statistics(segment.related_aw_statistics_model, item_ids[:STATISTICS_IDS_SIZE])
 
-        # segment.es_manager.add_to_segment_by_ids(document_segment_items, segment.uuid)
+        segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
         statistics = {
             "items_count": seen,
             "top_three_items": top_three_items,
@@ -79,7 +74,7 @@ def generate_segment(segment, query, size):
             **aggregated_statistics,
         }
         s3_key = segment.get_s3_key()
-        # segment.s3_exporter.export_file_to_s3(filename, s3_key)
+        segment.s3_exporter.export_file_to_s3(filename, s3_key)
         download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
