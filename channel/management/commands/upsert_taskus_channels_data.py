@@ -8,12 +8,13 @@ from pid import PidFileError
 
 from es_components.connections import init_es_connection
 from es_components.managers.channel import ChannelManager
-from es_components.managers.video import VideoManager
 from es_components.constants import Sections
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError
 from django.conf import settings
+
+from audit_tool.models import AuditChannel
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,7 @@ class Command(BaseCommand):
                         current_channel_iab_categories = [iab_category_1]
                         if iab_category_2:
                             current_channel_iab_categories.append(iab_category_2)
+                        channels_taskus_data_dict['iab_categories'] = current_channel_iab_categories
                         try:
                             moderation = row[3].lower().strip()
                             if moderation == "safe":
@@ -113,24 +115,32 @@ class Command(BaseCommand):
                         rows_parsed += 1
                         print(f"Number of rows parsed: {rows_parsed}")
                         try:
-                            if len(all_channel_ids) >= 1000:
+                            if len(all_channel_ids) >= 10000:
                                 all_channels = channel_manager.get_or_create(all_channel_ids)
                                 for channel in all_channels:
+                                    chan_id = channel.main.id
                                     channel_counter += 1
-                                    channel.populate_task_us_data(**channels_taskus_data_dict[channel.main.id])
+                                    channel.populate_task_us_data(**channels_taskus_data_dict[chan_id])
                                     channel.populate_general_data(
-                                        iab_categories=channels_iab_categories_dict[channel.main.id]
+                                        iab_categories=channels_iab_categories_dict[chan_id]
                                     )
                                     channel.populate_custom_properties(is_tracked=True)
-                                    if channel.main.id in channels_monetization_dict:
+                                    if chan_id in channels_monetization_dict:
                                         channel.populate_monetization(
-                                            is_monetizable=channels_monetization_dict[channel.main.id]
+                                            is_monetizable=channels_monetization_dict[chan_id]
                                         )
-                                    print(f"Updated fields for {channel.main.id}")
+                                        try:
+                                            audit_channel = AuditChannel.get_or_create(chan_id, create=False).auditchannelmeta
+                                            audit_channel.monetised = True
+                                            audit_channel.save()
+                                        except Exception as e:
+                                            pass
+                                    print(f"Updated fields for {chan_id}")
                                     print(f"Parsed {channel_counter} channels.")
                                 channel_manager.upsert(all_channels)
                                 with open(row_file_name, "w+") as row_file:
                                     row_file.write(str(row_counter))
+
                                 print(f"Upserted {channel_counter} channels.")
                                 print(f"Upserted channels up to Row #{row_counter}")
                                 all_channel_ids = []
