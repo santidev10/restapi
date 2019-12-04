@@ -12,7 +12,7 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 
 logger = logging.getLogger(__name__)
 
-TIMEOUT = 21400
+TIMEOUT = 14400
 
 
 def update_cache(obj, part, timeout=TIMEOUT):
