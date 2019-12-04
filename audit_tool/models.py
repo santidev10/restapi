@@ -9,7 +9,7 @@ from django.db.models import ForeignKey
 from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
-from es_components.iab_categories import IAB_TO_YOUTUBE_CATEGORIES_MAPPING
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 
 from django.contrib.auth import get_user_model
 
@@ -275,7 +275,7 @@ class AuditCategory(models.Model):
                 res[str(c.category)] = c.category_display
             else:
                 if not c.category_display_iab:
-                    c.category_display_iab = IAB_TO_YOUTUBE_CATEGORIES_MAPPING.get(c.category_display.lower())
+                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())
                     c.save(update_fields=['category_display_iab'])
                 res[str(c.category)] = c.category_display_iab
         return res
