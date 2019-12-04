@@ -1,7 +1,5 @@
 import logging
 
-from utils.redis import get_redis_client
-
 from saas import celery_app
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
@@ -13,8 +11,6 @@ from cache.models import CacheItem
 from cache.constants import VIDEO_AGGREGATIONS_KEY
 
 logger = logging.getLogger(__name__)
-
-redis = get_redis_client()
 
 TIMEOUT = 21400
 
