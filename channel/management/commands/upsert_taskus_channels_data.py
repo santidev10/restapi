@@ -73,7 +73,7 @@ class Command(BaseCommand):
                         current_channel_iab_categories = [iab_category_1]
                         if iab_category_2:
                             current_channel_iab_categories.append(iab_category_2)
-                        channels_taskus_data_dict['iab_categories'] = current_channel_iab_categories
+                        current_channel_taskus_data['iab_categories'] = current_channel_iab_categories
                         try:
                             moderation = row[3].lower().strip()
                             if moderation == "safe":
