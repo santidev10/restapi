@@ -31,5 +31,5 @@ class AuditListApiView(APIView):
             return Response({
                 'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
-                'youtube_categories': AuditCategory.get_all(iab=True),
+                'youtube_categories': AuditCategory.get_all(iab=False),
             })
