@@ -127,7 +127,7 @@ class Queue:
     DEFAULT = "celery"
     REPORTS = "reports"
     EXPORT = "export"
-    LISTS = "lists"
+    SEGMENTS = "segments"
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
@@ -144,7 +144,7 @@ CELERY_ROUTES_PREPARED = [
     ("*export*", {"queue": Queue.EXPORT}),
     ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
     ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
-    ("segment.tasks.*", {"queue": Queue.LISTS}),
+    ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError

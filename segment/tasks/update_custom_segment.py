@@ -1,4 +1,5 @@
 from datetime import timedelta
+import logging
 
 from django.db.models import Q
 from django.utils import timezone
@@ -8,6 +9,8 @@ from segment.tasks.generate_segment import generate_segment
 from segment.models import CustomSegmentFileUpload
 from utils.celery.tasks import unlock
 from utils.celery.tasks import REDIS_CLIENT
+
+logger = logging.getLogger(__name__)
 
 UPDATE_THRESHOLD = 7
 LOCK_NAME = "update_custom_segment"
@@ -27,4 +30,4 @@ def update_custom_segment():
         export_to_update.download_url = results["download_url"]
         segment.statistics = results["statistics"]
         unlock(LOCK_NAME, fail_silently=True)
-
+        logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")

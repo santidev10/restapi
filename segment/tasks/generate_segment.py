@@ -13,12 +13,20 @@ from utils.utils import chunks_generator
 BATCH_SIZE = 1000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
 STATISTICS_IDS_SIZE = 100
+MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "asc"}
 
 
-def generate_segment(segment, query, size):
+def generate_segment(segment, query, size, sort=None):
+    """
+    :param segment: CustomSegment | PersistentSegment
+    :param query: dict
+    :param size: int
+    :param sort: list -> Additional sort fields
+    :return:
+    """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        sorts = [segment.SORT_KEY, {f"{Sections.MONETIZATION}.is_monetizable": "asc"}]
+        sorts = sort or [segment.SORT_KEY, MONETIZATION_SORT]
         scan = segment.es_manager.model.search().query(query).sort(*sorts).source(segment.SOURCE_FIELDS).params(preserve_order=True).scan()
         seen = 0
         item_ids = []
@@ -47,13 +55,12 @@ def generate_segment(segment, query, size):
 
                     aggregations["monthly_views"] += item.stats.last_30day_views or 0
                     aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
+                    aggregations["views"] += item.stats.views or 0
 
                     if segment.segment_type == 0 or segment.segment_type == "video":
-                        aggregations["views"] += item.stats.views or 0
                         aggregations["likes"] += item.stats.likes or 0
                         aggregations["dislikes"] += item.stats.dislikes or 0
                     else:
-                        aggregations["views"] += item.stats.observed_videos_views or 0
                         aggregations["likes"] += item.stats.observed_videos_likes or 0
                         aggregations["dislikes"] += item.stats.observed_videos_dislikes or 0
                         aggregations["monthly_subscribers"] += item.stats.last_30day_subscribers or 0
@@ -78,7 +85,8 @@ def generate_segment(segment, query, size):
         download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {
             "statistics": statistics,
-            "download_url": download_url
+            "download_url": download_url,
+            "s3_key": s3_key,
         }
         return results
 
