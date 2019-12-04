@@ -305,6 +305,10 @@ class ESQuerysetAdapter:
         count = self.manager.search(filters=self.filter_query).count()
         return count
 
+    def uncached_count(self):
+        count = self.manager.search(filters=self.filter_query).count()
+        return count
+
     def order_by(self, *sorting):
         key, direction = sorting[0].split(":")
         self.sort = [
@@ -333,6 +337,16 @@ class ESQuerysetAdapter:
 
     @cached_method(timeout=900)
     def get_data(self, start=0, end=None):
+        data = self.manager.search(
+            filters=self.filter_query,
+            sort=self.sort,
+            offset=start,
+            limit=end,
+        ) \
+            .source(includes=self.fields_to_load).execute().hits
+        return data
+
+    def uncached_get_data(self, start=0, end=None):
         data = self.manager.search(
             filters=self.filter_query,
             sort=self.sort,
@@ -374,6 +388,7 @@ class ESQuerysetAdapter:
             sort=self.sort,
             aggregations=self.aggregations,
             options=options,
+            sections=self.manager.sections
         )
         key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
         key_hash = hashlib.md5(key_json.encode()).hexdigest()
