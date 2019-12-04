@@ -18,10 +18,9 @@ def generate_custom_segment(segment_id):
     results = generate_segment(segment, export.query, segment.LIST_SIZE)
     segment.statistics = results["statistics"]
     export.download_url = results["download_url"]
-    now = timezone.now()
-    export.completed_at = now
-    segment.save()
+    export.completed_at = timezone.now()
     export.save()
+    segment.save()
     export.refresh_from_db()
     subject = "Custom Target List: {}".format(segment.title)
     text_header = "Your Custom Target List {} is ready".format(segment.title)

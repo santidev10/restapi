@@ -1,10 +1,9 @@
-from math import floor
-
 from rest_framework.serializers import CharField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -14,7 +13,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
     Language = SerializerMethodField("get_language")
-    Category = CharField(source="general_data.top_category")
+    Category = SerializerMethodField("get_category")
     Subscribers = CharField(source="stats.subscribers")
     Overall_Score = SerializerMethodField("get_overall_score")
 
@@ -33,6 +32,11 @@ class CustomSegmentChannelExportSerializer(Serializer):
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
+    def get_category(self, obj):
+        youtube_category = getattr(obj.general_data, "top_category", "").lower()
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        return iab_category
+
 
 class CustomSegmentVideoExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score")
@@ -40,7 +44,7 @@ class CustomSegmentVideoExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title")
     Language = SerializerMethodField("get_language")
-    Category = CharField(source="general_data.category")
+    Category = SerializerMethodField("get_category")
     Views = CharField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
 
@@ -58,3 +62,8 @@ class CustomSegmentVideoExportSerializer(Serializer):
     def get_overall_score(self, obj):
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
+
+    def get_category(self, obj):
+        youtube_category = getattr(obj.general_data, "category", "").lower()
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        return iab_category

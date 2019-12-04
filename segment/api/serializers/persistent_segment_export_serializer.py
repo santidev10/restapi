@@ -7,6 +7,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -16,7 +17,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)
     Language = SerializerMethodField("get_language")
-    Category = CharField(source="general_data.category", default=None)
+    Category = SerializerMethodField("get_category")
     Likes = IntegerField(source="stats.likes", default=None)
     Dislikes = IntegerField(source="stats.dislikes", default=None)
     Views = IntegerField(source="stats.views", default=None)
@@ -37,6 +38,11 @@ class PersistentSegmentVideoExportSerializer(Serializer):
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
+    def get_category(self, obj):
+        youtube_category = getattr(obj.general_data, "category", "").lower()
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        return iab_category
+
 
 class PersistentSegmentChannelExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score")
@@ -45,7 +51,7 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default=None)
     Language = SerializerMethodField("get_language")
-    Category = CharField(source="general_data.top_category", default=None)
+    Category = SerializerMethodField("get_category")
     Subscribers = IntegerField(source="stats.subscribers", default=None)
     Likes = IntegerField(source="stats.observed_videos_likes", default=None)
     Dislikes = IntegerField(source="stats.observed_videos_dislikes", default=None)
@@ -67,3 +73,8 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     def get_overall_score(self, obj):
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
+
+    def get_category(self, obj):
+        youtube_category = getattr(obj.general_data, "top_category", "").lower()
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        return iab_category
