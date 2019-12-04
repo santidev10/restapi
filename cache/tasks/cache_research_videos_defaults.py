@@ -1,7 +1,5 @@
 import logging
 
-from django.conf import settings
-
 from utils.redis import get_redis_client
 
 from saas import celery_app

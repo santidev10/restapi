@@ -1,7 +1,5 @@
 import logging
 
-from django.conf import settings
-
 from utils.redis import get_redis_client
 
 from saas import celery_app
@@ -9,7 +7,6 @@ from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 
 from utils.es_components_api_utils import ESQuerysetAdapter
-from utils.es_components_cache import get_from_cache
 from utils.es_components_cache import set_to_cache
 
 from cache.models import CacheItem
