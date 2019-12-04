@@ -65,18 +65,17 @@ def cache_research_channels_defaults():
     queryset_adapter.filter_query = [manager.forced_filters()]
     queryset_adapter.percentiles = []
     queryset_adapter.sort = sort
-
-    logger.debug("Caching default research channels count and filters.")
-    print("Caching default research channels count and filters.")
-
     obj = queryset_adapter
     # Caching Count
+    logger.debug("Caching default research channels count.")
+    print("Caching default research channels count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
+    logger.debug("Caching default research channels data.")
+    print("Caching default research channels data.")
     part = "get_data"
     update_cache(obj, part)
-
     logger.debug("Finished default research channels caching.")
     print("Finished default research channels caching.")
 
@@ -84,17 +83,16 @@ def cache_research_channels_defaults():
     admin_manager = ChannelManager(admin_sections)
     admin_queryset_adapter = queryset_adapter
     admin_queryset_adapter.manager = admin_manager
-
-    logger.debug("Caching admin research channels count and filters.")
-    print("Caching admin research channels count and filters.")
-
     obj = admin_queryset_adapter
     # Caching Count
+    logger.debug("Caching admin research channels count.")
+    print("Caching admin research channels count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
+    logger.debug("Caching admin research channels data.")
+    print("Caching admin research channels data.")
     part = "get_data"
     update_cache(obj, part)
-
     logger.debug("Finished admin research channels caching.")
     print("Finished admin research channels caching.")

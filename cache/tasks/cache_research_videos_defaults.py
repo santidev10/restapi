@@ -12,7 +12,7 @@ from cache.constants import VIDEO_AGGREGATIONS_KEY
 
 logger = logging.getLogger(__name__)
 
-TIMEOUT = 21400
+TIMEOUT = 14400
 
 
 def update_cache(obj, part, timeout=TIMEOUT):
@@ -62,14 +62,15 @@ def cache_research_videos_defaults():
     queryset_adapter.filter_query = [manager.forced_filters()]
     queryset_adapter.percentiles = []
     queryset_adapter.sort = sort
-
-    logger.debug("Caching default research videos count and filters.")
-    print("Caching default research videos count and filters.")
     obj = queryset_adapter
     # Caching Count
+    logger.debug("Caching default research videos count.")
+    print("Caching default research videos count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
+    logger.debug("Caching default research videos data.")
+    print("Caching default research videos data.")
     part = "get_data"
     update_cache(obj, part)
     logger.debug("Finished default research videos caching.")
@@ -79,14 +80,15 @@ def cache_research_videos_defaults():
     admin_manager = VideoManager(admin_sections)
     admin_queryset_adapter = queryset_adapter
     admin_queryset_adapter.manager = admin_manager
-
-    logger.debug("Caching admin research videos count and filters.")
-    print("Caching admin research videos count and filters.")
     obj = admin_queryset_adapter
     # Caching Count
+    logger.debug("Caching admin research videos count.")
+    print("Caching admin research videos count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
+    logger.debug("Caching admin research videos data.")
+    print("Caching admin research videos data.")
     part = "get_data"
     update_cache(obj, part)
     logger.debug("Finished admin research videos caching.")
