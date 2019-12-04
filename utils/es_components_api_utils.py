@@ -388,7 +388,7 @@ class ESQuerysetAdapter:
             sort=self.sort,
             aggregations=self.aggregations,
             options=options,
-            sections=self.manager.allowed_sections
+            sections=self.manager.sections
         )
         key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
         key_hash = hashlib.md5(key_json.encode()).hexdigest()
