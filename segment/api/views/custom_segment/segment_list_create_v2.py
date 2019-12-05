@@ -9,6 +9,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
+from saas.configs.celery import Queue
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
@@ -96,7 +97,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
-        generate_custom_segment.delay(serializer.data["id"])
+        generate_custom_segment.apply_async(args=[serializer.data["id"]], queue=Queue.SEGMENTS)
         return Response(status=HTTP_201_CREATED, data=serializer.data)
 
     def _validate_data(self, data, request, kwargs):
