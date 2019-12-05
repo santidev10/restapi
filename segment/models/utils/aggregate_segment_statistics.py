@@ -1,6 +1,7 @@
 import logging
 
 from django.db import connections
+
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
 MIN_IMPRESSIONS = 1000
