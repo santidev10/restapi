@@ -107,6 +107,14 @@ CELERY_BEAT_SCHEDULE = {
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
         "schedule": crontab(hour="*/2", minute="0"),
+    },
+    "update_custom_segment": {
+        "task": "segment.tasks.update_custom_segment.update_custom_segment",
+        "schedule": crontab(minute="*"),
+    },
+    "generate_persistent_segments": {
+        "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
+        "schedule": crontab(minute="0", hour="0", day_of_week="0"),
     }
 }
 
@@ -119,6 +127,7 @@ class Queue:
     DEFAULT = "celery"
     REPORTS = "reports"
     EXPORT = "export"
+    SEGMENTS = "segments"
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
@@ -135,6 +144,7 @@ CELERY_ROUTES_PREPARED = [
     ("*export*", {"queue": Queue.EXPORT}),
     ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
     ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
+    ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError

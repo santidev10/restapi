@@ -21,18 +21,16 @@ from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
 from es_components.constants import Sections
-from es_components.constants import SEGMENTS_UUID_FIELD
 from es_components.constants import VIEWS_FIELD
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
-from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
-from segment.models.utils.calculate_segment_statistics import calculate_statistics
-from segment.models.utils.export_context_manager import ExportContextManager
 from segment.models.segment_mixin import SegmentMixin
+from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
+from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from utils.models import Timestampable
 from segment.models.utils.segment_exporter import SegmentExporter
 
@@ -56,12 +54,14 @@ class CustomSegment(SegmentMixin, Timestampable):
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
+            self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
+            self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.serializer = CustomSegmentChannelExportSerializer
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
@@ -142,7 +142,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         else:
             return CustomSegmentChannelExportSerializer
 
-    def get_s3_key(self):
+    def get_s3_key(self, *args, **kwargs):
         return f"custom_segments/{self.owner_id}/{self.title}.csv"
 
     def delete_export(self, s3_key=None):

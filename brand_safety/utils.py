@@ -30,6 +30,7 @@ class BrandSafetyQueryBuilder(object):
         self.minimum_option = data.get("minimum_option", 0)
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
+        self.iab_categories = data.get("iab_categories", [])
         self.options = self._get_segment_options()
 
         self.es_manager = ChannelManager(sections=self.SECTIONS) if self.segment_type == constants.CHANNEL else VideoManager(sections=self.SECTIONS)
@@ -107,6 +108,12 @@ class BrandSafetyQueryBuilder(object):
                                 }
                             },
                             {
+                                "bool": {
+                                    # iab categories
+                                    "should": []
+                                }
+                            },
+                            {
                                 "exists": {
                                     "field": "brand_safety"
                                 }
@@ -137,6 +144,7 @@ class BrandSafetyQueryBuilder(object):
         language_filters = must_statements[1]["bool"]["should"]
         youtube_categories_filters = must_statements[2]["bool"]["should"]
         category_score_filters = must_statements[3]["bool"]["filter"]
+        iab_categories_filters = must_statements[4]["bool"]["should"]
 
         # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
         category_score_filter_params = [
@@ -151,11 +159,16 @@ class BrandSafetyQueryBuilder(object):
             {"term": {self.options["youtube_category_field"]: category}}
             for category in self.youtube_categories
         ]
+        iab_category_filter_params = [
+            {"term": {"general_data.iab_categories": category}}
+            for category in self.iab_categories
+        ]
 
         # Add filters to refs
         category_score_filters.extend(category_score_filter_params)
         language_filters.extend(language_filter_params)
         youtube_categories_filters.extend(youtube_category_filter_params)
+        iab_categories_filters.extend(iab_category_filter_params)
 
         # Sets range query in must clause
         # e.g. { "range": { "subscribers": { "gte": 1000 } }

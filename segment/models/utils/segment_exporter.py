@@ -22,3 +22,10 @@ class SegmentExporter(S3Exporter):
                 Key=s3_key,
                 Filename=exported_file_name,
             )
+
+    def export_file_to_s3(self, filename, s3_key):
+        self._s3().upload_file(
+            Bucket=self.bucket_name,
+            Key=s3_key,
+            Filename=filename,
+        )

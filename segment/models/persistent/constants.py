@@ -250,3 +250,7 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
     "Game Of Thrones": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/GameOfThrones.jpg",
     "Stranger Things": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/StrangerThings.jpg",
 }
+
+SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.last_30day_views", "brand_safety.overall_score", "general_data.thumbnail_image_url", "brand_safety.language")
+CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "brand_safety.videos_scored", "stats.observed_videos_dislikes", "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes")
+VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "stats.likes", "stats.dislikes", "general_data.category")

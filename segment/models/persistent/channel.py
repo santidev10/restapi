@@ -4,7 +4,6 @@ PersistentSegmentChannel models module
 from django.db.models import ForeignKey
 from django.db.models import CASCADE
 
-from audit_tool.models import AuditCategory
 from aw_reporting.models import YTChannelStatistic
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
@@ -16,12 +15,14 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.constants import SUBSCRIBERS_FIELD
 from segment.api.serializers.persistent_segment_export_serializer import PersistentSegmentChannelExportSerializer
+from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.segment_mixin import SegmentMixin
 
 
 class PersistentSegmentChannel(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
+    SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
     segment_type = PersistentSegmentType.CHANNEL
     serializer = PersistentSegmentChannelExportSerializer
     objects = PersistentSegmentManager()
