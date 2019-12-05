@@ -13,6 +13,7 @@ from segment.api.serializers.custom_segment_serializer import CustomSegmentSeria
 from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils import validate_threshold
 
 
@@ -95,6 +96,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
+        generate_custom_segment.delay(serializer.data["id"])
         return Response(status=HTTP_201_CREATED, data=serializer.data)
 
     def _validate_data(self, data, request, kwargs):

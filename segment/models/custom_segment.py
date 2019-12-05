@@ -142,7 +142,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         else:
             return CustomSegmentChannelExportSerializer
 
-    def get_s3_key(self):
+    def get_s3_key(self, *args, **kwargs):
         return f"custom_segments/{self.owner_id}/{self.title}.csv"
 
     def delete_export(self, s3_key=None):

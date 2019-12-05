@@ -1,5 +1,6 @@
-import csv
 from collections import defaultdict
+import csv
+import logging
 import os
 import tempfile
 
@@ -10,10 +11,11 @@ from segment.models.utils.aggregate_segment_statistics import aggregate_segment_
 from utils.brand_safety import map_brand_safety_score
 from utils.utils import chunks_generator
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
-STATISTICS_IDS_SIZE = 100
-MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "asc"}
+MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
+
+logger = logging.getLogger(__name__)
 
 
 def generate_segment(segment, query, size, sort=None):
@@ -70,8 +72,9 @@ def generate_segment(segment, query, size, sort=None):
                     seen += 1
             if seen >= size:
                 break
+
         aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))
-        aggregated_statistics = aggregate_segment_statistics(segment.related_aw_statistics_model, item_ids[:STATISTICS_IDS_SIZE])
+        aggregated_statistics = aggregate_segment_statistics(segment.related_aw_statistics_model, item_ids)
 
         segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
         statistics = {
@@ -91,7 +94,7 @@ def generate_segment(segment, query, size, sort=None):
         return results
 
     except Exception as e:
-        print(e)
+        logger.error(f"Error generating custom segment id: {segment.id}\n{e}")
 
     finally:
         os.remove(filename)
