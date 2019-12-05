@@ -35,7 +35,7 @@ def cache_research_videos_defaults():
                         Sections.CUSTOM_CAPTIONS)
     admin_sections = default_sections + (Sections.ANALYTICS,)
 
-    fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'analytics', 'ads_stats', 'captions',
+    fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'ads_stats', 'captions',
                       'cms.cms_title', 'stats.subscribers', 'stats.last_video_published_at', 'stats.engage_rate',
                       'stats.sentiment', 'stats.views', 'stats.comments', 'stats.likes', 'stats.dislikes',
                       'stats.last_*_views', 'stats.last_*_likes', 'stats.views_per_video', 'general_data.country',
@@ -91,6 +91,14 @@ def cache_research_videos_defaults():
     admin_manager = VideoManager(admin_sections)
     admin_queryset_adapter = queryset_adapter
     admin_queryset_adapter.manager = admin_manager
+    admin_fields_to_load = ['general_data', 'main', 'monetization', 'channel', 'analytics', 'ads_stats', 'captions',
+                      'cms.cms_title', 'stats.subscribers', 'stats.last_video_published_at', 'stats.engage_rate',
+                      'stats.sentiment', 'stats.views', 'stats.comments', 'stats.likes', 'stats.dislikes',
+                      'stats.last_*_views', 'stats.last_*_likes', 'stats.views_per_video', 'general_data.country',
+                      'stats.last_*_comments', 'stats.flags', 'stats.views_history', 'stats.likes_history',
+                      'stats.dislikes_history', 'stats.comments_history', 'stats.historydate', 'brand_safety',
+                      'custom_captions', 'general_data.iab_categories']
+    admin_queryset_adapter.fields_to_load = admin_fields_to_load
     obj = admin_queryset_adapter
     obj.sort = sort
     # Caching Count
