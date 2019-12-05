@@ -88,6 +88,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
+
+    maxDiff = None
+
     def setUp(self) -> None:
         super().setUp()
         self.create_admin_user()

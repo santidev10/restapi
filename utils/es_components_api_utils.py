@@ -356,7 +356,6 @@ class ESQuerysetAdapter:
             .source(includes=self.fields_to_load).execute().hits
         return data
 
-    @cached_method(timeout=7200)
     def get_aggregations(self):
         if self.cached_aggregations and self.aggregations:
             aggregations = {aggregation: self.cached_aggregations[aggregation]
@@ -386,7 +385,6 @@ class ESQuerysetAdapter:
         options = dict(
             filters=[_filter.to_dict() for _filter in self.filter_query],
             sort=self.sort,
-            aggregations=self.aggregations,
             options=options,
             sections=self.manager.sections
         )
