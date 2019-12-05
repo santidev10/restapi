@@ -73,6 +73,12 @@ def cache_research_videos_defaults():
     print("Caching default research videos data.")
     part = "get_data"
     update_cache(obj, part)
+    # Caching Count for Aggregations Query
+    logger.debug("Caching default research videos aggregations count.")
+    print("Caching default research videos aggregations count.")
+    obj.sort = None
+    part = "count"
+    update_cache(obj, part)
     logger.debug("Finished default research videos caching.")
     print("Finished default research videos caching.")
 
@@ -90,6 +96,12 @@ def cache_research_videos_defaults():
     logger.debug("Caching admin research videos data.")
     print("Caching admin research videos data.")
     part = "get_data"
+    update_cache(obj, part)
+    # Caching Count for Aggregations Query
+    logger.debug("Caching admin research videos aggregations count.")
+    print("Caching admin research videos aggregations count.")
+    obj.sort = None
+    part = "count"
     update_cache(obj, part)
     logger.debug("Finished admin research videos caching.")
     print("Finished admin research videos caching.")

@@ -76,6 +76,12 @@ def cache_research_channels_defaults():
     print("Caching default research channels data.")
     part = "get_data"
     update_cache(obj, part)
+    # Caching Count for Aggregations Query
+    logger.debug("Caching default research channels aggregations count.")
+    print("Caching default research channels aggregations count.")
+    obj.sort = None
+    part = "count"
+    update_cache(obj, part)
     logger.debug("Finished default research channels caching.")
     print("Finished default research channels caching.")
 
@@ -93,6 +99,12 @@ def cache_research_channels_defaults():
     logger.debug("Caching admin research channels data.")
     print("Caching admin research channels data.")
     part = "get_data"
+    update_cache(obj, part)
+    # Caching Count for Aggregations Query
+    logger.debug("Caching admin research channels aggregations count.")
+    print("Caching admin research channels aggregations count.")
+    obj.sort = None
+    part = "count"
     update_cache(obj, part)
     logger.debug("Finished admin research channels caching.")
     print("Finished admin research channels caching.")
