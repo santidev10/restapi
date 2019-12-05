@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 TIMEOUT = 14400
 
 
-def update_cache(obj, part, timeout=TIMEOUT):
+def update_cache(obj, part, options=None, timeout=TIMEOUT):
     if part == "count":
-        options = ((), {})
+        options = options or ((), {})
         data = obj.uncached_count()
     elif part == "get_data":
-        options = ((0, 50), {})
+        options = options or ((0, 50), {})
         data = obj.uncached_get_data(0, 50)
     else:
         return
@@ -79,6 +79,11 @@ def cache_research_videos_defaults():
     obj.sort = None
     part = "count"
     update_cache(obj, part)
+    # Caching Data for Aggregations Query
+    logger.debug("Caching default research videos aggregations data.")
+    print("Caching default research videos aggregations data.")
+    part = "get_data"
+    update_cache(obj, part, options=((0,0), {}))
     logger.debug("Finished default research videos caching.")
     print("Finished default research videos caching.")
 
@@ -87,6 +92,7 @@ def cache_research_videos_defaults():
     admin_queryset_adapter = queryset_adapter
     admin_queryset_adapter.manager = admin_manager
     obj = admin_queryset_adapter
+    obj.sort = sort
     # Caching Count
     logger.debug("Caching admin research videos count.")
     print("Caching admin research videos count.")
@@ -103,5 +109,10 @@ def cache_research_videos_defaults():
     obj.sort = None
     part = "count"
     update_cache(obj, part)
+    # Caching Data for Aggregations Query
+    logger.debug("Caching admin research videos aggregations data.")
+    print("Caching admin research videos aggregations data.")
+    part = "get_data"
+    update_cache(obj, part, options=((0, 0), {}))
     logger.debug("Finished admin research videos caching.")
     print("Finished admin research videos caching.")
