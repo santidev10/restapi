@@ -24,7 +24,7 @@ def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
                 FROM {table_name}
                 INNER JOIN aw_reporting_adgroup
                 ON ({table_name}.ad_group_id = aw_reporting_adgroup.id)
-                WHERE ({table_name}.impressions >= 1000
+                WHERE ({table_name}.impressions >= {MIN_IMPRESSIONS}
                 AND {table_name}.yt_id IN (VALUES {item_ids}))
                 LIMIT {MAX_STATS_TO_GET}
                 """
