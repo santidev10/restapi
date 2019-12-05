@@ -86,5 +86,8 @@ class Command(BaseCommand):
                         row_counter += 1
                         with open(row_file_name, "w+") as row_file:
                             row_file.write(str(row_counter))
+                        rows_parsed += 1
+                        if rows_parsed >= 1000:
+                            return
         except PidFileError:
             raise PidFileError

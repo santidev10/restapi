@@ -217,7 +217,7 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 language = ""
             try:
-                category = v.category.category_display
+                category = v.category.category_display_iab
             except Exception as e:
                 category = ""
             try:
@@ -241,7 +241,7 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 last_uploaded_view_count = ''
             try:
-                last_uploaded_category = v.video.channel.auditchannelmeta.last_uploaded_category.category_display
+                last_uploaded_category = v.video.channel.auditchannelmeta.last_uploaded_category.category_display_iab
             except Exception as e:
                 last_uploaded_category = ''
             try:
@@ -434,7 +434,7 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 country = ""
             try:
-                last_category = v.last_uploaded_category.category_display
+                last_category = v.last_uploaded_category.category_display_iab
             except Exception as e:
                 last_category = ""
             channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)

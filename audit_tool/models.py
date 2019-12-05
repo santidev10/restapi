@@ -9,6 +9,7 @@ from django.db.models import ForeignKey
 from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 
 from django.contrib.auth import get_user_model
 
@@ -211,7 +212,6 @@ class AuditProcessor(models.Model):
             d['source_file'] = files.get('source')
             d['exclusion_file'] = files.get('exclusion')
             d['inclusion_file'] = files.get('inclusion')
-
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
@@ -262,22 +262,26 @@ class AuditLanguage(models.Model):
     def __str__(self):
         return self.language
 
-
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
+    category_display_iab = models.TextField(default=None, null=True)
 
     @staticmethod
-    def get_all():
+    def get_all(iab=False):
         res = {}
         for c in AuditCategory.objects.all():
-            res[str(c.category)] = c.category_display
+            if not iab:
+                res[str(c.category)] = c.category_display
+            else:
+                if not c.category_display_iab:
+                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())
+                    c.save(update_fields=['category_display_iab'])
+                res[str(c.category)] = c.category_display_iab
         return res
-
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
-
 
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)

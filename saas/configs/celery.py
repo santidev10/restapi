@@ -102,11 +102,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cache-research-videos-defaults": {
         "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
-        "schedule": crontab(minute="*/20"),
+        "schedule": crontab(hour="*/2", minute="0"),
     },
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(minute="*/20"),
+        "schedule": crontab(hour="*/2", minute="0"),
     },
     "update_custom_segment": {
         "task": "segment.tasks.update_custom_segment.update_custom_segment",
@@ -114,7 +114,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(day_of_week="0"),
+        "schedule": crontab(minute="0", hour="0", day_of_week="0"),
     }
 }
 
