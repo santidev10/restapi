@@ -7,7 +7,6 @@ import tempfile
 from django.conf import settings
 
 from es_components.constants import Sections
-from segment.models.utils.aggregate_segment_statistics import aggregate_segment_statistics
 from utils.brand_safety import map_brand_safety_score
 from utils.utils import chunks_generator
 
@@ -31,6 +30,7 @@ def generate_segment(segment, query, size, sort=None):
         sorts = sort or [segment.SORT_KEY, MONETIZATION_SORT]
         scan = segment.es_manager.model.search().query(query).sort(*sorts).source(segment.SOURCE_FIELDS).params(preserve_order=True).scan()
         seen = 0
+        # Stores item ids as keys, bool for value if item contains ads_stats
         item_ids = []
         top_three_items = []
         aggregations = defaultdict(int)
@@ -58,6 +58,11 @@ def generate_segment(segment, query, size, sort=None):
                     aggregations["monthly_views"] += item.stats.last_30day_views or 0
                     aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
                     aggregations["views"] += item.stats.views or 0
+                    aggregations["ctr"] += item.ads_stats.ctr or 0
+                    aggregations["ctr_v"] += item.ads_stats.ctr_v or 0
+                    aggregations["video_view_rate"] += item.ads_stats.video_view_rate or 0
+                    aggregations["average_cpm"] += item.ads_stats.average_cpm or 0
+                    aggregations["average_cpv"] += item.ads_stats.average_cpv or 0
 
                     if segment.segment_type == 0 or segment.segment_type == "video":
                         aggregations["likes"] += item.stats.likes or 0
@@ -73,15 +78,19 @@ def generate_segment(segment, query, size, sort=None):
             if seen >= size:
                 break
 
+        # Average fields
         aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))
-        aggregated_statistics = aggregate_segment_statistics(segment.related_aw_statistics_model, item_ids)
+        aggregations["ctr"] /= seen or 1
+        aggregations["ctr_v"] /= seen or 1
+        aggregations["video_view_rate"] /= seen or 1
+        aggregations["average_cpm"] /= seen or 1
+        aggregations["average_cpv"] /= seen or 1
 
         segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
         statistics = {
             "items_count": seen,
             "top_three_items": top_three_items,
             **aggregations,
-            **aggregated_statistics,
         }
         s3_key = segment.get_s3_key()
         segment.s3_exporter.export_file_to_s3(filename, s3_key)
