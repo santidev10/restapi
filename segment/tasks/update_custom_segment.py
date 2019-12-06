@@ -33,5 +33,5 @@ def update_custom_segment():
             export_to_update.updated_at = timezone.now()
             export_to_update.save()
             segment.save()
-            unlock(LOCK_NAME, fail_silently=True)
             logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
+        unlock(LOCK_NAME, fail_silently=False)
