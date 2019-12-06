@@ -5,8 +5,8 @@ from django.db.models import F
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
 MIN_IMPRESSIONS = 1000
-MAX_STATS_TO_GET = 10000
-STATISTICS_IDS_SIZE = 5000
+MAX_STATS_TO_GET = 5000
+STATISTICS_IDS_SIZE = 2500
 
 logger = logging.getLogger(__name__)
 
