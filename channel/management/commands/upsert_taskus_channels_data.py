@@ -9,6 +9,7 @@ from pid import PidFileError
 from es_components.connections import init_es_connection
 from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
+from es_components.iab_categories import TOP_LEVEL_CATEGORIES
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError
@@ -70,8 +71,9 @@ class Command(BaseCommand):
                             iab_category_2 = row[2].strip().replace(" and ", " & ").title()
                         except Exception:
                             iab_category_2 = None
-                        current_channel_iab_categories = [iab_category_1]
-                        if iab_category_2:
+                        current_channel_iab_categories = [iab_category_1] \
+                            if iab_category_1.lower() in TOP_LEVEL_CATEGORIES else []
+                        if iab_category_2 and current_channel_iab_categories:
                             current_channel_iab_categories.append(iab_category_2)
                         current_channel_taskus_data['iab_categories'] = current_channel_iab_categories
                         try:
