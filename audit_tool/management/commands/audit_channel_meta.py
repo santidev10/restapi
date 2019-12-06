@@ -66,6 +66,12 @@ class Command(BaseCommand):
     def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
         self.num_videos = self.audit.params.get('num_videos')
         if not self.num_videos:
             self.num_videos = 50

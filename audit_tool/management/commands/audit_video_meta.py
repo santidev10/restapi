@@ -79,6 +79,12 @@ class Command(BaseCommand):
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             if self.thread_id == 0:

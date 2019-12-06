@@ -74,6 +74,12 @@ class Command(BaseCommand):
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
                 self.related_audits = self.audit.params.get('related_audits')
+                self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+                self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+                if not self.exclusion_hit_count:
+                    self.exclusion_hit_count = 1
+                if not self.inclusion_hit_count:
+                    self.inclusion_hit_count = 1
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
@@ -304,12 +310,12 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.inclusion_list)
+            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.exclusion_hit_count)
             hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
         if self.exclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list, count=self.inclusion_hit_count)
             if is_there:
                 return False, hits
         return True, hits
@@ -422,9 +428,9 @@ class Command(BaseCommand):
         )
         self.exclusion_list = re.compile(regexp)
 
-    def check_exists(self, text, exp):
+    def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0:
+        if len(keywords) >= count:
             return True, keywords
         return False, None
 
