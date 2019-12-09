@@ -91,16 +91,20 @@ class SegmentListGenerator(object):
                 thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
-            query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
-                category_name).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                self.MINIMUM_SUBSCRIBERS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
+                    category_name).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                    self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
-            self.persistent_segment_finalizer(new_category_segment, results)
-            self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
+                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+                self.persistent_segment_finalizer(new_category_segment, results)
+                self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
+            except Exception as e:
+                logger.error(f"Error in _generate_channel_whitelist:\n{e}")
+                new_category_segment.delete()
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
@@ -117,17 +121,21 @@ class SegmentListGenerator(object):
                 thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
-            query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
-                category_name).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-                self.SENTIMENT_THRESHOLD).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
+                    category_name).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+                    self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
-            self.persistent_segment_finalizer(new_category_segment, results)
-            self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
+                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+                self.persistent_segment_finalizer(new_category_segment, results)
+                self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
+            except Exception as e:
+                logger.error(f"Error in _generate_video_whitelist:\n{e}")
+                new_category_segment.delete()
 
     def _generate_master_video_whitelist(self):
         """
@@ -143,16 +151,20 @@ class SegmentListGenerator(object):
                 is_master=True,
                 audit_category_id=None
             )
-            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-                self.SENTIMENT_THRESHOLD).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+                    self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
-            self.persistent_segment_finalizer(new_master_video_whitelist, results)
-            self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
-                                     master_list_type=constants.WHITELIST)
+                results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
+                self.persistent_segment_finalizer(new_master_video_whitelist, results)
+                self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
+                                         master_list_type=constants.WHITELIST)
+            except Exception as e:
+                logger.error(f"Error in _generate_master_video_whitelist:\n{e}")
+                new_master_video_whitelist.delete()
 
     def _generate_master_video_blacklist(self):
         """
@@ -168,16 +180,20 @@ class SegmentListGenerator(object):
                 is_master=True,
                 audit_category_id=None
             )
-            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
-                self.SENTIMENT_THRESHOLD).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
+                    self.SENTIMENT_THRESHOLD).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
-            self.persistent_segment_finalizer(new_master_video_blacklist, results)
-            self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
-                                     master_list_type=constants.BLACKLIST)
+                results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
+                self.persistent_segment_finalizer(new_master_video_blacklist, results)
+                self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
+                                         master_list_type=constants.BLACKLIST)
+            except Exception as e:
+                logger.error(f"Error in _generate_master_video_blacklist:\n{e}")
+                new_master_video_blacklist.delete()
 
     def _generate_master_channel_whitelist(self):
         """
@@ -193,15 +209,19 @@ class SegmentListGenerator(object):
                 is_master=True,
                 audit_category_id=None
             )
-            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                self.MINIMUM_SUBSCRIBERS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                    self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
-            self.persistent_segment_finalizer(new_master_channel_whitelist, results)
-            self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
-                                     master_list_type=constants.WHITELIST)
+                results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
+                self.persistent_segment_finalizer(new_master_channel_whitelist, results)
+                self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
+                                         master_list_type=constants.WHITELIST)
+            except Exception as e:
+                logger.error(f"Error in _generate_master_channel_whitelist:\n{e}")
+                new_master_channel_whitelist.delete()
 
     def _generate_master_channel_blacklist(self):
         """
@@ -217,15 +237,19 @@ class SegmentListGenerator(object):
                 is_master=True,
                 audit_category_id=None
             )
-            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-                self.MINIMUM_SUBSCRIBERS).get() \
-                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+            try:
+                query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                    self.MINIMUM_SUBSCRIBERS).get() \
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-            results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
-            self.persistent_segment_finalizer(new_master_channel_blacklist, results)
-            self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
-                                     master_list_type=constants.BLACKLIST)
+                results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
+                self.persistent_segment_finalizer(new_master_channel_blacklist, results)
+                self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
+                                         master_list_type=constants.BLACKLIST)
+            except Exception as e:
+                logger.error(f"Error in _generate_master_channel_blacklist:\n{e}")
+                new_master_channel_blacklist.delete()
 
     def add_to_segment(self, segment, query=None, size=None):
         """
