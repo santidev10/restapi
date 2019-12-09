@@ -21,17 +21,21 @@ EXPIRE = 60 * 60 * 2
 def update_custom_segment():
     is_acquired = REDIS_CLIENT.lock(LOCK_NAME, EXPIRE).acquire(blocking=False)
     if is_acquired:
-        threshold = timezone.now() - timedelta(days=UPDATE_THRESHOLD)
-        export_to_update = CustomSegmentFileUpload.objects.filter(
-            (Q(updated_at__isnull=True) & Q(created_at__lte=threshold)) | Q(updated_at__lte=threshold)
-        ).first()
-        if export_to_update:
-            segment = export_to_update.segment
-            results = generate_segment(segment, export_to_update.query, segment.LIST_SIZE)
-            segment.statistics = results["statistics"]
-            export_to_update.download_url = results["download_url"]
-            export_to_update.updated_at = timezone.now()
-            export_to_update.save()
-            segment.save()
-            logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
-        unlock(LOCK_NAME, fail_silently=False)
+        try:
+            threshold = timezone.now() - timedelta(days=UPDATE_THRESHOLD)
+            export_to_update = CustomSegmentFileUpload.objects.filter(
+                (Q(updated_at__isnull=True) & Q(created_at__lte=threshold)) | Q(updated_at__lte=threshold)
+            ).first()
+            if export_to_update:
+                segment = export_to_update.segment
+                results = generate_segment(segment, export_to_update.query, segment.LIST_SIZE)
+                segment.statistics = results["statistics"]
+                export_to_update.download_url = results["download_url"]
+                export_to_update.updated_at = timezone.now()
+                export_to_update.save()
+                segment.save()
+                logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
+        except Exception as e:
+            logger.error(f"Error in update_custom_segment task:\n{e}")
+        finally:
+            unlock(LOCK_NAME, fail_silently=True)
