@@ -69,24 +69,46 @@ class Command(BaseCommand):
                         row_counter += 1
                         all_channel_ids.append(channel_id)
                         current_channel_taskus_data = dict()
-                        iab_category_1 = row[1].strip().replace(" and ", " & ").title()
                         try:
-                            iab_category_2 = row[2].strip().replace(" and ", " & ").title()
+                            iab_category_1 = row[1].strip().replace(" and ", " & ")
+                            iab_category_1 = iab_category_1 \
+                                if iab_category_1 in IAB_TIER3_CATEGORIES_MAPPING \
+                                else ""
+                        except Exception:
+                            iab_category_1 = None
+
+                        try:
+                            iab_category_2 = row[2].strip().replace(" and ", " & ")
+                            iab_category_2 = iab_category_2 \
+                                if iab_category_2 in IAB_TIER3_CATEGORIES_MAPPING[iab_category_1] \
+                                else ""
                         except Exception:
                             iab_category_2 = None
-                        others = ["other", "others"]
-                        current_channel_iab_categories = [iab_category_1] \
-                            if iab_category_1 in TOP_LEVEL_CATEGORIES else []
-                        if iab_category_2.lower() not in others and current_channel_iab_categories:
-                            current_channel_iab_categories.append(iab_category_2)
-                        current_channel_taskus_data['iab_categories'] = current_channel_iab_categories
+
                         try:
-                            moderation = row[3].lower().strip()
+                            iab_category_3 = row[3].strip().replace(" and ", " & ")
+                            iab_category_3 = iab_category_3 \
+                                if iab_category_3 in IAB_TIER3_CATEGORIES_MAPPING[iab_category_1][iab_category_2] \
+                                else ""
+                        except Exception:
+                            iab_category_3 = None
+
+                        current_channel_iab_categories = []
+                        if iab_category_1:
+                            current_channel_iab_categories.append(iab_category_1)
+                        if iab_category_2:
+                            current_channel_iab_categories.append(iab_category_2)
+                        if iab_category_3:
+                            current_channel_iab_categories.append(iab_category_3)
+                        current_channel_taskus_data['iab_categories'] = current_channel_iab_categories
+
+                        try:
+                            moderation = row[4].lower().strip()
                             if moderation == "safe":
                                 current_channel_taskus_data['is_safe'] = True
                             elif moderation == "unsafe":
+                                flag_category = BadWordCategory.objects.get(name=row[5].lower().strip())
                                 current_channel_taskus_data['is_safe'] = False
-                                flag_category = BadWordCategory.objects.get(name=row[4].lower().strip())
                                 flag = BlacklistItem.get_or_create(channel_id, BlacklistItem.CHANNEL_ITEM)
                                 if flag.blacklist_category:
                                     flag.blacklist_category[flag_category.id] = 100
@@ -95,30 +117,35 @@ class Command(BaseCommand):
                                 flag.save()
                         except Exception:
                             pass
+
                         try:
-                            content_type = row[5].upper().strip()
+                            content_type = row[6].upper().strip()
                             is_user_generated_content = True if content_type == "UGC" else False
                             current_channel_taskus_data['is_user_generated_content'] = is_user_generated_content
                         except Exception:
                             pass
+
                         try:
-                            is_monetizable = True if row[6].lower().strip() == "monetized" else None
+                            is_monetizable = True if row[7].lower().strip() == "monetized" else None
                             if is_monetizable:
                                 channels_monetization_dict[channel_id] = is_monetizable
                         except Exception:
                             pass
+
                         try:
-                            scalable = row[7].capitalize().strip()
+                            scalable = row[8].capitalize().strip()
                             if scalable:
                                 current_channel_taskus_data['scalable'] = True if scalable == "Scalable" else False
                         except Exception:
                             pass
+
                         try:
-                            language = row[8].capitalize().strip() if row[8] != "Unknown" else ""
+                            language = row[8].capitalize().strip() if row[9] != "Unknown" else ""
                             if language:
                                 current_channel_taskus_data['language'] = language
                         except Exception:
                             pass
+
                         channels_taskus_data_dict[channel_id] = current_channel_taskus_data
                         channels_iab_categories_dict[channel_id] = current_channel_iab_categories
                         rows_parsed += 1
