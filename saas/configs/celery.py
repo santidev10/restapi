@@ -114,7 +114,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(minute="0", hour="0", day_of_week="0"),
+        "schedule": crontab(hour="*"),
     }
 }
 

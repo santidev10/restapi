@@ -1,11 +1,12 @@
+from datetime import timedelta
 import logging
 import uuid
 
 from django.utils import timezone
 
-import brand_safety.constants as constants
 from audit_tool.models import AuditCategory
 from brand_safety.auditors.utils import AuditUtils
+import brand_safety.constants as constants
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent import PersistentSegmentChannel
@@ -78,141 +79,153 @@ class SegmentListGenerator(object):
         """
         category_id = category.id
         category_name = category.category_display
-        # Generate new category segment
-        new_category_segment = PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
-            category=constants.WHITELIST,
-            is_master=False,
-            audit_category_id=category_id,
-            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
-                                                                  S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
-        )
-        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
-            category_name).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-            self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentChannel, False, category_id, constants.WHITELIST)
+        if should_update:
+            # Generate new category segment
+            new_category_segment = PersistentSegmentChannel.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentChannel.get_title(category_name, constants.WHITELIST),
+                category=constants.WHITELIST,
+                is_master=False,
+                audit_category_id=category_id,
+                thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
+                                                                      S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
+            )
+            query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
+                category_name).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                self.MINIMUM_SUBSCRIBERS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
-        self.persistent_segment_finalizer(new_category_segment, results)
-        self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
+            results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+            self.persistent_segment_finalizer(new_category_segment, results)
+            self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
         category_name = category.category_display
-        # Generate new category segment
-        new_category_segment = PersistentSegmentVideo.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentVideo.get_title(category_name, constants.WHITELIST),
-            category=constants.WHITELIST,
-            is_master=False,
-            audit_category_id=category_id,
-            thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
-                                                                  S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
-        )
-        query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
-            category_name).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-            self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentVideo, False, category_id, constants.WHITELIST)
+        if should_update:
+            # Generate new category segment
+            new_category_segment = PersistentSegmentVideo.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentVideo.get_title(category_name, constants.WHITELIST),
+                category=constants.WHITELIST,
+                is_master=False,
+                audit_category_id=category_id,
+                thumbnail_image_url=CATEGORY_THUMBNAIL_IMAGE_URLS.get(category_name,
+                                                                      S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
+            )
+            query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
+                category_name).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+                self.SENTIMENT_THRESHOLD).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
-        self.persistent_segment_finalizer(new_category_segment, results)
-        self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
+            results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+            self.persistent_segment_finalizer(new_category_segment, results)
+            self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
 
     def _generate_master_video_whitelist(self):
         """
         Generate Master Video Whitelist
         :return:
         """
-        new_master_video_whitelist = PersistentSegmentVideo.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
-            category=constants.WHITELIST,
-            is_master=True,
-            audit_category_id=None
-        )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-            self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentVideo, True, None, constants.WHITELIST)
+        if should_update:
+            new_master_video_whitelist = PersistentSegmentVideo.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+                category=constants.WHITELIST,
+                is_master=True,
+                audit_category_id=None
+            )
+            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
+                self.SENTIMENT_THRESHOLD).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
-        self.persistent_segment_finalizer(new_master_video_whitelist, results)
-        self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
-                                 master_list_type=constants.WHITELIST)
+            results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
+            self.persistent_segment_finalizer(new_master_video_whitelist, results)
+            self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
+                                     master_list_type=constants.WHITELIST)
 
     def _generate_master_video_blacklist(self):
         """
         Generate Master Video Blacklist
         :return:
         """
-        new_master_video_blacklist = PersistentSegmentVideo.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
-            category=constants.BLACKLIST,
-            is_master=True,
-            audit_category_id=None
-        )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
-            self.SENTIMENT_THRESHOLD).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentVideo, True, None, constants.BLACKLIST)
+        if should_update:
+            new_master_video_blacklist = PersistentSegmentVideo.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                category=constants.BLACKLIST,
+                is_master=True,
+                audit_category_id=None
+            )
+            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
+                self.SENTIMENT_THRESHOLD).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
-        self.persistent_segment_finalizer(new_master_video_blacklist, results)
-        self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
-                                 master_list_type=constants.BLACKLIST)
+            results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
+            self.persistent_segment_finalizer(new_master_video_blacklist, results)
+            self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
+                                     master_list_type=constants.BLACKLIST)
 
     def _generate_master_channel_whitelist(self):
         """
         Generate Master Channel Whitelist
         :return:
         """
-        new_master_channel_whitelist = PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
-            category=constants.WHITELIST,
-            is_master=True,
-            audit_category_id=None
-        )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-            self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentChannel, True, None, constants.WHITELIST)
+        if should_update:
+            new_master_channel_whitelist = PersistentSegmentChannel.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
+                category=constants.WHITELIST,
+                is_master=True,
+                audit_category_id=None
+            )
+            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                self.MINIMUM_SUBSCRIBERS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
-        self.persistent_segment_finalizer(new_master_channel_whitelist, results)
-        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
-                                 master_list_type=constants.WHITELIST)
+            results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
+            self.persistent_segment_finalizer(new_master_channel_whitelist, results)
+            self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
+                                     master_list_type=constants.WHITELIST)
 
     def _generate_master_channel_blacklist(self):
         """
         Generate Master Channel Blacklist
         :return:
         """
-        new_master_channel_blacklist = PersistentSegmentChannel.objects.create(
-            uuid=uuid.uuid4(),
-            title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
-            category=constants.BLACKLIST,
-            is_master=True,
-            audit_category_id=None
-        )
-        query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
-            self.MINIMUM_SUBSCRIBERS).get() \
-                & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-            self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+        should_update = self.check_should_update(PersistentSegmentChannel, True, None, constants.BLACKLIST)
+        if should_update:
+            new_master_channel_blacklist = PersistentSegmentChannel.objects.create(
+                uuid=uuid.uuid4(),
+                title=PersistentSegmentTitles.CHANNELS_BRAND_SUITABILITY_MASTER_BLACKLIST_SEGMENT_TITLE,
+                category=constants.BLACKLIST,
+                is_master=True,
+                audit_category_id=None
+            )
+            query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
+                self.MINIMUM_SUBSCRIBERS).get() \
+                    & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
+                self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
 
-        results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
-        self.persistent_segment_finalizer(new_master_channel_blacklist, results)
-        self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
-                                 master_list_type=constants.BLACKLIST)
+            results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
+            self.persistent_segment_finalizer(new_master_channel_blacklist, results)
+            self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
+                                     master_list_type=constants.BLACKLIST)
 
     def add_to_segment(self, segment, query=None, size=None):
         """
@@ -257,3 +270,10 @@ class SegmentListGenerator(object):
         PersistentSegmentFileUpload.objects.create(segment_uuid=segment.uuid, filename=details["s3_key"], created_at=timezone.now())
         logger.debug(
             f"Successfully generated export for brand suitable list: id: {segment.id}, title: {segment.title}")
+
+    def check_should_update(self, segment_model, is_master, category_id, segment_type):
+        date_threshold = timezone.now() - timedelta(days=self.UPDATE_THRESHOLD)
+        existing_items = segment_model.objects.filter(is_master=is_master, audit_category_id=category_id, category=segment_type).order_by("-created_at")
+        if not existing_items.exists() or existing_items.first().created_at <= date_threshold:
+            return True
+        return False
