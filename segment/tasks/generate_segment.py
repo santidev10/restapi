@@ -102,8 +102,8 @@ def generate_segment(segment, query, size, sort=None):
         }
         return results
 
-    except Exception as e:
-        logger.error(f"Error generating segment_title: {segment.title}, segment id: {segment.id}\n{e}")
+    except Exception:
+        raise
 
     finally:
         os.remove(filename)
