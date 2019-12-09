@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand
 from pid import PidFile
 from pid import PidFileError
 
+from brand_safety.models.bad_word import BadWordCategory
 from es_components.connections import init_es_connection
 from es_components.managers.channel import ChannelManager
 from es_components.constants import Sections
@@ -85,9 +86,12 @@ class Command(BaseCommand):
                                 current_channel_taskus_data['is_safe'] = True
                             elif moderation == "unsafe":
                                 current_channel_taskus_data['is_safe'] = False
+                                flag_category = BadWordCategory.objects.get(name=row[4].lower().strip())
                                 flag = BlacklistItem.get_or_create(channel_id, BlacklistItem.CHANNEL_ITEM)
-                                flag_category = BadWordCategory.from_string(row[4].lower().strip())
-                                flag.blacklist_category = {flag_category.id: 100}
+                                if flag.blacklist_category:
+                                    flag.blacklist_category[flag_category.id] = 100
+                                else:
+                                    flag.blacklist_category = {flag_category.id: 100}
                                 flag.save()
                         except Exception:
                             pass
