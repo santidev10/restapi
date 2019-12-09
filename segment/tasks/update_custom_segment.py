@@ -38,4 +38,4 @@ def update_custom_segment():
         except Exception as e:
             logger.error(f"Error in update_custom_segment task:\n{e}")
         finally:
-            unlock(LOCK_NAME, fail_silently=False)
+            unlock(LOCK_NAME, fail_silently=True)
