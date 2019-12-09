@@ -205,7 +205,9 @@ class AuditProcessor(models.Model):
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
-            'max_recommended_type': self.params.get('max_recommended_type')
+            'max_recommended_type': self.params.get('max_recommended_type'),
+            'inclusion_hit_count': self.params.get('inclusion_hit_count'),
+            'exclusion_hit_count': self.params.get('exclusion_hit_count'),
         }
         files = self.params.get('files')
         if files:
