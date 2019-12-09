@@ -15,6 +15,8 @@ from audit_tool.models import BlacklistItem
 from django.core.exceptions import ValidationError
 from django.conf import settings
 
+from es_components.iab_categories import IAB_TIER3_CATEGORIES_MAPPING
+
 from audit_tool.models import AuditChannel
 
 
@@ -71,9 +73,10 @@ class Command(BaseCommand):
                             iab_category_2 = row[2].strip().replace(" and ", " & ").title()
                         except Exception:
                             iab_category_2 = None
+                        others = ["other", "others"]
                         current_channel_iab_categories = [iab_category_1] \
-                            if iab_category_1.lower() in TOP_LEVEL_CATEGORIES else []
-                        if iab_category_2 and current_channel_iab_categories:
+                            if iab_category_1 in TOP_LEVEL_CATEGORIES else []
+                        if iab_category_2.lower() not in others and current_channel_iab_categories:
                             current_channel_iab_categories.append(iab_category_2)
                         current_channel_taskus_data['iab_categories'] = current_channel_iab_categories
                         try:
