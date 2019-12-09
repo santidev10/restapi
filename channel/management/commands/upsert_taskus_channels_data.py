@@ -57,9 +57,7 @@ class Command(BaseCommand):
                 channel_counter = 0
                 rows_parsed = 0
                 with open(os.path.join(settings.BASE_DIR, file_name), "r") as f:
-                    with open(os.path.join(settings.BASE_DIR, bad_rows_file_name), "a+") as bad_rows_file:
                         reader = csv.reader(f)
-                        bad_rows_writer = csv.writer(bad_rows_file)
                         while row_number > 0:
                             next(reader)
                             row_number -= 1
@@ -160,7 +158,9 @@ class Command(BaseCommand):
                                 pass
 
                             if not valid_row:
-                                bad_rows_writer.writerow(row + [row_counter+1] + invalid_reasons)
+                                with open(os.path.join(settings.BASE_DIR, bad_rows_file_name), "a+") as bad_rows_file:
+                                    bad_rows_writer = csv.writer(bad_rows_file)
+                                    bad_rows_writer.writerow(row + [row_counter+1] + invalid_reasons)
 
                             channels_taskus_data_dict[channel_id] = current_channel_taskus_data
                             channels_iab_categories_dict[channel_id] = current_channel_iab_categories
