@@ -221,14 +221,14 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
             else:
                 self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
                 self.append_to_channel(avp, hits, 'exclusion_videos')
@@ -376,8 +376,8 @@ class Command(BaseCommand):
         )
         self.exclusion_list = re.compile(regexp)
 
-    def check_exists(self, text, exp):
+    def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0:
+        if len(keywords) >= count:
             return True, keywords
         return False, None
