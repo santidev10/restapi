@@ -1,4 +1,5 @@
 from rest_framework.serializers import CharField
+from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
@@ -11,17 +12,17 @@ class CustomSegmentChannelExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score")
 
     URL = SerializerMethodField("get_url")
-    Title = CharField(source="general_data.title")
+    Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Category = SerializerMethodField("get_category")
-    Subscribers = CharField(source="stats.subscribers")
+    Subscribers = IntegerField(source="stats.subscribers")
     Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
 
     def get_language(self, obj):
-        brand_safety_language = getattr(obj.brand_safety, "language", None)
+        brand_safety_language = getattr(obj.brand_safety, "language", "") or ""
         if brand_safety_language == "all":
             language = "All"
         else:
@@ -33,7 +34,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = getattr(obj.general_data, "top_category", "").lower()
+        youtube_category = (getattr(obj.general_data, "top_category", "") or "").lower()
         iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
         return iab_category
 
@@ -42,10 +43,10 @@ class CustomSegmentVideoExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score")
 
     URL = SerializerMethodField("get_url")
-    Title = CharField(source="general_data.title")
+    Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Category = SerializerMethodField("get_category")
-    Views = CharField(source="stats.views")
+    Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
@@ -64,6 +65,6 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = getattr(obj.general_data, "category", "").lower()
+        youtube_category = (getattr(obj.general_data, "category", "") or "").lower()
         iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
         return iab_category
