@@ -40,7 +40,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
 
     def get_category(self, obj):
         youtube_category = (getattr(obj.general_data, "category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
         return iab_category
 
 
@@ -76,5 +76,5 @@ class PersistentSegmentChannelExportSerializer(Serializer):
 
     def get_category(self, obj):
         youtube_category = (getattr(obj.general_data, "top_category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)
+        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
         return iab_category
