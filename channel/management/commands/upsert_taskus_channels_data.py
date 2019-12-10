@@ -119,6 +119,8 @@ class Command(BaseCommand):
                                     current_channel_taskus_data['is_safe'] = True
                                 elif moderation == "unsafe":
                                     flag_category = BadWordCategory.objects.get(name=row[5].lower().strip())
+                                    if flag_category.name == "kids content":
+                                        current_channel_taskus_data['iab_categories'].append("Kids Content")
                                     current_channel_taskus_data['is_safe'] = False
                                     flag = BlacklistItem.get_or_create(channel_id, BlacklistItem.CHANNEL_ITEM)
                                     if flag.blacklist_category:
