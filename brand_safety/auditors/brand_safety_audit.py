@@ -342,7 +342,7 @@ class BrandSafetyAudit(object):
     def _create_update_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
         query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-        query &= QueryBuilder().build().must().range().field("stats.observed_videos_count").gt(0).get()
+        query &= QueryBuilder().build().must().range().field("stats.total_videos_count").gt(0).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
         query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(self.UPDATE_TIME_THRESHOLD).get()
@@ -351,7 +351,7 @@ class BrandSafetyAudit(object):
     def _create_discovery_query(self, cursor_id):
         query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
         query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
-        query &= QueryBuilder().build().must().range().field("stats.observed_videos_count").gt(0).get()
+        query &= QueryBuilder().build().must().range().field("stats.total_videos_count").gt(0).get()
         query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()

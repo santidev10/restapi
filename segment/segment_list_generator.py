@@ -27,7 +27,8 @@ class SegmentListGenerator(object):
     SENTIMENT_THRESHOLD = 0.8
     MINIMUM_VIEWS = 1000
     MINIMUM_SUBSCRIBERS = 1000
-    MINIMUM_BRAND_SAFETY_OVERALL_SCORE = 90
+    WHITELIST_MINIMUM_BRAND_SAFETY_SCORE = 90
+    BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD = 59
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
     WHITELIST_SIZE = 100000
     BLACKLIST_SIZE = 100000
@@ -97,7 +98,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
                     self.MINIMUM_SUBSCRIBERS).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_category_segment, results)
@@ -128,7 +129,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
                     self.SENTIMENT_THRESHOLD).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_category_segment, results)
@@ -156,7 +157,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
                     self.SENTIMENT_THRESHOLD).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_master_video_whitelist, results)
@@ -184,8 +185,8 @@ class SegmentListGenerator(object):
                 query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").lt(
                     self.SENTIMENT_THRESHOLD).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
+                    self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
                 results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
                 self.persistent_segment_finalizer(new_master_video_blacklist, results)
@@ -213,7 +214,7 @@ class SegmentListGenerator(object):
                 query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
                     self.MINIMUM_SUBSCRIBERS).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                    self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
                 results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_master_channel_whitelist, results)
@@ -240,8 +241,8 @@ class SegmentListGenerator(object):
             try:
                 query = QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
                     self.MINIMUM_SUBSCRIBERS).get() \
-                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lt(
-                    self.MINIMUM_BRAND_SAFETY_OVERALL_SCORE).get()
+                        & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
+                    self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
                 results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
                 self.persistent_segment_finalizer(new_master_channel_blacklist, results)
