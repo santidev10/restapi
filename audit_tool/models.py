@@ -277,7 +277,7 @@ class AuditCategory(models.Model):
                 res[str(c.category)] = c.category_display
             else:
                 if not c.category_display_iab:
-                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())
+                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())[-1]
                     c.save(update_fields=['category_display_iab'])
                 res[str(c.category)] = c.category_display_iab
         return res
