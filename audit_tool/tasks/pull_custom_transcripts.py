@@ -49,6 +49,7 @@ def pull_custom_transcripts():
         if lang_codes:
             for lang_code in lang_codes:
                 logger.debug(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
+                print(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
                 language = LANGUAGES[lang_code]
                 unparsed_vids = get_unparsed_vids(language, num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
@@ -70,13 +71,20 @@ def pull_custom_transcripts():
                     logger.debug(f"Parsed video with id: {vid_id}")
                     logger.debug(f"Number of videos parsed: {vid_counter}")
                     logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
+                    print(f"Parsed video with id: {vid_id}")
+                    print(f"Number of videos parsed: {vid_counter}")
+                    print(f"Number of transcripts retrieved: {transcripts_counter}")
                 video_manager.upsert(all_videos)
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
                 logger.debug(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
+                print(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
+                print(
+                    f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
+            print(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids("", num_vids)
             vid_languages = {vid.main.id: vid.general_data.language for vid in unparsed_vids}
             vid_lang_codes = {}
@@ -108,12 +116,17 @@ def pull_custom_transcripts():
                 logger.debug(f"Parsed video with id: {vid_id}")
                 logger.debug(f"Number of videos parsed: {vid_counter}")
                 logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
+                print(f"Parsed video with id: {vid_id}")
+                print(f"Number of videos parsed: {vid_counter}")
+                print(f"Number of transcripts retrieved: {transcripts_counter}")
             video_manager.upsert(all_videos)
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
             logger.debug(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+            print(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
         logger.debug("Finished pulling custom transcripts task.")
+        print("Finished pulling custom transcripts task.")
     except Exception as e:
         pass
 
@@ -207,5 +220,5 @@ def get_unparsed_vids(language, num_vids):
     else:
         s = s.query(q2).query(q3)
     s = s.sort({"stats.views": {"order": "desc"}})
-    s = s[:num_vids]
+    # s = s[:num_vids]
     return s.execute()
