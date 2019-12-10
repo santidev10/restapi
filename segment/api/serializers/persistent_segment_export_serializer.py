@@ -18,9 +18,9 @@ class PersistentSegmentVideoExportSerializer(Serializer):
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Category = SerializerMethodField("get_category")
-    Likes = IntegerField(source="stats.likes", default=0)
-    Dislikes = IntegerField(source="stats.dislikes", default=0)
-    Views = IntegerField(source="stats.views", default=0)
+    Likes = IntegerField(source="stats.likes")
+    Dislikes = IntegerField(source="stats.dislikes")
+    Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
@@ -52,11 +52,11 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     Title = CharField(source="general_data.title", default="")
     Language = SerializerMethodField("get_language")
     Category = SerializerMethodField("get_category")
-    Subscribers = IntegerField(source="stats.subscribers", default=0)
-    Likes = IntegerField(source="stats.observed_videos_likes", default=0)
-    Dislikes = IntegerField(source="stats.observed_videos_dislikes", default=0)
-    Views = IntegerField(source="stats.views", default=0)
-    Audited_Videos = IntegerField(source="brand_safety.videos_scored", default=0)
+    Subscribers = IntegerField(source="stats.subscribers")
+    Likes = IntegerField(source="stats.observed_videos_likes")
+    Dislikes = IntegerField(source="stats.observed_videos_dislikes")
+    Views = IntegerField(source="stats.views")
+    Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
 
     def get_url(self, obj):
