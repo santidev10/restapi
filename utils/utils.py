@@ -71,5 +71,4 @@ def convert_subscriber_count(string):
 def hide_excluded_iab_categories(iab_categories):
     EXCLUDED_IAB_CATEGORIES = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
                                "Content Source", "Content Source Geo"]
-    for category in iab_categories:
-        if category
+    return [category for category in iab_categories if category not in EXCLUDED_IAB_CATEGORIES]
