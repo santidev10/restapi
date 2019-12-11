@@ -77,9 +77,13 @@ def pull_custom_transcripts():
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
-            print(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids("", num_vids)
-            vid_languages = {vid.main.id: vid.general_data.language for vid in unparsed_vids if "general_data" in vid}
+            vid_languages = {}
+            for vid in unparsed_vids:
+                if "general_data" in vid and "language" in vid.general_data:
+                    vid_languages[vid.main.id] = vid.general_data.language
+                else:
+                    vid_languages[vid.main.id] = "English"
             vid_lang_codes = {}
             for vid_id in vid_languages:
                 try:
@@ -87,7 +91,7 @@ def pull_custom_transcripts():
                     lang_code = LANG_CODES[vid_lang]
                     vid_lang_codes[vid_id] = lang_code
                 except Exception:
-                    pass
+                    vid_lang_codes[vid_id] = 'en'
             vid_ids = {vid_id for vid_id in vid_lang_codes}
             video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                          upsert_sections=(Sections.CUSTOM_CAPTIONS,))
@@ -103,24 +107,18 @@ def pull_custom_transcripts():
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code,
                                                        transcript=str(transcript_soup))
                     logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                    print(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
                     transcripts_counter += 1
                 populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
                 vid_counter += 1
                 logger.debug(f"Parsed video with id: {vid_id}")
                 logger.debug(f"Number of videos parsed: {vid_counter}")
                 logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
-                print(f"Parsed video with id: {vid_id}")
-                print(f"Number of videos parsed: {vid_counter}")
-                print(f"Number of transcripts retrieved: {transcripts_counter}")
             video_manager.upsert(all_videos)
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
             logger.debug(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
-            print(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
         logger.debug("Finished pulling custom transcripts task.")
-        print("Finished pulling custom transcripts task.")
     except Exception as e:
         pass
 
