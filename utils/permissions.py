@@ -1,5 +1,6 @@
 from rest_framework import permissions
 from rest_framework.authtoken.models import Token
+from userprofile.permissions import PermissionGroupNames
 
 
 class MediaBuyingAddOnPermission(permissions.IsAuthenticated):
@@ -85,3 +86,17 @@ def user_has_permission(perm):
     """
     return type("UserHasPermission", (UserHasPermissionBase,),
                 dict(permission=perm))
+
+
+class ExportDataAllowed(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+
+
+class BrandSafetyDataVisible(permissions.BasePermission):
+
+    def has_permission(self, request, *args):
+        return request.user.is_staff or request.user.has_perm("userprofile.scoring_brand_safety") or \
+               request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)

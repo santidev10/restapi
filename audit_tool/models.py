@@ -2,14 +2,16 @@ import hashlib
 from datetime import datetime
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
 from django.db.models import ForeignKey
+from django.db.models import IntegerField
 from django.db.models import Q
-from django.db.models import SET_NULL
 from django.utils import timezone
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
+
+from django.contrib.auth import get_user_model
 
 
 def get_hash_name(s):
@@ -113,6 +115,10 @@ class AuditProcessor(models.Model):
         '1': 'Video Meta Processor',
         '2': 'Channel Meta Processor',
     }
+    SOURCE_TYPES = {
+        '0': 'Audit Tool',
+        '1': 'Custom Target List Creator',
+    }
 
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
@@ -123,7 +129,9 @@ class AuditProcessor(models.Model):
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
     pause = models.IntegerField(default=0, db_index=True)
+    temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
+    source = models.IntegerField(db_index=True, default=0)
 
     def remove_exports(self):
         exports = []
@@ -190,8 +198,22 @@ class AuditProcessor(models.Model):
             'min_views': self.params.get('min_views'),
             'min_date': self.params.get('min_date'),
             'resumed': self.params.get('resumed'),
-            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50
+            'stopped': self.params.get('stopped'),
+            'paused': self.temp_stop,
+            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
+            'has_history': self.has_history(),
+            'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
+            'export_status': self.get_export_status(),
+            'source': self.SOURCE_TYPES[str(self.source)],
+            'max_recommended_type': self.params.get('max_recommended_type'),
+            'inclusion_hit_count': self.params.get('inclusion_hit_count'),
+            'exclusion_hit_count': self.params.get('exclusion_hit_count'),
         }
+        files = self.params.get('files')
+        if files:
+            d['source_file'] = files.get('source')
+            d['exclusion_file'] = files.get('exclusion')
+            d['inclusion_file'] = files.get('inclusion')
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
@@ -199,6 +221,22 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def get_export_status(self):
+        res = {}
+        e = AuditExporter.objects.filter(audit=self, completed__isnull=True).order_by("started")
+        if e.count() > 0:
+            if e[0].started:
+                res['status'] = "Processing Export"
+                res['percent_done'] = e[0].percent_done
+            else:
+                res['status'] = "Export Queued"
+        return res
+
+    def has_history(self):
+        if not self.params.get('error') and self.started and (not self.completed or self.completed > timezone.now() - timedelta(hours=1)):
+            return True
+        return False
 
     def get_related_audits(self):
         d = []
@@ -226,27 +264,32 @@ class AuditLanguage(models.Model):
     def __str__(self):
         return self.language
 
-
 class AuditCategory(models.Model):
     category = models.CharField(max_length=64, unique=True)
     category_display = models.TextField(default=None, null=True)
+    category_display_iab = models.TextField(default=None, null=True)
 
     @staticmethod
-    def get_all():
+    def get_all(iab=False):
         res = {}
         for c in AuditCategory.objects.all():
-            res[str(c.category)] = c.category_display
+            if not iab:
+                res[str(c.category)] = c.category_display
+            else:
+                if not c.category_display_iab:
+                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())[-1]
+                    c.save(update_fields=['category_display_iab'])
+                res[str(c.category)] = c.category_display_iab
         return res
-
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
-
 
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
     processed = models.BooleanField(default=False, db_index=True)
+    processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
     def get_or_create(channel_id, create=True):
@@ -264,7 +307,6 @@ class AuditChannel(models.Model):
             except IntegrityError as e:
                 return AuditChannel.objects.get(channel_id=channel_id)
 
-
 class AuditChannelMeta(models.Model):
     channel = models.OneToOneField(AuditChannel, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, default=None, null=True)
@@ -279,11 +321,11 @@ class AuditChannelMeta(models.Model):
     view_count = models.BigIntegerField(default=0, db_index=True)
     video_count = models.BigIntegerField(default=None, db_index=True, null=True)
     emoji = models.BooleanField(default=False, db_index=True)
+    monetised = models.NullBooleanField(default=None)
     last_uploaded = models.DateTimeField(default=None, null=True, db_index=True)
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
-
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -307,6 +349,24 @@ class AuditVideo(models.Model):
             return AuditVideo.objects.get(video_id=video_id)
 
 
+class AuditVideoTranscript(models.Model):
+    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
+    transcript = models.TextField(default=None, null=True)
+
+    class Meta:
+        unique_together = ("video", "language")
+
+    @staticmethod
+    def get_or_create(video_id, language='en', transcript=None):
+        v = AuditVideo.get_or_create(video_id)
+        lang = AuditLanguage.from_string(language) if language else None
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
+        if transcript:
+            t.transcript = transcript
+            t.save(update_fields=['transcript'])
+        return t
+
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)
     name = models.CharField(max_length=255, null=True, default=None)
@@ -329,13 +389,13 @@ class AuditVideoProcessor(models.Model):
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
     video_source = models.ForeignKey(AuditVideo, db_index=True, default=None, null=True,
                                      related_name='avp_video_source', on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, null=True, default=None, related_name='avp_audit_channel', on_delete=models.CASCADE)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     clean = models.BooleanField(default=True, db_index=True)
     word_hits = JSONField(default=dict, null=True)
 
     class Meta:
         unique_together = ("audit", "video")
-
 
 class AuditChannelProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -349,7 +409,6 @@ class AuditChannelProcessor(models.Model):
     class Meta:
         unique_together = ("audit", "channel")
 
-
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -357,8 +416,25 @@ class AuditExporter(models.Model):
     completed = models.DateTimeField(default=None, null=True, db_index=True)
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
-    owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=SET_NULL)
+    owner_id = IntegerField(null=True, blank=True)
+    export_as_videos = models.BooleanField(default=False)
+    started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
+    percent_done = models.IntegerField(default=0)
 
+    @property
+    def owner(self):
+        if self.owner_id:
+            return get_user_model().objects.get(id=self.owner_id)
+
+    @owner.setter
+    def owner(self, owner):
+        if owner:
+            self.owner_id = owner.id
+
+class AuditProcessorCache(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    count = models.BigIntegerField(default=0, db_index=True)
 
 class BlacklistItem(models.Model):
     VIDEO_ITEM = 0

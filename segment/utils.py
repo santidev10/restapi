@@ -1,9 +1,6 @@
 import time
 
 from segment.models.persistent.base import BasePersistentSegment
-from segment.models.persistent.constants import PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS
-from segment.models.persistent.constants import PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS
-from singledb.connector import SingleDatabaseApiConnector as Connector
 import brand_safety.constants as constants
 
 
@@ -33,37 +30,7 @@ def get_persistent_segment_model_by_type(segment_type):
     raise ModelDoesNotExist("Invalid segment_type: %s" % segment_type)
 
 
-def get_persistent_segment_connector_config_by_type(segment_type, related_ids):
-    """
-    Helper method to retrieve SDB data based on segment type
-    :param segment_type: Segment type, e.g. channel or video
-    :param related_ids: Channel or video ids to query sdb for
-    :return: dict
-    """
-    try:
-        iter(related_ids)
-        related_ids = ",".join(related_ids)
-    except TypeError:
-        pass
-    valid_segment_types = {
-        "channel": {
-            "method": Connector().get_channel_list,
-            "fields": ",".join(PERSISTENT_SEGMENT_CHANNEL_PREVIEW_FIELDS),
-            "sort": "channel_id",
-            "channel_id__terms": related_ids
-        },
-        "video": {
-            "method": Connector().get_video_list,
-            "fields": ",".join(PERSISTENT_SEGMENT_VIDEO_PREVIEW_FIELDS),
-            "sort": "video_id",
-            "video_id__terms": related_ids
-        }
-    }
-    config = valid_segment_types.get(segment_type)
-    return config
-
-
-def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
+def retry_on_conflict(method, *args, retry_amount=5, sleep_coeff=2, **kwargs):
     """
     Retry on Document Conflicts
     """
@@ -76,7 +43,7 @@ def retry_on_conflict(method, *args, retry_amount=10, sleep_coeff=2, **kwargs):
                 if "ConflictError(409" in str(err):
                     tries_count += 1
                     if tries_count <= retry_amount:
-                        sleep_seconds_count = retry_amount ** sleep_coeff
+                        sleep_seconds_count = tries_count ** sleep_coeff
                         time.sleep(sleep_seconds_count)
                 else:
                     raise err
@@ -100,3 +67,10 @@ def generate_search_with_params(manager, query, sort=None):
         search = search.sort(sort)
     search = search.params(preserve_order=True)
     return search
+
+
+def validate_threshold(threshold):
+    err = None
+    if not 0 <= threshold <= 100:
+        err = "Score threshold must be between 0 and 100, inclusive."
+    return err

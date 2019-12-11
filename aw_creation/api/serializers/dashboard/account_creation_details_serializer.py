@@ -44,3 +44,6 @@ class DashboardAccountCreationDetailsSerializer(DashboardAccountCreationListSeri
                     clicks_data[key] = 0
             stats_value.update(clicks_data)
         return stats
+
+    def _fields_to_exclude(self):
+        return super(DashboardAccountCreationDetailsSerializer, self)._fields_to_exclude() + ("all_conversions",)

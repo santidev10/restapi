@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case
+from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import Max
@@ -125,25 +126,24 @@ class PacingReport:
         raw_data = queryset.values(*placement_fields)
         return raw_data
 
-    def get_flights_data(self, force_recalculate=False, **filters):
-        # FIXME: Hot fix 4.1.1
-        force_recalculate = True
+    def get_flights_data(self, with_campaigns=False, **filters):
         queryset = Flight.objects.filter(
             start__isnull=False,
             end__isnull=False,
             **filters
         )
         campaign_id_key = "placement__adwords_campaigns__id"
-        group_by = ("id", campaign_id_key)
+        group_by = ("id", )
 
         annotate = self.get_flights_delivery_annotate()
 
-        if force_recalculate:
+        if with_campaigns:
             queryset = queryset.filter(
                 placement__adwords_campaigns__statistics__date__gte=F("start"),
                 placement__adwords_campaigns__statistics__date__lte=F("end"),
             )
             annotate = FLIGHTS_DELIVERY_ANNOTATE
+            group_by = ("id", campaign_id_key)
 
         raw_data = queryset.values(
             *group_by  # segment by campaigns
@@ -166,12 +166,13 @@ class PacingReport:
                     for f in relevant_flights)
         for row in raw_data:
             fl_data = data[row["id"]]
-            fl_data["campaigns"] = fl_data.get("campaigns") or {}
+            if with_campaigns:
+                fl_data["campaigns"] = fl_data.get("campaigns") or {}
 
-            fl_data["campaigns"][row[campaign_id_key]] = {
-                k: row.get(k) or 0
-                for k in DELIVERY_FIELDS
-            }
+                fl_data["campaigns"][row[campaign_id_key]] = {
+                    k: row.get(k) or 0
+                    for k in DELIVERY_FIELDS
+                }
 
             for f in DELIVERY_FIELDS:
                 fl_data[f] = fl_data.get(f, 0) + (row.get(f) or 0)
@@ -619,6 +620,10 @@ class PacingReport:
         if apex_deal is not None and apex_deal.isdigit():
             queryset = queryset.filter(apex_deal=bool(int(apex_deal)))
 
+        queryset = queryset \
+            .annotate(campaigns=Count("placements__adwords_campaigns")) \
+            .exclude(campaigns__lte=0)
+
         return queryset.order_by("name", "id").distinct()
 
     def get_period_dates(self, period, custom_start, custom_end):
@@ -825,7 +830,7 @@ class PacingReport:
         queryset = Campaign.objects.filter(
             salesforce_placement__flights=flight)
 
-        # status = "eligible" | "paused" | "ended"
+        # status = "serving" | "paused" | "ended"
         if status:
             if type(status) is str:
                 queryset = queryset.filter(status=status)
@@ -857,7 +862,7 @@ class PacingReport:
         # flights for plan (we shall use them for all the plan stats calculations)
         # we take them all so the over-delivery is calculated
         all_placement_flights = self.get_flights_data(
-            placement=flight.placement, force_recalculate=True)
+            placement=flight.placement, with_campaigns=True)
         flights_data = [f for f in all_placement_flights if
                         f["id"] == flight.id]
         populate_daily_delivery_data(flights_data)

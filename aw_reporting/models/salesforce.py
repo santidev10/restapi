@@ -129,7 +129,15 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
 
     def have_campaigns(self, user=None):
         return self.get_queryset_for_user(user=user) \
-            .annotate(campaign_count=Count("placements__adwords_campaigns")) \
+            .annotate(campaign_count=Count("placements__adwords_campaigns"))\
+            .filter(campaign_count__gt=0)
+
+    def have_campaigns_from(self, min_start_date):
+        return self.get_queryset()\
+            .annotate(campaign_count=Count(
+                "placements__adwords_campaigns",
+                filter=Q(placements__adwords_campaigns__start_date__gte=min_start_date)
+            ))\
             .filter(campaign_count__gt=0)
 
 
@@ -137,7 +145,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
-    aw_cid = models.CharField(max_length=60, null=True)
+    aw_cid = models.CharField(max_length=60, null=True, db_index=True)
     number = models.CharField(max_length=10, null=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
 
@@ -355,7 +363,8 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             tags=data[Fields.TAGS] or "",
             types_of_targeting=data[Fields.TYPES_OF_TARGETING] or "",
             apex_deal=data.get(Fields.APEX_DEAL),
-            billing_server=data.get(Fields.BILLING_SERVER)
+            billing_server=data.get(Fields.BILLING_SERVER),
+            margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
         )
         if sales_email:
             res['sales_email'] = sales_email

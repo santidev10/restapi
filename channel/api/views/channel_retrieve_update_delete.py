@@ -102,6 +102,9 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 or self.request.user.is_staff:
             allowed_sections_to_load += (Sections.ANALYTICS,)
 
+        if self.request.user.has_perm("userprofile.monetization_filter"):
+            allowed_sections_to_load += (Sections.MONETIZATION,)
+
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
 
         try:

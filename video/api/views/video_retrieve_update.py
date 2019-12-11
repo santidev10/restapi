@@ -11,7 +11,6 @@ from elasticsearch.exceptions import NotFoundError
 
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
-from singledb.settings import DEFAULT_VIDEO_DETAILS_FIELDS
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
@@ -20,7 +19,6 @@ from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSe
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
     permission_classes = (OnlyAdminUserCanCreateUpdateDelete,)
     permission_required = ("userprofile.video_details",)
-    default_request_fields = DEFAULT_VIDEO_DETAILS_FIELDS
 
     __video_manager = VideoManager
 
@@ -34,7 +32,8 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
 
         allowed_sections_to_load = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA,
                                     Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION,
-                                    Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,)
+                                    Sections.CAPTIONS, Sections.ANALYTICS, Sections.BRAND_SAFETY,
+                                    Sections.CUSTOM_CAPTIONS)
 
         fields_to_load = get_fields(request.query_params, allowed_sections_to_load)
         try:

@@ -55,6 +55,7 @@ class Device:
     MOBILE = 1
     TABLET = 2
     OTHER = 3
+    CONNECTED_TV = 6
 
 
 ALL_AGE_RANGES = get_all_class_constants(AgeRange)
@@ -83,6 +84,7 @@ _DEVICE_REPRESENTATION = {
     Device.MOBILE: "Mobile devices with full browsers",
     Device.TABLET: "Tablets with full browsers",
     Device.OTHER: "Other",
+    Device.CONNECTED_TV: "TV Screens",
 }
 
 
@@ -103,6 +105,7 @@ class CampaignStatus(ExtendedEnum):
     REMOVED = "removed"
     ELIGIBLE = "eligible"
     ENDED = "ended"
+    SERVING = "serving"
 
 
 DATE_FORMAT = "%Y-%m-%d"
@@ -145,6 +148,8 @@ def get_device_id_by_name(device_repr):
     for device_id, device_name in _DEVICE_REPRESENTATION.items():
         if device_repr == device_name:
             return device_id
+        if device_repr == "Devices streaming video content to TV screens":
+            return Device.CONNECTED_TV
     logger.debug("Undefined device name <{}>".format(device_repr))
     return Device._UNDETERMINED
 

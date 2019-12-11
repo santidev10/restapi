@@ -35,6 +35,10 @@ class AuditSaveApiView(APIView):
         max_dislikes = int(query_params["max_dislikes"]) if "max_dislikes" in query_params else None
         min_date = query_params["min_date"] if "min_date" in query_params else None
         num_videos = int(query_params["num_videos"]) if "num_videos" in query_params else None
+        max_recommended_type = query_params["max_recommended_type"] if "max_recommended_type" in query_params else "video"
+        exclusion_hit_count = query_params["exclusion_hit_count"] if "exclusion_hit_count" in query_params else 1
+        inclusion_hit_count = query_params["inclusion_hit_count"] if "inclusion_hit_count" in query_params else 1
+
         if min_date:
             if '/' not in min_date:
                 raise ValidationError("format of min_date must be mm/dd/YYYY")
@@ -94,6 +98,14 @@ class AuditSaveApiView(APIView):
             'min_views': min_views,
             'max_dislikes': max_dislikes,
             'num_videos': num_videos,
+            'max_recommended_type': max_recommended_type,
+            'files': {
+                'inclusion': None,
+                'exclusion': None,
+                'source': None
+            },
+            'exclusion_hit_count': exclusion_hit_count,
+            'inclusion_hit_count': inclusion_hit_count,
         }
         if not audit_id:
             if source_file is None:
@@ -107,13 +119,16 @@ class AuditSaveApiView(APIView):
             # Put Source File on S3
             if source_file:
                 params['seed_file'] = self.put_source_file_on_s3(source_file)
+                params['files']['source'] = source_file.name
 
         # Load Keywords from Inclusion File
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
+            params['files']['inclusion'] = inclusion_file.name
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'], params['exclusion_category'] = self.load_keywords_and_categories(exclusion_file)
+            params['files']['exclusion'] = exclusion_file.name
         if category:
             c = []
             for a in json.loads(category):
@@ -136,8 +151,10 @@ class AuditSaveApiView(APIView):
             audit = AuditProcessor.objects.get(id=audit_id)
             if inclusion_file:
                 audit.params['inclusion'] = params['inclusion']
+                audit.params['files']['inclusion'] = params['files']['inclusion']
             if exclusion_file:
                 audit.params['exclusion'] = params['exclusion']
+                audit.params['files']['exclusion'] = params['files']['exclusion']
                 audit.params['exclusion_category'] = params['exclusion_category']
             if name:
                 audit.params['name'] = name
@@ -153,6 +170,9 @@ class AuditSaveApiView(APIView):
             audit.params['category'] = category
             audit.params['related_audits'] = related_audits
             audit.params['num_videos'] = num_videos
+            audit.params['max_recommended_type'] = max_recommended_type
+            audit.params['exclusion_hit_count'] = exclusion_hit_count
+            audit.params['inclusion_hit_count'] = inclusion_hit_count
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
@@ -190,7 +210,7 @@ class AuditSaveApiView(APIView):
         keywords = []
         categories = []
         io_string = StringIO(file)
-        reader = csv.reader(io_string, delimiter=",", quotechar="|")
+        reader = csv.reader(io_string, delimiter=',', quotechar='"')
         for row in reader:
             try:
                 word = row[0].lower().strip()

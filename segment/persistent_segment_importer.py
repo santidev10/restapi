@@ -10,10 +10,8 @@ import brand_safety.constants as constants
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
 from es_components.managers import VideoManager
-from segment.custom_segment_export_generator import CustomSegmentExportGenerator
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils import get_persistent_segment_model_by_type
-from segment.utils import retry_on_conflict
 from segment.segment_list_generator import SegmentListGenerator
 
 logger = logging.getLogger(__name__)
@@ -35,7 +33,7 @@ class PersistentSegmentImporter(object):
         self.segment_category = self.format(kwargs["segment_type"])
         self.segment_thumbnail = kwargs["thumbnail"] or S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
         self.segment_title = kwargs["title"]
-        self.audit_category = kwargs["audit_category"]
+        self.audit_category_id = kwargs["audit_category"]
 
         self._setup()
 
@@ -48,19 +46,18 @@ class PersistentSegmentImporter(object):
             raise ValueError("Allowed segment categories: {}".format(self.ALLOWED_SEGMENT_CATEGORIES))
 
         # If an audit category is provided, try retrieving it
-        if self.audit_category:
-            try:
-                self.audit_category = AuditCategory.objects.get(id=int(self.audit_category))
-            except AuditCategory.DoesNotExist:
-                raise ValueError(f"Audit category does not exist: {self.audit_category}")
+        if self.audit_category_id:
+            self.audit_category_id = int(self.audit_category_id)
+            if not AuditCategory.objects.filter(id=self.audit_category_id).exists():
+                raise ValueError(f"Audit category does not exist: {self.audit_category_id}")
 
         # Set es_manager
         if self.data_type == constants.VIDEO:
             self.es_manager = VideoManager(upsert_sections=(Sections.SEGMENTS,))
-            segment_max_size = CustomSegmentExportGenerator.VIDEO_LIMIT
+            segment_max_size = SegmentListGenerator.CUSTOM_VIDEO_SIZE
         elif self.data_type == constants.CHANNEL:
             self.es_manager = ChannelManager(upsert_sections=(Sections.SEGMENTS,))
-            segment_max_size = CustomSegmentExportGenerator.CHANNEL_LIMIT
+            segment_max_size = SegmentListGenerator.CUSTOM_CHANNEL_SIZE
         else:
             raise ValueError("Allowed data types: {}".format(self.ALLOWED_DATA_TYPES))
 
@@ -77,7 +74,7 @@ class PersistentSegmentImporter(object):
                 title=self.segment_title,
                 category=self.segment_category,
                 thumbnail_image_url=self.segment_thumbnail,
-                audit_category=self.audit_category,
+                audit_category_id=self.audit_category_id,
                 uuid=uuid.uuid4(),
                 is_master=False,
             )
@@ -86,21 +83,21 @@ class PersistentSegmentImporter(object):
 
     def run(self):
         # Add item to segment
-        segment_uuid = self.segment.uuid
-        retry_on_conflict(self.es_manager.add_to_segment_by_ids, self.youtube_ids, segment_uuid)
+        self.segment.add_to_segment(doc_ids=self.youtube_ids)
 
         exported = False
         # Wait until all items have been added to segment
         attempts = 1
         while attempts <= self.EXPORT_ATTEMPT_LIMIT:
-            logger.error(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
+            logger.info(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
             query = self.segment.get_segment_items_query()
             es_manager = self.segment.get_es_manager()
             segment_items_count = es_manager.search(query, limit=0).execute().hits.total
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export
-                SegmentListGenerator.export_to_s3(self.segment)
+                self.segment.details = self.segment.calculate_statistics()
+                self.segment.export_file()
                 exported = True
                 break
             else:
@@ -110,7 +107,7 @@ class PersistentSegmentImporter(object):
         # If all items are not added to segment after retries, manually verify if segment is ready for export
         if not exported:
             raise Exception(f"Unable to add all items to segment with uuid: {self.segment.uuid}. Export failed.")
-        logger.error(f"Finished segment import with uuid: {self.segment.uuid}")
+        logger.info(f"Finished segment import with uuid: {self.segment.uuid}")
 
     def _read_csv(self, path: str) -> list:
         """

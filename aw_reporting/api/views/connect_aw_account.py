@@ -10,11 +10,11 @@ from suds import WebFault
 from aw_reporting.adwords_api import get_customers
 from aw_reporting.adwords_api import load_web_app_settings
 from aw_reporting.api.serializers import AWAccountConnectionRelationsSerializer
+from aw_reporting.google_ads.tasks.upload_initial_aw_data import upload_initial_aw_data_task
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
-from aw_reporting.update.tasks import upload_initial_aw_data
 from aw_reporting.utils import get_google_access_token_info
 from userprofile.permissions import PermissionGroupNames
 
@@ -181,7 +181,7 @@ class ConnectAWAccountApiView(APIView):
                         AWAccountPermission.objects.get_or_create(
                             aw_connection=connection, account=obj,
                         )
-                upload_initial_aw_data.delay(connection.email)
+                upload_initial_aw_data_task.delay(connection.email)
 
                 response = AWAccountConnectionRelationsSerializer(relation).data
                 return Response(data=response)

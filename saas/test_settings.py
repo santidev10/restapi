@@ -5,7 +5,6 @@ except ImportError:
 
 IS_TEST = True
 
-
 try:
     from teamcity import is_running_under_teamcity
 
@@ -13,17 +12,16 @@ try:
         TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
 except:
     pass
-
 MIGRATION_MODULES = {
     "administration": None,
     "audit_tool": None,
     "auth": None,
+    "ads_analyzer": None,
     "authtoken": None,
     "aw_creation": None,
     "aw_reporting": None,
     "brand_safety": None,
     "contenttypes": None,
-    "django_celery_results": None,
     "email_reports": None,
     "keyword_tool": None,
     "segment": None,
@@ -41,22 +39,3 @@ CELERY_BEAT_SCHEDULE = {}
 CELERY_TASK_ALWAYS_EAGER = True
 DMP_CELERY_TASK_ALWAYS_EAGER = True
 APEX_HOST = "http://localhost:8000"
-
-DATABASES = {
-    'default': {
-        # default values are for the TC only
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('DB_NAME', 'saas'),
-        'USER': os.getenv('DB_USER', 'admin_saas'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', ''),  # Set to empty string for default.
-    }
-}
-SINGLE_DATABASE_API_URL = "http://{host}:10500/api/v1/".format(host=SINGLE_DATABASE_API_HOST)
-
-from utils.utittests.sdb_connector_patcher import monkey_patch
-from utils.utittests.aws_ses_patcher import ses_monkey_patch
-
-monkey_patch()
-ses_monkey_patch()

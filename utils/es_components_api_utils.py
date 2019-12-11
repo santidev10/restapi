@@ -13,11 +13,39 @@ from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
+from elasticsearch_dsl import Q
+
+import brand_safety.constants as constants
 
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
 
 logger = logging.getLogger(__name__)
+
+
+
+class BrandSafetyParamAdapter:
+    scores = {
+        constants.HIGH_RISK: "0,69",
+        constants.RISKY: "70,79",
+        constants.LOW_RISK: "80,89",
+        constants.SAFE: "90,100"
+
+    }
+    parameter = "brand_safety"
+    parameter_full_name = "brand_safety.overall_score"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter)
+        if parameter:
+            brand_safety_overall_score = []
+            labels = query_params[self.parameter].title().split(",")
+            for label in labels:
+                score = self.scores.get(label)
+                if score:
+                    brand_safety_overall_score.append(score)
+            query_params[self.parameter_full_name] = brand_safety_overall_score
+        return query_params
 
 
 def get_limits(query_params, default_page_size=None, max_page_number=None):
@@ -58,24 +86,23 @@ class QueryGenerator:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = ()
 
     def __init__(self, query_params):
-        self.query_params = query_params
+        self.query_params = self._adapt_query_params(query_params)
 
-    def __get_filter_range(self):
-        filters = []
-
-        for field in self.range_filter:
-
-            range = self.query_params.get(field, None)
-
+    def add_should_filters(self, ranges, filters, field):
+        if ranges is None:
+            return
+        queries = []
+        for range in ranges:
             if range:
                 min, max = range.split(",")
 
                 if not (min or max):
                     continue
 
-                query = QueryBuilder().build().must().range().field(field)
+                query = QueryBuilder().build().should().range().field(field)
                 if min:
                     try:
                         min = float(min)
@@ -90,7 +117,46 @@ class QueryGenerator:
                         # in case of filtering by date
                         pass
                     query = query.lte(max)
-                filters.append(query.get())
+                queries.append(query)
+        combined_query = None
+        for query in queries:
+            query_obj = query.get()
+            if not combined_query:
+                combined_query = query_obj
+            else:
+                combined_query |= query_obj
+        filters.append(combined_query)
+
+    def __get_filter_range(self):
+        filters = []
+
+        for field in self.range_filter:
+            if field == "brand_safety.overall_score":
+                self.add_should_filters(self.query_params.get(field, None), filters, field)
+            else:
+                range = self.query_params.get(field, None)
+                if range:
+                    min, max = range.split(",")
+
+                    if not (min or max):
+                        continue
+
+                    query = QueryBuilder().build().must().range().field(field)
+                    if min:
+                        try:
+                            min = float(min)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.gte(min)
+                    if max:
+                        try:
+                            max = float(max)
+                        except ValueError:
+                            # in case of filtering by date
+                            pass
+                        query = query.lte(max)
+                    filters.append(query.get())
 
         return filters
 
@@ -110,15 +176,42 @@ class QueryGenerator:
 
     def __get_filters_match_phrase(self):
         filters = []
-
+        fields = []
+        search_phrase = None
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
-                filters.append(
-                    QueryBuilder().build().must().match_phrase().field(field).value(value).get()
-                )
-
+                if field == "general_data.title":
+                    field = "general_data.title^2"
+                search_phrase = value
+            fields.append(field)
+        query = Q(
+            {
+                "multi_match": {
+                    "query": search_phrase,
+                    "type": "phrase",
+                    "fields": fields
+                }
+            }
+        )
+        if search_phrase:
+            filters.append(query)
         return filters
+
+    def adapt_transcript_filters(self, filters, value):
+        if value is True or value == "true":
+            q1 = QueryBuilder().build()
+            q1 = q1.should().exists().field("custom_captions.items").get()
+            q2 = QueryBuilder().build()
+            q2 = q2.should().exists().field("captions").get()
+            filters.append(q1 | q2)
+        elif value is False or value == "false":
+            q1 = QueryBuilder().build()
+            filters.append(q1.must_not().exists().field("custom_captions.items").get())
+            q2 = QueryBuilder().build()
+            filters.append(q2.must_not().exists().field("captions").get())
+        else:
+            return
 
     def __get_filters_exists(self):
         filters = []
@@ -127,6 +220,10 @@ class QueryGenerator:
             value = self.query_params.get(field, None)
 
             if value is None:
+                continue
+
+            if field == "transcripts":
+                self.adapt_transcript_filters(filters, value)
                 continue
 
             query = QueryBuilder().build()
@@ -152,6 +249,12 @@ class QueryGenerator:
             ids = ids_str.split(",")
             filters.append(self.es_manager.ids_query(ids))
         return filters
+
+    def _adapt_query_params(self, query_params):
+        for adapter in self.params_adapters:
+            query_params = adapter().adapt(query_params)
+        return query_params
+
 
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
@@ -186,7 +289,7 @@ class ESDictSerializer(Serializer):
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, *args, **kwargs):
+    def __init__(self, manager, cached_aggregations=None, *args, **kwargs):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -195,9 +298,14 @@ class ESQuerysetAdapter:
         self.percentiles = None
         self.fields_to_load = None
         self.search_limit = None
+        self.cached_aggregations = cached_aggregations
 
     @cached_method(timeout=7200)
     def count(self):
+        count = self.manager.search(filters=self.filter_query).count()
+        return count
+
+    def uncached_count(self):
         count = self.manager.search(filters=self.filter_query).count()
         return count
 
@@ -238,8 +346,22 @@ class ESQuerysetAdapter:
             .source(includes=self.fields_to_load).execute().hits
         return data
 
-    @cached_method(timeout=7200)
+    def uncached_get_data(self, start=0, end=None):
+        data = self.manager.search(
+            filters=self.filter_query,
+            sort=self.sort,
+            offset=start,
+            limit=end,
+        ) \
+            .source(includes=self.fields_to_load).execute().hits
+        return data
+
     def get_aggregations(self):
+        if self.cached_aggregations and self.aggregations:
+            aggregations = {aggregation: self.cached_aggregations[aggregation]
+                            for aggregation in self.cached_aggregations
+                            if aggregation in self.aggregations}
+            return aggregations
         aggregations = self.manager.get_aggregation(
             search=self.manager.search(filters=self.filter_query),
             properties=self.aggregations,
@@ -263,8 +385,8 @@ class ESQuerysetAdapter:
         options = dict(
             filters=[_filter.to_dict() for _filter in self.filter_query],
             sort=self.sort,
-            aggregations=self.aggregations,
             options=options,
+            sections=self.manager.sections
         )
         key_json = json.dumps(options, sort_keys=True, cls=DjangoJSONEncoder)
         key_hash = hashlib.md5(key_json.encode()).hexdigest()
@@ -277,7 +399,7 @@ class ESQuerysetAdapter:
         raise NotImplementedError
 
     def __iter__(self):
-        if self.sort:
+        if self.sort or self.search_limit:
             yield from self.get_data(end=self.search_limit)
         else:
             yield from self.manager.scan(
@@ -286,8 +408,10 @@ class ESQuerysetAdapter:
 
 
 class ESFilterBackend(BaseFilterBackend):
+
     def _get_query_params(self, request):
         return request.query_params.dict()
+
 
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(
@@ -299,6 +423,7 @@ class ESFilterBackend(BaseFilterBackend):
                 range_filter=view.range_filter,
                 match_phrase_filter=view.match_phrase_filter,
                 exists_filter=view.exists_filter,
+                params_adapters=view.params_adapters,
             )
         )
         query_params = self._get_query_params(request)
@@ -307,6 +432,16 @@ class ESFilterBackend(BaseFilterBackend):
     def _get_aggregations(self, request, queryset, view):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
+        if "flags" in aggregations:
+            aggregations.append("stats.flags")
+        if "transcripts" in aggregations:
+            aggregations.append("custom_captions.items:exists")
+            aggregations.append("custom_captions.items:missing")
+            aggregations.append("captions:exists")
+            aggregations.append("captions:missing")
+            aggregations.append("transcripts:exists")
+            aggregations.append("transcripts:missing")
+            aggregations.remove("transcripts")
         if view.allowed_aggregations is not None:
             aggregations = [agg
                             for agg in aggregations
@@ -365,6 +500,7 @@ class APIViewMixin:
     range_filter = ()
     match_phrase_filter = ()
     exists_filter = ()
+    params_adapters = ()
 
 
 class PaginatorWithAggregationMixin:
@@ -379,3 +515,39 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
+
+
+
+class ExportDataGenerator:
+    serializer_class = ESDictSerializer
+    terms_filter = ()
+    range_filter = ()
+    match_phrase_filter = ()
+    exists_filter = ()
+    params_adapters = ()
+    queryset = None
+
+    def __init__(self, query_params):
+        self.query_params = query_params
+
+    def _get_query_generator(self):
+        dynamic_generator_class = type(
+            "DynamicGenerator",
+            (QueryGenerator,),
+            dict(
+                es_manager=self.queryset.manager,
+                terms_filter=self.terms_filter,
+                range_filter=self.range_filter,
+                match_phrase_filter=self.match_phrase_filter,
+                exists_filter=self.exists_filter,
+                params_adapters=self.params_adapters,
+            )
+        )
+        return dynamic_generator_class(self.query_params)
+
+    def __iter__(self):
+        self.queryset.filter(
+            self._get_query_generator().get_search_filters()
+        )
+        for item in self.queryset:
+            yield self.serializer_class(item).data

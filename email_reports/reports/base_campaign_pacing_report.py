@@ -1,3 +1,6 @@
+import boto
+import logging
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -8,6 +11,8 @@ from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
+
+logger = logging.getLogger(__name__)
 
 
 class BaseCampaignPacingEmailReport(BaseEmailReport):
@@ -47,7 +52,12 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             headers={'X-Priority': 2},
             reply_to="",
         )
-        msg.send(fail_silently=False)
+
+        try:
+            msg.send(fail_silently=False)
+        except boto.ses.exceptions.SESIllegalAddressError:
+            logger.error("SESIllegalAddressError during sending daily campaign report: email - %s",
+                         self._get_to(opportunity))
 
     def _get_subject(self, opportunity):
         return "FLIGHT {problem} PACING for {opportunity}".format(

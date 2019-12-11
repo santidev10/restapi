@@ -5,15 +5,12 @@ from typing import Dict
 from typing import List
 
 import xlsxwriter
-from django.conf import settings
 from django.core.management import BaseCommand
-from django.http import QueryDict
 
 from audit_tool.dmo import VideoDMO
 from audit_tool.keywords import Keywords
 from audit_tool.youtube import Youtube
 from brand_safety.models import BadWord
-from singledb.connector import SingleDatabaseApiConnector
 
 logger = logging.getLogger(__name__)
 
@@ -64,20 +61,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         self.filename = options.get("filename")
-        logger.error("Starting audit VIQ-326")
+        logger.debug("Starting audit VIQ-326")
 
         reports = {}
         for row in self.load_file():
             reports[row.get("ExternalVideoId")] = row
         video_ids = reports.keys()
-        logger.error("loaded file")
+        logger.debug("loaded file")
 
         youtube = Youtube()
 
         # get video-data from Data API
         youtube.download(video_ids)
         videos = [i for i in youtube.get_all_items()]
-        logger.error("downloaded videos from youtube")
+        logger.debug("downloaded videos from youtube")
 
         # get channel-data from Data API
         channels_ids = set([v.channel_id for v in videos])
@@ -86,17 +83,13 @@ class Command(BaseCommand):
         for chunk in youtube.chunks:
             for item in chunk.get("items"):
                 channels[item.get("id")] = item
-        logger.error("downloaded channels from youtube")
+        logger.debug("downloaded channels from youtube")
 
         # get KW_Category
         self.KW_CATEGORY = {}
-        logger.error("start downloading categories")
+        logger.debug("start downloading categories")
 
-        if settings.USE_LEGACY_BRAND_SAFETY:
-            params = QueryDict()
-            bad_words = SingleDatabaseApiConnector().get_bad_words_list(params)
-        else:
-            bad_words = BadWord.objects.all().values()
+        bad_words = BadWord.objects.all().values()
 
         for row in bad_words:
             name = row.get("name")
@@ -104,17 +97,17 @@ class Command(BaseCommand):
             if name not in self.KW_CATEGORY:
                 self.KW_CATEGORY[name] = set()
             self.KW_CATEGORY[name].add(category)
-        logger.error("done")
+        logger.debug("done")
 
         # parse by keywords
-        logger.error("start parsing")
+        logger.debug("start parsing")
         self.parse_videos_by_keywords(videos)
 
         # save results
         self.save_csv(videos, channels, reports)
         self.save_xlsx(videos, channels, reports)
 
-        logger.info("Done")
+        logger.debug("Done")
 
     def load_file(self):
         with open(self.filename) as f:
@@ -126,7 +119,7 @@ class Command(BaseCommand):
     def parse_videos_by_keywords(videos: List[VideoDMO]) -> None:
         logger.info("Parsing {} video(s)".format(len(videos)))
         keywords = Keywords()
-        keywords.load_from_sdb()
+        keywords.load_from_db()
         keywords.compile_regexp()
         texts = [video.get_text() for video in videos]
         found = keywords.parse_all(texts)

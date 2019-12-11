@@ -7,12 +7,11 @@ import re
 from logging import Filter
 from logging import Handler
 
+import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import get_template
-import requests
 
-from utils.aws.ses_emailer import SESEmailer
 from utils.lang import get_request_prefix
 
 IGNORE_EMAILS_TEMPLATE = {
@@ -35,9 +34,9 @@ def send_new_registration_email(email_data):
            "User first_name: {first_name} \n" \
            "User last_name: {last_name} \n" \
            "User company: {company}\n" \
-           "User phone: {phone} \n"\
-           "Annual ad spend: {annual_ad_spend} \n"\
-           "User type: {user_type} \n\n"\
+           "User phone: {phone} \n" \
+           "Annual ad spend: {annual_ad_spend} \n" \
+           "User type: {user_type} \n\n" \
            "Please accept the user: {user_list_link} \n\n".format(**email_data)
     send_mail(subject, text, sender, to, fail_silently=True)
     return
@@ -61,13 +60,13 @@ def send_new_channel_authentication_email(user, channel_id, request):
            "Link to channel: {link} \n\n" \
            "Please accept the user: {user_list_link} \n\n" \
         .format(
-            host=request.get_host(),
-            email=user.email,
-            first_name=user.first_name, last_name=user.last_name,
-            channel_id=channel_id,
-            link="{}{}/research/channels/{}".format(prefix, host, channel_id),
-            user_list_link="{}{}/admin/users".format(prefix, host),
-        )
+        host=request.get_host(),
+        email=user.email,
+        first_name=user.first_name, last_name=user.last_name,
+        channel_id=channel_id,
+        link="{}{}/research/channels/{}".format(prefix, host, channel_id),
+        user_list_link="{}{}/admin/users".format(prefix, host),
+    )
     send_mail(subject, text, sender, to, fail_silently=True)
 
 
@@ -82,12 +81,27 @@ def send_admin_notification(channel_id):
     send_mail(subject, message, sender, to, fail_silently=False)
 
 
-def send_html_email(subject, to, text_header, text_content):
+def send_html_email(subject, to, text_header, text_content, from_email=None):
     """
     Send email with html
     """
     html_email = generate_html_email(text_header, text_content)
-    SESEmailer().send_email(to, subject, html_email)
+    send_email(
+        subject=subject,
+        recipient_list=[to],
+        html_message=html_email,
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS
+    )
+
+
+def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwargs):
+    return send_mail(
+        subject=subject,
+        message=message,
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
+        recipient_list=recipient_list,
+        **kwargs,
+    )
 
 
 def send_welcome_email(user, request):
@@ -195,7 +209,7 @@ class NotFoundWarningLoggingFilter(Filter):
     pattern = None
 
     def filter(self, record):
-        assert self.pattern is not None,\
+        assert self.pattern is not None, \
             "You must set sting with a regular expression in the 'patter' attribute of a child class"
         return not (record.levelname == Levels.WARNING and bool(re.match(self.pattern, record.msg)))
 

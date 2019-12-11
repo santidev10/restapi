@@ -18,6 +18,7 @@ from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
 
+
 spend_units_fields = ("today_goal", "yesterday_delivered",
                       "before_yesterday_delivered",
                       "today_goal_impressions", "today_goal_views",
@@ -130,6 +131,7 @@ class DailyCampaignReport(BaseEmailReport):
                 reply_to="",
             )
             msg.attach_alternative(html_content, "text/html")
+
             msg.send()
 
             # save the email

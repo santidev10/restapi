@@ -14,6 +14,14 @@ class PersistentSegmentSerializer(ModelSerializer):
         "views",
         "audited_videos",
         "items_count",
+        "average_cpm",
+        "average_cpv",
+        "ctr",
+        "ctr_v",
+        "video_view_rate",
+        'average_brand_safety_score',
+        'monthly_subscribers',
+        'monthly_views',
     )
 
     class Meta:
@@ -28,7 +36,7 @@ class PersistentSegmentSerializer(ModelSerializer):
             "created_at",
             "updated_at",
             "category",
-            "is_master"
+            "is_master",
         )
 
     def get_statistics(self, obj):

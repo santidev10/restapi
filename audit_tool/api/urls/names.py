@@ -8,4 +8,6 @@ class AuditPathName:
     AUDIT_RESUME = "audit_resume"
     AUDIT_STOP = "audit_stop"
     AUDIT_FLAG = "audit_flag"
+    AUDIT_HISTORY = "audit_history"
+    AUDIT_PAUSE = "audit_pause"
 

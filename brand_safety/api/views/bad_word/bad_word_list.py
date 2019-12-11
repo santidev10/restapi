@@ -8,6 +8,7 @@ from rest_framework.serializers import ValidationError
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
+from distutils.util import strtobool
 
 
 class BadWordListApiView(ListCreateAPIView):
@@ -41,6 +42,27 @@ class BadWordListApiView(ListCreateAPIView):
         if negative_scores:
             negative_scores = negative_scores.split(',')
             filters["negative_score__in"] = negative_scores
+
+        meta_scoring = self.request.query_params.get("meta_scoring")
+        if meta_scoring is not None:
+            if isinstance(meta_scoring, bool):
+                filters["meta_scoring"] = meta_scoring
+            else:
+                try:
+                    filters["meta_scoring"] = strtobool(meta_scoring)
+                except ValueError:
+                    raise ValidationError("Meta_scoring filter param must be True or False. Received: {}.".format(meta_scoring))
+
+        comment_scoring = self.request.query_params.get("comment_scoring")
+        if comment_scoring is not None:
+            if isinstance(comment_scoring, bool):
+                filters["comment_scoring"] = comment_scoring
+            else:
+                try:
+                    filters["comment_scoring"] = strtobool(comment_scoring)
+                except ValueError:
+                    raise ValidationError("Comment_scoring filter param must be True or False. Received: {}.".format(comment_scoring))
+
 
         if filters:
             queryset = queryset.filter(**filters)
@@ -80,8 +102,10 @@ class BadWordListApiView(ListCreateAPIView):
                     if existing_word.deleted_at is not None:
                         existing_word.deleted_at = None
                         existing_word.save(update_fields=['deleted_at'])
-
-                        result = self.serializer_class(existing_word).data
+                        existing_word_serializer = self.serializer_class(existing_word, data=request.data)
+                        existing_word_serializer.is_valid(raise_exception=True)
+                        existing_word_serializer.save()
+                        result = existing_word_serializer.data
                         results.append(result)
                         status = HTTP_201_CREATED
                     else:

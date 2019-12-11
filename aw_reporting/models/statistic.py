@@ -14,6 +14,11 @@ from aw_reporting.models.ad_words.statistic import BaseClicksTypesStatisticsMode
 
 ParentStatuses = ('Parent', 'Not a parent', 'Undetermined')
 
+PLACEMENT_STATISTIC_TYPES = [
+    (0, "Managed"), # Managed placement
+    (1, "Group") # Automatic placement
+]
+
 
 class DailyStatisticModel(BaseStatisticModel):
     date = models.DateField(db_index=True)
@@ -125,9 +130,10 @@ class YTVideoStatistic(DeviceDailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup,
                                  related_name='managed_video_statistics',
                                  on_delete=models.CASCADE)
+    placement_type = models.IntegerField(default=0, choices=PLACEMENT_STATISTIC_TYPES, db_index=True)
 
     class Meta:
-        unique_together = (('ad_group', 'yt_id', 'device_id', 'date'),)
+        unique_together = (('ad_group', 'yt_id', 'device_id', 'date', 'placement_type'),)
         ordering = ['ad_group', 'yt_id', 'device_id', 'date']
 
 
@@ -136,9 +142,10 @@ class YTChannelStatistic(DeviceDailyStatisticModel):
     ad_group = models.ForeignKey(AdGroup,
                                  related_name='channel_statistics',
                                  on_delete=models.CASCADE)
+    placement_type = models.IntegerField(default=0, choices=PLACEMENT_STATISTIC_TYPES, db_index=True)
 
     class Meta:
-        unique_together = (('ad_group', 'yt_id', 'device_id', 'date'),)
+        unique_together = (('ad_group', 'yt_id', 'device_id', 'date', 'placement_type'),)
         ordering = ['ad_group', 'yt_id', 'device_id', 'date']
 
 
@@ -153,6 +160,7 @@ class VideoCreativeStatistic(DailyStatisticModel):
 
 # Hourly stats
 class CampaignHourlyStatistic(models.Model):
+    id = models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")
     date = models.DateField()
     hour = models.PositiveSmallIntegerField()
     campaign = models.ForeignKey(Campaign,

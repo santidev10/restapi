@@ -128,7 +128,7 @@ def create_campaigns(account, opportunity, dates):
             id="demo{}".format(i + 1),
             name="Campaign #demo{}".format(i + 1),
             account=account,
-            status=CampaignStatus.ELIGIBLE.value,
+            status=CampaignStatus.SERVING.value,
             salesforce_placement=OpPlacement.objects.create(
                 id=next(int_iterator),
                 opportunity=opportunity,

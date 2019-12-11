@@ -1,10 +1,7 @@
 """
 BasePersistentSegment models module
 """
-import csv
 import logging
-import os
-import tempfile
 
 import boto3
 from django.conf import settings
@@ -15,14 +12,17 @@ from django.db.models import Manager
 from django.db.models import TextField
 from django.db.models import DateTimeField
 from django.db.models import Model
+from django.db.models import IntegerField
 from django.db.models import UUIDField
+from django.utils import timezone
 
-from utils.models import Timestampable
 from .constants import PersistentSegmentCategory
 from .constants import S3_SEGMENT_EXPORT_KEY_PATTERN
 from .constants import S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN
-from es_components.query_builder import QueryBuilder
-from es_components.constants import SEGMENTS_UUID_FIELD
+from audit_tool.models import AuditCategory
+from segment.models.utils.calculate_segment_statistics import calculate_statistics
+from segment.models.utils.segment_exporter import SegmentExporter
+from utils.models import Timestampable
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,13 @@ class BasePersistentSegment(Timestampable):
     """
     Base persistent segment model
     """
+    REMOVE_FROM_SEGMENT_RETRY = 15
+    RETRY_SLEEP_COEFF = 1
+
     uuid = UUIDField(unique=True)
     title = CharField(max_length=255, null=True, blank=True)
     category = CharField(max_length=255, null=False, default=PersistentSegmentCategory.WHITELIST, db_index=True)
+    audit_category_id = IntegerField(null=True, blank=True)
     is_master = BooleanField(default=False, db_index=True)
 
     details = JSONField(default=dict)
@@ -47,6 +51,7 @@ class BasePersistentSegment(Timestampable):
     related = None  # abstract property
     segment_type = None  # abstract property
     files = None # abstract property
+    related_aw_statistics_model = None # abstract property
 
     export_content_type = "application/CSV"
     export_last_modified = None
@@ -57,14 +62,39 @@ class BasePersistentSegment(Timestampable):
         abstract = True
         ordering = ["pk"]
 
-    def calculate_details(self):
-        raise NotImplementedError
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_BUCKET_NAME)
+
+    def export_file(self, queryset=None, filename=None):
+        now = timezone.now()
+        s3_key = self.get_s3_key(datetime=now)
+        if filename:
+            self.s3_exporter.export_file_to_s3(filename, s3_key)
+        else:
+            self.s3_exporter.export_to_s3(self, s3_key, queryset=queryset)
+        PersistentSegmentFileUpload.objects.create(segment_uuid=self.uuid, filename=s3_key, created_at=now)
+
+    @property
+    def audit_category(self):
+        if self.audit_category_id:
+            return AuditCategory.objects.get(id=self.audit_category_id)
+
+    @audit_category.setter
+    def audit_category(self, audit_category):
+        if audit_category and audit_category.id:
+            self.audit_category_id = audit_category.id
+
+    def calculate_statistics(self, items=None):
+        statistics = calculate_statistics(self, items=items)
+        return statistics
 
     def get_es_manager(self):
         raise NotImplementedError
 
     def delete(self, *args, **kwargs):
         # Delete segment references from Elasticsearch
+        # Method provided by segment_mixin
         self.remove_all_from_segment()
         super().delete(*args, **kwargs)
         return self
@@ -77,7 +107,7 @@ class BasePersistentSegment(Timestampable):
                 return latest_filename
             else:
                 # Get new filename to upload using date string
-                key = S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime)
+                key = S3_SEGMENT_BRAND_SAFETY_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title, datetime=datetime or timezone.now())
         except IndexError:
             key = S3_SEGMENT_EXPORT_KEY_PATTERN.format(segment_type=self.segment_type, segment_title=self.title)
         return key
@@ -89,14 +119,6 @@ class BasePersistentSegment(Timestampable):
             aws_secret_access_key=settings.AMAZON_S3_SECRET_ACCESS_KEY
         )
         return s3
-
-    def export_to_s3(self, s3_key):
-        with PersistentSegmentExportContent(segment=self) as exported_file_name:
-            self._s3().upload_file(
-                Bucket=settings.AMAZON_S3_BUCKET_NAME,
-                Key=s3_key,
-                Filename=exported_file_name,
-            )
 
     def get_s3_export_content(self):
         s3 = self._s3()
@@ -114,29 +136,14 @@ class BasePersistentSegment(Timestampable):
         self.export_last_modified = s3_object.get("LastModified")
         return body
 
-    def get_segment_items_query(self):
-        query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(self.uuid).get()
-        return query
-
-    def extract_aggregations(self, aggregation_result_dict):
-        """
-        Extract value fields of aggregation results
-        :param aggregation_result_dict: { "agg_name" : { value: "a_value" } }
-        :return:
-        """
-        results = {}
-        for key, value in aggregation_result_dict.items():
-            results[key] = value["value"]
-        return results
-
-    def remove_all_from_segment(self):
-        """
-        Remove all references to segment uuid from Elasticsearch
-        :return:
-        """
-        es_manager = self.get_es_manager()
-        query = self.get_segment_items_query()
-        es_manager.remove_from_segment(query, self.uuid)
+    def get_export_file(self):
+        try:
+            key = self.get_s3_key(from_db=True)
+            s3_object = self.s3_exporter.get_s3_export_content(key, get_key=False)
+        except Exception as e:
+            raise e
+        export_content = s3_object.iter_chunks()
+        return export_content
 
 
 class BasePersistentSegmentRelated(Timestampable):
@@ -154,34 +161,6 @@ class BasePersistentSegmentRelated(Timestampable):
         unique_together = (
             ("segment", "related_id"),
         )
-
-
-class PersistentSegmentExportContent(object):
-    CHUNK_SIZE = 1000
-
-    def __init__(self, segment):
-        self.segment = segment
-
-    def __enter__(self):
-        _, self.filename = tempfile.mkstemp(dir=settings.TEMPDIR)
-
-        with open(self.filename, mode="w+", newline="") as export_file:
-            queryset = self.segment.get_queryset()
-            field_names = self.segment.get_export_columns()
-            writer = csv.DictWriter(export_file, fieldnames=field_names)
-            writer.writeheader()
-            for item in queryset:
-                row = self.segment.export_serializer(item).data
-                writer.writerow(row)
-        return self.filename
-
-    def __exit__(self, *args):
-        os.remove(self.filename)
-
-    def _data_generator(self, export_serializer, queryset):
-        for item in queryset:
-            data = export_serializer(item).data
-            yield data
 
 
 class PersistentSegmentFileUpload(Model):

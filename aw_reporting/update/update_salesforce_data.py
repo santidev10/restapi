@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from datetime import timedelta
+import time
 
 from django.conf import settings
 from django.db import IntegrityError
@@ -8,6 +9,8 @@ from django.db.models import F
 from django.db.models import OuterRef
 from django.db.models import Q
 from django.db.models import Subquery
+from django.db.models.signals import pre_save
+import pytz
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import Activity
@@ -25,8 +28,9 @@ from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
 from aw_reporting.salesforce import Connection as SConnection
 from saas import celery_app
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 from utils.datetime import now_in_default_tz
-from utils.db.models.persistent_entities import DemoEntityModelMixin
 from utils.lang import almost_equal
 
 __all__ = [
@@ -37,14 +41,19 @@ logger = logging.getLogger(__name__)
 WRITE_START = datetime(2016, 9, 1).date()
 
 
-@celery_app.task
-def update_salesforce_data(do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
-                           skip_flights=False, skip_placements=False, skip_opportunities=False):
+@celery_app.task(expires=TaskExpiration.FULL_SF_UPDATE, soft_time_limit=TaskTimeout.FULL_SF_UPDATE)
+def update_salesforce_data(do_delete=True, do_get=True, do_update=True, debug_update=False, opportunity_ids=None, force_update=False,
+                           skip_flights=False, skip_placements=False, skip_opportunities=False, delete_from_days=14):
     logger.info("Salesforce update started")
+    start = time.time()
     today = now_in_default_tz().date()
     sc = None
-    if do_get:
+    if do_delete:
         sc = SConnection()
+        perform_delete(sc=sc, delete_from_days=delete_from_days)
+
+    if do_get:
+        sc = sc or SConnection()
         perform_get(sc=sc)
 
     if do_update:
@@ -54,33 +63,49 @@ def update_salesforce_data(do_get=True, do_update=True, debug_update=False, oppo
                        debug_update=debug_update, skip_flights=skip_flights)
 
     match_using_placement_numbers()
-    logger.info("Salesforce update finished")
+    logger.info(f"Salesforce update finished. Took: {time.time() - start}")
+
+
+def perform_delete(sc, delete_from_days):
+    today = datetime.now(pytz.UTC)
+    from_deleted = today - timedelta(days=delete_from_days)
+
+    for model, resource in [
+        (Opportunity, "Opportunity"),
+        (OpPlacement, "Placement__c"),
+        (Flight, "Flight__c"),
+    ]:
+        deleted_items = sc.get_deleted_items(resource, from_deleted, today)
+        to_delete = [record["id"] for record in deleted_items]
+        if to_delete:
+            model.objects.filter(id__in=to_delete).delete()
+            logger.debug(f"Deleted {model.__name__} entries: {to_delete}")
 
 
 def perform_get(sc):
-    opportunity_ids = []
-    placement_ids = []
-    for model, method in [
-        (UserRole, 'get_user_roles'),
-        (User, 'get_users'),
-        (Contact, 'get_contacts'),
-        (SFAccount, 'get_accounts'),
-        (Category, 'get_categories'),
-        (Opportunity, 'get_opportunities'),
-        (OpPlacement, 'get_placements'),
-        (Flight, 'get_flights'),
-        (Activity, 'get_activities'),
+    opportunity_ids = set()
+    placement_ids = set()
+    end_date_threshold = datetime.today().date() - timedelta(days=14)
+    for model, method, condition in [
+        (UserRole, 'get_user_roles', None),
+        (User, 'get_users', None),
+        (Contact, 'get_contacts', None),
+        (SFAccount, 'get_accounts', None),
+        (Category, 'get_categories', None),
+        (Opportunity, 'get_opportunities', f"MAX_Placement_End_Date__c > {end_date_threshold}"),
+        (OpPlacement, 'get_placements', f"Placement_End_Date__c > {end_date_threshold}"),
+        (Flight, 'get_flights', f"Flight_End_Date__c > {end_date_threshold}"),
+        (Activity, 'get_activities', None),
     ]:
         logger.debug("Getting %s items" % model.__name__)
-        existed_ids = model.objects.all().values_list('id', flat=True)
-        demo_ids = list(model.demo_items().values_list('id', flat=True)) \
-            if issubclass(model, DemoEntityModelMixin) \
-            else []
-
-        item_ids = []
-        insert_list = []
-        update = 0
-        for item_data in getattr(sc, method)():
+        to_create = []
+        to_update = []
+        rows = getattr(sc, method)(where=condition)
+        existing_items = {
+            item.id: item for item in model.objects.all()
+        }
+        update_fields = None
+        for item_data in rows:
             # save ony children of saved parents
             if method == 'get_placements' \
                     and item_data['Insertion_Order__c'] \
@@ -90,41 +115,40 @@ def perform_get(sc):
                     and item_data['Placement__c'] not in placement_ids:
                 continue
             data = model.get_data(item_data)
-
-            # save items
+            if update_fields is None:
+                update_fields = [key for key in data.keys() if key != "id"]
             item_id = data['id']
-            item_ids.append(item_id)
-
-            if item_id in existed_ids:
-                del data['id']
+            existing = existing_items.get(item_id)
+            if existing is None:
+                to_create.append(model(**data))
+                continue
+            # Compare values since Contact and SFAccount models are easily compared and contain many entries
+            if method == "get_contacts" or method == "get_accounts":
+                existing_values = set(getattr(existing, key) for key in data.keys())
+                if existing_values != set(data.values()):
+                    to_update.append(model(**data))
+            elif method == "get_categories":
                 try:
-                    item = model.objects.get(pk=item_id)
-                    for key, value in data.items():
-                        setattr(item, key, value)
-                    item.save()
-                except IntegrityError as e:
-                    logger.exception(e)
-                update += 1
+                    Category.objects.get(id=data["id"])
+                except IntegrityError:
+                    to_create.append(Category(**data))
             else:
-                insert_list.append(
-                    model(**data)
-                )
-        if insert_list:
-            model.objects.safe_bulk_create(insert_list)
-            logger.debug('   Inserted new %d items' % len(insert_list))
-        logger.debug('   Updated %d items' % update)
-
-        # delete items
-        deleted_ids = set(existed_ids) - set(item_ids) - set(demo_ids)
-        if deleted_ids:
-            model.objects.filter(pk__in=deleted_ids).delete()
-            logger.debug('   Deleted %d items' % len(deleted_ids))
+                to_update.append(model(**data))
+        if to_update:
+            # send pre_save signals for notifications
+            for item in to_update:
+                pre_save.send(model, instance=item)
+            model.objects.bulk_update(to_update, fields=update_fields, batch_size=1000)
+            logger.debug(f"Updated {len(to_update)} items for: {model}")
+        if to_create:
+            model.objects.safe_bulk_create(to_create)
+            logger.debug(f"Created {len(to_create)} items for: {model}")
 
         # save parent ids
         if method == 'get_opportunities':
-            opportunity_ids = item_ids
+            opportunity_ids = set(Opportunity.objects.all().values_list("id", flat=True))
         elif method == 'get_placements':
-            placement_ids = item_ids
+            placement_ids = set(OpPlacement.objects.all().values_list("id", flat=True))
 
 
 def perform_update(sc, today, opportunity_ids, force_update, skip_placements, skip_opportunities,
@@ -164,7 +188,10 @@ def update_opportunities(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Opportunity.update(opportunity.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -196,7 +223,10 @@ def update_placements(sc, opportunity_ids, debug_update):
                     if debug_update \
                     else sc.sf.Placement__c.update(placement.id, update, )
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -238,7 +268,10 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
-                logger.critical("Unhandled exception: %s" % str(e))
+                if getattr(e, "status", 0) == 404:
+                    logger.info(str(e))
+                else:
+                    logger.critical("Unhandled exception: %s" % str(e))
             else:
                 if r == 204:
                     logger.debug(
@@ -264,7 +297,10 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
         try:
             r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
         except Exception as e:
-            logger.critical("Unhandled exception: %s" % str(e))
+            if getattr(e, "status", 0) == 404:
+                logger.warning(str(e))
+            else:
+                logger.critical("Unhandled exception: %s" % str(e))
         else:
             if r == 204:
                 logger.debug(

@@ -1,5 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+import itertools
 import logging
 import multiprocessing as mp
+import sys
+
+from django.conf import settings
 
 from audit_tool.models import BlacklistItem
 from brand_safety.constants import BRAND_SAFETY_SCORE
@@ -23,21 +28,39 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    MAX_POOL_COUNT = None
-    CHANNEL_POOL_BATCH_SIZE = None
-    CHANNEL_MASTER_BATCH_SIZE = None
-    # Hours in which a channel should be updated
+    # Number of channels to provide to pool from _channel_generator
+    channel_master_batch_size = None
+    # Number of processes in pool
+    max_pool_count = None
+    # Multiplier for max_pool_count, increases during work off hours
+    pool_multiplier = None
+
+    WORKING_HOURS_POOL_MULTIPLIER = 1
+    OFF_HOURS_POOL_MULTIPLIER = 2
+    # Number of channels for each process
+    CHANNEL_POOL_BATCH_SIZE = 2
+    # Threshold in which a channel should be updated
     UPDATE_TIME_THRESHOLD = "now-7d/d"
     CHANNEL_BATCH_COUNTER_LIMIT = 500
     ES_LIMIT = 10000
     MINIMUM_SUBSCRIBER_COUNT = 1000
+    MINIMUM_VIEW_COUNT = 1000
     SLEEP = 2
-    channel_batch_counter = 1
+    MAX_CYCLE_COUNT = 20 # Number of update cycles before terminating to relieve memory
+    MAX_THREAD_POOL = 10
+    batch_counter = 0
+
+    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags", "brand_safety.updated_at")
+    VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
+                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
     def __init__(self, *_, **kwargs):
+        self._reset_max_pool_and_batch_size()
+        self.audit_utils = AuditUtils()
+
         # If initialized with an APIScriptTracker instance, then expected to run full brand safety
         # else main run method should not be called since it relies on an APIScriptTracker instance
-        self.query_creator = None
+        self.query_creator = self._create_discovery_query if kwargs["discovery"] else self._create_update_query
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
         self.blacklist_data_ref = {}
@@ -48,38 +71,25 @@ class BrandSafetyAudit(object):
             self.is_manual = False
         except KeyError:
             self.is_manual = True
-        if kwargs["discovery"]:
-            self.discovery = True
-            self._set_discovery_config()
-        else:
-            self.discovery = False
-            self._set_update_config()
-        self.audit_utils = AuditUtils()
+
         self.channel_manager = ChannelManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY, Sections.CAPTIONS),
-            upsert_sections=(Sections.BRAND_SAFETY,)
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
+                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
+            upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
 
-    def _set_discovery_config(self):
-        self.MAX_POOL_COUNT = 2
-        self.CHANNEL_POOL_BATCH_SIZE = 10
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self.query_creator = self._create_discovery_query
-
-    def _set_update_config(self):
-        self.MAX_POOL_COUNT = 6
-        self.CHANNEL_POOL_BATCH_SIZE = 15
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
-        self.query_creator = self._create_update_query
-
-    def _set_manual_config(self):
-        self.MAX_POOL_COUNT = 2
-        self.CHANNEL_POOL_BATCH_SIZE = 5
-        self.CHANNEL_MASTER_BATCH_SIZE = self.MAX_POOL_COUNT * self.CHANNEL_POOL_BATCH_SIZE
+    def _reset_max_pool_and_batch_size(self):
+        """
+        Reset max_pool_count depending on hour of day
+        channel_master_batch_size is set accordingly to provide appropriate amount of channels for pool to process
+        :return:
+        """
+        self.max_pool_count = 2 if "rc" in settings.HOST else 4
+        self.channel_master_batch_size = self.max_pool_count * self.CHANNEL_POOL_BATCH_SIZE
 
     def run(self):
         """
@@ -90,24 +100,33 @@ class BrandSafetyAudit(object):
         """
         if self.is_manual:
             raise ValueError("Provider was not initialized with an APIScriptTracker instance.")
-        pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+
         for channel_batch in self._channel_generator(self.cursor_id):
             # Some batches may be empty if none of the channels retrieved have full data to be audited
             # _channel_generator will stop when no items are retrieved from Elasticsearch
             if not channel_batch:
                 continue
-            results = pool.map(self._process_audits,
-                               self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
+
+            # Dynamically set config / pool count for each batch
+            self.pool_multiplier = self.WORKING_HOURS_POOL_MULTIPLIER if self.audit_utils.is_working_hours() else self.OFF_HOURS_POOL_MULTIPLIER
+            self.max_pool_count = self.max_pool_count * self.pool_multiplier
+
+            pool = mp.Pool(processes=self.max_pool_count)
+            results = pool.map(self._process_audits, self.audit_utils.batch(channel_batch, self.CHANNEL_POOL_BATCH_SIZE))
 
             # Extract nested results from each process and index into es
             video_audits, channel_audits = self._extract_results(results)
             # Index items
             self._index_results(video_audits, channel_audits)
 
-            if self.channel_batch_counter % 10 == 0:
+            if self.batch_counter > self.MAX_CYCLE_COUNT:
+                sys.exit()
+
+            if self.batch_counter % 5 == 0:
                 # Update config in case it has been modified
                 self.audit_utils.update_config()
-        logger.error("Complete.")
+
+            self._reset_max_pool_and_batch_size()
 
     def _process_audits(self, channels: list) -> dict:
         """
@@ -120,6 +139,9 @@ class BrandSafetyAudit(object):
             "channel_audits": []
         }
         for channel in channels:
+            # Ignore channels that can not be indexed without required fields
+            if not channel.get("id"):
+                continue
             video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
             channel["video_audits"] = video_audits
 
@@ -169,7 +191,7 @@ class BrandSafetyAudit(object):
         if videos and channels:
             raise ValueError("You must either provide video data to audit or channels to retrieve video data for.")
         if videos is None:
-            videos = self._get_channel_videos(channels)
+            videos = self._get_channel_videos_executor(channels)
         if get_blacklist_data:
             video_ids = [item["id"] for item in videos]
             self.blacklist_data_ref = {
@@ -181,32 +203,48 @@ class BrandSafetyAudit(object):
                 video = video.to_dict()
             except AttributeError:
                 pass
+            if not video.get("id") or not video.get("channel_id") or not video.get("channel_title"):
+                # Ignore videos that can not be indexed without required fields
+                continue
             try:
                 blacklist_data = self.blacklist_data_ref.get(video["id"], {})
                 audit = self.audit_video(video, blacklist_data=blacklist_data)
                 video_audits.append(audit)
             except KeyError as e:
-                # Ignore videos without full data
+                # Ignore videos without full data in accessed audit
                 continue
         return video_audits
 
-    def audit_channel(self, channel_data, blacklist_data=None, full_audit=True):
+    def audit_channel(self, channel_data, blacklist_data=None, full_audit=True, rescore=True):
         """
         Audit single channel
-        :param channel_data: dict -> Data to audit
+        :param channel_data:
+                if rescore:
+                    dict -> Data to audit
+                if not rescore:
+                    str -> channel id to retrieve
             Required keys: channel_id, title
             Optional keys: description, video_tags
         :return:
         """
-        if blacklist_data is None:
+        if not rescore:
+            # Retrieve existing data from Elasticsearch
+            response = self.audit_utils.get_items([channel_data], self.channel_manager)
             try:
-                blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
+                audit = response[0].brand_safety.overall_score
             except (IndexError, AttributeError):
-                pass
-        audit = BrandSafetyChannelAudit(channel_data, self.audit_utils, blacklist_data)
-        audit.run()
-        if not full_audit:
-            audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
+                # Channel not scored
+                audit = None
+        else:
+            if blacklist_data is None:
+                try:
+                    blacklist_data = BlacklistItem.get(channel_data["id"], 1)[0].categories
+                except (IndexError, AttributeError):
+                    pass
+            audit = BrandSafetyChannelAudit(channel_data, self.audit_utils, blacklist_data)
+            audit.run()
+            if not full_audit:
+                audit = getattr(audit, BRAND_SAFETY_SCORE).overall_score
         return audit
 
     def audit_channels(self, channel_video_audits: dict = None) -> list:
@@ -220,27 +258,38 @@ class BrandSafetyAudit(object):
             # Don't score channels without videos
             if data.get("video_audits") is None:
                 continue
+            if not data.get("id"):
+                # Ignore channels that can not be indexed without required fields
+                continue
             try:
                 audit = self.audit_channel(data)
                 channel_audits.append(audit)
             except KeyError as e:
-                # Ignore channels without full data
+                # Ignore channels without full data accessed during audit
                 continue
         return channel_audits
 
-    def _get_channel_videos(self, channel_ids: list) -> list:
+    def _get_channel_videos_executor(self, channel_ids: list) -> list:
         """
         Get videos for channels
-        :param channels: dict -> channel_id, channel_metadata
+        :param channel_ids: list -> channel_id str
         :return:
         """
-        all_results = []
-        for batch in self.audit_utils.batch(channel_ids, 3):
-            query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(batch).get()
-            results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
-            all_results.extend(results)
+        with ThreadPoolExecutor(max_workers=self.MAX_THREAD_POOL) as executor:
+            results = executor.map(self._query_channel_videos, self.audit_utils.batch(channel_ids, self.CHANNEL_POOL_BATCH_SIZE))
+        all_results = list(itertools.chain.from_iterable(results))
         data = BrandSafetyVideoSerializer(all_results, many=True).data
         return data
+
+    def _query_channel_videos(self, channel_ids):
+        """
+        Target for channel video query thread pool
+        :param channel_ids: list
+        :return:
+        """
+        query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
+        results = self.video_manager.search(query, limit=self.ES_LIMIT).source(self.VIDEO_FIELDS).execute().hits
+        return results
 
     def _extract_results(self, results: list):
         """
@@ -276,29 +325,33 @@ class BrandSafetyAudit(object):
         cursor_id = cursor_id or ""
         while True:
             query = self.query_creator(cursor_id)
-            response = self.channel_manager.search(query, limit=self.CHANNEL_MASTER_BATCH_SIZE, sort=("-stats.subscribers",)).execute()
+            response = self.channel_manager.search(query, limit=self.channel_master_batch_size, sort=("-stats.subscribers",)).source(self.CHANNEL_FIELDS).execute()
             results = [item for item in response.hits if item.main.id != cursor_id]
             if not results:
                 self.audit_utils.set_cursor(self.script_tracker, None, integer=False)
                 break
+                
             channels = BrandSafetyChannelSerializer(results, many=True).data
             data = self._get_channel_batch_data(channels)
+            self.batch_counter += 1
             yield data
-
             cursor_id = results[-1].main.id
             self.script_tracker = self.audit_utils.set_cursor(self.script_tracker, cursor_id, integer=False)
             self.cursor_id = self.script_tracker.cursor_id
-            self.channel_batch_counter += 1
 
     def _create_update_query(self, cursor_id):
-        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
+        query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must().range().field("stats.total_videos_count").gt(0).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
         query &= QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(self.UPDATE_TIME_THRESHOLD).get()
         return query
 
     def _create_discovery_query(self, cursor_id):
-        query = QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query = QueryBuilder().build().must().exists().field(MAIN_ID_FIELD).get()
+        query &= QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor_id).get()
+        query &= QueryBuilder().build().must().range().field("stats.total_videos_count").gt(0).get()
         query &= QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get()
         query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(
             self.MINIMUM_SUBSCRIBER_COUNT).get()
@@ -321,7 +374,7 @@ class BrandSafetyAudit(object):
             channel_data[c_id] = channel
 
         # Get videos for channels
-        videos = self._get_channel_videos(list(channel_data.keys()))
+        videos = self._get_channel_videos_executor(list(channel_data.keys()))
         for video in videos:
             try:
                 channel_id = video["channel_id"]
@@ -350,7 +403,7 @@ class BrandSafetyAudit(object):
         channel_data = self._get_channel_batch_data(serialized)
 
         if len(channel_data) > 20:
-            pool = mp.Pool(processes=self.MAX_POOL_COUNT)
+            pool = mp.Pool(processes=self.max_pool_count)
             results = pool.map(self._process_audits, self.audit_utils.batch(channel_data, self.CHANNEL_POOL_BATCH_SIZE))
         else:
             # Nest results for _extract_results method
@@ -362,7 +415,7 @@ class BrandSafetyAudit(object):
         return channel_audits
 
     def manual_video_audit(self, video_ids: iter, blacklist_data=None):
-        """
+        """_process_audits
         Score specific videos
         :param video_ids: list | tuple -> Youtube video id strings
         :return: BrandSafetyVideoAudit objects
@@ -380,13 +433,19 @@ class BrandSafetyAudit(object):
 
     def audit_all_videos(self):
         query = QueryBuilder().build().must_not().exists().field(Sections.BRAND_SAFETY).get() \
-            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get()
+            & QueryBuilder().build().must().exists().field(Sections.GENERAL_DATA).get() \
+            & QueryBuilder().build().must().range().field("stats.views").gte(self.MINIMUM_VIEW_COUNT).get()
         results = self.video_manager.search(query, limit=5000).execute().hits
         while results:
             data = BrandSafetyVideoSerializer(results, many=True).data
             video_audits = self.audit_videos(videos=data)
             self._index_results(video_audits, [])
-            logger.error("Indexed {} videos".format(len(video_audits)))
+            logger.info("BrandSafetyAudit. Indexed {} videos".format(len(video_audits)))
+
+            self.batch_counter += 1
+            if self.batch_counter > self.MAX_CYCLE_COUNT:
+                sys.exit()
+
             results = self.video_manager.search(query, limit=5000).execute().hits
 
     def _set_blacklist_data(self, items, blacklist_type=0):

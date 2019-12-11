@@ -8,21 +8,25 @@ services:
       target: dev
     image: viewiq-restapi
     environment:
-      SINGLE_DATABASE_API_HOST: sdb
       ALLOWED_HOSTS: api
       RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
+      AUDIT_DB_HOST: pg_audit
+      AUDIT_DB_USER: postgres
+      AUDIT_DB_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
-      APM_ENABLED: 1
+      APM_ENABLED: 0
       ELASTIC_APM_SERVER_URL: http://apm-server:8200
     depends_on:
       rabbitmq:
         condition: service_healthy
       pg:
+        condition: service_healthy
+      pg_audit:
         condition: service_healthy
       es:
         condition: service_healthy
@@ -36,17 +40,19 @@ services:
 
   celery_worker:
     image: viewiq-restapi
-    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports"]
+    command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q", "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic,cache_research,segments"]
     depends_on:
       - rabbitmq
       - pg
       - redis
+      - es
     environment:
       RABBITMQ_HOST: rabbitmq
       DB_HOST: pg
       DB_USER: postgres
       DB_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
+      ELASTIC_SEARCH_USE_SSL: 0
 
   celery_beat:
     image: viewiq-restapi
@@ -69,6 +75,17 @@ services:
       timeout: 5s
       retries: 5
 
+  pg_audit:
+    image: postgres:9.6
+    environment:
+      POSTGRES_DB: audit
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   es:
     image: elasticsearch:6.4.2
     environment:
@@ -84,7 +101,6 @@ services:
     image: viewiq/rabbitmq
     build:
       context: ./.docker/rabbitmq/
-
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
@@ -98,6 +114,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  flower:
+    image: iserko/docker-celery-flower
+    environment:
+      CELERY_BROKER_URL: amqp://rabbitmq
+
+  kibana:
+    image: kibana:6.4.2
+    environment:
+      ELASTICSEARCH_URL: http://es:9200
+
+  logstash:
+    image: viewiq/logstash
+    build:
+      context: ./.docker/logstash
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      LOGSTASH_ES_HOST: es
+    depends_on:
+      es:
+        condition: service_healthy
 
   # APM
   apm-es:

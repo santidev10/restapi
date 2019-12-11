@@ -1,78 +1,87 @@
-from datetime import timedelta
-
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.template.loader import get_template
+from django.template.defaultfilters import striptags
+from django.core.mail import EmailMessage
 
 from email_reports.reports.base import BaseEmailReport
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.managers import KeywordManager
 from es_components.constants import Sections
+from utils.datetime import now_in_default_tz
 
 
 class ESMonitoringEmailReport(BaseEmailReport):
 
+    def __init__(self, *args, **kwargs):
+        self.monitoring_reports = {}
+        self.cluster = None
+        self.today = now_in_default_tz().date()
+
+        super(ESMonitoringEmailReport, self).__init__(*args, **kwargs)
+
     def send(self):
+        self._collect_report()
+        self.send_alerts()
+
+        html_content = self._get_body()
+        text_content = striptags(html_content)
+
         msg = EmailMultiAlternatives(
-            "ES Monitoring Report",
-            self._build_body(),
+            self._get_subject(),
+            text_content,
             from_email=settings.SENDER_EMAIL_ADDRESS,
             to=settings.ES_MONITORING_EMAIL_ADDRESSES,
-            headers={'X-Priority': 2},
+            headers={"X-Priority": 2},
             reply_to="",
         )
+        msg.attach_alternative(html_content, "text/html")
         msg.send(fail_silently=False)
 
-    def _build_body(self):
+    def _send_alert_email(self, model_name, alert_message):
+        subject = f"DMP ALERT: {self.cluster} [{self.today}]"
+        body = f"{model_name}: {alert_message}"
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
+            to=settings.EMERGENCY_EMAIL_ADDRESSES,
+            bcc=[],
+        )
+        email.send(fail_silently=False)
+
+    def send_alerts(self):
+        for model_name, report in self.monitoring_reports.items():
+            alerts = report.get("alerts")
+
+            if not alerts:
+                continue
+
+            for alert in alerts:
+                self._send_alert_email(model_name, alert)
+
+    def _collect_report(self):
         managers = [
-            ChannelManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.ANALYTICS]),
+            ChannelManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS, Sections.ANALYTICS,
+                            Sections.AUTH, Sections.CMS]),
             VideoManager([Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
-                          Sections.ANALYTICS, Sections.CAPTIONS]),
+                          Sections.ANALYTICS, Sections.CAPTIONS, Sections.CMS]),
             KeywordManager(Sections.STATS)
         ]
-        cluster = None
-        text_content = ""
 
         for manager in managers:
-            _cluster, report = manager.get_monitoring_info()
+            report = manager.get_monitoring_data()
 
-            if not cluster:
-                cluster = _cluster
+            if not self.cluster:
+                self.cluster = report.get("cluster_name")
 
-            text_content += self._get_text_content(report, manager.model._index._name)
+            self.monitoring_reports[manager.model.__name__] = report
 
-        text_content = f"ElasticSearch Monitoring Report for {cluster}\n{text_content}"
+    def _get_body(self):
+        html = get_template("es_monitoring_data_report.html")
+        html_content = html.render({"reports": self.monitoring_reports})
+        return html_content
 
-        return text_content
-
-
-    def _get_text_content(self, report, es_model_name):
-        filled_missed_data = ""
-        created_by_days = ""
-        updated_by_days = ""
-        totals = report.get("index").get("docs.count")
-
-        def text_by_days(last_day, last_3_days, last_7_days, last_30_days, last_365_days):
-            return f"{last_day[0]} ({last_day[1]}%) - last day, " \
-                   f"{last_3_days[0]} ({last_3_days[1]}%) - last 3 days, \n" \
-                   f"{last_7_days[0]} ({last_7_days[1]}%) - last 7 days, " \
-                   f"{last_30_days[0]} ({last_30_days[1]}%) - last 30 days,  " \
-                   f"{last_365_days[0]} ({last_365_days[1]}%) - last 365 days \n"
-
-
-        for section, data in report.get("performance").items():
-            filled_missed_data += f"{section}:  {data.filled[0]} ({data.filled[1]})% filled, " \
-                                  f" {data.missed[0]} ({data.missed[1]})% missed\n"
-
-
-            created_by_days += f"{section}: {text_by_days(*data.created_by_days)}\n"
-            updated_by_days += f"{section}: {text_by_days(*data.updated_by_days)}\n"
-
-        result_text = f"{es_model_name} - totals {totals}\n" \
-                      f"{filled_missed_data}\n" \
-                      f"Created sections by days\n" \
-                      f"{created_by_days}" \
-                      f"Updated sections by days\n" \
-                      f"{updated_by_days}"
-
-        return result_text
+    def _get_subject(self):
+        return f"ElasticSearch data monitoring report ({self.cluster}) [{self.today}]"

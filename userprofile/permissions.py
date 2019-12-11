@@ -108,6 +108,9 @@ class PermissionGroupNames:
     BRAND_SAFETY_DOWNLOAD = "Brand Safety Download"
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
     AUDIT_FLAGGING = "Audit Flagging"
+    ADS_ANALYZER = "Ads Analyzer"
+    TRANSCRIPTS = "Transcripts"
+    MONETIZATION = "Monetization"
 
 
 class Permissions:
@@ -185,6 +188,16 @@ class Permissions:
         (PermissionGroupNames.AUDIT_FLAGGING, (
             "flag_audit",
         )),
+        (PermissionGroupNames.ADS_ANALYZER, (
+            "view_opportunity_list",
+            "create_opportunity_report",
+        )),
+        (PermissionGroupNames.TRANSCRIPTS, (
+            "transcripts_filter",
+        )),
+        (PermissionGroupNames.MONETIZATION, (
+            "monetization_filter",
+        ))
     )
 
     PERM_LIST = (
@@ -220,6 +233,13 @@ class Permissions:
         "download_audit",
         "view_audit",
         "flag_audit",
+        # Ads Analyzer
+        "view_opportunity_list",
+        "create_opportunity_report",
+        # Transcripts
+        "transcripts_filter",
+        # Monetization
+        "monetization_filter",
     )
 
     @staticmethod

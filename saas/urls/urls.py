@@ -5,6 +5,7 @@ from django.conf.urls import include
 from django.conf.urls import url
 
 from administration.api import urls as admin_api_urls
+from ads_analyzer.api.urls import urls as ads_analyzer_urls
 from audit_tool.api import urls as audit_tool_api_urls
 from aw_creation.api import urls as aw_creation_urls
 from aw_reporting.api.urls.urls import urlpatterns as aw_reporting_urls
@@ -17,7 +18,6 @@ from keywords.api import urls as keyword_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
 from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
-from singledb.api import urls as singledb_api_urls
 from userprofile.api import urls as userprofile_api_urls
 from utils.api.urls import APP_NAME
 from utils.documentation import urlpatterns as documentation_api_urls
@@ -50,14 +50,13 @@ urlpatterns = [
     # Userprofile api urls
     url(r'^api/v1/', include((userprofile_api_urls, APP_NAME), namespace=Namespace.USER_PROFILE)),
 
-    # Singledb api urls
-    url(r'^api/v1/', include((singledb_api_urls, APP_NAME), namespace="singledb_api_urls")),
-
     # Audit api urls
     url(r'^api/v1/', include((audit_tool_api_urls, APP_NAME), namespace=Namespace.AUDIT_TOOL)),
 
     # Email reports
     url(r'^api/v1/', include((email_reports_api_urls, APP_NAME), namespace="email_reports_api_urls")),
+
+    url(r'^api/v1/ads_analyzer/', include((ads_analyzer_urls, APP_NAME), namespace=Namespace.ADS_ANALYZER)),
 
     url(r'^api/v2/', include((brand_safety_api_urls, APP_NAME), namespace=Namespace.BRAND_SAFETY)),
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest import mock
 
 from django.urls import resolve
 from rest_framework.status import HTTP_200_OK
@@ -10,60 +11,78 @@ from es_components.managers import KeywordManager
 from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
 from highlights.api.urls.names import HighlightsNames
-from keywords.api.views.keyword_export import KeywordCSVRendered
-from keywords.api.views.keyword_export import KeywordListExportSerializer
 from saas.urls.namespaces import Namespace
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.s3_mock import mock_s3
+
+
+EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 
 
 class HighlightKeywordExportPermissionsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
 
+    @mock_s3
     def test_unauthorized(self):
-        url = get_url()
-        response = self.client.get(url)
+        url = get_collect_file_url()
+        response = self.client.post(url)
 
         self.assertEqual(
             HTTP_401_UNAUTHORIZED,
             response.status_code,
         )
 
+    @mock_s3
     def test_forbidden(self):
         self.create_test_user()
 
-        url = get_url()
-        response = self.client.get(url)
+        url = get_collect_file_url()
+        response = self.client.post(url)
 
         self.assertEqual(
             HTTP_403_FORBIDDEN,
             response.status_code,
         )
 
+    @mock_s3
     def test_has_permission(self):
         user = self.create_test_user()
         user.add_custom_user_permission("view_highlights")
 
-        url = get_url()
-        response = self.client.get(url)
+        url = get_collect_file_url()
+        response = self.client.post(url)
 
         self.assertEqual(
             HTTP_200_OK,
             response.status_code,
         )
 
+    @mock_s3
     def test_admin(self):
         self.create_admin_user()
 
-        url = get_url()
-        response = self.client.get(url)
+        url = get_collect_file_url()
+        response = self.client.post(url)
 
         self.assertEqual(
             HTTP_200_OK,
             response.status_code,
         )
+
+    @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        url = get_collect_file_url()
+
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self.client.post(url)
+        self.assertIsNotNone(response2.data.get("export_url"))
 
 
 class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
@@ -73,37 +92,50 @@ class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         self.user = self.create_test_user()
         self.user.add_custom_user_permission("view_highlights")
 
-    def _request(self, **query_params):
-        url = get_url(**query_params)
+    def _request_collect_file(self, **query_params):
+        url = get_collect_file_url(**query_params)
+        return self.client.post(url)
+
+    def _request_export(self, export_name=EXPORT_FILE_HASH):
+        url = get_export_url(export_name)
         return self.client.get(url)
 
-    def test_success_csv_response(self):
+    @mock_s3
+    @mock.patch("highlights.api.views.keywords_export.HighlightKeywordsExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("view_highlights")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("view_highlights")
+        response = self._request_export()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("highlights.api.views.keywords_export.HighlightKeywordsExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_success_csv_response(self, *args):
         test_datetime = datetime(2020, 3, 4, 5, 6, 7)
         self.create_admin_user()
 
         with patch_now(test_datetime):
-            response = self._request()
+            self._request_collect_file()
+            response = self._request_export()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "Keywords export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
-        self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
+        self.assertEqual(response["Content-Type"], "application/CSV")
 
-    def test_view_declaration(self):
-        """
-        This test checks view declaration. The functional part is tested in keyword/tests/api/test_keyword_export.py
-        """
-        resolver = resolve(get_url())
-        view_cls = resolver.func.cls
-        self.assertEqual((KeywordCSVRendered,), view_cls.renderer_classes)
-        self.assertEqual(KeywordListExportSerializer, view_cls.serializer_class)
-
-    def test_limit_100(self):
+    @mock_s3
+    @mock.patch("highlights.api.views.keywords_export.HighlightKeywordsExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_limit_100(self, *args):
         highlights_limit = 100
         keywords = [Keyword(next(int_iterator)) for _ in range(highlights_limit + 1)]
         KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
 
-        response = self._request()
+        self._request_collect_file()
+        response = self._request_export()
 
         data = list(get_data_from_csv_response(response))[1:]
         self.assertEqual(
@@ -111,22 +143,32 @@ class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_export_by_ids(self):
+    @mock_s3
+    @mock.patch("highlights.api.views.keywords_export.HighlightKeywordsExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_export_by_ids(self, *args):
         keywords = [Keyword(next(int_iterator)) for _ in range(2)]
         KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
 
-        response = self._request(**{"main.id": keywords[0].main.id})
+        self._request_collect_file(**{"main.id": keywords[0].main.id})
+        response = self._request_export()
+
         data = list(get_data_from_csv_response(response))[1:]
         self.assertEqual(
             1,
             len(data)
         )
 
-    def test_export_by_ids_deprecated(self):
+    @mock_s3
+    @mock.patch("highlights.api.views.keywords_export.HighlightKeywordsExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_export_by_ids_deprecated(self, *args):
         keywords = [Keyword(next(int_iterator)) for _ in range(2)]
         KeywordManager(sections=(Sections.STATS,)).upsert(keywords)
 
-        response = self._request(**{"ids": keywords[0].main.id})
+        self._request_collect_file(**{"ids": keywords[0].main.id})
+        response = self._request_export()
+
         data = list(get_data_from_csv_response(response))[1:]
         self.assertEqual(
             1,
@@ -134,6 +176,10 @@ class HighlightKeywordExportApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         )
 
 
-def get_url(**kwargs):
-    return reverse(HighlightsNames.KEYWORDS_EXPORT, [Namespace.HIGHLIGHTS],
-                   query_params=kwargs or None)
+def get_collect_file_url(**kwargs):
+    return reverse(HighlightsNames.KEYWORDS_PREPARE_EXPORT, [Namespace.HIGHLIGHTS], query_params=kwargs or None)
+
+
+def get_export_url(export_name):
+    return reverse(HighlightsNames.KEYWORDS_EXPORT, [Namespace.HIGHLIGHTS], args=(export_name,),)
+

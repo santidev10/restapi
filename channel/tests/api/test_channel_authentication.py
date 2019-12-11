@@ -1,4 +1,3 @@
-from datetime import datetime
 from unittest.mock import patch
 
 from django.core import mail
@@ -9,7 +8,6 @@ from channel.api.urls.names import ChannelPathName
 from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
-from utils.aws.ses_emailer import SESEmailer
 from utils.utittests.celery import mock_send_task
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
@@ -115,6 +113,5 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
             response = self.client.post(self.url, dict(code="code"), )
 
             self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
-            welcome_emails = [m for m in mail.outbox
-                              if isinstance(m.subject, SESEmailer) and m.body.startswith("Welcome")]
+            welcome_emails = [m for m in mail.outbox if m.subject.startswith("Welcome")]
             self.assertEqual(len(welcome_emails), 1)

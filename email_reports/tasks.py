@@ -3,6 +3,7 @@ import traceback
 
 from django.conf import settings
 
+from administration.notifications import send_email
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
@@ -13,6 +14,7 @@ from saas import celery_app
 
 __all__ = [
     "send_daily_email_reports",
+    "notify_opportunity_targeting_report_is_ready",
 ]
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task
 def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, fake_tech_fee_cap=None, roles=None,
-                             debug=True):
+                             debug=settings.DEBUG_EMAIL_NOTIFICATIONS):
     kwargs = dict(
         host=settings.HOST,
         debug=debug,
@@ -49,3 +51,22 @@ EMAIL_REPORT_CLASSES = (
     CampaignOverPacing,
     ESMonitoringEmailReport,
 )
+
+
+@celery_app.task
+def notify_opportunity_targeting_report_is_ready(report_id):
+    from ads_analyzer.models import OpportunityTargetingReport
+    from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
+    try:
+        report = OpportunityTargetingReport.objects.get(pk=report_id)
+    except OpportunityTargetingReport.DoesNotExist:
+        return
+    direct_link = OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key)
+    subject = f"Opportunity Targeting Report > {report.opportunity.name}: {report.date_from} - {report.date_to}"
+    body = f"Report has been prepared. Download it by the following link {direct_link}"
+    for email in report.recipients.all().values_list("email", flat=True):
+        send_email(
+            subject=subject,
+            message=body,
+            recipient_list=[email],
+        )

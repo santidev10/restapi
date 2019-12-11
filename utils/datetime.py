@@ -122,6 +122,10 @@ def _date_to_year(d, year):
     return date(year, d.month, d.day)
 
 
+def start_of_year(year):
+    return date(year, 1, 1)
+
+
 TIMESTAMP_FORMAT = "%Y%m%d%H%M%S.%f"
 
 

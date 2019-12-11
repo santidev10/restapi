@@ -17,13 +17,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='persistentsegmentchannel',
             name='audit_category',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='channel_segment', to='audit_tool.AuditCategory'),
+            field=models.IntegerField(blank=True, null=True),
             preserve_default=False,
         ),
         migrations.AddField(
             model_name='persistentsegmentvideo',
             name='audit_category',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='video_segment', to='audit_tool.AuditCategory'),
+            field=models.IntegerField(blank=True, null=True),
             preserve_default=False,
         ),
     ]

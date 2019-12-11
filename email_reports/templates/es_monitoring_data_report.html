@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
+    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
+    <title>CHF ElasticSearch monitoring report</title>
+</head>
+<style>
+    .main-table{
+        margin-top: 15px;
+    }
+    table {
+        margin: 0 auto;
+        width: 600px;
+        border-collapse: collapse;
+    }
+    table, th, td {
+        border: 1px solid black;
+    }
+    th {
+        background-color: #f2f2f2;
+        text-align: center;
+    }
+    .model-caption {
+        text-align: left;
+    }
+    .captions {
+        border: 1px solid black;
+        background-color: #939694;
+        font-size: 18px;
+        text-align: center;
+    }
+    .field {
+        font-size: 12px;
+        width: 60px;
+    }
+    .value {
+        font-size: 12px;
+        text-align: right;
+    }
+    .warnings {
+        color: #ffd500;
+        border: 1px solid #ffd500;
+        border-radius: 10px;
+        margin: 0 auto;
+        width: 600px;
+        text-align: left;
+        background-color: #ffffeb;
+        margin-top: 5px;
+    }
+    ul{
+        list-style-type: circle;
+    }
+    li{
+        color: #ffd500;
+    }
+    .warnings p {
+        margin-left: 25px;
+    }
+</style>
+<body width="100%">
+{% load humanize %}
+{% load filters %}
+<center style="width: 100%;">
+    {% for model_name, report in reports.items %}
+        {% if report.warnings %}
+            <div class="warnings">
+                <p><b>{{model_name}}</b></p>
+                <ul>
+                    {% for warning_message in report.warnings %}
+                    <li><b>{{warning_message}}</b></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% endfor %}
+    <table class="main-table">
+        <tr class="captions">
+            <td colspan="100%"><b>Totals</b></td>
+        </tr>
+        <tr>
+            {% for model_name, report in reports.items %}
+                <table>
+                    <tr>
+                        <th colspan="100%" class="model-caption">
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}})</b>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="field">Field</th>
+                        <th colspan="2">Filled</th>
+                        <th colspan="2">Missed</th>
+                    </tr>
+                    {% for field, data in report.info.performance.info_by_sections.items %}
+                    <tr>
+                        <td class="field">{{field}}</td>
+                        <td class="value">{{data.filled|intcomma}}</td>
+                        <td class="value">{{data.filled|percentage:report.info.index.docs_count}}</td>
+                        <td class="value">{{data.missed|intcomma}}</td>
+                        <td class="value">{{data.missed|percentage:report.info.index.docs_count}}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% endfor %}
+        </tr>
+    </table>
+
+
+    <table class="main-table">
+        <tr class="captions">
+            <td colspan="100%"><b>Created</b></td>
+        </tr>
+        <tr>
+            {% for model_name, report in reports.items %}
+                <table class="inner-table">
+                    <tr>
+                        <th colspan="100%" class="model-caption">
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}})</b>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="field">Field</th>
+                        <th colspan="2">last day</th>
+                        <th colspan="2">last 3 days</th>
+                        <th colspan="2">last 7 days</th>
+                        <th colspan="2">last 30 days</th>
+                        <th colspan="2">last 365 days</th>
+                    </tr>
+                    {% for field, data in report.info.performance.info_by_sections.items %}
+                    <tr>
+                        <td class="field">{{field}}</td>
+
+                        {% for value in data.created_by_days.values %}
+
+                            <td class="value">{{value|intcomma}}</td>
+                            <td class="value">{{value|percentage:report.info.index.docs_count}}</td>
+
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% endfor %}
+        </tr>
+    </table>
+
+    <table class="main-table">
+        <tr class="captions">
+            <td colspan="100%"><b>Updated</b></td>
+        </tr>
+        <tr>
+            {% for model_name, report in reports.items %}
+                <table>
+                    <tr>
+                        <th colspan="100%" class="model-caption">
+                            <b>{{model_name}} (total: {{report.info.index.docs_count|intcomma}}, deleted: {{report.info.performance.general.deleted|intcomma}}
+
+                                {% if report.info.performance.general.skipped is not None %}
+                                   , skipped: {{report.info.performance.general.skipped|intcomma}})</b>
+                                {% else %}
+                                    )</b>
+                                {% endif %}
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="field">Field</th>
+                        <th colspan="2">last day</th>
+                        <th colspan="2">last 3 days</th>
+                        <th colspan="2">last 7 days</th>
+                        <th colspan="2">last 30 days</th>
+                        <th colspan="2">last 365 days</th>
+                    </tr>
+                    {% for field, data in report.info.performance.info_by_sections.items %}
+                    <tr>
+                        <td class="field">{{field}}</td>
+
+                        {% for value in data.updated_by_days.values %}
+
+                            <td class="value">{{value|intcomma}}</td>
+                            <td class="value">{{value|percentage:data.filled}}</td>
+
+                        {% endfor %}
+
+                    </tr>
+                    {% endfor %}
+                </table>
+            {% endfor %}
+        </tr>
+    </table>
+
+</center>
+</body>
+</html>

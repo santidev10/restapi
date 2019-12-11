@@ -4,7 +4,7 @@ PersistentSegmentVideo models module
 from django.db.models import ForeignKey
 from django.db.models import CASCADE
 
-from audit_tool.models import AuditCategory
+from aw_reporting.models import YTVideoStatistic
 from .base import BasePersistentSegment
 from .base import BasePersistentSegmentRelated
 from .base import PersistentSegmentManager
@@ -13,41 +13,25 @@ from .constants import PersistentSegmentExportColumn
 from .constants import PersistentSegmentCategory
 from es_components.managers import VideoManager
 from es_components.constants import Sections
+from es_components.constants import SortDirections
+from es_components.constants import VIEWS_FIELD
 from segment.api.serializers import PersistentSegmentVideoExportSerializer
-from segment.utils import generate_search_with_params
+from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
+from segment.models.segment_mixin import SegmentMixin
 
 
-class PersistentSegmentVideo(BasePersistentSegment):
-    segment_type = PersistentSegmentType.VIDEO
-    export_serializer = PersistentSegmentVideoExportSerializer
-    audit_category = ForeignKey(AuditCategory, related_name="video_segment", null=True, on_delete=CASCADE)
-    objects = PersistentSegmentManager()
+class PersistentSegmentVideo(SegmentMixin, BasePersistentSegment):
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
+    SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
+    SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
+    segment_type = PersistentSegmentType.VIDEO
+    serializer = PersistentSegmentVideoExportSerializer
+    objects = PersistentSegmentManager()
+    related_aw_statistics_model = YTVideoStatistic
 
-    def calculate_details(self):
-        es_manager = self.get_es_manager()
-        search = es_manager.search(query=self.get_segment_items_query())
-        search.aggs.bucket("likes",  "sum", field=f"{Sections.STATS}.likes")
-        search.aggs.bucket("dislikes", "sum", field=f"{Sections.STATS}.dislikes")
-        search.aggs.bucket("views", "sum", field=f"{Sections.STATS}.views")
-        result = search.execute()
-        details = self.extract_aggregations(result.aggregations.to_dict())
-        details["items_count"] = result.hits.total
-        return details
-
-    def get_es_manager(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        es_manager = VideoManager(sections=sections)
-        return es_manager
-
-    def get_queryset(self, sections=None):
-        if sections is None:
-            sections = self.SECTIONS
-        sort_key = {"stats.views": {"order": "desc"}}
-        es_manager = self.get_es_manager(sections=sections)
-        scan = generate_search_with_params(es_manager, self.get_segment_items_query(), sort_key).scan()
-        return scan
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
     def get_export_columns(self):
         if self.category == "whitelist":

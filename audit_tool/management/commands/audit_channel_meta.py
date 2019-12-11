@@ -37,6 +37,8 @@ class Command(BaseCommand):
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
                                   "&maxResults={num_videos}&type=video"
+    CONVERT_USERNAME_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
+                                  "?key={key}&forUsername={username}&part=id"
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -47,9 +49,13 @@ class Command(BaseCommand):
         if not self.thread_id:
             self.thread_id = 0
         try:
+            self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        except Exception as e:
+            self.machine_number = 0
+        try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=2).order_by("pause", "id")[0]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
@@ -57,9 +63,15 @@ class Command(BaseCommand):
         except Exception as e:
             print("problem {} {}".format(self.thread_id, str(e)))
 
-    def process_audit(self, num=5000):
+    def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
         self.num_videos = self.audit.params.get('num_videos')
         if not self.num_videos:
             self.num_videos = 50
@@ -77,6 +89,8 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting to process seed list on thread 0")
         else:
+            channels = pending_channels.values_list('channel_id', flat=True)
+            AuditChannel.objects.filter(id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
@@ -88,7 +102,7 @@ class Command(BaseCommand):
                 raise Exception("Audit of channels completed, turning to video processor")
             else:
                 raise Exception("not first thread but audit is done")
-        pending_channels = pending_channels.filter(channel__processed=True).select_related("channel")
+        pending_channels = pending_channels.filter(channel__processed_time__isnull=False)
         start = self.thread_id * num
         counter = 0
         for channel in pending_channels[start:start+num]:
@@ -112,18 +126,15 @@ class Command(BaseCommand):
         vids = []
         for row in reader:
             seed = row[0]
-            if 'youtube.com/channel/' in seed:
-                v_id = seed.split("/")[-1]
-                if '?' in v_id:
-                    v_id = v_id.split("?")[0]
-                if v_id:
-                    channel = AuditChannel.get_or_create(v_id)
-                    AuditChannelMeta.objects.get_or_create(channel=channel)
-                    acp, _ = AuditChannelProcessor.objects.get_or_create(
-                            audit=self.audit,
-                            channel=channel,
-                    )
-                    vids.append(acp)
+            v_id = self.get_channel_id(seed)
+            if v_id:
+                channel = AuditChannel.get_or_create(v_id)
+                AuditChannelMeta.objects.get_or_create(channel=channel)
+                acp, _ = AuditChannelProcessor.objects.get_or_create(
+                        audit=self.audit,
+                        channel=channel,
+                )
+                vids.append(acp)
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -132,6 +143,28 @@ class Command(BaseCommand):
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
 
+    def get_channel_id(self, seed):
+        if 'youtube.com/channel/' in seed:
+            v_id = seed.split("/")[-1]
+            if '?' in v_id:
+                v_id = v_id.split("?")[0]
+            return v_id
+        if 'youtube.com/user/' in seed:
+            if seed[-1] == '/':
+                seed = seed[:-1]
+            username = seed.split("/")[-1]
+            url = self.CONVERT_USERNAME_API_URL.format(
+                key=self.DATA_API_KEY,
+                username=username
+            )
+            try:
+                r = requests.get(url)
+                if r.status_code == 200:
+                    data = r.json()
+                    channel_id = data['items'][0]['id']
+                    return channel_id
+            except Exception as e:
+                pass
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -161,19 +194,21 @@ class Command(BaseCommand):
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
-        if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
-            self.get_videos(acp)
-        acp.processed = timezone.now()
-        if db_channel_meta.name:
-            acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
-        acp.save(update_fields=['clean', 'processed', 'word_hits'])
+        if db_channel.processed:
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
+            if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
+                self.get_videos(acp)
+            acp.processed = timezone.now()
+            if db_channel_meta.name:
+                acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
+            acp.save(update_fields=['clean', 'processed', 'word_hits'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
         has_more = True
         page_token = None
         page = 0
+        count = 0
         num_videos = self.num_videos
         if not self.audit.params.get('do_videos'):
             num_videos = 1
@@ -192,6 +227,7 @@ class Command(BaseCommand):
                 page_token=pt,
                 num_videos=per_page,
             )
+            count += per_page
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
@@ -202,7 +238,7 @@ class Command(BaseCommand):
                 acp.save(update_fields=['clean', 'processed', 'word_hits'])
                 return
             page_token = data.get('nextPageToken')
-            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos') or per_page < 50:
+            if not page_token or page >= self.max_pages or not self.audit.params.get('do_videos') or per_page < 50 or count >= num_videos:
                 has_more = False
             for item in data['items']:
                 db_video = AuditVideo.get_or_create(item['id']['videoId'])
@@ -243,19 +279,19 @@ class Command(BaseCommand):
                 '' if not db_channel_meta.keywords else db_channel_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             acp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
             acp.word_hits['exclusion'] = hits
             if is_there:
                 return False
         return True
 
-    def check_exists(self, text, exp):
+    def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0:
+        if len(keywords) >= count:
             return True, keywords
         return False, None

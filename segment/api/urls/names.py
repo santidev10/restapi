@@ -8,6 +8,8 @@ class Name:
     SEGMENT_SHARE = "segment_share"
     SEGMENT_CREATION_OPTIONS = "segment_creation_options"
 
+    SEGMENT_PREVIEW = "segment_preview"
+
     PERSISTENT_SEGMENT_LIST = "persistent_segment_list"
     PERSISTENT_SEGMENT_DETAILS = "persistent_segment_details"
     PERSISTENT_SEGMENT_EXPORT = "persistent_segment_export"

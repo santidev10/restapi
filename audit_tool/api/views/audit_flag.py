@@ -10,7 +10,7 @@ from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.models import BadWordCategory
 from audit_tool.models import BlacklistItem
 from utils.permissions import user_has_permission
-from utils.brand_safety_view_decorator import get_brand_safety_data
+from utils.brand_safety import get_brand_safety_data
 from utils.es_components_cache import flush_cache
 
 

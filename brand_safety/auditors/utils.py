@@ -1,10 +1,13 @@
 from collections import defaultdict
 from collections import namedtuple
 import csv
+from datetime import datetime
+from datetime import timezone
 import re
 
+import pytz
+
 from flashtext import KeywordProcessor
-from django.conf import settings
 from django.db.models import F
 from emoji import UNICODE_EMOJI
 
@@ -13,7 +16,6 @@ from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
-from singledb.connector import SingleDatabaseApiConnector as Connector
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
 
@@ -76,6 +78,21 @@ class AuditUtils(object):
         ]
         return hits
 
+    @staticmethod
+    def is_working_hours(start=5, end=17):
+        """
+        Check if current hour is within working hours
+        :param start:
+        :param end:
+        :return:
+        """
+        pst_tz = pytz.timezone("US/Pacific")
+        utc_dt = datetime.now(timezone.utc)
+        pst_now_hour = utc_dt.astimezone(pst_tz).hour
+        if start <= pst_now_hour <= end:
+            return True
+        return False
+
     def update_config(self):
         self._score_mapping = self.get_brand_safety_score_mapping()
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
@@ -85,12 +102,7 @@ class AuditUtils(object):
         Get and comple brand safety tags
         :return:
         """
-        if settings.USE_LEGACY_BRAND_SAFETY:
-            connector = Connector()
-            bad_words = connector.get_bad_words_list({})
-            bad_words_names = [item["name"] for item in bad_words]
-        else:
-            bad_words_names = BadWord.objects.values_list("name", flat=True)
+        bad_words_names = BadWord.objects.values_list("name", flat=True)
         bad_words_names = list(set(bad_words_names))
         brand_safety_regexp = self.compile_regexp(bad_words_names)
 

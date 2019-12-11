@@ -16,8 +16,7 @@ from es_components.constants import Sections
 from es_components.constants import SortDirections
 from es_components.managers.channel import ChannelManager
 from es_components.managers.video import VideoManager
-from utils.brand_safety_view_decorator import get_brand_safety_data
-from utils.brand_safety_view_decorator import get_brand_safety_label
+from utils.brand_safety import get_brand_safety_data
 
 REGEX_TO_REMOVE_TIMEMARKS = "^\s*$|((\n|\,|)\d+\:\d+\:\d+\.\d+)"
 
@@ -104,7 +103,11 @@ class BrandSafetyChannelAPIView(APIView):
         if ascending:
             reverse = not ascending
         if sorting in sort_options:
-            flagged_videos.sort(key=lambda video: video[sorting], reverse=reverse)
+            # Video sorting value may be None. Move videos with None values to end of list
+            if reverse:
+                flagged_videos.sort(key=lambda video: (video[sorting] is not None, video[sorting]), reverse=reverse)
+            else:
+                flagged_videos.sort(key=lambda video: (video[sorting] is None, video[sorting]), reverse=reverse)
         paginator = Paginator(flagged_videos, size)
         response = self._adapt_response_data(channel_response, paginator, page)
         return Response(status=HTTP_200_OK, data=response)
@@ -173,11 +176,11 @@ class BrandSafetyChannelAPIView(APIView):
         :return:
         """
         brand_safety_score = video.brand_safety.overall_score
-        brand_safety_label = get_brand_safety_label(brand_safety_score)
+        brand_safety_data = get_brand_safety_data(brand_safety_score)
         data = {
             "id": video.main.id,
-            "score": video.brand_safety.overall_score,
-            "label": brand_safety_label,
+            "score": brand_safety_data["score"],
+            "label": brand_safety_data["label"],
             "title": video.general_data.title,
             "thumbnail_image_url": video.general_data.thumbnail_image_url,
             "transcript": self.__get_transcript(video.captions),

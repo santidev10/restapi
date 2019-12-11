@@ -10,6 +10,7 @@ from emoji import UNICODE_EMOJI
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -37,6 +38,7 @@ class Command(BaseCommand):
     exclusion_list = None
     categories = {}
     audit = None
+    acps = {}
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
@@ -53,20 +55,36 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
+        try:
+            self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        except Exception as e:
+            self.machine_number = 0
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
+            #self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=1).order_by("pause", "id")[0]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
 
-    def process_audit(self, num=50000):
+    def check_thread_limit_reached(self):
+        if self.thread_id > 6:
+            if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
+                raise Exception("Can not run more video processors while recommendation engine is running")
+
+    def process_audit(self, num=500):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             if self.thread_id == 0:
@@ -91,13 +109,12 @@ class Command(BaseCommand):
                         self.audit.save(update_fields=['audit_type'])
                 a = AuditExporter.objects.create(
                     audit=self.audit,
-                    owner=None
+                    owner_id=None
                 )
                 raise Exception("Audit completed, all videos processed")
             else:
                 raise Exception("not first thread but audit is done")
         videos = {}
-        pending_videos = pending_videos.select_related("video")
         start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             videos[video.video.video_id] = video
@@ -109,7 +126,7 @@ class Command(BaseCommand):
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
         print("Done one step, continuing audit {}.".format(self.audit.id))
-        raise Exception("Audit completed 1 step.  pausing {}".format(self.audit.id))
+        raise Exception("Audit {}.  thread {}".format(self.audit.id, self.thread_id))
 
     def process_seed_file(self, seed_file):
         try:
@@ -194,6 +211,7 @@ class Command(BaseCommand):
                     db_channel_meta.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
+                avp.channel = db_video.channel
                 avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
@@ -203,16 +221,39 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list)
+            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
+            else:
+                self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
+                self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
+
+    def append_to_channel(self, avp, hits, node):
+        if self.audit.params['audit_type_original'] == 1:
+            return
+        channel_id = avp.video.channel_id
+        if str(channel_id) not in self.acps:
+            try:
+                self.acps[str(channel_id)] = AuditChannelProcessor.objects.get(
+                    audit_id=avp.audit_id,
+                    channel_id=channel_id,
+                )
+            except Exception as e:
+                return
+        acp = self.acps[str(channel_id)]
+        if node not in acp.word_hits:
+            acp.word_hits[node] = []
+        for word in hits:
+            if word not in acp.word_hits[node]:
+                acp.word_hits[node].append(word)
+        acp.save(update_fields=['word_hits'])
 
     def audit_video_meta_for_emoji(self, db_video_meta):
         if db_video_meta.name and self.contains_emoji(db_video_meta.name):
@@ -335,8 +376,8 @@ class Command(BaseCommand):
         )
         self.exclusion_list = re.compile(regexp)
 
-    def check_exists(self, text, exp):
+    def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0:
+        if len(keywords) >= count:
             return True, keywords
         return False, None

@@ -9,10 +9,13 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
+from saas.configs.celery import Queue
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.utils import validate_threshold
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
@@ -94,12 +97,13 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
 
         query_builder = BrandSafetyQueryBuilder(data)
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
+        generate_custom_segment.apply_async(args=[serializer.data["id"]], queue=Queue.SEGMENTS)
         return Response(status=HTTP_201_CREATED, data=serializer.data)
 
     def _validate_data(self, data, request, kwargs):
         validated = {}
         self._validate_fields(data)
-        self.validate_threshold(data["score_threshold"])
+        validate_threshold(data["score_threshold"])
         validated["minimum_option"] = self.validate_numeric(data["minimum_option"])
         validated["score_threshold"] = self.validate_numeric(data["score_threshold"])
         validated["segment_type"] = kwargs["segment_type"]
@@ -111,13 +115,6 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     def _validate_fields(self, fields):
         if set(self.REQUIRED_FIELDS) != set(fields):
             raise ValidationError("Fields must consist of: {}".format(", ".join(self.REQUIRED_FIELDS)))
-
-    @staticmethod
-    def validate_threshold(threshold):
-        err = None
-        if not 0 <= threshold <= 100:
-            err = "Score threshold must be between 0 and 100, inclusive."
-        return err
 
     @staticmethod
     def validate_numeric(value):

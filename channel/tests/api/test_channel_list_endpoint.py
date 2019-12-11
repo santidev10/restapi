@@ -51,6 +51,80 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             response.data["items"][0]["brand_safety"]["overall_score"]
         )
 
+    def test_brand_safety_filter(self):
+        user = self.create_test_user()
+        Group.objects.get_or_create(name=PermissionGroupNames.BRAND_SAFETY_SCORING)
+        user.add_custom_user_permission("channel_list")
+        user.add_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
+        channel_id = str(next(int_iterator))
+        channel_id_2 = str(next(int_iterator))
+        channel_id_3 = str(next(int_iterator))
+        channel_id_4 = str(next(int_iterator))
+        channel_id_5 = str(next(int_iterator))
+
+        channel = Channel(**{
+            "meta": {
+                "id": channel_id
+            },
+            "brand_safety": {
+                "overall_score": 89
+            }
+        })
+        channel_2 = Channel(**{
+            "meta": {
+                "id": channel_id_2
+            },
+            "brand_safety": {
+                "overall_score": 98
+            }
+        })
+        channel_3 = Channel(**{
+            "meta": {
+                "id": channel_id_3
+            },
+            "brand_safety": {
+                "overall_score": 0
+            }
+        })
+        channel_4 = Channel(**{
+            "meta": {
+                "id": channel_id_4
+            },
+            "brand_safety": {
+                "overall_score": 75
+            }
+        })
+        channel_5 = Channel(**{
+            "meta": {
+                "id": channel_id_5
+            },
+            "brand_safety": {
+                "overall_score": 79
+            }
+        })
+        sleep(1)
+        sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
+        ChannelManager(sections=sections).upsert([channel, channel_2, channel_3, channel_4, channel_5])
+        high_risk_url = self.url + "?brand_safety=Unsuitable"
+        risky_url = self.url + "?brand_safety=Low%20Suitability"
+        low_risk_url = self.url + "?brand_safety=Medium%20Suitability"
+        safe_url = self.url + "?brand_safety=Suitable"
+        high_risk_and_safe_url = high_risk_url + "%2CSuitable"
+        high_risk_response = self.client.get(high_risk_url)
+        risky_response = self.client.get(risky_url)
+        low_risk_response = self.client.get(low_risk_url)
+        safe_response = self.client.get(safe_url)
+        high_risk_and_safe_response = self.client.get(high_risk_and_safe_url)
+        self.assertEqual(len(high_risk_response.data["items"]), 1)
+        self.assertEqual(len(risky_response.data["items"]), 2)
+        self.assertEqual(len(low_risk_response.data["items"]), 1)
+        self.assertEqual(len(safe_response.data["items"]), 1)
+        self.assertEqual(len(high_risk_and_safe_response.data["items"]), 2)
+        self.assertEqual(
+            89,
+            low_risk_response.data["items"][0]["brand_safety"]["overall_score"]
+        )
+
     def test_extra_fields(self):
         self.create_admin_user()
         extra_fields = ("brand_safety_data", "chart_data", "blacklist_data")
@@ -80,3 +154,28 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(len(response.data.get('items')), len(default_similar_channels))
 
+    def test_ignore_monetization_filter_no_permission(self):
+        user = self.create_test_user()
+        user.add_custom_user_permission("channel_list")
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url)
+        self.assertEqual(len(response.data["items"]), len(channels))
+        self.assertTrue(all(item.get("monetization") is None for item in response.data["items"]))
+
+    def test_monetization_filter_has_permission(self):
+        self.create_admin_user()
+        channels = [Channel(next(int_iterator)) for _ in range(2)]
+        channels[0].populate_monetization(is_monetizable=True)
+
+        ChannelManager([Sections.GENERAL_DATA,  Sections.AUTH, Sections.MONETIZATION]).upsert(channels)
+
+        response = self.client.get(self.url + "?monetization.is_monetizable=true")
+        data = response.data["items"]
+        doc = data[0]
+        self.assertTrue(len(data) == 1)
+        self.assertTrue(doc["main"]["id"] == channels[0].main.id)
+        self.assertTrue(doc["monetization"]["is_monetizable"] is True)

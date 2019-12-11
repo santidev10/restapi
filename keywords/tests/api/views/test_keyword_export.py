@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from unittest import mock
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -9,32 +10,39 @@ from es_components.constants import Sections
 from es_components.managers import KeywordManager
 from es_components.models import Keyword
 from es_components.tests.utils import ESTestCase
-from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
 from utils.utittests.csv import get_data_from_csv_response
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.s3_mock import mock_s3
+
+from keywords.api.names import KeywordPathName
+
+EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 
 
-class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
+class KeywordListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
+
     def _get_url(self, **query_params):
         return reverse(
-            KeywordPathName.KEYWORD_EXPORT,
+            KeywordPathName.KEYWORD_PREPARE_EXPORT,
             [Namespace.KEYWORD],
             query_params=query_params,
         )
 
     def _request(self, **query_params):
         url = self._get_url(**query_params)
-        return self.client.get(url)
+        return self.client.post(url)
 
+    @mock_s3
     def test_not_auth(self):
         response = self._request()
 
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
+    @mock_s3
     def test_no_permissions(self):
         self.create_test_user()
 
@@ -42,6 +50,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
+    @mock_s3
     def test_success_admin(self):
         self.create_admin_user()
 
@@ -49,6 +58,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @mock_s3
     def test_success_allowed_user(self):
         user = self.create_test_user()
         user.add_custom_user_permission("keyword_list")
@@ -57,21 +67,70 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
-    def test_success_csv_response(self):
+    @mock_s3
+    def test_success_request_send_twice(self):
+        self.create_admin_user()
+
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+        response2 = self._request()
+        self.assertIsNotNone(response2.data.get("export_url"))
+
+
+class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
+    def _get_url(self, export_name):
+        return reverse(
+            KeywordPathName.KEYWORD_EXPORT,
+            [Namespace.KEYWORD],
+            args=(export_name,),
+        )
+
+    def _request(self, export_name=EXPORT_FILE_HASH):
+        url = self._get_url(export_name)
+        return self.client.get(url)
+
+    def _request_collect_file(self, **query_params):
+        collect_file_url = reverse(
+            KeywordPathName.KEYWORD_PREPARE_EXPORT,
+            [Namespace.KEYWORD],
+            query_params=query_params,
+        )
+        self.client.post(collect_file_url)
+
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                    return_value=EXPORT_FILE_HASH)
+    def test_success_allowed_user(self, *args):
+        user = self.create_test_user()
+        user.add_custom_user_permission("keyword_list")
+        self._request_collect_file()
+
+        user.remove_custom_user_permission("keyword_list")
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_success_csv_response(self, *args):
         test_datetime = datetime(2020, 3, 4, 5, 6, 7)
         self.create_admin_user()
 
         with patch_now(test_datetime):
+            self._request_collect_file()
             response = self._request()
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
-        expected_filename = "Keywords export report {}.csv".format(test_datetime.strftime("%Y-%m-%d_%H-%m"))
-        self.assertEqual(response["Content-Disposition"], "attachment; filename=\"{}\"".format(expected_filename))
+        self.assertEqual(response["Content-Type"], "application/CSV")
 
-    def test_headers(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_headers(self, *args):
         self.create_admin_user()
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -85,7 +144,10 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "views",
         ])
 
-    def test_response(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_response(self, *args):
         self.create_admin_user()
         keyword = Keyword(next(int_iterator))
         keyword.populate_stats(
@@ -98,6 +160,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
         manager = KeywordManager(sections=(Sections.STATS,))
         manager.upsert([keyword])
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -116,11 +179,15 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             expected_values_str
         )
 
-    def test_missed_values(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_missed_values(self, *args):
         self.create_admin_user()
         keyword = Keyword(next(int_iterator))
         KeywordManager(sections=Sections.STATS).upsert([keyword])
 
+        self._request_collect_file()
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -132,14 +199,18 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             values
         )
 
-    def test_filter_ids(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids(self, *args):
         self.create_admin_user()
         filter_count = 1
         keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
         KeywordManager(sections=Sections.STATS).upsert(keywords)
         keyword_ids = [str(keyword.main.id) for keyword in keywords]
 
-        response = self._request(**{"main.id": ",".join(keyword_ids[:filter_count])})
+        self._request_collect_file(**{"main.id": ",".join(keyword_ids[:filter_count])})
+        response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
@@ -149,14 +220,18 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_filter_ids_deprecated(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_ids_deprecated(self, *args):
         self.create_admin_user()
         filter_count = 2
         keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
         KeywordManager(sections=Sections.STATS).upsert(keywords)
         keyword_ids = [str(keyword.main.id) for keyword in keywords]
 
-        response = self._request(ids=",".join(keyword_ids[:filter_count]))
+        self._request_collect_file(ids=",".join(keyword_ids[:filter_count]))
+        response = self._request()
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
@@ -166,32 +241,37 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
             len(data)
         )
 
-    def test_filter_volume(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_volume(self, *args):
         self.create_admin_user()
         keywords = [Keyword(next(int_iterator)) for _ in range(2)]
         keywords[0].populate_stats(search_volume=1)
         keywords[1].populate_stats(search_volume=3)
         KeywordManager(sections=Sections.STATS).upsert(keywords)
 
-        response = self._request(**{"stats.search_volume": "1,2"})
+        self._request_collect_file(**{"stats.search_volume": "1,2"})
+        response = self._request()
+
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
 
         self.assertEqual(1, len(data))
 
-    def test_filter_ids_post_body(self):
+    @mock_s3
+    @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
+    def test_filter_viral(self, *args):
         self.create_admin_user()
-        filter_count = 2
-        keywords = [Keyword(next(int_iterator)) for _ in range(filter_count + 1)]
+        keywords = [Keyword(next(int_iterator)) for _ in range(2)]
+        keywords[0].populate_stats(is_viral=True)
         KeywordManager(sections=Sections.STATS).upsert(keywords)
-        keyword_ids = [str(keyword.main.id) for keyword in keywords]
 
-        url = self._get_url()
-        payload = {
-            "main.id": keyword_ids[:filter_count]
-        }
-        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self._request_collect_file(**{"stats.is_viral": "Viral"})
+        response = self._request()
+
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)[1:]
 
-        self.assertEqual(filter_count, len(data))
+        self.assertEqual(1, len(data))

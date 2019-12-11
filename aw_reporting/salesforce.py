@@ -66,7 +66,7 @@ class Connection:
         return response.content.decode('UTF-8')
 
     # --
-    def get_categories(self):
+    def get_categories(self, where=None):
         describe = self.describe('Opportunity')
 
         for f in describe.get('fields', []):
@@ -148,6 +148,11 @@ class Connection:
             where=where
         )
         return items
+
+    def get_deleted_items(self, name, start, end):
+        items = getattr(self.sf, name).deleted(start, end)
+        for record in items["deletedRecords"]:
+            yield record
 
     def get_items(self, name, fields, where):
         """

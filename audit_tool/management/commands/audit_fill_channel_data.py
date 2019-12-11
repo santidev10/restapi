@@ -12,6 +12,7 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from utils.utils import convert_subscriber_count
+from django.utils import timezone
 logger = logging.getLogger(__name__)
 from pid import PidFile
 
@@ -37,14 +38,16 @@ class Command(BaseCommand):
             self.thread_id = 0
         with PidFile(piddir='.', pidname='audit_fill_channels{}.pid'.format(self.thread_id)) as p:
             count = 0
-            pending_channels = AuditChannelMeta.objects.filter(channel__processed=False).select_related("channel")
+            AuditChannel.objects.filter(processed=True, processed_time__isnull=True).update(processed_time=timezone.now())
+            pending_channels = AuditChannelMeta.objects.filter(channel__processed_time__isnull=True)
             if pending_channels.count() == 0:
                 logger.info("No channels to fill.")
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
-            start = self.thread_id * 20000
-            for channel in pending_channels.order_by("-id")[start:start+20000]:
+            num = 200
+            start = self.thread_id * num
+            for channel in pending_channels.order_by("-id")[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
                 if len(channels) == 50:
@@ -56,7 +59,7 @@ class Command(BaseCommand):
             raise Exception("Done {} channels".format(count))
 
     def fill_recent_video_timestamp(self):
-        channels = AuditChannelMeta.objects.filter(last_uploaded_category__isnull=True).order_by("-id")
+        channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_view_count__isnull=True).order_by("-id")
         for c in channels[:5000]:
             db_videos = AuditVideo.objects.filter(channel=c.channel).values_list('id', flat=True)
             videos = AuditVideoMeta.objects.filter(video_id__in=db_videos).order_by("-publish_date")
@@ -96,6 +99,8 @@ class Command(BaseCommand):
                 return
             for i in data['items']:
                 db_channel_meta = channels[i['id']]
+                if not i.get('brandingSettings'):
+                    continue
                 try:
                     db_channel_meta.name = i['brandingSettings']['channel']['title']
                 except Exception as e:
@@ -109,11 +114,16 @@ class Command(BaseCommand):
                 except Exception as e:
                     pass
                 try:
-                    db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
-                    db_channel_meta.default_language = db_lang
+                    if i['brandingSettings']['channel']['defaultLanguage']:
+                        db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                        db_channel_meta.default_language = db_lang
                 except Exception as e:
                     pass
-                country = i['brandingSettings']['channel'].get('country')
+                try:
+                    country = i['brandingSettings']['channel'].get('country')
+                except Exception as e:
+                    country = None
+                    pass
                 if country:
                     db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
@@ -131,7 +141,7 @@ class Command(BaseCommand):
                     self.calc_language((db_channel_meta))
                 except Exception as e:
                     logger.info("problem saving channel")
-            AuditChannel.objects.filter(channel_id__in=ids).update(processed=True)
+            AuditChannel.objects.filter(channel_id__in=ids).update(processed_time=timezone.now())
         except Exception as e:
             logger.exception(e)
 

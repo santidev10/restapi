@@ -76,8 +76,6 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
 from segment.models import CustomSegment
-from segment.models import CustomSegmentRelated
-from segment.utils import generate_search_with_params
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -367,10 +365,7 @@ class ItemsFromSegmentIdsApiView(APIView):
         ids = request.data
         for segment_id in ids:
             segment = CustomSegment.objects.get(id=segment_id)
-            es_manager = segment.get_es_manager(sections=(Sections.MAIN, Sections.GENERAL_DATA))
-            query = segment.get_segment_items_query()
-            scan = generate_search_with_params(es_manager, query).scan()
-
+            scan = segment.generate_search_with_params().scan()
             related_ids = [
                 {
                     "criteria": item.main.id,
@@ -1468,6 +1463,12 @@ class PerformanceTargetingFiltersAPIView(APIView):
 
 
 class PerformanceTargetingReportAPIView(APIView):
+    channel_manager = ChannelManager()
+    es_fields_to_load_channel_info = ("main.id", "general_data.title", "general_data.thumbnail_image_url",)
+
+    video_manager = VideoManager()
+    es_fields_to_load_video_info = ("main.id", "general_data.title", "general_data.thumbnail_image_url",)
+
     def get_object(self):
         pk = self.kwargs["pk"]
         user = self.request.user
@@ -1622,18 +1623,20 @@ class PerformanceTargetingReportAPIView(APIView):
         info = {}
         ids = {i['yt_id'] for i in items}
         if ids:
-            connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_channels_base_info(ids)
-                info = {r['id']: r for r in resp}
-            except SingleDatabaseApiConnectorException as e:
+                items = self.channel_manager.search(
+                    filters=self.channel_manager.ids_query(ids)
+                ). \
+                    source(includes=list(self.es_fields_to_load_channel_info)).execute().hits
+                info = {r.main.id: r for r in items}
+            except Exception as e:
                 logger.error(e)
 
         for i in items:
-            item_details = info.get(i['yt_id'], {})
+            item_details = info.get(i['yt_id'])
             i["item"] = dict(id=i['yt_id'],
-                             name=item_details.get("title", i['yt_id']),
-                             thumbnail=item_details.get("thumbnail_image_url"))
+                             name=item_details.general_data.title if item_details else i['yt_id'],
+                             thumbnail=item_details.general_data.thumbnail_image_url if item_details else i['yt_id'])
             del i['yt_id']
 
             self._set_group_and_campaign_fields(i)
@@ -1651,18 +1654,20 @@ class PerformanceTargetingReportAPIView(APIView):
         info = {}
         ids = {i['yt_id'] for i in items}
         if ids:
-            connector = SingleDatabaseApiConnector()
             try:
-                resp = connector.get_videos_base_info(ids)
-                info = {r['id']: r for r in resp}
-            except SingleDatabaseApiConnectorException as e:
+                items = self.video_manager.search(
+                    filters=self.video_manager.ids_query(ids)
+                ). \
+                    source(includes=list(self.es_fields_to_load_video_info)).execute().hits
+                info = {r.main.id: r for r in items}
+            except Exception as e:
                 logger.error(e)
 
         for i in items:
-            item_details = info.get(i['yt_id'], {})
+            item_details = info.get(i['yt_id'])
             i["item"] = dict(id=i['yt_id'],
-                             name=item_details.get("title", i['yt_id']),
-                             thumbnail=item_details.get("thumbnail_image_url"))
+                             name=item_details.general_data.title if item_details else i['yt_id'],
+                             thumbnail=item_details.general_data.thumbnail_image_url if item_details else None)
             del i['yt_id']
 
             self._set_group_and_campaign_fields(i)

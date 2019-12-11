@@ -1,22 +1,23 @@
-"""
-Segment models utils module
-"""
+import logging
+
 from django.db.models import F
-from utils.datetime import now_in_default_tz
-from segment.models.utils.count_segment_adwords_statistics import get_mcc_to_update
 
 from aw_reporting.models.ad_words.calculations import CALCULATED_STATS
 
+MIN_IMPRESSIONS = 1000
+MAX_STATS_TO_GET = 5000
+STATISTICS_IDS_SIZE = 2500
 
-def aggregate_segment_statistics(segment, yt_ids):
+logger = logging.getLogger(__name__)
+
+
+def aggregate_segment_statistics(related_aw_statistics_model, yt_ids):
     """
     Prepare adwords statistics for segment
     """
-    user = segment.owner
-    mcc_acc, is_chf = get_mcc_to_update(user)
     filters = {
-        "ad_group__campaign__account__managers": mcc_acc,
-        "yt_id__in": yt_ids,
+        "yt_id__in": yt_ids[:STATISTICS_IDS_SIZE],
+        "impressions__gte": MIN_IMPRESSIONS,
     }
     aggregated = {
         "cost": 0,
@@ -26,16 +27,20 @@ def aggregate_segment_statistics(segment, yt_ids):
         "video_clicks": 0,
         "video_impressions": 0,
     }
-    queryset = segment.related_aw_statistics_model.objects.filter(**filters).annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions")).values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
+    queryset = related_aw_statistics_model.objects\
+        .select_related("ad_group")\
+        .only("ad_group__video_views").filter(**filters)\
+        .annotate(ad_group_video_views=F("ad_group__video_views"), video_clicks=F("clicks"), video_impressions=F("impressions"))\
+        .values("cost", "video_views", "clicks", "impressions", "ad_group_video_views", "video_clicks", "video_impressions")
     queryset.query.clear_ordering(force_empty=True)
-    for statistic in queryset:
-        for field, value in statistic.items():
-            if field == "ad_group_video_views":
-                continue
-            elif field == "video_clicks" or field == "video_impressions" and statistic["ad_group_video_views"] > 0:
-                aggregated[field] += value
-            else:
-                aggregated[field] += value
+    for statistic in queryset[:MAX_STATS_TO_GET]:
+        if statistic["ad_group_video_views"] > 0:
+            aggregated["video_clicks"] += statistic["clicks"]
+            aggregated["video_impressions"] += statistic["impressions"]
+        aggregated["cost"] += statistic["cost"]
+        aggregated["video_views"] += statistic["video_views"]
+        aggregated["clicks"] += statistic["clicks"]
+        aggregated["impressions"] += statistic["impressions"]
     stats = {}
     for key, opts in CALCULATED_STATS.items():
         kwargs = {
@@ -44,13 +49,4 @@ def aggregate_segment_statistics(segment, yt_ids):
         func = opts["receipt"]
         result = func(**kwargs)
         stats[key] = result
-    result = {
-        "stats": stats,
-        "meta": {
-            "account_id": mcc_acc.id,
-            "account_name": mcc_acc.name,
-            "updated_at": str(now_in_default_tz()),
-            "is_chf": is_chf,
-        }
-    }
-    return result
+    return stats

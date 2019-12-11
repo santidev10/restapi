@@ -29,7 +29,7 @@ class AuditResumeApiView(APIView):
                 if not params['name'].startswith('Resumed: '):
                     params['name'] = 'Resumed: {}'.format(params['name'])
                 new_audit = AuditProcessor.objects.create(
-                    audit_type=0,
+                    audit_type = 0,
                     params=params,
                     max_recommended=max_recommended,
                 )
@@ -38,8 +38,8 @@ class AuditResumeApiView(APIView):
                 for v in videos[:1000]:
                     try:
                         AuditVideoProcessor.objects.create(
-                            audit=new_audit,
-                            video=v.video,
+                            audit = new_audit,
+                            video = v.video,
                         )
                     except Exception as e:
                         pass

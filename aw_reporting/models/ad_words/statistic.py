@@ -56,7 +56,7 @@ class BaseStatisticModel(BaseModel):
 
 class ModelPlusDeNormFields(BaseStatisticModel):
     # for now we will use them in Pricing Tool
-    de_norm_fields_are_recalculated = models.BooleanField(default=False)
+    de_norm_fields_are_recalculated = models.BooleanField(default=False, db_index=True)
     min_stat_date = models.DateField(null=True)
     max_stat_date = models.DateField(null=True)
 
@@ -80,6 +80,7 @@ class ModelPlusDeNormFields(BaseStatisticModel):
     device_mobile = models.BooleanField(default=False)
     device_tablets = models.BooleanField(default=False)
     device_other = models.BooleanField(default=False)
+    device_tv_screens = models.BooleanField(default=False)
 
     has_interests = models.BooleanField(default=False)
     has_keywords = models.BooleanField(default=False)
@@ -121,4 +122,5 @@ class ModelDenormalizedFields:
         (Device.MOBILE, ModelPlusDeNormFields.device_mobile),
         (Device.TABLET, ModelPlusDeNormFields.device_tablets),
         (Device.OTHER, ModelPlusDeNormFields.device_other),
+        (Device.CONNECTED_TV, ModelPlusDeNormFields.device_tv_screens),
     ))

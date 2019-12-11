@@ -62,14 +62,24 @@ class Command(BaseCommand):
         self.thread_id = options.get('thread_id')
         if not self.thread_id:
             self.thread_id = 0
-        with PidFile(piddir='.', pidname='get_current_audit_to_process_{}.pid'.format(self.thread_id)) as p:
+        try:
+            self.machine_number = settings.AUDIT_MACHINE_NUMBER
+        except Exception as e:
+            self.machine_number = 0
+        with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(completed__isnull=True, audit_type=0).order_by("pause", "id")[int(self.thread_id/3)]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0).order_by("pause", "id")[self.machine_number]
                 self.language = self.audit.params.get('language')
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
                 self.category = self.audit.params.get('category')
                 self.related_audits = self.audit.params.get('related_audits')
+                self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+                self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+                if not self.exclusion_hit_count:
+                    self.exclusion_hit_count = 1
+                if not self.inclusion_hit_count:
+                    self.inclusion_hit_count = 1
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
@@ -89,8 +99,6 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         thread_id = self.thread_id
-        if thread_id % 3 == 0:
-            thread_id = 0
         if pending_videos.count() == 0:
             if thread_id == 0:
                 pending_videos = self.process_seed_list()
@@ -98,8 +106,18 @@ class Command(BaseCommand):
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
             done = False
-            if pending_videos.filter(clean=True).count() > self.audit.max_recommended or pending_videos.count() > self.MAX_VIDS:
-                done =  True
+            if pending_videos.count() > self.MAX_VIDS:
+                done = True
+            else:
+                max_recommended_type = self.audit.params.get('max_recommended_type')
+                if not max_recommended_type:
+                    max_recommended_type = 'video'
+                if max_recommended_type == 'video' and pending_videos.filter(clean=True).count() > self.audit.max_recommended:
+                    done = True
+                elif max_recommended_type == 'channel':
+                    unique_channels = pending_videos.filter(clean=True).values('video__channel_id').distinct()
+                    if unique_channels.count() > self.audit.max_recommended:
+                        done = True
             pending_videos = pending_videos.filter(processed__isnull=True)
             if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
                 done =  True
@@ -113,14 +131,15 @@ class Command(BaseCommand):
                     print("Audit completed, all videos processed")
                     a = AuditExporter.objects.create(
                         audit=self.audit,
-                        owner=None,
+                        owner_id=None,
                         clean=True,
                     )
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
-        start = thread_id * 50
-        for video in pending_videos[start:start+50]:
+        num = 25
+        start = thread_id * num
+        for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
@@ -167,7 +186,7 @@ class Command(BaseCommand):
         return vids
 
     def get_avp_from_url(self, seed):
-        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed):
+        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
             return
         v_id = seed.replace(",", "").split("/")[-1]
         if '?v=' in v_id:
@@ -260,7 +279,7 @@ class Command(BaseCommand):
             if int(db_video_meta.category.category) not in self.category:
                 return False
         if self.related_audits:
-            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits).exists():
+            if AuditVideoProcessor.objects.filter(video_id=db_video.id, audit_id__in=self.related_audits, clean=True).exists():
                 return False
         if BlacklistItem.get(db_video.video_id, BlacklistItem.VIDEO_ITEM): #if video is blacklisted
             return False
@@ -291,12 +310,12 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
         if self.inclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.inclusion_list)
+            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.exclusion_hit_count)
             hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
         if self.exclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list)
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list, count=self.inclusion_hit_count)
             if is_there:
                 return False, hits
         return True, hits
@@ -409,9 +428,9 @@ class Command(BaseCommand):
         )
         self.exclusion_list = re.compile(regexp)
 
-    def check_exists(self, text, exp):
+    def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())
-        if len(keywords) > 0:
+        if len(keywords) >= count:
             return True, keywords
         return False, None
 

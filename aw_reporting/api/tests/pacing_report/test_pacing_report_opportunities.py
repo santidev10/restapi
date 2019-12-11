@@ -29,7 +29,6 @@ from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DYNAMIC_PLACEMENT_TYPES
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
-from aw_reporting.reports.pacing_report import PacingReportChartId
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
@@ -73,10 +72,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             territory=territory,
             probability=100,
         )
-        OpPlacement.objects.create(id="1", name="", opportunity=current_op,
+        pl_1 = OpPlacement.objects.create(id="1", name="", opportunity=current_op,
                                    goal_type_id=SalesForceGoalType.CPM)
-        OpPlacement.objects.create(id="2", name="", opportunity=current_op,
+        pl_2 = OpPlacement.objects.create(id="2", name="", opportunity=current_op,
                                    goal_type_id=SalesForceGoalType.CPV)
+        Campaign.objects.create(name="c", salesforce_placement=pl_1)
         Opportunity.objects.create(id="2", name="2", start=month_ago,
                                    end=month_ago, probability=100)
         Opportunity.objects.create(id="3", name="3", start=month_after,
@@ -98,7 +98,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                 "billing_server",
                 "cannot_roll_over",
                 "category",
-                "chart_data",
                 "cost",
                 "cpm",
                 "cpv",
@@ -162,19 +161,25 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertEqual(HTTP_200_OK, response.status_code)
 
     def test_get_opportunities_filter_period(self):
-        today = timezone.now()
+        today = now_in_default_tz().date()
         first_day = today.replace(day=1)
         month_ago, month_after = first_day - timedelta(
             days=1), first_day + timedelta(days=32)
 
-        Opportunity.objects.create(id="1", name="1", start=today, end=today,
+        opp_1 = Opportunity.objects.create(id="1", name="1", start=today, end=today,
                                    probability=100)
-        Opportunity.objects.create(id="2", name="2", start=month_ago,
+        opp_2 = Opportunity.objects.create(id="2", name="2", start=month_ago,
                                    end=month_ago, probability=100)
         op_expected = Opportunity.objects.create(id="3", name="3",
                                                  start=month_after,
                                                  end=month_after,
                                                  probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        pl_2 = OpPlacement.objects.create(name="pl_2", opportunity=opp_2)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
+        placement = OpPlacement.objects.create(id=next(int_iterator), name="pl", opportunity=op_expected)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=placement)
 
         response = self.client.get("{}?period=next_month".format(self.url))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -193,7 +198,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
                                                  start=today, end=today,
                                                  ad_ops_manager=user2,
                                                  probability=100)
-
+        placement = OpPlacement.objects.create(name="pl", opportunity=op_expected)
+        Campaign.objects.create(salesforce_placement=placement)
         response = self.client.get("{}?ad_ops={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -205,19 +211,22 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         user1 = User.objects.create(id="1", name="1")
         user2 = User.objects.create(id="2", name="2")
         today = timezone.now()
-        Opportunity.objects.create(id="1", name="1", start=today, end=today,
+        opp_1 = Opportunity.objects.create(id=next(int_iterator), name="1", start=today, end=today,
                                    account_manager=user1, probability=100)
-        op_expected = Opportunity.objects.create(id="2", name="2",
+        op_expected = Opportunity.objects.create(id=next(int_iterator), name="2",
                                                  start=today, end=today,
                                                  account_manager=user2,
                                                  probability=100)
-
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        placement = OpPlacement.objects.create(id=next(int_iterator), name="pl", opportunity=op_expected)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=placement)
         response = self.client.get("{}?am={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
         data = response.data["items"]
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['id'], op_expected.id)
+        self.assertEqual(data[0]['id'], str(op_expected.id))
 
     def test_get_opportunities_filter_sales(self):
         user1 = User.objects.create(id="1", name="1")
@@ -228,6 +237,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         op_expected = Opportunity.objects.create(id="2", name="2", start=today,
                                                  end=today, sales_manager=user2,
                                                  probability=100)
+        placement = OpPlacement.objects.create(name="pl", opportunity=op_expected)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
 
         response = self.client.get("{}?sales={}".format(self.url, user2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -245,7 +256,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         op_expected = Opportunity.objects.create(id="2", name="2", start=today,
                                                  end=today, category=category2,
                                                  probability=100)
-
+        placement = OpPlacement.objects.create(name="pl", opportunity=op_expected)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         response = self.client.get(
             "{}?category={}".format(self.url, category2.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -263,6 +275,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="2", name="2", start=today, end=today,
             goal_type_id=SalesForceGoalType.CPV, probability=100)
 
+        placement = OpPlacement.objects.create(name="pl", opportunity=op_expected)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
+
         response = self.client.get("{}?goal_type={}".format(self.url, 1))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -279,6 +294,8 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         op_expected = Opportunity.objects.create(id="2", name="2", start=today,
                                                  end=today, territory=territory_2,
                                                  probability=100)
+        placement = OpPlacement.objects.create(name="pl", opportunity=op_expected)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
 
         query = QueryDict(mutable=True)
         query.update(region=territory_2)
@@ -293,12 +310,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         today = timezone.now()
         territory_1 = "Territory 1"
         territory_2 = "Territory 2"
-        Opportunity.objects.create(id="1", name="1",
+        opp_1 = Opportunity.objects.create(id="1", name="1",
                                    start=today, end=today,
                                    territory=territory_1, probability=100)
-        Opportunity.objects.create(id="2", name="2",
+        opp_2 = Opportunity.objects.create(id="2", name="2",
                                    start=today, end=today,
                                    territory=territory_2, probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=opp_2)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
 
         query = QueryDict(mutable=True)
         query.update(region=territory_1)
@@ -311,12 +332,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
     def test_get_opportunities_filter_name(self):
         today = timezone.now()
-        Opportunity.objects.create(id="1", name="Peter Griffin", start=today,
+        opp_1 = Opportunity.objects.create(id="1", name="Peter Griffin", start=today,
                                    end=today, probability=100)
         op_expected = Opportunity.objects.create(id="2", name="Homer Simpson",
                                                  start=today, end=today,
                                                  probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
 
+        placement = OpPlacement.objects.create(id=next(int_iterator), name="pl", opportunity=op_expected)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=placement)
         response = self.client.get("{}?search={}".format(self.url, "SIM"))
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -339,6 +364,12 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         upcoming = Opportunity.objects.create(id="3", name="3",
                                               start=month_after,
                                               end=month_after, probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=active)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=completed)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
+        pl_3 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=upcoming)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_3)
 
         filters = dict(
             period="custom",
@@ -384,7 +415,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id="2", name="Z", start=today - timedelta(days=1),
             end=today + timedelta(days=1), probability=100,
         )
-
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=first)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=second)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items"][0]['id'], first.id)
@@ -469,6 +503,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         flight = Flight.objects.create(placement=placement,
                                        start=today, end=today,
                                        total_cost=1)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         FlightStatistic.objects.create(flight=flight, sum_cost=0)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -539,105 +574,18 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         opp_data = response.data["items"][0]
         self.assertEqual(opp_data["margin"], expected_margin)
 
-    def test_cpv_dynamic_placement_rate_and_tech_fee_today_goal(self):
-        today = date(2017, 12, 8)
-        start, end = date(2017, 12, 1), date(2017, 12, 31)
-        total_cost, last_3_days_cost = 988.12, 366.87
-        total_views, last_3_days_views = 23199, 8520
-        client_budget = 5000
-        tech_fee = 0.015
-
-        days_remaining = (end - today).days + 1
-        not_relevant_cost = total_cost - last_3_days_cost
-        not_relevant_views = total_views - last_3_days_views
-        last_3_days_cpv = last_3_days_cost / last_3_days_views
-        total_cpv = total_cost / total_views
-        cost_spent = (total_cpv + tech_fee) * total_views
-        budget_remaining = client_budget - cost_spent
-        total_pacing_goal = last_3_days_cpv * budget_remaining \
-                            / (last_3_days_cpv + tech_fee)
-        expected_budget = total_pacing_goal / days_remaining
-        opportunity = Opportunity.objects.create(probability=100,
-                                                 budget=client_budget,
-                                                 start=start, end=end)
-        placement = OpPlacement.objects.create(
-            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
-            tech_fee=tech_fee)
-        Flight.objects.create(placement=placement,
-                              start=start, end=end,
-                              total_cost=client_budget)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(date=today - timedelta(days=4),
-                                         campaign=campaign,
-                                         cost=not_relevant_cost,
-                                         video_views=not_relevant_views)
-        CampaignStatistic.objects.create(date=today - timedelta(days=3),
-                                         campaign=campaign,
-                                         cost=last_3_days_cost,
-                                         video_views=last_3_days_views)
-        with patch_now(today):
-            response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]["budget"]
-        self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
-
-    def test_cpm_dynamic_placement_rate_and_tech_fee_today_goal(self):
-        today = date(2017, 12, 8)
-        start, end = date(2017, 12, 1), date(2017, 12, 31)
-        total_cost, last_3_days_cost = 31967, 366.87
-        total_impressions, last_3_days_impressions = 5731696, 85001
-        client_budget = 80000
-        tech_fee = 0.015
-
-        days_remaining = (end - today).days + 1
-        not_relevant_cost = total_cost - last_3_days_cost
-        not_relevant_impressions = total_impressions - last_3_days_impressions
-        last_3_days_cpm = last_3_days_cost / last_3_days_impressions * 1000
-        total_cpm = total_cost * 1. / total_impressions * 1000
-        cost_spent = (total_cpm + tech_fee) * total_impressions / 1000
-        budget_remaining = client_budget - cost_spent
-        total_pacing_goal = last_3_days_cpm * budget_remaining \
-                            / (last_3_days_cpm + tech_fee)
-        expected_budget = total_pacing_goal / days_remaining
-        opportunity = Opportunity.objects.create(probability=100,
-                                                 budget=client_budget,
-                                                 start=start, end=end)
-        placement = OpPlacement.objects.create(
-            opportunity=opportunity, goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
-            tech_fee=tech_fee)
-        Flight.objects.create(placement=placement,
-                              start=start, end=end,
-                              total_cost=client_budget)
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-        CampaignStatistic.objects.create(date=today - timedelta(days=4),
-                                         campaign=campaign,
-                                         cost=not_relevant_cost,
-                                         impressions=not_relevant_impressions)
-        CampaignStatistic.objects.create(date=today - timedelta(days=3),
-                                         campaign=campaign,
-                                         cost=last_3_days_cost,
-                                         impressions=last_3_days_impressions)
-        with patch_now(today):
-            response = self.client.get(self.url)
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]["budget"]
-        self.assertAlmostEqual(chart_data["today_budget"], expected_budget)
-
     def test_dynamic_placement_negative(self):
         today = date(2017, 1, 1)
         opportunity = Opportunity.objects.create(probability=100,
                                                  start=today, end=today)
 
-        OpPlacement.objects.create(
+        placement = OpPlacement.objects.create(
             id=1,
             opportunity=opportunity,
             start=today - timedelta(days=1),
             end=today + timedelta(days=1)
         )
+        Campaign.objects.create(name="c", salesforce_placement=placement)
 
         with patch_now(today):
             response = self.client.get(self.url)
@@ -659,13 +607,14 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             start, end = start_end
             opportunity = Opportunity.objects.create(id=index, probability=100,
                                                      start=today, end=today)
-            OpPlacement.objects.create(
+            placement = OpPlacement.objects.create(
                 id=index,
                 opportunity=opportunity,
                 dynamic_placement=dynamic_placement,
                 start=start,
                 end=end
             )
+            Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=placement)
         with patch_now(today):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -768,9 +717,11 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         self.assertAlmostEqual(pl["margin"], expected_margin)
 
     def test_no_dates(self):
-        Opportunity.objects.create(
+        opp = Opportunity.objects.create(
             id="1", name="1", start=None, end=None, probability=100
         )
+        placement = OpPlacement.objects.create(id=1, opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
@@ -786,183 +737,6 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             "max_page": 1
         })
 
-    def test_opportunity_chart_data(self):
-        """
-        Daily Pacing
-        {'label': datetime.date(2017, 1, 1), 'value': 102.0}
-        {'label': datetime.date(2017, 1, 2), 'value': 204.0}
-        {'label': datetime.date(2017, 1, 3), 'value': 306.0}
-        {'label': datetime.date(2017, 1, 4), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 5), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 6), 'value': 408.0}
-        {'label': datetime.date(2017, 1, 7), 'value': 408.0+51.0=459.0}
-        {'label': datetime.date(2017, 1, 8), 'value': 408.0+102.0=510.0}
-
-        Delivery Chart
-        {'label': datetime.date(2017, 1, 1), 'value': 102}
-        {'label': datetime.date(2017, 1, 2), 'value': 204}
-        {'label': datetime.date(2017, 1, 3), 'value': 306}
-
-        2017-01-04
-        Today goal: 102
-        Today budget: 102 * 0.5
-        :return:
-        """
-        start, end = date(2017, 1, 1), date(2017, 1, 8)
-        today = datetime(2017, 1, 4).date()
-        opportunity = Opportunity.objects.create(
-            id="1", name="1", probability=100, budget=100, start=start, end=end,
-        )
-        placement = OpPlacement.objects.create(
-            id="1", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
-        )
-        first_end = start + timedelta(days=3)
-        first_flight = Flight.objects.create(
-            id="1", name="", placement=placement,
-            start=start, end=first_end, ordered_units=400,
-        )
-
-        second_start = first_end + timedelta(days=3)
-        second_flight = Flight.objects.create(
-            id="2", name="", placement=placement,
-            start=second_start, end=end, ordered_units=100,
-        )
-
-        account = Account.objects.create(id=next(int_iterator))
-        campaign = Campaign.objects.create(id="1", name="",
-                                           account=account,
-                                           salesforce_placement=placement)
-        for i in range(3):
-            CampaignStatistic.objects.create(campaign=campaign,
-                                             date=start + timedelta(days=i),
-                                             video_views=102, cost=51)
-        recalculate_de_norm_fields_for_account(account.id)
-        with patch_now(today):
-            response = self.client.get(self.url)
-        opportunities = response.data["items"]
-        self.assertEqual(len(opportunities), 1)
-
-        opportunity_data = opportunities[0]["chart_data"]["cpv"]
-        self.assertEqual(opportunity_data["today_goal"], 102)
-        self.assertEqual(opportunity_data["today_budget"], 51)
-        self.assertEqual(opportunity_data["yesterday_delivered"], 102)
-        self.assertEqual(opportunity_data["yesterday_budget"], 51)
-
-        charts = opportunity_data["charts"]
-        self.assertEqual(len(charts), 4)
-
-        pacing_chart = charts[0]
-        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
-        self.assertEqual(len(pacing_chart["data"]),
-                         (second_flight.end - first_flight.start).days + 1)
-        self.assertEqual(pacing_chart["data"][3]["value"],
-                         first_flight.ordered_units * 1.02)
-        self.assertEqual(pacing_chart["data"][5]["value"],
-                         first_flight.ordered_units * 1.02)
-        self.assertEqual(pacing_chart["data"][-1]["value"],
-                         first_flight.ordered_units * 1.02 + second_flight.ordered_units * 1.02)
-
-        delivery_chart = charts[1]
-        self.assertEqual(delivery_chart["title"], "Daily Deviation")
-        self.assertEqual(len(delivery_chart["data"]), 3)
-        self.assertEqual(delivery_chart["data"][-1]["value"], 306)
-
-    def test_opportunity_cpv_and_cpm_chart_data(self):
-        """
-        We expect different chart blocks for every placement type (like CPV or CPM)
-        :return:
-        """
-        start, end = datetime(2017, 1, 1).date(), datetime(2017, 1, 5).date()
-        today = datetime(2017, 1, 4).date()
-        opportunity = Opportunity.objects.create(
-            id="1", name="1", probability=100, budget=100, start=start, end=end,
-        )
-        # CPV
-        placement_cpv = OpPlacement.objects.create(
-            id="1", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV, start=start, end=end,
-        )
-        flight_cpv = Flight.objects.create(
-            id="1", name="", placement=placement_cpv, start=start, end=end,
-            ordered_units=500,
-        )
-        account = Account.objects.create(id=next(int_iterator))
-        campaign = Campaign.objects.create(id="1", name="",
-                                           account=account,
-                                           salesforce_placement=placement_cpv)
-        for i in range(3):
-            CampaignStatistic.objects.create(campaign=campaign,
-                                             date=start + timedelta(days=i),
-                                             video_views=102, cost=51)
-        # CPM
-        placement_cpm = OpPlacement.objects.create(
-            id="2", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM, start=start, end=end,
-        )
-        flight_cpm = Flight.objects.create(
-            id="2", name="", placement=placement_cpm, start=start, end=end,
-            ordered_units=5000,
-        )
-        campaign = Campaign.objects.create(id="2", name="",
-                                           account=account,
-                                           salesforce_placement=placement_cpm)
-        for i in range(3):
-            CampaignStatistic.objects.create(campaign=campaign,
-                                             date=start + timedelta(days=i),
-                                             impressions=1020, cost=3)
-        recalculate_de_norm_fields_for_account(account.id)
-        with patch_now(today):
-            response = self.client.get(self.url)
-        opportunities = response.data["items"]
-        self.assertEqual(len(opportunities), 1)
-
-        opportunity_data = opportunities[0]
-
-        # CPV tests
-        cpv_chart_data = opportunity_data["chart_data"]["cpv"]
-        self.assertEqual(cpv_chart_data["today_goal"], 102)
-        self.assertEqual(cpv_chart_data["today_budget"], 51)
-        self.assertEqual(cpv_chart_data["yesterday_delivered"], 102)
-        self.assertEqual(cpv_chart_data["yesterday_budget"], 51)
-        self.assertEqual(cpv_chart_data["targeting"]["video_views"], 306)
-
-        charts = cpv_chart_data["charts"]
-        self.assertEqual(len(charts), 4)
-
-        pacing_chart = charts[0]
-        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
-        self.assertEqual(len(pacing_chart["data"]), (end - start).days + 1)
-        self.assertEqual(pacing_chart["data"][-1]["value"],
-                         flight_cpv.ordered_units * 1.02)
-
-        delivery_chart = charts[1]
-        self.assertEqual(delivery_chart["title"], "Daily Deviation")
-        self.assertEqual(len(delivery_chart["data"]), 3)
-        self.assertEqual(delivery_chart["data"][-1]["value"], 306)
-
-        # CPM tests
-        cpm_chart_data = opportunity_data["chart_data"]["cpm"]
-        self.assertEqual(cpm_chart_data["today_goal"], 1020)
-        self.assertAlmostEqual(cpm_chart_data["today_budget"], 3, places=10)
-        self.assertEqual(cpm_chart_data["yesterday_delivered"], 1020)
-        self.assertEqual(cpm_chart_data["yesterday_budget"], 3)
-        self.assertEqual(cpm_chart_data["targeting"]["impressions"], 3060)
-
-        charts = cpm_chart_data["charts"]
-        self.assertEqual(len(charts), 4)
-
-        pacing_chart = charts[0]
-        self.assertEqual(pacing_chart["title"], "Ideal Pacing")
-        self.assertEqual(len(pacing_chart["data"]), (end - start).days + 1)
-        self.assertEqual(pacing_chart["data"][-1]["value"],
-                         flight_cpm.ordered_units * 1.02)
-
-        delivery_chart = charts[1]
-        self.assertEqual(delivery_chart["title"], "Daily Deviation")
-        self.assertEqual(len(delivery_chart["data"]), 3)
-        self.assertEqual(delivery_chart["data"][-1]["value"], 3060)
-
     def test_get_opportunities_filter_category_with_coma(self):
         category1 = Category.objects.create(id="category, value 1")
         category2 = Category.objects.create(id="category, value 2")
@@ -974,9 +748,16 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         opp_2 = Opportunity.objects.create(id="2", name="2", start=today,
                                            end=today,
                                            category=category2, probability=100)
-        Opportunity.objects.create(id="3", name="3", start=today,
+        opp_3 = Opportunity.objects.create(id="3", name="3", start=today,
                                    end=today, category=category3,
                                    probability=100)
+
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), name="pl_1", opportunity=opp_1)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_1)
+        pl_2 = OpPlacement.objects.create(id=next(int_iterator), name="pl_2", opportunity=opp_2)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_2)
+        pl_3 = OpPlacement.objects.create(id=next(int_iterator), name="pl_3", opportunity=opp_3)
+        Campaign.objects.create(id=next(int_iterator), name="c", salesforce_placement=pl_3)
 
         query_params = QueryDict("", mutable=True)
         query_params.update(category=category1.id)
@@ -991,129 +772,28 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         response_ids = [i["id"] for i in data]
         self.assertEqual(set(response_ids), {opp_1.id, opp_2.id})
 
-    def test_opportunity_chart_rate_and_tech_fee(self):
-        """
-        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2481
-        :return:
-        """
-        today = date(2018, 5, 11)
-        start, end = date(2018, 5, 1), date(2018, 6, 30)
-        start_1, end_1 = date(2018, 5, 1), date(2018, 5, 31)
-        start_2, end_2 = date(2018, 6, 1), date(2018, 6, 30)
-        total_costs = (16969.7, 16422.3)
-        opportunity = Opportunity.objects.create(probability=100)
-        placement = OpPlacement.objects.create(
-            opportunity=opportunity,
-            start=start, end=end,
-            goal_type_id=SalesForceGoalType.CPV,
-            dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
-            total_cost=sum(total_costs),
-            ordered_rate=0.045,
-            tech_fee=0.01)
-        flight_1 = Flight.objects.create(id=1, placement=placement,
-                                         start=start_1, end=end_1,
-                                         total_cost=total_costs[0])
-        flight_2 = Flight.objects.create(id=2, placement=placement,
-                                         start=start_2, end=end_2,
-                                         total_cost=total_costs[1])
-        campaign = Campaign.objects.create(salesforce_placement=placement)
-
-        delivery = (
-            (date(2018, 5, 7), 118381, 1663.79),  # before last 3 days
-            (date(2018, 5, 8), 7844, 121.53),
-            (date(2018, 5, 9), 17513, 277.7),
-            (date(2018, 5, 10), 17689, 278.98),  # yesterday
-        )
-        spent_cost = sum(i[2] for i in delivery)
-        cost_left = flight_1.total_cost - spent_cost
-        days_left_1 = (end_1 - today).days + 1
-        days_left_2 = (end_2 - start_2).days + 1
-        daily_plan_1 = cost_left / days_left_1
-        daily_plan_2 = flight_2.total_cost / days_left_2
-        for dt, views, cost in delivery:
-            CampaignStatistic.objects.create(campaign=campaign, date=dt,
-                                             video_views=views, cost=cost)
-
-        with patch_now(today):
-            response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        opp_data = response.data["items"][0]
-        self.assertIn("budget", opp_data["chart_data"])
-        self.assertNotIn("cpm", opp_data["chart_data"])
-        self.assertNotIn("cpv", opp_data["chart_data"])
-        cpv_charts = opp_data["chart_data"]["budget"]["charts"]
-        cpv_charts_map = dict((c["id"], c["data"]) for c in cpv_charts)
-        self.assertIn(PacingReportChartId.IDEAL_PACING, cpv_charts_map)
-        ideal_pacing = cpv_charts_map.get(PacingReportChartId.IDEAL_PACING)
-        ideal_pacing_by_date = dict((item["label"], item["value"])
-                                    for item in ideal_pacing)
-
-        for i in range(days_left_1):
-            dt = today + timedelta(days=i)
-            self.assertAlmostEqual(
-                ideal_pacing_by_date[dt],
-                spent_cost + daily_plan_1 * (i + 1),
-                msg=dt)
-
-        for i in range(days_left_2):
-            dt = start_2 + timedelta(days=i)
-            self.assertAlmostEqual(
-                ideal_pacing_by_date[dt],
-                flight_1.total_cost + daily_plan_2 * (i + 1),
-                msg=dt)
-
-        self.assertAlmostEqual(ideal_pacing[-1]["value"], placement.total_cost)
-
-    def test_success_on_cpm_and_cpv(self):
-        """
-        Ticket: https://channelfactory.atlassian.net/browse/SAAS-2514
-        Summary: Pacing report > 500 error occurs
-                 when a user filters by CPV&CPM goal type
-        """
-        today = date(2017, 1, 1)
-        opportunity = Opportunity.objects.create(
-            probability=100, goal_type_id=SalesForceGoalType.CPM_AND_CPV)
-        common_data = dict(start=today, end=today, total_cost=123)
-        placement_data = dict(opportunity=opportunity,
-                              dynamic_placement=DynamicPlacementType.BUDGET,
-                              **common_data)
-        placement_1 = OpPlacement.objects.create(
-            id=1, goal_type_id=SalesForceGoalType.CPM, **placement_data)
-        placement_2 = OpPlacement.objects.create(
-            id=2, goal_type_id=SalesForceGoalType.CPV, **placement_data)
-        Flight.objects.create(id=1, placement=placement_1, **common_data)
-        Flight.objects.create(id=2, placement=placement_2, **common_data)
-
-        filters = dict(
-            goal_type=SalesForceGoalType.CPM_AND_CPV
-        )
-        with patch_now(today):
-            response = self.client.get("{}?{}".format(
-                self.url,
-                urlencode(filters)
-            ))
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(set(response.data["items"][0]["chart_data"].keys()),
-                         {"budget"})
-
     def test_custom_date_range_filter(self):
         search_date = date(2018, 5, 22)
-        Opportunity.objects.create(id=1, probability=100)
-        Opportunity.objects.create(id=2, probability=100,
+        opp_1 = Opportunity.objects.create(id=1, probability=100)
+        opp_2 = Opportunity.objects.create(id=2, probability=100,
                                    start=search_date - timedelta(days=1),
                                    end=search_date - timedelta(days=1))
-        Opportunity.objects.create(id=3, probability=100,
+        opp_3 = Opportunity.objects.create(id=3, probability=100,
                                    start=search_date + timedelta(days=1),
                                    end=search_date + timedelta(days=1))
-        opportunity = Opportunity.objects.create(
+        opp_4 = Opportunity.objects.create(
             id=4, probability=100,
             start=search_date - timedelta(days=1),
             end=search_date + timedelta(days=1))
-        opportunity.refresh_from_db()
+        placement_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, name="pl_1")
+        Campaign.objects.create(id=next(int_iterator), name="c_1", salesforce_placement=placement_1)
+        placement_2 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_2, name="pl_2")
+        Campaign.objects.create(id=next(int_iterator), name="c_2", salesforce_placement=placement_2)
+        placement_3 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_3, name="pl_3")
+        Campaign.objects.create(id=next(int_iterator), name="c_1", salesforce_placement=placement_3)
+        placement_4 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_4, name="pl_4")
+        Campaign.objects.create(id=next(int_iterator), name="c_2", salesforce_placement=placement_4)
+        opp_4.refresh_from_db()
 
         filters = dict(
             start=str(search_date),
@@ -1125,7 +805,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         ))
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
-        self.assertEqual(response.data["items"][0]["id"], opportunity.id)
+        self.assertEqual(response.data["items"][0]["id"], opp_4.id)
 
     def test_ctr_multiply_by_100(self):
         any_date = date(2018, 1, 1)
@@ -1174,13 +854,14 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         opportunity = Opportunity.objects.create(probability=100)
         OpPlacement.objects.create(id=1, opportunity=opportunity,
                                    dynamic_placement=None)
-        OpPlacement.objects.create(
+        pl_1 = OpPlacement.objects.create(
             id=2, opportunity=opportunity,
             dynamic_placement=DynamicPlacementType.BUDGET)
-        OpPlacement.objects.create(
+        pl_2 = OpPlacement.objects.create(
             id=3, opportunity=opportunity,
             dynamic_placement=DynamicPlacementType.BUDGET)
-
+        Campaign.objects.create(id=next(int_iterator), name="c_1", salesforce_placement=pl_1)
+        Campaign.objects.create(id=next(int_iterator), name="c_2", salesforce_placement=pl_2)
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -1228,6 +909,10 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             id=1, billing_server="test 1", probability=100)
         opportunity_2 = Opportunity.objects.create(
             id=2, billing_server="test 2", probability=100)
+        placement_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity_1, name="pl_1")
+        placement_2 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opportunity_2, name="pl_2")
+        Campaign.objects.create(id=next(int_iterator), name="c_1", salesforce_placement=placement_1)
+        Campaign.objects.create(id=next(int_iterator), name="c_2", salesforce_placement=placement_2)
         opportunity_1.refresh_from_db()
         opportunity_2.refresh_from_db()
 
@@ -1261,6 +946,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         Flight.objects.create(
             start=start, end=end, total_cost=total_cost,
             placement=hard_cost_placement, cost=our_cost)
+        Campaign.objects.create(name="c", salesforce_placement=hard_cost_placement)
         client_cost = total_cost / total_days * days_pass
         expected_margin = (1 - our_cost / client_cost) * 100
         with patch_now(today):
@@ -1372,7 +1058,9 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         for global_account_visibility, count in ((True, 0), (False, 1))
     ])
     def test_global_account_visibility(self, global_account_visibility, expected_count):
-        Opportunity.objects.create(id=next(int_iterator), probability=100)
+        opp = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        placement = OpPlacement.objects.create(name="pl_1", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         user_settings = {
             UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: global_account_visibility,
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
@@ -1448,208 +1136,18 @@ class PacingReportOpportunitiesTestCase(APITestCase):
         expected_plan_views = total_ordered_units * PacingReport.goal_factor
         self.assertAlmostEqual(response.data["items"][0]["plan_video_views"], expected_plan_views)
 
-    def test_delivery_plan(self):
-        now = datetime(2018, 10, 10, 10, 10)
-        today = now.date()
-        yesterday = today - timedelta(days=1)
-        tomorrow = today + timedelta(days=1)
-        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        placement = OpPlacement.objects.create(
-            id=next(int_iterator),
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-        )
-        ordered_units = 100
-        total_ordered_units = 0
-        for dt in [yesterday, today, tomorrow]:
-            flight = Flight.objects.create(
-                id=next(int_iterator),
-                placement=placement,
-                ordered_units=ordered_units,
-                start=dt,
-                end=dt,
-            )
-            total_ordered_units += flight.ordered_units
-
-        campaign = Campaign.objects.create(
-            id=next(int_iterator),
-            salesforce_placement=placement
-        )
-        CampaignStatistic.objects.create(
-            date=yesterday,
-            campaign=campaign,
-            video_views=ordered_units * 2,
-        )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
-            response = self.client.get(self.url)
-
-        expected_plan_views = total_ordered_units * PacingReport.goal_factor
-        daily_plan = expected_plan_views / 3
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        charts = response.data["items"][0]["chart_data"]["cpv"]["charts"]
-        data_by_id = {i["id"]: i["data"] for i in charts}
-        planned_chart = data_by_id.get(PacingReportChartId.PLANNED_DELIVERY)
-        self.assertAlmostEqual(planned_chart[0]["value"], daily_plan)
-        self.assertAlmostEqual(planned_chart[1]["value"], daily_plan * 2)
-        self.assertAlmostEqual(planned_chart[2]["value"], daily_plan * 3)
-
-    def test_historical_goal(self):
-        now = datetime(2018, 10, 10, 10, 10)
-        today = now.date()
-        yesterday = today - timedelta(days=1)
-        tomorrow = today + timedelta(days=1)
-        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        placement = OpPlacement.objects.create(
-            id=next(int_iterator),
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-        )
-        ordered_units = 100
-        flight_finished = Flight.objects.create(
-            id=next(int_iterator),
-            placement=placement,
-            ordered_units=ordered_units,
-            start=yesterday,
-            end=yesterday,
-        )
-        flight_started = Flight.objects.create(
-            id=next(int_iterator),
-            placement=placement,
-            ordered_units=ordered_units,
-            start=today,
-            end=today,
-        )
-        flight_not_started = Flight.objects.create(
-            id=next(int_iterator),
-            placement=placement,
-            ordered_units=ordered_units,
-            start=tomorrow,
-            end=tomorrow,
-        )
-
-        campaign = Campaign.objects.create(
-            id=next(int_iterator),
-            salesforce_placement=placement
-        )
-        delivered = ordered_units * 2.5
-        CampaignStatistic.objects.create(
-            date=yesterday,
-            campaign=campaign,
-            video_views=delivered,
-        )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
-            response = self.client.get(self.url)
-
-        total_plan_units = sum(flight.ordered_units for flight in Flight.objects.all()) * PacingReport.goal_factor
-        current_max = (flight_started.ordered_units + flight_finished.ordered_units) * PacingReport.goal_factor
-        over_delivery = delivered - current_max
-        consume = min(flight_not_started.ordered_units, over_delivery)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        charts = response.data["items"][0]["chart_data"]["cpv"]["charts"]
-        data_by_id = {i["id"]: i["data"] for i in charts}
-        historical_goal_chart = data_by_id.get(PacingReportChartId.HISTORICAL_GOAL)
-        self.assertEqual(len(historical_goal_chart), 2)
-        self.assertAlmostEqual(historical_goal_chart[0]["value"], total_plan_units)
-        self.assertAlmostEqual(historical_goal_chart[1]["value"], total_plan_units - consume)
-
-    def test_chart_goal(self):
-        now = datetime(2018, 10, 10, 10, 10)
-        today = now.date()
-        ordered_views = 100
-        ordered_impressions = 230
-        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        cpv_placement = OpPlacement.objects.create(
-            id=next(int_iterator),
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-        )
-        Flight.objects.create(
-            id=next(int_iterator),
-            placement=cpv_placement,
-            ordered_units=ordered_views,
-            start=today,
-            end=today,
-        )
-        cpm_placement = OpPlacement.objects.create(
-            id=next(int_iterator),
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM,
-        )
-        Flight.objects.create(
-            id=next(int_iterator),
-            placement=cpm_placement,
-            ordered_units=ordered_impressions,
-            start=today,
-            end=today,
-        )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
-            response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]
-        self.assertEqual(chart_data["cpv"]["goal"], ordered_views)
-        self.assertEqual(chart_data["cpm"]["goal"], ordered_impressions)
-
-    def test_dynamic_placement_goal(self):
-        now = datetime(2018, 10, 10, 10, 10)
-        today = now.date()
-        opportunity = Opportunity.objects.create(id=next(int_iterator), probability=100)
-        placement = OpPlacement.objects.create(
-            id=next(int_iterator),
-            opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM,
-            dynamic_placement=DynamicPlacementType.BUDGET,
-        )
-        flight = Flight.objects.create(
-            id=next(int_iterator),
-            placement=placement,
-            ordered_units=1000,
-            total_cost=120,
-            start=today,
-            end=today,
-        )
-
-        user_settings = {
-            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
-        }
-        with self.patch_user_settings(**user_settings), \
-             patch_now(now):
-            response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        chart_data = response.data["items"][0]["chart_data"]["budget"]
-        self.assertEqual(chart_data["goal"], flight.total_cost)
-
     @generic_test([
         ("True", (True,), dict()),
         ("False", (False,), dict()),
     ])
     def test_margin_cap_required(self, margin_cap_required):
-        Opportunity.objects.create(
+        opp = Opportunity.objects.create(
             id=next(int_iterator),
             margin_cap_required=margin_cap_required,
             probability=100,
         )
+        placement = OpPlacement.objects.create(name="p", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
         }
@@ -1670,6 +1168,7 @@ class PacingReportOpportunitiesTestCase(APITestCase):
             placement_type=OpPlacement.OUTGOING_FEE_TYPE,
             goal_type_id=SalesForceGoalType.HARD_COST,
         )
+        Campaign.objects.create(name="c", salesforce_placement=placement)
         start = date(2019, 1, 1)
         left, total = 3, 10
         now = start + timedelta(days=left)
@@ -1752,3 +1251,19 @@ class PacingReportOpportunitiesTestCase(APITestCase):
 
         response = self.client.get(self.url)
         self.assertEqual(stats["impressions"], response.data["items"][0]["impressions"])
+
+    def test_exclude_opportunities_no_campaigns(self):
+        any_date = date(2019, 1, 1)
+        account = Account.objects.create(id=next(int_iterator))
+        opp_1 = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
+        Campaign.objects.create(id=next(int_iterator), account=account, salesforce_placement=pl_1, start_date=any_date, end_date=any_date)
+
+        opp_2 = Opportunity.objects.create(id=next(int_iterator), probability=100)
+        pl_1 = OpPlacement.objects.create(id=next(int_iterator), opportunity=opp_1, goal_type_id=SalesForceGoalType.CPM)
+        Flight.objects.create(id=next(int_iterator), start=any_date, end=any_date, placement=pl_1)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.data["items_count"], 1)
+        self.assertEqual(response.data["items"][0]["id"], str(opp_1.id))

@@ -38,7 +38,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
         flight = self.get_object()
         report = PacingReport()
         # Ad operations require that for pacing reports, only running campaigns should be used
-        campaign_ids = report.get_campaigns(flight, status="eligible").values_list("id", flat=True)
+        campaign_ids = report.get_campaigns(flight, status="serving").values_list("id", flat=True)
         expected_keys = set(campaign_ids)
         try:
             flight_updated_budget = request.data.pop('flight_budget')

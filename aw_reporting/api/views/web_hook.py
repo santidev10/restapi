@@ -96,7 +96,7 @@ class WebHookAWSaveSettingsApiView(APIView):
             elif data["is_removed"]:
                 status = CampaignStatus.REMOVED
             elif data["is_enabled"]:
-                status = CampaignStatus.ELIGIBLE
+                status = CampaignStatus.SERVING
             if status is not None:
                 setup_settings["status"] = status.value
 

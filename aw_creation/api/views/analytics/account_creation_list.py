@@ -28,6 +28,7 @@ from aw_creation.models import CampaignCreation
 from aw_creation.models import default_languages
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models import BASE_STATS
+from aw_reporting.models import CONVERSIONS
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -99,6 +100,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
 
     def get_queryset(self, **filters):
         user = self.request.user
+
         queryset = AccountCreation.objects.user_related(user) \
             .annotate(
             is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
@@ -121,6 +123,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
             queryset = queryset.annotate(sort_by=annotate)
         else:
             sort_by = "-created_at"
+
         return queryset.order_by("-is_demo", "is_ended", sort_by)
 
     def filter_queryset(self, queryset):
@@ -207,7 +210,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                         )
                     ) \
                     .exclude(campaigns_count=F("ended_campaigns_count")) \
-                    .exclude(account__campaigns__status="eligible") \
+                    .exclude(account__campaigns__status="serving") \
                     .distinct()
             elif status == AccountCreation.STATUS_RUNNING:
                 queryset = queryset \
@@ -223,7 +226,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                         )
                     ) \
                     .exclude(campaigns_count=F("ended_campaigns_count")) \
-                    .filter(account__campaigns__status="eligible") \
+                    .filter(account__campaigns__status="serving") \
                     .distinct()
             elif status == AccountCreation.STATUS_PENDING:
                 queryset = queryset.filter(is_approved=True, sync_at__isnull=True, is_managed=True)
@@ -237,7 +240,7 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
         second_annotates = {}
         having = {}
         for metric in (
-                "impressions", "video_views", "clicks", "cost",
+                "impressions", "video_views", "clicks", "cost", "all_conversions",
                 "video_view_rate",
                 "ctr_v"):
             for is_max, option in enumerate(("min", "max")):
@@ -247,6 +250,13 @@ class AnalyticsAccountCreationListApiView(ListAPIView):
                         annotate_key = "sum_{}".format(metric)
                         annotates[annotate_key] = Sum(
                             "account__campaigns__{}".format(metric))
+                        having["{}__{}".format(
+                            annotate_key, "lte" if is_max else "gte")
+                        ] = filter_value
+                    elif metric in CONVERSIONS:
+                        annotate_key = "sum_{}".format(metric)
+                        annotates[annotate_key] = Sum(
+                            "account__campaigns__ad_groups__statistics__{}".format(metric))
                         having["{}__{}".format(
                             annotate_key, "lte" if is_max else "gte")
                         ] = filter_value

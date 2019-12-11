@@ -9,10 +9,11 @@ from requests import HTTPError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from .base import AwReportingAPITestCase
 from aw_creation.models import AccountCreation
 from aw_reporting.adwords_reports import AWErrorType
 from aw_reporting.api.urls.names import Name
-from aw_reporting.aw_data_loader import AWDataLoader
+from aw_reporting.google_ads.google_ads_updater import GoogleAdsUpdater
 from aw_reporting.models import AWAccountPermission
 from aw_reporting.models import AWConnection
 from aw_reporting.models import AWConnectionToUserRelation
@@ -22,7 +23,6 @@ from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
-from .base import AwReportingAPITestCase
 
 
 class AccountConnectionListAPITestCase(AwReportingAPITestCase):
@@ -81,7 +81,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
                 patch(view_path + ".get_customers",
                       new=lambda *_, **k: test_customers), \
                 patch(view_path +
-                      ".upload_initial_aw_data") as initial_upload_task:
+                      ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             test_email = "test@mail.kz"
             response = self.client.post(
@@ -131,7 +131,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
                 patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
-                patch(view_path + ".upload_initial_aw_data") as initial_upload_task:
+                patch(view_path + ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
 
@@ -167,7 +167,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email=test_email)), \
                 patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
-                patch(view_path + ".upload_initial_aw_data") as initial_upload_task:
+                patch(view_path + ".upload_initial_aw_data_task") as initial_upload_task:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -256,7 +256,7 @@ class AccountConnectionListAPITestCase(AwReportingAPITestCase):
         with patch(view_path + ".client.OAuth2WebServerFlow") as flow, \
                 patch(view_path + ".get_customers", new=lambda *_, **k: test_customers), \
                 patch(view_path + ".get_google_access_token_info", new=lambda _: dict(email="test@mail.com")), \
-                patch.object(AWDataLoader, "advertising_account_update") as account_update_mock:
+                patch.object(GoogleAdsUpdater, "full_update") as account_update_mock:
             flow().step2_exchange().refresh_token = "^test_refresh_token$"
             response = self.client.post(url, dict(code="1111"))
 

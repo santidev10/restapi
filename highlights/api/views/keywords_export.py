@@ -1,41 +1,35 @@
+from django.urls import reverse
+from django.conf import settings
+
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAdminUser
 
-from es_components.constants import Sections
-from es_components.managers import KeywordManager
-from highlights.api.views.keywords import ORDERING_FIELDS
-from highlights.api.views.keywords import TERMS_FILTER
-from keywords.api.views.keyword_export import KeywordCSVRendered
-from keywords.api.views.keyword_export import KeywordListExportSerializer
-from utils.api.file_list_api_view import FileListApiView
-from utils.api.filters import FreeFieldOrderingFilter
-from utils.datetime import time_instance
-from utils.es_components_api_utils import APIViewMixin
-from utils.es_components_api_utils import ESFilterBackend
-from utils.es_components_api_utils import ESQuerysetAdapter
+from highlights.api.urls.names import HighlightsNames
+from highlights.tasks.keyword_export import export_keywords_data
+from utils.es_components_exporter import ESDataS3ExportApiView
+from utils.permissions import ExportDataAllowed
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 
+from saas.urls.namespaces import Namespace
 
-class HighlightKeywordsExportApiView(APIViewMixin, FileListApiView):
+class HighlightKeywordsExportApiView(ESDataS3ExportApiView, APIView):
     permission_classes = (
         or_permission_classes(
+            ExportDataAllowed,
             user_has_permission("userprofile.view_highlights"),
             IsAdminUser
         ),
     )
-    serializer_class = KeywordListExportSerializer
-    renderer_classes = (KeywordCSVRendered,)
-    ordering_fields = ORDERING_FIELDS
-    terms_filter = TERMS_FILTER
-    filter_backends = (FreeFieldOrderingFilter, ESFilterBackend)
+    generate_export_task = export_keywords_data
 
-    @property
-    def filename(self):
-        now = time_instance.now()
-        return "Keywords export report {}.csv".format(now.strftime("%Y-%m-%d_%H-%m"))
+    @staticmethod
+    def get_filename(name):
+        return f"Keywords export report {name}.csv"
 
-    def get_queryset(self):
-        sections = (Sections.STATS,)
-        return ESQuerysetAdapter(KeywordManager(sections)) \
-            .order_by(ORDERING_FIELDS[0]) \
-            .with_limit(100)
+    def _get_url_to_export(self, export_name):
+        return settings.HOST + reverse(
+            "{}:{}".format(Namespace.HIGHLIGHTS,  HighlightsNames.KEYWORDS_EXPORT),
+            args=(export_name,)
+        )
+
