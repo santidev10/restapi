@@ -145,6 +145,8 @@ class Command(BaseCommand):
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
+            if seed[-1] == '/':
+                seed = seed[:-1]
             v_id = seed.split("/")[-1]
             if '?' in v_id:
                 v_id = v_id.split("?")[0]
