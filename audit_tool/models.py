@@ -288,7 +288,6 @@ class AuditCountry(models.Model):
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
-    processed = models.BooleanField(default=False, db_index=True)
     processed_time = models.DateTimeField(default=None, null=True, db_index=True)
 
     @staticmethod
@@ -382,7 +381,6 @@ class AuditVideoMeta(models.Model):
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
-
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
