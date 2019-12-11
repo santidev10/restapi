@@ -45,7 +45,7 @@ def cache_research_keywords_defaults():
     except Exception as e:
         cached_aggregations = None
 
-    # Caching for Default Sections (not Admin)
+    # Caching for Default Sections
     manager = KeywordManager(default_sections)
     queryset_adapter = ESQuerysetAdapter(manager, cached_aggregations=cached_aggregations)
     queryset_adapter.aggregations = []
@@ -56,24 +56,19 @@ def cache_research_keywords_defaults():
     obj = queryset_adapter
     # Caching Count
     logger.debug("Caching default research keywords count.")
-    print("Caching default research keywords count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
-    logger.debug("Caching default research keywords data.")
-    print("Caching default research keywords data.")
+    logger.debug("Caching default research keywords get_data.")
     part = "get_data"
     update_cache(obj, part)
     # Caching Count for Aggregations Query
     logger.debug("Caching default research keywords aggregations count.")
-    print("Caching default research keywords aggregations count.")
     obj.sort = None
     part = "count"
     update_cache(obj, part)
     # Caching Data for Aggregations Query
-    logger.debug("Caching default research keywords aggregations data.")
-    print("Caching default research keywords aggregations data.")
+    logger.debug("Caching default research keywords aggregations get_data.")
     part = "get_data"
     update_cache(obj, part, options=((0, 0), {}))
     logger.debug("Finished default research keywords caching.")
-    print("Finished default research keywords caching.")
