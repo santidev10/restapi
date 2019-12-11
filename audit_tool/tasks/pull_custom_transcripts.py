@@ -78,7 +78,12 @@ def pull_custom_transcripts():
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids("", num_vids)
-            vid_languages = {vid.main.id: vid.general_data.language for vid in unparsed_vids}
+            vid_languages = {}
+            for vid in unparsed_vids:
+                if "general_data" in vid and "language" in vid.general_data:
+                    vid_languages[vid.main.id] = vid.general_data.language
+                else:
+                    vid_languages[vid.main.id] = "English"
             vid_lang_codes = {}
             for vid_id in vid_languages:
                 try:
@@ -86,7 +91,7 @@ def pull_custom_transcripts():
                     lang_code = LANG_CODES[vid_lang]
                     vid_lang_codes[vid_id] = lang_code
                 except Exception:
-                    pass
+                    vid_lang_codes[vid_id] = 'en'
             vid_ids = {vid_id for vid_id in vid_lang_codes}
             video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                          upsert_sections=(Sections.CUSTOM_CAPTIONS,))
