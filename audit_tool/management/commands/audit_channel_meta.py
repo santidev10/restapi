@@ -145,6 +145,8 @@ class Command(BaseCommand):
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
+            if seed[-1] == '/':
+                seed = seed[:-1]
             v_id = seed.split("/")[-1]
             if '?' in v_id:
                 v_id = v_id.split("?")[0]
@@ -194,7 +196,7 @@ class Command(BaseCommand):
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
-        if db_channel.processed:
+        if db_channel.processed_time:
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
             if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
                 self.get_videos(acp)
