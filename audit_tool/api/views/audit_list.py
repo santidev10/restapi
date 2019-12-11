@@ -15,12 +15,11 @@ class AuditListApiView(APIView):
         query_params = request.query_params
         running = query_params["running"] if "running" in query_params else None
         export = None
-        if running and running == "export":
+        if running and running.lower() == "export":
             running = None
             export = True
-        else:
-            if running:
-                running = strtobool(running.lower())
+        elif running and running in ['true', 'false', '0', '1']:
+            running = strtobool(running.lower())
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
         try:
