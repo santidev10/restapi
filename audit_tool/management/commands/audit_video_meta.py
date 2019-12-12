@@ -220,6 +220,8 @@ class Command(BaseCommand):
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         )
+        if self.audit.params.get('do_videos'):
+            self.append_to_channel(avp, avp.channel_id, 'processed_video_ids')
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
@@ -231,6 +233,7 @@ class Command(BaseCommand):
             is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
+                self.append_to_channel(avp, avp.channel_id, 'bad_video_ids')
                 self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
