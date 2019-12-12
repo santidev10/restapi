@@ -36,11 +36,10 @@ with open(file_name, "r") as f:
                 continue
             try:
                 bad_word = BadWord.all_objects.get(name=word, language=language)
+                bad_word.deleted_at = None
                 bad_word.category = category
                 bad_word.negative_score = negative_score
                 bad_word.save()
-                bad_word.deleted_at = None
-                bad_word.save(update_fields=['deleted_at'])
             except Exception as e:
                 BadWord.objects.create(name=word, category=category, language=language, negative_score=negative_score)
         except Exception as e:
