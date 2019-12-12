@@ -335,6 +335,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-        rows = sorted(data[1:], key=lambda x: x[7])
+        rows = sorted(data[1:], key=lambda x: x[8])
         self.assertEqual(5, int(rows[0][8]))
         self.assertEqual(8, int(rows[1][8]))
