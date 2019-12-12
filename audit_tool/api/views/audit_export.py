@@ -514,7 +514,7 @@ class AuditExportApiView(APIView):
                 if export.percent_done < 0:
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
-                print("export at {}".format(export.percent_done))
+                print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             for row in rows:
