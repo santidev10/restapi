@@ -399,12 +399,12 @@ class AuditExportApiView(APIView):
         bad_hit_words = {}
         bad_video_hit_words = {}
         good_video_hit_words = {}
+        bad_videos_count = {}
         video_count = {}
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
-        bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
             if do_inclusion:
@@ -510,11 +510,13 @@ class AuditExportApiView(APIView):
             rows.append(data)
             num_done += 1
             if export and num_done % 250 == 0:
-                export.percent_done = (int(num_done / count * 100.0) - 5)
+                old_percent = export.percent_done
+                export.percent_done = int(num_done / count * 100.0) - 5
                 if export.percent_done < 0:
                     export.percent_done = 0
-                export.save(update_fields=['percent_done'])
-                print("export at {}".format(export.percent_done))
+                if export.percent_done > old_percent:
+                    export.save(update_fields=['percent_done'])
+                print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             for row in rows:
