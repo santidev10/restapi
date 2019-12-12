@@ -38,6 +38,7 @@ with open(file_name, "r") as f:
                 bad_word = BadWord.all_objects.get(name=word, language=language)
                 bad_word.category = category
                 bad_word.negative_score = negative_score
+                bad_word.save()
                 bad_word.deleted_at = None
                 bad_word.save(update_fields=['deleted_at'])
             except Exception as e:
