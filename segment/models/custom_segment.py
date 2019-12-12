@@ -27,6 +27,7 @@ from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
@@ -63,8 +64,12 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.LIST_SIZE = 20000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
-            self.serializer = CustomSegmentChannelExportSerializer
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            if not self.owner or not self.owner.has_perm("userprofile.monetization_filter"):
+                self.serializer = CustomSegmentChannelExportSerializer
+            else:
+                self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
+                self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
