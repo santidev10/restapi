@@ -42,7 +42,7 @@ CELERY_BEAT_SCHEDULE = {
     "full-sf-update": {
         "task": "aw_reporting.update.update_salesforce_data.update_salesforce_data",
         "schedule": crontab(hour="*", minute="0"),
-        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1", do_delete=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
+        "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
     "daily_email_notifications": {
         "task": "email_reports.tasks.send_daily_email_reports",
