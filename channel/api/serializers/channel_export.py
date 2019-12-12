@@ -19,7 +19,7 @@ class ChannelListExportSerializer(Serializer):
     title = CharField(source="general_data.title")
     url = YTChannelLinkFromID(source="main.id")
     country = CharField(source="general_data.country")
-    category = CharField(source="general_data.top_category")
+    iab_categories = CharField(source="general_data.iab_categories")
     emails = CharFieldListBased(source="general_data.emails")
     subscribers = IntegerField(source="stats.subscribers")
     thirty_days_subscribers = IntegerField(source="stats.last_30day_subscribers")
