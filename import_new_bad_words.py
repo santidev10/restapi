@@ -23,7 +23,7 @@ with open(file_name, "r") as f:
             word = row[0]
             # Parse category
             category_string = row[1].lower().strip()
-            category = BadWordCategory.objects.from_string(category_string)
+            category = BadWordCategory.from_string(category_string)
             # Parse language
             language_string = row[2].title()
             lang_code = LANG_CODES[language_string.title()]
@@ -34,13 +34,20 @@ with open(file_name, "r") as f:
                 reason = ["One of word, category, language, or negative_score not found."]
                 invalid_rows.append(row + reason)
                 continue
-            BadWord.objects.get_or_create(name=word, category=category, language=language, negative_score=negative_score)
+            try:
+                bad_word = BadWord.all_objects.get(name=word, language=language)
+                bad_word.category = category
+                bad_word.negative_score = negative_score
+                bad_word.deleted_at = None
+                bad_word.save(update_fields=['deleted_at'])
+            except Exception as e:
+                BadWord.objects.create(name=word, category=category, language=language, negative_score=negative_score)
         except Exception as e:
             reason = [e]
             invalid_rows.append(row + reason)
             continue
 
-with open(invalid_rows_file_name, "a") as f2:
+with open(invalid_rows_file_name, "w") as f2:
     writer = csv.writer(f2)
     for row in invalid_rows:
         writer.writerow(row)
