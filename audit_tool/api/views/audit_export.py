@@ -337,7 +337,7 @@ class AuditExportApiView(APIView):
                     avp.save(update_fields=['channel'])
                 except Exception as e:
                     pass
-            
+
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
             audit_id = audit.id
@@ -427,12 +427,17 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[cid.channel.channel_id] = set(e_v)
                 except Exception as e:
                     pass
-            videos = AuditVideoProcessor.objects.filter(
-                audit_id=audit_id,
-                channel_id=cid.channel_id
-            )
-            video_count[cid.channel.channel_id] = videos.count()
-            bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
+        if audit.params.get('do_videos'):
+            all_videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
+            for v in all_videos:
+                channel_id = v.channel.channel_id
+                if not video_count.get(channel_id):
+                    video_count[channel_id] = 0
+                video_count[channel_id]+=1
+                if not v.clean:
+                    if not bad_videos_count.get(channel_id):
+                        bad_videos_count[channel_id] = 0
+                    bad_videos_count[channel_id] += 1
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         rows = [cols]
@@ -455,26 +460,29 @@ class AuditExportApiView(APIView):
             mapped_score = map_brand_safety_score(channel_brand_safety_score)
             if not v.monetised:
                 pass
-                #PUT CODE HERE TO GO TO ELASTIC SEARCH AND CHECK
+                # PUT CODE HERE TO GO TO ELASTIC SEARCH AND CHECK
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + v.channel.channel_id,
                 v.view_count if v.view_count else "",
                 v.subscribers,
-                video_count[v.channel.channel_id],
+                video_count.get(v.channel.channel_id) if video_count.get(v.channel.channel_id) else 0,
                 v.video_count,
                 country,
                 language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
-                bad_videos_count[v.channel.channel_id],
+                bad_videos_count.get(v.channel.channel_id) if bad_videos_count.get(v.channel.channel_id) else 0,
                 len(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else 0,
-                len(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(v.channel.channel_id) else 0,
+                len(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
+                    v.channel.channel_id) else 0,
                 ','.join(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else "",
-                ','.join(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(v.channel.channel_id) else "",
+                ','.join(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
+                    v.channel.channel_id) else "",
                 ','.join(good_hit_words.get(v.channel.channel_id)) if good_hit_words.get(v.channel.channel_id) else "",
-                ','.join(good_video_hit_words.get(v.channel.channel_id)) if good_video_hit_words.get(v.channel.channel_id) else "",
+                ','.join(good_video_hit_words.get(v.channel.channel_id)) if good_video_hit_words.get(
+                    v.channel.channel_id) else "",
                 mapped_score,
                 'true' if v.monetised else "",
             ]
@@ -499,10 +507,10 @@ class AuditExportApiView(APIView):
                             data.append(0)
             except Exception as e:
                 pass
-            num_done += 1
             rows.append(data)
-            if export and num_done % 500 == 0:
-                export.percent_done = int(num_done / count * 100.0) - 5
+            num_done += 1
+            if export and num_done % 250 == 0:
+                export.percent_done = (int(num_done / count * 100.0) - 5)
                 if export.percent_done < 0:
                     export.percent_done = 0
                 export.save(update_fields=['percent_done'])
