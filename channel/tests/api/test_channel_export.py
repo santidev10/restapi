@@ -131,7 +131,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "title",
             "url",
             "country",
-            "category",
+            "iab_category",
             "emails",
             "subscribers",
             "thirty_days_subscribers",
