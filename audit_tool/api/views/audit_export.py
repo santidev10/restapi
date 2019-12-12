@@ -407,37 +407,36 @@ class AuditExportApiView(APIView):
             channels = channels.filter(clean=clean)
         for cid in channels:
             channel_ids.append(cid.channel_id)
+            full_channel_id = cid.channel.channel_id
+            if audit.params.get('do_videos'):
+                try:
+                    video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
+                except Exception as e:
+                    pass
             if do_inclusion:
                 try:
                     i = cid.word_hits.get('inclusion')
                     if i:
-                        good_hit_words[cid.channel.channel_id] = set(i)
+                        good_hit_words[full_channel_id] = set(i)
                     i_v = cid.word_hits.get('inclusion_videos')
                     if i_v:
-                        good_video_hit_words[cid.channel.channel_id] = set(i_v)
+                        good_video_hit_words[full_channel_id] = set(i_v)
                 except Exception as e:
                     pass
             if do_exclusion:
                 try:
-                    e = cid.word_hits.get('exclusion')
-                    if e:
-                        bad_hit_words[cid.channel.channel_id] = set(e)
-                    e_v = cid.word_hits.get('exclusion_videos')
-                    if e_v:
-                        bad_video_hit_words[cid.channel.channel_id] = set(e_v)
+                    bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
                 except Exception as e:
                     pass
-        if audit.params.get('do_videos'):
-            all_videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
-            for v in all_videos:
-                channel_id = v.channel.channel_id
-                if not video_count.get(channel_id):
-                    video_count[channel_id] = 0
-                video_count[channel_id]+=1
-                if not v.clean:
-                    if not bad_videos_count.get(channel_id):
-                        bad_videos_count[channel_id] = 0
-                    bad_videos_count[channel_id] += 1
+                try:
+                    e = cid.word_hits.get('exclusion')
+                    if e:
+                        bad_hit_words[full_channel_id] = set(e)
+                    e_v = cid.word_hits.get('exclusion_videos')
+                    if e_v:
+                        bad_video_hit_words[full_channel_id] = set(e_v)
+                except Exception as e:
+                    pass
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         rows = [cols]
