@@ -7,6 +7,7 @@ from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from audit_tool.api.views.audit_save import AuditSaveApiView
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from saas.configs.celery import Queue
@@ -15,7 +16,7 @@ from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
-from segment.utils import validate_threshold
+from segment.utils.utils import validate_threshold
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
@@ -88,6 +89,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         validated_data = self._validate_data(data, request, kwargs)
         data.update(validated_data)
 
+        AuditSaveApiView.validate_date(data.get("min_date"))
+
         try:
             serializer = self.serializer_class(data=data)
             serializer.is_valid()
@@ -96,6 +99,18 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             return Response(status=HTTP_400_BAD_REQUEST, data=str(e))
 
         query_builder = BrandSafetyQueryBuilder(data)
+        params = {
+            "params": {
+                "query": query_builder.query_body,
+                "options": {
+                    "min_date": data.get("min_date"),
+                    "exclusion": data.get("exclusion", {}),
+                    "inclusion": data.get("inclusion", []),
+                    "languages": data.get("languages", []),
+                }
+            }
+        }
+
         CustomSegmentFileUpload.enqueue(query=query_builder.query_body, segment=segment)
         generate_custom_segment.apply_async(args=[serializer.data["id"]], queue=Queue.SEGMENTS)
         return Response(status=HTTP_201_CREATED, data=serializer.data)

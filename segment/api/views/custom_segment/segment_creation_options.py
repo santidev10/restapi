@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from audit_tool.models import AuditCategory
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
-from segment.utils import validate_threshold
+from segment.utils.utils import validate_threshold
 
 
 class SegmentCreationOptionsApiView(APIView):

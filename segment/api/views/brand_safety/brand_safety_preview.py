@@ -1,5 +1,5 @@
 from segment.api.segment_list_adapter import SegmentListAPIViewAdapter
-from segment.utils import get_persistent_segment_model_by_type
+from segment.utils.utils import get_persistent_segment_model_by_type
 from utils.permissions import user_has_permission
 
 
