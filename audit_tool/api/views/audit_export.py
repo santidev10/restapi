@@ -159,6 +159,12 @@ class AuditExportApiView(APIView):
         if exports.count() > 0:
             return exports[0].file_name, _
         self.get_categories()
+        do_inclusion = False
+        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
+            do_inclusion = True
+        do_exclusion = False
+        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+            do_exclusion = True
         cols = [
             "Video URL",
             "Name",
@@ -248,8 +254,16 @@ class AuditExportApiView(APIView):
                 default_audio_language = v.default_audio_language.language
             except Exception as e:
                 default_audio_language = ""
-            all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
-            all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
+            if do_inclusion:
+                all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
+            else:
+                all_good_hit_words = ""
+                unique_good_hit_words = ""
+            if do_exclusion:
+                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
+            else:
+                all_bad_hit_words = ""
+                unique_bad_hit_words = ""
             video_audit_score = auditor.audit_video({
                 "id": v.video.video_id,
                 "title": v.name,
@@ -349,12 +363,6 @@ class AuditExportApiView(APIView):
         except Exception as e:
             name = audit_id
         file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
-        do_inclusion = False
-        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
-            do_inclusion = True
-        do_exclusion = False
-        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
-            do_exclusion = True
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
             audit=audit,
@@ -363,6 +371,12 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
+        do_inclusion = False
+        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
+            do_inclusion = True
+        do_exclusion = False
+        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+            do_exclusion = True
         self.get_categories()
         cols = [
             "Channel Title",
