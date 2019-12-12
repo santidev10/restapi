@@ -34,5 +34,5 @@ def generate_custom_segment(segment_id):
             from_email=settings.EXPORTS_EMAIL_ADDRESS
         )
         logger.info(f"Successfully generated export for custom list: id: {segment.id}, title: {segment.title}")
-    except Exception as e:
-        logger.error(f"Error in generate_custom_segment task:\n{e}")
+    except Exception:
+        logger.exception("Error in generate_custom_segment task")

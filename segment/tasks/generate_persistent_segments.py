@@ -18,6 +18,6 @@ def generate_persistent_segments():
         try:
             SegmentListGenerator(0).run()
         except Exception as e:
-            logger.error(f"Error in generate_persistent_segments task:\n{e}")
+            logger.exception("Error in generate_persistent_segments task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)
