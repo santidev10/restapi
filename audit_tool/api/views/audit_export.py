@@ -427,7 +427,7 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[cid.channel.channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        if self.params.get('do_videos'):
+        if audit.params.get('do_videos'):
             all_videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
             for v in all_videos:
                 channel_id = v.channel.channel_id
