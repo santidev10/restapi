@@ -405,8 +405,6 @@ class AuditExportApiView(APIView):
         if clean is not None:
             channels = channels.filter(clean=clean)
         bad_videos_count = {}
-        num_done = 0
-        count = channels.count()
         for cid in channels:
             channel_ids.append(cid.channel_id)
             if do_inclusion:
@@ -429,22 +427,17 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[cid.channel.channel_id] = set(e_v)
                 except Exception as e:
                     pass
-            videos = AuditVideoProcessor.objects.filter(
-                audit_id=audit_id,
-                channel_id=cid.channel_id
-            )
-            if self.params.get('do_videos'):
-                video_count[cid.channel.channel_id] = videos.count()
-                bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
-            num_done += 1
-            if export and num_done % 500 == 0:
-                export.percent_done = (int(num_done / count * 100.0) - 5)/2
-                if export.percent_done < 0:
-                    export.percent_done = 0
-                if export.percent_done > 50:
-                    export.percent_done = 50
-                export.save(update_fields=['percent_done'])
-                print("export at {}".format(export.percent_done))
+        if self.params.get('do_videos'):
+            all_videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
+            for v in all_videos:
+                channel_id = v.channel.channel_id
+                if not video_count.get(channel_id):
+                    video_count[channel_id] = 0
+                video_count[channel_id]+=1
+                if not v.clean:
+                    if not bad_videos_count.get(channel_id):
+                        bad_videos_count[channel_id] = 0
+                    bad_videos_count[channel_id] += 1
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         rows = [cols]
@@ -514,14 +507,12 @@ class AuditExportApiView(APIView):
                             data.append(0)
             except Exception as e:
                 pass
-            num_done += 1
             rows.append(data)
-            if export and num_done % 500 == 0:
-                export.percent_done = 50 + (int(num_done / count * 100.0) - 5)/2
+            num_done += 1
+            if export and num_done % 250 == 0:
+                export.percent_done = (int(num_done / count * 100.0) - 5)
                 if export.percent_done < 0:
                     export.percent_done = 0
-                if export.percent_done > 100:
-                    export.percent_done = 100
                 export.save(update_fields=['percent_done'])
                 print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
