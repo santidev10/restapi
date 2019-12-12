@@ -7,8 +7,9 @@ import tempfile
 from django.conf import settings
 
 from es_components.constants import Sections
+from es_components.query_builder import QueryBuilder
+from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
-from utils.utils import chunks_generator
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -17,7 +18,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None):
+def generate_segment(segment, query, size, sort=None, options=None):
     """
     :param segment: CustomSegment | PersistentSegment
     :param query: dict
@@ -27,15 +28,24 @@ def generate_segment(segment, query, size, sort=None):
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     try:
-        sorts = sort or [segment.SORT_KEY, MONETIZATION_SORT]
-        scan = segment.es_manager.model.search().query(query).sort(*sorts).source(segment.SOURCE_FIELDS).params(preserve_order=True).scan()
+        sort = sort or [segment.SORT_KEY]
         seen = 0
-        # Stores item ids as keys, bool for value if item contains ads_stats
         item_ids = []
         top_three_items = []
+        segment_item_ids = []
         aggregations = defaultdict(int)
 
-        for batch in chunks_generator(scan, size=BATCH_SIZE):
+        if segment.segment_type == 0 or segment.segment_type == "video":
+            cursor_field = "stats.views"
+        else:
+            cursor_field = "stats.subscribers"
+            if options is None:
+                options = [
+                    QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
+                    QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
+                ]
+
+        for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
             with open(filename, mode="a", newline="") as file:
                 fieldnames = segment.serializer.columns
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -51,6 +61,10 @@ def generate_segment(segment, query, size, sort=None):
                             "title": item.general_data.title,
                             "image_url": item.general_data.thumbnail_image_url
                         })
+
+                    if item.general_data:
+                        segment_item_ids.append(item.main.id)
+
                     item_ids.append(item.main.id)
                     row = segment.serializer(item).data
                     writer.writerow(row)
