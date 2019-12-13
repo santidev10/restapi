@@ -13,6 +13,8 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from es_components.managers import ChannelManager
+from es_components.constants import Sections
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -456,6 +458,8 @@ class AuditExportApiView(APIView):
         rows = [cols]
         count = channel_meta.count()
         num_done = 0
+        sections = (Sections.MONETIZATION,)
+        channel_manager = ChannelManager(sections)
         for v in channel_meta:
             try:
                 language = v.language.language
@@ -472,8 +476,14 @@ class AuditExportApiView(APIView):
             channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
             mapped_score = map_brand_safety_score(channel_brand_safety_score)
             if not v.monetised:
-                pass
-                # PUT CODE HERE TO GO TO ELASTIC SEARCH AND CHECK
+                try:
+                    cid = v.channel.channel_id
+                    channel = channel_manager.get([cid])[0]
+                    if 'monetization' in channel and channel.monetization.is_monetizable:
+                        v.monetised = True
+                        v.save()
+                except Exception as e:
+                    pass
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + v.channel.channel_id,
