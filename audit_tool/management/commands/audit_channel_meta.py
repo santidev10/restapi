@@ -300,7 +300,14 @@ class Command(BaseCommand):
             if not is_there:
                 return False
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
+            try:
+                language = db_channel_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list:
+                acp.word_hits['exclusion'] = None
+                return True
+            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             acp.word_hits['exclusion'] = hits
             if is_there:
                 return False

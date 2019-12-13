@@ -316,7 +316,13 @@ class Command(BaseCommand):
             if not is_there:
                 return False, hits
         if self.exclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list, count=self.inclusion_hit_count)
+            try:
+                language = db_video_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list:
+                return True, hits
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.inclusion_hit_count)
             if is_there:
                 return False, hits
         return True, hits

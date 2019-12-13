@@ -231,7 +231,14 @@ class Command(BaseCommand):
             else:
                 self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
+            try:
+                language = db_video_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list:
+                avp.word_hits['exclusion'] = None
+                return True
+            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
                 self.append_to_channel(avp, avp.channel_id, 'bad_video_ids')
