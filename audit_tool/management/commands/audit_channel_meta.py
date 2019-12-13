@@ -32,6 +32,7 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     max_pages = 4
+    MAX_SOURCE_CHANNELS = 250000
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -124,6 +125,7 @@ class Command(BaseCommand):
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
+        counter = 0
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
@@ -135,6 +137,9 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 vids.append(acp)
+            counter += 1
+            if counter > self.MAX_SOURCE_CHANNELS:
+                return vids
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -180,7 +185,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
-        for seed in seed_list:
+        for seed in seed_list[:self.MAX_SOURCE_CHANNELS]:
             if 'youtube.com/channel/' in seed:
                 if seed[-1] == '/':
                     seed = seed[:-1]
