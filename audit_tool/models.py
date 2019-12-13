@@ -213,6 +213,12 @@ class AuditProcessor(models.Model):
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
             'exclusion_hit_count': self.params.get('exclusion_hit_count'),
         }
+        if self.completed:
+            try:
+                c = d['data']['count']
+                d['name'] = "{n}: {c}" . format(n=d['name'], c=c)
+            except Exception as e:
+                pass
         files = self.params.get('files')
         if files:
             d['source_file'] = files.get('source')
