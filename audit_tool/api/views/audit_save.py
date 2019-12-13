@@ -128,7 +128,7 @@ class AuditSaveApiView(APIView):
             params['files']['inclusion'] = inclusion_file.name
         # Load Keywords from Exclusion File
         if exclusion_file:
-            params['exclusion'] = self.load_keywords_and_categories(exclusion_file)
+            params['exclusion'] = self.load_exclusion_keywords(exclusion_file)
             params['files']['exclusion'] = exclusion_file.name
         if category:
             c = []
@@ -206,7 +206,7 @@ class AuditSaveApiView(APIView):
                 keywords.append(word)
         return keywords
 
-    def load_keywords_and_categories(self, uploaded_file):
+    def load_exclusion_keywords(self, uploaded_file):
         file = uploaded_file.read().decode('utf-8-sig')
         exclusion_data = []
         io_string = StringIO(file)
