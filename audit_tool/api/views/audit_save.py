@@ -128,7 +128,7 @@ class AuditSaveApiView(APIView):
             params['files']['inclusion'] = inclusion_file.name
         # Load Keywords from Exclusion File
         if exclusion_file:
-            params['exclusion'] = self.load_exclusion_keywords(exclusion_file)
+            params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
             params['files']['exclusion'] = exclusion_file.name
         if category:
             c = []
@@ -209,6 +209,7 @@ class AuditSaveApiView(APIView):
     def load_exclusion_keywords(self, uploaded_file):
         file = uploaded_file.read().decode('utf-8-sig')
         exclusion_data = []
+        categories = []
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=',', quotechar='"')
         for row in reader:
@@ -229,7 +230,8 @@ class AuditSaveApiView(APIView):
             row_data = [word, category, language]
             if word:
                 exclusion_data.append(row_data)
-        return exclusion_data
+                categories.append(category)
+        return exclusion_data, categories
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
