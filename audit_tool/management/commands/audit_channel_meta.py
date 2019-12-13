@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from collections import defaultdict
 
 """
 requirements:
@@ -271,13 +272,21 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion") if self.audit.params else None
+        input_list = self.audit.params.get("exclusion")
         if not input_list:
             return
-        regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
-        )
-        self.exclusion_list = re.compile(regexp)
+        language_keywords_dict = defaultdict(list)
+        exclusion_list = {}
+        for row in input_list:
+            word = row[0]
+            language = row[2]
+            language_keywords_dict[language].append(word)
+        for lang, keywords in language_keywords_dict.items():
+            lang_regexp = "({})".format(
+                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+            )
+            exclusion_list[lang] = re.compile(lang_regexp)
+        self.exclusion_list = exclusion_list
 
     def check_channel_is_clean(self, db_channel_meta, acp):
         full_string = "{} {} {}".format(
