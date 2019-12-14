@@ -235,9 +235,11 @@ class Command(BaseCommand):
                 language = db_video_meta.language.language
             except Exception as e:
                 language = ""
-            if language not in self.exclusion_list:
+            if language not in self.exclusion_list and "" not in self.exclusion_list:
                 avp.word_hits['exclusion'] = None
                 return True
+            else:
+                language = ""
             is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
