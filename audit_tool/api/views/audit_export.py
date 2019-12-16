@@ -13,6 +13,8 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from es_components.managers import ChannelManager
+from es_components.constants import Sections
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -159,6 +161,12 @@ class AuditExportApiView(APIView):
         if exports.count() > 0:
             return exports[0].file_name, _
         self.get_categories()
+        do_inclusion = False
+        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
+            do_inclusion = True
+        do_exclusion = False
+        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+            do_exclusion = True
         cols = [
             "Video URL",
             "Name",
@@ -248,8 +256,16 @@ class AuditExportApiView(APIView):
                 default_audio_language = v.default_audio_language.language
             except Exception as e:
                 default_audio_language = ""
-            all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
-            all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
+            if do_inclusion:
+                all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
+            else:
+                all_good_hit_words = ""
+                unique_good_hit_words = ""
+            if do_exclusion:
+                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
+            else:
+                all_bad_hit_words = ""
+                unique_bad_hit_words = ""
             video_audit_score = auditor.audit_video({
                 "id": v.video.video_id,
                 "title": v.name,
@@ -337,7 +353,7 @@ class AuditExportApiView(APIView):
                     avp.save(update_fields=['channel'])
                 except Exception as e:
                     pass
-            
+
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
             audit_id = audit.id
@@ -357,6 +373,12 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
+        do_inclusion = False
+        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
+            do_inclusion = True
+        do_exclusion = False
+        if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
+            do_exclusion = True
         self.get_categories()
         cols = [
             "Channel Title",
@@ -393,37 +415,51 @@ class AuditExportApiView(APIView):
         bad_hit_words = {}
         bad_video_hit_words = {}
         good_video_hit_words = {}
+        bad_videos_count = {}
         video_count = {}
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
-        bad_videos_count = {}
         for cid in channels:
             channel_ids.append(cid.channel_id)
-            try:
-                good_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion'))
-                good_video_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('inclusion_videos'))
-            except Exception as e:
-                good_hit_words[cid.channel.channel_id] = set()
-                good_video_hit_words[cid.channel.channel_id] = set()
-            try:
-                bad_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion'))
-                bad_video_hit_words[cid.channel.channel_id] = set(cid.word_hits.get('exclusion_videos'))
-            except Exception as e:
-                bad_hit_words[cid.channel.channel_id] = set()
-                bad_video_hit_words[cid.channel.channel_id] = set()
-            videos = AuditVideoProcessor.objects.filter(
-                audit_id=audit_id,
-                channel_id=cid.channel_id
-            )
-            video_count[cid.channel.channel_id] = videos.count()
-            bad_videos_count[cid.channel.channel_id] = videos.filter(clean=False).count()
+            full_channel_id = cid.channel.channel_id
+            if audit.params.get('do_videos'):
+                try:
+                    video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
+                except Exception as e:
+                    pass
+            if do_inclusion:
+                try:
+                    i = cid.word_hits.get('inclusion')
+                    if i:
+                        good_hit_words[full_channel_id] = set(i)
+                    i_v = cid.word_hits.get('inclusion_videos')
+                    if i_v:
+                        good_video_hit_words[full_channel_id] = set(i_v)
+                except Exception as e:
+                    pass
+            if do_exclusion:
+                try:
+                    bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
+                except Exception as e:
+                    pass
+                try:
+                    e = cid.word_hits.get('exclusion')
+                    if e:
+                        bad_hit_words[full_channel_id] = set(e)
+                    e_v = cid.word_hits.get('exclusion_videos')
+                    if e_v:
+                        bad_video_hit_words[full_channel_id] = set(e_v)
+                except Exception as e:
+                    pass
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit(discovery=False)
         rows = [cols]
         count = channel_meta.count()
         num_done = 0
+        sections = (Sections.MONETIZATION,)
+        channel_manager = ChannelManager(sections)
         for v in channel_meta:
             try:
                 language = v.language.language
@@ -440,27 +476,36 @@ class AuditExportApiView(APIView):
             channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
             mapped_score = map_brand_safety_score(channel_brand_safety_score)
             if not v.monetised:
-                pass
-                #PUT CODE HERE TO GO TO ELASTIC SEARCH AND CHECK
+                try:
+                    cid = v.channel.channel_id
+                    channel = channel_manager.get([cid])[0]
+                    if 'monetization' in channel and channel.monetization.is_monetizable:
+                        v.monetised = True
+                        v.save()
+                except Exception as e:
+                    pass
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + v.channel.channel_id,
                 v.view_count if v.view_count else "",
                 v.subscribers,
-                video_count[v.channel.channel_id],
+                video_count.get(v.channel.channel_id) if video_count.get(v.channel.channel_id) else 0,
                 v.video_count,
                 country,
                 language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
-                bad_videos_count[v.channel.channel_id],
-                len(bad_hit_words[v.channel.channel_id]),
-                len(bad_video_hit_words[v.channel.channel_id]),
-                ','.join(bad_hit_words[v.channel.channel_id]),
-                ','.join(bad_video_hit_words[v.channel.channel_id]),
-                ','.join(good_hit_words[v.channel.channel_id]),
-                ','.join(good_video_hit_words[v.channel.channel_id]),
+                bad_videos_count.get(v.channel.channel_id) if bad_videos_count.get(v.channel.channel_id) else 0,
+                len(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else 0,
+                len(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
+                    v.channel.channel_id) else 0,
+                ','.join(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else "",
+                ','.join(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
+                    v.channel.channel_id) else "",
+                ','.join(good_hit_words.get(v.channel.channel_id)) if good_hit_words.get(v.channel.channel_id) else "",
+                ','.join(good_video_hit_words.get(v.channel.channel_id)) if good_video_hit_words.get(
+                    v.channel.channel_id) else "",
                 mapped_score,
                 'true' if v.monetised else "",
             ]
@@ -485,14 +530,16 @@ class AuditExportApiView(APIView):
                             data.append(0)
             except Exception as e:
                 pass
-            num_done += 1
             rows.append(data)
-            if export and num_done % 500 == 0:
+            num_done += 1
+            if export and num_done % 250 == 0:
+                old_percent = export.percent_done
                 export.percent_done = int(num_done / count * 100.0) - 5
                 if export.percent_done < 0:
                     export.percent_done = 0
-                export.save(update_fields=['percent_done'])
-                print("export at {}".format(export.percent_done))
+                if export.percent_done > old_percent:
+                    export.save(update_fields=['percent_done'])
+                print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             for row in rows:

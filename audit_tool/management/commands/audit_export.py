@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
+from time import sleep
 
 from administration.notifications import send_email
 from audit_tool.api.views.audit_export import AuditExportApiView
@@ -27,6 +28,7 @@ class Command(BaseCommand):
                 self.machine_number = settings.AUDIT_MACHINE_NUMBER
             except Exception as e:
                 self.machine_number = 0
+            sleep(2 * (self.machine_number + self.thread_id))
             try:
                 self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[0]
                 self.audit = self.export.audit

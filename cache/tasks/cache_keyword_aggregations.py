@@ -23,7 +23,6 @@ def cache_keyword_aggregations():
     cached_keyword_aggregations, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
 
     logger.debug("Collecting keyword aggregations.")
-    print("Collecting keyword aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
@@ -32,4 +31,3 @@ def cache_keyword_aggregations():
     cached_keyword_aggregations.value = aggregations
     cached_keyword_aggregations.save()
     logger.debug("Finished keyword aggregations caching.")
-    print("Finished keyword aggregations caching.")

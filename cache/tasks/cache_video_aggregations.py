@@ -25,7 +25,6 @@ def cache_video_aggregations():
     cached_video_aggregations, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
 
     logger.debug("Collecting video aggregations.")
-    print("Collecting video aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
@@ -34,4 +33,3 @@ def cache_video_aggregations():
     cached_video_aggregations.value = aggregations
     cached_video_aggregations.save()
     logger.debug("Finished video aggregations caching.")
-    print("Finished video aggregations caching.")
