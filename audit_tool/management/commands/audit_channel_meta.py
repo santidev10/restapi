@@ -1,3 +1,4 @@
+import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -278,7 +279,7 @@ class Command(BaseCommand):
         language_keywords_dict = defaultdict(list)
         exclusion_list = {}
         for row in input_list:
-            word = row[0]
+            word = row[0].translate(str.maketrans('', '', string.punctuation))
             language = row[2]
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
@@ -316,7 +317,7 @@ class Command(BaseCommand):
         return True
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, text.lower())
+        keywords = re.findall(exp, text.lower().translate(str.maketrans('', '', string.punctuation)))
         if len(keywords) >= count:
             return True, keywords
         return False, None
