@@ -27,7 +27,7 @@ with open(file_name, "r") as f:
             # Parse language
             language_string = row[2].title()
             lang_code = LANG_CODES[language_string]
-            language = AuditLanguage.objects.get(name=lang_code)
+            language = AuditLanguage.objects.get(language=lang_code)
             # Parse rating
             negative_score = int(row[3])
             if not word or not category or not language or not negative_score:
