@@ -1,3 +1,4 @@
+import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -265,7 +266,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(w.translate(str.maketrans('', '', string.punctuation)))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -278,7 +279,7 @@ class Command(BaseCommand):
         language_keywords_dict = defaultdict(list)
         exclusion_list = {}
         for row in input_list:
-            word = row[0]
+            word = row[0].translate(str.maketrans('', '', string.punctuation))
             language = row[2]
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
@@ -293,7 +294,7 @@ class Command(BaseCommand):
                 '' if not db_channel_meta.name else db_channel_meta.name,
                 '' if not db_channel_meta.description else db_channel_meta.description,
                 '' if not db_channel_meta.keywords else db_channel_meta.keywords,
-        )
+        ).translate(str.maketrans('', '', string.punctuation))
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             acp.word_hits['inclusion'] = hits
@@ -316,7 +317,7 @@ class Command(BaseCommand):
         return True
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, text.lower())
+        keywords = re.findall(exp, text.lower().translate(str.maketrans('', '', string.punctuation)))
         if len(keywords) >= count:
             return True, keywords
         return False, None
