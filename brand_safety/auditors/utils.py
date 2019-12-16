@@ -1,3 +1,4 @@
+import string
 from collections import defaultdict
 from collections import namedtuple
 import csv
@@ -18,7 +19,6 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
-import string
 
 
 KeywordHit = namedtuple("KeywordHit", "name location")
