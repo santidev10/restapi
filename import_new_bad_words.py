@@ -4,7 +4,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
 
-file_name = "bste_keywords_final.csv"
+file_name = "bste_keywords_final_CLEAN_12_16_2019_1101am.csv"
 invalid_rows_file_name = "invalid_keywords.csv"
 
 invalid_rows = []
@@ -23,11 +23,11 @@ with open(file_name, "r") as f:
             word = row[0]
             # Parse category
             category_string = row[1].lower().strip()
-            category = BadWordCategory.from_string(category_string)
+            category = BadWordCategory.objects.get(name=category_string)
             # Parse language
             language_string = row[2].title()
-            lang_code = LANG_CODES[language_string.title()]
-            language = AuditLanguage.from_string(lang_code)
+            lang_code = LANG_CODES[language_string]
+            language = AuditLanguage.objects.get(name=lang_code)
             # Parse rating
             negative_score = int(row[3])
             if not word or not category or not language or not negative_score:
