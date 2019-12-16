@@ -23,6 +23,7 @@ from pid import PidFile
 from utils.lang import remove_mentions_hashes_urls
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from collections import defaultdict
 
 """
 requirements:
@@ -315,7 +316,15 @@ class Command(BaseCommand):
             if not is_there:
                 return False, hits
         if self.exclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list, count=self.inclusion_hit_count)
+            try:
+                language = db_video_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list and "" not in self.exclusion_list:
+                return True, hits
+            else:
+                language = ""
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.inclusion_hit_count)
             if is_there:
                 return False, hits
         return True, hits
@@ -423,10 +432,18 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("exclusion")
         if not input_list:
             return
-        regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
-        )
-        self.exclusion_list = re.compile(regexp)
+        language_keywords_dict = defaultdict(list)
+        exclusion_list = {}
+        for row in input_list:
+            word = row[0]
+            language = row[2]
+            language_keywords_dict[language].append(word)
+        for lang, keywords in language_keywords_dict.items():
+            lang_regexp = "({})".format(
+                    "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+            )
+            exclusion_list[lang] = re.compile(lang_regexp)
+        self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
         keywords = re.findall(exp, text.lower())

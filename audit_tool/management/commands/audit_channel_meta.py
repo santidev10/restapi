@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from collections import defaultdict
 
 """
 requirements:
@@ -274,10 +275,18 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
-        regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
-        )
-        self.exclusion_list = re.compile(regexp)
+        language_keywords_dict = defaultdict(list)
+        exclusion_list = {}
+        for row in input_list:
+            word = row[0]
+            language = row[2]
+            language_keywords_dict[language].append(word)
+        for lang, keywords in language_keywords_dict.items():
+            lang_regexp = "({})".format(
+                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+            )
+            exclusion_list[lang] = re.compile(lang_regexp)
+        self.exclusion_list = exclusion_list
 
     def check_channel_is_clean(self, db_channel_meta, acp):
         full_string = "{} {} {}".format(
@@ -291,7 +300,16 @@ class Command(BaseCommand):
             if not is_there:
                 return False
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
+            try:
+                language = db_channel_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list and "" not in self.exclusion_list:
+                acp.word_hits['exclusion'] = None
+                return True
+            else:
+                language = ""
+            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             acp.word_hits['exclusion'] = hits
             if is_there:
                 return False

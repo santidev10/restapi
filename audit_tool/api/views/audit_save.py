@@ -11,6 +11,7 @@ from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 from datetime import datetime
 from utils.permissions import user_has_permission
+from brand_safety.languages import LANGUAGES
 
 class AuditSaveApiView(APIView):
     permission_classes = (
@@ -127,7 +128,7 @@ class AuditSaveApiView(APIView):
             params['files']['inclusion'] = inclusion_file.name
         # Load Keywords from Exclusion File
         if exclusion_file:
-            params['exclusion'], params['exclusion_category'] = self.load_keywords_and_categories(exclusion_file)
+            params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
             params['files']['exclusion'] = exclusion_file.name
         if category:
             c = []
@@ -205,9 +206,9 @@ class AuditSaveApiView(APIView):
                 keywords.append(word)
         return keywords
 
-    def load_keywords_and_categories(self, uploaded_file):
+    def load_exclusion_keywords(self, uploaded_file):
         file = uploaded_file.read().decode('utf-8-sig')
-        keywords = []
+        exclusion_data = []
         categories = []
         io_string = StringIO(file)
         reader = csv.reader(io_string, delimiter=',', quotechar='"')
@@ -220,10 +221,17 @@ class AuditSaveApiView(APIView):
                 category = row[1].lower().strip()
             except Exception as e:
                 category = ""
+            try:
+                language = row[2].lower().strip()
+                if language not in LANGUAGES:
+                    language = ""
+            except Exception as e:
+                language = ""
+            row_data = [word, category, language]
             if word:
-                keywords.append(word)
+                exclusion_data.append(row_data)
                 categories.append(category)
-        return keywords, categories
+        return exclusion_data, categories
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME

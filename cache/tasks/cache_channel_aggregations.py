@@ -25,7 +25,6 @@ def cache_channel_aggregations():
     cached_channel_aggregations, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
 
     logger.debug("Collecting channel aggregations.")
-    print("Collecting channel aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
@@ -34,4 +33,3 @@ def cache_channel_aggregations():
     cached_channel_aggregations.value = aggregations
     cached_channel_aggregations.save()
     logger.debug("Finished channel aggregations caching.")
-    print("Finished channel aggregations caching.")
