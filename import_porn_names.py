@@ -13,10 +13,13 @@ with open(file_name, "r") as f:
     category = BadWordCategory.objects.get(name="pornographic")
     language = AuditLanguage.from_string("un")
     negative_score = 4
+    counter = 0
     for row in reader:
+        counter += 1
+        print(f"Parsing row {counter}.")
         word = row[0]
         name = word.split(" ")
-        if len(name < 2):
+        if len(name) < 2:
             continue
         try:
             bad_word = BadWord.all_objects.get(name=word, language=language)
