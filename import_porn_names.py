@@ -1,4 +1,5 @@
 import csv
+import string
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
@@ -17,7 +18,7 @@ with open(file_name, "r") as f:
     for row in reader:
         counter += 1
         print(f"Parsing row {counter}.")
-        word = row[0]
+        word = row[0].translate(str.maketrans('', '', string.punctuation))
         name = word.split(" ")
         if len(name) < 2:
             continue

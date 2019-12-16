@@ -1,3 +1,4 @@
+import string
 import csv
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -20,7 +21,7 @@ with open(file_name, "r") as f:
         print(f"Parsing Row: {counter}")
         try:
             # Parse word
-            word = row[0]
+            word = row[0].translate(str.maketrans('', '', string.punctuation))
             # Parse category
             category_string = row[1].lower().strip()
             category = BadWordCategory.objects.get(name=category_string)
