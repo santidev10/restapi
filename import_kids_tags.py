@@ -5,7 +5,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
 
-file_name = "kids_content_tags.csv"
+file_name = "bste_tags_to_import/kids_content_tags.csv"
 
 counter = 0
 with open(file_name, "r") as f:
