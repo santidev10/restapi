@@ -316,7 +316,7 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         ).translate(str.maketrans('', '', string.punctuation))
         if self.inclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.exclusion_hit_count)
+            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
@@ -329,7 +329,7 @@ class Command(BaseCommand):
                 return True, hits
             else:
                 language = ""
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.inclusion_hit_count)
+            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             if is_there:
                 return False, hits
         return True, hits
