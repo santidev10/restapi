@@ -1,3 +1,4 @@
+import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -220,7 +221,7 @@ class Command(BaseCommand):
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
-        )
+        ).translate(str.maketrans('', '', string.punctuation))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.channel_id], 'processed_video_ids')
         if self.inclusion_list:
@@ -374,7 +375,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(w.translate(str.maketrans('', '', string.punctuation)))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -387,7 +388,7 @@ class Command(BaseCommand):
         language_keywords_dict = defaultdict(list)
         exclusion_list = {}
         for row in input_list:
-            word = row[0]
+            word = row[0].translate(str.maketrans('', '', string.punctuation))
             language = row[2]
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
@@ -398,7 +399,7 @@ class Command(BaseCommand):
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, text.lower())
+        keywords = re.findall(exp, text.lower().translate(str.maketrans('', '', string.punctuation)))
         if len(keywords) >= count:
             return True, keywords
         return False, None
