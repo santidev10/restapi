@@ -73,7 +73,8 @@ class AuditUtils(object):
         :param keyword_processor: flashtext module KeywordProcessor instance
         :return:
         """
-        text = text.translate(str.maketrans('', '', string.punctuation))
+        if isinstance(text, str):
+            text = text.translate(str.maketrans('', '', string.punctuation))
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
