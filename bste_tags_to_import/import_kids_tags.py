@@ -10,7 +10,6 @@ file_name = "bste_tags_to_import/kids_content_tags.csv"
 counter = 0
 with open(file_name, "r") as f:
     reader = csv.reader(f)
-    next(reader)
     category = BadWordCategory.objects.get(name="kids content")
     language = AuditLanguage.from_string("un")
     negative_score = 1
