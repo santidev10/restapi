@@ -80,8 +80,12 @@ class Command(BaseCommand):
                 self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
                 if not self.exclusion_hit_count:
                     self.exclusion_hit_count = 1
+                else:
+                    self.exclusion_hit_count = int(self.exclusion_hit_count)
                 if not self.inclusion_hit_count:
                     self.inclusion_hit_count = 1
+                else:
+                    self.inclusion_hit_count = int(self.inclusion_hit_count)
                 self.min_date = self.audit.params.get('min_date')
                 if self.min_date:
                     self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
