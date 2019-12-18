@@ -192,7 +192,8 @@ class PricingToolFiltering:
             .filter(salesforce_placement__opportunity__id__in=opportunity_queryset.values_list("id", flat=True))
         campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters, prefix="").all()
 
-        campaigns_ids_map = {opportunity_id: campaigns_ids for opportunity_id, campaigns_ids in campaigns_queryset}
+        campaigns_ids_map = {campaigns["salesforce_placement__opportunity"]: campaigns["ids"]
+                             for campaigns in campaigns_queryset}
 
         return opportunity_queryset, campaigns_ids_map
 
@@ -495,7 +496,7 @@ class PricingToolFiltering:
             queryset = queryset.filter(view_rate__gte=min_rate)
         return queryset, True
 
-    def _filter_by_video100rate(self, queryset):
+    def _filter_by_video100rate(self, queryset, *args):
         max_rate = self.kwargs.get("max_video100rate", None)
         min_rate = self.kwargs.get("min_video100rate", None)
 
