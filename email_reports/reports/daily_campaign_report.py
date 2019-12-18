@@ -142,7 +142,7 @@ class DailyCampaignReport(BaseEmailReport):
                 msg = EmailMessage(
                     subject=alert.get("subject"),
                     body=alert.get("body"),
-                    from_email=settings.SENDER_EMAIL_ADDRESS,
+                    from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_emails),
                     cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                     bcc=self.get_bcc(),
