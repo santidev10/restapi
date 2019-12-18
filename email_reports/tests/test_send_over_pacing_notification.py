@@ -66,6 +66,5 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(mail.outbox[0].subject,
                          "FLIGHT OVER PACING for {}".format(opportunity.name))
         self.assertEqual(mail.outbox[0].to, [ad_ops.email])
-        self.assertEqual(set(mail.outbox[0].cc),
-                         {(acc_mng.name, acc_mng.email),
-                          *settings.CF_AD_OPS_DIRECTORS})
+        self.assertEqual(mail.outbox[0].cc, [acc_mng.email] + settings.CF_AD_OPS_DIRECTORS)
+        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
