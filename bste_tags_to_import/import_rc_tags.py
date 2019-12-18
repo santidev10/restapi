@@ -5,7 +5,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
 
-file_name = "Bad Words.csv"
+file_name = "bste_tags_to_import/Bad Words.csv"
 invalid_rows_file_name = "invalid_keywords.csv"
 
 invalid_rows = []
