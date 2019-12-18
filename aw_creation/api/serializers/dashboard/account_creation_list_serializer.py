@@ -3,7 +3,6 @@ from collections import defaultdict
 from functools import reduce
 
 from django.db.models import Case
-from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import Max
@@ -16,7 +15,6 @@ from rest_framework.serializers import BooleanField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
-from aw_creation.api.serializers.common.struck_field import StruckField
 from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
@@ -209,7 +207,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         data = queryset \
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
-                      **stats_aggregator(ad_group_stats_prefix="ad_groups__statistics__"))
+                      **stats_aggregator())
         dates = queryset.annotate(
             statistic_min_date=Min("statistics__date"),
             statistic_max_date=Max("statistics__date"),
