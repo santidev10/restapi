@@ -16,7 +16,7 @@ class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
     queryset = BadWord.objects.all()
 
     def put(self, request, *args, **kwargs):
-        request.data['name'] = request.data['name'].strip().translate(str.maketrans('', '', string.punctuation))
+        request.data['name'] = request.data['name'].lower().strip().translate(str.maketrans('', '', string.punctuation))
         try:
             existing_word = BadWord.all_objects.get(name=request.data['name'],
                                                     language=AuditLanguage.from_string(request.data['language']))

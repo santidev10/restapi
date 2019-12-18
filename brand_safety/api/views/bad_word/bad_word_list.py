@@ -91,7 +91,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         for tag_name in tag_names:
             tag_data = dict(request.data)
-            tag_data["name"] = tag_name.strip().translate(str.maketrans('', '', string.punctuation))
+            tag_data["name"] = tag_name.lower().strip().translate(str.maketrans('', '', string.punctuation))
             serializer = BadWordSerializer(data=tag_data, context={'request': request})
             serializers.append(serializer)
         results = []
