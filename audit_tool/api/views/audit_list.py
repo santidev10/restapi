@@ -14,7 +14,11 @@ class AuditListApiView(APIView):
     def get(self, request):
         query_params = request.query_params
         running = query_params["running"] if "running" in query_params else None
-        if running:
+        export = None
+        if running and running.lower() == "export":
+            running = None
+            export = True
+        elif running and running in ['true', 'false', '0', '1']:
             running = strtobool(running.lower())
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
@@ -29,7 +33,7 @@ class AuditListApiView(APIView):
             })
         else:
             return Response({
-                'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days),
+                'audits': AuditProcessor.get(running=running, audit_type=audit_type, num_days=num_days, export=export),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
                 'youtube_categories': AuditCategory.get_all(iab=False),
             })

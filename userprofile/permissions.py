@@ -111,6 +111,7 @@ class PermissionGroupNames:
     ADS_ANALYZER = "Ads Analyzer"
     TRANSCRIPTS = "Transcripts"
     MONETIZATION = "Monetization"
+    VIEW_CHANNEL_VIDEO_TABS = "View Channel/Video Tabs"
 
 
 class Permissions:
@@ -157,6 +158,9 @@ class Permissions:
         )),
         (PermissionGroupNames.MANAGED_SERVICE, (
             "view_dashboard",
+        )),
+        (PermissionGroupNames.VIEW_CHANNEL_VIDEO_TABS, (
+            "view_channel_video_tabs",
         )),
         (PermissionGroupNames.MANAGED_SERVICE_PERFORMANCE_DETAILS, (
             "view_performance_details",
@@ -222,6 +226,7 @@ class Permissions:
         # dashboard section
         "view_dashboard",
         "view_performance_details",
+        "view_channel_video_tabs",
         # settings section
         "settings_my_aw_accounts",
         "settings_my_yt_channels",
