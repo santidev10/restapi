@@ -5,7 +5,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
 
-file_name = "bste_tags_to_import/bste_keywords_final_CLEAN_12_16_2019_1101am.csv"
+file_name = "Bad Words.csv"
 invalid_rows_file_name = "invalid_keywords.csv"
 
 invalid_rows = []
@@ -21,7 +21,7 @@ with open(file_name, "r") as f:
         print(f"Parsing Row: {counter}")
         try:
             # Parse word
-            word = row[0].translate(str.maketrans('', '', string.punctuation))
+            word = row[0].lower().strip().translate(str.maketrans('', '', string.punctuation))
             # Parse category
             category_string = row[1].lower().strip()
             category = BadWordCategory.objects.get(name=category_string)
