@@ -216,7 +216,7 @@ class AuditProcessor(models.Model):
         if self.completed:
             try:
                 c = d['data']['count']
-                d['name'] = "{n}: {c}" . format(n=d['name'], c=c)
+                d['name'] = "{n}: [{c}]" . format(n=d['name'], c=c)
             except Exception as e:
                 pass
         files = self.params.get('files')
