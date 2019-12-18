@@ -159,7 +159,7 @@ class AuditExportApiView(APIView):
             export_as_videos=export.export_as_videos
         )
         if exports.count() > 0:
-            return exports[0].file_name, _
+            return exports[0].file_name, None
         self.get_categories()
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:

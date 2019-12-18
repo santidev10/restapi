@@ -20,7 +20,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
 
     def __init__(self, *args, **kwargs):
         super(BaseCampaignPacingEmailReport, self).__init__(*args, **kwargs)
-        self.pacing_bound = kwargs.get("pacing_bound", .1)
+        self.pacing_bound = kwargs.get("pacing_bound", .25)
         self.days_to_end = kwargs.get("pacing_bound", 3)
         self.today = now_in_default_tz().date()
         self.date_end = self.today + timedelta(days=self.days_to_end)
@@ -45,7 +45,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         msg = EmailMultiAlternatives(
             self._get_subject(opportunity),
             self._build_body(opportunity, flights_with_pacing, date_end),
-            from_email=settings.SENDER_EMAIL_ADDRESS,
+            from_email=settings.EXPORTS_EMAIL_ADDRESS,
             to=self._get_to(opportunity),
             cc=self._get_cc(opportunity),
             bcc=self.get_bcc(),
@@ -94,7 +94,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
 
     def _get_cc(self, opportunity):
         am = opportunity.account_manager
-        cc = [(am.name, am.email)] + settings.CF_AD_OPS_DIRECTORS \
+        cc = [am.email] + settings.CF_AD_OPS_DIRECTORS \
             if am else settings.CF_AD_OPS_DIRECTORS
         return self.get_cc(cc)
 
