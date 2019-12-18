@@ -16,7 +16,7 @@ class FlightTotalCostChangedEmail(BaseEmailReport):
         self.recipients = recipients
 
     def send(self):
-        sender = settings.SENDER_EMAIL_ADDRESS
+        sender = settings.EXPORTS_EMAIL_ADDRESS
         to = self.get_to(self.recipients or settings.SALESFORCE_UPDATES_ADDRESSES)
         bcc = self.get_bcc()
         subject = "{opportunity_name} Total Client Cost has changed".format(opportunity_name=self.opportunity_name)

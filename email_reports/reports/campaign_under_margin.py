@@ -54,7 +54,7 @@ class CampaignUnderMargin(BaseEmailReport):
                 msg = EmailMultiAlternatives(
                     "URGENT CAMPAIGN UNDER MARGIN: {}".format(opp["name"]),
                     body,
-                    from_email=settings.SENDER_EMAIL_ADDRESS,
+                    from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_recipients),
                     cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                     bcc=self.get_bcc(),
