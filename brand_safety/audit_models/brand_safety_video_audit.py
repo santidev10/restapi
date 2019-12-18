@@ -56,16 +56,28 @@ class BrandSafetyVideoAudit(object):
         # Try to get video language processor
         try:
             keyword_processor = self.language_processors[self.metadata["language"]]
+            universal_processor = self.language_processors['un']
         except KeyError:
             # Set the language the audit uses
             self.metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
+            universal_processor = False
         tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, keyword_processor)
         title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, keyword_processor)
         description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION, keyword_processor)
         transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, keyword_processor)
+        all_hits = tag_hits + title_hits + description_hits + transcript_hits
+        # Calculate Universal keywords hits, if not all processor
+        if universal_processor:
+            universal_tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, universal_processor)
+            universal_title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, universal_processor)
+            universal_description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION,
+                                                                universal_processor)
+            universal_transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT,
+                                                               universal_processor)
+            all_hits += universal_tag_hits + universal_title_hits + universal_description_hits + universal_transcript_hits
 
-        score = self.calculate_brand_safety_score(*tag_hits + title_hits + description_hits + transcript_hits)
+        score = self.calculate_brand_safety_score(*all_hits)
         setattr(self, constants.BRAND_SAFETY_SCORE, score)
 
     def calculate_brand_safety_score(self, *hits):

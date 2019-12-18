@@ -65,14 +65,23 @@ class BrandSafetyChannelAudit(object):
         # Try to get channel language processor
         try:
             keyword_processor = self.language_processors[self.metadata["language"]]
+            universal_processor = self.language_processors['un']
         except KeyError:
             # Set the language the audit uses
             self.metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
+            universal_processor = False
         title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, keyword_processor)
         description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION, keyword_processor)
+        all_hits = title_hits + description_hits
+        # Universal keywords hits
+        if universal_processor:
+            universal_title_hits = self.audit_utils.audit(self.metadata["title"], constants.TITLE, universal_processor)
+            universal_description_hits = self.audit_utils.audit(self.metadata["description"], constants.DESCRIPTION,
+                                                                universal_processor)
+            all_hits += universal_title_hits + universal_description_hits
 
-        score = self.calculate_brand_safety_score(*title_hits, *description_hits)
+        score = self.calculate_brand_safety_score(*all_hits)
         setattr(self, constants.BRAND_SAFETY_SCORE, score)
 
     def calculate_brand_safety_score(self, *channel_metadata_hits, **_):
