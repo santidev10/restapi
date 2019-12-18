@@ -20,7 +20,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
 
     def __init__(self, *args, **kwargs):
         super(BaseCampaignPacingEmailReport, self).__init__(*args, **kwargs)
-        self.pacing_bound = kwargs.get("pacing_bound", .1)
+        self.pacing_bound = kwargs.get("pacing_bound", .25)
         self.days_to_end = kwargs.get("pacing_bound", 3)
         self.today = now_in_default_tz().date()
         self.date_end = self.today + timedelta(days=self.days_to_end)
