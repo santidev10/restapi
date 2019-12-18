@@ -94,8 +94,8 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
 
     def _get_cc(self, opportunity):
         am = opportunity.account_manager
-        cc = [am.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS \
-            if am else settings.PACING_REPORT_EMAIL_RECIPIENTS
+        cc = [am.email] + settings.CF_AD_OPS_DIRECTORS \
+            if am else settings.CF_AD_OPS_DIRECTORS
         return self.get_cc(cc)
 
     def _build_body(self, opportunity, flights_with_pacing, date_end):

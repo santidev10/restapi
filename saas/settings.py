@@ -385,11 +385,6 @@ CF_AD_OPS_DIRECTORS = [
     "george.ritter@channelfactory.com",
 ]
 
-PACING_REPORT_EMAIL_RECIPIENTS = [
-    *CF_AD_OPS_DIRECTORS,
-    "sean.maguire@channelfactory.com",
-]
-
 CUSTOM_AUTH_FLAGS = {
     # "user@example.com": {
     #    "hide_something": True,

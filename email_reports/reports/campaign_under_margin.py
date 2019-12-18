@@ -56,7 +56,7 @@ class CampaignUnderMargin(BaseEmailReport):
                     body,
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_recipients),
-                    cc=self.get_cc(settings.PACING_REPORT_EMAIL_RECIPIENTS),
+                    cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                     bcc=self.get_bcc(),
                     headers={'X-Priority': 2},
                     reply_to="",

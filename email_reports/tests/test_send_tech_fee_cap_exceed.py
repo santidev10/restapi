@@ -88,7 +88,7 @@ class SendDailyEmailsTestCase(APITestCase):
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(set(message.cc), set(settings.PACING_REPORT_EMAIL_RECIPIENTS + [account_manager.email]))
+        self.assertEqual(set(message.cc), set(settings.CF_AD_OPS_DIRECTORS + [account_manager.email]))
 
     def test_do_not_send_cpm(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -160,7 +160,7 @@ class SendDailyEmailsTestCase(APITestCase):
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(set(message.cc), set([account_manager.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS))
+        self.assertEqual(set(message.cc), set([account_manager.email] + settings.CF_AD_OPS_DIRECTORS))
 
     def test_receivers_no_sales(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -205,4 +205,4 @@ class SendDailyEmailsTestCase(APITestCase):
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(set(message.cc), set([account_manager.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS))
+        self.assertEqual(set(message.cc), set([account_manager.email] + settings.CF_AD_OPS_DIRECTORS))

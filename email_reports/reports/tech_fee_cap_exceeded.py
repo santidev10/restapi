@@ -73,7 +73,7 @@ class TechFeeCapExceeded(BaseEmailReport):
                     to_recipients.append(
                         placement["opportunity__ad_ops_manager__email"])
 
-                cc_recipients = list(settings.PACING_REPORT_EMAIL_RECIPIENTS)  # copy
+                cc_recipients = list(settings.CF_AD_OPS_DIRECTORS)  # copy
                 if placement["opportunity__account_manager__email"]:
                     cc_recipients.append(
                         placement["opportunity__account_manager__email"])
