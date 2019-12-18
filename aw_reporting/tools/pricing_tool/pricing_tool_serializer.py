@@ -19,7 +19,7 @@ class PricingToolSerializer:
     def __init__(self, kwargs):
         self.kwargs = kwargs
 
-    def get_opportunities_data(self, opportunities: list, user: UserProfile):
+    def get_opportunities_data(self, opportunities: list, campaigns_ids_map: dict, user: UserProfile):
         ids = [opp.id for opp in opportunities]
 
         campaign_thumbs = self._get_campaign_thumbnails(ids)

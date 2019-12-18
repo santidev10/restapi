@@ -16,11 +16,13 @@ from django.db.models import When
 from django.db.models.expressions import Combinable
 from django.db.models.expressions import CombinedExpression
 from django.db.models.expressions import Value
+from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRanges
 from aw_reporting.models import Audience
 from aw_reporting.models import Devices
+from aw_reporting.models import Campaign
 from aw_reporting.models import Genders
 from aw_reporting.models import Opportunity
 from aw_reporting.models import ParentStatuses
@@ -43,6 +45,7 @@ CONDITIONS = [
     dict(id="or", name="Or"),
     dict(id="and", name="And"),
 ]
+PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX = "placements__adwords_campaigns__"
 
 
 class PricingToolFiltering:
@@ -149,35 +152,60 @@ class PricingToolFiltering:
         return self._filter(queryset)
 
     def _filter(self, queryset):
-        filters = (
+
+        def apply_filters(queryset, filters, prefix=""):
+            for filter in filters:
+                queryset, _ = filter(queryset, prefix)
+            return queryset
+
+        campaigns_filters = (
             self._filter_by_periods,
             self._filter_by_product_types,
             self._filter_by_targeting_types,
             *self._filter_by_demographic(),
             self._filter_by_geo_targeting,
-            self._filter_by_brand,
-            self._filter_by_categories,
             self._filter_by_topics,
             self._filter_by_interests,
             self._filter_by_creative_length,
             self._filter_by_devices,
+        )
+
+        filters = campaigns_filters + (
+            self._filter_by_brand,
+            self._filter_by_categories,
             self._filter_by_apex,
             *self._filter_by_kpi(),
         )
 
-        queryset = split_request(queryset, filters, 1)
+        queryset = apply_filters(queryset, filters, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX)
 
         if self.filter_item_ids is not None:
             queryset = queryset.filter(id__in=self.filter_item_ids)
-        return queryset.distinct()
 
-    def _filter_by_periods(self, queryset):
+        opportunity_queryset = queryset.distinct()
+
+        campaigns_queryset = Campaign.objects.values("salesforce_placement__opportunity")\
+                                 .annotate(ids=ArrayAgg("id"))\
+                                 .values("salesforce_placement__opportunity", "ids")
+
+        campaigns_queryset = campaigns_queryset\
+            .filter(salesforce_placement__opportunity__id__in=opportunity_queryset.values_list("id", flat=True))
+        campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters, prefix="").all()
+
+        campaigns_ids_map = {opportunity_id: campaigns_ids for opportunity_id, campaigns_ids in campaigns_queryset}
+
+        return opportunity_queryset, campaigns_ids_map
+
+    def _filter_by_ids(self, queryset, ids, prefix):
+        return queryset.filter({f"{prefix}id__in": ids})
+
+    def _filter_by_periods(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         periods = self.kwargs["periods"]
         if len(periods) == 0:
             return queryset, False
         queryset = queryset.annotate(
-            min_start=Min("placements__adwords_campaigns__start_date"),
-            max_end=Max("placements__adwords_campaigns__end_date")
+            min_start=Min(f"{prefix}start_date"),
+            max_end=Max(f"{prefix}end_date")
         )
         filters = [Q(min_start__lte=end, max_end__gte=start)
                    for start, end in periods]
@@ -187,7 +215,7 @@ class PricingToolFiltering:
 
         return queryset.filter(query), True
 
-    def _filter_by_product_types(self, queryset):
+    def _filter_by_product_types(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         product_types = self.kwargs.get("product_types", [])
         if len(product_types) == 0:
             return queryset, False
@@ -195,18 +223,17 @@ class PricingToolFiltering:
                                                   self.default_condition)
 
         if product_types_condition == "or":
-            queryset = queryset.filter(
-                placements__adwords_campaigns__ad_groups__type__in=product_types)
+            queryset = queryset.filter(**{f"{prefix}ad_groups__type__in":product_types})
 
         elif product_types_condition == "and":
             queryset = reduce(
-                lambda qs, pt: qs.filter(
-                    placements__adwords_campaigns__ad_groups__type=pt),
+                lambda qs, pt: qs.filter(**{f"{prefix}ad_groups__type": pt}),
                 product_types,
                 queryset)
+
         return queryset, True
 
-    def _filter_by_targeting_types(self, queryset: QuerySet):
+    def _filter_by_targeting_types(self, queryset: QuerySet, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         targeting_types = self.kwargs.get("targeting_types")
         if targeting_types is None:
             return queryset, False
@@ -215,7 +242,7 @@ class PricingToolFiltering:
         true_value = Value(1)
         annotation = {"has_" + t: Max(Case(When(
             **{
-                "placements__adwords_campaigns__has_" + t: Value(True),
+                f"{prefix}has_" + t: Value(True),
                 "then": true_value
             }),
             output_field=BooleanField(),
@@ -235,46 +262,43 @@ class PricingToolFiltering:
             self._filter_parent_status
         ]
 
-    def _filter_by_gender(self, queryset):
+    def _filter_by_gender(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         genders = self.kwargs.get("genders")
         if genders is None:
             return queryset, False
         condition = self.kwargs.get("demographic_condition",
                                     self.default_condition)
         campaign_fields = [GENDER_FIELDS[g] for g in genders]
-        fields = ["placements__adwords_campaigns__{}".format(f)
-                  for f in campaign_fields]
+        fields = [f"{prefix}{f}" for f in campaign_fields]
         return queryset.filter(build_query_bool(fields, condition)), True
 
-    def _filter_by_age(self, queryset):
+    def _filter_by_age(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         ages = self.kwargs.get("ages")
         if ages is None:
             return queryset, False
         condition = self.kwargs.get("demographic_condition",
                                     self.default_condition)
         campaign_fields = [AGE_FIELDS[g] for g in ages]
-        fields = ["placements__adwords_campaigns__{}".format(f)
-                  for f in campaign_fields]
+        fields = [f"{prefix}{f}" for f in campaign_fields]
         return queryset.filter(build_query_bool(fields, condition)), True
 
-    def _filter_parent_status(self, queryset):
+    def _filter_parent_status(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         parents = self.kwargs.get("parents")
         if parents is None:
             return queryset, False
         condition = self.kwargs.get("demographic_condition",
                                     self.default_condition)
         campaign_fields = [PARENT_FIELDS[g] for g in parents]
-        fields = ["placements__adwords_campaigns__{}".format(f)
-                  for f in campaign_fields]
+        fields = [f"{prefix}{f}" for f in campaign_fields]
         return queryset.filter(build_query_bool(fields, condition)), True
 
-    def _filter_by_geo_targeting(self, queryset):
+    def _filter_by_geo_targeting(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         geo_targets = self.kwargs.get("geo_locations", [])
         if len(geo_targets) == 0:
             return queryset, False
         condition = self.kwargs.get("geo_locations_condition",
                                     self.default_condition).lower()
-        geo_field = "placements__adwords_campaigns__geo_performance__geo_target"
+        geo_field = f"{prefix}geo_performance__geo_target"
         if condition == "or":
             queryset = queryset.filter(**{geo_field + "__id__in": geo_targets})
         elif condition == "and":
@@ -284,47 +308,42 @@ class PricingToolFiltering:
                 queryset)
         return queryset, True
 
-    def _filter_by_brand(self, queryset):
+    def _filter_by_brand(self, queryset, *args):
         brands = self.kwargs.get("brands", [])
         if len(brands) == 0:
             return queryset, False
         return queryset.filter(brand__in=brands), True
 
-    def _filter_by_categories(self, queryset):
+    def _filter_by_categories(self, queryset, *args):
         categories = self.kwargs.get("categories", [])
         if len(categories) == 0:
             return queryset, False
         return queryset.filter(category_id__in=categories), True
 
-    def _filter_by_topics(self, queryset):
+    def _filter_by_topics(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         topics = self.kwargs.get("topics", [])
         if len(topics) == 0:
             return queryset, False
-        return self._filter_topics(queryset, topics,
-                                   "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_topics(queryset, topics, f"{prefix}ad_groups__"), True
 
-    def _filter_by_interests(self, queryset):
+    def _filter_by_interests(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         interests = self.kwargs.get("interests", [])
         if len(interests) == 0:
             return queryset, False
-        return self._filter_interests(queryset, interests,
-                                      "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_interests(queryset, interests, f"{prefix}ad_groups__"), True
 
-    def _filter_by_creative_length(self, queryset):
+    def _filter_by_creative_length(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         lengths = self.kwargs.get("creative_lengths", [])
         if len(lengths) == 0:
             return queryset, False
-        return self._filter_creative_lengths(
-            queryset, lengths,
-            "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_creative_lengths(queryset, lengths, f"{prefix}ad_groups__"), True
 
-    def _filter_by_devices(self, queryset):
+    def _filter_by_devices(self, queryset, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX):
         devices = self.kwargs.get("devices", [])
         if len(devices) == 0:
             return queryset, False
         devices_condition = self.kwargs.get("devices_condition",
                                             self.default_condition)
-        prefix = "placements__adwords_campaigns__"
         if devices_condition == "or":
             query_exclude = dict((prefix + field, False) for i, field
                                  in enumerate(DEVICE_FIELDS)
@@ -338,7 +357,7 @@ class PricingToolFiltering:
             queryset = queryset.filter(**query_filter)
         return queryset.distinct(), True
 
-    def _filter_by_apex(self, queryset):
+    def _filter_by_apex(self, queryset, *args):
         apex_deal = self.kwargs.get("apex_deal")
         if apex_deal is not None and apex_deal.isdigit():
             queryset = queryset.filter(apex_deal=bool(int(apex_deal)))
@@ -354,7 +373,7 @@ class PricingToolFiltering:
             self._filter_by_video100rate,
         ]
 
-    def _filter_by_ctr(self, queryset):
+    def _filter_by_ctr(self, queryset, *args):
         max_ctr_filter = self.kwargs.get("max_ctr", None)
         min_ctr_filter = self.kwargs.get("min_ctr", None)
 
@@ -368,14 +387,14 @@ class PricingToolFiltering:
             aw_clicks=Sum(Case(
                 *merge_when(
                     date_filter,
-                    then="placements__adwords_campaigns__statistics__clicks"),
+                    then=f"placements__adwords_campaigns__statistics__clicks"),
                 output_field=IntegerField(),
                 default=0
             )),
             aw_impressions=Sum(Case(
                 *merge_when(
                     date_filter,
-                    then="placements__adwords_campaigns__statistics__impressions"),
+                    then=f"placements__adwords_campaigns__statistics__impressions"),
                 output_field=IntegerField(),
                 default=0
             ))
@@ -394,7 +413,7 @@ class PricingToolFiltering:
 
         return queryset, True
 
-    def _filter_by_ctr_v(self, queryset):
+    def _filter_by_ctr_v(self, queryset, *args):
         max_ctr_v_filter = self.kwargs.get("max_ctr_v", None)
         min_ctr_v_filter = self.kwargs.get("min_ctr_v", None)
 
@@ -433,7 +452,7 @@ class PricingToolFiltering:
             queryset = queryset.filter(ctr_v__gte=min_ctr_v_filter)
         return queryset, True
 
-    def _filter_by_view_rate(self, queryset):
+    def _filter_by_view_rate(self, queryset, *args):
         max_rate = self.kwargs.get("max_video_view_rate", None)
         min_rate = self.kwargs.get("min_video_view_rate", None)
 
@@ -732,3 +751,5 @@ def map_item(item, key_map):
     return {key_map[key]: value
             for key, value in item.items()
             if key in key_map}
+
+
