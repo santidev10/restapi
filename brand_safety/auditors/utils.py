@@ -74,7 +74,7 @@ class AuditUtils(object):
         :return:
         """
         if isinstance(text, str):
-            text = text.translate(str.maketrans('', '', string.punctuation))
+            text = text.lower().translate(str.maketrans('', '', string.punctuation))
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
