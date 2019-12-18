@@ -2,6 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from functools import partial
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
@@ -55,7 +56,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
         self.assertEqual(len(mail.outbox[0].to), 1)
         self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
-
+        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(SavedEmail.objects.count(), 1)
 
     def test_do_not_send_un_subscribed(self):
@@ -141,6 +142,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -192,6 +194,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         view_in_browser_link_nodes = tree.xpath("//a[@id='viewInBrowserLink']")
@@ -224,6 +227,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         account_link_nodes = tree.xpath("//a[@id='accountLink']")
@@ -250,6 +254,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 1)
@@ -279,6 +284,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 0)
@@ -313,6 +319,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 1)
@@ -339,6 +346,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 0)
@@ -399,6 +407,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -467,6 +476,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -534,6 +544,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -573,6 +584,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         self.assertEqual(email.to, [am.email])
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
     def test_receivers_no_sales(self):
         ad_ops = User.objects.create(id=1, email="AdOps@channelfactory.com")
@@ -609,6 +621,7 @@ class SendDailyEmailsTestCase(APITestCase):
         receivers_mails = (r[1] if isinstance(r, tuple) else r
                            for r in receivers)
         self.assertNotIn(sm.email, receivers_mails)
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
 
 def get_xpath_text(tree, xpath):

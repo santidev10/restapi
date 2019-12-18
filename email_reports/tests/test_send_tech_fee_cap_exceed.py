@@ -81,14 +81,14 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
+        self.assertEqual(message.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(message.subject, "Tech Fee Cap Exceeded")
         expected_body = "Paul,\n<ExceedOpportunity> is exceeding its tech fee" \
                         " cap of 0.0700 in the <ExceedPlacement> placement." \
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(message.cc, [settings.CF_AD_OPS_DIRECTORS[0],
-                                      account_manager.email])
+        self.assertEqual(set(message.cc), set(settings.PACING_REPORT_EMAIL_RECIPIENTS + [account_manager.email]))
 
     def test_do_not_send_cpm(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -153,14 +153,14 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
+        self.assertEqual(message.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(message.subject, "Tech Fee Cap Exceeded")
         expected_body = "Paul,\n<ExceedOpportunity> is exceeding its tech fee" \
                         " cap of 7.0000 in the <ExceedPlacement> placement." \
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(message.cc, [settings.CF_AD_OPS_DIRECTORS[0],
-                                      account_manager.email])
+        self.assertEqual(set(message.cc), set([account_manager.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS))
 
     def test_receivers_no_sales(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -198,11 +198,11 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
+        self.assertEqual(message.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(message.subject, "Tech Fee Cap Exceeded")
         expected_body = "Paul,\n<ExceedOpportunity> is exceeding its tech fee" \
                         " cap of 0.0700 in the <ExceedPlacement> placement." \
                         " Please adjust immediately."
         self.assertEqual(message.body, expected_body)
         self.assertEqual(message.to, [ad_ops.email])
-        self.assertEqual(set(message.cc), {settings.CF_AD_OPS_DIRECTORS[0],
-                                           account_manager.email})
+        self.assertEqual(set(message.cc), set([account_manager.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS))

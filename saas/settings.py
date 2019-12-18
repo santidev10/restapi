@@ -275,7 +275,7 @@ SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
 SENDER_EMAIL_ADDRESS = SERVER_EMAIL
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
-EXPORTS_EMAIL_ADDRESS = SERVER_EMAIL
+EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
 
@@ -382,7 +382,12 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 
 CF_AD_OPS_DIRECTORS = [
-    ('Ritter, George', "george.ritter@channelfactory.com"),
+    "george.ritter@channelfactory.com",
+]
+
+PACING_REPORT_EMAIL_RECIPIENTS = [
+    *CF_AD_OPS_DIRECTORS,
+    "sean.maguire@channelfactory.com",
 ]
 
 CUSTOM_AUTH_FLAGS = {

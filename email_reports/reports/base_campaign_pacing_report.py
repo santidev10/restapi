@@ -45,7 +45,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         msg = EmailMultiAlternatives(
             self._get_subject(opportunity),
             self._build_body(opportunity, flights_with_pacing, date_end),
-            from_email=settings.SENDER_EMAIL_ADDRESS,
+            from_email=settings.EXPORTS_EMAIL_ADDRESS,
             to=self._get_to(opportunity),
             cc=self._get_cc(opportunity),
             bcc=self.get_bcc(),
@@ -94,8 +94,8 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
 
     def _get_cc(self, opportunity):
         am = opportunity.account_manager
-        cc = [(am.name, am.email)] + settings.CF_AD_OPS_DIRECTORS \
-            if am else settings.CF_AD_OPS_DIRECTORS
+        cc = [am.email] + settings.PACING_REPORT_EMAIL_RECIPIENTS \
+            if am else settings.PACING_REPORT_EMAIL_RECIPIENTS
         return self.get_cc(cc)
 
     def _build_body(self, opportunity, flights_with_pacing, date_end):
