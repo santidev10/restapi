@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMessage
 from django.urls import reverse
 from django.shortcuts import get_object_or_404
 from django.template.defaultfilters import striptags
@@ -75,6 +76,8 @@ class DailyCampaignReport(BaseEmailReport):
         if self.roles:
             self.roles = self.roles.split(",")
 
+        self.flight_alerts = []
+
     def is_on_going_placements(self, p):
         return None not in (p["goal_type_id"], p["start"], p["end"]) \
                and p["start"] <= self.today \
@@ -134,6 +137,18 @@ class DailyCampaignReport(BaseEmailReport):
 
             msg.send()
 
+            # send flight alerts
+            for alert in self.flight_alerts:
+                msg = EmailMessage(
+                    subject=alert.get("subject"),
+                    body=alert.get("body"),
+                    from_email=settings.SENDER_EMAIL_ADDRESS,
+                    to=self.get_to(to_emails),
+                    cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                    bcc=self.get_bcc(),
+                )
+                msg.send(fail_silently=False)
+
             # save the email
             SavedEmail.objects.create(id=context["email_uid"],
                                       html=html_content)
@@ -189,8 +204,32 @@ class DailyCampaignReport(BaseEmailReport):
             flights = report.get_flights(placement_obj)
 
             for flight in flights:
+                self.collect_flight_delivery_alert(flight, opportunity_obj)
+
                 for f in spend_fields:
                     opportunity[f] += flight.get(f) or 0
+
+    def collect_flight_delivery_alert(self, flight_data, opportunity_obj):
+        alert_percentage = None
+
+        if self.check_flight_delivered(flight_data, 1):
+            alert_percentage = 100
+        elif self.check_flight_delivered(flight_data, 0.9):
+            alert_percentage = 90
+
+        if alert_percentage is not None:
+            self.flight_alerts.append(
+                get_flight_delivery_alert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
+                                          control_percentage=alert_percentage)
+            )
+
+    def check_flight_delivered(self, flight, control_percentage):
+        percentage = 0
+        if flight.get("goal_type_id") == SalesForceGoalType.CPM:
+            percentage = flight.get("impressions") / flight.get("plan_impressions")
+        elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
+            percentage = flight.get("video_views") / flight.get("plan_video_views")
+        return percentage >= control_percentage
 
 
 def _map_opportunity(opportunity):
@@ -235,3 +274,13 @@ def _calculate_with_general(opportunity, keys_map: dict):
         value = get_value(input_key)
         opportunity[output_key] = get_width_value(value)
     return opportunity
+
+
+def get_flight_delivery_alert(flight_name, opportunity_name, control_percentage):
+    return dict(
+        subject="{control_percentage}% DELIVERY - {flight_name}".format(
+            control_percentage=control_percentage, flight_name=flight_name),
+        body="{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
+            flight_name=flight_name, control_percentage=control_percentage, opportunity_name=opportunity_name
+        )
+    )
