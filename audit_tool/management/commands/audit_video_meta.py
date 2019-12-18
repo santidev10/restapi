@@ -85,8 +85,12 @@ class Command(BaseCommand):
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
         if not self.inclusion_hit_count:
             self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             if self.thread_id == 0:
@@ -221,7 +225,7 @@ class Command(BaseCommand):
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
-        )
+        ).translate(str.maketrans('', '', string.punctuation))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.channel_id], 'processed_video_ids')
         if self.inclusion_list:
@@ -375,7 +379,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(w.translate(str.maketrans('', '', string.punctuation)))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 

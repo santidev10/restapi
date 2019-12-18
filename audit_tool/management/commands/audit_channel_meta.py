@@ -73,8 +73,12 @@ class Command(BaseCommand):
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
         if not self.inclusion_hit_count:
             self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
         self.num_videos = self.audit.params.get('num_videos')
         if not self.num_videos:
             self.num_videos = 50
@@ -266,7 +270,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(w.translate(str.maketrans('', '', string.punctuation)))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -294,7 +298,7 @@ class Command(BaseCommand):
                 '' if not db_channel_meta.name else db_channel_meta.name,
                 '' if not db_channel_meta.description else db_channel_meta.description,
                 '' if not db_channel_meta.keywords else db_channel_meta.keywords,
-        )
+        ).translate(str.maketrans('', '', string.punctuation))
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             acp.word_hits['inclusion'] = hits

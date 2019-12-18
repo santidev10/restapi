@@ -24,7 +24,7 @@ def export_pacing_report(get, user_pk, report_name, url_to_export, user_emails):
            "NOTE: url to download report is valid during next 2 weeks\n".format(url=url_to_export)
 
     # E-mail
-    from_email = settings.SENDER_EMAIL_ADDRESS
+    from_email = settings.EXPORTS_EMAIL_ADDRESS
     bcc = []
 
     email = EmailMessage(

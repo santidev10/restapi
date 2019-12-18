@@ -1,3 +1,4 @@
+import string
 from collections import defaultdict
 from collections import namedtuple
 import csv
@@ -72,6 +73,8 @@ class AuditUtils(object):
         :param keyword_processor: flashtext module KeywordProcessor instance
         :return:
         """
+        if isinstance(text, str):
+            text = text.translate(str.maketrans('', '', string.punctuation))
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
@@ -204,8 +207,8 @@ class AuditUtils(object):
         all_words = BadWord.objects.annotate(language_name=F("language__language"))
         for word in all_words:
             language = word.language_name
-            bad_words_by_language["all"].add_keyword(word.name)
-            bad_words_by_language[language].add_keyword(word.name)
+            bad_words_by_language["all"].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
+            bad_words_by_language[language].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
         # Cast back to dictionary to avoid creation of new keys
         bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language

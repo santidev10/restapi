@@ -159,7 +159,7 @@ class AuditExportApiView(APIView):
             export_as_videos=export.export_as_videos
         )
         if exports.count() > 0:
-            return exports[0].file_name, _
+            return exports[0].file_name, None
         self.get_categories()
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
@@ -266,13 +266,17 @@ class AuditExportApiView(APIView):
             else:
                 all_bad_hit_words = ""
                 unique_bad_hit_words = ""
-            video_audit_score = auditor.audit_video({
-                "id": v.video.video_id,
-                "title": v.name,
-                "description": v.description,
-                "tags": v.keywords,
-            }, full_audit=False)
-            mapped_score = map_brand_safety_score(video_audit_score)
+            try:
+                video_audit_score = auditor.audit_video({
+                    "id": v.video.video_id,
+                    "title": v.name,
+                    "description": v.description,
+                    "tags": v.keywords,
+                }, full_audit=False)
+                mapped_score = map_brand_safety_score(video_audit_score)
+            except Exception as e:
+                mapped_score = ""
+                print("Problem calculating video score")
             data = [
                 "https://www.youtube.com/video/" + v.video.video_id,
                 v.name,
