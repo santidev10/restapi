@@ -4,6 +4,7 @@ from functools import reduce
 from django.db.models import FloatField
 from django.db.models import Q, F, Min, Value, When, Case, Max, \
     BooleanField, Sum, IntegerField
+from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     SalesForceGoalType, VideoCreative, get_margin, GeoTarget, \
@@ -46,7 +47,7 @@ class PricingToolSerializer:
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
         stats_queryset = CampaignStatistic.objects \
-            .filter(campaign__salesforce_placement__opportunity=opportunity) \
+            .filter(campaign_id__in=campaigns_data.get("ids")) \
             .filter(date_f) \
             .annotate(
             ordered_rate=F("campaign__salesforce_placement__ordered_rate"))
@@ -125,19 +126,19 @@ class PricingToolSerializer:
                                                             end_date)
 
         ad_group_types = AdGroup.objects.filter(
-            campaign__salesforce_placement__opportunity=opportunity) \
+            campaign_id__in=campaigns_data.get("ids")) \
             .exclude(type="") \
             .values_list("type", flat=True) \
             .order_by() \
             .distinct()
         creative = VideoCreative.objects.filter(
-            statistics__ad_group__campaign__salesforce_placement__opportunity=opportunity) \
+            statistics__ad_group__campaign_id__in=campaigns_data.get("ids")) \
             .values_list("duration", flat=True) \
             .order_by() \
             .distinct()
 
         geographic = GeoTarget.objects.filter(
-            geo_performance__campaign__salesforce_placement__opportunity=opportunity) \
+            geo_performance__campaign_id__in=campaigns_data.get("ids")) \
             .values_list("name", flat=True) \
             .order_by() \
             .distinct()
@@ -356,6 +357,7 @@ class PricingToolSerializer:
         annotation = dict(
             start_date=Min("start_date"),
             end_date=Max("end_date"),
+            ids=ArrayAgg("id"),
             **Aggregation.TARGETING,
             **Aggregation.AGES,
             **Aggregation.GENDERS,
