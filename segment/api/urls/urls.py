@@ -14,6 +14,7 @@ from segment.api.views import PersistentSegmentListApiView
 from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.api.views import PersistentSegmentPreviewAPIView
 from segment.api.views import SegmentPreviewAPIView
+from segment.api.views import SegmentCreateApiViewV3
 from segment.models.persistent.constants import PersistentSegmentType
 
 
@@ -43,7 +44,7 @@ urlpatterns_v2 = [
         name=Name.SEGMENT_LIST),
     url(r'^segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(segment_types),
         SegmentDeleteApiViewV2.as_view(),
-        name=Name.SEGMENT_LIST),
+        name=Name.SEGMENT_DELETE),
     url(r'^segments/options/(?P<segment_type>{})/$'.format(segment_types),
         SegmentCreationOptionsApiView.as_view(),
         name=Name.SEGMENT_CREATION_OPTIONS),
@@ -53,4 +54,10 @@ urlpatterns_v2 = [
     url(r'^segments/(?P<segment_type>{})/(?P<pk>.+)/preview/$'.format(segment_types),
         SegmentPreviewAPIView.as_view(),
         name=Name.SEGMENT_PREVIEW),
+]
+
+urlpatterns_v3 = [
+    url(r'^segments/$'.format(segment_types),
+        SegmentCreateApiViewV3.as_view(),
+        name=Name.SEGMENT_CREATE),
 ]

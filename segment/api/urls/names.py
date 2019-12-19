@@ -7,6 +7,8 @@ class Name:
     SEGMENT_DUPLICATE = "segment_duplicate"
     SEGMENT_SHARE = "segment_share"
     SEGMENT_CREATION_OPTIONS = "segment_creation_options"
+    SEGMENT_DELETE = "segment_delete"
+    SEGMENT_CREATE = "segment_create"
 
     SEGMENT_PREVIEW = "segment_preview"
 

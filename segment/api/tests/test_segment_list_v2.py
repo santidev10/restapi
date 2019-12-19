@@ -23,112 +23,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
 
-    def test_reject_bad_request(self):
-        self.create_test_user()
-        payload = {
-            "list_type": "whitelist",
-        }
-        response = self.client.post(
-            self._get_url("channel"), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
-    def test_success_channel_create(self):
-        self.create_test_user()
-        payload = {
-            "brand_safety_categories": ["1", "3", "4", "5", "6"],
-            "languages": ["es"],
-            "list_type": "whitelist",
-            "score_threshold": 100,
-            "title": "I am a whitelist",
-            "youtube_categories": [],
-            "minimum_option": 0
-        }
-        response = self.client.post(
-            self._get_url("channel"), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-
-    def test_success_video_create(self):
-        self.create_test_user()
-        payload = {
-            "brand_safety_categories": ["1", "3", "4", "5", "6"],
-            "languages": ["es"],
-            "list_type": "blacklist",
-            "score_threshold": 100,
-            "title": "I am a blacklist",
-            "youtube_categories": [],
-            "minimum_option": 0
-        }
-        response = self.client.post(
-            self._get_url("video"), json.dumps(payload), content_type="application/json"
-        )
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-
-    def test_success_response_create(self):
-        response_fields = ["id", "list_type", "segment_type", "statistics", "title", "download_url", "pending", "updated_at", "created_at"]
-        self.create_test_user()
-        payload = {
-            "brand_safety_categories": ["1", "3", "4", "5", "6"],
-            "languages": ["es"],
-            "list_type": "blacklist",
-            "score_threshold": 100,
-            "title": "I am a blacklist",
-            "youtube_categories": [],
-            "minimum_option": 0
-        }
-        response = self.client.post(
-            self._get_url("video"), json.dumps(payload), content_type="application/json"
-        )
-        data = response.data
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(set(data.keys()), set(response_fields))
-        self.assertTrue(data["pending"])
-
-    def test_create_integer_values(self):
-        self.create_test_user()
-        payload = {
-            "brand_safety_categories": ["1", "3", "4", "5", "6"],
-            "languages": ["es"],
-            "list_type": "blacklist",
-            "score_threshold": 100,
-            "title": "I am a blacklist",
-            "youtube_categories": [],
-            "minimum_option": "1,000,000"
-        }
-        response = self.client.post(
-            self._get_url("video"), json.dumps(payload), content_type="application/json"
-        )
-        data = response.data
-        export = CustomSegmentFileUpload.objects.get(segment_id=data["id"])
-        self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(export.query["bool"]["filter"]["bool"]["must"][0]["range"]["stats.views"]["gte"], 1000000)
-
-    def test_reject_duplicate_title_create(self):
-        self.create_test_user()
-        payload_1 = {
-            "brand_safety_categories": [],
-            "languages": ["en"],
-            "list_type": "blacklist",
-            "score_threshold": 1,
-            "title": "testing",
-            "youtube_categories": [],
-            "minimum_option": 0
-        }
-        payload_2 = {
-            "brand_safety_categories": [],
-            "languages": ["pt"],
-            "list_type": "blacklist",
-            "score_threshold": 1,
-            "title": "testing",
-            "youtube_categories": [],
-            "minimum_option": 0
-        }
-        response_1 = self.client.post(self._get_url("video"), json.dumps(payload_1), content_type="application/json")
-        response_2 = self.client.post(self._get_url("video"), json.dumps(payload_2), content_type="application/json")
-        self.assertEqual(response_1.status_code, HTTP_201_CREATED)
-        self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
-
     def test_owner_filter_list(self):
         user = self.create_test_user()
         seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
@@ -300,3 +194,4 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("video"))
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO))
+

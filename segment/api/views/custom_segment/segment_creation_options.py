@@ -44,8 +44,8 @@ class SegmentCreationOptionsApiView(APIView):
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
-            "youtube_categories": [
-                {"id": _id, "name": category} for _id, category in AuditCategory.get_all().items()
+            "content_categories": [
+                {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True).items()
             ]
         }
         return options

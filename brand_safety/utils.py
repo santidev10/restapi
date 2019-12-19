@@ -5,6 +5,7 @@ from audit_tool.models import AuditCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 
 
 class BrandSafetyQueryBuilder(object):
@@ -28,18 +29,34 @@ class BrandSafetyQueryBuilder(object):
         self.score_threshold = self.score_threshold if self.list_type == "whitelist" else self._map_blacklist_severity(self.score_threshold)
         self.languages = data.get("languages", [])
         self.minimum_option = data.get("minimum_option", 0)
+        self.minimum_views = data["minimum_views"]
+        self.minimum_subscribers = data["minimum_subscribers"]
         self.youtube_categories = data.get("youtube_categories", [])
         self.brand_safety_categories = data.get("brand_safety_categories", [])
-        self.iab_categories = data.get("iab_categories", [])
+        self.content_categories = data.get("content_categories", [])
+        self.severity_filters = data.get("severity_filters", [])
         self.options = self._get_segment_options()
+        self.published_at = data["published_at"]
 
         self.es_manager = ChannelManager(sections=self.SECTIONS) if self.segment_type == constants.CHANNEL else VideoManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
+        self.query_params = self._get_query_params()
 
     def execute(self, limit=5):
         query = Q(self.query_body)
         results = self.es_manager.search(query, limit=limit).execute()
         return results
+
+    def _get_query_params(self):
+        query_params = {
+            "languages": self.languages,
+            "score_threshold": self.score_threshold,
+            "minimum_views": self.minimum_views,
+            "minimum_subscribers": self.minimum_subscribers,
+            "content_categories": self.content_categories,
+        }
+        return query_params
+
 
     def _get_segment_options(self) -> dict:
         """
@@ -52,12 +69,14 @@ class BrandSafetyQueryBuilder(object):
             "channel": {
                 "index": constants.CHANNELS_INDEX,
                 "minimum_option": "stats.subscribers",
-                "youtube_category_field": "general_data.top_category"
+                "youtube_category_field": "general_data.top_category",
+                "published_at": "stats.last_video_published_at"
             },
             "video": {
                 "index": constants.VIDEOS_INDEX,
                 "minimum_option": "stats.views",
-                "youtube_category_field": "general_data.category"
+                "youtube_category_field": "general_data.category",
+                "published_at": "general_data.youtube_published_at"
             },
             "range_param": {
                 constants.BLACKLIST: "lte",
@@ -72,7 +91,7 @@ class BrandSafetyQueryBuilder(object):
         }
         return config
 
-    def _construct_query(self) -> dict:
+    def _construct_query(self):
         """
         Construct Elasticsearch query for segment items
         :param config: dict
@@ -118,62 +137,117 @@ class BrandSafetyQueryBuilder(object):
                                     "field": "brand_safety"
                                 }
                             }
+                        ],
+                        "must_not": [
+                            {
+                                "bool": {
+                                    # Severity word filters
+                                    "should": []
+                                }
+                            }
                         ]
                     }
                 }
             }
         }
-        must_statements = query_body["bool"]["filter"]["bool"]["must"]
+        query = QueryBuilder().build().must().range().field("stats.views").gte(self.minimum_views)
+        if self.minimum_subscribers:
+            query &= QueryBuilder().build().must().range().field("stats.subscribers").gte(self.minimum_subscribers)
+
         if self.overall_score:
-            # Get items with overall score <= or >= self.overall score depending on self.segment_type
-            threshold_operator = "gte" if self.list_type == constants.WHITELIST else "lte"
-            overall_score_threshold = {
-                "range": {"brand_safety.overall_score": {threshold_operator: self.overall_score}}
-            }
-            must_statements.append(overall_score_threshold)
+            if self.list_type == constants.WHITELIST:
+                query &= QueryBuilder().build().must().range().field("brand_safety.overall_score").gte(self.minimum_subscribers).get()
+            else:
+                query &= QueryBuilder().build().must().range().field("brand_safety.overall_score").lte(self.minimum_subscribers).get()
 
         if self.video_ids:
-            related_to = {
-                "terms": {
-                    "_id": self.video_ids
-                }
-            }
-            must_statements.append(related_to)
-        # Set refs for easier access
-        minimum_option = must_statements[0]["range"]
-        language_filters = must_statements[1]["bool"]["should"]
-        youtube_categories_filters = must_statements[2]["bool"]["should"]
-        category_score_filters = must_statements[3]["bool"]["filter"]
-        iab_categories_filters = must_statements[4]["bool"]["should"]
+            query &= QueryBuilder().build().must().terms().field("main.id").value(self.video_ids)
 
-        # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
-        category_score_filter_params = [
-            {"range": {"brand_safety.categories.{}.category_score".format(category): {self.options["range_param"]: self.score_threshold}}}
-            for category in self.brand_safety_categories
-        ]
-        language_filter_params = [
-            {"term": {"brand_safety.language": language}}
-            for language in self.languages
-        ]
-        youtube_category_filter_params = [
-            {"term": {self.options["youtube_category_field"]: category}}
-            for category in self.youtube_categories
-        ]
-        iab_category_filter_params = [
-            {"term": {"general_data.iab_categories": category}}
-            for category in self.iab_categories
-        ]
+        for category in self.brand_safety_categories:
+            sub = QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score")
+            query &= sub.getattr(self.options["range_param"]).value(self.score_threshold).get()
+
+        for lang in self.languages:
+            query &= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+
+        for iab in self.iab_categories:
+            query &= QueryBuilder().build().should().term().field("general_data.iab_categories").value(iab).get()
+
+        for category, scores in self.severity_filters.items():
+            for score in scores:
+                query &= QueryBuilder().build().must().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get()
+
+        query &= QueryBuilder().build().must().field(f"{self.options['published_at']}").gte(self.published_at).get()
+
+        # must_statements = query_body["bool"]["filter"]["bool"]["must"]
+        # must_not_statements = query_body["bool"]["filter"]["bool"]["must_not"]
+        # if self.overall_score:
+        #     # Get items with overall score <= or >= self.overall score depending on self.segment_type
+        #     threshold_operator = "gte" if self.list_type == constants.WHITELIST else "lte"
+        #     overall_score_threshold = {
+        #         "range": {"brand_safety.overall_score": {threshold_operator: self.overall_score}}
+        #     }
+        #     must_statements.append(overall_score_threshold)
+        #
+        # if self.video_ids:
+        #     related_to = {
+        #         "terms": {
+        #             "_id": self.video_ids
+        #         }
+        #     }
+        #     must_statements.append(related_to)
+        # # Set refs for easier access
+        # minimum_option = must_statements[0]["range"]
+        # language_filters = must_statements[1]["bool"]["should"]
+        # youtube_categories_filters = must_statements[2]["bool"]["should"]
+        # category_score_filters = must_statements[3]["bool"]["filter"]
+        # iab_categories_filters = must_statements[4]["bool"]["should"]
+        # severity_score_filters = must_not_statements[0]["bool"]["should"]
+        #
+        # # e.g. {"range": {"categories.1.category_score": {"gte": 50}}}
+        # category_score_filter_params = [
+        #     {"range": {"brand_safety.categories.{}.category_score".format(category): {self.options["range_param"]: self.score_threshold}}}
+        #     for category in self.brand_safety_categories
+        # ]
+        # language_filter_params = [
+        #     {"term": {"brand_safety.language": language}}
+        #     for language in self.languages
+        # ]
+        # youtube_category_filter_params = [
+        #     {"term": {self.options["youtube_category_field"]: category}}
+        #     for category in self.youtube_categories
+        # ]
+        # iab_category_filter_params = [
+        #     {"term": {"general_data.iab_categories": category}}
+        #     for category in self.iab_categories
+        # ]
+        # # [ { 1: [1,2,3] ]
+        # severity_score_params = []
+        # for category, scores in self.severity_filters.items():
+        #     for score in scores:
+        #         query = {
+        #             "range": {
+        #                 f"brand_safety.categories.{category}.severity_counts.{score}": {"lte": 0}
+        #             }
+        #         }
+        #         severity_score_params.append(query)
 
         # Add filters to refs
-        category_score_filters.extend(category_score_filter_params)
-        language_filters.extend(language_filter_params)
-        youtube_categories_filters.extend(youtube_category_filter_params)
-        iab_categories_filters.extend(iab_category_filter_params)
+        # category_score_filters.extend(category_score_filter_params)
+        # language_filters.extend(language_filter_params)
+        # youtube_categories_filters.extend(youtube_category_filter_params)
+        # iab_categories_filters.extend(iab_category_filter_params)
+        # severity_score_filters.extend(severity_score_params)
 
         # Sets range query in must clause
         # e.g. { "range": { "subscribers": { "gte": 1000 } }
-        minimum_option[self.options["minimum_option"]] = {"gte": self.minimum_option}
-        return query_body
+        # minimum_option[self.options["minimum_option"]] = {"gte": self.minimum_option}
+        # must_statements.append({
+        #     "range": {
+        #         self.options["published_at"]: {"gte": self.published_at}
+        #     }
+        # })
+        return query
 
     def _map_blacklist_severity(self, score_threshold: int):
         """

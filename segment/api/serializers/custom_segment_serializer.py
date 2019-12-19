@@ -84,7 +84,13 @@ class CustomSegmentSerializer(ModelSerializer):
                     "title": None
                 } for _ in range(3)]
             }
+        data.update(instance.export.query["params"])
         return data
+
+    def extract_options(self, instance):
+        # iab categories, languages, bs threshold,min sub, min views
+        pass
+
 
     @staticmethod
     def map_to_str(value, item_type="segment"):
