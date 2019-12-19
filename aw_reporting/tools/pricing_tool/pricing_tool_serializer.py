@@ -362,10 +362,10 @@ class PricingToolSerializer:
             **Aggregation.DEVICES,
         )
         campaigns = Campaign.objects \
-            .filter(Q(id__in=campaigns_ids)) \
+            .filter(id__in=campaigns_ids) \
             .values("salesforce_placement__opportunity")\
             .annotate(**annotation) \
-            .values("id", "salesforce_placement__opportunity", *annotation.keys())
+            .values("salesforce_placement__opportunity", *annotation.keys())
         return {campaign["salesforce_placement__opportunity"]: campaign for campaign in campaigns}
 
     def _prepare_campaigns(self, campaigns_ids, user):
