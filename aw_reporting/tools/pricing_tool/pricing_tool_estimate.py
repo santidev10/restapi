@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import timedelta
 from functools import reduce
 from operator import itemgetter
+from operator import add
 
 from django.db.models import FloatField, Max, Value, BooleanField
 from django.db.models import Q, When, Case, Sum
@@ -26,9 +27,10 @@ AD_GROUP_COSTS_ANNOTATE = dict(
 
 
 class PricingToolEstimate:
-    def __init__(self, kwargs, opportunities):
+    def __init__(self, kwargs, opportunities, campaigns_ids_map):
         self.kwargs = kwargs
         self.opportunities = opportunities
+        self.campaigns_ids = reduce(add, campaigns_ids_map.values()) if campaigns_ids_map.values() else []
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
@@ -57,11 +59,11 @@ class PricingToolEstimate:
             product_types = self.kwargs["product_types"]
             queryset = AdGroupStatistic.objects.filter(
                 ad_group__type__in=product_types,
-                ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities
+                ad_group__campaign_id__in=self.campaigns_ids
             )
         except KeyError:
             queryset = AdGroupStatistic.objects.filter(
-                ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities,
+                ad_group__campaign_id__in=self.campaigns_ids,
             )
         queryset = self._filter_out_hidden_data(queryset)
         queryset = self._filter_excluded_items(queryset)

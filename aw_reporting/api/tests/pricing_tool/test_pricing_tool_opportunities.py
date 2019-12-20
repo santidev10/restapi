@@ -3111,6 +3111,36 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["products"], [test_type])
 
+    def test_not_found_opportunity(self):
+        start, end = datetime(2018, 1, 1), datetime(2018, 1, 11)
+        type_1, type_2 = "Bumper", "NotBummer"
+        opportunity = Opportunity.objects.create(id="opportunity_1",
+                                                 start=start, end=end,
+                                                 name="", brand="Test")
+        placement = OpPlacement.objects.create(
+            id="op_placement_1", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
+
+        campaign_1 = Campaign.objects.create(
+            id="campaign_1", name="Campaign name", age_18_24=True,
+            salesforce_placement=placement,
+        )
+        AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
+
+        placement_2 = OpPlacement.objects.create(
+            id="op_placement_2", name="", opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
+        campaign_2 = Campaign.objects.create(
+            id="campaign_2", name="Campaign name",
+            salesforce_placement=placement_2, age_35_44=True,
+        )
+        AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
+        generate_campaign_statistic(campaign_1, start, end)
+        generate_campaign_statistic(campaign_2, start, end)
+
+        response = self._request(product_types=[type_2], ages=[1])
+        self.assertEqual(len(response.data["items"]), 0)
+
 
 def generate_campaign_statistic(
         campaign, start, end, predefined_statistics=None):

@@ -25,7 +25,7 @@ class PricingTool:
         self._opportunities_qs, self.campaigns_ids_map = self.filter.apply(
             self._get_opportunity_queryset(user))
         self.estimate_tool = PricingToolEstimate(
-            kwargs, self.get_opportunities_queryset())
+            kwargs, self.get_opportunities_queryset(), self.campaigns_ids_map)
 
     @classmethod
     def get_filters(cls, user=None):
