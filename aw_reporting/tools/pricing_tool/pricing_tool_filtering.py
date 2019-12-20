@@ -170,14 +170,14 @@ class PricingToolFiltering:
             self._filter_by_devices,
         )
 
-        filters = campaigns_filters + (
+        opportunity_filters = campaigns_filters + (
             self._filter_by_brand,
             self._filter_by_categories,
             self._filter_by_apex,
             *self._filter_by_kpi(),
         )
 
-        queryset = apply_filters(queryset, filters, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX)
+        queryset = apply_filters(queryset, opportunity_filters, prefix=PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX)
 
         if self.filter_item_ids is not None:
             queryset = queryset.filter(id__in=self.filter_item_ids)
@@ -194,6 +194,8 @@ class PricingToolFiltering:
 
         campaigns_ids_map = {campaigns["salesforce_placement__opportunity"]: campaigns["ids"]
                              for campaigns in campaigns_queryset}
+
+        opportunity_queryset = opportunity_queryset.filter(id__in=campaigns_ids_map.keys())
 
         return opportunity_queryset, campaigns_ids_map
 
