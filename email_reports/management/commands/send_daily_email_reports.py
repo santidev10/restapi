@@ -40,7 +40,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--pacing_bound',
             dest='pacing_bound',
-            help='Replace pacing_bound; default is .10 (10%)',
+            help='Replace pacing_bound; default is .25 (25%)',
             type=float,
         )
         parser.add_argument(

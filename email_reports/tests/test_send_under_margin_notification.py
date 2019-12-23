@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.core import mail
 from django.utils import timezone
 
@@ -59,6 +60,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(mail.outbox[0].subject, expected_subject)
         self.assertEqual(len(mail.outbox[0].to), 1)
         self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
     def test_receivers_no_sales(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -101,6 +103,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         receivers = email.to + email.cc + email.bcc
         receivers_mails = (r[1] if isinstance(r, tuple) else r
                            for r in receivers)
