@@ -751,7 +751,7 @@ class SendDailyEmailsTestCase(APITestCase):
         with patch_now(now):
             send_daily_email_reports(reports=["DailyCampaignReport"],
                                      roles=OpportunityManager.ACCOUNT_MANAGER,
-                                     debug=False)
+                                     debug=True)
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         self.assertEqual(set(email.bcc), set(debug_emails))
