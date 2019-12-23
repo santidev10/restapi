@@ -89,3 +89,11 @@ HIGH_RISK = "Unsuitable"
 CHANNELS_INDEX = "channels"
 VIDEOS_INDEX = "videos"
 BLACKLIST_DATA = "blacklist_data"
+
+CHANNEL_UPDATE_TRACKER = "channel_update"
+CHANNEL_DISCOVERY_TRACKER = "channel_discovery"
+VIDEO_DISCOVERY_TRACKER = "video_discovery"
+
+CHANNEL_UPDATE_LOCK = "channel_update_lock"
+CHANNEL_DISCOVERY_LOCK = "channel_discovery_lock"
+VIDEO_UPDATE_LOCK = "video_update_lock"
