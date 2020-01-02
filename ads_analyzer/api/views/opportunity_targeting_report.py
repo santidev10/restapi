@@ -31,7 +31,7 @@ class FilterBackend(BaseFilterBackend):
 
         recipients = request.query_params.dict().get("recipients")
         if recipients:
-            queryset = queryset.filter(recipients_id__in=recipients)
+            queryset = queryset.filter(recipients__in=recipients.split(","))
 
         return queryset
 

@@ -2,6 +2,7 @@ from datetime import date
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -151,5 +152,27 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
             )
 
         response = self._request()
+
+        self.assertEqual(1, response.json()["items_count"])
+
+    def test_get_report_by_recipients(self):
+        Permissions.sync_groups()
+        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
+        date_from = date(2019, 1, 1)
+        date_to = date(2019, 1, 2)
+        test_user = get_user_model().objects.create(email="test2@email.com",
+                                                    first_name="TestUser2", last_name="TestUser2")
+        with patch.object(post_save, "send"):
+            report = OpportunityTargetingReport.objects.create(
+                opportunity=opportunity,
+                date_from=date_from,
+                date_to=date_to,
+                s3_file_key="example/report",
+                status=ReportStatus.SUCCESS.value
+            )
+            report.recipients.add(test_user)
+
+        response = self._request(recipients=test_user.id)
 
         self.assertEqual(1, response.json()["items_count"])
