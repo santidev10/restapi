@@ -21,7 +21,7 @@ class OpportunityTargetingReport(models.Model):
     s3_file_key = models.CharField(max_length=256, default=None, null=True)
     status = models.CharField(max_length=32, default=ReportStatus.IN_PROGRESS.value,
                               null=False, choices=ReportStatus.choices())
-    recipients = models.ManyToManyField(get_user_model())
+    recipients = models.ManyToManyField(get_user_model(), related_name='opportunity_target_reports')
     created_at = models.DateTimeField(auto_now_add=True, null=True)
 
 
