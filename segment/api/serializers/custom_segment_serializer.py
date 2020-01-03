@@ -46,11 +46,10 @@ class CustomSegmentSerializer(ModelSerializer):
         return data
 
     def validate_segment_type(self, segment_type):
-        try:
-            data = self.map_to_id(segment_type.lower().strip(), item_type="segment")
-        except KeyError:
-            raise ValueError("segment_type must be either video or channel.")
-        return data
+        segment_type = int(segment_type)
+        if segment_type != 0 and segment_type != 1:
+            raise ValueError("segment_type must be either 0 or 1.")
+        return segment_type
 
     def validate_owner(self, owner_id):
         try:

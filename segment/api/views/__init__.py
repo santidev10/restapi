@@ -8,5 +8,5 @@ from .custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from .custom_segment.segment_creation_options import SegmentCreationOptionsApiView
 from .custom_segment.segment_delete_v2 import SegmentDeleteApiViewV2
 from .custom_segment.segment_export import SegmentExport
-from .custom_segment.segment_list_v2 import SegmentListApiViewV2
+from .custom_segment.segment_list_create_v2 import SegmentListCreateApiViewV2
 from .custom_segment.segment_preview import SegmentPreviewAPIView

@@ -60,4 +60,7 @@ urlpatterns_v3 = [
     url(r'^segments/$'.format(segment_types),
         SegmentCreateApiViewV3.as_view(),
         name=Name.SEGMENT_CREATE),
+    url(r'^segments/options/$',
+        SegmentCreationOptionsApiView.as_view(),
+        name=Name.SEGMENT_CREATION_OPTIONS),
 ]
