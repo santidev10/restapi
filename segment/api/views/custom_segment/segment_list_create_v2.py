@@ -109,7 +109,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         validated["segment_type"] = kwargs["segment_type"]
         validated["owner"] = request.user.id
         validated["title_hash"] = get_hash_name(data["title"].lower().strip())
-        validated["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
+        validated["youtube_categories"] = BrandSafetyQueryBuilder.map_content_categories(data["youtube_categories"])
         return validated
 
     def _validate_fields(self, fields):
