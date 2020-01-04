@@ -29,14 +29,13 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         es_mock.return_value = data
         payload = {
             "languages": ["es"],
-            "segment_type": 0,
-            "score_threshold": 1
+            "score_threshold": 1,
+            "segment_type": 0
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data.get("countries"))
         self.assertIsNotNone(response.data.get("items"))
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
