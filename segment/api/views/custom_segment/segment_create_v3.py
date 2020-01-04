@@ -76,7 +76,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             validated["owner"] = user_id
             validated["title_hash"] = get_hash_name(data["title"].lower().strip())
             validated["content_categories"] = BrandSafetyQueryBuilder.map_content_categories(data["content_categories"])
-            validated["countries"] = data["countries"]
+            validated["countries"] = data.get("countries", [])
         except (ValueError, TypeError, AttributeError, KeyError) as error:
             raise SegmentCreationError(f"{type(error).__name__}: {error}")
         return validated

@@ -33,7 +33,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(mock_generate.call_count, 0)
 
-    def test_invalid_date(self):
+    def test_invalid_date(self, mock_generate):
         self.create_test_user()
         payload = {
             "languages": ["es"],
@@ -48,6 +48,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(mock_generate.call_count, 0)
 
     def test_reject_invalid_segment_type(self, mock_generate):
         self.create_test_user()
@@ -110,10 +111,11 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             response = self.client.post(
                 self._get_url(), json.dumps(payload), content_type="application/json"
             )
+        print(response.data)
         data = response.data[0]
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(query["params"]["minimum_views"], payload["minimum_views"])
+        self.assertEqual(query["params"]["minimum_views"], int(payload["minimum_views"].replace(",", "")))
 
     def test_reject_duplicate_title_create(self, mock_generate):
         self.create_test_user()
@@ -163,7 +165,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_201_CREATED)
             self.assertTrue(CustomSegment.objects.filter(
-                title=payload["title"], segment_type=payload["segment_type"], list_type=1
+                title=payload["title"], segment_type=payload["segment_type"], list_type=0
             ).exists())
             mock_generate.delay.assert_called_once()
 
@@ -172,7 +174,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             payload["segment_type"] = 2
             response = self.client.post(self._get_url(), json.dumps(payload), content_type="application/json")
             self.assertEqual(response.status_code, HTTP_201_CREATED)
-            self.assertEqual(CustomSegment.objects.filter(title=payload["title"], list_type=1).count(), 2)
+            self.assertEqual(CustomSegment.objects.filter(title=payload["title"], list_type=0).count(), 2)
             self.assertEqual(mock_generate.delay.call_count, 2)
 
     def test_segment_creation_raises_deletes(self, mock_generate):

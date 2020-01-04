@@ -115,7 +115,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     def get_export_file(self, s3_key=None):
         if s3_key is None:
-            s3_key = self.get_s3_key()
+            s3_key = self.export.parse_download_url()
         export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
 

@@ -83,7 +83,7 @@ class CustomSegmentSerializer(ModelSerializer):
                     "title": None
                 } for _ in range(3)]
             }
-        data.update(instance.export.query["params"])
+        data.update(instance.export.query.get("params", {}))
         return data
 
     def extract_options(self, instance):
