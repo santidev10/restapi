@@ -2,6 +2,7 @@ from datetime import date
 from unittest.mock import patch
 
 from django.db.models.signals import post_save
+from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -67,7 +68,9 @@ class OpportunityTargetingReportPermissions(OpportunityTargetingReportBaseAPIVie
 
 class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingReportBaseAPIViewTestCase):
     def setUp(self) -> None:
-        self.user = self.create_admin_user()
+        self.user = self.create_test_user()
+        Permissions.sync_groups()
+        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER)
 
     def test_empty(self):
         response = self._request()
@@ -110,6 +113,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
                 "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
+                "recipients": "TestUser TestUser",
                 "status": report.status
             },
             response.json()["items"][0]
@@ -131,3 +135,44 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         response = self._request()
 
         self.assertEqual(0, response.json()["items_count"])
+
+    def test_all_report_list(self):
+        Permissions.sync_groups()
+        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
+        date_from = date(2019, 1, 1)
+        date_to = date(2019, 1, 2)
+        with patch.object(post_save, "send"):
+            OpportunityTargetingReport.objects.create(
+                opportunity=opportunity,
+                date_from=date_from,
+                date_to=date_to,
+                s3_file_key="example/report",
+                status=ReportStatus.SUCCESS.value
+            )
+
+        response = self._request()
+
+        self.assertEqual(1, response.json()["items_count"])
+
+    def test_get_report_by_recipients(self):
+        Permissions.sync_groups()
+        self.user.add_custom_user_group(PermissionGroupNames.ADS_ANALYZER_RECIPIENTS)
+        opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
+        date_from = date(2019, 1, 1)
+        date_to = date(2019, 1, 2)
+        test_user = get_user_model().objects.create(email="test2@email.com",
+                                                    first_name="TestUser2", last_name="TestUser2")
+        with patch.object(post_save, "send"):
+            report = OpportunityTargetingReport.objects.create(
+                opportunity=opportunity,
+                date_from=date_from,
+                date_to=date_to,
+                s3_file_key="example/report",
+                status=ReportStatus.SUCCESS.value
+            )
+            report.recipients.add(test_user)
+
+        response = self._request(recipients=test_user.id)
+
+        self.assertEqual(1, response.json()["items_count"])

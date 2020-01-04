@@ -31,7 +31,7 @@ class BaseEmailReport:
     def get_bcc(self):
         bcc = []
         if self.debug:
-            bcc = settings.ADMINS
+            bcc = getattr(settings, "DEBUG_EMAIL_ADDRESSES", [])
         return bcc
 
     def send(self):
