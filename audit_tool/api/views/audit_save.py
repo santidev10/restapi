@@ -186,35 +186,6 @@ class AuditSaveApiView(APIView):
         return Response(audit.to_dict())
 
     @staticmethod
-    def validate_date(date_str):
-        if date_str:
-            if '/' not in date_str:
-                raise ValidationError("format of min_date must be mm/dd/YYYY")
-            v_date = date_str.split("/")
-            if len(v_date) < 3:
-                raise ValidationError("format of min_date must be mm/dd/YYYY")
-            m = int(v_date[0])
-            d = int(v_date[1])
-            y = int(v_date[2])
-            if d < 1 or d > 31:
-                raise ValidationError("day must be between 1 and 31")
-            if m < 1 or m > 12:
-                raise ValidationError("month must be between 1 and 12")
-            if y < 2000 or y > datetime.now().year:
-                raise ValidationError("year must be between 2000 and {}".format(datetime.now().year))
-
-    @staticmethod
-    def validate_max_recommended(max_recommended):
-        try:
-            max_recommended = int(max_recommended) if max_recommended else 100000
-            if max_recommended > 500000:
-                max_recommended = 500000
-        except ValueError:
-            raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
-                                  .format(max_recommended, type(max_recommended)))
-        return max_recommended
-
-    @staticmethod
     def put_source_file_on_s3(file):
         # take the file uploaded locally, put on S3 and return the s3 filename
         random_file_name = uuid4().hex

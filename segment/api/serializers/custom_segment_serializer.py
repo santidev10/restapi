@@ -86,11 +86,6 @@ class CustomSegmentSerializer(ModelSerializer):
         data.update(instance.export.query.get("params", {}))
         return data
 
-    def extract_options(self, instance):
-        # iab categories, languages, bs threshold,min sub, min views
-        pass
-
-
     @staticmethod
     def map_to_str(value, item_type="segment"):
         config = {
