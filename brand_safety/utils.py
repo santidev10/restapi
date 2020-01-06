@@ -1,7 +1,6 @@
 from elasticsearch_dsl import Q
 
 import brand_safety.constants as constants
-from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditCategory
 from es_components.constants import Sections
 from es_components.managers import ChannelManager
@@ -35,6 +34,7 @@ class BrandSafetyQueryBuilder(object):
         self.countries = data.get("countries", [])
         self.languages = data.get("languages", [])
         self.severity_filters = data.get("severity_filters", {})
+        self.brand_safety_categories = data.get("brand_safety_categories", [])
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
@@ -123,7 +123,7 @@ class BrandSafetyQueryBuilder(object):
             for score in scores:
                 must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get())
 
-        for category in BadWordCategory.objects.values_list("id", flat=True):
+        for category in self.brand_safety_categories:
             must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get())
 
         query = Q(
@@ -162,7 +162,7 @@ class BrandSafetyQueryBuilder(object):
         elif score_threshold == 3:
             threshold = 89
         else:
-            threshold = None
+            threshold = 0
         return threshold
 
     @staticmethod
