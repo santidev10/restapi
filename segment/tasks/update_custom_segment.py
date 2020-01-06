@@ -28,7 +28,7 @@ def update_custom_segment():
             ).first()
             if export_to_update:
                 segment = export_to_update.segment
-                results = generate_segment(segment, export_to_update.query, segment.LIST_SIZE)
+                results = generate_segment(segment, export_to_update.query["body"], segment.LIST_SIZE)
                 segment.statistics = results["statistics"]
                 export_to_update.download_url = results["download_url"]
                 export_to_update.updated_at = timezone.now()

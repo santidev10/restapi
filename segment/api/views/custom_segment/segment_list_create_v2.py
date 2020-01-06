@@ -15,7 +15,7 @@ from segment.api.paginator import SegmentPaginator
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
-from segment.utils import validate_threshold
+from segment.utils.utils import validate_threshold
 
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
@@ -109,7 +109,7 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         validated["segment_type"] = kwargs["segment_type"]
         validated["owner"] = request.user.id
         validated["title_hash"] = get_hash_name(data["title"].lower().strip())
-        validated["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(data["youtube_categories"])
+        validated["youtube_categories"] = BrandSafetyQueryBuilder.map_content_categories(data["youtube_categories"])
         return validated
 
     def _validate_fields(self, fields):

@@ -16,7 +16,7 @@ def generate_custom_segment(segment_id):
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
-        results = generate_segment(segment, export.query, segment.LIST_SIZE)
+        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE)
         segment.statistics = results["statistics"]
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
