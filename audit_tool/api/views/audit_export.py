@@ -211,7 +211,7 @@ class AuditExportApiView(APIView):
             video_ids.append(vid.video_id)
             hit_words[vid.video.video_id] = vid.word_hits
         video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
-        auditor = BrandSafetyAudit(discovery=False)
+        auditor = BrandSafetyAudit()
         rows = [cols]
         count = video_meta.count()
         if count > self.MAX_ROWS:
@@ -458,7 +458,7 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
         channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
-        auditor = BrandSafetyAudit(discovery=False)
+        auditor = BrandSafetyAudit()
         rows = [cols]
         count = channel_meta.count()
         num_done = 0
