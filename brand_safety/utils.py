@@ -37,7 +37,7 @@ class BrandSafetyQueryBuilder(object):
         self.severity_filters = data.get("severity_filters", {})
 
         self.options = self._get_segment_options()
-        self.es_manager = ChannelManager(sections=self.SECTIONS) if self.segment_type == constants.CHANNEL else VideoManager(sections=self.SECTIONS)
+        self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
         self.query_body = self._construct_query()
         self.query_params = self._get_query_params()
 

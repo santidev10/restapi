@@ -80,6 +80,12 @@ class CustomSegment(SegmentMixin, Timestampable):
     list_type_to_id = {
         list_type: _id for _id, list_type in dict(LIST_TYPE_CHOICES).items()
     }
+    segment_id_to_type = {
+        _id: segment_type for segment_type, _id in segment_type_to_id.items()
+    }
+    list_id_to_type = {
+        _id: list_type for list_type, _id in list_type_to_id.items()
+    }
 
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)

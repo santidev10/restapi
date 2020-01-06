@@ -3,7 +3,6 @@ import types
 from unittest.mock import patch
 
 from django.urls import reverse
-from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -36,7 +35,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data.get("items"))
+        self.assertIsNotNone(response.data.get("video_items"))
+        self.assertIsNotNone(response.data.get("channel_items"))
         self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
         self.assertIsNotNone(response.data["options"].get("content_categories"))
         self.assertIsNotNone(response.data["options"].get("countries"))
@@ -50,3 +50,47 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+    def test_success_video_items(self, es_mock):
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 100000
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 0
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["video_items"], data.hits.total)
+
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+    def test_success_channel_items(self, es_mock):
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 100000
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 1
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["channel_items"], data.hits.total)
