@@ -29,7 +29,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
-            "segment_type": 0
+            "segment_type": 2
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
