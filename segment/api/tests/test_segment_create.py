@@ -42,7 +42,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "title": "test whitelist",
             "content_categories": [],
             "segment_type": 0,
-            "last_upload_date": "2000-01-01"
+            "last_upload_date": "2000/01/01"
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
@@ -94,7 +94,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         )
         data = response.data[0]
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(set(data.keys()), set(*SegmentCreateApiViewV3.response_fields + ("statistics",)))
+        self.assertEqual(set(data.keys()), set(SegmentCreateApiViewV3.response_fields + ("statistics",)))
         self.assertTrue(data["pending"])
 
     def test_create_integer_values(self, mock_generate):
@@ -111,7 +111,6 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             response = self.client.post(
                 self._get_url(), json.dumps(payload), content_type="application/json"
             )
-        print(response.data)
         data = response.data[0]
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
         self.assertEqual(response.status_code, HTTP_201_CREATED)

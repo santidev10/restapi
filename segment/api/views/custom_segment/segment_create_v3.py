@@ -16,7 +16,7 @@ from segment.utils.utils import validate_threshold
 
 class SegmentCreateApiViewV3(CreateAPIView):
     response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "list_type",
-                       "content_categories", "languages", "countries", "score_threshold", "sentiment")
+                       "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending")
     serializer_class = CustomSegmentSerializer
 
     def post(self, request, *args, **kwargs):
@@ -54,7 +54,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             }
             CustomSegmentFileUpload.enqueue(query=query, segment=segment)
             generate_custom_segment.delay(segment.id)
-            options["id"] = segment.id
+            self._update_response_fields(segment, options)
             res = {
                 key: options[key] for key in self.response_fields
             }
@@ -105,6 +105,16 @@ class SegmentCreateApiViewV3(CreateAPIView):
         except ValueError:
             raise ValidationError("The number: {} is not valid.".format(value))
         return to_num
+
+    def _update_response_fields(self, segment, res):
+        """
+        Mutate res with additional fields for response
+        :param segment: CustomSegment
+        :param res: dict
+        :return:
+        """
+        res["id"] = segment.id
+        res["pending"] = True
 
 
 class SegmentCreationError(Exception):
