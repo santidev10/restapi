@@ -10,7 +10,7 @@ VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "ge
 class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=1)
-    TASK_BATCH_SIZE = 50
+    TASK_BATCH_SIZE = 100
     MAX_QUEUE_SIZE = 100
 
     @classmethod
@@ -18,17 +18,21 @@ class BaseScheduler:
         expiration = timedelta(**cls.TASK_EXPIRATION).total_seconds()
         return expiration
 
+    @classmethod
+    def get_items_limit(cls, curr_queue_size):
+        limit = (cls.MAX_QUEUE_SIZE - curr_queue_size) * cls.TASK_BATCH_SIZE
+        return limit
+
 
 class Schedulers:
     class ChannelDiscovery(BaseScheduler):
-        TASK_BATCH_SIZE = 100
         NAME = "brand_safety_channel_discovery"
 
     class ChannelUpdate(BaseScheduler):
-        TASK_BATCH_SIZE = 100
         NAME = "brand_safety_channel_update"
         UPDATE_TIME_THRESHOLD = "now-7d/d"
 
     class VideoDiscovery(BaseScheduler):
-        TASK_BATCH_SIZE = 1000
+        MAX_QUEUE_SIZE = 2
+        TASK_BATCH_SIZE = 5000
         NAME = "brand_safety_video_discovery"
