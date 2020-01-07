@@ -1,3 +1,4 @@
+from functools import wraps
 import redis
 
 from celery import chord
@@ -41,9 +42,9 @@ def unlock(lock_name, fail_silently=False):
 
 def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_retries=60):
     def _dec(func):
+        @wraps(func)
         def _caller(task, *args, **kwargs):
             is_acquired = False
-
             lock = REDIS_CLIENT.lock(lock_key, expire)
             try:
                 is_acquired = lock.acquire(blocking=False)
@@ -51,7 +52,7 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
                 if not is_acquired:
                     raise task.retry(countdown=countdown, max_retries=max_retries)
 
-                result = func(task, *args, **kwargs)
+                result = func(*args, **kwargs)
 
             finally:
 

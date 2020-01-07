@@ -40,6 +40,10 @@ class AuditUtils(object):
             str(category_id): 100
             for category_id in self.bad_word_categories
         }
+        self._default_severity_counts = {
+            str(score): 0
+            for score in set(BadWord.objects.values_list("negative_score", flat=True))
+        }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
@@ -55,6 +59,10 @@ class AuditUtils(object):
     @property
     def default_zero_score(self):
         return self._default_zero_score.copy()
+
+    @property
+    def default_severity_counts(self):
+        return self._default_severity_counts.copy()
 
     @property
     def default_full_score(self):

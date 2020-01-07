@@ -4,14 +4,14 @@ from rest_framework.response import Response
 from rest_framework.status import  HTTP_200_OK
 from rest_framework.views import APIView
 
+from audit_tool.models import BlacklistItem
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-from brand_safety.models import BrandSafetyFlag
+from brand_safety.tasks.channel_update import channel_update
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.models import BadWordCategory
-from audit_tool.models import BlacklistItem
+from saas.configs.celery import Queue
 from utils.permissions import user_has_permission
 from utils.brand_safety import get_brand_safety_data
-from utils.es_components_cache import flush_cache
 
 
 class AuditFlagApiView(APIView):
@@ -73,14 +73,12 @@ class AuditFlagApiView(APIView):
 
         # If video, audit immediately and send overall_score in response
         if item_type == 0:
-            auditor = BrandSafetyAudit(discovery=False)
-            video_audit = auditor.manual_video_audit([item_id], blacklist_data=blacklist_data)[0]
+            auditor = BrandSafetyAudit()
+            video_audit = auditor.audit_video(item_id, blacklist_data=blacklist_data)
             overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
             body["brand_safety_data"] = get_brand_safety_data(overall_score)
         else:
-            # Enqueue channel to be audited
-            flush_cache()
-            BrandSafetyFlag.enqueue(item_id=item_id, item_type=1)
+            channel_update.apply_async(item_id, queue=Queue.DEFAULT)
             body["brand_safety_data"] = get_brand_safety_data(None)
 
         body["BlackListItemDetails"] = {
