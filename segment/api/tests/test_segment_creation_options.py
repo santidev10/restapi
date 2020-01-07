@@ -1,8 +1,8 @@
+import json
 import types
 from unittest.mock import patch
 
 from django.urls import reverse
-from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -12,9 +12,8 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
-    def _get_url(self, segment_type):
-        return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_CREATION_OPTIONS,
-                       kwargs=dict(segment_type=segment_type))
+    def _get_url(self):
+        return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATION_OPTIONS)
 
     @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success(self, es_mock):
@@ -27,16 +26,71 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.max_score = None
         data.hits.hits = []
         es_mock.return_value = data
-        query_prams = QueryDict(
-            "brand_safety_categories=1,2,3&languages=es&list_type=whitelist&score_threshold=50&minimum_option="
-        ).urlencode()
-        response = self.client.get(
-            "{}?{}".format(self._get_url("channel"), query_prams))
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 2
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data.get("video_items"))
+        self.assertIsNotNone(response.data.get("channel_items"))
+        self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
+        self.assertIsNotNone(response.data["options"].get("content_categories"))
+        self.assertIsNotNone(response.data["options"].get("countries"))
 
     def test_reject_invalid_params(self):
         self.create_test_user()
-        query_params = QueryDict("country=us").urlencode()
-        response = self.client.get(
-            "{}?{}".format(self._get_url("video"), query_params))
+        payload = {
+            "country": "us"
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+    def test_success_video_items(self, es_mock):
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 100000
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 0
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["video_items"], data.hits.total)
+
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+    def test_success_channel_items(self, es_mock):
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 100000
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "segment_type": 1
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["channel_items"], data.hits.total)

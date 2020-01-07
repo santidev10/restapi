@@ -11,7 +11,7 @@ from es_components.managers import ChannelManager
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from segment.utils import get_persistent_segment_model_by_type
+from segment.utils.utils import get_persistent_segment_model_by_type
 from segment.segment_list_generator import SegmentListGenerator
 
 logger = logging.getLogger(__name__)
