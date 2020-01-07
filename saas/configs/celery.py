@@ -4,6 +4,8 @@ from datetime import timedelta
 
 from celery.schedules import crontab
 
+
+
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
 RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
@@ -119,7 +121,19 @@ CELERY_BEAT_SCHEDULE = {
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(hour="*"),
-    }
+    },
+    "brand_safety_channel_discovery": {
+        "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
+        "schedule": 60 * 5,
+    },
+    "brand_safety_channel_update": {
+        "task": "brand_safety.tasks.channel_update.channel_update_scheduler",
+        "schedule": 60 * 5,
+    },
+    "brand_safety_video_discovery": {
+        "task": "brand_safety.tasks.video_discovery.video_discovery_scheduler",
+        "schedule": 60 * 5,
+    },
 }
 
 
@@ -137,18 +151,23 @@ class Queue:
     HOURLY_STATISTIC = "hourly_statistic"
     CUSTOM_TRANSCRIPTS = "custom_transcripts"
     CACHE_RESEARCH = "cache_research"
+    BRAND_SAFETY_CHANNEL_LIGHT = "brand_safety_channel_light"
+    BRAND_SAFETY_CHANNEL_PRIORITY = "brand_safety_channel_priority"
+    BRAND_SAFETY_VIDEO_PRIORITY = "brand_safety_video_priority"
+    SCHEDULERS = "schedulers"
 
 
 CELERY_ROUTES_PREPARED = [
+    ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.update.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.reports.*", {"queue": Queue.REPORTS}),
+    ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("email_reports.*", {"queue": Queue.EMAIL_REPORTS}),
     ("*export*", {"queue": Queue.EXPORT}),
-    ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
-    ("cache.tasks.*", {"queue": Queue.CACHE_RESEARCH}),
     ("segment.tasks.*", {"queue": Queue.SEGMENTS}),
+    ("*_scheduler", {"queue": Queue.SCHEDULERS}),
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
@@ -163,6 +182,9 @@ class TaskExpiration:
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
     CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
+    BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
+    BRAND_SAFETY_CHANNEL_UPDATE = timedelta(hours=2).total_seconds()
+    BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -171,3 +193,6 @@ class TaskTimeout:
     HOURLY_AW_UPDATE = timedelta(hours=1).total_seconds()
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
     CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
+    BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
+    BRAND_SAFETY_CHANNEL_UPDATE = timedelta(hours=2).total_seconds()
+    BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
