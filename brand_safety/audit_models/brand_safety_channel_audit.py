@@ -111,9 +111,13 @@ class BrandSafetyChannelAudit(object):
                 multiplier = self.score_multiplier[word.location]
                 keyword_category = self.score_mapping[word.name]["category"]
                 keyword_score = self.score_mapping[word.name]["score"] * multiplier
-                channel_brand_safety_score.add_metadata_score(word.name, keyword_category, keyword_score)
+
+                if keyword_category is None:
+                    continue
             except KeyError:
-                pass
+                continue
+            else:
+                channel_brand_safety_score.add_metadata_score(word.name, keyword_category, keyword_score)
 
         # If blacklist data available, then set overall score and blacklisted category score to 0
         for category_id in self.blacklist_data.keys():
@@ -139,19 +143,24 @@ class BrandSafetyChannelAudit(object):
                     category: {
                         "category_score": score,
                         "keywords": [],
-                        "severity_counts": self.audit_utils.default_zero_score
+                        "severity_counts": self.audit_utils.default_severity_counts
                     }
                     for category, score in brand_safety_score.category_scores.items()
                 }
             }
         }
         for word, keyword_data in brand_safety_score.keyword_scores.items():
-            # Pop category as we do not need to store in categories section, only needed for key access
-            category = keyword_data.pop("category")
-            es_data["brand_safety"]["categories"][category]["keywords"].append(keyword_data)
+            try:
+                # Pop category as we do not need to store in categories section, only needed for key access
+                category = keyword_data.pop("category", None)
+                if category is None:
+                    category = self.score_mapping[word]["category"]
+                es_data["brand_safety"]["categories"][category]["keywords"].append(keyword_data)
 
-            # Increment category severity hit counts
-            severity = str(self.score_mapping.get(word, {}).get("score", 1))
-            es_data["brand_safety"]["categories"][category]["severity_counts"][severity] += 1
+                # Increment category severity hit counts
+                severity = str(self.score_mapping[word]["score"])
+                es_data["brand_safety"]["categories"][category]["severity_counts"][severity] += 1
+            except KeyError:
+                continue
         channel = Channel(**es_data)
         return channel

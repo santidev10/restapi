@@ -23,7 +23,8 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    BATCH_SIZE = 20
+    CHANNEL_BATCH_SIZE = 10
+    VIDEO_BATCH_SIZE = 2000
     ES_LIMIT = 10000
 
     MINIMUM_VIEW_COUNT = 1000
@@ -51,55 +52,52 @@ class BrandSafetyAudit(object):
                       Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
-        self.config = {
-            "channel": {
-                "serializer": BrandSafetyChannelSerializer,
-                "manager": self.channel_manager,
-                "executor": self.process_channels,
-                "batch_size": self.BATCH_SIZE
-            },
-            "video": {
 
-            }
-        }
-
-    def process_channels(self, channel_ids):
+    def process_channels(self, channel_ids, index=True):
         """
         Audit channels
         :param channel_ids: list[str]
+        :param index: Should index results
         :return: None
         """
-        channels = self.channel_manager.get(channel_ids)
-        serialized = BrandSafetyChannelSerializer(channels, many=True).data
-        data = self._get_channel_batch_data(serialized)
         video_results = []
         channel_results = []
-        for channel in data:
-            # Ignore channels that can not be indexed without required fields
-            if not channel.get("id"):
-                continue
-            video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
-            channel["video_audits"] = video_audits
+        for batch in self.audit_utils.batch(channel_ids, self.CHANNEL_BATCH_SIZE):
+            channels = self.channel_manager.get(batch)
+            serialized = BrandSafetyChannelSerializer(channels, many=True).data
+            data = self._get_channel_batch_data(serialized)
+            for channel in data:
+                # Ignore channels that can not be indexed without required fields
+                if not channel.get("id"):
+                    continue
+                video_audits = self.audit_videos(videos=channel["videos"], get_blacklist_data=False)
+                channel["video_audits"] = video_audits
 
-            channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {})
-            channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
+                channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {})
+                channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
 
-            video_results.extend(video_audits)
-            channel_results.append(channel_audit)
-        self._index_results(video_results, channel_results)
+                video_results.extend(video_audits)
+                channel_results.append(channel_audit)
+            if index:
+                self._index_results(video_results, channel_results)
         return video_results, channel_results
 
-    def process_videos(self, video_ids):
+    def process_videos(self, video_ids, index=True):
         """
         Audit videos
-        :param video_ids: list[str]
+        :param video_ids: list[str]\
+        :param index: Should index results
         :return:
         """
-        videos = self.video_manager.get(video_ids)
-        serialized = BrandSafetyVideoSerializer(videos, many=True).data
-        video_audits = self.audit_videos(videos=serialized, get_blacklist_data=True)
-        self._index_results(video_audits, [])
-        return video_audits, []
+        video_results = []
+        for batch in self.audit_utils.batch(video_ids, self.VIDEO_BATCH_SIZE):
+            videos = self.video_manager.get(batch)
+            serialized = BrandSafetyVideoSerializer(videos, many=True).data
+            video_audits = self.audit_videos(videos=serialized, get_blacklist_data=True)
+            video_results.extend(video_audits)
+            if index:
+                self._index_results(video_audits, [])
+        return video_results, []
 
     def audit_video(self, video_data: dict, blacklist_data=None, full_audit=True) -> BrandSafetyVideoAudit:
         """
@@ -184,6 +182,9 @@ class BrandSafetyAudit(object):
                     str -> channel id to retrieve
             Required keys: channel_id, title
             Optional keys: description, video_tags
+        :param blacklist_data: dict: BlacklistItem
+        :param full_audit: Flag to return score or audit object
+        :param rescore:
         :return:
         """
         if not rescore:
@@ -272,8 +273,8 @@ class BrandSafetyAudit(object):
         """
         videos = [audit.instantiate_es() for audit in video_audits]
         channels = [audit.instantiate_es() for audit in channel_audits]
-        self.channel_manager.upsert(channels)
         self.video_manager.upsert(videos)
+        self.channel_manager.upsert(channels)
 
     def _get_channel_batch_data(self, channel_batch):
         """
