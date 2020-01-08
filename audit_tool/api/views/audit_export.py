@@ -477,8 +477,11 @@ class AuditExportApiView(APIView):
                 last_category = v.last_uploaded_category.category_display_iab
             except Exception as e:
                 last_category = ""
-            channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
-            mapped_score = map_brand_safety_score(channel_brand_safety_score)
+            try:
+                channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
+                mapped_score = map_brand_safety_score(channel_brand_safety_score)
+            except Exception as e:
+                print(str(e))
             if not v.monetised:
                 try:
                     cid = v.channel.channel_id
@@ -510,7 +513,7 @@ class AuditExportApiView(APIView):
                 ','.join(good_hit_words.get(v.channel.channel_id)) if good_hit_words.get(v.channel.channel_id) else "",
                 ','.join(good_video_hit_words.get(v.channel.channel_id)) if good_video_hit_words.get(
                     v.channel.channel_id) else "",
-                mapped_score,
+                mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
             ]
             try:
