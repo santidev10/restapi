@@ -12,6 +12,7 @@ from saas.configs.celery import Queue
 from saas.configs.celery import TaskExpiration
 from utils.celery.tasks import celery_lock
 from utils.celery.tasks import group_chorded
+from utils.celery.utils import get_queue_size
 from utils.utils import chunks_generator
 
 
@@ -24,11 +25,13 @@ def channel_update_scheduler():
             "cursor_id": None
         }
     )
-    channel_manager = ChannelManager()
+    channel_manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
     query = channel_manager.forced_filters() \
             & QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor.cursor_id).get() \
             & QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(Schedulers.ChannelUpdate.UPDATE_TIME_THRESHOLD).get()
-    limit = Schedulers.ChannelUpdate.TASK_BATCH_SIZE * Schedulers.ChannelUpdate.MAX_QUEUE_SIZE
+
+    queue_size = get_queue_size(Queue.BRAND_SAFETY_CHANNEL_LIGHT)
+    limit = Schedulers.ChannelUpdate.get_items_limit(queue_size)
     channels = channel_manager.search(query, limit=min(limit, 10000), sort=(MAIN_ID_FIELD, f"{Sections.STATS}.subscribers")).execute()
     channel_ids = [item.main.id for item in channels]
     try:
@@ -42,8 +45,10 @@ def channel_update_scheduler():
     task = chain(
         update_tasks,
         finalize.si(last_id).set(queue=Queue.SCHEDULERS),
-    )
-    return task()
+    ).apply_async()
+    # Update brand_safety section so next discovery batch does not overlap
+    channel_manager.upsert(channels)
+    return task.apply_async()
 
 
 @celery_app.task
@@ -57,5 +62,6 @@ def channel_update(channel_ids):
 @celery_app.task
 def finalize(last_id):
     cursor = APIScriptTracker.objects.get(name=Schedulers.ChannelUpdate.NAME)
-    cursor.cursor_id = last_id
-    cursor.save()
+    if last_id > cursor.cursor_id:
+        cursor.cursor_id = last_id
+        cursor.save()
