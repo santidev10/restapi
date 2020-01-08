@@ -49,10 +49,13 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
             try:
                 is_acquired = lock.acquire(blocking=False)
 
-                if not is_acquired:
+                if max_retries > 0 and not is_acquired:
                     raise task.retry(countdown=countdown, max_retries=max_retries)
 
-                result = func(*args, **kwargs)
+                if is_acquired:
+                    result = func(*args, **kwargs)
+                else:
+                    result = None
 
             finally:
 
