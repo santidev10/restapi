@@ -54,10 +54,12 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
             for category in content_categories.split(","):
                 q_filter |= Q(export__query__params__content_categories__icontains=category)
 
+        # Channel and video language query param differ. Filter out empty str items
         languages = self.request.query_params.get("general_data.top_language", "").split(",") \
             + self.request.query_params.get("general_data.language", "").split(",")
-        if all(languages):
-            for lang in languages.split(","):
+        languages = list(filter(lambda x: bool(x), languages))
+        if languages:
+            for lang in languages:
                 q_filter |= Q(export__query__params__languages__icontains=lang)
         queryset = queryset.filter(q_filter, **filters)
         return queryset
