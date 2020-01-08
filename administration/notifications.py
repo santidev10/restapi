@@ -25,7 +25,7 @@ def send_new_registration_email(email_data):
     """
     Send new user registration email
     """
-    sender = settings.SERVER_EMAIL
+    sender = settings.SENDER_EMAIL_ADDRESS
     to = settings.REGISTRATION_ACTION_EMAIL_ADDRESSES
     subject = "New registration"
     text = "Dear Admin, \n\n" \
