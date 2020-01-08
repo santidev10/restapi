@@ -78,7 +78,7 @@ class AuditFlagApiView(APIView):
             overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
             body["brand_safety_data"] = get_brand_safety_data(overall_score)
         else:
-            channel_update.apply_async(item_id, queue=Queue.DEFAULT)
+            channel_update.apply_async(args=[item_id], queue=Queue.DEFAULT)
             body["brand_safety_data"] = get_brand_safety_data(None)
 
         body["BlackListItemDetails"] = {

@@ -188,9 +188,9 @@ class BrandSafetyAudit(object):
         :return:
         """
         if not rescore:
-            # Retrieve existing data from Elasticsearch
-            response = self.audit_utils.get_items([channel_data], self.channel_manager)[0]
             try:
+                # Retrieve existing data from Elasticsearch
+                response = self.audit_utils.get_items([channel_data], self.channel_manager)[0]
                 audit = response.brand_safety.overall_score
             except (IndexError, AttributeError):
                 # Channel not scored

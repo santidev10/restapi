@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 
 from segment.models.persistent.base import BasePersistentSegment
@@ -74,3 +75,21 @@ def validate_threshold(threshold):
     if not 0 <= threshold <= 100:
         err = "Score threshold must be between 0 and 100, inclusive."
     return err
+
+
+def validate_date(date_str: str):
+    if date_str:
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError(f"Invalid date: {date_str}. Date format must be YYYY-MM-DD")
+    return date_str
+
+
+def validate_numeric(value):
+    formatted = str(value).replace(",", "")
+    try:
+        to_num = int(formatted)
+    except ValueError:
+        raise ValueError("The number: {} is not valid.".format(value))
+    return to_num

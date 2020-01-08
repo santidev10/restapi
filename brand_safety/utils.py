@@ -119,12 +119,15 @@ class BrandSafetyQueryBuilder(object):
         for country in self.countries:
             should_queries.append(QueryBuilder().build().should().term().field("general_data.country").value(country).get())
 
-        for category, scores in self.severity_filters.items():
-            for score in scores:
-                must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get())
+        if self.severity_filters:
+            for category, scores in self.severity_filters.items():
+                for score in scores:
+                    # Querying for categories with at least one unique word of target severity score
+                    must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get())
 
-        for category in self.brand_safety_categories:
-            must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get())
+        if self.brand_safety_categories and self.score_threshold:
+            for category in self.brand_safety_categories:
+                must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get())
 
         query = Q(
             'bool',
@@ -140,7 +143,7 @@ class BrandSafetyQueryBuilder(object):
         :return: int
         """
         if score_threshold == 1:
-            threshold = 69
+            threshold = 0
         elif score_threshold == 2:
             threshold = 79
         elif score_threshold == 3:
@@ -156,13 +159,15 @@ class BrandSafetyQueryBuilder(object):
         :return: int
         """
         if score_threshold == 1:
-            threshold = 69
+            threshold = 0
         elif score_threshold == 2:
-            threshold = 79
+            threshold = 69
         elif score_threshold == 3:
+            threshold = 79
+        elif score_threshold == 4:
             threshold = 89
         else:
-            threshold = 0
+            threshold = None
         return threshold
 
     @staticmethod
@@ -175,13 +180,13 @@ class BrandSafetyQueryBuilder(object):
 
     def _map_sentiment(self, sentiment: int):
         if sentiment == 1:
-            threshold = 90
+            threshold = 0
         elif sentiment == 2:
-            threshold = 70
-        elif sentiment == 3:
             threshold = 50
+        elif sentiment == 3:
+            threshold = 70
         elif sentiment == 4:
-            threshold = 30
+            threshold = 90
         else:
             threshold = None
         return threshold
