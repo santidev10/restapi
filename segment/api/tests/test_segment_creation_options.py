@@ -94,3 +94,32 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["channel_items"], data.hits.total)
+
+    @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
+    def test_success_params_empty(self, es_mock):
+        self.create_test_user()
+        data = types.SimpleNamespace()
+        data.hits = types.SimpleNamespace()
+        data.took = 5
+        data.timed_out = False
+        data.hits.total = 100000
+        data.max_score = None
+        data.hits.hits = []
+        es_mock.return_value = data
+        payload = {
+            "score_threshold": None,
+            "languages": None,
+            "severity_filters": None,
+            "countries": None,
+            "segment_type": None,
+            "sentiment": None,
+            "content_categories": None,
+            "last_upload_date": None,
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["options"].get("brand_safety_categories"))
+        self.assertIsNotNone(response.data["options"].get("content_categories"))
+        self.assertIsNotNone(response.data["options"].get("countries"))

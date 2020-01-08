@@ -78,14 +78,15 @@ class SegmentCreateApiViewV3(CreateAPIView):
     @staticmethod
     def validate_options(options: dict):
         opts = options.copy()
-        opts["last_upload_date"] = validate_date(opts.get("last_upload_date"))
-        opts["minimum_views"] = validate_numeric(opts.get("minimum_views", 0))
-        opts["minimum_subscribers"] = validate_numeric(opts.get("minimum_subscribers", 0))
-        opts["score_threshold"] = int(opts.get("score_threshold", 0))
-        opts["sentiment"] = int(opts.get("sentiment", 0))
-        opts["content_categories"] = BrandSafetyQueryBuilder.map_content_categories(opts.get("content_categories", []))
-        opts["countries"] = opts.get("countries", [])
-        opts["severity_filters"] = opts.get("severity_filters", {})
+        opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
+        opts["severity_filters"] = opts.get("severity_filters", {}) or {}
+        opts["content_categories"] = BrandSafetyQueryBuilder.map_content_categories(opts.get("content_categories", []) or [])
+        opts["languages"] = opts.get("languages", []) or []
+        opts["countries"] = opts.get("countries", []) or []
+        opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
+        opts["minimum_views"] = validate_numeric(opts.get("minimum_views", 0) or 0)
+        opts["minimum_subscribers"] = validate_numeric(opts.get("minimum_subscribers", 0) or 0)
+        opts["last_upload_date"] = validate_date(opts.get("last_upload_date") or "")
         return opts
 
     def _create(self, data: dict):
