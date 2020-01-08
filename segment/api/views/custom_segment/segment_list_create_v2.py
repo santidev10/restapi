@@ -1,6 +1,9 @@
+from functools import reduce
+
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
+from django.db.models import Q
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
@@ -28,24 +31,35 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     }
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
-    queryset = CustomSegment.objects.all().order_by("created_at")
+    queryset = CustomSegment.objects.all().select_related("export").order_by("created_at")
 
     def _do_filters(self, queryset):
         """
         Filter queryset
         """
         filters = {}
-        # search
+        q_filter = Q()
+
         search = self.request.query_params.get("search")
         if search:
             filters["title__icontains"] = search
-        # list type
+
         list_type = self.request.query_params.get("list_type")
         if list_type:
             value = CustomSegmentSerializer.map_to_id(list_type, item_type="list")
             filters["list_type"] = value
-        if filters:
-            queryset = queryset.filter(**filters)
+
+        content_categories = self.request.query_params.get("general_data.iab_categories")
+        if content_categories:
+            for category in content_categories.split(","):
+                q_filter |= Q(export__query__params__content_categories__icontains=category)
+
+        languages = self.request.query_params.get("general_data.top_language", "").split(",") \
+            + self.request.query_params.get("general_data.language", "").split(",")
+        if all(languages):
+            for lang in languages.split(","):
+                q_filter |= Q(export__query__params__languages__icontains=lang)
+        queryset = queryset.filter(q_filter, **filters)
         return queryset
 
     def _do_sorts(self, queryset):

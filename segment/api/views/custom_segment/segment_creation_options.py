@@ -18,9 +18,10 @@ class SegmentCreationOptionsApiView(APIView):
 
     def post(self, request, *args, **kwargs):
         options = self._validate_data(request.data)
-        data = {
+        res_data = {
             "options": self._get_options()
         }
+        # Only get item estimates if valid segment_type
         get_counts = options["segment_type"] is not None
         if get_counts:
             if options["segment_type"] == 2:
@@ -29,16 +30,16 @@ class SegmentCreationOptionsApiView(APIView):
                     options["segment_type"] = int_type
                     query_builder = BrandSafetyQueryBuilder(options)
                     result = query_builder.execute()
-                    data[f"{str_type}_items"] = result.hits.total or 0
+                    res_data[f"{str_type}_items"] = result.hits.total or 0
             else:
                 query_builder = BrandSafetyQueryBuilder(options)
                 result = query_builder.execute()
                 str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
-                data[f"{str_type}_items"] = result.hits.total or 0
-        status = HTTP_200_OK
-        return Response(status=status, data=data)
+                res_data[f"{str_type}_items"] = result.hits.total or 0
+        return Response(status=HTTP_200_OK, data=res_data)
 
-    def _get_options(self):
+    @staticmethod
+    def _get_options():
         countries = CountryListApiView().get().data
         options = {
             "brand_safety_categories": [
@@ -58,34 +59,15 @@ class SegmentCreationOptionsApiView(APIView):
             unexpected = any(key not in expected for key in received)
             if unexpected:
                 raise ValueError("Unexpected fields: {}".format(", ".join(set(received) - set(expected))))
-            err = validate_threshold(data.get("score_threshold", 0))
-            if err:
-                raise ValueError(err)
 
             if data.get("segment_type") is not None:
-                segment_type = int(data["segment_type"])
-                if not 0 <= segment_type <= 2:
-                    raise ValueError(f"Invalid list_type: {segment_type}. Must 0-2, inclusive")
+                segment_type = SegmentCreateApiViewV3.validate_segment_type(int(data["segment_type"]))
             else:
                 segment_type = None
-
-            if not data.get("brand_safety_categories"):
-                data["brand_safety_categories"] = BadWordCategory.objects.values_list("id", flat=True)
+            options = SegmentCreateApiViewV3.validate_options(data)
+            options["segment_type"] = segment_type
         except KeyError as err:
             raise ValidationError(f"Missing required key: {err}")
         except ValueError as err:
             raise ValidationError(f"Invalid value: {err}")
-        options = data.copy()
-        options["last_upload_date"] = SegmentCreateApiViewV3.validate_date(data.get("last_upload_date"))
-        options["content_categories"] = BrandSafetyQueryBuilder.map_content_categories(data.get("content_categories", []))
-        options["segment_type"] = segment_type
         return options
-
-    def _validate_segment_type(self, options):
-        try:
-            segment_type = int(options["segment_type"])
-            if not 0 <= segment_type <= 2:
-                raise ValueError(f"Invalid list_type: {segment_type}. Must 0-2, inclusive")
-        except (KeyError, ValueError) as error:
-            raise ValidationError(error)
-        return segment_type
