@@ -33,6 +33,6 @@ class Schedulers:
         UPDATE_TIME_THRESHOLD = "now-7d/d"
 
     class VideoDiscovery(BaseScheduler):
-        MAX_QUEUE_SIZE = 2
+        MAX_QUEUE_SIZE = 10
         TASK_BATCH_SIZE = 5000
         NAME = "brand_safety_video_discovery"
