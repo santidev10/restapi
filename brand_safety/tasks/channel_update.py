@@ -29,39 +29,43 @@ def channel_update_scheduler():
     query = channel_manager.forced_filters() \
             & QueryBuilder().build().must().range().field(MAIN_ID_FIELD).gte(cursor.cursor_id).get() \
             & QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(Schedulers.ChannelUpdate.UPDATE_TIME_THRESHOLD).get()
-
     queue_size = get_queue_size(Queue.BRAND_SAFETY_CHANNEL_LIGHT)
     limit = Schedulers.ChannelUpdate.get_items_limit(queue_size)
     channels = channel_manager.search(query, limit=min(limit, 10000), sort=(MAIN_ID_FIELD, f"{Sections.STATS}.subscribers")).execute()
     channel_ids = [item.main.id for item in channels]
-    try:
-        last_id = channel_ids[-1]
-    except IndexError:
-        last_id = None
     args = [list(batch) for batch in chunks_generator(channel_ids, size=Schedulers.ChannelUpdate.TASK_BATCH_SIZE)]
-    update_tasks = group_chorded([
-        channel_update.si(arg).set(queue=Queue.BRAND_SAFETY_CHANNEL_LIGHT) for arg in args
-    ])
-    task = chain(
-        update_tasks,
-        finalize.si(last_id).set(queue=Queue.SCHEDULERS),
-    ).apply_async()
-    # Update brand_safety section so next discovery batch does not overlap
-    channel_manager.upsert(channels)
-    return task.apply_async()
+    if args:
+        for arg in args:
+            try:
+                last_id = arg[-1]
+            except IndexError:
+                last_id = None
+            task = chain(
+                channel_update.si(arg).set(queue=Queue.BRAND_SAFETY_CHANNEL_LIGHT),
+                finalize.si(last_id).set(queue=Queue.SCHEDULERS),
+            )
+            # Update brand_safety section so next discovery batch does not overlap
+            channel_manager.upsert(channels)
+            task.apply_async()
+    else:
+        finalize.delay(None)
 
 
 @celery_app.task
 def channel_update(channel_ids):
-    if type(channel_ids) is str:
-        channel_ids = [channel_ids]
-    auditor = BrandSafetyAudit()
-    auditor.process_channels(channel_ids)
+    if channel_ids is not None:
+        if type(channel_ids) is str:
+            channel_ids = [channel_ids]
+        auditor = BrandSafetyAudit()
+        auditor.process_channels(channel_ids)
 
 
 @celery_app.task
 def finalize(last_id):
     cursor = APIScriptTracker.objects.get(name=Schedulers.ChannelUpdate.NAME)
-    if last_id > cursor.cursor_id:
+    curr_cursor = cursor.cursor_id if cursor.cursor_id is not None else ""
+    if last_id is not None and last_id > curr_cursor:
         cursor.cursor_id = last_id
-        cursor.save()
+    else:
+        cursor.cursor_id = None
+    cursor.save()

@@ -21,6 +21,8 @@ class BaseScheduler:
     @classmethod
     def get_items_limit(cls, curr_queue_size):
         limit = (cls.MAX_QUEUE_SIZE - curr_queue_size) * cls.TASK_BATCH_SIZE
+        if limit < 0:
+            limit = 0
         return limit
 
 
