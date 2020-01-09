@@ -19,6 +19,7 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
+from utils.utils import remove_tags_punctuation
 
 
 KeywordHit = namedtuple("KeywordHit", "name location")
@@ -82,7 +83,7 @@ class AuditUtils(object):
         :return:
         """
         if isinstance(text, str):
-            text = text.lower().translate(str.maketrans('', '', string.punctuation))
+            text = remove_tags_punctuation(text.lower())
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
@@ -215,8 +216,8 @@ class AuditUtils(object):
         all_words = BadWord.objects.annotate(language_name=F("language__language"))
         for word in all_words:
             language = word.language_name
-            bad_words_by_language["all"].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
-            bad_words_by_language[language].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
+            bad_words_by_language["all"].add_keyword(remove_tags_punctuation(word.name))
+            bad_words_by_language[language].add_keyword(remove_tags_punctuation(word.name))
         # Cast back to dictionary to avoid creation of new keys
         bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language
