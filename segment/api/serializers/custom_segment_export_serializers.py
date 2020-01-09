@@ -36,7 +36,10 @@ class CustomSegmentChannelExportSerializer(Serializer):
 
     def get_category(self, obj):
         youtube_category = (getattr(obj.general_data, "top_category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
+        try:
+            iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
+        except Exception as e:
+            iab_category = ""
         return iab_category
 
 
@@ -76,5 +79,8 @@ class CustomSegmentVideoExportSerializer(Serializer):
 
     def get_category(self, obj):
         youtube_category = (getattr(obj.general_data, "category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
+        try:
+            iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
+        except Exception as e:
+            iab_category = ""
         return iab_category

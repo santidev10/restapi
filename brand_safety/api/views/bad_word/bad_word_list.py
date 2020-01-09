@@ -1,3 +1,5 @@
+import string
+
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -9,6 +11,7 @@ from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
 from distutils.util import strtobool
+from utils.utils import remove_tags_punctuation
 
 
 class BadWordListApiView(ListCreateAPIView):
@@ -89,7 +92,7 @@ class BadWordListApiView(ListCreateAPIView):
 
         for tag_name in tag_names:
             tag_data = dict(request.data)
-            tag_data["name"] = tag_name.strip()
+            tag_data["name"] = remove_tags_punctuation(tag_name.lower().strip())
             serializer = BadWordSerializer(data=tag_data, context={'request': request})
             serializers.append(serializer)
         results = []

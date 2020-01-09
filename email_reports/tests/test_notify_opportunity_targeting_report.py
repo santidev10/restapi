@@ -1,6 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core import mail
 from django.db.models.signals import post_save
 from django.test import TransactionTestCase
@@ -33,3 +34,4 @@ class NotifyOpportunityTargetReportTestCase(TransactionTestCase):
         notify_opportunity_targeting_report_is_ready(report.id)
 
         self.assertEqual(1, len(mail.outbox))
+        self.assertEqual(mail.outbox[0].from_email, settings.SENDER_EMAIL_ADDRESS)

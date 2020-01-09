@@ -2,6 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from functools import partial
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
@@ -12,6 +13,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import Flight
+from aw_reporting.models import FlightStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
@@ -55,7 +57,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
         self.assertEqual(len(mail.outbox[0].to), 1)
         self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
-
+        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(SavedEmail.objects.count(), 1)
 
     def test_do_not_send_un_subscribed(self):
@@ -141,6 +143,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -192,6 +195,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         view_in_browser_link_nodes = tree.xpath("//a[@id='viewInBrowserLink']")
@@ -224,6 +228,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         account_link_nodes = tree.xpath("//a[@id='accountLink']")
@@ -250,6 +255,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 1)
@@ -279,6 +285,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 0)
@@ -313,6 +320,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 1)
@@ -339,6 +347,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
         self.assertEqual(len(tree.xpath("//tr[@id='cpvUnits']")), 0)
@@ -399,6 +408,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -467,6 +477,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -534,6 +545,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
         html_body = email.alternatives[0][0]
         tree = etree.HTML(html_body)
 
@@ -573,6 +585,7 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
         self.assertEqual(email.to, [am.email])
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
     def test_receivers_no_sales(self):
         ad_ops = User.objects.create(id=1, email="AdOps@channelfactory.com")
@@ -609,7 +622,139 @@ class SendDailyEmailsTestCase(APITestCase):
         receivers_mails = (r[1] if isinstance(r, tuple) else r
                            for r in receivers)
         self.assertNotIn(sm.email, receivers_mails)
+        self.assertEqual(email.from_email, settings.EXPORTS_EMAIL_ADDRESS)
 
+    def test_flight_alerts(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        ordered_views = 1000
+        test_cost_1, test_views_1 = 123, 500
+        test_cost_2, test_views_2 = 1240, 480
+        days_left = 3
+
+        now = datetime(2017, 1, 1)
+        today = now.date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(id="1", name="Flight", placement=placement,
+                                       start=today - timedelta(days=10),
+                                       end=today + timedelta(days=days_left - 1),
+                                       ordered_units=ordered_views)
+
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        campaign = Campaign.objects.create(pk="1", name="",
+                                           salesforce_placement=placement)
+
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=2),
+                                         video_views=test_views_1,
+                                         cost=test_cost_1)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=1),
+                                         video_views=test_views_2,
+                                         cost=test_cost_2)
+
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+
+        self.assertEqual(len(mail.outbox), 2)
+        email = mail.outbox[-1]
+
+        self.assertEqual(email.body, "Flight in Opportunity has delivered 80% of its ordered units")
+        self.assertEqual(email.subject, "80% DELIVERY - Flight")
+
+    def test_flight_alerts_100_delivered(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        ordered_views = 1000
+        test_cost_1, test_views_1 = 123, 540
+        test_cost_2, test_views_2 = 1240, 480
+        days_left = 3
+
+        now = datetime(2017, 1, 1)
+        today = now.date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(id="1", name="Flight", placement=placement,
+                                       start=today - timedelta(days=10),
+                                       end=today + timedelta(days=days_left - 1),
+                                       ordered_units=ordered_views)
+
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        campaign = Campaign.objects.create(pk="1", name="",
+                                           salesforce_placement=placement)
+
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=2),
+                                         video_views=test_views_1,
+                                         cost=test_cost_1)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=1),
+                                         video_views=test_views_2,
+                                         cost=test_cost_2)
+
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+
+        self.assertEqual(len(mail.outbox), 2)
+        email = mail.outbox[-1]
+
+        self.assertEqual(email.body, "Flight in Opportunity has delivered 100% of its ordered units")
+        self.assertEqual(email.subject, "100% DELIVERY - Flight")
+
+    def test_debug_emails(self):
+        debug_emails = [
+            "test_1@test.com",
+            "test_2@test.com"
+        ]
+        settings.DEBUG_EMAIL_ADDRESSES = debug_emails
+        now = datetime(2017, 1, 15)
+        am_role = UserRole.objects.create(id="1",
+                                          name=UserRole.ACCOUNT_MANAGER_NAME)
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz",
+                                     role=am_role)
+        am = User.objects.create(id="2", name="Paul", email="2@mail.cz",
+                                 role=am_role)
+        opp = Opportunity.objects.create(
+            id="1",
+            ad_ops_manager=ad_ops,
+            account_manager=am,
+            start=now - timedelta(days=3),
+            end=now + timedelta(days=2),
+            probability=100)
+        placement = OpPlacement.objects.create(name="pl", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"],
+                                     roles=OpportunityManager.ACCOUNT_MANAGER,
+                                     debug=True)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(set(email.bcc), set(debug_emails))
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]

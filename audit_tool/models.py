@@ -213,6 +213,12 @@ class AuditProcessor(models.Model):
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
             'exclusion_hit_count': self.params.get('exclusion_hit_count'),
         }
+        # if self.completed:
+        #     try:
+        #         c = d['data']['count']
+        #         d['name'] = "{n}: [{c}]" . format(n=d['name'], c="{:,}".format(c))
+        #     except Exception as e:
+        #         pass
         files = self.params.get('files')
         if files:
             d['source_file'] = files.get('source')
@@ -281,8 +287,12 @@ class AuditCategory(models.Model):
                 res[str(c.category)] = c.category_display
             else:
                 if not c.category_display_iab:
-                    c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())[-1]
-                    c.save(update_fields=['category_display_iab'])
+                    try:
+                        c.category_display_iab = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(c.category_display.lower())[-1]
+                        c.save(update_fields=['category_display_iab'])
+                    except Exception as e:
+                        c.category_display_iab = ""
+                        c.save(update_fields=['category_display_iab'])
                 res[str(c.category)] = c.category_display_iab
         return res
 

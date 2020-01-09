@@ -87,7 +87,7 @@ class TechFeeCapExceeded(BaseEmailReport):
                         tech_fee_cap=tech_fee_cap,
                         placement_name=placement["name"],
                     ),
-                    from_email=settings.SENDER_EMAIL_ADDRESS,
+                    from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_recipients),
                     cc=self.get_cc(cc_recipients),
                     bcc=self.get_bcc(),

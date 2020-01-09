@@ -1,4 +1,4 @@
-from segment.utils import get_persistent_segment_model_by_type
+from segment.utils.utils import get_persistent_segment_model_by_type
 
 
 class DynamicPersistentModelViewMixin(object):

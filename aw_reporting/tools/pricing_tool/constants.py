@@ -16,3 +16,18 @@ VIDEO_LENGTHS = (
     (60, 120),
     (120, None),
 )
+
+PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX = "placements__adwords_campaigns__"
+
+
+class ModelFiltersOptions:
+
+    class Campaign:
+        prefix = ""
+        filtering_or = True
+        filtering_and = False
+
+    class Opportunity:
+        prefix = PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX
+        filtering_or = True
+        filtering_and = True

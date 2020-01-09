@@ -1,3 +1,4 @@
+import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -22,6 +23,8 @@ from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
 from utils.lang import remove_mentions_hashes_urls
+from utils.utils import remove_tags_punctuation
+from collections import defaultdict
 
 """
 requirements:
@@ -83,8 +86,12 @@ class Command(BaseCommand):
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
         if not self.inclusion_hit_count:
             self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
         if pending_videos.count() == 0:
             if self.thread_id == 0:
@@ -209,17 +216,19 @@ class Command(BaseCommand):
                     db_channel_meta.last_uploaded_view_count = db_video_meta.views
                     db_channel_meta.last_uploaded_category = db_video_meta.category
                     db_channel_meta.save(update_fields=['last_uploaded', 'last_uploaded_view_count', 'last_uploaded_category'])
+                avp.channel = db_video.channel
                 avp.clean = self.check_video_is_clean(db_video_meta, avp)
                 avp.processed = timezone.now()
-                avp.channel = db_video.channel
                 avp.save()
 
     def check_video_is_clean(self, db_video_meta, avp):
-        full_string = "{} {} {}".format(
+        full_string = remove_tags_punctuation("{} {} {}".format(
             '' if not db_video_meta.name else db_video_meta.name,
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
-        )
+        ))
+        if self.audit.params.get('do_videos'):
+            self.append_to_channel(avp, [avp.channel_id], 'processed_video_ids')
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
@@ -228,9 +237,19 @@ class Command(BaseCommand):
             else:
                 self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
+            try:
+                language = db_video_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list and "" not in self.exclusion_list:
+                avp.word_hits['exclusion'] = None
+                return True
+            else:
+                language = ""
+            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
+                self.append_to_channel(avp, [avp.channel_id], 'bad_video_ids')
                 self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
@@ -361,7 +380,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -371,13 +390,21 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
-        regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
-        )
-        self.exclusion_list = re.compile(regexp)
+        language_keywords_dict = defaultdict(list)
+        exclusion_list = {}
+        for row in input_list:
+            word = remove_tags_punctuation(row[0])
+            language = row[2]
+            language_keywords_dict[language].append(word)
+        for lang, keywords in language_keywords_dict.items():
+            lang_regexp = "({})".format(
+                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+            )
+            exclusion_list[lang] = re.compile(lang_regexp)
+        self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, text.lower())
+        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
         if len(keywords) >= count:
             return True, keywords
         return False, None
