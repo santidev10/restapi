@@ -12,7 +12,7 @@ from utils.utils import chunks_generator
 def channel_update_helper(query, queue, sort=("-stats.subscribers",)):
     channel_manager = ChannelManager(upsert_sections=(Sections.BRAND_SAFETY,))
     queue_size = get_queue_size(Queue.BRAND_SAFETY_CHANNEL_PRIORITY)
-    limit = Schedulers.ChannelDiscovery.get_items_limit(queue_size) or 100
+    limit = Schedulers.ChannelDiscovery.get_items_limit(queue_size)
     channels = channel_manager.search(query, limit=min(limit, 10000), sort=sort).execute()
     channel_ids = [item.main.id for item in channels]
     args = [list(batch) for batch in chunks_generator(channel_ids, size=Schedulers.ChannelDiscovery.TASK_BATCH_SIZE)]
