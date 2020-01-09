@@ -15,4 +15,4 @@ def channel_outdated_scheduler():
     query = channel_manager.forced_filters() \
             & QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(Schedulers.ChannelOutdated.UPDATE_TIME_THRESHOLD).get()
     sorts = ("brand_safety.updated_at", "-stats.subscribers")
-    channel_update_helper(query, Queue.BRAND_SAFETY_CHANNEL_LIGHT, sort=sorts)
+    channel_update_helper(Schedulers.ChannelOutdated, query, Queue.BRAND_SAFETY_CHANNEL_LIGHT, sort=sorts)
