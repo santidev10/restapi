@@ -672,8 +672,8 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 2)
         email = mail.outbox[-1]
 
-        self.assertEqual(email.body, "Flight in Opportunity has delivered 90% of its ordered units")
-        self.assertEqual(email.subject, "90% DELIVERY - Flight")
+        self.assertEqual(email.body, "Flight in Opportunity has delivered 80% of its ordered units")
+        self.assertEqual(email.subject, "80% DELIVERY - Flight")
 
     def test_flight_alerts_100_delivered(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")

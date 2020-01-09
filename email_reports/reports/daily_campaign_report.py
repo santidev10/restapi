@@ -214,8 +214,8 @@ class DailyCampaignReport(BaseEmailReport):
 
         if self.check_flight_delivered(flight_data, 1):
             alert_percentage = 100
-        elif self.check_flight_delivered(flight_data, 0.9):
-            alert_percentage = 90
+        elif self.check_flight_delivered(flight_data, 0.8):
+            alert_percentage = 80
 
         if alert_percentage is not None:
             self.flight_alerts.append(

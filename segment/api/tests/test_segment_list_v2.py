@@ -1,3 +1,5 @@
+import json
+
 from django.urls import reverse
 from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
@@ -191,3 +193,72 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_VIDEO))
 
+    def test_content_category_filters(self):
+        user = self.create_test_user()
+        params = {
+            "params": {
+                "content_categories": [],
+            }
+        }
+        s1 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=0,
+            list_type=0, title="video", owner=user,
+        )
+        s1_params = params.copy()
+        s1_params["params"]["content_categories"] = ["Travel", "Television"]
+        CustomSegmentFileUpload.objects.create(segment=s1, query=s1_params)
+
+        s2 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=0,
+            list_type=0, title="video", owner=user,
+        )
+        s2_params = params.copy()
+        s2_params["params"]["content_categories"] = ["Movies"]
+        CustomSegmentFileUpload.objects.create(segment=s2, query=s2_params)
+
+        s3 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=0,
+            list_type=0, title="video", owner=user,
+        )
+        s3_params = params.copy()
+        s3_params["params"]["content_categories"] = ["Comedy", "People & Blogs"]
+        CustomSegmentFileUpload.objects.create(segment=s3, query=s3_params)
+
+        query_params = QueryDict("general_data.iab_categories=Travel,Movies,Comedy").urlencode()
+        response = self.client.get(f"{self._get_url('video')}?{query_params}")
+        self.assertEqual({s1.id, s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
+
+    def test_language_filters(self):
+        user = self.create_test_user()
+        params = {
+            "params": {
+                "languages": [],
+            }
+        }
+        s1 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=1,
+            list_type=0, title="channel", owner=user,
+        )
+        s1_params = params.copy()
+        s1_params["params"]["languages"] = ["es", "en"]
+        CustomSegmentFileUpload.objects.create(segment=s1, query=s1_params)
+
+        s2 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=1,
+            list_type=0, title="channel", owner=user,
+        )
+        s2_params = params.copy()
+        s2_params["params"]["languages"] = ["ru"]
+        CustomSegmentFileUpload.objects.create(segment=s2, query=s2_params)
+
+        s3 = CustomSegment.objects.create(
+            uuid=uuid.uuid4(), segment_type=1,
+            list_type=0, title="channel", owner=user,
+        )
+        s3_params = params.copy()
+        s3_params["params"]["languages"] = ["ga"]
+        CustomSegmentFileUpload.objects.create(segment=s3, query=s3_params)
+
+        query_params = QueryDict("general_data.top_language=ga,ru").urlencode()
+        response = self.client.get(f"{self._get_url('channel')}?{query_params}")
+        self.assertEqual({s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
