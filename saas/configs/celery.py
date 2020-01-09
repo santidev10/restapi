@@ -4,8 +4,6 @@ from datetime import timedelta
 
 from celery.schedules import crontab
 
-
-
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
 RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
