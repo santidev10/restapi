@@ -22,6 +22,7 @@ from utils.es_components_cache import flush_cache
 from utils.permissions import OnlyAdminUserOrSubscriber
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
+from utils.utils import prune_iab_categories
 
 PERMITTED_CHANNEL_GROUPS = ("influencers", "new", "media", "brands",)
 
@@ -136,6 +137,10 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
                 "videos": [video.to_dict(skip_empty=False) for video in videos],
             }
         })
+        try:
+            result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+        except Exception:
+            pass
 
         return Response(result)
 
