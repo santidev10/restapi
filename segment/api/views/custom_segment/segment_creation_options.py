@@ -7,7 +7,6 @@ from audit_tool.models import AuditCategory
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
 from channel.api.country_view import CountryListApiView
-from segment.utils.utils import validate_threshold
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 
