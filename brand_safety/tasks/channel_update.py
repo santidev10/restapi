@@ -40,13 +40,12 @@ def channel_update_scheduler():
                 last_id = arg[-1]
             except IndexError:
                 last_id = None
-            task = chain(
-                channel_update.si(arg).set(queue=Queue.BRAND_SAFETY_CHANNEL_LIGHT),
-                finalize.si(last_id),
-            )
             # Update brand_safety section so next discovery batch does not overlap
             channel_manager.upsert(channels)
-            task.apply_sync(queue=Queue.SCHEDULERS)
+            chain(
+                channel_update.si(arg),
+                finalize.si(last_id),
+            ).apply_async(queue=Queue.BRAND_SAFETY_CHANNEL_LIGHT)
     else:
         finalize.delay(None)
 
@@ -60,7 +59,7 @@ def channel_update(channel_ids):
         auditor.process_channels(channel_ids)
 
 
-@celery_app.task(queue=Queue.SCHEDULERS)
+@celery_app.task
 def finalize(last_id):
     cursor = APIScriptTracker.objects.get(name=Schedulers.ChannelUpdate.NAME)
     curr_cursor = cursor.cursor_id if cursor.cursor_id is not None else ""
