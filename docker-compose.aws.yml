@@ -77,7 +77,7 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_worker_schedulers:
-    command: ["celery", "-A", "saas", "worker", "-Q", "schedulers", "-c", "4"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "schedulers", "-c", "8"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     restart: always
     volumes:
