@@ -1,6 +1,5 @@
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
-from rest_framework.status import HTTP_403_FORBIDDEN
 
 from brand_safety.api.urls.names import BrandSafetyPathName as PathNames
 from brand_safety.models import BadWordCategory
@@ -17,41 +16,29 @@ class BadWordCategoriesListTestCase(ExtendedAPITestCase):
         )
         return self.client.get(url)
 
+    def setUp(self):
+        categories = ["Violence", "Terrorism", "Profanity"]
+        for category in categories:
+            BadWordCategory.objects.create(name=category)
+
     def test_not_auth(self):
         response = self._request()
-
         self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
 
     def test_no_permissions(self):
         self.create_test_user()
-
         response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-
-    def test_has_permissions(self):
-        self.create_admin_user()
-
-        response = self._request()
-
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(list(response.data), [])
 
     def test_categories_list(self):
         self.create_admin_user()
-        test_category_1 = BadWordCategory.objects.create(id=1, name="Test category 1")
-        test_category_2 = BadWordCategory.objects.create(id=2, name="Test category 2")
-        test_category_1_expected_item = {
-            "id": test_category_1.id,
-            "name": test_category_1.name
-        }
-        test_category_2_expected_item = {
-            "id": test_category_2.id,
-            "name": test_category_2.name
-        }
         response = self._request()
-        self.assertEqual(
-            sorted(list(response.data), key=lambda x: x["name"]),
-            [test_category_1_expected_item, test_category_2_expected_item]
-        )
-        self.assertEqual(len(response.data), 2)
+        all_items = BadWordCategory.objects.all()
+        self.assertEqual(set(all_items.values_list("id", flat=True)), set([item["id"] for item in response.data]))
+        self.assertEqual(set(all_items.values_list("name", flat=True)), set([item["name"] for item in response.data]))
+
+    def test_list_non_admin_success_empty(self):
+        self.create_test_user()
+        response = self._request()
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(len(response.data) == 0)
