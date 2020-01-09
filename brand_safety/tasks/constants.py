@@ -31,6 +31,7 @@ class Schedulers:
         NAME = "brand_safety_channel_discovery"
 
     class ChannelUpdate(BaseScheduler):
+        MAX_QUEUE_SIZE = 5
         NAME = "brand_safety_channel_update"
         UPDATE_TIME_THRESHOLD = "now-7d/d"
 
