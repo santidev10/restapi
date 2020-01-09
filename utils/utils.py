@@ -2,6 +2,7 @@ from collections import Counter
 from itertools import groupby, count
 
 from utils.lang import flatten
+import string
 
 
 def chunks_generator(iterable, size=10):
@@ -47,16 +48,16 @@ def get_all_class_constants(cls):
     ])
 
 
-def convert_subscriber_count(string):
-    if string is None:
+def convert_subscriber_count(s):
+    if s is None:
         return None
     try:
-        subscribers = int(string)
+        subscribers = int(s)
     except Exception as e:
         try:
-            units = string[-1].lower()
-            string = string[:-1]
-            subs_float = float(string)
+            units = s[-1].lower()
+            s = s[:-1]
+            subs_float = float(s)
             if units == "k":
                 subscribers = int(subs_float * 1000)
             elif units == "m":
@@ -72,3 +73,8 @@ def prune_iab_categories(iab_categories):
     EXCLUDED_IAB_CATEGORIES = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
                                "Content Source", "Content Source Geo"]
     return [category for category in iab_categories if category not in EXCLUDED_IAB_CATEGORIES]
+
+
+def remove_tags_punctuation(s):
+    return s.translate(str.maketrans('', '', string.punctuation.replace("@", "").replace("$", "").replace("#", "")
+                                     .replace("*", "")))

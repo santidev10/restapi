@@ -4,8 +4,9 @@ from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
+from utils.utils import remove_tags_punctuation
 
-file_name = "Bad Words.csv"
+file_name = "bste_keywords_final_CLEAN_12_16_2019_1101am.csv"
 invalid_rows_file_name = "invalid_keywords.csv"
 
 invalid_rows = []
@@ -21,7 +22,11 @@ with open(file_name, "r") as f:
         print(f"Parsing Row: {counter}")
         try:
             # Parse word
-            word = row[0].lower().strip().translate(str.maketrans('', '', string.punctuation))
+            word = remove_tags_punctuation(row[0].lower().strip())
+            if len(word) < 3:
+                reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
+                invalid_rows.append(row + reason)
+                continue
             # Parse category
             category_string = row[1].lower().strip()
             category = BadWordCategory.objects.get(name=category_string)
