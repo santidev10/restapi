@@ -11,7 +11,7 @@ class BaseScheduler:
     NAME = None
     TASK_EXPIRATION = dict(hours=1)
     TASK_BATCH_SIZE = 100
-    MAX_QUEUE_SIZE = 100
+    MAX_QUEUE_SIZE = 10
 
     @classmethod
     def get_expiration(cls):
@@ -30,12 +30,10 @@ class Schedulers:
     class ChannelDiscovery(BaseScheduler):
         NAME = "brand_safety_channel_discovery"
 
-    class ChannelUpdate(BaseScheduler):
-        MAX_QUEUE_SIZE = 5
-        NAME = "brand_safety_channel_update"
+    class ChannelOutdated(BaseScheduler):
+        NAME = "brand_safety_channel_outdated"
         UPDATE_TIME_THRESHOLD = "now-7d/d"
 
     class VideoDiscovery(BaseScheduler):
-        MAX_QUEUE_SIZE = 10
         TASK_BATCH_SIZE = 5000
         NAME = "brand_safety_video_discovery"

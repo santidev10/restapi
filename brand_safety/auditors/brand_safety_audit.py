@@ -63,6 +63,8 @@ class BrandSafetyAudit(object):
         video_results = []
         channel_results = []
         for batch in self.audit_utils.batch(channel_ids, self.CHANNEL_BATCH_SIZE):
+            curr_batch_channel_audits = []
+            curr_batch_video_audits = []
             channels = self.channel_manager.get(batch)
             serialized = BrandSafetyChannelSerializer(channels, many=True).data
             data = self._get_channel_batch_data(serialized)
@@ -76,10 +78,12 @@ class BrandSafetyAudit(object):
                 channel_blacklist_data = self.blacklist_data_ref.get(channel["id"], {})
                 channel_audit = self.audit_channel(channel, blacklist_data=channel_blacklist_data)
 
-                video_results.extend(video_audits)
-                channel_results.append(channel_audit)
+                curr_batch_video_audits.extend(video_audits)
+                curr_batch_channel_audits.append(channel_audit)
+            video_results.extend(curr_batch_video_audits)
+            channel_results.extend(curr_batch_channel_audits)
             if index:
-                self._index_results(video_results, channel_results)
+                self._index_results(curr_batch_video_audits, curr_batch_channel_audits)
         return video_results, channel_results
 
     def process_videos(self, video_ids, index=True):
