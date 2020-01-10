@@ -75,7 +75,8 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         start_date = date(datetime.now().year, 12, 1)
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
-            name="Test Opportunity"
+            name="Test Opportunity",
+            start=start_date
         )
         opportunity.refresh_from_db()
         placement = OpPlacement.objects.create(
