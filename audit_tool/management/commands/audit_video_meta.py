@@ -228,7 +228,7 @@ class Command(BaseCommand):
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         ))
         if self.audit.params.get('do_videos'):
-            self.append_to_channel(avp, [avp.channel_id], 'processed_video_ids')
+            self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
