@@ -5,23 +5,25 @@ from elasticsearch_dsl import Q
 from es_components.query_builder import QueryBuilder
 
 
-def bulk_search(model, query, sort, cursor_field, batch_size=10000, min_cursor=1000, max_cursor=None, source=None, options=None):
+def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None, options=None, direction=0):
     """
-    Util function to retrieve items greater than Elasticsearch limit by using cursors
+    Util function to retrieve items greater than Elasticsearch limit by using cursor
     :param model: Elasticsearch model
     :param query: Base query
     :param sort: list
     :param cursor_field: str -> Field to use as cursor when retrieving items
     :param options: list -> Additional queries to sequentially apply to base query
         This is to ensure retrieving items with specific filters in order
+        # First retrieve all items with monetization, then all items without monetization
         options = [
             QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
             QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
         ]
-    :param min_cursor: (int, str) -> Min value for cursor range
-    :param max_cursor: (int, str) -> Max value for cursor range
     :param batch_size: int
     :param source: list[str] -> Returned document fields to deserialize
+    :param direction:
+        0 -> Retrieve items descending
+        1 -> Retrieve items ascending
     :return:
     """
     base_search = model.search().sort(*sort)
@@ -32,7 +34,7 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, min_cursor=1
         options = [None]
     # Create generator for each option to yield all results from
     generators = [
-        search_generator(base_search, query, cursor_field, min_cursor, size=batch_size, max_cursor=max_cursor, option=option)
+        search_generator(base_search, query, cursor_field, size=batch_size, option=option, direction=direction)
         for option in options
     ]
     # Yield all results from each generator sequentially
@@ -40,36 +42,49 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, min_cursor=1
         yield from gen
 
 
-def search_generator(search, query, cursor_field, min_cursor, size=1000, max_cursor=None, option=None):
+def search_generator(search, query, cursor_field, size=1000, option=None, direction=0):
     """
-    Helper function to encapsulate cursor query
+    Helper function to encapsulate batch cursor queries
         Search object should have all options except query applied
-        Uses min_cursor and max_cursor to query for a range of items on cursor_field
-        Max cursor does not change
+        Max / min item obtained using query and sort applied to search object and used as initial cursor
+        Direction determines subsequent gte or lte range queries
+        First query uses gte / lte option to include min/max item in first batch
+        Subsequent queries will use gt / lt to exclude last item retrieved in each batch
     :param search: Elasticsearch Search object
     :param query: QueryBuilder object
     :param cursor_field: str
-    :param min_cursor: int
     :param size: int
-    :param max_cursor: int
     :param option: QueryBuilder object
+    :param direction: int
     :return:
     """
+    try:
+        search.query = query
+        first = search.execute().hits[0]
+        cursor = attrgetter(cursor_field)(first)
+    except IndexError:
+        raise ValueError("Search returned zero items.")
+    if type(query) is dict:
+        query = Q(query)
+    if direction != 0 and direction != 1:
+        raise ValueError(f"direction kwarg must be 0 or 1")
+
+    if direction == 0:
+        range_opt = "lte"
+    else:
+        range_opt = "gte"
     while True:
-        if type(query) is dict:
-            query = Q(query)
-        # If max cursor, query for range in between min_cursor and max_cursor
-        if max_cursor:
-            cursor_query = QueryBuilder().build().must().range().field(cursor_field).lt(max_cursor).gte(min_cursor).get()
-        # Else query for all items >= min_cursor
-        else:
-            cursor_query = QueryBuilder().build().must().range().field(cursor_field).gte(min_cursor).get()
+        cursor_query = QueryBuilder().build().must().range().field(cursor_field)
+        cursor_query = getattr(cursor_query, range_opt)(cursor).get()
         full_query = query & cursor_query & option if option is not None else query & cursor_query
         search.query = full_query
         results = search[0:size].execute()
         data = results.hits
         if data:
             yield data
-            min_cursor = attrgetter(cursor_field)(data[-1])
+            cursor = attrgetter(cursor_field)(data[-1])
+            # first has been processed, change queries to lt / gt
+            range_opt = range_opt[:-1] if first is not None else range_opt
+            first = None
         else:
             break
