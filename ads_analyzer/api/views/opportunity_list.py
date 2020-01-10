@@ -1,13 +1,10 @@
-from django.conf import settings
 from rest_framework.generics import ListAPIView
-
 from ads_analyzer.api.serializers.opportunity_serializer import OpportunitySerializer
 from aw_reporting.models import Opportunity
-from utils.datetime import now_in_default_tz
-from utils.datetime import start_of_year
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
-
+from django.utils import timezone
+from datetime import timedelta
 
 class OpportunityListAPIView(ListAPIView):
     permission_classes = (
@@ -15,11 +12,6 @@ class OpportunityListAPIView(ListAPIView):
             user_has_permission("userprofile.view_opportunity_list"),
         ),
     )
-    queryset = Opportunity.objects.have_campaigns_from(
-        min_start_date=start_of_year(
-            year=now_in_default_tz().year - settings.SHOW_CAMPAIGNS_FOR_LAST_YEARS
-        )
-    ).values("id", "name")
+    queryset = Opportunity.objects.filter(start__gte=timezone.now()-timedelta(days=365)\
+        ).values("id", "name")
     serializer_class = OpportunitySerializer
-
-
