@@ -47,11 +47,15 @@ class BrandSafetyQueryBuilder(object):
 
     def _get_query_params(self):
         query_params = {
-            "languages": self.languages,
+            "severity_filters": self.severity_filters,
             "score_threshold": self.score_threshold,
+            "content_categories": self.content_categories,
+            "languages": self.languages,
+            "countries": self.countries,
+            "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
             "minimum_subscribers": self.minimum_subscribers,
-            "content_categories": self.content_categories,
+            "last_upload_date": self.last_upload_date
         }
         return query_params
 
