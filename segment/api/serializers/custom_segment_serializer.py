@@ -72,7 +72,6 @@ class CustomSegmentSerializer(ModelSerializer):
         data.pop("owner")
         data.pop("title_hash")
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
-        data["list_type"] = self.map_to_str(data["list_type"], item_type="list")
         data["download_url"] = instance.export.download_url
         data["pending"] = False if data["statistics"] else True
         if not data["statistics"]:

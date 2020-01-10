@@ -94,6 +94,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
+            start="{}-12-01".format(datetime.now().year),
         )], response.json())
 
     def test_no_active_opportunity(self):
