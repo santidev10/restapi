@@ -58,7 +58,7 @@ class SegmentListGenerator(object):
         """
         Generate brand suitable target lists with Youtube categories
         """
-        for category in AuditCategory.objects.filter(id__in=[5, 8]):
+        for category in AuditCategory.objects.all():
             logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display}")
             if category.category_display not in self.processed_categories:
                 self._generate_channel_whitelist(category)
