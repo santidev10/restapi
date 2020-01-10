@@ -1,7 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.generics import ListCreateAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from brand_safety.api.serializers.bad_word_category_serializer import BadWordCategorySerializer
@@ -16,7 +15,7 @@ class BadWordCategoryListApiView(ListCreateAPIView):
     search_fields = ("name", "=id",)
 
     def list(self, request, *args, **kwargs):
-        if request.user.has_perm(IsAdminUser):
+        if request.user.is_staff:
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
             data = serializer.data

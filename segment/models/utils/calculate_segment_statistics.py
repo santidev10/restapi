@@ -36,7 +36,7 @@ def calculate_statistics(segment, items=None, es_query=None):
         result = search.execute()
         items = result.hits
         aggregations = extract_aggregations(result.aggregations.to_dict())
-        items_count = result.hits.total
+        items_count = result.hits.total.value
     # Process provided documents
     else:
         # Extract aggregations from items

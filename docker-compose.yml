@@ -90,7 +90,7 @@ services:
       retries: 5
 
   es:
-    image: elasticsearch:6.4.2
+    image: elasticsearch:7.1.0
     environment:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
