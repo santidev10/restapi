@@ -14,7 +14,7 @@ from segment.utils.utils import validate_numeric
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
-    response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "list_type", "severity_filters",
+    response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
                        "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending")
     serializer_class = CustomSegmentSerializer
 
@@ -45,17 +45,14 @@ class SegmentCreateApiViewV3(CreateAPIView):
             raise ValidationError(f"Exception trying to create segments: {err}")
         for options, segment in created:
             query_builder = BrandSafetyQueryBuilder(options)
+            # Use query_builder.query_params to get mapped values used in Elasticsearch query
             query = {
                 "params": query_builder.query_params,
                 "body": query_builder.query_body.to_dict()
             }
             CustomSegmentFileUpload.enqueue(query=query, segment=segment)
             generate_custom_segment.delay(segment.id)
-            self._update_response_fields(segment, options)
-            res = {
-                key: options[key] for key in self.response_fields
-            }
-            res["statistics"] = {}
+            res = self._get_response(query_builder.query_params, segment)
             response.append(res)
         return Response(status=HTTP_201_CREATED, data=response)
 
@@ -96,15 +93,20 @@ class SegmentCreateApiViewV3(CreateAPIView):
         segment = serializer.save()
         return segment
 
-    def _update_response_fields(self, segment, res):
+    def _get_response(self, params, segment):
         """
-        Mutate res with additional fields for response
+        Copy params with additional fields for response
         :param segment: CustomSegment
-        :param res: dict
+        :param params: dict
         :return:
         """
+        res = params.copy()
         res["id"] = segment.id
+        res["title"] = segment.title
+        res["segment_type"] = segment.segment_type
         res["pending"] = True
+        res["statistics"] = {}
+        return res
 
 
 class SegmentCreationOptionsError(Exception):
