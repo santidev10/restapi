@@ -24,6 +24,7 @@ class BrandSafetyQueryBuilder(object):
         self.list_type = data.get("list_type", "whitelist")
         self.segment_type = int(data["segment_type"])
         # Score threshold for brand safety categories
+        self.original_score_threshold = data.get("score_threshold")
         self.score_threshold = self._map_score_threshold(data.get("score_threshold", 0))
         self.sentiment = self._map_sentiment(data.get("sentiment", 0))
         self.last_upload_date = data.get("last_upload_date")
@@ -48,7 +49,7 @@ class BrandSafetyQueryBuilder(object):
     def _get_query_params(self):
         query_params = {
             "severity_filters": self.severity_filters,
-            "score_threshold": self.score_threshold,
+            "score_threshold": self.original_score_threshold,
             "content_categories": self.content_categories,
             "languages": self.languages,
             "countries": self.countries,
