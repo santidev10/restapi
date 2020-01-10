@@ -132,15 +132,6 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .annotate(campaign_count=Count("placements__adwords_campaigns"))\
             .filter(campaign_count__gt=0)
 
-    def have_campaigns_from(self, min_start_date):
-        return self.get_queryset()\
-            .annotate(campaign_count=Count(
-                "placements__adwords_campaigns",
-                filter=Q(placements__adwords_campaigns__start_date__gte=min_start_date)
-            ))\
-            .filter(campaign_count__gt=0)
-
-
 class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
@@ -157,7 +148,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     budget = models.FloatField(default=0)
 
     io_start = models.DateField(null=True)  # Projected_Launch_Date__c
-    start = models.DateField(null=True)  # MIN_Placement_Start_Date__c
+    start = models.DateField(null=True, db_index=True)  # MIN_Placement_Start_Date__c
     end = models.DateField(null=True)  # MAX_Placement_End_Date__c
     proposal_date = models.DateField(null=True)
 

@@ -22,7 +22,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
-        data.hits.total = 602411
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = 602411
         data.max_score = None
         data.hits.hits = []
         es_mock.return_value = data
@@ -58,7 +59,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
-        data.hits.total = 100000
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
         es_mock.return_value = data
@@ -71,7 +73,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["video_items"], data.hits.total)
+        self.assertEqual(response.data["video_items"], data.hits.total.value)
 
     @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success_channel_items(self, es_mock):
@@ -80,7 +82,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
-        data.hits.total = 100000
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
         es_mock.return_value = data
@@ -93,7 +96,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["channel_items"], data.hits.total)
+        self.assertEqual(response.data["channel_items"], data.hits.total.value)
 
     @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success_params_empty(self, es_mock):
@@ -102,7 +105,8 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
-        data.hits.total = 100000
+        data.hits.total = types.SimpleNamespace()
+        data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
         es_mock.return_value = data
