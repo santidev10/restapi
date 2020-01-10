@@ -1,8 +1,5 @@
-from datetime import datetime
-
 from django.conf import settings
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAdminUser
 
 from ads_analyzer.api.serializers.opportunity_serializer import OpportunitySerializer
 from aw_reporting.models import Opportunity
@@ -22,7 +19,7 @@ class OpportunityListAPIView(ListAPIView):
         min_start_date=start_of_year(
             year=now_in_default_tz().year - settings.SHOW_CAMPAIGNS_FOR_LAST_YEARS
         )
-    )
+    ).values("id", "name")
     serializer_class = OpportunitySerializer
 
 
