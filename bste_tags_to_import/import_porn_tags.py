@@ -4,6 +4,7 @@ from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
+from utils.utils import remove_tags_punctuation
 
 file_name = "bste_tags_to_import/Adult Film Database Names.csv"
 
@@ -17,7 +18,9 @@ with open(file_name, "r") as f:
     for row in reader:
         counter += 1
         print(f"Parsing row {counter}.")
-        word = row[0].translate(str.maketrans('', '', string.punctuation))
+        word = remove_tags_punctuation(row[0].lower().strip())
+        if len(word) < 3:
+            continue
         name = word.split(" ")
         if len(name) < 2:
             continue
