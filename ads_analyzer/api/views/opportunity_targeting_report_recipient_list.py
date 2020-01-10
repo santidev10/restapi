@@ -24,7 +24,7 @@ class OpportunityTargetingReportRecipientsAPIView(ListAPIView):
 
     def get_queryset(self):
         reports = OpportunityTargetingReport.objects.filter(created_at__gte=self.get_expiration_datetime())
-        return get_user_model().objects.filter(opportunity_target_reports__in=reports).all()
+        return get_user_model().objects.filter(opportunity_target_reports__in=reports).all().distinct()
 
     @staticmethod
     def get_expiration_datetime():
