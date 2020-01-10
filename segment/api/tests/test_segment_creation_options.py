@@ -22,6 +22,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
         data.hits.total.value = 602411
         data.max_score = None
         data.hits.hits = []
@@ -58,6 +59,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
         data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
@@ -80,6 +82,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
         data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
@@ -102,6 +105,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         data.hits = types.SimpleNamespace()
         data.took = 5
         data.timed_out = False
+        data.hits.total = types.SimpleNamespace()
         data.hits.total.value = 100000
         data.max_score = None
         data.hits.hits = []
