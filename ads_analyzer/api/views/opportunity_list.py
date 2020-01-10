@@ -13,5 +13,5 @@ class OpportunityListAPIView(ListAPIView):
         ),
     )
     queryset = Opportunity.objects.filter(start__gte=timezone.now()-timedelta(days=365)\
-        ).values("id", "name")
+        ).values("id", "name", "start")
     serializer_class = OpportunitySerializer
