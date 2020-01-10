@@ -35,7 +35,7 @@ def update_custom_segment():
                 export_to_update.save()
                 segment.save()
                 logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
-        except Exception as e:
-            logger.error(f"Error in update_custom_segment task:\n{e}")
+        except Exception:
+            logger.exception("Error in update_custom_segment task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

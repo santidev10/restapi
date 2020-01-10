@@ -1,3 +1,4 @@
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
@@ -40,6 +41,15 @@ class CustomSegmentChannelExportSerializer(Serializer):
         except Exception as e:
             iab_category = ""
         return iab_category
+
+
+class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Monetizable")
+
+    Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+
+    def __init__(self, instance, *args, **kwargs):
+        super().__init__(instance, *args, **kwargs)
 
 
 class CustomSegmentVideoExportSerializer(Serializer):
