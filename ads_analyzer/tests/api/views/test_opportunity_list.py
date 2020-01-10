@@ -75,7 +75,8 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         start_date = date(datetime.now().year, 12, 1)
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
-            name="Test Opportunity"
+            name="Test Opportunity",
+            start=start_date
         )
         opportunity.refresh_from_db()
         placement = OpPlacement.objects.create(
@@ -93,6 +94,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
+            start="{}-12-01".format(datetime.now().year),
         )], response.json())
 
     def test_no_active_opportunity(self):

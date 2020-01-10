@@ -29,12 +29,12 @@ class SegmentCreationOptionsApiView(APIView):
                     options["segment_type"] = int_type
                     query_builder = BrandSafetyQueryBuilder(options)
                     result = query_builder.execute()
-                    res_data[f"{str_type}_items"] = result.hits.total or 0
+                    res_data[f"{str_type}_items"] = result.hits.total.value or 0
             else:
                 query_builder = BrandSafetyQueryBuilder(options)
                 result = query_builder.execute()
                 str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
-                res_data[f"{str_type}_items"] = result.hits.total or 0
+                res_data[f"{str_type}_items"] = result.hits.total.value or 0
         return Response(status=HTTP_200_OK, data=res_data)
 
     @staticmethod

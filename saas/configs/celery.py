@@ -124,8 +124,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
         "schedule": 60 * 5,
     },
-    "brand_safety_channel_update": {
-        "task": "brand_safety.tasks.channel_update.channel_update_scheduler",
+    "brand_safety_channel_outdated": {
+        "task": "brand_safety.tasks.channel_outdated.channel_outdated_scheduler",
         "schedule": 60 * 5,
     },
     "brand_safety_video_discovery": {
@@ -181,7 +181,7 @@ class TaskExpiration:
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
     CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
-    BRAND_SAFETY_CHANNEL_UPDATE = timedelta(hours=2).total_seconds()
+    BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
 
 
@@ -192,5 +192,5 @@ class TaskTimeout:
     FULL_SF_UPDATE = timedelta(hours=1).total_seconds()
     CUSTOM_TRANSCRIPTS = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
-    BRAND_SAFETY_CHANNEL_UPDATE = timedelta(hours=2).total_seconds()
+    BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()

@@ -34,4 +34,4 @@ class NotifyOpportunityTargetReportTestCase(TransactionTestCase):
         notify_opportunity_targeting_report_is_ready(report.id)
 
         self.assertEqual(1, len(mail.outbox))
-        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
+        self.assertEqual(mail.outbox[0].from_email, settings.SENDER_EMAIL_ADDRESS)

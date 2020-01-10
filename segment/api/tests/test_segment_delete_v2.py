@@ -56,4 +56,4 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(response.status_code, HTTP_204_NO_CONTENT)
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(segment_uuid).get()
         items = segment.es_manager.search(query=query).execute()
-        self.assertEqual(items.hits.total, 0)
+        self.assertEqual(items.hits.total.value, 0)
