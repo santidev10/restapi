@@ -63,7 +63,7 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
         first = search.execute().hits[0]
         cursor = attrgetter(cursor_field)(first)
     except IndexError:
-        raise ValueError("Search returned zero items.")
+        return
     if type(query) is dict:
         query = Q(query)
     if direction != 0 and direction != 1:
