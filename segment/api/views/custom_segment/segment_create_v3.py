@@ -4,6 +4,7 @@ from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 
 from audit_tool.models import get_hash_name
+from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.custom_segment import CustomSegment
@@ -84,6 +85,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["minimum_views"] = validate_numeric(opts.get("minimum_views", 0) or 0)
         opts["minimum_subscribers"] = validate_numeric(opts.get("minimum_subscribers", 0) or 0)
         opts["last_upload_date"] = validate_date(opts.get("last_upload_date") or "")
+        if opts["score_threshold"]:
+            opts["brand_safety_categories"] = BadWordCategory.objects.values_list("id", flat=True)
         return opts
 
     def _create(self, data: dict):
