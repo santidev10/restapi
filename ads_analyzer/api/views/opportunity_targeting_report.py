@@ -49,7 +49,7 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         return OpportunityTargetingReport.objects.filter(
-            created_at__gte=self.get_expiration_datetime())\
+            created_at__gte=self.get_visible_datetime())\
             .order_by("-created_at")
 
     def post(self, request, *args, **kwargs):
@@ -97,6 +97,10 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
     @staticmethod
     def get_expiration_datetime():
         return now_in_default_tz() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
+
+    @staticmethod
+    def get_visible_datetime():
+        return now_in_default_tz() - timedelta(days=settings.REPORT_VISIBLE_PERIOD)
 
 
 
