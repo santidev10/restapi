@@ -3,7 +3,6 @@ from collections import Counter
 from itertools import groupby, count
 
 from utils.lang import flatten
-import string
 
 
 def chunks_generator(iterable, size=10):
