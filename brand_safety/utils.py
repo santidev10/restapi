@@ -178,7 +178,7 @@ class BrandSafetyQueryBuilder(object):
     @staticmethod
     def map_content_categories(content_category_ids: list):
         mapping = {
-            _id: category for _id, category in AuditCategory.get_all(iab=True).items()
+            _id: category for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
         }
         to_string = [mapping[str(_id)] for _id in content_category_ids] or []
         return to_string
