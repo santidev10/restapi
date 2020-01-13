@@ -23,7 +23,6 @@ UI_STATS_HISTORY_FIELD_LIMIT = 30
 logger = logging.getLogger(__name__)
 
 
-
 class BrandSafetyParamAdapter:
     scores = {
         constants.HIGH_RISK: "0,69",
@@ -181,8 +180,8 @@ class QueryGenerator:
         for field in self.match_phrase_filter:
             value = self.query_params.get(field, None)
             if value and isinstance(value, str):
-                if field == "general_data.title":
-                    field = "general_data.title^2"
+                if field == "general_data.title.keyword":
+                    field = "general_data.title.keyword^2"
                 search_phrase = value
             fields.append(field)
         query = Q(
@@ -313,7 +312,7 @@ class ESQuerysetAdapter:
         key, direction = sorting[0].split(":")
         self.sort = [
             {key: {"order": direction}},
-            {"main.id": {"order": "asc"}}
+            {"main.id.keyword": {"order": "asc"}}
         ]
         return self
 
@@ -412,7 +411,6 @@ class ESFilterBackend(BaseFilterBackend):
     def _get_query_params(self, request):
         return request.query_params.dict()
 
-
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(
             "DynamicGenerator",
@@ -433,7 +431,7 @@ class ESFilterBackend(BaseFilterBackend):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
         if "flags" in aggregations:
-            aggregations.append("stats.flags")
+            aggregations.append("stats.flags.keyword")
         if "transcripts" in aggregations:
             aggregations.append("custom_captions.items:exists")
             aggregations.append("custom_captions.items:missing")
@@ -515,7 +513,6 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
-
 
 
 class ExportDataGenerator:
