@@ -4,6 +4,7 @@ from functools import reduce
 from django.db.models import FloatField
 from django.db.models import Q, F, Min, Value, When, Case, Max, \
     BooleanField, Sum, IntegerField
+from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     SalesForceGoalType, VideoCreative, get_margin, GeoTarget, \
@@ -19,20 +20,24 @@ class PricingToolSerializer:
     def __init__(self, kwargs):
         self.kwargs = kwargs
 
-    def get_opportunities_data(self, opportunities: list, user: UserProfile):
+    def get_opportunities_data(self, opportunities: list, campaigns_ids_map: dict, user: UserProfile):
         ids = [opp.id for opp in opportunities]
 
-        campaign_thumbs = self._get_campaign_thumbnails(ids)
+        campaigns_ids = []
+        for _id in ids:
+            campaigns_ids.extend(campaigns_ids_map.get(_id, []))
 
-        campaign_groups = self._prepare_campaigns(ids, user=user)
+        campaign_thumbs = self._get_campaign_thumbnails(campaigns_ids)
+
+        campaign_groups = self._prepare_campaigns(campaigns_ids, user=user)
         hard_cost_stats = self._prepare_hard_cost_flights(ids)
-        campaigns_data = self._prepare_campaign_data(ids)
+        campaigns_data = self._prepare_campaign_data(campaigns_ids)
         opportunities_annotated = Opportunity.objects.filter(id__in=ids) \
             .annotate(**self._opportunity_annotation())
         return [
             self._get_opportunity_data(opp, campaign_groups[opp.id],
                                        hard_cost_stats[opp.id],
-                                       campaigns_data[opp.id],
+                                       campaigns_data.get(opp.id, dict()),
                                        campaign_thumbs)
             for opp in opportunities_annotated]
 
@@ -42,7 +47,7 @@ class PricingToolSerializer:
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
         stats_queryset = CampaignStatistic.objects \
-            .filter(campaign__salesforce_placement__opportunity=opportunity) \
+            .filter(campaign_id__in=campaigns_data.get("ids")) \
             .filter(date_f) \
             .annotate(
             ordered_rate=F("campaign__salesforce_placement__ordered_rate"))
@@ -121,19 +126,19 @@ class PricingToolSerializer:
                                                             end_date)
 
         ad_group_types = AdGroup.objects.filter(
-            campaign__salesforce_placement__opportunity=opportunity) \
+            campaign_id__in=campaigns_data.get("ids")) \
             .exclude(type="") \
             .values_list("type", flat=True) \
             .order_by() \
             .distinct()
         creative = VideoCreative.objects.filter(
-            statistics__ad_group__campaign__salesforce_placement__opportunity=opportunity) \
+            statistics__ad_group__campaign_id__in=campaigns_data.get("ids")) \
             .values_list("duration", flat=True) \
             .order_by() \
             .distinct()
 
         geographic = GeoTarget.objects.filter(
-            geo_performance__campaign__salesforce_placement__opportunity=opportunity) \
+            geo_performance__campaign_id__in=campaigns_data.get("ids")) \
             .values_list("name", flat=True) \
             .order_by() \
             .distinct()
@@ -281,11 +286,11 @@ class PricingToolSerializer:
             end=relevant_end
         )
 
-    def _get_campaign_thumbnails(self, opp_ids):
+    def _get_campaign_thumbnails(self, campaigns_ids):
         campaign_id_ref = "statistics__ad_group__campaign_id"
         creatives = VideoCreative.objects \
             .filter(
-            statistics__ad_group__campaign__salesforce_placement__opportunity_id__in=opp_ids) \
+            statistics__ad_group__campaign_id__in=campaigns_ids) \
             .distinct(campaign_id_ref) \
             .values(campaign_id_ref, "id")
         build_thumb = lambda \
@@ -348,26 +353,27 @@ class PricingToolSerializer:
         return {uid: hard_cost_dict.get(uid, empty_stats)
                 for uid in opportunity_ids}
 
-    def _prepare_campaign_data(self, opportunity_ids):
+    def _prepare_campaign_data(self, campaigns_ids):
         annotation = dict(
-            start_date=Min("placements__adwords_campaigns__start_date"),
-            end_date=Max("placements__adwords_campaigns__end_date"),
+            start_date=Min("start_date"),
+            end_date=Max("end_date"),
+            ids=ArrayAgg("id"),
             **Aggregation.TARGETING,
             **Aggregation.AGES,
             **Aggregation.GENDERS,
             **Aggregation.DEVICES,
         )
-        opportunities = Opportunity.objects \
-            .filter(Q(id__in=opportunity_ids)) \
+        campaigns = Campaign.objects \
+            .filter(id__in=campaigns_ids) \
+            .values("salesforce_placement__opportunity")\
             .annotate(**annotation) \
-            .values("id", *annotation.keys())
-        campaign_map = {o["id"]: o for o in opportunities}
-        return {uid: campaign_map.get(uid, dict()) for uid in opportunity_ids}
+            .values("salesforce_placement__opportunity", *annotation.keys())
+        return {campaign["salesforce_placement__opportunity"]: campaign for campaign in campaigns}
 
-    def _prepare_campaigns(self, opportunity_ids, user):
+    def _prepare_campaigns(self, campaigns_ids, user):
         opp_id_key = "salesforce_placement__opportunity_id"
         campaigns = Campaign.objects.get_queryset_for_user(user) \
-            .filter(**{opp_id_key + "__in": opportunity_ids}) \
+            .filter(id__in=campaigns_ids) \
             .values("id", opp_id_key, "cost", "impressions", "video_views",
                     "start_date", "end_date", "name",
                     "salesforce_placement__goal_type_id",
@@ -436,7 +442,7 @@ class Aggregation:
     TARGETING = dict(
         ("has_" + t, Max(Case(When(
             **{
-                "placements__adwords_campaigns__has_" + t: True,
+                "has_" + t: True,
                 "then": Value(1)
             }),
             output_field=BooleanField(),
@@ -444,7 +450,7 @@ class Aggregation:
         for t in TARGETING_TYPES)
     AGES = dict(
         (a, Max(Case(When(**{
-            "placements__adwords_campaigns__" + a: True,
+            a: True,
             "then": Value(1)
         }),
                      output_field=BooleanField(),
@@ -453,7 +459,7 @@ class Aggregation:
 
     GENDERS = dict(
         (a, Max(Case(When(**{
-            "placements__adwords_campaigns__" + a: True,
+            a: True,
             "then": Value(1)
         }),
                      output_field=BooleanField(),
@@ -462,7 +468,7 @@ class Aggregation:
 
     DEVICES = dict(
         (a, Max(Case(When(**{
-            "placements__adwords_campaigns__" + a: True,
+            a: True,
             "then": Value(1)
         }),
                      output_field=BooleanField(),

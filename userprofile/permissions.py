@@ -109,6 +109,7 @@ class PermissionGroupNames:
     BRAND_SAFETY_SCORING = "Brand Safety Scoring"
     AUDIT_FLAGGING = "Audit Flagging"
     ADS_ANALYZER = "Ads Analyzer"
+    ADS_ANALYZER_RECIPIENTS = "Ads Analyzer Recipients"
     TRANSCRIPTS = "Transcripts"
     MONETIZATION = "Monetization"
     VIEW_CHANNEL_VIDEO_TABS = "View Channel/Video Tabs"
@@ -196,6 +197,9 @@ class Permissions:
             "view_opportunity_list",
             "create_opportunity_report",
         )),
+        (PermissionGroupNames.ADS_ANALYZER_RECIPIENTS, (
+            "view_opportunity_report_recipients_list",
+        )),
         (PermissionGroupNames.TRANSCRIPTS, (
             "transcripts_filter",
         )),
@@ -241,6 +245,7 @@ class Permissions:
         # Ads Analyzer
         "view_opportunity_list",
         "create_opportunity_report",
+        "view_opportunity_report_recipients_list",
         # Transcripts
         "transcripts_filter",
         # Monetization

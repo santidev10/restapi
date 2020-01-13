@@ -16,7 +16,7 @@ def generate_custom_segment(segment_id):
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         export = segment.export
-        results = generate_segment(segment, export.query, segment.LIST_SIZE)
+        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE)
         segment.statistics = results["statistics"]
         export.download_url = results["download_url"]
         export.completed_at = timezone.now()
@@ -34,5 +34,5 @@ def generate_custom_segment(segment_id):
             from_email=settings.EXPORTS_EMAIL_ADDRESS
         )
         logger.info(f"Successfully generated export for custom list: id: {segment.id}, title: {segment.title}")
-    except Exception as e:
-        logger.error(f"Error in generate_custom_segment task:\n{e}")
+    except Exception:
+        logger.exception("Error in generate_custom_segment task")

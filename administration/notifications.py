@@ -25,7 +25,7 @@ def send_new_registration_email(email_data):
     """
     Send new user registration email
     """
-    sender = settings.EXPORTS_EMAIL_ADDRESS
+    sender = settings.SENDER_EMAIL_ADDRESS
     to = settings.REGISTRATION_ACTION_EMAIL_ADDRESSES
     subject = "New registration"
     text = "Dear Admin, \n\n" \
@@ -46,7 +46,7 @@ def send_new_channel_authentication_email(user, channel_id, request):
     """
     Send new channel authentication email
     """
-    sender = settings.EXPORTS_EMAIL_ADDRESS
+    sender = settings.SENDER_EMAIL_ADDRESS
     to = settings.CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES
     subject = "New channel authentication"
     host = request.get_host()
@@ -71,7 +71,7 @@ def send_new_channel_authentication_email(user, channel_id, request):
 
 
 def send_admin_notification(channel_id):
-    sender = settings.EXPORTS_EMAIL_ADDRESS
+    sender = settings.SENDER_EMAIL_ADDRESS
     to = settings.CHANNEL_AUTHENTICATION_NOTIFY_TO
     subject = "Channel Authentication"
     message = f"Dear Admin, A new channel {channel_id} " \
@@ -90,7 +90,7 @@ def send_html_email(subject, to, text_header, text_content, from_email=None):
         subject=subject,
         recipient_list=[to],
         html_message=html_email,
-        from_email=from_email or settings.EXPORTS_EMAIL_ADDRESS
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS
     )
 
 
@@ -98,7 +98,7 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
     return send_mail(
         subject=subject,
         message=message,
-        from_email=from_email or settings.EXPORTS_EMAIL_ADDRESS,
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
         recipient_list=recipient_list,
         **kwargs,
     )

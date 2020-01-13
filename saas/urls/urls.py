@@ -18,6 +18,7 @@ from keywords.api import urls as keyword_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
 from segment.api.urls import urlpatterns_v2 as segment_v2_url_patterns
+from segment.api.urls import urlpatterns_v3 as segment_v3_url_patterns
 from userprofile.api import urls as userprofile_api_urls
 from utils.api.urls import APP_NAME
 from utils.documentation import urlpatterns as documentation_api_urls
@@ -61,6 +62,8 @@ urlpatterns = [
     url(r'^api/v2/', include((brand_safety_api_urls, APP_NAME), namespace=Namespace.BRAND_SAFETY)),
 
     url(r'^api/v2/', include((segment_v2_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V2)),
+
+    url(r'^api/v3/', include((segment_v3_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V3)),
 
     url(r'^api/healthcheck/', include((healthcheck_api_urls, APP_NAME), namespace=Namespace.HEALTHCHECK)),
     url(r'^docs/', include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION)),

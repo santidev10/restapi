@@ -1,12 +1,11 @@
-from datetime import datetime
 from datetime import timedelta
 
 from django.conf import settings
 
 from rest_framework.generics import ListCreateAPIView
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.filters import BaseFilterBackend
 
 from ads_analyzer.api.serializers.opportunity_target_report_payload_serializer import \
     OpportunityTargetReportModelSerializer
@@ -25,6 +24,18 @@ class Paginator(CustomPageNumberPaginator):
     page_size = 10
 
 
+class FilterBackend(BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        if not request.user.has_perm("userprofile.view_opportunity_report_recipients_list"):
+            return queryset.filter(recipients=request.user)
+
+        recipients = request.query_params.dict().get("recipients")
+        if recipients:
+            queryset = queryset.filter(recipients__in=recipients.split(","))
+
+        return queryset
+
+
 class OpportunityTargetingReportAPIView(ListCreateAPIView):
     permission_classes = (
         or_permission_classes(
@@ -34,11 +45,11 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
 
     serializer_class = OpportunityTargetReportModelSerializer
     pagination_class = Paginator
+    filter_backends = (FilterBackend,)
 
     def get_queryset(self):
         return OpportunityTargetingReport.objects.filter(
-            recipients=self.request.user,
-            created_at__gte=self.get_expiration_datetime())\
+            created_at__gte=self.get_visible_datetime())\
             .order_by("-created_at")
 
     def post(self, request, *args, **kwargs):
@@ -86,6 +97,10 @@ class OpportunityTargetingReportAPIView(ListCreateAPIView):
     @staticmethod
     def get_expiration_datetime():
         return now_in_default_tz() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
+
+    @staticmethod
+    def get_visible_datetime():
+        return now_in_default_tz() - timedelta(days=settings.REPORT_VISIBLE_PERIOD)
 
 
 

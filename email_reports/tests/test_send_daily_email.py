@@ -672,8 +672,8 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(len(mail.outbox), 2)
         email = mail.outbox[-1]
 
-        self.assertEqual(email.body, "Flight in Opportunity has delivered 90% of its ordered units")
-        self.assertEqual(email.subject, "90% DELIVERY - Flight")
+        self.assertEqual(email.body, "Flight in Opportunity has delivered 80% of its ordered units")
+        self.assertEqual(email.subject, "80% DELIVERY - Flight")
 
     def test_flight_alerts_100_delivered(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
@@ -726,6 +726,35 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(email.body, "Flight in Opportunity has delivered 100% of its ordered units")
         self.assertEqual(email.subject, "100% DELIVERY - Flight")
 
+    def test_debug_emails(self):
+        debug_emails = [
+            "test_1@test.com",
+            "test_2@test.com"
+        ]
+        settings.DEBUG_EMAIL_ADDRESSES = debug_emails
+        now = datetime(2017, 1, 15)
+        am_role = UserRole.objects.create(id="1",
+                                          name=UserRole.ACCOUNT_MANAGER_NAME)
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz",
+                                     role=am_role)
+        am = User.objects.create(id="2", name="Paul", email="2@mail.cz",
+                                 role=am_role)
+        opp = Opportunity.objects.create(
+            id="1",
+            ad_ops_manager=ad_ops,
+            account_manager=am,
+            start=now - timedelta(days=3),
+            end=now + timedelta(days=2),
+            probability=100)
+        placement = OpPlacement.objects.create(name="pl", opportunity=opp)
+        Campaign.objects.create(name="c", salesforce_placement=placement)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"],
+                                     roles=OpportunityManager.ACCOUNT_MANAGER,
+                                     debug=True)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(set(email.bcc), set(debug_emails))
 
 def get_xpath_text(tree, xpath):
     node = tree.xpath(xpath)[0]

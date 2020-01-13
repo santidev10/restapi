@@ -1,14 +1,14 @@
-<h1>SaaS</h1>
-<h2> Channel Factory </h2>
+# SaaS
+## Channel Factory
 
 
 ## Docker
 ### Start full application
-> Prestep: create docker images for SingleDB and UI. See readme in related repos
+> Prestep: create docker images for UI. See readme in related repo.
 ```shell
 docker-compose up --build
 ```
-Wait for "Compilation success" message from web service and checkout the SAAS on the `http://localhost:8000` 
+Wait for "Compilation success" message from web service and checkout the VIQ on the `http://localhost:8000` 
 
 ### Run tests
 ```shell
@@ -36,3 +36,8 @@ DATABASES = {
 ### Init
 If you are starting some particular service then docker infrastructure may be not completely setup (i.e database is not prepared).
 To solve this run `init.sh` script in the `api` container
+
+### Coding Best Practices Requirements
+1.  Use 4 space indentation vs tabs
+2.  Imports should be ONE import statement per line
+3.  Be sure to index all fields that are either joined on, or filtered on

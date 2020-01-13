@@ -19,6 +19,7 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
+from utils.utils import remove_tags_punctuation
 
 
 KeywordHit = namedtuple("KeywordHit", "name location")
@@ -40,6 +41,10 @@ class AuditUtils(object):
             str(category_id): 100
             for category_id in self.bad_word_categories
         }
+        self._default_severity_counts = {
+            str(score): 0
+            for score in set(BadWord.objects.values_list("negative_score", flat=True))
+        }
         self._bad_word_processors_by_language = self.get_bad_word_processors_by_language()
         self._emoji_regex = self.compile_emoji_regexp()
         self._score_mapping = self.get_brand_safety_score_mapping()
@@ -55,6 +60,10 @@ class AuditUtils(object):
     @property
     def default_zero_score(self):
         return self._default_zero_score.copy()
+
+    @property
+    def default_severity_counts(self):
+        return self._default_severity_counts.copy()
 
     @property
     def default_full_score(self):
@@ -74,7 +83,7 @@ class AuditUtils(object):
         :return:
         """
         if isinstance(text, str):
-            text = text.translate(str.maketrans('', '', string.punctuation))
+            text = remove_tags_punctuation(text.lower())
         hits = [
             KeywordHit(name=hit, location=location)
             for hit in keyword_processor.extract_keywords(text)
@@ -207,8 +216,8 @@ class AuditUtils(object):
         all_words = BadWord.objects.annotate(language_name=F("language__language"))
         for word in all_words:
             language = word.language_name
-            bad_words_by_language["all"].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
-            bad_words_by_language[language].add_keyword(word.name.translate(str.maketrans('', '', string.punctuation)))
+            bad_words_by_language["all"].add_keyword(remove_tags_punctuation(word.name))
+            bad_words_by_language[language].add_keyword(remove_tags_punctuation(word.name))
         # Cast back to dictionary to avoid creation of new keys
         bad_words_by_language = dict(bad_words_by_language)
         return bad_words_by_language

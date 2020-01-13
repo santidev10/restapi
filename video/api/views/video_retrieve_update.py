@@ -14,6 +14,7 @@ from es_components.managers.video import VideoManager
 from utils.es_components_api_utils import get_fields
 from utils.permissions import OnlyAdminUserCanCreateUpdateDelete
 from video.api.serializers.video_with_blacklist_data import VideoWithBlackListSerializer
+from utils.utils import prune_iab_categories
 
 
 class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
@@ -47,6 +48,10 @@ class VideoRetrieveUpdateApiView(APIView, PermissionRequiredMixin):
         user_channels = set(self.request.user.channels.values_list("channel_id", flat=True))
 
         result = VideoWithBlackListSerializer(video).data
+        try:
+            result['general_data']['iab_categories'] = prune_iab_categories(result['general_data']['iab_categories'])
+        except Exception:
+            pass
 
         if not (video.channel.id in user_channels or self.request.user.has_perm("userprofile.video_audience")
                 or self.request.user.is_staff):
