@@ -59,11 +59,11 @@ class SegmentListGenerator(object):
         Generate brand suitable target lists with Youtube categories
         """
         for category in AuditCategory.objects.all():
-            logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display}")
-            if category.category_display not in self.processed_categories:
+            logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display_iab}")
+            if category.category_display_iab not in self.processed_categories:
                 self._generate_channel_whitelist(category)
                 self._generate_video_whitelist(category)
-                self.processed_categories.add(category.category_display)
+                self.processed_categories.add(category.category_display_iab)
 
         logger.debug("Processing master whitelists and blacklists")
         self._generate_master_channel_blacklist()
@@ -79,7 +79,7 @@ class SegmentListGenerator(object):
         :return:
         """
         category_id = category.id
-        category_name = category.category_display
+        category_name = category.category_display_iab
         should_update = self.check_should_update(PersistentSegmentChannel, False, category_id, constants.WHITELIST)
         if should_update:
             # Generate new category segment
@@ -109,7 +109,7 @@ class SegmentListGenerator(object):
 
     def _generate_video_whitelist(self, category):
         category_id = category.id
-        category_name = category.category_display
+        category_name = category.category_display_iab
         should_update = self.check_should_update(PersistentSegmentVideo, False, category_id, constants.WHITELIST)
         if should_update:
             # Generate new category segment
