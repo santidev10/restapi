@@ -4,11 +4,11 @@
 
 ## Docker
 ### Start full application
-> Prestep: create docker images for SingleDB and UI. See readme in related repos
+> Prestep: create docker images for UI. See readme in related repo.
 ```shell
 docker-compose up --build
 ```
-Wait for "Compilation success" message from web service and checkout the SAAS on the `http://localhost:8000` 
+Wait for "Compilation success" message from web service and checkout the VIQ on the `http://localhost:8000` 
 
 ### Run tests
 ```shell
