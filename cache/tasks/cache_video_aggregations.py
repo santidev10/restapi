@@ -7,11 +7,13 @@ from es_components.managers.video import VideoManager
 
 from cache.constants import VIDEO_AGGREGATIONS_KEY
 from utils.aggregation_constants import ALLOWED_VIDEO_AGGREGATIONS
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_video_aggregations():
     logger.debug("Starting video aggregations caching.")
     sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,

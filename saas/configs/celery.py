@@ -183,6 +183,7 @@ class TaskExpiration:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -194,3 +195,4 @@ class TaskTimeout:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
