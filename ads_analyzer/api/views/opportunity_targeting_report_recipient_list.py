@@ -23,9 +23,9 @@ class OpportunityTargetingReportRecipientsAPIView(ListAPIView):
     serializer_class = OpportunityTargetReportRecipientsSerializer
 
     def get_queryset(self):
-        reports = OpportunityTargetingReport.objects.filter(created_at__gte=self.get_expiration_datetime())
+        reports = OpportunityTargetingReport.objects.filter(created_at__gte=self.get_visible_datetime())
         return get_user_model().objects.filter(opportunity_target_reports__in=reports).all().distinct()
 
     @staticmethod
-    def get_expiration_datetime():
-        return now_in_default_tz() - timedelta(hours=settings.REPORT_EXPIRATION_PERIOD)
+    def get_visible_datetime():
+        return now_in_default_tz() - timedelta(days=settings.REPORT_VISIBLE_PERIOD)

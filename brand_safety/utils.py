@@ -43,7 +43,7 @@ class BrandSafetyQueryBuilder(object):
         self.query_params = self._get_query_params()
 
     def execute(self, limit=5):
-        results = self.es_manager.search(self.query_body, limit=limit).execute()
+        results = self.es_manager.search(self.query_body, limit=limit).extra(track_total_hits=True).execute()
         return results
 
     def _get_query_params(self):
@@ -90,7 +90,6 @@ class BrandSafetyQueryBuilder(object):
         :return: dict
         """
         must_queries = []
-        should_queries = []
 
         if self.minimum_views:
             must_queries.append(QueryBuilder().build().must().range().field("stats.views").gte(self.minimum_views).get())
@@ -108,36 +107,46 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
 
         if self.last_upload_date:
-            must_queries.append(QueryBuilder().build().must().range().field(f"{self.options['published_at']}").gte(
-                self.last_upload_date).get())
+            must_queries.append(QueryBuilder().build().must().range().field(f"{self.options['published_at']}").gte(self.last_upload_date).get())
 
         if self.sentiment:
-            must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
-                self.sentiment).get())
+            must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
-        for lang in self.languages:
-            should_queries.append(QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get())
+        if self.languages:
+            lang_queries = Q("bool")
+            for lang in self.languages:
+                lang_queries |=  QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+            must_queries.append(lang_queries)
 
-        for category in self.content_categories:
-            should_queries.append(QueryBuilder().build().should().term().field("general_data.iab_categories").value(category).get())
+        if self.content_categories:
+            content_queries = Q("bool")
+            for category in self.content_categories:
+                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(category).get()
+            must_queries.append(content_queries)
 
-        for country in self.countries:
-            should_queries.append(QueryBuilder().build().should().term().field("general_data.country").value(country).get())
+        if self.countries:
+            country_queries = Q()
+            for country in self.countries:
+                country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
+            must_queries.append(country_queries)
 
         if self.severity_filters:
+            severity_queries = Q()
             for category, scores in self.severity_filters.items():
                 for score in scores:
                     # Querying for categories with at least one unique word of target severity score
-                    must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get())
+                    severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get()
+            must_queries.append(severity_queries)
 
         if self.brand_safety_categories and self.score_threshold:
+            safety_queries = Q()
             for category in self.brand_safety_categories:
-                must_queries.append(QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get())
+                safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
+            must_queries.append(safety_queries)
 
         query = Q(
             'bool',
             must=must_queries,
-            should=should_queries,
         )
         return query
 
