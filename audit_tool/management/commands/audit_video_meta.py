@@ -249,7 +249,7 @@ class Command(BaseCommand):
             is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
-                self.append_to_channel(avp, [avp.channel_id], 'bad_video_ids')
+                self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
                 self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
