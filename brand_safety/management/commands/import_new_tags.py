@@ -16,7 +16,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--file_name",
-            help="Manual brand safety scoring, should provide ids to update"
+            help="Filename of newly vetted tags."
         )
 
     def handle(self, *args, **kwargs):
