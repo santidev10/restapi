@@ -280,8 +280,9 @@ class AuditCategory(models.Model):
     category_display_iab = models.TextField(default=None, null=True)
 
     @staticmethod
-    def get_all(iab=False):
+    def get_all(iab=False, unique=False):
         res = {}
+        seen = set()
         for c in AuditCategory.objects.all():
             if not iab:
                 res[str(c.category)] = c.category_display
@@ -293,7 +294,12 @@ class AuditCategory(models.Model):
                     except Exception as e:
                         c.category_display_iab = ""
                         c.save(update_fields=['category_display_iab'])
-                res[str(c.category)] = c.category_display_iab
+                if unique is False:
+                    res[str(c.category)] = c.category_display_iab
+                else:
+                    if str(c.category_display_iab) not in seen:
+                        res[str(c.category)] = c.category_display_iab
+                seen.add(c.category_display_iab)
         return res
 
 class AuditCountry(models.Model):

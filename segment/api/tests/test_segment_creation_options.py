@@ -6,6 +6,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from audit_tool.models import AuditCategory
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.utittests.test_case import ExtendedAPITestCase
@@ -51,6 +52,21 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), json.dumps(payload), content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_unique_content_categories(self):
+        self.create_test_user()
+        content_category = "Test Category"
+        AuditCategory.objects.create(
+            category=1, category_display_iab=content_category
+        )
+        AuditCategory.objects.create(
+            category=2, category_display_iab=content_category
+        )
+        response = self.client.post(
+            self._get_url(), None, content_type="application/json"
+        )
+        self.assertEqual(len(response.data["options"]["content_categories"]), 1)
+
 
     @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
     def test_success_video_items(self, es_mock):
