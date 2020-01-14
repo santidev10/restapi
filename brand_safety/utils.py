@@ -104,7 +104,7 @@ class BrandSafetyQueryBuilder(object):
                 must_queries.append(QueryBuilder().build().must().range().field("brand_safety.overall_score").lte(self.minimum_subscribers).get())
 
         if self.video_ids:
-            must_queries.append(QueryBuilder().build().must().terms().field("main.id.keyword").value(self.video_ids).get())
+            must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
 
         if self.last_upload_date:
             must_queries.append(QueryBuilder().build().must().range().field(f"{self.options['published_at']}").gte(self.last_upload_date).get())
@@ -115,19 +115,19 @@ class BrandSafetyQueryBuilder(object):
         if self.languages:
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language.keyword").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
             content_queries = Q("bool")
             for category in self.content_categories:
-                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories.keyword").value(category).get()
+                content_queries |= QueryBuilder().build().should().term().field("general_data.iab_categories").value(category).get()
             must_queries.append(content_queries)
 
         if self.countries:
             country_queries = Q("bool")
             for country in self.countries:
-                country_queries |= QueryBuilder().build().should().term().field("general_data.country.keyword").value(country).get()
+                country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
             must_queries.append(country_queries)
 
         if self.severity_filters:

@@ -45,7 +45,7 @@ def cache_research_videos_defaults():
 
     sort = [
         {'stats.views': {'order': 'desc'}},
-        {'main.id.keyword': {'order': 'asc'}}
+        {'main.id': {'order': 'asc'}}
     ]
 
     try:

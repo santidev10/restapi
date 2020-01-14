@@ -46,7 +46,7 @@ def cache_research_channels_defaults():
 
     sort = [
         {'stats.subscribers': {'order': 'desc'}},
-        {'main.id.keyword': {'order': 'asc'}}
+        {'main.id': {'order': 'asc'}}
     ]
 
     try:
