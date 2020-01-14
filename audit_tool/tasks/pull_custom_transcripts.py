@@ -168,14 +168,17 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
 
 
 def get_unparsed_vids(language, num_vids):
+    manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA, Sections.CAPTIONS))
+    forced_filters = manager.forced_filters()
     s = Search(using='default')
     s = s.index(Video.Index.name)
+    s = s.query(forced_filters)
     # Get Videos Query for Specified Language
     if language:
         q1 = Q(
             {
                 "term": {
-                    "general_data.language": {
+                    "general_data.language.keyword": {
                         "value": language
                     }
                 }
