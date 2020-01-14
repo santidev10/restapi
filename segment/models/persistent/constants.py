@@ -256,3 +256,27 @@ SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.
                         "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm", "ads_stats.average_cpv")
 CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "brand_safety.videos_scored", "stats.observed_videos_dislikes", "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "monetization.is_monetizable")
 VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "stats.likes", "stats.dislikes", "general_data.category")
+
+YT_GENRE_CHANNELS = {
+    "UC-9-kyTW8ZkZNDHQJ6FgpwQ",
+    "UClgRkhTL3_hImCAmdLfDE4g",
+    "UCOpNcN46UbXVtpKMrmU4Abg",
+    "UCEgdi0XIXXZ-qJOFPf4JSKw",
+    "UCYfdidRxbB8Qhf0Nx7ioOYw",
+    "UCF0pVplsI8R5kcAqgtoRqoA",
+    "UCQvWX73GQygcwXOTSf_VDVg",
+    "UCl8dMTqDrJQ0c8y23UBu4kQ",
+    "UC4R8DWoMoI7CAwX8_LjQHig",
+    "UC1vGae2Q3oT5MkhhfW8lwjg",
+    "UCAh9DbAZny_eoGFsYlH2JZw",
+    "UCxAgnFbkxldX6YUEvdcNjnA",
+    "UCR44SO_mdyRq-aTJHO5QxAw",
+    "UCtxxJi5P0rk6rff3_dCfQVw",
+    "UCmzy72gDEpfXoFV9Xdtd0DQ",
+    "UC7DWJmY_p7qLzIy2-V77U5Q",
+    "UCdxD5if2uHt2ZwIR6M1eBtg",
+    "UCEOJ7BEM0V5dYWFNoj3qJZQ",
+    "UCMlwQuZJJQppHO6-FkGgiqQ",
+    "UCsVf5SnHAmJcZ0G7kpMcYzg",
+    "UCBLGfSeyU52VOqZLhIm0xmg"
+}
