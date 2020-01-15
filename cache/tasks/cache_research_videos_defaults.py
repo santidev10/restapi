@@ -9,6 +9,8 @@ from utils.es_components_cache import set_to_cache
 
 from cache.models import CacheItem
 from cache.constants import VIDEO_AGGREGATIONS_KEY
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
     set_to_cache(obj, part, options, data, timeout)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_research_videos_defaults():
     logger.debug("Starting default research videos caching.")
     default_sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,

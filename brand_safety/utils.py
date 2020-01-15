@@ -115,7 +115,7 @@ class BrandSafetyQueryBuilder(object):
         if self.languages:
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |=  QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
@@ -125,27 +125,27 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(content_queries)
 
         if self.countries:
-            country_queries = Q()
+            country_queries = Q("bool")
             for country in self.countries:
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
             must_queries.append(country_queries)
 
         if self.severity_filters:
-            severity_queries = Q()
+            severity_queries = Q("bool")
             for category, scores in self.severity_filters.items():
                 for score in scores:
                     # Querying for categories with at least one unique word of target severity score
                     severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get()
             must_queries.append(severity_queries)
 
-        if self.brand_safety_categories and self.score_threshold:
-            safety_queries = Q()
+        if self.brand_safety_categories and self.score_threshold is not None:
+            safety_queries = Q("bool")
             for category in self.brand_safety_categories:
                 safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
             must_queries.append(safety_queries)
 
         query = Q(
-            'bool',
+            "bool",
             must=must_queries,
         )
         return query
@@ -187,7 +187,7 @@ class BrandSafetyQueryBuilder(object):
     @staticmethod
     def map_content_categories(content_category_ids: list):
         mapping = {
-            _id: category for _id, category in AuditCategory.get_all(iab=True).items()
+            _id: category for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
         }
         to_string = [mapping[str(_id)] for _id in content_category_ids] or []
         return to_string

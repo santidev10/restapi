@@ -280,8 +280,9 @@ class AuditCategory(models.Model):
     category_display_iab = models.TextField(default=None, null=True)
 
     @staticmethod
-    def get_all(iab=False):
+    def get_all(iab=False, unique=False):
         res = {}
+        seen = set()
         for c in AuditCategory.objects.all():
             if not iab:
                 res[str(c.category)] = c.category_display
@@ -293,7 +294,12 @@ class AuditCategory(models.Model):
                     except Exception as e:
                         c.category_display_iab = ""
                         c.save(update_fields=['category_display_iab'])
-                res[str(c.category)] = c.category_display_iab
+                if unique is False:
+                    res[str(c.category)] = c.category_display_iab
+                else:
+                    if str(c.category_display_iab) not in seen:
+                        res[str(c.category)] = c.category_display_iab
+                seen.add(c.category_display_iab)
         return res
 
 class AuditCountry(models.Model):
@@ -395,6 +401,7 @@ class AuditVideoMeta(models.Model):
     publish_date = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
+    age_restricted = models.NullBooleanField(default=None, db_index=True)
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)

@@ -200,14 +200,27 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             account_client_cost = self._get_client_cost_by_account(
                 campaign_filter)
 
+        video_views_impressions = defaultdict(lambda: defaultdict(int))
+
         queryset = Campaign.objects \
             .filter(**campaign_filter) \
+
+        with_ag_type = queryset.annotate(ag_type=Max("ad_groups__type"))
+        for campaign in with_ag_type:
+            creation_id = campaign.account.account_creation.id
+            if campaign.ag_type == "In-stream":
+                video_views_impressions[creation_id]["impressions"] += campaign.impressions
+                video_views_impressions[creation_id]["views"] += campaign.video_views
+
+        queryset = queryset \
             .values(self.CAMPAIGN_ACCOUNT_ID_KEY) \
             .order_by(self.CAMPAIGN_ACCOUNT_ID_KEY)
-        data = queryset \
+
+        data = queryset\
             .annotate(start=Min("start_date"),
                       end=Max("end_date"),
                       **stats_aggregator())
+
         dates = queryset.annotate(
             statistic_min_date=Min("statistics__date"),
             statistic_max_date=Max("statistics__date"),
@@ -237,6 +250,8 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             account_id = account_data[self.CAMPAIGN_ACCOUNT_ID_KEY]
             account_data.update(dates_by_id[account_id])
             dict_norm_base_stats(account_data)
+            account_data["video_views"] = video_views_impressions.get(account_id, {}).get("video_views", account_data["video_views"])
+            account_data["video_impressions"] = video_views_impressions.get(account_id, {}).get("video_impressions", account_data["video_impressions"])
             dict_add_calculated_stats(account_data)
 
             if show_client_cost:
