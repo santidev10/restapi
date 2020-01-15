@@ -229,6 +229,10 @@ class Command(BaseCommand):
         ))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
+        if db_video_meta.age_restricted == True:
+            avp.word_hits['exclusion'] = ['ytAgeRestricted']
+            self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
+            return False
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
@@ -352,6 +356,11 @@ class Command(BaseCommand):
                     pass
             try:
                 db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
+            try:
+                if i['contentDetails']['contentRating']['ytRating'] == "ytAgeRestricted":
+                    db_video_meta.age_restricted = True
             except Exception as e:
                 pass
             str_long = db_video_meta.name
