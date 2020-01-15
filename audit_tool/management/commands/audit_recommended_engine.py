@@ -316,6 +316,8 @@ class Command(BaseCommand):
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         ))
+        if db_video_meta.age_restricted == True:
+            return False, ['ytAgeRestricted']
         if self.inclusion_list:
             is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             hits['inclusion'] = b_hits
@@ -401,6 +403,11 @@ class Command(BaseCommand):
                     pass
             try:
                 db_video_meta.duration = i['contentDetails']['duration']
+            except Exception as e:
+                pass
+            try:
+                if i['contentDetails']['contentRating']['ytRating'] == "ytAgeRestricted":
+                    db_video_meta.age_restricted = True
             except Exception as e:
                 pass
             str_long = db_video_meta.name

@@ -144,7 +144,7 @@ class SegmentListGenerator(object):
         :return:
         """
         should_update = self.check_should_update(PersistentSegmentVideo, True, None, constants.WHITELIST)
-        if should_update or True:
+        if should_update:
             new_master_video_whitelist = PersistentSegmentVideo.objects.create(
                 uuid=uuid.uuid4(),
                 title=PersistentSegmentTitles.VIDEOS_BRAND_SUITABILITY_MASTER_WHITELIST_SEGMENT_TITLE,
