@@ -178,7 +178,7 @@ def get_unparsed_vids(language, num_vids):
         q1 = Q(
             {
                 "term": {
-                    "general_data.language.keyword": {
+                    "general_data.language": {
                         "value": language
                     }
                 }
