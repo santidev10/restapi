@@ -112,10 +112,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
         "schedule": crontab(hour="*"),
     },
-    "update_custom_segment": {
-        "task": "segment.tasks.update_custom_segment.update_custom_segment",
-        "schedule": crontab(minute="*"),
-    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(hour="*"),
@@ -183,6 +179,7 @@ class TaskExpiration:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
 
 
 class TaskTimeout:
@@ -194,3 +191,4 @@ class TaskTimeout:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
