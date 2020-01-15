@@ -213,7 +213,7 @@ LOGGING = {
         "mail_admins": {
             "level": "ERROR",
             "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
+            "class": "saas.admin_email_handler.LimitedAdminEmailHandler",
             "formatter": "detail_formatter",
         },
         "slack_aw_update": {
@@ -276,6 +276,7 @@ SENDER_EMAIL_ADDRESS = SERVER_EMAIL
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
 EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
+ADMIN_EMAIL_LIMIT = 10000
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
 

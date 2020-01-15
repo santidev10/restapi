@@ -45,9 +45,9 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
             "content_categories": [
-                {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True).items()
+                {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
             ],
-            "countries": countries
+            "countries": countries,
         }
         return options
 
