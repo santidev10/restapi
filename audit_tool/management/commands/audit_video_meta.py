@@ -354,6 +354,11 @@ class Command(BaseCommand):
                 db_video_meta.duration = i['contentDetails']['duration']
             except Exception as e:
                 pass
+            try:
+                if i['contentDetails']['contentRating']['ytRating'] == "ytAgeRestricted":
+                    db_video_meta.age_restricted = True
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)
