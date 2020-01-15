@@ -205,10 +205,10 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         queryset = Campaign.objects \
             .filter(**campaign_filter) \
 
-        for campaign in queryset:
+        with_ag_type = queryset.annotate(ag_type=Max("ad_groups__type"))
+        for campaign in with_ag_type:
             creation_id = campaign.account.account_creation.id
-            ag_type = getattr(campaign.ad_groups.first(), "type", None)
-            if ag_type == "In-stream":
+            if campaign.ag_type == "In-stream":
                 video_views_impressions[creation_id]["impressions"] += campaign.impressions
                 video_views_impressions[creation_id]["views"] += campaign.video_views
 
