@@ -44,7 +44,10 @@ class SegmentCreationOptionsApiView(APIView):
     def _get_options():
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
-            countries = [item["key"] for item in agg_cache.value["general_data.country"]["buckets"]]
+            countries = [
+                {"common": item["key"]}
+                for item in agg_cache.value["general_data.country"]["buckets"]
+            ]
             lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
 
             languages = []
