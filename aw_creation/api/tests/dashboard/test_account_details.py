@@ -683,3 +683,37 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         self.assertEqual(response.status_code, HTTP_200_OK)
         data = response.data
         self.assertEqual(data["impressions"], campaign.impressions)
+
+    def test_video_views_impressions_ad_group_type(self):
+        self.user.is_staff = True
+        self.user.save()
+        account = Account.objects.create()
+        opportunity = Opportunity.objects.create()
+        placement = OpPlacement.objects.create(opportunity=opportunity)
+        campaign_1 = Campaign.objects.create(
+            id=1, account=account, impressions=5213, video_views=4111,
+            salesforce_placement=placement)
+        campaign_2 = Campaign.objects.create(
+            id=2, account=account,
+            salesforce_placement=placement)
+        campaign_3 = Campaign.objects.create(
+            id=3, account=account, impressions=7311, video_views=2141,
+            salesforce_placement=placement)
+        AdGroup.objects.create(
+            id=1, campaign=campaign_1, type="In-stream")
+        AdGroup.objects.create(
+            id=2, campaign=campaign_2, type="Bumper")
+        AdGroup.objects.create(
+            id=3, campaign=campaign_3, type="In-stream")
+
+        user_settings = {
+            UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True,
+            UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        impressions = campaign_1.impressions + campaign_3.impressions
+        video_views = campaign_1.video_views + campaign_3.video_views
+        self.assertEqual(response.data["impressions"], impressions)
+        self.assertEqual(response.data["video_views"], video_views)
+        self.assertAlmostEqual(response.data["video_view_rate"], (video_views / impressions) * 100)
