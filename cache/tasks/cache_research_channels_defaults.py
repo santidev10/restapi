@@ -9,6 +9,8 @@ from utils.es_components_cache import set_to_cache
 
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
     set_to_cache(obj, part, options, data, timeout)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_research_channels_defaults():
     logger.debug("Starting default research channels caching.")
     default_sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
