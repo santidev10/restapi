@@ -152,7 +152,7 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
-                if v_id:
+                if v_id and len(v_id) < 51:
                     video = AuditVideo.get_or_create(v_id)
                     avp, _ = AuditVideoProcessor.objects.get_or_create(
                             audit=self.audit,
