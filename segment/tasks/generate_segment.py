@@ -10,6 +10,7 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
+from segment.models.persistent.constants import YT_GENRE_CHANNELS
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -57,6 +58,8 @@ def generate_segment(segment, query, size, sort=None, options=None):
                         writer.writeheader()
 
                     for item in batch:
+                        if item.main.id in YT_GENRE_CHANNELS:
+                            continue
                         if len(top_three_items) < 3 \
                                 and getattr(item.general_data, "title", None) \
                                 and getattr(item.general_data, "thumbnail_image_url", None):
