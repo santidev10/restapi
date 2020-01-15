@@ -4,8 +4,11 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
+from brand_safety.languages import LANG_CODES
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
+from cache.models import CacheItem
+from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from channel.api.country_view import CountryListApiView
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
@@ -39,7 +42,24 @@ class SegmentCreationOptionsApiView(APIView):
 
     @staticmethod
     def _get_options():
-        countries = CountryListApiView().get().data
+        try:
+            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
+            countries = [item["key"] for item in agg_cache.value["general_data.country"]["buckets"]]
+            lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
+
+            languages = []
+            for lang in lang_str:
+                try:
+                    code = LANG_CODES[lang]
+                except KeyError:
+                    code = lang
+                languages.append({"id": code, "title": lang})
+        except (CacheItem.DoesNotExist, KeyError):
+            countries = CountryListApiView().get().data
+            languages = [
+                {"id": code, "title": lang}
+                for lang, code in LANG_CODES.items()
+            ]
         options = {
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
@@ -48,6 +68,7 @@ class SegmentCreationOptionsApiView(APIView):
                 {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
             ],
             "countries": countries,
+            "languages": languages,
         }
         return options
 
