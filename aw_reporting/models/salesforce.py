@@ -39,7 +39,7 @@ class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=200)
-    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE, db_index=True)
 
     @classmethod
     def get_data(cls, data):
@@ -73,7 +73,7 @@ class User(BaseModel):
     photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
     is_active = models.BooleanField(default=False)
-    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE)
+    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE, db_index=True)
 
     @property
     def photo_name(self):
@@ -142,7 +142,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 
     category = models.ForeignKey(Category, null=True,
                                  related_name="opportunities",
-                                 on_delete=models.SET_NULL)
+                                 on_delete=models.SET_NULL, db_index=True)
 
     territory = models.CharField(max_length=80, null=True, default=None, db_index=True)
     budget = models.FloatField(default=0, db_index=True)
@@ -181,19 +181,19 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     # sf managers
     account_manager = models.ForeignKey(
         User, null=True, related_name="managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     sales_manager = models.ForeignKey(
         User, null=True, related_name="sold_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     ad_ops_manager = models.ForeignKey(
         User, null=True, related_name="ad_managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     ad_ops_qa_manager = models.ForeignKey(
         User, null=True, related_name="qa_managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
 
     # iq fields
@@ -372,7 +372,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 class OpPlacement(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
+    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=100)
     goal_type_id = models.SmallIntegerField(null=True, db_index=True)
     ordered_units = models.IntegerField(null=True)
@@ -464,7 +464,7 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
 class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE)
+    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=100)
 
     start = models.DateField(null=True)
@@ -554,15 +554,15 @@ class FlightStatistic(BaseModel):
 
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE)
+    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=10, db_index=True)
     date = models.DateField()
 
     opportunity = models.ForeignKey(
-        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE)
+        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
     account = models.ForeignKey(
-        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE)
+        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
 
     EMAIL_TYPE = "email"
     MEETING_TYPE = "meeting"
