@@ -25,6 +25,7 @@ from django.conf import settings
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
 from collections import defaultdict
+from datetime import timedelta
 
 """
 requirements:
@@ -196,8 +197,10 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video_meta.name or not db_video.channel or not db_video_meta.duration:
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=7)):
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
+                db_video.processed_time = timezone.now()
+                db_video.save(update_fields=['processed_time'])
             else:
                 channel_id = db_video.channel.channel_id
             if not channel_id: # video does not exist or is private now
@@ -369,9 +372,6 @@ class Command(BaseCommand):
             if db_video_meta.description:
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
-            video = db_video_meta.video
-            video.processed_time = timezone.now()
-            video.save(update_fields=['processed_time'])
             return channel_id
         except Exception as e:
             logger.exception(e)

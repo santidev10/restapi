@@ -26,6 +26,7 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
 from collections import defaultdict
 from utils.utils import remove_tags_punctuation
+from datetime import timedelta
 
 """
 requirements:
@@ -252,8 +253,10 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video_meta.keywords or not db_video_meta.duration:
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=7)):
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
+                db_video.processed_time = timezone.now()
+                db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video.channel = channel
             db_video_meta.save()
@@ -416,9 +419,6 @@ class Command(BaseCommand):
             if db_video_meta.description:
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
-            video = db_video_meta.video
-            video.processed_time = timezone.now()
-            video.save(update_fields=['processed_time'])
         except Exception as e:
             logger.exception(e)
 
