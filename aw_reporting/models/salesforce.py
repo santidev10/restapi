@@ -197,8 +197,8 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     )
 
     # iq fields
-    ad_ops_email = models.EmailField(null=True)
-    am_email = models.EmailField(null=True)
+    ad_ops_email = models.EmailField(null=True, db_index=True)
+    am_email = models.EmailField(null=True, db_index=True)
     sales_email = models.EmailField(null=True)
 
     notes = models.TextField(null=True, blank=True)
@@ -394,7 +394,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     tech_fee_type = models.CharField(
         max_length=3, null=True,
         choices=((TECH_FEE_CPV_TYPE, TECH_FEE_CPV_TYPE),
-                 (TECH_FEE_CPM_TYPE, TECH_FEE_CPM_TYPE))
+                 (TECH_FEE_CPM_TYPE, TECH_FEE_CPM_TYPE)),
+        db_index=True
     )
 
     max_allowed_bid = models.PositiveIntegerField(null=True)

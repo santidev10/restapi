@@ -31,6 +31,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
         null=True,
         related_name='adwords_campaigns',
         on_delete=models.SET_NULL,
+        db_index=True,
     )
     goal_allocation = models.FloatField(default=0)
 
