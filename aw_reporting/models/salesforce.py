@@ -137,15 +137,15 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True, db_index=True)
-    number = models.CharField(max_length=10, null=True)
+    number = models.CharField(max_length=10, null=True, db_index=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
 
     category = models.ForeignKey(Category, null=True,
                                  related_name="opportunities",
                                  on_delete=models.SET_NULL)
 
-    territory = models.CharField(max_length=80, null=True, default=None)
-    budget = models.FloatField(default=0)
+    territory = models.CharField(max_length=80, null=True, default=None, db_index=True)
+    budget = models.FloatField(default=0, db_index=True)
 
     io_start = models.DateField(null=True)  # Projected_Launch_Date__c
     start = models.DateField(null=True, db_index=True)  # MIN_Placement_Start_Date__c
@@ -153,30 +153,30 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     proposal_date = models.DateField(null=True)
 
     # todo: remove from opportunity level
-    goal_type_id = models.SmallIntegerField(default=0)
+    goal_type_id = models.SmallIntegerField(default=0, db_index=True)
     units = models.IntegerField(default=0)
 
-    video_views = models.IntegerField(null=True)
-    impressions = models.IntegerField(null=True)
-    cpv_cost = models.FloatField(null=True)
-    cpm_cost = models.FloatField(null=True)
+    video_views = models.IntegerField(null=True, db_index=True)
+    impressions = models.IntegerField(null=True, db_index=True)
+    cpv_cost = models.FloatField(null=True, db_index=True)
+    cpm_cost = models.FloatField(null=True, db_index=True)
 
     # The data in this field tells us
     # if the result of the previous month will affect
     # the expected output of the current month.
-    cannot_roll_over = models.BooleanField(default=False)
+    cannot_roll_over = models.BooleanField(default=False, db_index=True)
 
     # Total_Units__c
     stage = models.CharField(max_length=60, null=True)
-    probability = models.PositiveSmallIntegerField(null=True)
+    probability = models.PositiveSmallIntegerField(null=True, db_index=True)
     create_date = models.DateField(null=True)
     close_date = models.DateField(null=True)
     renewal_approved = models.BooleanField(default=False)
     reason_for_close = models.TextField(default="")
 
     # Buffers for CPV and CPM goal types
-    cpv_buffer = models.IntegerField(null=True, blank=True, default=None)
-    cpm_buffer = models.IntegerField(null=True, blank=True, default=None)
+    cpv_buffer = models.IntegerField(null=True, blank=True, default=None, db_index=True)
+    cpm_buffer = models.IntegerField(null=True, blank=True, default=None, db_index=True)
 
     # sf managers
     account_manager = models.ForeignKey(
@@ -221,7 +221,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 
     apex_deal = models.BooleanField(default=False, db_index=True)
     billing_server = models.CharField(max_length=30, null=True)
-    margin_cap_required = models.BooleanField(default=False)
+    margin_cap_required = models.BooleanField(default=False, db_index=True)
 
     default_thumbnail = None
 
