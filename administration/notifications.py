@@ -101,7 +101,7 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
         message=message,
         from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
         recipient_list=recipient_list,
-        **kwargs,
+        **kwargs
     )
 
 
