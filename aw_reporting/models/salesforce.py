@@ -149,7 +149,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 
     io_start = models.DateField(null=True)  # Projected_Launch_Date__c
     start = models.DateField(null=True, db_index=True)  # MIN_Placement_Start_Date__c
-    end = models.DateField(null=True)  # MAX_Placement_End_Date__c
+    end = models.DateField(null=True, db_index=True)  # MAX_Placement_End_Date__c
     proposal_date = models.DateField(null=True)
 
     # todo: remove from opportunity level
@@ -378,8 +378,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     ordered_units = models.IntegerField(null=True)
     ordered_rate = models.FloatField(null=True)
     total_cost = models.FloatField(null=True)
-    start = models.DateField(null=True)
-    end = models.DateField(null=True)
+    start = models.DateField(null=True, db_index=True)
+    end = models.DateField(null=True, db_index=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
     ad_words_placement = models.CharField(max_length=255, null=True)
 
