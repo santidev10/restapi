@@ -113,7 +113,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
                 "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
-                "recipients": "TestUser TestUser",
+                "recipients": ["TestUser TestUser"],
                 "status": report.status
             },
             response.json()["items"][0]
