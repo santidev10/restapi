@@ -81,7 +81,7 @@ def send_admin_notification(channel_id):
     send_mail(subject, message, sender, to, fail_silently=False)
 
 
-def send_html_email(subject, to, text_header, text_content, from_email=None):
+def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False):
     """
     Send email with html
     """
@@ -90,7 +90,8 @@ def send_html_email(subject, to, text_header, text_content, from_email=None):
         subject=subject,
         recipient_list=[to],
         html_message=html_email,
-        from_email=from_email or settings.SENDER_EMAIL_ADDRESS
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
+        fail_silently=fail_silently
     )
 
 
@@ -117,7 +118,7 @@ def send_welcome_email(user, request):
                    " You've just registered on {}.\n\n" \
                    "Kind regards\n" \
                    "Channel Factory Team".format(request.get_host())
-    send_html_email(subject, to, text_header, text_content)
+    send_html_email(subject, to, text_header, text_content, fail_silently=True)
 
 
 def generate_html_email(text_header, text_content):
