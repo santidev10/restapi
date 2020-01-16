@@ -260,6 +260,7 @@ class AuditExportApiView(APIView):
                 all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
             else:
                 all_good_hit_words = ""
+                unique_good_hit_words = ""
             v_word_hits = hit_words.get(v.video.video_id)
             if do_exclusion or (v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion')==['ytAgeRestricted']):
                 all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
