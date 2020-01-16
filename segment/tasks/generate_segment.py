@@ -19,7 +19,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -28,6 +28,7 @@ def generate_segment(segment, query, size, sort=None, options=None):
     :param query: dict
     :param size: int
     :param sort: list -> Additional sort fields
+    :param add_uuid: Add uuid to document segments section
     :return:
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
@@ -106,7 +107,8 @@ def generate_segment(segment, query, size, sort=None, options=None):
         aggregations["average_cpm"] /= seen or 1
         aggregations["average_cpv"] /= seen or 1
 
-        segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
+        if add_uuid:
+            segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
         statistics = {
             "items_count": seen,
             "top_three_items": top_three_items,
