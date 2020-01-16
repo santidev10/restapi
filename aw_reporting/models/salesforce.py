@@ -383,8 +383,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     number = models.CharField(max_length=10, null=True, db_index=True)
     ad_words_placement = models.CharField(max_length=255, null=True)
 
-    placement_type = models.CharField(max_length=25, null=True)
-    dynamic_placement = models.CharField(max_length=25, null=True)
+    placement_type = models.CharField(max_length=25, null=True, db_index=True)
+    dynamic_placement = models.CharField(max_length=25, null=True, db_index=True)
 
     tech_fee = models.DecimalField(max_digits=12, decimal_places=4, null=True)
     tech_fee_cap = models.DecimalField(max_digits=12, decimal_places=4,
