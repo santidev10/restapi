@@ -374,10 +374,10 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     id = models.CharField(max_length=20, primary_key=True)
     opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    goal_type_id = models.SmallIntegerField(null=True)
+    goal_type_id = models.SmallIntegerField(null=True, db_index=True)
     ordered_units = models.IntegerField(null=True)
-    ordered_rate = models.FloatField(null=True)
-    total_cost = models.FloatField(null=True)
+    ordered_rate = models.FloatField(null=True, db_index=True)
+    total_cost = models.FloatField(null=True, db_index=True)
     start = models.DateField(null=True, db_index=True)
     end = models.DateField(null=True, db_index=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
@@ -386,7 +386,7 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     placement_type = models.CharField(max_length=25, null=True, db_index=True)
     dynamic_placement = models.CharField(max_length=25, null=True, db_index=True)
 
-    tech_fee = models.DecimalField(max_digits=12, decimal_places=4, null=True)
+    tech_fee = models.DecimalField(max_digits=12, decimal_places=4, null=True, db_index=True)
     tech_fee_cap = models.DecimalField(max_digits=12, decimal_places=4,
                                        null=True)
     TECH_FEE_CPV_TYPE = "CPV"
