@@ -254,8 +254,9 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
 SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.last_30day_views",
                         "brand_safety.overall_score", "general_data.thumbnail_image_url", "brand_safety.language",
                         "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm", "ads_stats.average_cpv")
-CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "brand_safety.videos_scored", "stats.observed_videos_dislikes", "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "monetization.is_monetizable")
-VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "stats.likes", "stats.dislikes", "general_data.category")
+CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "general_data.iab_categories", "brand_safety.videos_scored", "stats.observed_videos_dislikes",
+                                                "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "monetization.is_monetizable")
+VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "general_data.iab_categories", "stats.likes", "stats.dislikes", "general_data.category")
 
 YT_GENRE_CHANNELS = {
     "UC-9-kyTW8ZkZNDHQJ6FgpwQ",

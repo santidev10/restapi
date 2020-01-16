@@ -5,7 +5,6 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
-from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -35,12 +34,9 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = (getattr(obj.general_data, "top_category", "") or "").lower()
-        try:
-            iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
-        except Exception as e:
-            iab_category = ""
-        return iab_category
+        categories = getattr(obj.general_data, "iab_categories", []) or []
+        joined = ", ".join(categories)
+        return joined
 
 
 class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
@@ -78,9 +74,6 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = (getattr(obj.general_data, "category", "") or "").lower()
-        try:
-            iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
-        except Exception as e:
-            iab_category = ""
-        return iab_category
+        categories = getattr(obj.general_data, "iab_categories", []) or []
+        joined = ", ".join(categories)
+        return joined
