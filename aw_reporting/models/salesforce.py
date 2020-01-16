@@ -219,7 +219,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     tags = models.CharField(max_length=20, default="")
     types_of_targeting = models.CharField(max_length=100, default="")
 
-    apex_deal = models.BooleanField(default=False)
+    apex_deal = models.BooleanField(default=False, db_index=True)
     billing_server = models.CharField(max_length=30, null=True)
     margin_cap_required = models.BooleanField(default=False)
 
