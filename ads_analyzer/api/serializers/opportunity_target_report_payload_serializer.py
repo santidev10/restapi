@@ -2,11 +2,11 @@ from django.contrib.auth import get_user_model
 
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
+from rest_framework.fields import ListField
 from rest_framework.serializers import ModelSerializer
 
 from ads_analyzer.models import OpportunityTargetingReport
 from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import OpportunityTargetingReportS3Exporter
-from utils.api.fields import CharFieldListBased
 
 
 class OpportunityTargetReportPayloadSerializer(ModelSerializer):
@@ -32,7 +32,7 @@ class ReportDownloadLink(CharField):
         return super().to_representation(s3_link)
 
 
-class RecipientsListField(CharFieldListBased):
+class RecipientsListField(ListField):
     def to_representation(self, recipients):
         data = [str(recipient) for recipient in recipients.all()]
         return super(RecipientsListField, self).to_representation(data)
