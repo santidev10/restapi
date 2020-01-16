@@ -203,9 +203,9 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 
     notes = models.TextField(null=True, blank=True)
 
-    brand = models.CharField(max_length=255, null=True)
-    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE)
-    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE)
+    brand = models.CharField(max_length=255, null=True, db_index=True)
+    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE, db_index=True)
+    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE, db_index=True)
 
     iq_category_id = models.SmallIntegerField(null=True)
     iq_region_id = models.SmallIntegerField(null=True)
@@ -217,7 +217,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     geo_targeting = models.TextField(default="")
     targeting_tactics = models.CharField(max_length=400, default="")
     tags = models.CharField(max_length=20, default="")
-    types_of_targeting = models.CharField(max_length=100, default="")
+    types_of_targeting = models.CharField(max_length=100, default="", db_index=True)
 
     apex_deal = models.BooleanField(default=False, db_index=True)
     billing_server = models.CharField(max_length=30, null=True)
