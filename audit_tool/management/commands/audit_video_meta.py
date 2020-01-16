@@ -197,7 +197,7 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=7)):
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])

@@ -253,7 +253,7 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=7)):
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
