@@ -416,6 +416,9 @@ class Command(BaseCommand):
             if db_video_meta.description:
                 str_long = "{} {}".format(str_long, db_video_meta.description)
             db_video_meta.language = self.calc_language(str_long)
+            video = db_video_meta.video
+            video.processed_time = timezone.now()
+            video.save(update_fields=['processed_time'])
         except Exception as e:
             logger.exception(e)
 
