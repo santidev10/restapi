@@ -92,7 +92,6 @@ class DashboardAccountCreationListApiView(ListAPIView):
         visibility_filter = Q() \
             if user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS) \
             else Q(account__id__in=user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))
-        chf_account_id = settings.CHANNEL_FACTORY_ACCOUNT_ID
         queryset = AccountCreation.objects.all() \
             .annotate(
             is_demo=Case(When(account_id=DEMO_ACCOUNT_ID, then=True),
@@ -100,7 +99,7 @@ class DashboardAccountCreationListApiView(ListAPIView):
                          output_field=BooleanField(),),
         ) \
             .filter(
-            (Q(account__managers__id=chf_account_id) | Q(is_demo=True))
+            (Q(account__managers__id__in=settings.MCC_ACCOUNT_IDS) | Q(is_demo=True))
             & Q(**filters)
             & Q(is_deleted=False)
             & visibility_filter

@@ -35,7 +35,7 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
         query_params.update(user_id=user.id)
         url = "?".join([self.url, query_params.urlencode()])
 
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=chf_manager.id):
+        with override_settings(MCC_ACCOUNT_IDS=[chf_manager.id]):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)
