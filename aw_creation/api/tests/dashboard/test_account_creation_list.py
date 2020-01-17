@@ -125,7 +125,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=self.mcc_account.id), \
+        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
