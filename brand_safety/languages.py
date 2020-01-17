@@ -359,6 +359,7 @@ LANG_CODES = {
     'Tahitian': 'ty',
     'Uighur; Uyghur': 'ug',
     'Ukrainian': 'uk',
+    'Universal': 'un',
     'Urdu': 'ur',
     'Uzbek': 'uz',
     'Venda': 've',
