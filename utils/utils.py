@@ -76,5 +76,4 @@ def prune_iab_categories(iab_categories):
 
 
 def remove_tags_punctuation(s):
-    return s.translate(str.maketrans('', '', string.punctuation.replace("@", "").replace("$", "").replace("#", "")
-                                     .replace("*", "")))
+    return s.translate(str.maketrans('', '', string.punctuation.replace("@", "").replace("$", "").replace("*", "")))
