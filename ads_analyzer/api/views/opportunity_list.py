@@ -4,7 +4,7 @@ from aw_reporting.models import Opportunity
 from utils.permissions import or_permission_classes
 from utils.permissions import user_has_permission
 from django.utils import timezone
-from datetime import timedelta
+
 
 class OpportunityListAPIView(ListAPIView):
     permission_classes = (
@@ -12,6 +12,5 @@ class OpportunityListAPIView(ListAPIView):
             user_has_permission("userprofile.view_opportunity_list"),
         ),
     )
-    queryset = Opportunity.objects.filter(start__gte=timezone.now()-timedelta(days=365)\
-        ).values("id", "name", "start")
+    queryset = Opportunity.objects.filter(start__lte=timezone.now()).values("id", "name", "start")
     serializer_class = OpportunitySerializer

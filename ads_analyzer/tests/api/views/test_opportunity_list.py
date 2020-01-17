@@ -1,5 +1,6 @@
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -130,3 +131,20 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual([], response.json())
+
+    def test_no_future_opportunity(self):
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity",
+            start=datetime.now() + timedelta(days=1)
+        )
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity",
+            start=datetime.now() - timedelta(days=1)
+        )
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(1, len(response.json()))
