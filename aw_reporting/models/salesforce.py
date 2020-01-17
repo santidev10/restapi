@@ -38,7 +38,7 @@ class Category(BaseModel):
 class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
     parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE, db_index=True)
 
     @classmethod
@@ -53,7 +53,7 @@ class SFAccount(BaseModel, DemoEntityModelMixin):
 
 class UserRole(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
 
     AD_OPS_NAME = "Ad Ops"
     ACCOUNT_MANAGER_NAME = "Account Manager"
@@ -72,7 +72,7 @@ class User(BaseModel):
     name = models.CharField(max_length=60, db_index=True)  # Name
     photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
-    is_active = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False, db_index=True)
     role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE, db_index=True)
 
     @property
@@ -465,20 +465,20 @@ class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
     placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE, db_index=True)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, db_index=True)
 
-    start = models.DateField(null=True)
-    end = models.DateField(null=True)
+    start = models.DateField(null=True, db_index=True)
+    end = models.DateField(null=True, db_index=True)
     month = models.SmallIntegerField(null=True)
 
-    cost = models.FloatField(null=True)
-    delivered = models.IntegerField(null=True)
+    cost = models.FloatField(null=True, db_index=True)
+    delivered = models.IntegerField(null=True, db_index=True)
 
-    ordered_cost = models.FloatField(null=True)
-    total_cost = models.FloatField(null=True)
-    ordered_units = models.IntegerField(null=True)
+    ordered_cost = models.FloatField(null=True, db_index=True)
+    total_cost = models.FloatField(null=True, db_index=True)
+    ordered_units = models.IntegerField(null=True, db_index=True)
 
-    budget = models.FloatField(null=True)
+    budget = models.FloatField(null=True, db_index=True)
 
     pacing = models.FloatField(null=True)
 
@@ -542,14 +542,14 @@ class Flight(BaseModel, DemoEntityModelMixin):
 
 class FlightStatistic(BaseModel):
     flight = models.OneToOneField(Flight, related_name="statistic", on_delete=models.CASCADE, )
-    delivery = models.IntegerField(default=0)
-    impressions = models.IntegerField(default=0)
-    video_impressions = models.IntegerField(default=0)
-    video_clicks = models.IntegerField(default=0)
-    video_cost = models.FloatField(default=0)
-    video_views = models.IntegerField(default=0)
-    clicks = models.IntegerField(default=0)
-    sum_cost = models.FloatField(default=0)
+    delivery = models.IntegerField(default=0, db_index=True)
+    impressions = models.IntegerField(default=0, db_index=True)
+    video_impressions = models.IntegerField(default=0, db_index=True)
+    video_clicks = models.IntegerField(default=0, db_index=True)
+    video_cost = models.FloatField(default=0, db_index=True)
+    video_views = models.IntegerField(default=0, db_index=True)
+    clicks = models.IntegerField(default=0, db_index=True)
+    sum_cost = models.FloatField(default=0, db_index=True)
 
 
 class Activity(BaseModel):
