@@ -74,7 +74,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
 
     def _get_accounts(self):
         return (Account.objects.filter(id=DEMO_ACCOUNT_ID).distinct()
-                | self.queryset.filter(managers__id__in=[settings.MCC_ACCOUNT_IDS]).distinct()) \
+                | self.queryset.filter(managers__id__in=settings.MCC_ACCOUNT_IDS).distinct()) \
             .annotate(is_demo=Case(When(id=DEMO_ACCOUNT_ID,
                                         then=Value(True)),
                                    default=Value(False),
