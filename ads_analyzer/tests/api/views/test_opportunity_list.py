@@ -73,7 +73,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([], response.json())
 
     def test_single(self):
-        start_date = date(datetime.now().year, 12, 1)
+        start_date = date(datetime.now().year - 1, 12, 1)
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
             name="Test Opportunity",
@@ -95,7 +95,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
-            start="{}-12-01".format(datetime.now().year),
+            start="{}-12-01".format(datetime.now().year - 1),
         )], response.json())
 
     def test_no_active_opportunity(self):
