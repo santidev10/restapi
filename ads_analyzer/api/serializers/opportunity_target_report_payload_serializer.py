@@ -34,7 +34,7 @@ class ReportDownloadLink(CharField):
 
 class RecipientsListField(ListField):
     def to_representation(self, recipients):
-        data = [str(recipient) for recipient in recipients.all()]
+        data = [str(recipient) for recipient in recipients.order_by('-id').all()]
         return super(RecipientsListField, self).to_representation(data)
 
 

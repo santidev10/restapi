@@ -90,6 +90,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         opportunity = Opportunity.objects.create(id=str(next(int_iterator)))
         date_from = date(2019, 1, 1)
         date_to = date(2019, 1, 2)
+        test_user = get_user_model().objects.create(email="test1@email.com",
+                                                    first_name="TestUser1", last_name="TestUser1")
         with patch.object(post_save, "send"):
             report = OpportunityTargetingReport.objects.create(
                 opportunity=opportunity,
@@ -99,6 +101,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 status=ReportStatus.SUCCESS.value
             )
 
+            report.recipients.add(test_user)
             report.recipients.add(self.user)
 
         response = self._request()
@@ -113,7 +116,7 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
                 "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
-                "recipients": ["TestUser TestUser"],
+                "recipients": ["TestUser1 TestUser1", "TestUser TestUser"],
                 "status": report.status
             },
             response.json()["items"][0]
