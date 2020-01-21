@@ -25,7 +25,7 @@ djangorestframework==3.8.2
 docutils==0.14
 drf-yasg==1.11.1
 elasticsearch==7.1.0
-emoji==0.5.2
+emoji==0.5.4
 et-xmlfile==1.0.1
 fasttext==0.9.1
 flashtext==2.7
@@ -55,7 +55,7 @@ phonenumbers==8.5.2
 pid==2.1.1
 Pillow==4.2.1
 psutil==5.4.3
-psycopg2==2.8.2
+psycopg2==2.8.4
 pyasn1-modules==0.2.6
 pyasn1==0.4.7
 pybind11==2.3.0
