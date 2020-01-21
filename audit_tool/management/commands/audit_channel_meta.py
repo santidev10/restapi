@@ -1,3 +1,4 @@
+import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 from pid import PidFile
 from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
+from collections import defaultdict
+from utils.utils import remove_tags_punctuation
 
 """
 requirements:
@@ -32,6 +35,7 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     max_pages = 4
+    MAX_SOURCE_CHANNELS = 250000
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
@@ -70,8 +74,12 @@ class Command(BaseCommand):
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
         if not self.inclusion_hit_count:
             self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
         self.num_videos = self.audit.params.get('num_videos')
         if not self.num_videos:
             self.num_videos = 50
@@ -124,6 +132,7 @@ class Command(BaseCommand):
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
+        counter = 0
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
@@ -135,6 +144,9 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 vids.append(acp)
+            counter += 1
+            if counter > self.MAX_SOURCE_CHANNELS:
+                return vids
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -145,6 +157,8 @@ class Command(BaseCommand):
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
+            if seed[-1] == '/':
+                seed = seed[:-1]
             v_id = seed.split("/")[-1]
             if '?' in v_id:
                 v_id = v_id.split("?")[0]
@@ -178,7 +192,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         channels = []
-        for seed in seed_list:
+        for seed in seed_list[:self.MAX_SOURCE_CHANNELS]:
             if 'youtube.com/channel/' in seed:
                 if seed[-1] == '/':
                     seed = seed[:-1]
@@ -194,7 +208,7 @@ class Command(BaseCommand):
 
     def do_check_channel(self, acp):
         db_channel = acp.channel
-        if db_channel.processed:
+        if db_channel.processed_time:
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=db_channel)
             if not acp.processed or acp.processed < (timezone.now() - timedelta(days=7)) or db_channel_meta.last_uploaded < (timezone.now() - timedelta(days=7)):
                 self.get_videos(acp)
@@ -257,7 +271,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -267,31 +281,48 @@ class Command(BaseCommand):
         input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
-        regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in input_list])
-        )
-        self.exclusion_list = re.compile(regexp)
+        language_keywords_dict = defaultdict(list)
+        exclusion_list = {}
+        for row in input_list:
+            word = remove_tags_punctuation(row[0])
+            language = row[2]
+            language_keywords_dict[language].append(word)
+        for lang, keywords in language_keywords_dict.items():
+            lang_regexp = "({})".format(
+                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+            )
+            exclusion_list[lang] = re.compile(lang_regexp)
+        self.exclusion_list = exclusion_list
 
     def check_channel_is_clean(self, db_channel_meta, acp):
-        full_string = "{} {} {}".format(
+        full_string = remove_tags_punctuation("{} {} {}".format(
                 '' if not db_channel_meta.name else db_channel_meta.name,
                 '' if not db_channel_meta.description else db_channel_meta.description,
                 '' if not db_channel_meta.keywords else db_channel_meta.keywords,
-        )
+        ))
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             acp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
         if self.exclusion_list:
-            is_there, hits = self.check_exists(full_string, self.exclusion_list, count=self.exclusion_hit_count)
+            try:
+                language = db_channel_meta.language.language
+            except Exception as e:
+                language = ""
+            if language not in self.exclusion_list and "" not in self.exclusion_list:
+                acp.word_hits['exclusion'] = None
+                return True
+            else:
+                language = ""
+            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             acp.word_hits['exclusion'] = hits
             if is_there:
                 return False
         return True
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, text.lower())
+        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
         if len(keywords) >= count:
             return True, keywords
         return False, None

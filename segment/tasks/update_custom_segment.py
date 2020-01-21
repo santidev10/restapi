@@ -28,14 +28,14 @@ def update_custom_segment():
             ).first()
             if export_to_update:
                 segment = export_to_update.segment
-                results = generate_segment(segment, export_to_update.query, segment.LIST_SIZE)
+                results = generate_segment(segment, export_to_update.query["body"], segment.LIST_SIZE)
                 segment.statistics = results["statistics"]
                 export_to_update.download_url = results["download_url"]
                 export_to_update.updated_at = timezone.now()
                 export_to_update.save()
                 segment.save()
                 logger.info(f"Successfully updated export for custom list: id: {segment.id}, title: {segment.title}")
-        except Exception as e:
-            logger.error(f"Error in update_custom_segment task:\n{e}")
+        except Exception:
+            logger.exception("Error in update_custom_segment task")
         finally:
             unlock(LOCK_NAME, fail_silently=True)

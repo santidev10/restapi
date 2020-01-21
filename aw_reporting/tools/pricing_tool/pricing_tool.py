@@ -22,10 +22,10 @@ class PricingTool:
         self.kwargs = kwargs
         self.filter = PricingToolFiltering(kwargs)
         self.serializer = PricingToolSerializer(kwargs)
-        self._opportunities_qs = self.filter.apply(
+        self._opportunities_qs, self.campaigns_ids_map = self.filter.apply(
             self._get_opportunity_queryset(user))
         self.estimate_tool = PricingToolEstimate(
-            kwargs, self.get_opportunities_queryset())
+            kwargs, self.get_opportunities_queryset(), self.campaigns_ids_map)
 
     @classmethod
     def get_filters(cls, user=None):
@@ -35,8 +35,8 @@ class PricingTool:
     def estimate(self):
         return self.estimate_tool.estimate()
 
-    def get_opportunities_data(self, opportunities, user):
-        return self.serializer.get_opportunities_data(opportunities, user)
+    def get_opportunities_data(self, opportunities, campaigns_ids_map, user):
+        return self.serializer.get_opportunities_data(opportunities, campaigns_ids_map, user)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')

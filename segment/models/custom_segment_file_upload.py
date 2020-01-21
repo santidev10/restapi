@@ -1,3 +1,5 @@
+from urllib.parse import unquote
+
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
@@ -70,6 +72,13 @@ class CustomSegmentFileUpload(Model):
         if not dequeue_item:
             raise CustomSegmentFileUploadQueueEmptyException
         return dequeue_item
+
+    def parse_download_url(self):
+        try:
+            s3_key = unquote(self.download_url.split('.com/')[1].split('?X-Amz-Algorithm')[0])
+        except AttributeError:
+            s3_key = None
+        return s3_key
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

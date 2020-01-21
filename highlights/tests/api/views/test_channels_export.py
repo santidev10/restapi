@@ -135,7 +135,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         views = [1, 3, 2]
         channels = [Channel(next(int_iterator)) for _ in range(len(views))]
         for channel, item_views in zip(channels, views):
-            channel.populate_stats(last_30day_views=item_views, observed_videos_count=10)
+            channel.populate_stats(last_30day_views=item_views, total_videos_count=10)
         ChannelManager(sections=[Sections.GENERAL_DATA, Sections.STATS]).upsert(channels)
 
         self._request_collect_file(sort=AllowedSorts.VIEWS_30_DAYS_DESC.value)
@@ -160,7 +160,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         highlights_limit = 100
         channels = [Channel(next(int_iterator)) for _ in range(highlights_limit + 1)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
 
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
@@ -179,7 +179,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_export_by_ids(self, *args):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         self._request_collect_file(**{"main.id": channels[0].main.id})
@@ -197,7 +197,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
     def test_export_by_ids_deprecated(self, *args):
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
 
         self._request_collect_file(**{"ids": channels[0].main.id})

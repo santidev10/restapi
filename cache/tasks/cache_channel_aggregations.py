@@ -7,11 +7,13 @@ from es_components.managers.channel import ChannelManager
 
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from utils.aggregation_constants import ALLOWED_CHANNEL_AGGREGATIONS
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_channel_aggregations():
     logger.debug("Starting channel aggregations caching.")
     sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
@@ -25,7 +27,6 @@ def cache_channel_aggregations():
     cached_channel_aggregations, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
 
     logger.debug("Collecting channel aggregations.")
-    print("Collecting channel aggregations.")
     aggregations = manager.get_aggregation(
         search=manager.search(filters=manager.forced_filters()),
         properties=aggregation_params
@@ -34,4 +35,3 @@ def cache_channel_aggregations():
     cached_channel_aggregations.value = aggregations
     cached_channel_aggregations.save()
     logger.debug("Finished channel aggregations caching.")
-    print("Finished channel aggregations caching.")

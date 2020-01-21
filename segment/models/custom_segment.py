@@ -27,6 +27,7 @@ from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
+from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
@@ -63,8 +64,12 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.LIST_SIZE = 20000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
-            self.serializer = CustomSegmentChannelExportSerializer
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            if not self.owner or not self.owner.has_perm("userprofile.monetization_filter"):
+                self.serializer = CustomSegmentChannelExportSerializer
+            else:
+                self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
+                self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -79,6 +84,12 @@ class CustomSegment(SegmentMixin, Timestampable):
     }
     list_type_to_id = {
         list_type: _id for _id, list_type in dict(LIST_TYPE_CHOICES).items()
+    }
+    segment_id_to_type = {
+        _id: segment_type for segment_type, _id in segment_type_to_id.items()
+    }
+    list_id_to_type = {
+        _id: list_type for list_type, _id in list_type_to_id.items()
     }
 
     uuid = UUIDField(unique=True)
@@ -115,7 +126,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
     def get_export_file(self, s3_key=None):
         if s3_key is None:
-            s3_key = self.get_s3_key()
+            s3_key = self.export.parse_download_url()
         export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
 
@@ -143,7 +154,8 @@ class CustomSegment(SegmentMixin, Timestampable):
             return CustomSegmentChannelExportSerializer
 
     def get_s3_key(self, *args, **kwargs):
-        return f"custom_segments/{self.owner_id}/{self.title}.csv"
+        segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
+        return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
 
     def delete_export(self, s3_key=None):
         """

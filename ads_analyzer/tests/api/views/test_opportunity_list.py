@@ -1,5 +1,6 @@
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
@@ -72,10 +73,11 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([], response.json())
 
     def test_single(self):
-        start_date = date(datetime.now().year, 12, 1)
+        start_date = date(datetime.now().year - 1, 12, 1)
         opportunity = Opportunity.objects.create(
             id=next(int_iterator),
-            name="Test Opportunity"
+            name="Test Opportunity",
+            start=start_date
         )
         opportunity.refresh_from_db()
         placement = OpPlacement.objects.create(
@@ -93,6 +95,7 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
         self.assertEqual([dict(
             id=opportunity.id,
             name=opportunity.name,
+            start="{}-12-01".format(datetime.now().year - 1),
         )], response.json())
 
     def test_no_active_opportunity(self):
@@ -128,3 +131,20 @@ class OpportunityTargetingReportAPIViewTestCase(OpportunityTargetingReportBaseAP
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual([], response.json())
+
+    def test_no_future_opportunity(self):
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity",
+            start=datetime.now() + timedelta(days=1)
+        )
+        Opportunity.objects.create(
+            id=next(int_iterator),
+            name="Test Opportunity",
+            start=datetime.now() - timedelta(days=1)
+        )
+
+        response = self._request()
+
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(1, len(response.json()))

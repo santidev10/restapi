@@ -213,7 +213,7 @@ LOGGING = {
         "mail_admins": {
             "level": "ERROR",
             "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
+            "class": "saas.admin_email_handler.LimitedAdminEmailHandler",
             "formatter": "detail_formatter",
         },
         "slack_aw_update": {
@@ -275,7 +275,8 @@ SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
 SENDER_EMAIL_ADDRESS = SERVER_EMAIL
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
-EXPORTS_EMAIL_ADDRESS = SERVER_EMAIL
+EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
+ADMIN_EMAIL_LIMIT = 10000
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
 
@@ -286,6 +287,11 @@ YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = 'AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4
 from .configs.celery import *
 
 CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+
+MCC_ACCOUNT_IDS = [
+    CHANNEL_FACTORY_ACCOUNT_ID,
+]
+
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
@@ -382,7 +388,7 @@ REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 
 CF_AD_OPS_DIRECTORS = [
-    ('Ritter, George', "george.ritter@channelfactory.com"),
+    "george.ritter@channelfactory.com",
 ]
 
 CUSTOM_AUTH_FLAGS = {
@@ -441,6 +447,7 @@ BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
 
 REPORT_EXPIRATION_PERIOD = 24
+REPORT_VISIBLE_PERIOD = 90  # in days
 SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
 
 if APM_ENABLED:

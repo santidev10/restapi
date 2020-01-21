@@ -168,8 +168,10 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
 
 
 def get_unparsed_vids(language, num_vids):
+    forced_filters = VideoManager().forced_filters()
     s = Search(using='default')
     s = s.index(Video.Index.name)
+    s = s.query(forced_filters)
     # Get Videos Query for Specified Language
     if language:
         q1 = Q(

@@ -9,6 +9,8 @@ from utils.es_components_cache import set_to_cache
 
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
     set_to_cache(obj, part, options, data, timeout)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_research_channels_defaults():
     logger.debug("Starting default research channels caching.")
     default_sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
@@ -66,27 +68,22 @@ def cache_research_channels_defaults():
     obj = queryset_adapter
     # Caching Count
     logger.debug("Caching default research channels count.")
-    print("Caching default research channels count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
     logger.debug("Caching default research channels data.")
-    print("Caching default research channels data.")
     part = "get_data"
     update_cache(obj, part)
     # Caching Count for Aggregations Query
     logger.debug("Caching default research channels aggregations count.")
-    print("Caching default research channels aggregations count.")
     obj.sort = None
     part = "count"
     update_cache(obj, part)
     # Caching Data for Aggregations Query
     logger.debug("Caching default research channels aggregations data.")
-    print("Caching default research channels aggregations data.")
     part = "get_data"
     update_cache(obj, part, options=((0, 0), {}))
     logger.debug("Finished default research channels caching.")
-    print("Finished default research channels caching.")
 
     # Caching for Admin Sections
     admin_manager = ChannelManager(admin_sections)
@@ -107,24 +104,19 @@ def cache_research_channels_defaults():
     obj.sort = sort
     # Caching Count
     logger.debug("Caching admin research channels count.")
-    print("Caching admin research channels count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
     logger.debug("Caching admin research channels data.")
-    print("Caching admin research channels data.")
     part = "get_data"
     update_cache(obj, part)
     # Caching Count for Aggregations Query
     logger.debug("Caching admin research channels aggregations count.")
-    print("Caching admin research channels aggregations count.")
     obj.sort = None
     part = "count"
     update_cache(obj, part)
     # Caching Data for Aggregations Query
     logger.debug("Caching admin research channels aggregations data.")
-    print("Caching admin research channels aggregations data.")
     part = "get_data"
     update_cache(obj, part, options=((0, 0), {}))
     logger.debug("Finished admin research channels caching.")
-    print("Finished admin research channels caching.")

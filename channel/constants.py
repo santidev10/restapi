@@ -18,7 +18,7 @@ CHANNEL_CSV_HEADERS = [
     "title",
     "url",
     "country",
-    "category",
+    "iab_categories",
     "emails",
     "subscribers",
     "thirty_days_subscribers",

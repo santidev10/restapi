@@ -452,7 +452,7 @@ class Command(BaseCommand):
 
         # E-mail
         logger.info("Sending E-mail")
-        from_email = settings.SENDER_EMAIL_ADDRESS
+        from_email = settings.EXPORTS_EMAIL_ADDRESS
         to = settings.AUDIT_TOOL_EMAIL_ADDRESSES
         bcc = []
         replay_to = ""

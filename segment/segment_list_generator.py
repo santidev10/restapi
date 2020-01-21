@@ -24,7 +24,7 @@ class SegmentListGenerator(object):
     MAX_API_CALL_RETRY = 15
     RETRY_SLEEP_COEFFICIENT = 2
     RETRY_ON_CONFLICT = 10000
-    SENTIMENT_THRESHOLD = 0.8
+    SENTIMENT_THRESHOLD = 80
     MINIMUM_VIEWS = 1000
     MINIMUM_SUBSCRIBERS = 1000
     WHITELIST_MINIMUM_BRAND_SAFETY_SCORE = 90
@@ -103,8 +103,8 @@ class SegmentListGenerator(object):
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
-            except Exception as e:
-                logger.error(f"Error in _generate_channel_whitelist:\n{e}")
+            except Exception:
+                logger.exception("Error in _generate_channel_whitelist")
                 new_category_segment.delete()
 
     def _generate_video_whitelist(self, category):
@@ -134,8 +134,8 @@ class SegmentListGenerator(object):
                 results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
-            except Exception as e:
-                logger.error(f"Error in _generate_video_whitelist:\n{e}")
+            except Exception:
+                logger.exception("Error in _generate_video_whitelist")
                 new_category_segment.delete()
 
     def _generate_master_video_whitelist(self):
@@ -163,8 +163,8 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_video_whitelist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
-            except Exception as e:
-                logger.error(f"Error in _generate_master_video_whitelist:\n{e}")
+            except Exception:
+                logger.exception("Error in _generate_master_video_whitelist")
                 new_master_video_whitelist.delete()
 
     def _generate_master_video_blacklist(self):
@@ -192,8 +192,8 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_video_blacklist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
-            except Exception as e:
-                logger.error(f"Error in _generate_master_video_blacklist:\n{e}")
+            except Exception:
+                logger.exception("Error in _generate_master_video_blacklist")
                 new_master_video_blacklist.delete()
 
     def _generate_master_channel_whitelist(self):
@@ -221,7 +221,7 @@ class SegmentListGenerator(object):
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
             except Exception as e:
-                logger.error(f"Error in _generate_master_channel_whitelist:\n{e}")
+                logger.exception("Error in _generate_master_channel_whitelist")
                 new_master_channel_whitelist.delete()
 
     def _generate_master_channel_blacklist(self):
@@ -248,8 +248,8 @@ class SegmentListGenerator(object):
                 self.persistent_segment_finalizer(new_master_channel_blacklist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
-            except Exception as e:
-                logger.error(f"Error in _generate_master_channel_blacklist:\n{e}")
+            except Exception:
+                logger.exception("Error in _generate_master_channel_blacklist")
                 new_master_channel_blacklist.delete()
 
     def add_to_segment(self, segment, query=None, size=None):

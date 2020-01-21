@@ -16,7 +16,7 @@ class BrandSafetyChannelSerializer(Serializer):
     updated_at = SerializerMethodField()
 
     def get_video_tags(self, obj):
-        tags = ",".join(getattr(obj.general_data, "video_tags", []))
+        tags = " ".join(getattr(obj.general_data, "video_tags", []))
         return tags
 
     def get_updated_at(self, obj):
@@ -38,7 +38,7 @@ class BrandSafetyVideoSerializer(Serializer):
     transcript = SerializerMethodField()
 
     def get_tags(self, obj):
-        tags = ",".join(getattr(obj.general_data, "tags", []))
+        tags = " ".join(getattr(obj.general_data, "tags", []))
         return tags
 
     def get_transcript(self, video):

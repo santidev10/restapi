@@ -38,8 +38,8 @@ class Category(BaseModel):
 class SFAccount(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity__id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    name = models.CharField(max_length=200)
-    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, db_index=True)
+    parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE, db_index=True)
 
     @classmethod
     def get_data(cls, data):
@@ -53,7 +53,7 @@ class SFAccount(BaseModel, DemoEntityModelMixin):
 
 class UserRole(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
 
     AD_OPS_NAME = "Ad Ops"
     ACCOUNT_MANAGER_NAME = "Account Manager"
@@ -72,8 +72,8 @@ class User(BaseModel):
     name = models.CharField(max_length=60, db_index=True)  # Name
     photo_id = models.CharField(max_length=255, null=True)
     email = models.EmailField(null=True)
-    is_active = models.BooleanField(default=False)
-    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=False, db_index=True)
+    role = models.ForeignKey(UserRole, null=True, related_name="users", on_delete=models.CASCADE, db_index=True)
 
     @property
     def photo_name(self):
@@ -132,89 +132,80 @@ class OpportunityManager(models.Manager.from_queryset(BaseQueryset), UserRelated
             .annotate(campaign_count=Count("placements__adwords_campaigns"))\
             .filter(campaign_count__gt=0)
 
-    def have_campaigns_from(self, min_start_date):
-        return self.get_queryset()\
-            .annotate(campaign_count=Count(
-                "placements__adwords_campaigns",
-                filter=Q(placements__adwords_campaigns__start_date__gte=min_start_date)
-            ))\
-            .filter(campaign_count__gt=0)
-
-
 class Opportunity(models.Model, DemoEntityModelMixin):
     _is_demo_expressions = Q(id=DEMO_ACCOUNT_ID)
     objects = OpportunityManager()
     id = models.CharField(max_length=20, primary_key=True)  # Id
     aw_cid = models.CharField(max_length=60, null=True, db_index=True)
-    number = models.CharField(max_length=10, null=True)
+    number = models.CharField(max_length=10, null=True, db_index=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
 
     category = models.ForeignKey(Category, null=True,
                                  related_name="opportunities",
-                                 on_delete=models.SET_NULL)
+                                 on_delete=models.SET_NULL, db_index=True)
 
-    territory = models.CharField(max_length=80, null=True, default=None)
-    budget = models.FloatField(default=0)
+    territory = models.CharField(max_length=80, null=True, default=None, db_index=True)
+    budget = models.FloatField(default=0, db_index=True)
 
     io_start = models.DateField(null=True)  # Projected_Launch_Date__c
-    start = models.DateField(null=True)  # MIN_Placement_Start_Date__c
-    end = models.DateField(null=True)  # MAX_Placement_End_Date__c
+    start = models.DateField(null=True, db_index=True)  # MIN_Placement_Start_Date__c
+    end = models.DateField(null=True, db_index=True)  # MAX_Placement_End_Date__c
     proposal_date = models.DateField(null=True)
 
     # todo: remove from opportunity level
-    goal_type_id = models.SmallIntegerField(default=0)
+    goal_type_id = models.SmallIntegerField(default=0, db_index=True)
     units = models.IntegerField(default=0)
 
-    video_views = models.IntegerField(null=True)
-    impressions = models.IntegerField(null=True)
-    cpv_cost = models.FloatField(null=True)
-    cpm_cost = models.FloatField(null=True)
+    video_views = models.IntegerField(null=True, db_index=True)
+    impressions = models.IntegerField(null=True, db_index=True)
+    cpv_cost = models.FloatField(null=True, db_index=True)
+    cpm_cost = models.FloatField(null=True, db_index=True)
 
     # The data in this field tells us
     # if the result of the previous month will affect
     # the expected output of the current month.
-    cannot_roll_over = models.BooleanField(default=False)
+    cannot_roll_over = models.BooleanField(default=False, db_index=True)
 
     # Total_Units__c
     stage = models.CharField(max_length=60, null=True)
-    probability = models.PositiveSmallIntegerField(null=True)
+    probability = models.PositiveSmallIntegerField(null=True, db_index=True)
     create_date = models.DateField(null=True)
     close_date = models.DateField(null=True)
     renewal_approved = models.BooleanField(default=False)
     reason_for_close = models.TextField(default="")
 
     # Buffers for CPV and CPM goal types
-    cpv_buffer = models.IntegerField(null=True, blank=True, default=None)
-    cpm_buffer = models.IntegerField(null=True, blank=True, default=None)
+    cpv_buffer = models.IntegerField(null=True, blank=True, default=None, db_index=True)
+    cpm_buffer = models.IntegerField(null=True, blank=True, default=None, db_index=True)
 
     # sf managers
     account_manager = models.ForeignKey(
         User, null=True, related_name="managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     sales_manager = models.ForeignKey(
         User, null=True, related_name="sold_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     ad_ops_manager = models.ForeignKey(
         User, null=True, related_name="ad_managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
     ad_ops_qa_manager = models.ForeignKey(
         User, null=True, related_name="qa_managed_opportunities",
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL, db_index=True
     )
 
     # iq fields
-    ad_ops_email = models.EmailField(null=True)
-    am_email = models.EmailField(null=True)
+    ad_ops_email = models.EmailField(null=True, db_index=True)
+    am_email = models.EmailField(null=True, db_index=True)
     sales_email = models.EmailField(null=True)
 
     notes = models.TextField(null=True, blank=True)
 
-    brand = models.CharField(max_length=255, null=True)
-    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE)
-    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE)
+    brand = models.CharField(max_length=255, null=True, db_index=True)
+    agency = models.ForeignKey(Contact, null=True, on_delete=models.CASCADE, db_index=True)
+    account = models.ForeignKey(SFAccount, null=True, on_delete=models.CASCADE, db_index=True)
 
     iq_category_id = models.SmallIntegerField(null=True)
     iq_region_id = models.SmallIntegerField(null=True)
@@ -226,11 +217,11 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     geo_targeting = models.TextField(default="")
     targeting_tactics = models.CharField(max_length=400, default="")
     tags = models.CharField(max_length=20, default="")
-    types_of_targeting = models.CharField(max_length=100, default="")
+    types_of_targeting = models.CharField(max_length=100, default="", db_index=True)
 
-    apex_deal = models.BooleanField(default=False)
+    apex_deal = models.BooleanField(default=False, db_index=True)
     billing_server = models.CharField(max_length=30, null=True)
-    margin_cap_required = models.BooleanField(default=False)
+    margin_cap_required = models.BooleanField(default=False, db_index=True)
 
     default_thumbnail = None
 
@@ -381,21 +372,21 @@ class Opportunity(models.Model, DemoEntityModelMixin):
 class OpPlacement(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE)
+    opportunity = models.ForeignKey(Opportunity, related_name='placements', on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=100)
-    goal_type_id = models.SmallIntegerField(null=True)
+    goal_type_id = models.SmallIntegerField(null=True, db_index=True)
     ordered_units = models.IntegerField(null=True)
-    ordered_rate = models.FloatField(null=True)
-    total_cost = models.FloatField(null=True)
-    start = models.DateField(null=True)
-    end = models.DateField(null=True)
+    ordered_rate = models.FloatField(null=True, db_index=True)
+    total_cost = models.FloatField(null=True, db_index=True)
+    start = models.DateField(null=True, db_index=True)
+    end = models.DateField(null=True, db_index=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
     ad_words_placement = models.CharField(max_length=255, null=True)
 
-    placement_type = models.CharField(max_length=25, null=True)
-    dynamic_placement = models.CharField(max_length=25, null=True)
+    placement_type = models.CharField(max_length=25, null=True, db_index=True)
+    dynamic_placement = models.CharField(max_length=25, null=True, db_index=True)
 
-    tech_fee = models.DecimalField(max_digits=12, decimal_places=4, null=True)
+    tech_fee = models.DecimalField(max_digits=12, decimal_places=4, null=True, db_index=True)
     tech_fee_cap = models.DecimalField(max_digits=12, decimal_places=4,
                                        null=True)
     TECH_FEE_CPV_TYPE = "CPV"
@@ -403,7 +394,8 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
     tech_fee_type = models.CharField(
         max_length=3, null=True,
         choices=((TECH_FEE_CPV_TYPE, TECH_FEE_CPV_TYPE),
-                 (TECH_FEE_CPM_TYPE, TECH_FEE_CPM_TYPE))
+                 (TECH_FEE_CPM_TYPE, TECH_FEE_CPM_TYPE)),
+        db_index=True
     )
 
     max_allowed_bid = models.PositiveIntegerField(null=True)
@@ -472,21 +464,21 @@ class OpPlacement(BaseModel, DemoEntityModelMixin):
 class Flight(BaseModel, DemoEntityModelMixin):
     _is_demo_expressions = Q(placement__opportunity_id=DEMO_ACCOUNT_ID)
     id = models.CharField(max_length=20, primary_key=True)
-    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
+    placement = models.ForeignKey(OpPlacement, related_name='flights', on_delete=models.CASCADE, db_index=True)
+    name = models.CharField(max_length=100, db_index=True)
 
-    start = models.DateField(null=True)
-    end = models.DateField(null=True)
+    start = models.DateField(null=True, db_index=True)
+    end = models.DateField(null=True, db_index=True)
     month = models.SmallIntegerField(null=True)
 
-    cost = models.FloatField(null=True)
-    delivered = models.IntegerField(null=True)
+    cost = models.FloatField(null=True, db_index=True)
+    delivered = models.IntegerField(null=True, db_index=True)
 
-    ordered_cost = models.FloatField(null=True)
-    total_cost = models.FloatField(null=True)
-    ordered_units = models.IntegerField(null=True)
+    ordered_cost = models.FloatField(null=True, db_index=True)
+    total_cost = models.FloatField(null=True, db_index=True)
+    ordered_units = models.IntegerField(null=True, db_index=True)
 
-    budget = models.FloatField(null=True)
+    budget = models.FloatField(null=True, db_index=True)
 
     pacing = models.FloatField(null=True)
 
@@ -550,27 +542,27 @@ class Flight(BaseModel, DemoEntityModelMixin):
 
 class FlightStatistic(BaseModel):
     flight = models.OneToOneField(Flight, related_name="statistic", on_delete=models.CASCADE, )
-    delivery = models.IntegerField(default=0)
-    impressions = models.IntegerField(default=0)
-    video_impressions = models.IntegerField(default=0)
-    video_clicks = models.IntegerField(default=0)
-    video_cost = models.FloatField(default=0)
-    video_views = models.IntegerField(default=0)
-    clicks = models.IntegerField(default=0)
-    sum_cost = models.FloatField(default=0)
+    delivery = models.IntegerField(default=0, db_index=True)
+    impressions = models.IntegerField(default=0, db_index=True)
+    video_impressions = models.IntegerField(default=0, db_index=True)
+    video_clicks = models.IntegerField(default=0, db_index=True)
+    video_cost = models.FloatField(default=0, db_index=True)
+    video_views = models.IntegerField(default=0, db_index=True)
+    clicks = models.IntegerField(default=0, db_index=True)
+    sum_cost = models.FloatField(default=0, db_index=True)
 
 
 class Activity(BaseModel):
     id = models.CharField(max_length=20, primary_key=True)
-    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE)
+    owner = models.ForeignKey(User, related_name='activities', on_delete=models.CASCADE, db_index=True)
     name = models.CharField(max_length=250)
     type = models.CharField(max_length=10, db_index=True)
     date = models.DateField()
 
     opportunity = models.ForeignKey(
-        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE)
+        Opportunity, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
     account = models.ForeignKey(
-        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE)
+        SFAccount, related_name='activities', null=True, on_delete=models.CASCADE, db_index=True)
 
     EMAIL_TYPE = "email"
     MEETING_TYPE = "meeting"

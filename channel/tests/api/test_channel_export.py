@@ -131,7 +131,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "title",
             "url",
             "country",
-            "category",
+            "iab_categories",
             "emails",
             "subscribers",
             "thirty_days_subscribers",
@@ -156,7 +156,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channel.populate_general_data(
             title="Test channel title",
             country="Test country",
-            top_category="Top category",
+            iab_categories="Top category",
             emails=["example1@mail.com", "example2@email.com"],
         )
         channel.populate_stats(
@@ -165,7 +165,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             last_30day_views=321,
             views_per_video=123.4,
             sentiment=0.23,
-            observed_videos_count=10,
+            total_videos_count=10,
             engage_rate=0.34,
             last_video_published_at=datetime(2018, 2, 3, 4, 5, 6, tzinfo=pytz.utc),
         )
@@ -189,7 +189,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             channel.general_data.title,
             f"https://www.youtube.com/channel/{channel.main.id}/",
             channel.general_data.country,
-            channel.general_data.top_category,
+            channel.general_data.iab_categories,
             ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
@@ -216,7 +216,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_missed_values(self, *args):
         self.create_admin_user()
         channel = Channel(next(int_iterator))
-        channel.populate_stats(observed_videos_count=10)
+        channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channel])
 
         self._request_collect_file()
@@ -226,8 +226,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         data = list(csv_data)[1]
         id_index = 1
         values = [value for index, value in enumerate(data) if index != id_index]
+        expected_values = ["" for _ in range(len(values))]
+        expected_values[2] = "[]"
         self.assertEqual(
-            ["" for _ in range(len(values))],
+            expected_values,
             values
         )
 
@@ -239,7 +241,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         filter_count = 2
         channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
@@ -262,7 +264,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         filter_count = 2
         channels = [Channel(next(int_iterator)) for _ in range(filter_count + 1)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
         channel_ids = [str(channel.main.id) for channel in channels]
 
@@ -285,7 +287,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS, Sections.STATS)).upsert([channels[1]])
 
@@ -304,7 +306,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
             channel.populate_brand_safety(overall_score=50)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
@@ -326,7 +328,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
             channel.populate_brand_safety(overall_score=50)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert([channels[0]])
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert([channels[1]])
@@ -348,7 +350,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         for channel in channels:
-            channel.populate_stats(observed_videos_count=10)
+            channel.populate_stats(total_videos_count=10)
 
         channels[0].populate_stats(channel_group="brands")
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
@@ -368,9 +370,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         self.create_admin_user()
         channels = [Channel(next(int_iterator)) for _ in range(2)]
         channels[0].populate_brand_safety(overall_score=49)
-        channels[0].populate_stats(observed_videos_count=100)
+        channels[0].populate_stats(total_videos_count=100)
         channels[1].populate_brand_safety(overall_score=62)
-        channels[1].populate_stats(observed_videos_count=100)
+        channels[1].populate_stats(total_videos_count=100)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
         self._request_collect_file(brand_safety=constants.HIGH_RISK)

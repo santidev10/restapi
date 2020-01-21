@@ -16,10 +16,10 @@ class AWConnection(models.Model):
 
 
 class AWConnectionToUserRelation(models.Model):
-    connection = models.ForeignKey(AWConnection, related_name="user_relations", on_delete=models.CASCADE)
+    connection = models.ForeignKey(AWConnection, related_name="user_relations", on_delete=models.CASCADE, db_index=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              related_name="aw_connections",
-                             on_delete=models.CASCADE)
+                             on_delete=models.CASCADE, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -28,9 +28,9 @@ class AWConnectionToUserRelation(models.Model):
 
 class AWAccountPermission(models.Model):
     aw_connection = models.ForeignKey(
-        AWConnection, related_name="mcc_permissions", on_delete=models.CASCADE)
+        AWConnection, related_name="mcc_permissions", on_delete=models.CASCADE, db_index=True)
     account = models.ForeignKey(
-        Account, related_name="mcc_permissions", on_delete=models.CASCADE)
+        Account, related_name="mcc_permissions", on_delete=models.CASCADE, db_index=True)
     can_read = models.BooleanField(default=False)
     # we will check read permission every day and show data to those users
     # who has access to it on AdWords

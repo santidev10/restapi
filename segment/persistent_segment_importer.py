@@ -11,7 +11,7 @@ from es_components.managers import ChannelManager
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-from segment.utils import get_persistent_segment_model_by_type
+from segment.utils.utils import get_persistent_segment_model_by_type
 from segment.segment_list_generator import SegmentListGenerator
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class PersistentSegmentImporter(object):
             logger.info(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
             query = self.segment.get_segment_items_query()
             es_manager = self.segment.get_es_manager()
-            segment_items_count = es_manager.search(query, limit=0).execute().hits.total
+            segment_items_count = es_manager.search(query, limit=0).execute().hits.total.value
 
             if segment_items_count == len(self.youtube_ids):
                 # Calculate statistics and export

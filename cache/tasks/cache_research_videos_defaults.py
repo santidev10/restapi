@@ -9,6 +9,8 @@ from utils.es_components_cache import set_to_cache
 
 from cache.models import CacheItem
 from cache.constants import VIDEO_AGGREGATIONS_KEY
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
     set_to_cache(obj, part, options, data, timeout)
 
 
-@celery_app.task()
+@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
 def cache_research_videos_defaults():
     logger.debug("Starting default research videos caching.")
     default_sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
@@ -65,27 +67,22 @@ def cache_research_videos_defaults():
     obj = queryset_adapter
     # Caching Count
     logger.debug("Caching default research videos count.")
-    print("Caching default research videos count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
     logger.debug("Caching default research videos data.")
-    print("Caching default research videos data.")
     part = "get_data"
     update_cache(obj, part)
     # Caching Count for Aggregations Query
     logger.debug("Caching default research videos aggregations count.")
-    print("Caching default research videos aggregations count.")
     obj.sort = None
     part = "count"
     update_cache(obj, part)
     # Caching Data for Aggregations Query
     logger.debug("Caching default research videos aggregations data.")
-    print("Caching default research videos aggregations data.")
     part = "get_data"
     update_cache(obj, part, options=((0,0), {}))
     logger.debug("Finished default research videos caching.")
-    print("Finished default research videos caching.")
 
     # Caching for Admin Sections
     admin_manager = VideoManager(admin_sections)
@@ -103,24 +100,19 @@ def cache_research_videos_defaults():
     obj.sort = sort
     # Caching Count
     logger.debug("Caching admin research videos count.")
-    print("Caching admin research videos count.")
     part = "count"
     update_cache(obj, part)
     # Caching Get_data
     logger.debug("Caching admin research videos data.")
-    print("Caching admin research videos data.")
     part = "get_data"
     update_cache(obj, part)
     # Caching Count for Aggregations Query
     logger.debug("Caching admin research videos aggregations count.")
-    print("Caching admin research videos aggregations count.")
     obj.sort = None
     part = "count"
     update_cache(obj, part)
     # Caching Data for Aggregations Query
     logger.debug("Caching admin research videos aggregations data.")
-    print("Caching admin research videos aggregations data.")
     part = "get_data"
     update_cache(obj, part, options=((0, 0), {}))
     logger.debug("Finished admin research videos caching.")
-    print("Finished admin research videos caching.")

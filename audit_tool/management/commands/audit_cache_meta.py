@@ -55,13 +55,9 @@ class Command(BaseCommand):
             count = AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
             meta['count'] = count
         elif audit_type == 2:
-            # if audit.params.get('do_videos'):
             meta['total'] = AuditChannelProcessor.objects.filter(audit=audit).count() + AuditVideoProcessor.objects.filter(audit=audit).count()
             count = AuditChannelProcessor.objects.filter(audit=audit, processed__isnull=False).count() + AuditVideoProcessor.objects.filter(audit=audit, processed__isnull=False).count()
             meta['count'] = count
-            # else:
-            #     meta['total'] = AuditChannelProcessor.objects.filter(audit=audit).count()
-            #     meta['count'] = AuditChannelProcessor.objects.filter(audit=audit, processed__isnull=False).count()
         audit.cached_data = meta
         audit.save(update_fields=['cached_data'])
         if count == 0:

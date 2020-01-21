@@ -1,5 +1,8 @@
+from django.contrib.auth import get_user_model
+
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
+from rest_framework.fields import ListField
 from rest_framework.serializers import ModelSerializer
 
 from ads_analyzer.models import OpportunityTargetingReport
@@ -29,9 +32,27 @@ class ReportDownloadLink(CharField):
         return super().to_representation(s3_link)
 
 
+class RecipientsListField(ListField):
+    def to_representation(self, recipients):
+        data = [str(recipient) for recipient in recipients.order_by('-id').all()]
+        return super(RecipientsListField, self).to_representation(data)
+
+
+class OpportunityTargetReportRecipientsSerializer(ModelSerializer):
+
+    class Meta:
+        model = get_user_model()
+        fields = (
+            "id",
+            "first_name",
+            "last_name"
+        )
+
+
 class OpportunityTargetReportModelSerializer(ModelSerializer):
     download_link = ReportDownloadLink(source="s3_file_key")
-    opportunity = CharField(source='opportunity.name')
+    opportunity = CharField(source="opportunity.name")
+    recipients = RecipientsListField()
 
     class Meta:
         model = OpportunityTargetingReport
@@ -44,4 +65,5 @@ class OpportunityTargetReportModelSerializer(ModelSerializer):
             "created_at",
             "download_link",
             "status",
+            "recipients"
         )

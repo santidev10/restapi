@@ -1,3 +1,5 @@
+import string
+
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
@@ -6,6 +8,7 @@ from rest_framework.serializers import ValidationError
 from brand_safety.api.serializers.bad_word_serializer import BadWordSerializer
 from brand_safety.models import BadWord
 from audit_tool.models import AuditLanguage
+from utils.utils import remove_tags_punctuation
 
 
 class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
@@ -14,6 +17,7 @@ class BadWordUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
     queryset = BadWord.objects.all()
 
     def put(self, request, *args, **kwargs):
+        request.data['name'] = remove_tags_punctuation(request.data['name'].lower().strip())
         try:
             existing_word = BadWord.all_objects.get(name=request.data['name'],
                                                     language=AuditLanguage.from_string(request.data['language']))

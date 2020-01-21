@@ -1,10 +1,10 @@
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from brand_safety.languages import LANGUAGES
-from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 from utils.brand_safety import map_brand_safety_score
 
 
@@ -34,9 +34,18 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = (getattr(obj.general_data, "top_category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
-        return iab_category
+        categories = getattr(obj.general_data, "iab_categories", []) or []
+        joined = ", ".join(categories)
+        return joined
+
+
+class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Monetizable")
+
+    Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+
+    def __init__(self, instance, *args, **kwargs):
+        super().__init__(instance, *args, **kwargs)
 
 
 class CustomSegmentVideoExportSerializer(Serializer):
@@ -65,6 +74,6 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        youtube_category = (getattr(obj.general_data, "category", "") or "").lower()
-        iab_category = YOUTUBE_TO_IAB_CATEGORIES_MAPPING.get(youtube_category)[-1]
-        return iab_category
+        categories = getattr(obj.general_data, "iab_categories", []) or []
+        joined = ", ".join(categories)
+        return joined

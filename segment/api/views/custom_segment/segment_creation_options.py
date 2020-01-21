@@ -1,62 +1,96 @@
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
+from brand_safety.languages import LANG_CODES
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
-from segment.utils import validate_threshold
+from cache.models import CacheItem
+from cache.constants import CHANNEL_AGGREGATIONS_KEY
+from channel.api.country_view import CountryListApiView
+from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
+from segment.models import CustomSegment
 
 
 class SegmentCreationOptionsApiView(APIView):
-    OPTIONAL_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "youtube_categories"]
+    OPTIONAL_FIELDS = ["countries", "languages", "list_type", "severity_filters", "last_upload_date",
+                       "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold", "content_categories"]
 
-    def get(self, request, *args, **kwargs):
-        data = self._map_query_params(request.query_params)
-        try:
-            self._validate_data(data)
-        except ValueError as err:
-            return Response(status=HTTP_400_BAD_REQUEST, data=str(err))
-        data["segment_type"] = kwargs["segment_type"]
-        query_builder = BrandSafetyQueryBuilder(data)
-        result = query_builder.execute()
-        data = {
-            "items": result.hits.total or 0,
+    def post(self, request, *args, **kwargs):
+        options = self._validate_data(request.data)
+        res_data = {
             "options": self._get_options()
         }
-        status = HTTP_200_OK
-        return Response(status=status, data=data)
+        # Only get item estimates if valid segment_type
+        get_counts = options["segment_type"] is not None
+        if get_counts:
+            if options["segment_type"] == 2:
+                for int_type in range(options["segment_type"]):
+                    str_type = CustomSegment.segment_id_to_type[int_type]
+                    options["segment_type"] = int_type
+                    query_builder = BrandSafetyQueryBuilder(options)
+                    result = query_builder.execute()
+                    res_data[f"{str_type}_items"] = result.hits.total.value or 0
+            else:
+                query_builder = BrandSafetyQueryBuilder(options)
+                result = query_builder.execute()
+                str_type = CustomSegment.segment_id_to_type[options["segment_type"]]
+                res_data[f"{str_type}_items"] = result.hits.total.value or 0
+        return Response(status=HTTP_200_OK, data=res_data)
 
-    def _map_query_params(self, query_params):
-        query_params._mutable = True
-        query_params["brand_safety_categories"] = query_params["brand_safety_categories"].split(",") if query_params.get("brand_safety_categories") else []
-        query_params["languages"] = query_params["languages"].split(",") if query_params.get("languages") else []
-        query_params["minimum_option"] = int(query_params["minimum_option"]) if query_params.get("minimum_option") else 0
-        query_params["score_threshold"] = int(query_params["score_threshold"]) if query_params.get("score_threshold") else 0
+    @staticmethod
+    def _get_options():
+        try:
+            agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
+            countries = [
+                {"common": item["key"]}
+                for item in agg_cache.value["general_data.country"]["buckets"]
+            ]
+            lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
 
-        youtube_categories = query_params["youtube_categories"].split(",") if query_params.get("youtube_categories") else []
-        query_params["youtube_categories"] = BrandSafetyQueryBuilder.map_youtube_categories(youtube_categories)
-        return query_params
-
-    def _get_options(self):
+            languages = []
+            for lang in lang_str:
+                try:
+                    code = LANG_CODES[lang]
+                except KeyError:
+                    code = lang
+                languages.append({"id": code, "title": lang})
+        except (CacheItem.DoesNotExist, KeyError):
+            countries = CountryListApiView().get().data
+            languages = [
+                {"id": code, "title": lang}
+                for lang, code in LANG_CODES.items()
+            ]
         options = {
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
-            "youtube_categories": [
-                {"id": _id, "name": category} for _id, category in AuditCategory.get_all().items()
-            ]
+            "content_categories": [
+                {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
+            ],
+            "countries": countries,
+            "languages": languages,
         }
         return options
 
     def _validate_data(self, data):
         expected = self.OPTIONAL_FIELDS
         received = data.keys()
-        unexpected = any(key not in expected for key in received)
-        if unexpected:
-            err = "Unexpected fields: {}".format(", ".join(set(received) - set(expected)))
-        else:
-            err = validate_threshold(data.get("score_threshold", 0))
-        if err:
-            raise ValueError(err)
+        try:
+            unexpected = any(key not in expected for key in received)
+            if unexpected:
+                raise ValueError("Unexpected fields: {}".format(", ".join(set(received) - set(expected))))
+
+            if data.get("segment_type") is not None:
+                segment_type = SegmentCreateApiViewV3.validate_segment_type(int(data["segment_type"]))
+            else:
+                segment_type = None
+            options = SegmentCreateApiViewV3.validate_options(data)
+            options["segment_type"] = segment_type
+        except KeyError as err:
+            raise ValidationError(f"Missing required key: {err}")
+        except ValueError as err:
+            raise ValidationError(f"Invalid value: {err}")
+        return options
