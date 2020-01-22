@@ -406,7 +406,10 @@ class Command(BaseCommand):
         exclusion_list = {}
         for row in input_list:
             word = remove_tags_punctuation(row[0])
-            language = row[2]
+            try:
+                language = row[2]
+            except Exception as e:
+                language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
