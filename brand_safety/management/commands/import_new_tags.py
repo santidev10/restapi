@@ -21,6 +21,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         file_name = kwargs["file_name"]
+        invalid_rows_file_name = "invalid_new_tags.csv"
+        invalid_rows = []
 
         BadWord.objects.all().delete()
         counter = 0
@@ -34,6 +36,8 @@ class Command(BaseCommand):
                     # Parse word
                     word = remove_tags_punctuation(row[0].lower().strip())
                     if len(word) < 3:
+                        reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
+                        invalid_rows.append(row + reason)
                         continue
                     # Parse category
                     category_string = row[1].lower().strip()
@@ -45,6 +49,8 @@ class Command(BaseCommand):
                     # Parse rating
                     negative_score = int(row[3])
                     if not word or not category or not language or not negative_score:
+                        reason = ["One of word, category, language, or negative_score not found."]
+                        invalid_rows.append(row + reason)
                         continue
                     try:
                         bad_word = BadWord.all_objects.get(name=word, language=language)
@@ -55,4 +61,11 @@ class Command(BaseCommand):
                     except Exception as e:
                         BadWord.objects.create(name=word, category=category, language=language, negative_score=negative_score)
                 except Exception as e:
+                    reason = [e]
+                    invalid_rows.append(row + reason)
                     continue
+
+        with open(invalid_rows_file_name, "w") as f2:
+            writer = csv.writer(f2)
+            for row in invalid_rows:
+                writer.writerow(row)
