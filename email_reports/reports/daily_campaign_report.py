@@ -17,6 +17,7 @@ from aw_reporting.models import User, SalesForceGoalType, Opportunity, \
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
+from es_components.utils import safe_div
 from utils.datetime import now_in_default_tz
 
 
@@ -226,15 +227,9 @@ class DailyCampaignReport(BaseEmailReport):
     def check_flight_delivered(self, flight, control_percentage):
         percentage = 0
         if flight.get("goal_type_id") == SalesForceGoalType.CPM:
-            try:
-                percentage = flight.get("impressions") / flight.get("plan_impressions")
-            except Exception:
-                percentage = 0
+            percentage = safe_div(flight.get("impressions", 0), flight.get("plan_impressions", 0)) or 0
         elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
-            try:
-                percentage = flight.get("video_views") / flight.get("plan_video_views")
-            except Exception:
-                percentage = 0
+            percentage = safe_div(flight.get("video_views", 0), flight.get("plan_video_views", 0)) or 0
         return percentage >= control_percentage
 
 
