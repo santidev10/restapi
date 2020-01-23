@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from mock import patch
 import os
 
+from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from rest_framework.authtoken.models import Token
@@ -49,6 +50,11 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         user.auth_token = token
         user.save()
         return user, token
+
+    def get_admin_respond_to_auth_challenge_mock(self, res):
+        mock_client = MagicMock()
+        mock_client.admin_respond_to_auth_challenge.return_value = res
+        return mock_client
 
     def test_login_email_password_no_phone(self):
         email = str(next(int_iterator)) + "test@test.com"
@@ -113,22 +119,64 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["session"], mock_res["Session"])
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
-    def test_mfa_submit_challenge_failure(self):
+    def test_mfa_retries_exceeded(self):
         user, token = self.create_user_with_temp_token()
+        session = "test_session"
+        retries = 0
         mock_res = {
-            "Session": "temp_session",
-            "ChallengeParameters": {"retries": 4}
+            "Session": session,
+            "ChallengeParameters": {"retries": retries}
         }
-        mock_client = MagicMock()
-        mock_client.admin_respond_to_auth_challenge.return_value = mock_res
+        mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
-                self._url, json.dumps(dict(auth_token=token.key, session="temp_session", answer="test_answer")),
+                self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),
                 content_type="application/json",
             )
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["session"], mock_res["Session"])
-        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertFalse(Token.objects.filter(user=user).exists())
+        self.assertEqual(str(response.data["message"]), "Retries exceeded. Please log in again.")
+
+    def test_mfa_submit_challenge_failure(self):
+        user, token = self.create_user_with_temp_token()
+        session = "test_session"
+        retries = 4
+        mock_res = {
+            "Session": session,
+            "ChallengeParameters": {"retries": retries}
+        }
+        mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["session"], session)
+        self.assertEqual(response.data["retries"], retries)
+
+    def test_mfa_submit_challenge_session_invalid(self):
+        user, token = self.create_user_with_temp_token()
+        session = "test_session"
+        retries = 4
+        mock_res = {
+            "Session": session,
+            "ChallengeParameters": {"retries": retries}
+        }
+        mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
+        mock_exception = {
+            "Error": {
+                "Message": "Invalid session for the user."
+            }
+        }
+        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(str(response.data["message"]), "Invalid session for the user. Please request a new login code.")
 
     def test_mfa_submit_challenge_success(self):
         user, token = self.create_user_with_temp_token()

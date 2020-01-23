@@ -1,3 +1,4 @@
+from botocore.exceptions import ClientError
 import boto3
 from datetime import timedelta
 
@@ -57,7 +58,7 @@ class UserAuthApiView(APIView):
         # If auth_token, check if valid token before any operations
         if auth_token:
             user, token = self._validate_get_user_token(auth_token)
-            client = boto3.client("cognito-idp")
+            client = boto3.client("cognito-idp") if is_temp_auth else None
             # handle user auth with full access auth_token
             if not is_temp_auth:
                 response = self.handle_post_login(user, False)
@@ -178,12 +179,12 @@ class UserAuthApiView(APIView):
                     "ANSWER": data["answer"]
                 },
             )
-        except Exception as e:
+        except ClientError as e:
             message = e.response["Error"]["Message"]
             if not message == "Invalid session for the user.":
                 message = "Max retries exceeded."
             message += " Please request a new login code."
-            raise LoginException(message, "INVALID_PARAMETERS")
+            raise LoginException(message)
         else:
             if result.get("AuthenticationResult"):
                 # Delete temp auth_token for mfa process
@@ -191,12 +192,17 @@ class UserAuthApiView(APIView):
                 Token.objects.create(user=user)
                 response = self.handle_post_login(user, True)
             else:
+                session = result["Session"]
+                retries = result["ChallengeParameters"]["retries"]
+                if retries == 0:
+                    Token.objects.filter(user=user).delete()
+                    raise LoginException("Retries exceeded. Please log in again.")
                 # If no AuthenticationResult in successful request, then client provided invalid mfa code
                 res = {
-                    "retries": result["ChallengeParameters"]["retries"],
-                    "session": result["Session"],
+                    "session": session,
+                    "retries": retries,
                 }
-                response = Response(data=res)
+                response = Response(data=res, status=HTTP_400_BAD_REQUEST)
             return response
 
     def mfa_validate_data(self, data):
@@ -206,11 +212,11 @@ class UserAuthApiView(APIView):
         except KeyError:
             errors.append("Session required for MFA.")
         try:
-            data["answer"] = str(data["answer"])
+            data["answer"] = str(data["answer"]).replace("-", "")
         except KeyError:
             errors.append("MFA challenge answer required for MFA.")
         if errors:
-            raise LoginException(", ".join(errors), "INVALID_PARAMETERS")
+            raise LoginException(", ".join(errors))
 
     def handle_login(self, email, password):
         """
@@ -226,9 +232,9 @@ class UserAuthApiView(APIView):
             if not user.check_password(password):
                 raise ValueError
         except get_user_model().DoesNotExist:
-            raise LoginException(f"User with email does not exist: {email}.", "USER_NOT_EXISTS")
+            raise LoginException(f"User with email does not exist: {email}.")
         except ValueError:
-            raise LoginException("Invalid password.", "INVALID_PASSWORD")
+            raise LoginException("Invalid password.")
 
         Token.objects.filter(user=user).delete()
         # send back mfa options
@@ -287,7 +293,7 @@ class UserAuthApiView(APIView):
             if token.created < threshold:
                 raise ValueError
         except (Token.DoesNotExist, ValueError):
-            raise LoginException(f"Invalid token. Please log in again.", "INVALID_TOKEN")
+            raise LoginException(f"Invalid token. Please log in again.")
         return token.user, token
 
     def _get_invalid_response(self):
@@ -297,9 +303,9 @@ class UserAuthApiView(APIView):
 
 
 class LoginException(ValidationError):
-    def __init__(self, message, code):
+    def __init__(self, message):
         data = {
             "message": message,
-            "code": code
         }
         super().__init__(data)
+
