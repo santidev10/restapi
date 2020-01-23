@@ -125,7 +125,7 @@ class UserAuthApiView(APIView):
         """
         Begin MFA login process by sending user challenge code through preferred medium (text | email)
         """
-        mfa_type = data["mfa_type"]
+        mfa_type = data.get("mfa_type", "")
         if mfa_type != "email" and mfa_type != "text":
             raise LoginException("mfa_type option must either be email or text.")
         try:
@@ -215,11 +215,11 @@ class UserAuthApiView(APIView):
     def handle_login(self, email, password):
         """
         Validate user login with email and password
-        Once validated, send OK response and wait for client to initiate mfa auth by sending 
+        Once validated, send OK response and wait for client to initiate mfa auth by sending
             auth_token prepended with "temp_" and preferred MFA type (text | email)
         :param email: str
         :param password: str
-        :return: 
+        :return:
         """
         try:
             user = get_user_model().objects.get(email=email)
@@ -232,9 +232,11 @@ class UserAuthApiView(APIView):
 
         Token.objects.filter(user=user).delete()
         # send back mfa options
-        response = {}
+        response = {
+            "username": email
+        }
         if user.phone_number:
-            formatted = f"(***)***-{user.phone_number[-4:]}"
+            formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
         token = Token()
