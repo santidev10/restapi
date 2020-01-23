@@ -226,9 +226,15 @@ class DailyCampaignReport(BaseEmailReport):
     def check_flight_delivered(self, flight, control_percentage):
         percentage = 0
         if flight.get("goal_type_id") == SalesForceGoalType.CPM:
-            percentage = flight.get("impressions") / flight.get("plan_impressions")
+            try:
+                percentage = flight.get("impressions") / flight.get("plan_impressions")
+            except Exception:
+                percentage = 0
         elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
-            percentage = flight.get("video_views") / flight.get("plan_video_views")
+            try:
+                percentage = flight.get("video_views") / flight.get("plan_video_views")
+            except Exception:
+                percentage = 0
         return percentage >= control_percentage
 
 
