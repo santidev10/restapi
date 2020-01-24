@@ -419,7 +419,6 @@ class AuditExportApiView(APIView):
                 cols.extend(bad_word_categories)
         except Exception as e:
             pass
-        channel_ids = []
         good_hit_words = {}
         bad_hit_words = {}
         bad_video_hit_words = {}
@@ -431,7 +430,6 @@ class AuditExportApiView(APIView):
         if clean is not None:
             channels = channels.filter(clean=clean)
         for cid in channels:
-            channel_ids.append(cid.channel_id)
             full_channel_id = cid.channel.channel_id
             if audit.params.get('do_videos'):
                 try:
@@ -462,14 +460,15 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[full_channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        channel_meta = AuditChannelMeta.objects.filter(channel_id__in=channel_ids)
         auditor = BrandSafetyAudit()
         rows = [cols]
-        count = channel_meta.count()
+        count = channels.count()
         num_done = 0
         sections = (Sections.MONETIZATION,)
         channel_manager = ChannelManager(sections)
-        for v in channel_meta:
+        for db_channel in channels:
+            channel = db_channel.channel
+            v = channel.auditchannelmeta
             try:
                 language = v.language.language
             except Exception as e:
@@ -483,48 +482,48 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 last_category = ""
             try:
-                channel_brand_safety_score = auditor.audit_channel(v.channel.channel_id, rescore=False)
+                channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
                 mapped_score = map_brand_safety_score(channel_brand_safety_score)
             except Exception as e:
                 print(str(e))
             if not v.monetised:
                 try:
-                    cid = v.channel.channel_id
+                    cid = channel.channel_id
                     channel = channel_manager.get([cid])[0]
                     if 'monetization' in channel and channel.monetization.is_monetizable:
                         v.monetised = True
-                        v.save()
+                        v.save(update_fields=['monetised'])
                 except Exception as e:
                     pass
             data = [
                 v.name,
-                "https://www.youtube.com/channel/" + v.channel.channel_id,
+                "https://www.youtube.com/channel/" + channel.channel_id,
                 v.view_count if v.view_count else "",
                 v.subscribers,
-                video_count.get(v.channel.channel_id) if video_count.get(v.channel.channel_id) else 0,
+                video_count.get(channel.channel_id) if video_count.get(channel.channel_id) else 0,
                 v.video_count,
                 country,
                 language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
-                bad_videos_count.get(v.channel.channel_id) if bad_videos_count.get(v.channel.channel_id) else 0,
-                len(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else 0,
-                len(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
-                    v.channel.channel_id) else 0,
-                ','.join(bad_hit_words.get(v.channel.channel_id)) if bad_hit_words.get(v.channel.channel_id) else "",
-                ','.join(bad_video_hit_words.get(v.channel.channel_id)) if bad_video_hit_words.get(
-                    v.channel.channel_id) else "",
-                ','.join(good_hit_words.get(v.channel.channel_id)) if good_hit_words.get(v.channel.channel_id) else "",
-                ','.join(good_video_hit_words.get(v.channel.channel_id)) if good_video_hit_words.get(
-                    v.channel.channel_id) else "",
+                bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
+                len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
+                len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
+                    channel.channel_id) else 0,
+                ','.join(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else "",
+                ','.join(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
+                    channel.channel_id) else "",
+                ','.join(good_hit_words.get(channel.channel_id)) if good_hit_words.get(channel.channel_id) else "",
+                ','.join(good_video_hit_words.get(channel.channel_id)) if good_video_hit_words.get(
+                    channel.channel_id) else "",
                 mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
                     bad_word_category_dict = {}
-                    bad_words = bad_hit_words[v.channel.channel_id].union(bad_video_hit_words[v.channel.channel_id])
+                    bad_words = bad_hit_words[channel.channel_id].union(bad_video_hit_words[channel.channel_id])
                     for word in bad_words:
                         try:
                             word_index = audit.params['exclusion'].index(word)
