@@ -186,7 +186,7 @@ GOOGLE_APP_OAUTH2_ORIGIN = "http://localhost"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
+        'userprofile.authentication.ExpiringTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -449,6 +449,10 @@ ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
 REPORT_EXPIRATION_PERIOD = 24
 REPORT_VISIBLE_PERIOD = 90  # in days
 SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
+
+AUTH_TOKEN_EXPIRES = 30
+COGNITO_USER_POOL_ID = ""
+COGNITO_CLIENT_ID = ""
 
 if APM_ENABLED:
     ELASTIC_APM = {
