@@ -42,6 +42,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
             cursor_field = "stats.views"
+            # Exclude all age_restricted items
+            if options is None:
+                options = [
+                    QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
+                ]
         else:
             cursor_field = "stats.subscribers"
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
