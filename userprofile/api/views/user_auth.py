@@ -65,7 +65,7 @@ class UserAuthApiView(APIView):
 
             # handle create auth challenge with temp auth_token and mfa type
             elif is_temp_auth and mfa_type and not username and not password:
-                response = self.mfa_start_challenge(client, user, data)
+                response = self.mfa_create_challenge(client, user, data)
 
             # handle submitting / verifying mfa challenge
             elif auth_token and answer and session and is_temp_auth:
@@ -122,7 +122,7 @@ class UserAuthApiView(APIView):
             return None
         return user
 
-    def mfa_start_challenge(self, client, user, data):
+    def mfa_create_challenge(self, client, user, data):
         """
         Begin MFA login process by sending user challenge code through preferred medium (text | email)
         """
@@ -135,6 +135,7 @@ class UserAuthApiView(APIView):
                 UserPoolId=settings.COGNITO_USER_POOL_ID,
                 Username=user.email,
                 UserAttributes=[
+                    {"Name": "phone_number", "Value": user.phone_number},
                     {"Name": "custom:mfa_type", "Value": mfa_type}
                 ]
             )
@@ -180,10 +181,11 @@ class UserAuthApiView(APIView):
                 },
             )
         except ClientError as e:
+            Token.objects.filter(user=user).delete()
             message = e.response["Error"]["Message"]
             if not message == "Invalid session for the user.":
                 message = "Max retries exceeded."
-            message += " Please request a new login code."
+            message += " Please log in again."
             raise LoginException(message)
         else:
             if result.get("AuthenticationResult"):
@@ -192,15 +194,9 @@ class UserAuthApiView(APIView):
                 Token.objects.create(user=user)
                 response = self.handle_post_login(user, True)
             else:
-                session = result["Session"]
-                retries = result["ChallengeParameters"]["retries"]
-                if retries == 0:
-                    Token.objects.filter(user=user).delete()
-                    raise LoginException("Retries exceeded. Please log in again.")
-                # If no AuthenticationResult in successful request, then client provided invalid mfa code
                 res = {
-                    "session": session,
-                    "retries": retries,
+                    "session": result["Session"],
+                    "retries": result["ChallengeParameters"]["retries"]
                 }
                 response = Response(data=res, status=HTTP_400_BAD_REQUEST)
             return response

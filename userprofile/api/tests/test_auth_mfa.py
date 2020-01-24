@@ -128,6 +128,12 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             "ChallengeParameters": {"retries": retries}
         }
         mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
+        mock_exception = {
+            "Error": {
+                "Message": "Invalid."
+            }
+        }
+        mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, session=session, answer="test_answer")),
@@ -135,7 +141,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertFalse(Token.objects.filter(user=user).exists())
-        self.assertEqual(str(response.data["message"]), "Retries exceeded. Please log in again.")
+        self.assertEqual(str(response.data["message"]), "Max retries exceeded. Please log in again.")
 
     def test_mfa_submit_challenge_failure(self):
         user, token = self.create_user_with_temp_token()
@@ -176,7 +182,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
                 content_type="application/json",
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-        self.assertEqual(str(response.data["message"]), "Invalid session for the user. Please request a new login code.")
+        self.assertFalse(Token.objects.filter(user=user).exists())
+        self.assertEqual(str(response.data["message"]), "Invalid session for the user. Please log in again.")
 
     def test_mfa_submit_challenge_success(self):
         user, token = self.create_user_with_temp_token()
