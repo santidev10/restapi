@@ -81,6 +81,8 @@ class UserAuthApiView(APIView):
         # Google token
         elif token and not auth_token:
             user = self.get_google_user(token)
+            user.auth_token.created = timezone.now()
+            user.auth_token.save()
             response = self.handle_post_login(user, True)
 
         # Login data sent by client invalid
