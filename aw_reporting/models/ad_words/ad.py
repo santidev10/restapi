@@ -12,8 +12,8 @@ class Ad(BaseStatisticModel):
     headline = models.TextField(null=True)
     creative_name = models.TextField(null=True)
     display_url = models.TextField(null=True)
-    status = models.CharField(max_length=10, null=True)
-    is_disapproved = models.BooleanField(default=False, null=False)
+    status = models.CharField(max_length=10, null=True, db_index=True)
+    is_disapproved = models.BooleanField(default=False, null=False, db_index=True)
 
     def __str__(self):
         return "%s #%s" % (self.creative_name, self.id)
