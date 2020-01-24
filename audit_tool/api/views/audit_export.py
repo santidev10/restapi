@@ -202,23 +202,24 @@ class AuditExportApiView(APIView):
                 cols.extend(bad_word_categories)
         except Exception as e:
             pass
-        video_ids = []
-        hit_words = {}
+        # video_ids = []
+        # hit_words = {}
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
-        for vid in videos:
-            video_ids.append(vid.video_id)
-            hit_words[vid.video.video_id] = vid.word_hits
-        video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
+        # for vid in videos:
+        #     video_ids.append(vid.video_id)
+        #     hit_words[vid.video.video_id] = vid.word_hits
+        # video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit()
         rows = [cols]
-        count = video_meta.count()
+        count = videos.count()
         if count > self.MAX_ROWS:
             count = self.MAX_ROWS
         num_done = 0
-        for v in video_meta:
-            vid = v.video
+        for avp in videos:
+            vid = avp.video
+            v = vid.auditvideometa
             v_channel = vid.channel
             acm = v_channel.auditchannelmeta if v_channel else None
             if num_done > self.MAX_ROWS:
@@ -259,14 +260,14 @@ class AuditExportApiView(APIView):
                 default_audio_language = v.default_audio_language.language
             except Exception as e:
                 default_audio_language = ""
+            v_word_hits = avp.word_hits
             if do_inclusion:
-                all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, vid.video_id, clean=True)
+                all_good_hit_words, unique_good_hit_words = self.get_hit_words(v_word_hits, clean=True)
             else:
                 all_good_hit_words = ""
                 unique_good_hit_words = ""
-            v_word_hits = hit_words.get(vid.video_id)
             if do_exclusion or (v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion')==['ytAgeRestricted']):
-                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, vid.video_id, clean=False)
+                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(v_word_hits, clean=False)
             else:
                 all_bad_hit_words = ""
                 unique_bad_hit_words = ""
@@ -293,10 +294,10 @@ class AuditExportApiView(APIView):
                 default_audio_language,
                 self.clean_duration(v.duration) if v.duration else "",
                 v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
-                acm.name if v_channel else "",
+                acm.name if acm else "",
                 "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
                 channel_lang,
-                acm.subscribers if v_channel else "",
+                acm.subscribers if acm else "",
                 country,
                 last_uploaded,
                 last_uploaded_view_count,
@@ -566,8 +567,7 @@ class AuditExportApiView(APIView):
                 audit.save()
         return s3_file_name, download_file_name
 
-    def get_hit_words(self, hit_words, v_id, clean=None):
-        hits = hit_words.get(v_id)
+    def get_hit_words(self, hits, clean=None):
         uniques = set()
         words_to_use = 'exclusion'
         if clean is None or clean==True:
