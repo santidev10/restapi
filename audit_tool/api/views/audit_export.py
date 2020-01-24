@@ -218,6 +218,9 @@ class AuditExportApiView(APIView):
             count = self.MAX_ROWS
         num_done = 0
         for v in video_meta:
+            vid = v.video
+            v_channel = vid.channel
+            acm = v_channel.auditchannelmeta if v_channel else None
             if num_done > self.MAX_ROWS:
                 continue
             try:
@@ -229,27 +232,27 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 category = ""
             try:
-                country = v.video.channel.auditchannelmeta.country.country
+                country = acm.country.country
             except Exception as e:
                 country = ""
             try:
-                channel_lang = v.video.channel.auditchannelmeta.language.language
+                channel_lang = acm.language.language
             except Exception as e:
                 channel_lang = ""
             try:
-                video_count = v.video.channel.auditchannelmeta.video_count
+                video_count = acm.video_count
             except Exception as e:
                 video_count = ""
             try:
-                last_uploaded = v.video.channel.auditchannelmeta.last_uploaded.strftime("%m/%d/%Y")
+                last_uploaded = acm.last_uploaded.strftime("%m/%d/%Y")
             except Exception as e:
                 last_uploaded = ""
             try:
-                last_uploaded_view_count = v.video.channel.auditchannelmeta.last_uploaded_view_count
+                last_uploaded_view_count = acm.last_uploaded_view_count
             except Exception as e:
                 last_uploaded_view_count = ''
             try:
-                last_uploaded_category = v.video.channel.auditchannelmeta.last_uploaded_category.category_display_iab
+                last_uploaded_category = acm.last_uploaded_category.category_display_iab
             except Exception as e:
                 last_uploaded_category = ''
             try:
@@ -257,19 +260,19 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 default_audio_language = ""
             if do_inclusion:
-                all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=True)
+                all_good_hit_words, unique_good_hit_words = self.get_hit_words(hit_words, vid.video_id, clean=True)
             else:
                 all_good_hit_words = ""
                 unique_good_hit_words = ""
-            v_word_hits = hit_words.get(v.video.video_id)
+            v_word_hits = hit_words.get(vid.video_id)
             if do_exclusion or (v_word_hits and v_word_hits.get('exclusion') and v_word_hits.get('exclusion')==['ytAgeRestricted']):
-                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, v.video.video_id, clean=False)
+                all_bad_hit_words, unique_bad_hit_words = self.get_hit_words(hit_words, vid.video_id, clean=False)
             else:
                 all_bad_hit_words = ""
                 unique_bad_hit_words = ""
             try:
                 video_audit_score = auditor.audit_video({
-                    "id": v.video.video_id,
+                    "id": vid.video_id,
                     "title": v.name,
                     "description": v.description,
                     "tags": v.keywords,
@@ -279,7 +282,7 @@ class AuditExportApiView(APIView):
                 mapped_score = ""
                 print("Problem calculating video score")
             data = [
-                "https://www.youtube.com/video/" + v.video.video_id,
+                "https://www.youtube.com/video/" + vid.video_id,
                 v.name,
                 language,
                 category,
@@ -290,10 +293,10 @@ class AuditExportApiView(APIView):
                 default_audio_language,
                 self.clean_duration(v.duration) if v.duration else "",
                 v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
-                v.video.channel.auditchannelmeta.name if v.video.channel else "",
-                "https://www.youtube.com/channel/" + v.video.channel.channel_id if v.video.channel else "",
+                acm.name if v_channel else "",
+                "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
                 channel_lang,
-                v.video.channel.auditchannelmeta.subscribers if v.video.channel else "",
+                acm.subscribers if v_channel else "",
                 country,
                 last_uploaded,
                 last_uploaded_view_count,
