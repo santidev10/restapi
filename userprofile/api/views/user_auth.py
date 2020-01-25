@@ -131,16 +131,26 @@ class UserAuthApiView(APIView):
         mfa_type = data.get("mfa_type", "")
         if mfa_type != "email" and mfa_type != "text":
             raise LoginException("mfa_type option must either be email or text.")
+
+        user_attributes = [{"Name": "custom:mfa_type", "Value": mfa_type}]
+        if user.phone_number:
+            user_attributes.append({"Name": "phone_number", "Value": user.phone_number})
         try:
-            # Must set attribute on user since we are unable to send options during define mfa challenge trigger
+            # Create / Update user with attributes
+            client.admin_create_user(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                Username=user.email,
+                UserAttributes=user_attributes,
+                MessageAction="SUPPRESS"
+            )
+        except ClientError:
+            # User exists, update attributes
             client.admin_update_user_attributes(
                 UserPoolId=settings.COGNITO_USER_POOL_ID,
                 Username=user.email,
-                UserAttributes=[
-                    {"Name": "phone_number", "Value": user.phone_number},
-                    {"Name": "custom:mfa_type", "Value": mfa_type}
-                ]
+                UserAttributes=user_attributes
             )
+        try:
             response = client.admin_initiate_auth(
                 UserPoolId=settings.COGNITO_USER_POOL_ID,
                 ClientId=settings.COGNITO_CLIENT_ID,
@@ -149,7 +159,7 @@ class UserAuthApiView(APIView):
                     "USERNAME": user.email,
                 },
             )
-        except Exception as e:
+        except ClientError as e:
             res = str(e)
             status_code = HTTP_400_BAD_REQUEST
         else:
