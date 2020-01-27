@@ -81,8 +81,7 @@ class UserAuthApiView(APIView):
         # Google token
         elif token and not auth_token:
             user = self.get_google_user(token)
-            user.auth_token.created = timezone.now()
-            user.auth_token.save()
+            self._set_auth_token(user)
             response = self.handle_post_login(user, True)
 
         # Login data sent by client invalid
@@ -201,9 +200,8 @@ class UserAuthApiView(APIView):
             raise LoginException(message)
         else:
             if result.get("AuthenticationResult"):
-                # Delete temp auth_token for mfa process
-                Token.objects.filter(user=user).delete()
-                Token.objects.create(user=user)
+                # Replace temp auth_token for mfa process
+                self._set_auth_token(user)
                 response = self.handle_post_login(user, True)
             else:
                 res = {
@@ -244,7 +242,6 @@ class UserAuthApiView(APIView):
         except ValueError:
             raise LoginException("Invalid password.")
 
-        Token.objects.filter(user=user).delete()
         # send back mfa options
         response = {
             "username": email
@@ -253,11 +250,8 @@ class UserAuthApiView(APIView):
             formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
-        token = Token()
-        token.key = f"temp_{token.generate_key()}"[:40]
-        token.user = user
-        token.save()
-        response["auth_token"] = token.key
+        key = self._set_auth_token(user, temp=True)
+        response["auth_token"] = key
         return Response(data=response)
 
     def handle_post_login(self, user, update_date_of_last_login):
@@ -308,6 +302,27 @@ class UserAuthApiView(APIView):
         response = Response(data="Unable to authenticate user. Please try logging in again.",
                             status=HTTP_400_BAD_REQUEST)
         return response
+
+    def _set_auth_token(self, user, temp=False):
+        """
+        Set auth_token and reset created timestamp
+        :return:
+        """
+        params = {
+            "created": timezone.now()
+        }
+        token = Token.objects.filter(user=user)
+        if token.exists():
+            token = token[0]
+        else:
+            token = Token.objects.create(user=user)
+        key = token.generate_key()
+        if temp is True:
+            key = f"temp_{key}"[:40]
+        params["key"] = key
+        Token.objects.filter(user=user).update(**params)
+        user.refresh_from_db()
+        return key
 
 
 class LoginException(ValidationError):
