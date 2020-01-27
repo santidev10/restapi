@@ -9,7 +9,7 @@ from utils.brand_safety import map_brand_safety_score
 
 
 class CustomSegmentChannelExportSerializer(Serializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score")
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted")
 
     URL = SerializerMethodField("get_url")
     Title = CharField(source="general_data.title", default="")
@@ -17,6 +17,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
     Category = SerializerMethodField("get_category")
     Subscribers = IntegerField(source="stats.subscribers")
     Overall_Score = SerializerMethodField("get_overall_score")
+    Vetted = SerializerMethodField("get_vetted")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
@@ -38,9 +39,13 @@ class CustomSegmentChannelExportSerializer(Serializer):
         joined = ", ".join(categories)
         return joined
 
+    def get_vetted(self, obj):
+        vetted = "Y" if getattr(obj.task_us_data, "created_at", None) is not None else None
+        return vetted
+
 
 class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Monetizable")
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted", "Monetizable")
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
 

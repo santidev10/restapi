@@ -483,8 +483,8 @@ class AuditExportApiView(APIView):
             if not v.monetised:
                 try:
                     cid = channel.channel_id
-                    channel = channel_manager.get([cid])[0]
-                    if 'monetization' in channel and channel.monetization.is_monetizable:
+                    cm_channel = channel_manager.get([cid])[0]
+                    if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
                         v.monetised = True
                         v.save(update_fields=['monetised'])
                 except Exception as e:
