@@ -33,5 +33,5 @@ def cache_video_aggregations():
     )
     logger.debug("Saving video aggregations.")
     cached_video_aggregations.value = aggregations
-    cached_video_aggregations.save()
+    cached_video_aggregations.save(update_fields=['value'])
     logger.debug("Finished video aggregations caching.")
