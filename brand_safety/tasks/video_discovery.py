@@ -3,6 +3,7 @@ from celery import group
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from brand_safety.tasks.constants import Schedulers
 from es_components.query_builder import QueryBuilder
+from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from saas import celery_app
@@ -33,6 +34,10 @@ def video_discovery_scheduler():
 
 @celery_app.task
 def video_update(video_ids):
-    auditor = BrandSafetyAudit()
+    auditor = BrandSafetyAudit(check_rescore=True)
     auditor.process_videos(video_ids)
+    to_rescore = auditor.channels_to_rescore
+    # Remove brand safety section for channels to rescore. Will be rescored by discovery task
+    query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
+    auditor.channel_manager.remove_sections(query, (Sections.BRAND_SAFETY,))
 
