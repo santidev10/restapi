@@ -8,12 +8,12 @@ def update_fields_1(apps, schema_editor):
     schema_editor.atomic.__exit__(None, None, None)
     schema_editor.execute('''
     drop index aw_reporting_campaign_account_id_8e3dadc5_like;
-    drop index aw_reporting_campaig_account_id_8e3dadc5_fk_aw_report;
     ALTER TABLE aw_reporting_campaign 
         ALTER COLUMN account_id TYPE INTEGER USING CAST(account_id AS INT);
     ''')
 #ALTER TABLE aw_reporting_campaign ALTER COLUMN account_id TYPE bigint USING (account_id::integer);
 #create index aw_reporting_campaign_account_id_8e3dadc5_like on aw_reporting_campaign(account_id);
+#drop index aw_reporting_campaig_account_id_8e3dadc5_fk_aw_report;
 class Migration(migrations.Migration):
 
     dependencies = [
