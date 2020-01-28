@@ -20,9 +20,9 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(update_fields),
-        migrations.AlterField(
-            model_name='account',
-            name='id',
-            field=models.BigIntegerField(primary_key=True, serialize=False),
-        ),
+        # migrations.AlterField(
+        #     model_name='account',
+        #     name='id',
+        #     field=models.BigIntegerField(primary_key=True, serialize=False),
+        # ),
     ]
