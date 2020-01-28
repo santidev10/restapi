@@ -69,18 +69,21 @@ def submit_sq_transcripts(language=None, country=None, yt_category=None, brand_s
                                 videos_sq_transcripts.append(sq_transcript)
                                 videos_request_batch.append(vid_id)
                         except Exception:
-                            pass
+                            continue
                 except Exception as e:
                     continue
             else:
                 api_endpoint = "/submitjob"
                 api_request = sq_api_url + api_endpoint
                 request_body = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
-                request_body = json.dumps(request_body)
-                response = requests.post(api_request, data=request_body)
+                headers = {
+                    "Content-Type": "application/json",
+                    "x-api-key": API_KEY
+                }
+                response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
                 for sq_transcript in videos_sq_transcripts:
                     sq_transcript.submitted = datetime.now()
-                    sq_transcript.job_id = response["Job Id"]
+                    sq_transcript.job_id = response.json()["Job Id"]
                     sq_transcript.save()
         unlock(LOCK_NAME)
         logger.debug("Finished pulling SQ transcripts task.")
