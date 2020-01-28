@@ -61,7 +61,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client.admin_respond_to_auth_challenge.return_value = res
         return mock_client
 
-    def test_login_email_password_no_phone(self):
+    def test_login_email_password_no_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -79,12 +79,32 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["username"], user.email)
         self.assertIsNone(response.data.get("phone_number"))
 
-    def test_login_email_password_has_phone(self):
+    def test_login_email_password_has_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
             email=email,
-            phone_number="+19999999"
+            phone_number="+19999999",
+        )
+        user.set_password(password)
+        user.save()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(username=email, password=password)),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(response.data["auth_token"].startswith("temp_"))
+        self.assertEqual(response.data["username"], user.email)
+        self.assertIsNone(response.data.get("phone_number"))
+
+    def test_login_email_password_has_phone_verified(self):
+        email = str(next(int_iterator)) + "test@test.com"
+        password = "test"
+        user = get_user_model().objects.create(
+            email=email,
+            phone_number="+19999999",
+            phone_number_verified=True,
         )
         user.set_password(password)
         user.save()
@@ -150,6 +170,60 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["session"], mock_res["Session"])
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_text_reject_not_verified_phone_number(self):
+        user, token = self._create_user()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_mfa_text_success_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_update_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+        phone_number_call_arg = mock_client.admin_create_user.call_args[1]["UserAttributes"][1]
+        self.assertEqual(phone_number_call_arg["Name"], "phone_number")
+        self.assertEqual(phone_number_call_arg["Value"], user.phone_number)
+
 
     def test_mfa_retries_exceeded(self):
         user, token = self._create_user()

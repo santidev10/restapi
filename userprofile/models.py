@@ -102,6 +102,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     email = LowercaseEmailField(_('email address'), unique=True)
     company = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
+    phone_number_verified = models.BooleanField(default=False)
     profile_image_url = models.URLField(null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)

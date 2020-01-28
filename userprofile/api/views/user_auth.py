@@ -132,8 +132,10 @@ class UserAuthApiView(APIView):
             raise LoginException("mfa_type option must either be email or text.")
 
         user_attributes = [{"Name": "custom:mfa_type", "Value": mfa_type}]
-        if user.phone_number:
+        if user.phone_number and user.phone_number_verified:
             user_attributes.append({"Name": "phone_number", "Value": user.phone_number})
+        elif mfa_type == "text":
+            raise LoginException("You must have a verified phone number to use text MFA.")
         try:
             # Create / Update user with attributes
             client.admin_create_user(
@@ -246,7 +248,7 @@ class UserAuthApiView(APIView):
         response = {
             "username": email
         }
-        if user.phone_number:
+        if user.phone_number and user.phone_number_verified:
             formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
