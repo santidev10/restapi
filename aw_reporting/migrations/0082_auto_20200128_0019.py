@@ -3,6 +3,11 @@
 from django.db import migrations, models
 
 
+def update_fields(apps, schema_editor):
+    # Remove atomicity to be able to save progress of migration if timeout occurs
+    schema_editor.atomic.__exit__(None, None, None)
+    schema_editor.execute('ALTER TABLE aw_reporting_campaign ALTER COLUMN account_id TYPE bigint;')
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +15,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(update_fields),
         migrations.AlterField(
             model_name='account',
             name='id',
