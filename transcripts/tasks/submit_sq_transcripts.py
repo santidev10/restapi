@@ -1,0 +1,193 @@
+import logging
+from saas import celery_app
+from elasticsearch_dsl import Search
+from elasticsearch_dsl import Q
+import asyncio
+import time
+import requests
+from aiohttp import ClientSession
+from googleapiclient.discovery import build
+
+from es_components.connections import init_es_connection
+from bs4 import BeautifulSoup as bs
+from audit_tool.models import AuditVideoTranscript
+from es_components.managers.video import VideoManager
+from es_components.models.video import Video
+from es_components.constants import Sections
+from utils.transform import populate_video_custom_captions
+from utils.lang import replace_apostrophes
+from saas.configs.celery import TaskExpiration
+from saas.configs.celery import TaskTimeout
+from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
+from brand_safety.languages import LANGUAGES, LANG_CODES
+from aiohttp.web import HTTPTooManyRequests
+from django.conf import settings
+from utils.youtube_api import YoutubeAPIConnector
+from transcripts.models import SQTranscript
+
+logger = logging.getLogger(__name__)
+
+LOCK_NAME = 'sq_transcripts'
+API_KEY = settings.SQ_API_KEY
+youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY)
+sq_api_url = "https://api.essepi.io/transcribe/v1/prod"
+
+
+@celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
+def submit_sq_transcripts(language=None, country=None, yt_category=None, brand_safety_score=None, num_vids=10000):
+    try:
+        lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
+        videos = get_no_custom_captions_vids(language=language, country=country, yt_category=yt_category,
+                                   brand_safety_score=brand_safety_score, num_vids=num_vids)
+        videos_request_batch = []
+        videos_sq_transcripts = []
+        for vid in videos:
+            if len(videos_request_batch) < 100:
+                vid_id = vid.main.id
+                options = {
+                    "part": "id,snippet",
+                    "videoId": vid_id
+                }
+                try:
+                    # Check if YT API contains a captions object for the Video.
+                    yt_captions = youtube.captions().list(**options).execute()
+                    if len(yt_captions["items"]) < 1:
+                        yt_has_captions = False
+                    else:
+                        yt_has_captions = True
+                    # If YT API has no captions object for video, and we have no custom transcript for it, send to SQ
+                    if not yt_has_captions:
+                        try:
+                            sq_transcript = SQTranscript.get_or_create(vid_id)
+                            if sq_transcript.submitted:
+                                continue
+                            else:
+                                videos_sq_transcripts.append(sq_transcript)
+                                videos_request_batch.append(vid_id)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    continue
+            else:
+                api_endpoint = ""
+                api_request = sq_api_url + ''
+                response = requests.get(sq_api_url)
+        unlock(LOCK_NAME)
+        logger.debug("Finished pulling SQ transcripts task.")
+    except Exception as e:
+        pass
+
+# get_no_custom_captions_vids(language="en", country="United States", yt_category="News & Politics", num_vids=10000)
+
+def get_no_custom_captions_vids(language=None, country=None, yt_category=None, brand_safety_score=None, num_vids=10000):
+    forced_filters = VideoManager().forced_filters()
+    s = Search(using='default')
+    s = s.index(Video.Index.name)
+    s = s.query(forced_filters)
+    # Get Videos Query for Specified Language
+    if language:
+        language_query = Q(
+            {
+                "term": {
+                    "general_data.language": {
+                        "value": language
+                    }
+                }
+            }
+        )
+    else:
+        language_query = None
+    # Get Videos Query for Specified Country
+    if country:
+        country_query = Q(
+            {
+                "term": {
+                    "general_data.country": {
+                        "value": country
+                    }
+                }
+            }
+        )
+    else:
+        country_query = None
+    # Get Videos Query for Specified Category
+    if yt_category:
+        category_query = Q(
+            {
+                "term": {
+                    "general_data.category": {
+                        "value": yt_category
+                    }
+                }
+            }
+        )
+    else:
+        category_query = None
+    # Get Videos Query >= Brand Safety Score
+    if brand_safety_score:
+        brand_safety_query = Q(
+            {
+                "range": {
+                    "brand_safety.overall_score": {
+                        "gte": brand_safety_score
+                    }
+                }
+            }
+        )
+    else:
+        brand_safety_query = None
+
+    # Get Videos where Custom Captions have been parsed
+    custom_captions_parsed_query = Q(
+        {
+            "bool": {
+                "must": {
+                    "exists": {
+                        "field": "custom_captions"
+                    }
+                }
+            }
+        }
+    )
+
+    # Get Videos with no Custom Captions, after parsing
+    no_custom_captions_query = Q(
+        {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "custom_captions.items"
+                    }
+                }
+            }
+        }
+    )
+
+    # Get Videos with no Captions
+    no_yt_captions_query = Q(
+        {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "captions"
+                    }
+                }
+            }
+        }
+    )
+
+    s = s.query(custom_captions_parsed_query).query(no_custom_captions_query).query(no_yt_captions_query)
+
+    if language_query:
+        s = s.query(language_query)
+    if country_query:
+        s = s.query(country_query)
+    if category_query:
+        s = s.query(category_query)
+    if brand_safety_query:
+        s = s.query(brand_safety_query)
+    s = s.sort({"stats.views": {"order": "desc"}})
+    s = s[:num_vids]
+    return s.execute()

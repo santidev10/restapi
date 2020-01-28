@@ -60,6 +60,7 @@ PROJECT_APPS = (
     "keyword_tool",
     "related_tool",
     "segment",
+    "transcripts",
     "userprofile",
 )
 
@@ -453,6 +454,8 @@ SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
 AUTH_TOKEN_EXPIRES = 30
 COGNITO_USER_POOL_ID = ""
 COGNITO_CLIENT_ID = ""
+
+SQ_API_KEY = "GfEi3Os2Vt1bA1qnLLhNcjKaNkG0ljt2MZbL3rJb"
 
 if APM_ENABLED:
     ELASTIC_APM = {

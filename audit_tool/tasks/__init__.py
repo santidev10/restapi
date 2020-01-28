@@ -1,2 +1,1 @@
-from .pull_custom_transcripts import pull_custom_transcripts
 from .segmented_audit_next_channels_batch import segmented_audit_next_channels_batch

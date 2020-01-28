@@ -41,7 +41,7 @@ services:
   celery_worker:
     image: viewiq-restapi
     command: ["celery", "-A", "saas", "worker", "-l", "info", "-Q",
-              "celery,reports,delivery_statistic,email_reports,export,custom_transcripts,hourly_statistic,cache_research,segments,
+              "celery,reports,delivery_statistic,email_reports,export,transcripts,hourly_statistic,cache_research,segments,
               schedulers,brand_safety_channel_light,brand_safety_channel_priority,brand_safety_video_priority"
     ]
     depends_on:
