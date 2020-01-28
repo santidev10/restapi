@@ -14,6 +14,7 @@ class SQTranscript(Timestampable):
     transcript = models.TextField(blank=True, null=True, default=None)
     submitted = models.DateTimeField(blank=True, null=True, default=None)
     retrieved = models.DateTimeField(blank=True, null=True, default=None)
+    job_id = models.CharField(max_length=255, unique=True)
 
     @staticmethod
     def get_or_create(video_id):

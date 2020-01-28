@@ -1,4 +1,5 @@
 import logging
+import json
 from saas import celery_app
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
@@ -7,6 +8,7 @@ import time
 import requests
 from aiohttp import ClientSession
 from googleapiclient.discovery import build
+from datetime import datetime
 
 from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
@@ -71,9 +73,15 @@ def submit_sq_transcripts(language=None, country=None, yt_category=None, brand_s
                 except Exception as e:
                     continue
             else:
-                api_endpoint = ""
-                api_request = sq_api_url + ''
-                response = requests.get(sq_api_url)
+                api_endpoint = "/submitjob"
+                api_request = sq_api_url + api_endpoint
+                request_body = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
+                request_body = json.dumps(request_body)
+                response = requests.post(api_request, data=request_body)
+                for sq_transcript in videos_sq_transcripts:
+                    sq_transcript.submitted = datetime.now()
+                    sq_transcript.job_id = response["Job Id"]
+                    sq_transcript.save()
         unlock(LOCK_NAME)
         logger.debug("Finished pulling SQ transcripts task.")
     except Exception as e:
