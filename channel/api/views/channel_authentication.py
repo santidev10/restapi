@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from oauth2client.client import OAuth2WebServerFlow
-from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -23,6 +22,7 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
+from userprofile.api.views.user_auth import UserAuthApiView
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.es_components_cache import flush_cache
@@ -142,6 +142,7 @@ class ChannelAuthenticationApiView(APIView):
         user = self.request.user
         if user and user.is_authenticated:
             self.set_user_avatar(user, access_token)
+            UserAuthApiView.set_auth_token(user)
             return user
 
         # Starting user create procedure
@@ -181,8 +182,8 @@ class ChannelAuthenticationApiView(APIView):
             # Get or create auth token instance for user
 
             send_welcome_email(user, self.request)
-        token, _ = Token.objects.get_or_create(user=user)
-        user = token.user
+
+        UserAuthApiView.set_auth_token(user)
         return user
 
     def obtain_extra_user_data(self, token, user_id):

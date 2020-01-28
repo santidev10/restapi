@@ -81,7 +81,7 @@ class UserAuthApiView(APIView):
         # Google token
         elif token and not auth_token:
             user = self.get_google_user(token)
-            self._set_auth_token(user)
+            self.set_auth_token(user)
             response = self.handle_post_login(user, True)
 
         # Login data sent by client invalid
@@ -201,7 +201,7 @@ class UserAuthApiView(APIView):
         else:
             if result.get("AuthenticationResult"):
                 # Replace temp auth_token for mfa process
-                self._set_auth_token(user)
+                self.set_auth_token(user)
                 response = self.handle_post_login(user, True)
             else:
                 res = {
@@ -250,7 +250,7 @@ class UserAuthApiView(APIView):
             formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
-        key = self._set_auth_token(user, temp=True)
+        key = self.set_auth_token(user, temp=True)
         response["auth_token"] = key
         return Response(data=response)
 
@@ -302,8 +302,9 @@ class UserAuthApiView(APIView):
         response = Response(data="Unable to authenticate user. Please try logging in again.",
                             status=HTTP_400_BAD_REQUEST)
         return response
-
-    def _set_auth_token(self, user, temp=False):
+    
+    @staticmethod
+    def set_auth_token(user, temp=False):
         """
         Set auth_token and reset created timestamp
         :return:
