@@ -8,7 +8,6 @@ def update_fields(apps, schema_editor):
     schema_editor.atomic.__exit__(None, None, None)
     schema_editor.execute('''
     drop index aw_reporting_campaign_account_id_8e3dadc5_like;
-    create index aw_reporting_campaign_account_id_8e3dadc5_like on aw_reporting_campaign(account_id);
     ALTER TABLE aw_reporting_campaign 
         ALTER COLUMN account_id TYPE INTEGER USING CAST(account_id AS INT);
     ''')
