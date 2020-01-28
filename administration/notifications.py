@@ -114,7 +114,7 @@ def send_welcome_email(user, request):
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Thank you for registering on ViewIQ! " \
+    text_content = "Thank you for registering on ViewIQ! \n" \
                    "We will review your account and send you an update " \
                    "by email as soon as access is granted."
     send_html_email(subject, to, text_header, text_content, fail_silently=True)
