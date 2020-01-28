@@ -3,15 +3,17 @@
 from django.db import migrations, models
 
 
-def update_fields(apps, schema_editor):
+def update_fields_1(apps, schema_editor):
     # Remove atomicity to be able to save progress of migration if timeout occurs
     schema_editor.atomic.__exit__(None, None, None)
     schema_editor.execute('''
     drop index aw_reporting_campaign_account_id_8e3dadc5_like;
+    drop index aw_reporting_campaig_account_id_8e3dadc5_fk_aw_report;
     ALTER TABLE aw_reporting_campaign 
         ALTER COLUMN account_id TYPE INTEGER USING CAST(account_id AS INT);
     ''')
 #ALTER TABLE aw_reporting_campaign ALTER COLUMN account_id TYPE bigint USING (account_id::integer);
+#create index aw_reporting_campaign_account_id_8e3dadc5_like on aw_reporting_campaign(account_id);
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -19,7 +21,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(update_fields),
+        migrations.RunPython(update_fields_1),
         # migrations.AlterField(
         #     model_name='account',
         #     name='id',
