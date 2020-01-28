@@ -61,7 +61,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client.admin_respond_to_auth_challenge.return_value = res
         return mock_client
 
-    def test_login_email_password_no_phone(self):
+    def test_login_email_password_no_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -79,12 +79,32 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["username"], user.email)
         self.assertIsNone(response.data.get("phone_number"))
 
-    def test_login_email_password_has_phone(self):
+    def test_login_email_password_has_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
             email=email,
-            phone_number="+19999999"
+            phone_number="+19999999",
+        )
+        user.set_password(password)
+        user.save()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(username=email, password=password)),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(response.data["auth_token"].startswith("temp_"))
+        self.assertEqual(response.data["username"], user.email)
+        self.assertIsNone(response.data.get("phone_number"))
+
+    def test_login_email_password_has_phone_verified(self):
+        email = str(next(int_iterator)) + "test@test.com"
+        password = "test"
+        user = get_user_model().objects.create(
+            email=email,
+            phone_number="+19999999",
+            phone_number_verified=True,
         )
         user.set_password(password)
         user.save()
@@ -134,6 +154,53 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_mfa_error_handling_username_exists(self):
+        user, token = self._create_user()
+        mock_client = MagicMock()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_exception = {
+            "Error": {
+                "Code": "UsernameExistsException"
+            }
+        }
+        mock_client.admin_create_user.side_effect = ClientError(mock_exception, "admin_create_user")
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_error_handling_update_user(self):
+        user, token = self._create_user()
+        mock_client = MagicMock()
+        mock_exception_1 = {
+            "Error": {
+                "Code": "UsernameExistsException"
+            }
+        }
+        mock_exception_2 = {
+            "Error": {
+                "Message": "An error occurred.",
+                "Code": "Test AWS Code"
+            }
+        }
+        mock_client.admin_create_user.side_effect = ClientError(mock_exception_1, "admin_create_user")
+        mock_client.admin_update_user_attributes.side_effect = ClientError(mock_exception_2, "admin_update_user_attributes")
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], mock_exception_2["Error"]["Message"])
+
     def test_mfa_start_challenge(self):
         user, token = self._create_user()
         mock_res = {
@@ -151,6 +218,59 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["session"], mock_res["Session"])
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
+    def test_mfa_text_reject_not_verified_phone_number(self):
+        user, token = self._create_user()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_mfa_text_success_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_update_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+        phone_number_call_arg = mock_client.admin_create_user.call_args[1]["UserAttributes"][1]
+        self.assertEqual(phone_number_call_arg["Name"], "phone_number")
+        self.assertEqual(phone_number_call_arg["Value"], user.phone_number)
+
     def test_mfa_retries_exceeded(self):
         user, token = self._create_user()
         session = "test_session"
@@ -162,7 +282,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
         mock_exception = {
             "Error": {
-                "Message": "Invalid."
+                "Code": "NotAuthorizedException",
+                "Message": "Incorrect username or password."
             }
         }
         mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
@@ -173,7 +294,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertFalse(Token.objects.filter(user=user).exists())
-        self.assertEqual(str(response.data["message"]), "Max retries exceeded. Please log in again.")
+        self.assertEqual(str(response.data["message"]), "Max attempts exceeded. Please log in again.")
 
     def test_mfa_submit_challenge_failure(self):
         user, token = self._create_user()
@@ -204,7 +325,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
         mock_exception = {
             "Error": {
-                "Message": "Invalid session for the user."
+                "Message": "Invalid session for the user.",
+                "Code": ""
             }
         }
         mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
