@@ -326,6 +326,7 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "andrew.vonpelt@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 EMERGENCY_EMAIL_ADDRESSES = [
@@ -338,7 +339,8 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "andrew.vonpelt@channelfactory.com"
+    "andrew.vonpelt@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
@@ -350,12 +352,14 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
-    "sean.maguire@channelfactory.com"
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
