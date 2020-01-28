@@ -6,7 +6,11 @@ from django.db import migrations, models
 def update_fields(apps, schema_editor):
     # Remove atomicity to be able to save progress of migration if timeout occurs
     schema_editor.atomic.__exit__(None, None, None)
-    schema_editor.execute('ALTER TABLE aw_reporting_campaign ALTER COLUMN account_id TYPE bigint USING (trim(account_id)::integer);')
+    schema_editor.execute('''
+    drop index aw_reporting_campaign_account_id_8e3dadc5_like;
+    create index aw_reporting_campaign_account_id_8e3dadc5_like on aw_reporting_campaign(account_id);
+    ALTER TABLE aw_reporting_campaign ALTER COLUMN account_id TYPE bigint USING (account_id::integer);
+    ''')
 
 class Migration(migrations.Migration):
 
