@@ -26,6 +26,7 @@ class BrandSafetyAudit(object):
     CHANNEL_BATCH_SIZE = 10
     VIDEO_BATCH_SIZE = 2000
     ES_LIMIT = 10000
+    VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
 
     MINIMUM_VIEW_COUNT = 1000
     SLEEP = 2
@@ -38,7 +39,11 @@ class BrandSafetyAudit(object):
     VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
                     "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
-    def __init__(self, *_, **kwargs):
+    def __init__(self, *_, check_rescore=False, **kwargs):
+        """
+        :param check_rescore: bool -> Check if a channel should be rescored
+            Determined if a video's overall score falls below a threshold
+        """
         self.audit_utils = AuditUtils()
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
@@ -52,6 +57,8 @@ class BrandSafetyAudit(object):
                       Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
+        self.check_rescore = check_rescore
+        self.channels_to_rescore = []
 
     def process_channels(self, channel_ids, index=True):
         """
@@ -171,6 +178,9 @@ class BrandSafetyAudit(object):
                 blacklist_data = self.blacklist_data_ref.get(video["id"], {})
                 audit = self.audit_video(video, blacklist_data=blacklist_data)
                 video_audits.append(audit)
+
+                if self.check_rescore:
+                    self._check_rescore_channel(audit)
             except KeyError as e:
                 # Ignore videos without full data in accessed audit
                 continue
@@ -326,3 +336,19 @@ class BrandSafetyAudit(object):
         blacklist_items = BlacklistItem.get(item_ids, blacklist_type, to_dict=True)
         for item in items:
             item[BLACKLIST_DATA] = blacklist_items.get(item["id"], None)
+
+    def _check_rescore_channel(self, video_audit):
+        """
+        Checks whether a new video's channel should be rescored
+        If the video has a negative score, then it may have a large impact on its channels score
+        Add channels to rescore to self.channels_to_rescore
+        :param video_audit: BrandSafetyVideoAudit
+        :return:
+        """
+        overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+        if overall_score < self.VIDEO_CHANNEL_RESCORE_THRESHOLD:
+            try:
+                channel_id = video_audit.metadata["channel_id"]
+                self.channels_to_rescore.append(channel_id)
+            except KeyError:
+                pass

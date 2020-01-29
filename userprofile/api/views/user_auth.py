@@ -1,4 +1,5 @@
 from botocore.exceptions import ClientError
+from botocore.exceptions import ParamValidationError
 import boto3
 from datetime import timedelta
 
@@ -81,8 +82,7 @@ class UserAuthApiView(APIView):
         # Google token
         elif token and not auth_token:
             user = self.get_google_user(token)
-            user.auth_token.created = timezone.now()
-            user.auth_token.save()
+            self.set_auth_token(user)
             response = self.handle_post_login(user, True)
 
         # Login data sent by client invalid
@@ -133,8 +133,13 @@ class UserAuthApiView(APIView):
             raise LoginException("mfa_type option must either be email or text.")
 
         user_attributes = [{"Name": "custom:mfa_type", "Value": mfa_type}]
-        if user.phone_number:
+        if user.phone_number and user.phone_number_verified:
             user_attributes.append({"Name": "phone_number", "Value": user.phone_number})
+        elif mfa_type == "text":
+            raise LoginException("You must have a verified phone number to use text MFA.")
+
+        error = None
+        should_update = False
         try:
             # Create / Update user with attributes
             client.admin_create_user(
@@ -143,31 +148,45 @@ class UserAuthApiView(APIView):
                 UserAttributes=user_attributes,
                 MessageAction="SUPPRESS"
             )
-        except ClientError:
+        except ParamValidationError as err:
+            error = err.kwargs["report"]
+        except ClientError as err:
             # User exists, update attributes
-            client.admin_update_user_attributes(
-                UserPoolId=settings.COGNITO_USER_POOL_ID,
-                Username=user.email,
-                UserAttributes=user_attributes
-            )
-        try:
-            response = client.admin_initiate_auth(
-                UserPoolId=settings.COGNITO_USER_POOL_ID,
-                ClientId=settings.COGNITO_CLIENT_ID,
-                AuthFlow="CUSTOM_AUTH",
-                AuthParameters={
-                    "USERNAME": user.email,
-                },
-            )
-        except ClientError as e:
-            res = str(e)
-            status_code = HTTP_400_BAD_REQUEST
+            if err.response["Error"]["Code"] == "UsernameExistsException":
+                should_update = True
+            else:
+                error = err.response["Error"]["Message"]
+
+        if should_update:
+            try:
+                client.admin_update_user_attributes(
+                    UserPoolId=settings.COGNITO_USER_POOL_ID,
+                    Username=user.email,
+                    UserAttributes=user_attributes
+                )
+            except ClientError as err:
+                error = err.response["Error"]["Message"]
+
+        if error:
+            raise LoginException(error)
         else:
-            res = {
-                "session": response["Session"],
-                "retries": response["ChallengeParameters"]["retries"]
-            }
-            status_code = HTTP_200_OK
+            try:
+                response = client.admin_initiate_auth(
+                    UserPoolId=settings.COGNITO_USER_POOL_ID,
+                    ClientId=settings.COGNITO_CLIENT_ID,
+                    AuthFlow="CUSTOM_AUTH",
+                    AuthParameters={
+                        "USERNAME": user.email,
+                    },
+                )
+            except ClientError as error:
+                raise LoginException(error.response["Error"]["Message"])
+            else:
+                res = {
+                    "session": response["Session"],
+                    "retries": response["ChallengeParameters"]["retries"]
+                }
+                status_code = HTTP_200_OK
         return Response(data=res, status=status_code)
 
     def mfa_submit_challenge(self, client, user, data):
@@ -192,18 +211,22 @@ class UserAuthApiView(APIView):
                     "ANSWER": data["answer"]
                 },
             )
-        except ClientError as e:
+        except ParamValidationError as err:
+            raise LoginException(err.kwargs["report"])
+        except ClientError as err:
             Token.objects.filter(user=user).delete()
-            message = e.response["Error"]["Message"]
-            if not message == "Invalid session for the user.":
-                message = "Max retries exceeded."
-            message += " Please log in again."
+            # Most errs will have code NotAuthorizedMessage
+            if err.response["Error"]["Message"] != "Incorrect username or password.":
+                # Strip message since not all messages returned end with a period
+                message = err.response["Error"]["Message"].strip(".")
+            else:
+                message = "Max attempts exceeded"
+            message += ". Please log in again."
             raise LoginException(message)
         else:
             if result.get("AuthenticationResult"):
-                # Delete temp auth_token for mfa process
-                Token.objects.filter(user=user).delete()
-                Token.objects.create(user=user)
+                # Replace temp auth_token for mfa process
+                self.set_auth_token(user)
                 response = self.handle_post_login(user, True)
             else:
                 res = {
@@ -244,20 +267,16 @@ class UserAuthApiView(APIView):
         except ValueError:
             raise LoginException("Invalid password.")
 
-        Token.objects.filter(user=user).delete()
         # send back mfa options
         response = {
             "username": email
         }
-        if user.phone_number:
+        if user.phone_number and user.phone_number_verified:
             formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
-        token = Token()
-        token.key = f"temp_{token.generate_key()}"[:40]
-        token.user = user
-        token.save()
-        response["auth_token"] = token.key
+        key = self.set_auth_token(user, temp=True)
+        response["auth_token"] = key
         return Response(data=response)
 
     def handle_post_login(self, user, update_date_of_last_login):
@@ -308,6 +327,28 @@ class UserAuthApiView(APIView):
         response = Response(data="Unable to authenticate user. Please try logging in again.",
                             status=HTTP_400_BAD_REQUEST)
         return response
+    
+    @staticmethod
+    def set_auth_token(user, temp=False):
+        """
+        Set auth_token and reset created timestamp
+        :return:
+        """
+        params = {
+            "created": timezone.now()
+        }
+        token = Token.objects.filter(user=user)
+        if token.exists():
+            token = token[0]
+        else:
+            token = Token.objects.create(user=user)
+        key = token.generate_key()
+        if temp is True:
+            key = f"temp_{key}"[:40]
+        params["key"] = key
+        Token.objects.filter(user=user).update(**params)
+        user.refresh_from_db()
+        return key
 
 
 class LoginException(ValidationError):

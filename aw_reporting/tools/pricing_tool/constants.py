@@ -19,13 +19,16 @@ VIDEO_LENGTHS = (
 
 PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX = "placements__adwords_campaigns__"
 
+OPPORTUNITY_VALUES_LIST = ("sf_cpv_cost", "sf_cpm_cost", "sf_cpv_units", "sf_cpm_units",
+                           "name", "brand", "category_id", "apex_deal", "id")
+
 
 class ModelFiltersOptions:
 
     class Campaign:
         prefix = ""
         filtering_or = True
-        filtering_and = False
+        filtering_and = True
 
     class Opportunity:
         prefix = PLACEMENTS_ADWORDS_CAMPAIGNS_PREFIX

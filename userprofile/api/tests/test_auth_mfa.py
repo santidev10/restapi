@@ -6,6 +6,7 @@ import os
 from botocore.exceptions import ClientError
 from django.contrib.auth import get_user_model
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -42,12 +43,16 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         os.environ["AWS_SESSION_TOKEN"] = "testing"
         os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
-    def create_user_with_temp_token(self):
+    def _create_user(self, temp=True, password="1234", with_token=True):
         email = str(next(int_iterator)) + "test@test.com"
-        key = "temp_1234"
+        key = "temp_1234" if temp is True else "1234"
         user = get_user_model().objects.create(email=email)
-        token = Token.objects.create(key=key, user=user)
-        user.auth_token = token
+        if with_token:
+            token = Token.objects.create(key=key, user=user)
+            user.auth_token = token
+        else:
+            token = None
+        user.set_password(password)
         user.save()
         return user, token
 
@@ -56,7 +61,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client.admin_respond_to_auth_challenge.return_value = res
         return mock_client
 
-    def test_login_email_password_no_phone(self):
+    def test_login_email_password_no_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -74,12 +79,32 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["username"], user.email)
         self.assertIsNone(response.data.get("phone_number"))
 
-    def test_login_email_password_has_phone(self):
+    def test_login_email_password_has_phone_not_verified(self):
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
             email=email,
-            phone_number="+19999999"
+            phone_number="+19999999",
+        )
+        user.set_password(password)
+        user.save()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(username=email, password=password)),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(response.data["auth_token"].startswith("temp_"))
+        self.assertEqual(response.data["username"], user.email)
+        self.assertIsNone(response.data.get("phone_number"))
+
+    def test_login_email_password_has_phone_verified(self):
+        email = str(next(int_iterator)) + "test@test.com"
+        password = "test"
+        user = get_user_model().objects.create(
+            email=email,
+            phone_number="+19999999",
+            phone_number_verified=True,
         )
         user.set_password(password)
         user.save()
@@ -93,6 +118,33 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["username"], user.email)
         self.assertEqual(response.data["phone_number"], "**(***)***-" + user.phone_number[-4:])
 
+    def test_login_creates_temp_token(self):
+        user, token = self._create_user(with_token=False)
+        self.assertFalse(Token.objects.filter(user=user).exists())
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(username=user.email, password="1234")),
+                content_type="application/json",
+            )
+        created = Token.objects.filter(user=user)
+        self.assertTrue(created.exists())
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(response.data["auth_token"].startswith("temp_"))
+        self.assertTrue(created[0].key.startswith("temp_"))
+
+    def test_login_token_temp(self):
+        user, token = self._create_user(temp=False)
+        self.assertFalse(token.key.startswith("temp_"))
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(username=user.email, password="1234")),
+                content_type="application/json",
+            )
+        updated = Token.objects.get(user=user)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertTrue(response.data["auth_token"].startswith("temp_"))
+        self.assertTrue(updated.key.startswith("temp_"))
+
     def test_invalid_token_auth(self):
         self.create_test_user()
         with patch("userprofile.api.views.user_auth.boto3.client"):
@@ -102,8 +154,55 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_mfa_error_handling_username_exists(self):
+        user, token = self._create_user()
+        mock_client = MagicMock()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_exception = {
+            "Error": {
+                "Code": "UsernameExistsException"
+            }
+        }
+        mock_client.admin_create_user.side_effect = ClientError(mock_exception, "admin_create_user")
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_error_handling_update_user(self):
+        user, token = self._create_user()
+        mock_client = MagicMock()
+        mock_exception_1 = {
+            "Error": {
+                "Code": "UsernameExistsException"
+            }
+        }
+        mock_exception_2 = {
+            "Error": {
+                "Message": "An error occurred.",
+                "Code": "Test AWS Code"
+            }
+        }
+        mock_client.admin_create_user.side_effect = ClientError(mock_exception_1, "admin_create_user")
+        mock_client.admin_update_user_attributes.side_effect = ClientError(mock_exception_2, "admin_update_user_attributes")
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["message"], mock_exception_2["Error"]["Message"])
+
     def test_mfa_start_challenge(self):
-        user, token = self.create_user_with_temp_token()
+        user, token = self._create_user()
         mock_res = {
             "Session": "test_session",
             "ChallengeParameters": {"retries": 5}
@@ -119,8 +218,61 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["session"], mock_res["Session"])
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
+    def test_mfa_text_reject_not_verified_phone_number(self):
+        user, token = self._create_user()
+        with patch("userprofile.api.views.user_auth.boto3.client"):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_mfa_text_success_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="text")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+    def test_mfa_update_verified_phone_number(self):
+        user, token = self._create_user()
+        user.phone_number = "+19999999"
+        user.phone_number_verified = True
+        user.save()
+        mock_res = {
+            "Session": "test_session",
+            "ChallengeParameters": {"retries": 5}
+        }
+        mock_client = MagicMock()
+        mock_client.admin_initiate_auth.return_value = mock_res
+        with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
+            response = self.client.post(
+                self._url, json.dumps(dict(auth_token=token.key, mfa_type="email")),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["session"], mock_res["Session"])
+        self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
+
+        phone_number_call_arg = mock_client.admin_create_user.call_args[1]["UserAttributes"][1]
+        self.assertEqual(phone_number_call_arg["Name"], "phone_number")
+        self.assertEqual(phone_number_call_arg["Value"], user.phone_number)
+
     def test_mfa_retries_exceeded(self):
-        user, token = self.create_user_with_temp_token()
+        user, token = self._create_user()
         session = "test_session"
         retries = 0
         mock_res = {
@@ -130,7 +282,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
         mock_exception = {
             "Error": {
-                "Message": "Invalid."
+                "Code": "NotAuthorizedException",
+                "Message": "Incorrect username or password."
             }
         }
         mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
@@ -141,10 +294,10 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
             )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertFalse(Token.objects.filter(user=user).exists())
-        self.assertEqual(str(response.data["message"]), "Max retries exceeded. Please log in again.")
+        self.assertEqual(str(response.data["message"]), "Max attempts exceeded. Please log in again.")
 
     def test_mfa_submit_challenge_failure(self):
-        user, token = self.create_user_with_temp_token()
+        user, token = self._create_user()
         session = "test_session"
         retries = 4
         mock_res = {
@@ -162,7 +315,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["retries"], retries)
 
     def test_mfa_submit_challenge_session_invalid(self):
-        user, token = self.create_user_with_temp_token()
+        user, token = self._create_user()
         session = "test_session"
         retries = 4
         mock_res = {
@@ -172,7 +325,8 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         mock_client = self.get_admin_respond_to_auth_challenge_mock(mock_res)
         mock_exception = {
             "Error": {
-                "Message": "Invalid session for the user."
+                "Message": "Invalid session for the user.",
+                "Code": ""
             }
         }
         mock_client.admin_respond_to_auth_challenge.side_effect = ClientError(mock_exception, "admin_respond_to_auth_challenge")
@@ -186,7 +340,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(str(response.data["message"]), "Invalid session for the user. Please log in again.")
 
     def test_mfa_submit_challenge_success(self):
-        user, token = self.create_user_with_temp_token()
+        user, token = self._create_user()
         mock_res = {
             "AuthenticationResult": {
                 "AccessToken": "test_token"
@@ -194,6 +348,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         }
         mock_client = MagicMock()
         mock_client.admin_respond_to_auth_challenge.return_value = mock_res
+        before = timezone.now()
         with patch("userprofile.api.views.user_auth.boto3.client", return_value=mock_client):
             response = self.client.post(
                 self._url, json.dumps(dict(auth_token=token.key, session="temp_session", answer="test_answer")),
@@ -225,3 +380,45 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
                 "user_type",
             }
         )
+        updated = Token.objects.get(user=user)
+        self.assertFalse(updated.key.startswith("temp_"))
+        self.assertFalse(response.data["token"].startswith("temp_"))
+        self.assertTrue(updated.created > before)
+
+    def test_google_token_resets_auth_token(self):
+        user, token = self._create_user()
+        self.assertTrue(token.key.startswith("temp_"))
+        before = timezone.now()
+        with patch("userprofile.api.views.user_auth.UserAuthApiView.get_google_user", return_value=user):
+            response = self.client.post(
+                self._url, json.dumps(dict(token="test_google_token")),
+                content_type="application/json",
+            )
+        self.assertEqual(
+            set(response.data),
+            {
+                "access",
+                "aw_settings",
+                "can_access_media_buying",
+                "company",
+                "date_joined",
+                "email",
+                "first_name",
+                "google_account_id",
+                "has_aw_accounts",
+                "has_disapproved_ad",
+                "id", "profile_image_url",
+                "is_staff",
+                "last_login",
+                "last_name",
+                "logo_url",
+                "phone_number",
+                "token",
+                "is_active",
+                "has_accepted_GDPR",
+                "user_type",
+            }
+        )
+        updated = Token.objects.get(key=response.data["token"])
+        self.assertFalse(updated.key.startswith("temp_"))
+        self.assertTrue(updated.created > before)
