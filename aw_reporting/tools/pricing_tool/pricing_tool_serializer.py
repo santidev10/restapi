@@ -10,15 +10,22 @@ from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
     SalesForceGoalType, VideoCreative, get_margin, GeoTarget, \
     CampaignStatistic, AdGroup, device_str
 from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
-    AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS
+    AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS, OPPORTUNITY_VALUES_LIST
 from userprofile.models import UserProfile
 from utils.datetime import as_date, now_in_default_tz
 from utils.query import merge_when, OR
 
 
 class PricingToolSerializer:
-    def __init__(self, kwargs):
+    def __init__(self, kwargs={}):
         self.kwargs = kwargs
+
+    def get_campaigns_data(self, campaigns_ids):
+        campaign_thumbs = self._get_campaign_thumbnails(campaigns_ids)
+        campaign = self._prepare_campaigns(campaigns_ids)
+
+        return [self._get_campaign_data(campaign, campaign_thumbs)
+                for campaign in campaign]
 
     def get_opportunities_data(self, opportunities: list, campaigns_ids_map: dict, user: UserProfile):
         opportunities_ids = []
@@ -27,25 +34,18 @@ class PricingToolSerializer:
             opportunities_ids.append(opportunity.get("id"))
             campaigns_ids.extend(campaigns_ids_map.get(opportunity.get("id"), []))
 
-        # campaign_thumbs = self._get_campaign_thumbnails(campaigns_ids)
-
-        # campaign_groups = self._prepare_campaigns(campaigns_ids, user=user)
         hard_cost_stats = self._prepare_hard_cost_flights(opportunities_ids)
-        import pdb
-        pdb.set_trace()
+
         campaigns_data = self._prepare_campaign_data(campaigns_ids)
         opportunities_annotated = Opportunity.objects.filter(id__in=opportunities_ids) \
-            .annotate(**self._opportunity_annotation()).values_list("sf_cpv_cost", "sf_cpm_cost", "sf_cpv_units", "sf_cpm_units",
-                                                               "name", "brand", "category_id", "apex_deal", "id", named=True)
+            .annotate(**self._opportunity_annotation()).values_list(*OPPORTUNITY_VALUES_LIST, named=True)
         return [
-            self._get_opportunity_data(opp, [],
+            self._get_opportunity_data(opp,
                                        hard_cost_stats[opp.id],
-                                       campaigns_data.get(opp.id, dict()),
-                                       {})
+                                       campaigns_data.get(opp.id, dict()))
             for opp in opportunities_annotated]
 
-    def _get_opportunity_data(self, opportunity, campaigns, hard_cost_data,
-                              campaigns_data, campaign_thumbs):
+    def _get_opportunity_data(self, opportunity, hard_cost_data, campaigns_data):
         periods = self.kwargs.get("periods", [])
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
@@ -157,9 +157,7 @@ class PricingToolSerializer:
             brand=opportunity.brand,
             vertical=opportunity.category_id,
             apex_deal=opportunity.apex_deal,
-            campaigns=[],
-            # campaigns=[self._get_campaign_data(c, campaign_thumbs) for c in
-            #            campaigns],
+            campaigns=campaigns_data.get("ids"),
             products=list(ad_group_types),
             targeting=targeting,
             demographic=ages | genders,
@@ -374,10 +372,9 @@ class PricingToolSerializer:
             .values("salesforce_placement__opportunity", *annotation.keys())
         return {campaign["salesforce_placement__opportunity"]: campaign for campaign in campaigns}
 
-    def _prepare_campaigns(self, campaigns_ids, user):
+    def _prepare_campaigns(self, campaigns_ids):
         opp_id_key = "salesforce_placement__opportunity_id"
-        campaigns = Campaign.objects.get_queryset_for_user(user) \
-            .filter(id__in=campaigns_ids) \
+        campaigns = Campaign.objects.filter(id__in=campaigns_ids) \
             .values("id", opp_id_key, "cost", "impressions", "video_views",
                     "start_date", "end_date", "name",
                     "salesforce_placement__goal_type_id",
@@ -391,9 +388,7 @@ class PricingToolSerializer:
                     *AGE_FIELDS,
                     *GENDER_FIELDS,
                     )
-        return reduce(
-            lambda r, c: add_to_key(r, c[opp_id_key], c),
-            campaigns, defaultdict(list))
+        return campaigns
 
 
 def add_to_key(d: defaultdict, key, item):

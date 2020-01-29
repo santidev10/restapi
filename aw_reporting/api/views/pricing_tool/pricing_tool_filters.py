@@ -13,9 +13,9 @@ class PricingToolFiltersView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         try:
-            cached_filters_object, _ = CacheItem.objects.get_or_create(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
+            cached_filters_object, _ = CacheItem.objects.get(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
             pricing_tool_filters = cached_filters_object.value
-        except Exception as e:
+        except:
             pricing_tool_filters = PricingTool.get_filters(user=user)
 
         return Response(data=pricing_tool_filters, status=HTTP_200_OK)

@@ -33,11 +33,15 @@ class PricingTool:
 
     @property
     def estimate(self):
-        self.estimate.set_opportunities(self.get_opportunities_queryset(), self.campaigns_ids_map)
+        self.estimate_tool.set_opportunities(self.get_opportunities_queryset(), self.campaigns_ids_map)
         return self.estimate_tool.estimate()
 
     def get_opportunities_data(self, opportunities, campaigns_ids_map, user):
         return self.serializer.get_opportunities_data(opportunities, campaigns_ids_map, user)
+
+    @classmethod
+    def get_campaigns_data(cls, campaigns_ids):
+        return PricingToolSerializer().get_campaigns_data(campaigns_ids)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')

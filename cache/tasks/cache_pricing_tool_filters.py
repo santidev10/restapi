@@ -3,6 +3,7 @@ import logging
 from django.contrib.auth import get_user_model
 
 from aw_reporting.tools.pricing_tool import PricingTool
+from aw_reporting.models import Opportunity
 from saas import celery_app
 from cache.models import CacheItem
 from cache.constants import PRICING_TOOL_FILTERS_KEY
@@ -16,7 +17,12 @@ logger = logging.getLogger(__name__)
 def cache_pricing_tool_filters():
     logger.debug("Starting pricing tool filters caching.")
 
-    for user in get_user_model().objects.all():
+    for user in get_user_model().objects.filter(is_active=True).all():
+        opportunities_ids = Opportunity.objects.have_campaigns(user=user).values_list("id", flat=True)
+
+        if not len(opportunities_ids) > 0:
+            continue
+
         pricing_tool_filters = PricingTool.get_filters(user=user)
 
         cached_pricing_tool_filters, _ = CacheItem.objects.get_or_create(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
