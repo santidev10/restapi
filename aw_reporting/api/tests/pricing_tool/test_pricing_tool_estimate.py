@@ -700,8 +700,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                      product_types_condition="and")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data["charts"]["cpm"])
-        self.assertIsNotNone(response.data["charts"]["cpv"])
+        self.assertIsNone(response.data["charts"]["cpm"])
+        self.assertIsNone(response.data["charts"]["cpv"])
 
     def test_filter_hidden_campaigns(self):
         opportunity = Opportunity.objects.create()
