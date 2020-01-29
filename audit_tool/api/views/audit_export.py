@@ -315,7 +315,10 @@ class AuditExportApiView(APIView):
                     bad_words = unique_bad_hit_words.split(",")
                     for word in bad_words:
                         try:
-                            word_index = audit.params['exclusion'].index(word)
+                            for i in range(len(audit.params['exclusion'])):
+                                if audit.params['exclusion'][i][0] == word:
+                                    word_index = i
+                                    break
                             category = audit.params['exclusion_category'][word_index]
                             if category in bad_word_category_dict:
                                 bad_word_category_dict[category].append(word)
@@ -526,7 +529,10 @@ class AuditExportApiView(APIView):
                     bad_words = bad_hit_words[channel.channel_id].union(bad_video_hit_words[channel.channel_id])
                     for word in bad_words:
                         try:
-                            word_index = audit.params['exclusion'].index(word)
+                            for i in range(len(audit.params['exclusion'])):
+                                if audit.params['exclusion'][i][0] == word:
+                                    word_index = i
+                                    break
                             category = audit.params['exclusion_category'][word_index]
                             if category in bad_word_category_dict:
                                 bad_word_category_dict[category].append(word)
