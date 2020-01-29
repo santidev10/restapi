@@ -21,24 +21,27 @@ class PricingToolSerializer:
         self.kwargs = kwargs
 
     def get_opportunities_data(self, opportunities: list, campaigns_ids_map: dict, user: UserProfile):
-        ids = [opp.id for opp in opportunities]
-
+        opportunities_ids = []
         campaigns_ids = []
-        for _id in ids:
-            campaigns_ids.extend(campaigns_ids_map.get(_id, []))
+        for opportunity in opportunities:
+            opportunities_ids.append(opportunity.get("id"))
+            campaigns_ids.extend(campaigns_ids_map.get(opportunity.get("id"), []))
 
-        campaign_thumbs = self._get_campaign_thumbnails(campaigns_ids)
+        # campaign_thumbs = self._get_campaign_thumbnails(campaigns_ids)
 
-        campaign_groups = self._prepare_campaigns(campaigns_ids, user=user)
-        hard_cost_stats = self._prepare_hard_cost_flights(ids)
+        # campaign_groups = self._prepare_campaigns(campaigns_ids, user=user)
+        hard_cost_stats = self._prepare_hard_cost_flights(opportunities_ids)
+        import pdb
+        pdb.set_trace()
         campaigns_data = self._prepare_campaign_data(campaigns_ids)
-        opportunities_annotated = Opportunity.objects.filter(id__in=ids) \
-            .annotate(**self._opportunity_annotation())
+        opportunities_annotated = Opportunity.objects.filter(id__in=opportunities_ids) \
+            .annotate(**self._opportunity_annotation()).values_list("sf_cpv_cost", "sf_cpm_cost", "sf_cpv_units", "sf_cpm_units",
+                                                               "name", "brand", "category_id", "apex_deal", "id", named=True)
         return [
-            self._get_opportunity_data(opp, campaign_groups[opp.id],
+            self._get_opportunity_data(opp, [],
                                        hard_cost_stats[opp.id],
                                        campaigns_data.get(opp.id, dict()),
-                                       campaign_thumbs)
+                                       {})
             for opp in opportunities_annotated]
 
     def _get_opportunity_data(self, opportunity, campaigns, hard_cost_data,
@@ -154,8 +157,9 @@ class PricingToolSerializer:
             brand=opportunity.brand,
             vertical=opportunity.category_id,
             apex_deal=opportunity.apex_deal,
-            campaigns=[self._get_campaign_data(c, campaign_thumbs) for c in
-                       campaigns],
+            campaigns=[],
+            # campaigns=[self._get_campaign_data(c, campaign_thumbs) for c in
+            #            campaigns],
             products=list(ad_group_types),
             targeting=targeting,
             demographic=ages | genders,

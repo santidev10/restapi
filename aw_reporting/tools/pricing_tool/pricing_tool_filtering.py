@@ -148,10 +148,10 @@ class PricingToolFiltering:
                 base_ids &= new_ids
         return base_ids
 
-    def apply(self, queryset):
-        return self._filter(queryset)
+    def apply(self, user):
+        return self._filter(user)
 
-    def _filter(self, queryset):
+    def _filter(self, user):
 
         def apply_filters(queryset, filters, model_options):
             for filter in filters:
@@ -170,33 +170,35 @@ class PricingToolFiltering:
             self._filter_by_devices,
         )
 
-        filters = campaigns_filters + (
+        filters = (
             self._filter_by_brand,
             self._filter_by_categories,
             self._filter_by_apex,
             *self._filter_by_kpi(),
         )
 
-        queryset = apply_filters(queryset, filters, model_options=ModelFiltersOptions.Opportunity)
+        campaigns_queryset = Campaign.objects.get_queryset_for_user(user=user)\
+            .values("salesforce_placement__opportunity")\
+            .annotate(ids=ArrayAgg("id"))\
+            .values("salesforce_placement__opportunity", "ids")
 
-        if self.filter_item_ids is not None:
-            queryset = queryset.filter(id__in=self.filter_item_ids)
-
-        opportunity_queryset = queryset.distinct()
-
-        campaigns_queryset = Campaign.objects.values("salesforce_placement__opportunity")\
-                                 .annotate(ids=ArrayAgg("id"))\
-                                 .values("salesforce_placement__opportunity", "ids")
-
-        campaigns_queryset = campaigns_queryset\
-            .filter(salesforce_placement__opportunity__id__in=opportunity_queryset.values_list("id", flat=True))
+        # campaigns_queryset = campaigns_queryset\
+        #     .filter(salesforce_placement__opportunity__id__in=opportunity_queryset.values_list("id", flat=True))
         campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters,
                                            model_options=ModelFiltersOptions.Campaign).all()
 
         campaigns_ids_map = {campaigns["salesforce_placement__opportunity"]: campaigns["ids"]
                              for campaigns in campaigns_queryset}
 
-        opportunity_queryset = opportunity_queryset.filter(id__in=campaigns_ids_map.keys())
+        opportunity_queryset = Opportunity.objects.annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
+            .order_by("-aw_budget")
+
+        opportunity_queryset = apply_filters(opportunity_queryset, filters, model_options=ModelFiltersOptions.Opportunity)
+
+        if self.filter_item_ids is not None:
+            opportunity_queryset = opportunity_queryset.filter(id__in=self.filter_item_ids)
+
+        opportunity_queryset = opportunity_queryset.filter(id__in=campaigns_ids_map.keys()).values("id")
 
         return opportunity_queryset, campaigns_ids_map
 

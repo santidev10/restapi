@@ -2,12 +2,20 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 
+from cache.models import CacheItem
+from cache.constants import PRICING_TOOL_FILTERS_KEY
+
 from aw_reporting.tools.pricing_tool import PricingTool
 
 
 class PricingToolFiltersView(RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
-        response = PricingTool.get_filters(user=request.user)
+        user = request.user
+        try:
+            cached_filters_object, _ = CacheItem.objects.get_or_create(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
+            pricing_tool_filters = cached_filters_object.value
+        except Exception as e:
+            pricing_tool_filters = PricingTool.get_filters(user=user)
 
-        return Response(data=response, status=HTTP_200_OK)
+        return Response(data=pricing_tool_filters, status=HTTP_200_OK)
