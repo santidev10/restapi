@@ -712,7 +712,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id="2", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM)
-        account = Account.objects.create(id="id")
+        account = Account.objects.create(id=10)
         campaign_1 = Campaign.objects.create(id="1",
                                              account=account,
                                              min_stat_date=stats_date,
