@@ -41,7 +41,7 @@ class TrackApiBase(APIView):
         accounts = accounts.split("-") if accounts else None
         apex_deal = data.get("apex_deal")
         filters = dict(
-            account=data.get("account"),
+            account=int(data.get("account")),
             accounts=accounts,
             campaign=data.get("campaign"),
             indicator=data.get("indicator", self.indicators[0][0]),
