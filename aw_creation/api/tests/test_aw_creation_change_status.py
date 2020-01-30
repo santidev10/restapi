@@ -12,7 +12,7 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
 
     def test_success_patch(self):
         user = self.create_test_user(auth=False)
-        account = Account.objects.create(id="123", name="",
+        account = Account.objects.create(id=123, name="",
                                          skip_creating_account_creation=True)
         account_creation = AccountCreation.objects.create(
             name="", owner=user, account=account, is_approved=True
@@ -43,8 +43,8 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
         self.assertEqual(account_creation.is_changed, True)
 
         campaigns = [
-            dict(id="123", name=campaign_creation.unique_name, ad_groups=[
-                dict(id="456", name=ad_group_creation.unique_name)
+            dict(id=123, name=campaign_creation.unique_name, ad_groups=[
+                dict(id=456, name=ad_group_creation.unique_name)
             ])
         ]
 

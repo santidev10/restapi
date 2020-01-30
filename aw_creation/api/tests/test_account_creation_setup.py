@@ -331,26 +331,27 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_success_approve(self):
         # creating of a MCC account
-        manager = Account.objects.create(id="11", name="Management Account")
+        manager = Account.objects.create(id=11, name="Management Account")
         connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****")
         AWConnectionToUserRelation.objects.create(connection=connection, user=self.user)
         AWAccountPermission.objects.create(aw_connection=connection, account=manager)
         # account creation to approve it
+        test_id = 999
         ac = self.create_account_creation(self.user)
         url = self._get_url(ac.id)
         request_data = dict(is_approved=True, mcc_account_id=manager.id)
         with patch("aw_creation.api.views.account_creation_setup.create_customer_account",
-                   new=lambda *_: "uid_from_aw"):
+                   new=lambda *_: test_id):
             response = self.client.patch(url, json.dumps(request_data), content_type='application/json')
         self.assertEqual(response.status_code, HTTP_200_OK)
         ac.refresh_from_db()
-        self.assertEqual(ac.account.id, "uid_from_aw")
+        self.assertEqual(ac.account.id, test_id)
         self.assertEqual(len(mail.outbox), 0)
 
     def test_wrong_mcc_account_id(self):
-        manager_one = Account.objects.create(id="11", name="Management Account")
-        manager_two = Account.objects.create(id="12", name="Management Account")
-        wrong_id = "wron_id"
+        manager_one = Account.objects.create(id=11, name="Management Account")
+        manager_two = Account.objects.create(id=12, name="Management Account")
+        wrong_id = 999
         connection_one = AWConnection.objects.create(email="email@mail.com", refresh_token="****")
         AWConnectionToUserRelation.objects.create(connection=connection_one, user=self.user)
         AWAccountPermission.objects.create(aw_connection=connection_one, account=manager_one)
@@ -738,7 +739,7 @@ class AccountCreationSetupAPITestCase(AwReportingAPITestCase):
 
     def test_creates_customer_account(self):
         user = self.user
-        test_aw_id = "test_aw_id"
+        test_aw_id = 987654
         manager = Account.objects.create(id=next(int_iterator))
         connection = AWConnection.objects.create(email="email@mail.com", refresh_token="****", )
         AWConnectionToUserRelation.objects.create(connection=connection, user=user, )

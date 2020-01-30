@@ -23,7 +23,7 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_404_if_account_not_account(self):
         self.create_test_user()
-        test_id = "test_id"
+        test_id = 111
         self.assertEqual(Account.objects.filter(id=test_id).count(), 0)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
@@ -37,7 +37,7 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_404_if_account_not_in_visible_accounts(self):
         self.create_test_user()
-        account = Account.objects.create(id="account_id")
+        account = Account.objects.create(id=111)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
@@ -51,7 +51,7 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_success_if_account_is_visible(self):
         self.create_test_user()
-        account = Account.objects.create(id="account_id")
+        account = Account.objects.create(id=111)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: False,
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -65,7 +65,7 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_success_if_visible_all_accounts(self):
         self.create_test_user()
-        account = Account.objects.create(id="account_id")
+        account = Account.objects.create(id=111)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True,
             UserSettingsKey.VISIBLE_ACCOUNTS: []
@@ -79,9 +79,9 @@ class AccountCreationByAccountAPITestCase(ExtendedAPITestCase):
 
     def test_success_get(self):
         user = self.create_test_user()
-        account = Account.objects.create(id="account_id",
+        account = Account.objects.create(id=111,
                                                  skip_creating_account_creation=True)
-        account_creation = AccountCreation.objects.create(id="ac_cr_id",
+        account_creation = AccountCreation.objects.create(id=333,
                                                           account=account,
                                                           owner=user)
 
