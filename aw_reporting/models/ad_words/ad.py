@@ -6,7 +6,7 @@ from aw_reporting.models.ad_words.statistic import BaseStatisticModel
 
 
 class Ad(BaseStatisticModel):
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     ad_group = models.ForeignKey(AdGroup, related_name='ads', on_delete=CASCADE)
 
     headline = models.TextField(null=True)

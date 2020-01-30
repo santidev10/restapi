@@ -12,7 +12,7 @@ class AccountManager(models.Manager, UserRelatedManagerMixin):
 
 class Account(models.Model):
     objects = AccountManager()
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255, null=True, db_index=True)
     currency_code = models.CharField(max_length=5, null=True)
     timezone = models.CharField(max_length=100, null=True)
