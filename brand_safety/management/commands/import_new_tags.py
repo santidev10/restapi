@@ -45,7 +45,7 @@ class Command(BaseCommand):
                     # Parse word
                     word = remove_tags_punctuation(row[0].lower().strip())
                     if is_english(word) and len(word) < 3:
-                        reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
+                        reason = [f"Word {word} is shorter than 3 English characters long when trimmed."]
                         invalid_rows.append(row + reason)
                         continue
                     # Parse category
