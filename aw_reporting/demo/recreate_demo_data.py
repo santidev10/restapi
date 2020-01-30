@@ -125,7 +125,7 @@ def create_campaigns(account, opportunity, dates):
     start, end = min(dates), max(dates)
     campaigns = [
         Campaign(
-            id="demo{}".format(i + 1),
+            id=(i + 1),
             name="Campaign #demo{}".format(i + 1),
             account=account,
             status=CampaignStatus.SERVING.value,
@@ -172,7 +172,7 @@ def create_ad_groups(campaigns):
 def generate_ad_groups(campaign):
     return [
         AdGroup(
-            id="{}{}".format(campaign.id, (i + 1)),
+            id=(campaign.id * 1000 + (i + 1)),
             name="{} #{}".format(name, campaign.id),
             campaign=campaign,
         )
@@ -192,7 +192,7 @@ def create_ads(ad_groups):
 def generate_ads(ad_group):
     return [
         Ad(
-            id="{}{}".format(ad_group.id, i),
+            id=(ad_group.id * 1000 + i),
             ad_group=ad_group,
         )
         for i in range(2)

@@ -1,7 +1,7 @@
 from aw_creation.constants import TargetingType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
-DEMO_ACCOUNT_ID = "demo"
+DEMO_ACCOUNT_ID = 1111111
 DEMO_NAME = "Demo"
 DEMO_DATA_PERIOD_DAYS = 19
 DAYS_LEFT = 11
