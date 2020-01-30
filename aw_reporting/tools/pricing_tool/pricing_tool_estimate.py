@@ -83,7 +83,7 @@ class PricingToolEstimate:
         queryset = queryset.filter(cost__gt=0)
 
         data = queryset.values('date').order_by('date').annotate(
-            **AD_GROUP_COSTS_ANNOTATE)
+            **AD_GROUP_COSTS_ANNOTATE).values("date", *AD_GROUP_COSTS_ANNOTATE.keys())
         cpv_lines = defaultdict(list)
         cpm_lines = defaultdict(list)
 
