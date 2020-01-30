@@ -2,6 +2,9 @@ import hashlib
 from datetime import datetime
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
@@ -9,9 +12,10 @@ from django.db.models import ForeignKey
 from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
-from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 
-from django.contrib.auth import get_user_model
+from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
+from segment.models import CustomSegment
+from userprofile.models import UserProfile
 
 
 def get_hash_name(s):
@@ -114,6 +118,8 @@ class AuditProcessor(models.Model):
         '0': 'Recommendation Engine',
         '1': 'Video Meta Processor',
         '2': 'Channel Meta Processor',
+        '3': 'Channel Vetting Processor',
+        '4': 'Video Vetting Processor',
     }
     SOURCE_TYPES = {
         '0': 'Audit Tool',
@@ -500,3 +506,39 @@ class BlacklistItem(models.Model):
                 else:
                     data.append(item)
         return data
+
+
+class AuditVetItem(models.Model):
+    id = models.CharField(max_length=30, unique=True)
+
+    audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
+    checked_out_by = models.ForeignKey(UserProfile, null=True, on_delete=models.SET_NULL)
+    checked_out_at = models.DateTimeField(auto_now_add=False, null=True, default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(null=True, default=None)
+    vetted = models.BooleanField(default=False, db_index=True)
+    approved = models.BooleanField(default=False, db_index=True)
+    category = models.ForeignKey(AuditCategory, default=None, null=True, on_delete=models.CASCADE)
+    language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
+    country = models.ForeignKey(AuditCountry, default=None, null=True, on_delete=models.CASCADE)
+    suitable = models.BooleanField(default=True, db_index=True)
+    age_group = models.CharField(null=True, max_length=50)
+    gender = models.CharField(null=True, default=None, max_length=50)
+    channel_type = models.CharField(null=True, default=None)
+    is_monetized = models.BooleanField(null=True, default=None)
+
+    # def __init__(self, *args, **kwargs):
+    #     if not self.id_hash:
+    #         self.id_hash = get_hash_name(kwargs["id"])
+    #     super().__init__(*args, **kwargs)
+    #
+    # # Keep a history of how this item was vetted
+    #
+    # def save(self, *args, **kwargs):
+    #     if not self.id:
+    #         raise ValueError("id field must have a value")
+    #     if not self.id_hash:
+    #         self.id_hash = get_hash_name(kwargs["id"])
+    #     super().save(*args, **kwargs)
+    #
+    # def get(self, ):

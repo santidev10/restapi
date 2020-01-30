@@ -10,10 +10,13 @@ from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Model
+from django.db.models import OneToOneField
 from django.db.models import CASCADE
 from django.db.models import UUIDField
+from django.db.models import PROTECT
 from django.utils import timezone
 
+from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
@@ -92,6 +95,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         _id: list_type for list_type, _id in list_type_to_id.items()
     }
 
+    audit = OneToOneField(AuditProcessor, related_name="segment", on_delete=PROTECT)
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
@@ -166,6 +170,34 @@ class CustomSegment(SegmentMixin, Timestampable):
         if s3_key is None:
             s3_key = self.get_s3_key()
         self.s3_exporter.delete_obj(s3_key)
+
+    def get_extract_export_ids(self, s3_key=None):
+        """
+        Parse and extract Channel or video ids from csv export
+        :return:
+        """
+        if s3_key is None:
+            s3_key = self.get_s3_key()
+        export_content = self.s3_exporter._get_s3_object(s3_key, get_key=False)
+        item_ids = []
+        url_index = None
+        for byte in export_content["Body"].iter_lines():
+            row = (byte.decode("utf-8")).split(",")
+            if url_index is None:
+                url_index = row.index("URL")
+                continue
+            item_id = self.parse_url(row[url_index], self.segment_type)
+            item_ids.append(item_id)
+        return item_ids
+
+    def parse_url(self, url, item_type="0"):
+        item_type = str(item_type)
+        config = {
+            "0": "/video/",
+            "1": "/channel/",
+        }
+        item_id = url.split(config[item_type])[-1]
+        return item_id
 
 
 class CustomSegmentRelated(Model):

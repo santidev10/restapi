@@ -128,6 +128,9 @@ CELERY_BEAT_SCHEDULE = {
         "task": "brand_safety.tasks.video_discovery.video_discovery_scheduler",
         "schedule": 60 * 5,
     },
+    "audit_tool_refresh_vetting_items": {
+
+    }
 }
 
 

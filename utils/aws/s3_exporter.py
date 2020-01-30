@@ -46,9 +46,11 @@ class S3Exporter(ABC):
         )
 
     @classmethod
-    def get_s3_export_content(cls, name, get_key=True):
-        body = cls._get_s3_object(name, get_key).get("Body")
-        return body
+    def get_s3_export_content(cls, name, get_key=True, body=True):
+        data = cls._get_s3_object(name, get_key)
+        if body:
+            data = data.get("Body")
+        return data
 
     @classmethod
     def exists(cls, name, get_key=True):
