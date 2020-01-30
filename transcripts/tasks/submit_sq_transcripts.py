@@ -3,32 +3,22 @@ import json
 from saas import celery_app
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
-import asyncio
 import time
 import requests
-from aiohttp import ClientSession
 from googleapiclient.discovery import build
 from datetime import datetime
 from datetime import timedelta
 from datetime import time
 
-from es_components.connections import init_es_connection
-from bs4 import BeautifulSoup as bs
-from audit_tool.models import AuditVideoTranscript
 from audit_tool.models import APIScriptTracker
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
-from es_components.constants import Sections
-from utils.transform import populate_video_custom_captions
 from utils.lang import replace_apostrophes
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from brand_safety.languages import LANGUAGES, LANG_CODES
-from aiohttp.web import HTTPTooManyRequests
 from django.conf import settings
-from utils.youtube_api import YoutubeAPIConnector
 from transcripts.models import SQTranscript
 
 logger = logging.getLogger(__name__)
