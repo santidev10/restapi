@@ -40,8 +40,9 @@ class TrackApiBase(APIView):
         accounts = data.get("accounts")
         accounts = accounts.split("-") if accounts else None
         apex_deal = data.get("apex_deal")
+        account_id_str = data.get("account")
         filters = dict(
-            account=int(data.get("account")),
+            account=int(account_id_str) if isinstance(account_id_str, str) and account_id_str.isnumeric() else account_id_str,
             accounts=accounts,
             campaign=data.get("campaign"),
             indicator=data.get("indicator", self.indicators[0][0]),
