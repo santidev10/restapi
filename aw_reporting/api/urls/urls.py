@@ -90,6 +90,9 @@ urlpatterns = [
         name=Name.HealthCheck.FILTERS),
 
     # Pricing tool
+    url(r'^pricing_tool/campaigns/$',
+        views.PricingToolCampaignsView.as_view(),
+        name=Name.PricingTool.CAMPAIGNS),
     url(r'^pricing_tool/filters/$',
         views.PricingToolFiltersView.as_view(),
         name=Name.PricingTool.FILTERS),

@@ -25,6 +25,7 @@ class Name:
         FLIGHTS_CAMPAIGN_ALLOCATIONS_CHANGED = "pacing_report_flights_campaign_allocations_changed"
 
     class PricingTool:
+        CAMPAIGNS = "pricing_tool_campaigns"
         OPPORTUNITIES = "pricing_tool_opportunities"
         ESTIMATE = "pricing_tool_estimate"
         FILTERS = "pricing_tool_filters"
