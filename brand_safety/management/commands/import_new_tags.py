@@ -44,11 +44,10 @@ class Command(BaseCommand):
                 try:
                     # Parse word
                     word = remove_tags_punctuation(row[0].lower().strip())
-                    if is_english(word):
-                        if len(word) < 3:
-                            reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
-                            invalid_rows.append(row + reason)
-                            continue
+                    if is_english(word) and len(word) < 3:
+                        reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
+                        invalid_rows.append(row + reason)
+                        continue
                     # Parse category
                     category_string = row[1].lower().strip()
                     category = BadWordCategory.objects.get(name=category_string)
