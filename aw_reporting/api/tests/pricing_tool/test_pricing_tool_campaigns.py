@@ -97,9 +97,9 @@ class PricingToolCampaignTestCase(PricingToolTestCaseBase):
             id="op_placement", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_1 = Campaign.objects \
-            .create(id="1", salesforce_placement=placement, cost=budget_1)
+            .create(id=1, salesforce_placement=placement, cost=budget_1)
         campaign_2 = Campaign.objects \
-            .create(id="2", salesforce_placement=placement, cost=budget_2)
+            .create(id=2, salesforce_placement=placement, cost=budget_2)
         response = self._request(campaigns=["1", "2"])
 
         self.assertEqual(response.status_code, HTTP_200_OK)

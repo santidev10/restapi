@@ -41,7 +41,7 @@ class PricingToolTestCaseBase(APITestCase):
             **pl_data)
 
         campaign = Campaign.objects.create(
-            id="campaign_" + _id,
+            id=int(_id),
             salesforce_placement=placement, **camp_data
         )
         if generate_statistic:
