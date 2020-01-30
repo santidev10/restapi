@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aw_reporting', '0083_alter_pk_varchar_to_bigint'),
+        ('aw_reporting', '0084_alter_account_manager'),
     ]
 
     operations = [

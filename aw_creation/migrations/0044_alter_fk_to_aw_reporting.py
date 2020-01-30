@@ -20,7 +20,7 @@ def copy_fks(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('aw_reporting', '0083_alter_pk_varchar_to_bigint'),
+        ('aw_reporting', '0084_alter_account_manager'),
         ('aw_creation', '0043_auto_20190304_1501'),
     ]
 
