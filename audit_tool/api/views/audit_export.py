@@ -526,7 +526,11 @@ class AuditExportApiView(APIView):
             try:
                 if len(bad_word_categories) > 0:
                     bad_word_category_dict = {}
-                    bad_words = bad_hit_words[channel.channel_id].union(bad_video_hit_words[channel.channel_id])
+                    bad_words = set()
+                    if channel.channel_id in bad_hit_words:
+                        bad_words = bad_words.union(bad_hit_words[channel.channel_id])
+                    if channel.channel_id in bad_video_hit_words:
+                        bad_words = bad_words.union(bad_video_hit_words[channel.channel_id])
                     for word in bad_words:
                         try:
                             for i in range(len(audit.params['exclusion'])):
