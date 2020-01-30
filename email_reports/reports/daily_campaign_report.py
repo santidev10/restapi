@@ -85,6 +85,11 @@ class DailyCampaignReport(BaseEmailReport):
                and p["end"] >= self.before_yesterday \
                and p["goal_type_id"] < 2
 
+    def is_on_going_flight(self, f):
+        return None not in (f.get("start"), f.get("end")) \
+               and f["start"] <= self.today \
+               and f["end"] >= self.before_yesterday
+
     def _get_recipients(self, opportunity):
         recipient_roles = self.roles or (OpportunityManager.AD_OPS_MANAGER,)
         opportunity_keys = [_manager_map.get(r) for r in recipient_roles]
@@ -208,7 +213,7 @@ class DailyCampaignReport(BaseEmailReport):
                                                             status=CampaignStatus.ELIGIBLE.value).count()
 
             for flight in flights:
-                if active_campaign_count > 0:
+                if active_campaign_count > 0 and self.is_on_going_flight(flight):
                     self.collect_flight_delivery_alert(flight, opportunity_obj)
 
                 for f in spend_fields:
