@@ -47,14 +47,14 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
                 status=HTTP_400_BAD_REQUEST,
                 data='You must provide a flight budget as "flight_budget"'
             )
-        if set(request.data.keys()) != expected_keys:
+        if set([int(key) for key in request.data.keys()]) != expected_keys:
             return Response(
                 status=HTTP_400_BAD_REQUEST,
                 data="Wrong keys, expected: {}".format(expected_keys)
             )
         try:
             allocations = {
-                _id: float(value) for _id, value in request.data.items()
+                int(_id): float(value) for _id, value in request.data.items()
             }
         except ValueError:
             return Response(
@@ -81,7 +81,7 @@ class PacingReportFlightsCampaignAllocationsView(UpdateAPIView,
 
         for campaign_id, allocation_value in allocations.items():
             campaign_budget = (flight_updated_budget * allocation_value) / 100
-            Campaign.objects.filter(pk=campaign_id).update(
+            Campaign.objects.filter(pk=int(campaign_id)).update(
                 goal_allocation=allocation_value,
                 budget=campaign_budget,
                 update_time=timezone.now()
