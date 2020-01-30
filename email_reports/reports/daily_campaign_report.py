@@ -12,8 +12,8 @@ from django.template.loader import get_template
 
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
-from aw_reporting.models import User, SalesForceGoalType, Opportunity, \
-    OpPlacement, Account
+from aw_reporting.models import Campaign, User, SalesForceGoalType, Opportunity, \
+    OpPlacement, Account, CampaignStatus
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
@@ -86,8 +86,7 @@ class DailyCampaignReport(BaseEmailReport):
                and p["goal_type_id"] < 2
 
     def _get_recipients(self, opportunity):
-        recipient_roles = self.roles or (OpportunityManager.ACCOUNT_MANAGER,
-                                         OpportunityManager.AD_OPS_MANAGER)
+        recipient_roles = self.roles or (OpportunityManager.AD_OPS_MANAGER,)
         opportunity_keys = [_manager_map.get(r) for r in recipient_roles]
         user_ids = list(filter(None, [(opportunity.get(k) or {}).get('id')
                                       for k in opportunity_keys]))
@@ -132,6 +131,7 @@ class DailyCampaignReport(BaseEmailReport):
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=self.get_to(to_emails),
                 bcc=self.get_bcc(),
+                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                 reply_to="",
             )
             msg.attach_alternative(html_content, "text/html")
@@ -204,8 +204,12 @@ class DailyCampaignReport(BaseEmailReport):
             placement_obj = get_object_or_404(OpPlacement, id=placement['id'])
             flights = report.get_flights(placement_obj)
 
+            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement['id'],
+                                                            status=CampaignStatus.ELIGIBLE.value).count()
+
             for flight in flights:
-                self.collect_flight_delivery_alert(flight, opportunity_obj)
+                if active_campaign_count > 0:
+                    self.collect_flight_delivery_alert(flight, opportunity_obj)
 
                 for f in spend_fields:
                     opportunity[f] += flight.get(f) or 0

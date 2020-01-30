@@ -57,7 +57,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
         "kwargs": dict(
             reports=["DailyCampaignReport"],
-            roles="Account Manager",
+            roles="Ad Ops Manager",
         ),
     },
     "weekend-campaign-reports": {
@@ -65,7 +65,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="13", minute="30", day_of_week="Sun,Sat"),
         "kwargs": dict(
             reports=["DailyCampaignReport"],
-            roles="Account Manager,Ad Ops Manager",
+            roles="Ad Ops Manager",
         ),
     },
     "recreate-demo-data": {
