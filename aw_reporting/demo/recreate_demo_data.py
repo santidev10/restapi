@@ -74,7 +74,7 @@ from .data import VIDEO_CREATIVES
 
 __all__ = ["recreate_demo_data"]
 
-int_iterator = itertools.count(1, 1)
+int_iterator = itertools.count(DEMO_ACCOUNT_ID, 1)
 
 
 @celery_app.task()
@@ -125,7 +125,7 @@ def create_campaigns(account, opportunity, dates):
     start, end = min(dates), max(dates)
     campaigns = [
         Campaign(
-            id=(i + 1),
+            id=next(int_iterator),
             name="Campaign #demo{}".format(i + 1),
             account=account,
             status=CampaignStatus.SERVING.value,
@@ -172,7 +172,7 @@ def create_ad_groups(campaigns):
 def generate_ad_groups(campaign):
     return [
         AdGroup(
-            id=(campaign.id * 1000 + (i + 1)),
+            id=next(int_iterator),
             name="{} #{}".format(name, campaign.id),
             campaign=campaign,
         )
@@ -192,7 +192,7 @@ def create_ads(ad_groups):
 def generate_ads(ad_group):
     return [
         Ad(
-            id=(ad_group.id * 1000 + i),
+            id=next(int_iterator),
             ad_group=ad_group,
         )
         for i in range(2)
