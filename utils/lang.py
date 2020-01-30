@@ -111,6 +111,14 @@ def fasttext_lang(s):
     return language
 
 
+def is_english(s):
+    try:
+        s.encode(encoding='utf-8').decode('ascii')
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
 def merge_sort(generators, key=None):
     """
     Implementation of the merge sort algorithm. It assumes that all incoming generators/iterators are presorted
