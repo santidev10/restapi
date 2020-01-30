@@ -116,6 +116,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
         "schedule": crontab(hour="*"),
     },
+    "cache_pricing_tool_filters": {
+        "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
+        "schedule": crontab(hour="*"),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(hour="*"),

@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 
+from aw_reporting.api.tests.pricing_tool.base import PricingToolTestCaseBase
+from aw_reporting.api.tests.pricing_tool.base import generate_campaign_statistic
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
@@ -19,45 +21,9 @@ from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 from utils.utittests.patch_now import patch_now
 
 
-class PricingToolTestCase(APITestCase):
+class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
     _url = reverse(
         Namespace.AW_REPORTING + ":" + Name.PricingTool.OPPORTUNITIES)
-
-    def _request(self, **kwargs):
-        return self.client.post(self._url,
-                                json.dumps(kwargs),
-                                content_type="application/json")
-
-    def setUp(self):
-        self.user = self.create_test_user()
-
-    @staticmethod
-    def _create_opportunity_campaign(_id, goal_type=SalesForceGoalType.CPV,
-                                     opp_data=None, pl_data=None,
-                                     camp_data=None, generate_statistic=True):
-        today = timezone.now().date()
-        period_days = 10
-        start, end = today - timedelta(days=period_days), today
-        default_opp_data = dict(start=start, end=end, brand="Test")
-        opp_data = {**default_opp_data, **(opp_data or dict())}
-        camp_data = camp_data or dict(name="Campaign name")
-        pl_data = pl_data or dict(ordered_rate=0.6)
-        opportunity = Opportunity.objects.create(id="opportunity_" + _id,
-                                                 name="",
-                                                 **opp_data)
-        placement = OpPlacement.objects.create(
-            id="op_placement_" + _id, name="", opportunity=opportunity,
-            goal_type_id=goal_type,
-            **pl_data)
-
-        campaign = Campaign.objects.create(
-            id="campaign_" + _id,
-            salesforce_placement=placement, **camp_data
-        )
-        if generate_statistic:
-            generate_campaign_statistic(campaign, opp_data["start"],
-                                        opp_data["end"])
-        return opportunity, campaign
 
     def test_pricing_tool_opportunity_returns_related_aw_campaigns(self):
         today = timezone.now().date()
@@ -88,17 +54,6 @@ class PricingToolTestCase(APITestCase):
             "geographic", "ctr", "ctr_v", "view_rate", "video100rate"
         })
         self.assertEqual(opportunity_data["id"], opportunity.id)
-        campaigns_data = opportunity_data["campaigns"]
-        self.assertEqual(len(campaigns_data), 1)
-        campaign_data = campaigns_data[0]
-        self.assertEqual(campaign_data["id"], campaign_1.id)
-        self.assertEqual(set(campaign_data.keys()), {
-            "id", "name", "thumbnail", "creative_lengths", "products",
-            "devices", "demographic", "targeting", "cost", "average_cpm",
-            "average_cpv", "margin", "relevant_date_range",
-            "start_date", "end_date", "vertical", "geographic", "budget",
-            "brand", "apex_deal", "sf_cpm", "sf_cpv", "ctr", "ctr_v"
-        })
 
     def test_pricing_tool_opportunity_filters_by_quarter(self):
         start, end = datetime(2017, 10, 1), datetime(2017, 10, 11)
@@ -189,7 +144,8 @@ class PricingToolTestCase(APITestCase):
 
         campaigns = response.data["items"][0]["campaigns"]
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]["id"], "campaign_1")
+        self.assertEqual(campaigns[0], "campaign_1")
+        # self.assertEqual(campaigns[0]["id"], "campaign_1")
 
     def test_pricing_tool_opportunity_filters_by_product_type_or(self):
         start, end = datetime(2018, 1, 1), datetime(2018, 1, 11)
@@ -546,11 +502,7 @@ class PricingToolTestCase(APITestCase):
 
         campaigns = response.data["items"][0]["campaigns"]
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0]["id"], "campaign_1")
-
-        self.assertEqual(campaigns[0]["demographic"], ['18-24'])
-        self.assertEqual(response.data["items"][0]["demographic"], {'18-24'})
-
+        self.assertEqual(campaigns[0], "campaign_1")
 
     def test_pricing_tool_opportunity_filters_by_parental_status(self):
         opportunity = Opportunity.objects.create(id="opportunity_1",
@@ -1415,39 +1367,6 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(opportunity_data["sf_cpm"], opp_cpm)
         self.assertEqual(opportunity_data["sf_cpv"], opp_cpv)
 
-    def test_pricing_tool_campaign_cpv_client_rate(self):
-        start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        pl_rate = 1.03
-        opportunity, _ = self._create_opportunity_campaign(
-            "1",
-            opp_data=dict(start=start_date, end=end_date),
-            pl_data=dict(ordered_rate=pl_rate,
-                         start=start_date, end=end_date),
-            goal_type=SalesForceGoalType.CPV)
-
-        response = self._request(start=str(start_date), end=str(end_date))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(campaign_data["sf_cpv"], pl_rate)
-        self.assertEqual(campaign_data["sf_cpm"], None)
-
-    def test_pricing_tool_campaign_cpm_client_rate(self):
-        start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        pl_rate = 1.03
-        self._create_opportunity_campaign(
-            "1",
-            opp_data=dict(start=start_date, end=end_date),
-            pl_data=dict(ordered_rate=pl_rate),
-            goal_type=SalesForceGoalType.CPM)
-
-        response = self._request(start=str(start_date), end=str(end_date))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        placement_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(placement_data["sf_cpv"], None)
-        self.assertEqual(placement_data["sf_cpm"], pl_rate)
-
     def test_hides_opportunity_with_no_placement(self):
         today = timezone.now().date()
         period_days = 10
@@ -1524,36 +1443,6 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(opp_data["start_date"], start_1.date())
         self.assertEqual(opp_data["end_date"], end_2.date())
 
-    def test_dates_on_company_level(self):
-        """
-        https://channelfactory.atlassian.net/browse/IQD-2679
-        > Start-End Dates on campaign level = AW start and end date
-        """
-        start_1, end_1 = date(2018, 1, 1), date(2018, 1, 10)
-        start_2, end_2 = date(2018, 1, 12), date(2018, 1, 30)
-        opportunity = Opportunity.objects.create(id="opportunity",
-                                                 name="", brand="Test")
-        placement = OpPlacement.objects.create(
-            id="op_placement", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
-        campaign_1 = Campaign.objects \
-            .create(id="1", salesforce_placement=placement,
-                    start_date=start_1, end_date=end_1)
-        campaign_2 = Campaign.objects \
-            .create(id="2", salesforce_placement=placement,
-                    start_date=start_2, end_date=end_2)
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        campaigns = response.data["items"][0]["campaigns"]
-        company_1_data = [c for c in campaigns if c["id"] == campaign_1.id][0]
-        company_2_data = [c for c in campaigns if c["id"] == campaign_2.id][0]
-        self.assertEqual(company_1_data["start_date"], start_1)
-        self.assertEqual(company_1_data["end_date"], end_1)
-        self.assertEqual(company_2_data["start_date"], start_2)
-        self.assertEqual(company_2_data["end_date"], end_2)
-
     def test_relevant_date_range_start_end(self):
         start, end = datetime(2015, 12, 1), datetime(2016, 1, 30)
         request_start, request_end = date(2016, 1, 5), date(2016, 1, 20)
@@ -1587,33 +1476,6 @@ class PricingToolTestCase(APITestCase):
             response = self._request(quarters=["Q1"])
         self.assertEqual(response.data["items"][0]["relevant_date_range"],
                          dict(start=start_of_the_year, end=end.date()))
-
-    def test_budget_on_campaign_level(self):
-        """
-        https://channelfactory.atlassian.net/browse/IQD-2679
-        > Budget on opportunity level = SUM AW cost from all campaigns
-        which belong to the opportunity
-        """
-        budget_1 = 123
-        budget_2 = 234
-        opportunity = Opportunity.objects.create(id="opportunity",
-                                                 name="", brand="Test")
-        placement = OpPlacement.objects.create(
-            id="op_placement", name="", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
-        campaign_1 = Campaign.objects \
-            .create(id="1", salesforce_placement=placement, cost=budget_1)
-        campaign_2 = Campaign.objects \
-            .create(id="2", salesforce_placement=placement, cost=budget_2)
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        campaigns = response.data["items"][0]["campaigns"]
-        company_1_data = [c for c in campaigns if c["id"] == campaign_1.id][0]
-        company_2_data = [c for c in campaigns if c["id"] == campaign_2.id][0]
-        self.assertEqual(company_1_data["budget"], budget_1)
-        self.assertEqual(company_2_data["budget"], budget_2)
 
     def test_budget_on_opportunity_level(self):
         """
@@ -1693,26 +1555,10 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(len(actual_geo), 2)
         self.assertEqual(set(actual_geo), {test_geo_1, test_geo_2})
         campaigns = opp_data["campaigns"]
-        campaign_1_data = [c for c in campaigns if c["id"] == campaign_1.id][0]
-        campaign_2_data = [c for c in campaigns if c["id"] == campaign_2.id][0]
-        campaign_3_data = [c for c in campaigns if c["id"] == campaign_3.id][0]
-        self.assertEqual(campaign_1_data["geographic"], [test_geo_1])
-        self.assertEqual(set(campaign_2_data["geographic"]),
-                         {test_geo_1, test_geo_2})
-        self.assertEqual(campaign_3_data["geographic"], [])
 
-    def test_campaign_cpm_cpv(self):
-        _, campaign = self._create_opportunity_campaign(
-            "1", camp_data=dict(cost=123, impressions=2234, video_views=432))
-        expected_cpm = campaign.cost / campaign.impressions * 1000
-        expected_cpv = campaign.cost / campaign.video_views
-        response = self._request()
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(campaign_data["average_cpm"], expected_cpm)
-        self.assertEqual(campaign_data["average_cpv"], expected_cpv)
+        self.assertTrue(campaign_1.id in campaigns)
+        self.assertTrue(campaign_2.id in campaigns)
+        self.assertTrue(campaign_3.id in campaigns)
 
     def test_filter_by_video100rate_no_crash(self):
         """
@@ -1810,127 +1656,6 @@ class PricingToolTestCase(APITestCase):
             "1", camp_data=dict(impressions=0, video_views_100_quartile=0))
         response = self._request(min_video100rate=1)
         self.assertEqual(len(response.data["items"]), 0)
-
-    def test_campaign_name(self):
-        test_name = "Campaign Name"
-        self._create_opportunity_campaign("1", camp_data=dict(name=test_name))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(campaign_data["name"], test_name)
-
-    def test_campaign_apex_deal_true(self):
-        self._create_opportunity_campaign("1", opp_data=dict(apex_deal=True))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertTrue(campaign_data["apex_deal"])
-
-    def test_campaign_apex_deal_false(self):
-        self._create_opportunity_campaign("1", opp_data=dict(apex_deal=False))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertFalse(campaign_data["apex_deal"])
-
-    def test_campaign_brand(self):
-        test_brand = "Test brand 1123"
-        self._create_opportunity_campaign("1", opp_data=dict(brand=test_brand))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(campaign_data["brand"], test_brand)
-
-    def test_campaign_devices(self):
-        self._create_opportunity_campaign(
-            "1", camp_data=dict(device_computers=True, device_tablets=True))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(set(campaign_data["devices"]),
-                         {device_str(Device.COMPUTER), device_str(Device.TABLET)})
-
-    def test_campaign_products(self):
-        _, campaign = self._create_opportunity_campaign(
-            "1", camp_data=dict(device_computers=True, device_tablets=True))
-        test_type_1 = "test_type_1"
-        test_type_2 = "test_type_2"
-        expected_products = {test_type_1, test_type_2}
-        AdGroup.objects.create(id="1", campaign=campaign, type=test_type_1)
-        AdGroup.objects.create(id="2", campaign=campaign, type=test_type_2)
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(set(campaign_data["products"]), expected_products)
-
-    def test_campaign_targeting(self):
-        self._create_opportunity_campaign(
-            "1", camp_data=dict(has_interests=True, has_remarketing=True))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        expected_targeting = {"interests", "remarketing"}
-        self.assertEqual(set(campaign_data["targeting"]), expected_targeting)
-
-    def test_campaign_demographic(self):
-        self._create_opportunity_campaign(
-            "1", camp_data=dict(age_18_24=True, gender_female=True))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        expected_demographic = {AgeRanges[1], Genders[1]}
-        self.assertEqual(set(campaign_data["demographic"]),
-                         expected_demographic)
-
-    def test_campaign_creative_length(self):
-        start_date, end_date = date(2017, 1, 1), date(2017, 3, 31)
-        _, campaign = self._create_opportunity_campaign(
-            "1", opp_data=dict(start=start_date, end=end_date))
-        ad_group = AdGroup.objects.create(id="1", campaign=campaign)
-        creative_duration_1 = 123
-        creative_duration_2 = 2123
-        creative_1 = VideoCreative.objects.create(
-            id="1", duration=creative_duration_1)
-        creative_2 = VideoCreative.objects.create(
-            id="2", duration=creative_duration_2)
-        VideoCreativeStatistic.objects.create(ad_group=ad_group,
-                                              creative=creative_1,
-                                              date=start_date)
-        VideoCreativeStatistic.objects.create(ad_group=ad_group,
-                                              creative=creative_2,
-                                              date=start_date)
-        response = self._request(start=str(start_date), end=str(end_date))
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(set(campaign_data["creative_lengths"]),
-                         {creative_duration_1, creative_duration_2})
-
-    def test_campaign_thumbnail(self):
-        _, campaign = self._create_opportunity_campaign("1")
-        expected_video = "expected thumbnail"
-        expected_thumbnail = "https://i.ytimg.com/vi/{}/hqdefault.jpg".format(
-            expected_video)
-
-        ad_group = AdGroup.objects.create(id="1", campaign=campaign)
-        creative = VideoCreative.objects.create(id=expected_video)
-        VideoCreativeStatistic.objects.create(ad_group=ad_group,
-                                              creative=creative,
-                                              cost=999,
-                                              date=datetime(2017, 1, 1))
-        response = self._request()
-
-        self.assertEqual(len(response.data["items"]), 1)
-        campaign_data = response.data["items"][0]["campaigns"][0]
-        self.assertEqual(campaign_data["thumbnail"], expected_thumbnail)
 
     def test_compare_yoy_only(self):
         now = datetime(2017, 1, 3, 13, 0, 0)
@@ -2359,8 +2084,7 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
         self.assertEqual(len(response.data["items"][0]["campaigns"]), 1)
-        self.assertEqual(response.data["items"][0]["campaigns"][0]["id"],
-                         campaign.id)
+        self.assertEqual(response.data["items"][0]["campaigns"][0], campaign.id)
 
     def test_filter_hidden_campaigns(self):
         _, campaign_1 = self._create_opportunity_campaign("1")
@@ -2378,8 +2102,7 @@ class PricingToolTestCase(APITestCase):
 
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 1)
-        campaign_ids = [c["id"] for c in response.data["items"][0]["campaigns"]]
-        self.assertEqual(campaign_ids, [campaign_1.id])
+        self.assertEqual(response.data["items"][0]["campaigns"], [campaign_1.id])
 
     def test_filter_by_video100rate_ignores_hidden_accounts(self):
         _, campaign_1 = self._create_opportunity_campaign(
@@ -2403,6 +2126,7 @@ class PricingToolTestCase(APITestCase):
 
         user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
                          UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
+
         with self.patch_user_settings(**user_settings):
             response = self._request(min_video100rate=10,
                                      max_video100rate=30)
@@ -2491,10 +2215,7 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(len(response.data["items"]), 1)
         opportunity = response.data["items"][0]
-        campaigns = opportunity["campaigns"]
-        self.assertEqual({c["ctr"] for c in campaigns}, expected_campaigns_ctr)
-        self.assertEqual(
-            {c["ctr_v"] for c in campaigns}, expected_campaigns_ctr_v)
+
         self.assertEqual(opportunity["ctr"], expected_opportunity_ctr)
         self.assertEqual(opportunity["ctr_v"], expected_opportunity_ctr_v)
 
@@ -3012,54 +2733,6 @@ class PricingToolTestCase(APITestCase):
         self.assertEqual(response.data["items_count"], 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity.id)
 
-    def test_margin_on_campaign_level(self):
-        start_end = date(2017, 1, 1)
-        opportunity = Opportunity.objects.create(id="1",
-                                                 start=start_end, end=start_end)
-
-        cpm_placement = OpPlacement.objects.create(
-            id="1", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPM,
-            start=start_end, end=start_end,
-            ordered_rate=12., total_cost=99999
-        )
-        cpv_placement = OpPlacement.objects.create(
-            id="2", opportunity=opportunity,
-            goal_type_id=SalesForceGoalType.CPV,
-            start=start_end, end=start_end,
-            ordered_rate=0.5, total_cost=99999
-        )
-
-        cpm_cost, cpv_cost = 245, 543
-        cpm_impressions, cpv_views = 4567, 432
-        cpm_campaign = Campaign.objects.create(
-            id="1", salesforce_placement=cpm_placement,
-            impressions=cpm_impressions,
-            video_views=999999,
-            cost=cpm_cost
-        )
-        cpv_campaign = Campaign.objects.create(
-            id="2", salesforce_placement=cpv_placement,
-            impressions=999999,
-            video_views=cpv_views,
-            cost=cpv_cost
-        )
-
-        sf_cpm = cpm_placement.ordered_rate / 1000
-        sf_cpv = cpv_placement.ordered_rate
-
-        cpm_margin = (1 - cpm_cost / (cpm_impressions * sf_cpm)) * 100
-        cpv_margin = (1 - cpv_cost / (cpv_views * sf_cpv)) * 100
-
-        response = self._request(start=str(start_end), end=str(start_end))
-
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.data["items_count"], 1)
-        margin_by_campaign = {c["id"]: c["margin"]
-                              for c in response.data["items"][0]["campaigns"]}
-        self.assertAlmostEqual(margin_by_campaign[cpm_campaign.id], cpm_margin)
-        self.assertAlmostEqual(margin_by_campaign[cpv_campaign.id], cpv_margin)
-
     def test_margin_on_over_delivery(self):
         """
         Bug: because of wrong JOIN total_cost calculates
@@ -3140,18 +2813,3 @@ class PricingToolTestCase(APITestCase):
 
         response = self._request(product_types=[type_2], ages=[1])
         self.assertEqual(len(response.data["items"]), 0)
-
-
-def generate_campaign_statistic(
-        campaign, start, end, predefined_statistics=None):
-    for i in range((end - start).days + 1):
-        base_stats = {
-            "campaign": campaign,
-            "date": start + timedelta(days=i),
-            "impressions": 10,
-            "video_views": 4,
-            "cost": 2
-        }
-        if predefined_statistics is not None:
-            base_stats.update(predefined_statistics)
-        CampaignStatistic.objects.create(**base_stats)
