@@ -77,7 +77,7 @@ class DailyCampaignReport(BaseEmailReport):
         if self.roles:
             self.roles = self.roles.split(",")
 
-        self.flight_alerts = []
+        self.flight_alerts = set()
 
     def is_on_going_placements(self, p):
         return None not in (p["goal_type_id"], p["start"], p["end"]) \
@@ -146,8 +146,8 @@ class DailyCampaignReport(BaseEmailReport):
             # send flight alerts
             for alert in self.flight_alerts:
                 msg = EmailMessage(
-                    subject=alert.get("subject"),
-                    body=alert.get("body"),
+                    subject=alert.subject,
+                    body=alert.body,
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_emails),
                     cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
@@ -228,9 +228,9 @@ class DailyCampaignReport(BaseEmailReport):
             alert_percentage = 80
 
         if alert_percentage is not None:
-            self.flight_alerts.append(
-                get_flight_delivery_alert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
-                                          control_percentage=alert_percentage)
+            self.flight_alerts.add(
+                FlightAlert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
+                            control_percentage=alert_percentage)
             )
 
     def check_flight_delivered(self, flight, control_percentage):
@@ -289,11 +289,14 @@ def _calculate_with_general(opportunity, keys_map: dict):
     return opportunity
 
 
-def get_flight_delivery_alert(flight_name, opportunity_name, control_percentage):
-    return dict(
-        subject="{control_percentage}% DELIVERY - {flight_name}".format(
-            control_percentage=control_percentage, flight_name=flight_name),
-        body="{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
+class FlightAlert:
+    def __init__(self, flight_name, opportunity_name, control_percentage):
+        self.subject = "{control_percentage}% DELIVERY - {flight_name}".format(
+            control_percentage=control_percentage, flight_name=flight_name)
+        self.body = "{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
             flight_name=flight_name, control_percentage=control_percentage, opportunity_name=opportunity_name
         )
-    )
+
+    def __hash__(self):
+        return hash(self.body)
+
