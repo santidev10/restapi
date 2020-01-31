@@ -13,7 +13,7 @@ class PricingToolFiltersView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         try:
-            cached_filters_object, _ = CacheItem.objects.get(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
+            cached_filters_object = CacheItem.objects.get(key=f"{user.id}_{PRICING_TOOL_FILTERS_KEY}")
             pricing_tool_filters = cached_filters_object.value
         except CacheItem.DoesNotExist:
             pricing_tool_filters = PricingTool.get_filters(user=user)
