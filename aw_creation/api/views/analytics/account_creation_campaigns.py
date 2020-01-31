@@ -25,6 +25,8 @@ class AnalyticsAccountCreationCampaignsListApiView(APIView):
 
     def _get_account_creation(self, pk):
         available_account_ids = Account.user_objects(self.request.user).values_list("id", flat=True)
+        if not pk.isnumeric():
+            raise Http404
         try:
             return AccountCreation.objects.filter(
                 Q(is_deleted=False) & Q(owner=self.request.user) | Q(account_id__in=available_account_ids)).get(id=pk)

@@ -13,7 +13,8 @@ from saas.configs.celery import TaskTimeout
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(expires=TaskExpiration.RESEARCH_CACHING, soft_time_limit=TaskTimeout.RESEARCH_CACHING)
+@celery_app.task(expires=TaskExpiration.PRICING_TOOL_FILTERS_CACHING,
+                 soft_time_limit=TaskTimeout.PRICING_TOOL_FILTERS_CACHING)
 def cache_pricing_tool_filters():
     logger.debug("Starting pricing tool filters caching.")
 

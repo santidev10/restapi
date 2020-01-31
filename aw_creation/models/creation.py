@@ -1,7 +1,6 @@
 import calendar
 import json
 import logging
-import uuid
 from decimal import Decimal
 
 from PIL import Image
@@ -31,10 +30,6 @@ TrackingTemplateValidator = RegexValidator(
     r"(https?://\S+)|(\{lpurl\}\S*)",
     "Tracking url template must ba a valid URL or start with {lpurl} tag",
 )
-
-
-def get_uid(length=12):
-    return str(uuid.uuid4()).replace('-', '')[:length]
 
 
 class CreationItemQueryset(models.QuerySet):
@@ -85,8 +80,7 @@ class AccountCreationManager(models.Manager.from_queryset(CreationItemQueryset))
 
 class AccountCreation(UniqueCreationItem):
     objects = AccountCreationManager()
-    id = models.CharField(primary_key=True, max_length=12,
-                          default=get_uid, editable=False)
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     owner = models.ForeignKey('userprofile.userprofile',
                               related_name="aw_account_creations",

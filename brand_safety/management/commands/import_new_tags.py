@@ -7,6 +7,7 @@ from brand_safety.models import BadWordCategory
 from audit_tool.models import AuditLanguage
 from brand_safety.languages import LANG_CODES
 from utils.utils import remove_tags_punctuation
+from utils.lang import is_english
 
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,20 @@ class Command(BaseCommand):
             help="Filename of newly vetted tags."
         )
 
+        parser.add_argument(
+            "--delete_all",
+            help="Set to True if you want to delete all tags in the database and reimport."
+        )
+
     def handle(self, *args, **kwargs):
         file_name = kwargs["file_name"]
         invalid_rows_file_name = "invalid_new_tags.csv"
         invalid_rows = []
-
-        BadWord.objects.all().delete()
+        try:
+            if kwargs["delete_all"]:
+                BadWord.objects.all().delete()
+        except Exception:
+            pass
         counter = 0
         with open(file_name, "r") as f:
             reader = csv.reader(f)
@@ -35,8 +44,8 @@ class Command(BaseCommand):
                 try:
                     # Parse word
                     word = remove_tags_punctuation(row[0].lower().strip())
-                    if len(word) < 3:
-                        reason = [f"Word {word} is shorter than 3 characters long when trimmed."]
+                    if is_english(word) and len(word) < 3:
+                        reason = [f"Word {word} is shorter than 3 English characters long when trimmed."]
                         invalid_rows.append(row + reason)
                         continue
                     # Parse category

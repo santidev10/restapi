@@ -1,5 +1,6 @@
-import json
-from datetime import timedelta, datetime, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 from django.urls import reverse
 from django.utils import timezone
@@ -8,16 +9,31 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.tests.pricing_tool.base import PricingToolTestCaseBase
 from aw_reporting.api.tests.pricing_tool.base import generate_campaign_statistic
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
-    Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
-    TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
-    Flight, GeoTargeting, device_str, Device
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Category
+from aw_reporting.models import Device
+from aw_reporting.models import Flight
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTargeting
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
 
@@ -36,7 +52,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             salesforce_placement=placement
         )
         generate_campaign_statistic(campaign_1, start, end)
@@ -65,7 +81,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         account = Account.objects.create(id="1", name="")
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name", account=account,
+            id=1, name="Campaign name", account=account,
             salesforce_placement=placement,
             start_date=start, end_date=end
         )
@@ -85,7 +101,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -97,7 +113,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -119,7 +135,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=next(int_iterator), name="Campaign name",
             salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -131,7 +147,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -144,8 +160,8 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         campaigns = response.data["items"][0]["campaigns"]
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0], "campaign_1")
-        # self.assertEqual(campaigns[0]["id"], "campaign_1")
+        self.assertEqual(campaigns[0], campaign_1.id)
+        # self.assertEqual(campaigns[0]["id"], 1)
 
     def test_pricing_tool_opportunity_filters_by_product_type_or(self):
         start, end = datetime(2018, 1, 1), datetime(2018, 1, 11)
@@ -158,7 +174,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -170,7 +186,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -192,7 +208,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -205,7 +221,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -227,7 +243,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             has_interests=True, salesforce_placement=placement,
         )
 
@@ -238,7 +254,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -257,7 +273,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             has_interests=True, salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -269,7 +285,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             has_keywords=True, salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -291,7 +307,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             has_interests=True, has_keywords=True,
             salesforce_placement=placement,
         )
@@ -304,7 +320,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             has_keywords=True, salesforce_placement=placement_2,
         )
         AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
@@ -324,7 +340,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             gender_undetermined=True, salesforce_placement=placement,
         )
 
@@ -335,7 +351,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name", account=account_2,
+            id=2, name="Campaign name", account=account_2,
             salesforce_placement=placement_2,
         )
 
@@ -351,7 +367,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             gender_undetermined=True, salesforce_placement=placement,
         )
 
@@ -361,7 +377,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             gender_female=True, salesforce_placement=placement_2,
         )
 
@@ -376,7 +392,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             gender_undetermined=True, gender_female=True,
             salesforce_placement=placement,
         )
@@ -387,7 +403,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             gender_female=True, salesforce_placement=placement_2,
         )
 
@@ -403,7 +419,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             age_undetermined=True, salesforce_placement=placement,
         )
 
@@ -413,7 +429,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -429,7 +445,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             age_undetermined=True, salesforce_placement=placement,
         )
 
@@ -439,7 +455,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             age_18_24=True, salesforce_placement=placement_2,
         )
 
@@ -454,7 +470,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             age_undetermined=True, age_18_24=True,
             salesforce_placement=placement,
         )
@@ -465,7 +481,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             age_18_24=True, salesforce_placement=placement_2,
         )
 
@@ -481,7 +497,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             age_18_24=True,
             salesforce_placement=placement,
         )
@@ -492,7 +508,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             age_45_54=True, salesforce_placement=placement_2,
         )
 
@@ -502,7 +518,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         campaigns = response.data["items"][0]["campaigns"]
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0], "campaign_1")
+        self.assertEqual(campaigns[0], 1)
 
     def test_pricing_tool_opportunity_filters_by_parental_status(self):
         opportunity = Opportunity.objects.create(id="opportunity_1",
@@ -512,7 +528,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             parent_parent=True, salesforce_placement=placement,
         )
 
@@ -522,7 +538,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -538,7 +554,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             parent_parent=True, salesforce_placement=placement,
         )
 
@@ -548,7 +564,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             parent_not_parent=True, salesforce_placement=placement_2,
         )
 
@@ -563,7 +579,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="Campaign name",
+            id=1, name="Campaign name",
             parent_parent=True, parent_not_parent=True,
             salesforce_placement=placement,
         )
@@ -574,7 +590,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             parent_not_parent=True, salesforce_placement=placement_2,
         )
 
@@ -598,7 +614,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -608,7 +624,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -637,7 +653,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -647,7 +663,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -677,7 +693,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -687,7 +703,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -713,7 +729,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -723,7 +739,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -741,7 +757,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -751,7 +767,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
@@ -767,7 +783,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -777,7 +793,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
         ad_group_1 = AdGroup.objects.create(id="1", name="",
@@ -1525,7 +1541,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="",
+            id=1, name="",
             salesforce_placement=placement,
         )
 
@@ -1533,12 +1549,12 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             id="op_placement_2", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2,
         )
 
         campaign_3 = Campaign.objects.create(
-            id="campaign_3", name="Campaign name 3",
+            id=3, name="Campaign name 3",
             salesforce_placement=placement_2
         )
 
@@ -2077,7 +2093,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         opportunity = Opportunity.objects.create(id="1")
         placement = OpPlacement.objects.create(id="1", opportunity=opportunity)
         campaign = Campaign.objects.create(
-            id="1", salesforce_placement=placement, account=None)
+            id=1, salesforce_placement=placement, account=None)
         with self.patch_user_settings(visible_accounts=[]):
             response = self._request()
 
@@ -2088,13 +2104,13 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
     def test_filter_hidden_campaigns(self):
         _, campaign_1 = self._create_opportunity_campaign("1")
-        account_1 = Account.objects.create(id="1")
+        account_1 = Account.objects.create(id=1)
         campaign_1.account = account_1
         campaign_1.save()
         placement = campaign_1.salesforce_placement
-        account_2 = Account.objects.create(id="2", name="")
+        account_2 = Account.objects.create(id=2, name="")
         Campaign.objects.create(
-            id="2", account=account_2, salesforce_placement=placement)
+            id=2, account=account_2, salesforce_placement=placement)
         user_settings = {UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True,
                          UserSettingsKey.VISIBLE_ACCOUNTS: [account_1.id]}
         with self.patch_user_settings(**user_settings):
@@ -2173,7 +2189,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             "video_views": 143,
             "clicks": 78}
         campaign = Campaign.objects.create(
-            id="campaign_1", name="Campaign name 1",
+            id=1, name="Campaign name 1",
             salesforce_placement=placement_1,
             **predefined_cpv_statistics)
         generate_campaign_statistic(
@@ -2183,7 +2199,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             "video_views": 0,
             "clicks": 11}
         campaign = Campaign.objects.create(
-            id="campaign_2", name="Campaign name 2",
+            id=2, name="Campaign name 2",
             salesforce_placement=placement_2,
             **predefined_cpm_statistics)
         generate_campaign_statistic(
@@ -2795,19 +2811,19 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id="campaign_1", name="Campaign name", age_18_24=True,
+            id=1, name="Campaign name", age_18_24=True,
             salesforce_placement=placement,
         )
-        AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
+        AdGroup.objects.create(id=1, campaign=campaign_1, type=type_1)
 
         placement_2 = OpPlacement.objects.create(
             id="op_placement_2", name="", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
         campaign_2 = Campaign.objects.create(
-            id="campaign_2", name="Campaign name",
+            id=2, name="Campaign name",
             salesforce_placement=placement_2, age_35_44=True,
         )
-        AdGroup.objects.create(id="2", campaign=campaign_2, type=type_2)
+        AdGroup.objects.create(id=2, campaign=campaign_2, type=type_2)
         generate_campaign_statistic(campaign_1, start, end)
         generate_campaign_statistic(campaign_2, start, end)
 
