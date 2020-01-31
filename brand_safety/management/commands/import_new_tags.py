@@ -25,6 +25,11 @@ class Command(BaseCommand):
             help="Set to True if you want to delete all tags in the database and reimport."
         )
 
+        parser.add_argument(
+            "--overwrite",
+            help="Default value is False. Set to True if you want to overwrite duplicate tags when importing."
+        )
+
     def handle(self, *args, **kwargs):
         file_name = kwargs["file_name"]
         invalid_rows_file_name = "invalid_new_tags.csv"
@@ -34,6 +39,14 @@ class Command(BaseCommand):
                 BadWord.objects.all().delete()
         except Exception:
             pass
+        try:
+            if kwargs["overwrite"]:
+                overwrite = True
+            else:
+                overwrite = False
+        except Exception:
+            overwrite = False
+
         counter = 0
         with open(file_name, "r") as f:
             reader = csv.reader(f)
