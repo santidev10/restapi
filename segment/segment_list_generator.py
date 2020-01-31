@@ -93,7 +93,7 @@ class SegmentListGenerator(object):
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
             try:
-                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.top_category").value(
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories").value(
                     category_name).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.subscribers").gte(
                     self.MINIMUM_SUBSCRIBERS).get() \
@@ -123,7 +123,7 @@ class SegmentListGenerator(object):
                                                                       S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL)
             )
             try:
-                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.category").value(
+                query = QueryBuilder().build().must().term().field(f"{Sections.GENERAL_DATA}.iab_categories").value(
                     category_name).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.views").gte(self.MINIMUM_VIEWS).get() \
                         & QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(
