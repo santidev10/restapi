@@ -102,8 +102,8 @@ class PacingReportTestCase(ExtendedAPITestCase):
         placement = OpPlacement.objects.create(
             id="1", name="", opportunity=opportunity, goal_type_id=SalesForceGoalType.CPV,
         )
-        campaign_1 = Campaign.objects.create(id="1", name="Alpha", salesforce_placement=placement)
-        campaign_2 = Campaign.objects.create(id="2", name="Beta", salesforce_placement=placement)
+        campaign_1 = Campaign.objects.create(id=1, name="Alpha", salesforce_placement=placement)
+        campaign_2 = Campaign.objects.create(id=2, name="Beta", salesforce_placement=placement)
 
         end = today.replace(day=30)
         flight = Flight.objects.create(id="1", name="", placement=placement, ordered_units=1000, start=today, end=end)

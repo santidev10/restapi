@@ -11,7 +11,7 @@ class AdGroupManager(models.Manager, UserRelatedManagerMixin):
 
 class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = AdGroupManager()
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250)
     status = models.CharField(max_length=7, null=True, db_index=True)
     type = models.CharField(max_length=35, default="", db_index=True)

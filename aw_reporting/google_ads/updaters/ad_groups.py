@@ -67,8 +67,8 @@ class AdGroupUpdater(UpdateMixin):
             updated_ad_groups = []
 
             for row_obj in report:
-                ad_group_id = row_obj.AdGroupId
-                campaign_id = row_obj.CampaignId
+                ad_group_id = int(row_obj.AdGroupId)
+                campaign_id = int(row_obj.CampaignId)
 
                 if campaign_id not in campaign_ids:
                     logger.warning("Campaign {campaign_id} is missed."

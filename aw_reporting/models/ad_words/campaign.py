@@ -15,7 +15,7 @@ class CampaignManager(models.Manager, UserRelatedManagerMixin):
 class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = CampaignManager()
 
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250)
     account = models.ForeignKey(Account, null=True, related_name='campaigns', on_delete=models.CASCADE)
 

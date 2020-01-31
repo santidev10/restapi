@@ -35,7 +35,7 @@ class CampaignLocationTargetUpdater(UpdateMixin):
 
     def _generate_stat_instances(self, model, report, campaign_ids, saved_targeting):
         for row_obj in report:
-            if row_obj.CampaignId not in campaign_ids or not row_obj.Id.isnumeric():
+            if int(row_obj.CampaignId) not in campaign_ids or not row_obj.Id.isnumeric():
                 continue
             uid = (row_obj.CampaignId, int(row_obj.Id))
             stats = dict(

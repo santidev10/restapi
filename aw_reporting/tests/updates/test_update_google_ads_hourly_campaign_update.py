@@ -126,7 +126,7 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
         accounts_seen = set()
         op_end = date.today() - timedelta(days=1)
         for i in range(accounts_size):
-            cid = Account.objects.create(id=str(next(int_iterator)), is_active=True, can_manage_clients=False)
+            cid = Account.objects.create(id=next(int_iterator), is_active=True, can_manage_clients=False)
             Opportunity.objects.create(id=str((next(int_iterator))), name="", aw_cid=cid.id, end=op_end)
             accounts_created.add(cid.id)
         for i in range(len(accounts_created) // batch_size):

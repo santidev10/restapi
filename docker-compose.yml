@@ -124,9 +124,9 @@ services:
       CELERY_BROKER_URL: amqp://rabbitmq
 
   kibana:
-    image: kibana:6.4.2
+    image: kibana:7.1.0
     environment:
-      ELASTICSEARCH_URL: http://es:9200
+      ELASTICSEARCH_HOSTS: http://es:9200
 
   logstash:
     image: viewiq/logstash

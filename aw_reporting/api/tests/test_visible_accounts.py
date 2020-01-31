@@ -25,8 +25,8 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_account_is_first(self):
-        chf_manager = Account.objects.create(id="manager")
-        account = Account.objects.create(id="123", name="123")
+        chf_manager = Account.objects.create(id=111)
+        account = Account.objects.create(id=123, name="123")
         account.managers.add(chf_manager)
 
         recreate_demo_data()

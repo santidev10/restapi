@@ -1,7 +1,7 @@
 from datetime import date
 
-from django.urls import reverse
 from django.test import override_settings
+from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 
@@ -128,7 +128,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_account_managers(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_account_manager = User.objects.create(id="123",
                                                    name="Test User Name",
                                                    is_active=True)
@@ -164,7 +164,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_account_managers_inactive(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_account_manager = User.objects.create(id="123",
                                                    name="Test User Name",
                                                    is_active=False)
@@ -198,7 +198,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_ad_ops_manager(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_ad_ops = User.objects.create(id="123",
                                           name="Test User Name",
                                           is_active=True)
@@ -233,7 +233,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_ad_ops_manager_inactive(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_ad_ops = User.objects.create(id="123",
                                           name="Test User Name (inactive)",
                                           is_active=False)
@@ -266,7 +266,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_sales_manager(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_sales = User.objects.create(id="123",
                                          name="Test User Name",
                                          is_active=True)
@@ -301,7 +301,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_sales_manager_inactive(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_sales = User.objects.create(id="123",
                                          name="Test User Name",
                                          is_active=False)
@@ -334,7 +334,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_brand(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_brand_1 = "test brand 1"
         test_brand_2 = "test brand 2"
         test_brands = sorted([test_brand_1, test_brand_2])
@@ -368,7 +368,7 @@ class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):
 
     def test_goal_types(self):
         self.create_test_user()
-        manager = Account.objects.create(id="manager")
+        manager = Account.objects.create(id=111)
         test_account = Account.objects.create()
         test_account.managers.add(manager)
         test_account.save()
