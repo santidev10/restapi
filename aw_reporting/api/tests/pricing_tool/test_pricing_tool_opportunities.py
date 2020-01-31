@@ -1,5 +1,6 @@
-import json
-from datetime import timedelta, datetime, date
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 
 from django.urls import reverse
 from django.utils import timezone
@@ -8,16 +9,31 @@ from rest_framework.status import HTTP_200_OK
 from aw_reporting.api.tests.pricing_tool.base import PricingToolTestCaseBase
 from aw_reporting.api.tests.pricing_tool.base import generate_campaign_statistic
 from aw_reporting.api.urls.names import Name
-from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
-    Account, Campaign, AdGroup, GeoTarget, Category, CampaignStatistic, Topic, \
-    TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
-    VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
-    Flight, GeoTargeting, device_str, Device
+from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Category
+from aw_reporting.models import Device
+from aw_reporting.models import Flight
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import GeoTargeting
+from aw_reporting.models import OpPlacement
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import Topic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from aw_reporting.models import device_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.int_iterator import int_iterator
 from utils.utittests.patch_now import patch_now
 
 
@@ -119,7 +135,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
             goal_type_id=SalesForceGoalType.CPV, ordered_rate=0.6)
 
         campaign_1 = Campaign.objects.create(
-            id=1, name="Campaign name",
+            id=next(int_iterator), name="Campaign name",
             salesforce_placement=placement,
         )
         AdGroup.objects.create(id="1", campaign=campaign_1, type=type_1)
@@ -144,7 +160,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         campaigns = response.data["items"][0]["campaigns"]
         self.assertEqual(len(campaigns), 1)
-        self.assertEqual(campaigns[0], "campaign_1")
+        self.assertEqual(campaigns[0], campaign_1.id)
         # self.assertEqual(campaigns[0]["id"], 1)
 
     def test_pricing_tool_opportunity_filters_by_product_type_or(self):
