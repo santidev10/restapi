@@ -201,7 +201,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(name="")
+        managed_account = Account.objects.create(id=next(int_iterator), name="")
         Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
