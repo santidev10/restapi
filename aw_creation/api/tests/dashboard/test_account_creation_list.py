@@ -90,7 +90,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user.save()
 
     def test_success_get(self):
-        account = Account.objects.create(id="123", name="")
+        account = Account.objects.create(id=123, name="")
         account.managers.add(self.mcc_account)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
@@ -182,7 +182,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
     def test_brand(self):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="2", name="")
+        managed_account = Account.objects.create(id=2, name="")
         managed_account.managers.add(chf_account)
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
@@ -201,7 +201,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="1", name="")
+        managed_account = Account.objects.create(id=1, name="")
         Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
@@ -222,7 +222,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="1", name="")
+        managed_account = Account.objects.create(id=1, name="")
         managed_account.managers.add(chf_account)
         Campaign.objects.create(
             id="1", salesforce_placement=placement1, account=managed_account)
