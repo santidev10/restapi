@@ -21,8 +21,8 @@ class PricingToolSerializer:
     def get_campaigns_data(self, campaigns_ids):
         return PricingToolCampaignSerializer(self.kwargs, campaigns_ids).get_data()
 
-    def get_opportunities_data(self, opportunities: list, campaigns_ids_map: dict):
-        return PricingToolOpportunitySerializer(self.kwargs, opportunities, campaigns_ids_map).get_data()
+    def get_opportunities_data(self, opportunities: list):
+        return PricingToolOpportunitySerializer(self.kwargs, opportunities).get_data()
 
 
 class PricingToolSerializarBase:
@@ -192,25 +192,22 @@ class PricingToolCampaignSerializer(PricingToolSerializarBase):
 
 
 class PricingToolOpportunitySerializer(PricingToolSerializarBase):
-    def __init__(self, kwargs, opportunities: list, campaigns_ids_map: dict):
+    def __init__(self, kwargs, opportunities: list):
         self.kwargs = kwargs
         self.opportunities_ids = []
-        self.campaigns_ids = []
+        self.campaigns_ids_map = {}
         for opportunity in opportunities:
-            self.opportunities_ids.append(opportunity.get("id"))
-            self.campaigns_ids.extend(campaigns_ids_map.get(opportunity.get("id"), []))
+            self.opportunities_ids.append(opportunity.get("salesforce_placement__opportunity"))
+            self.campaigns_ids_map[opportunity.get("salesforce_placement__opportunity")] = opportunity.get("ids", [])
 
     def get_data(self):
         self.__prepare_hard_cost_flights()
-        self.__prepare_campaign_data()
-        self.__prepare_campaign_statistics()
-        self.__prepare_campaign_extra_data()
         opportunities_annotated = Opportunity.objects.filter(id__in=self.opportunities_ids) \
             .annotate(**self.__opportunity_annotation()).values_list(*OPPORTUNITY_VALUES_LIST, named=True)
 
         return [self.__get_opportunity_data(opp) for opp in opportunities_annotated]
 
-    def __prepare_campaign_data(self):
+    def __prepare_campaign_data(self, campaigns_ids):
         annotation = dict(
             start_date=Min("start_date"),
             end_date=Max("end_date"),
@@ -221,12 +218,9 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             **Aggregation.DEVICES,
         )
         campaigns = Campaign.objects \
-            .filter(id__in=self.campaigns_ids) \
-            .values("salesforce_placement__opportunity")\
-            .annotate(**annotation) \
-            .values("salesforce_placement__opportunity", *annotation.keys())
-        self.campaigns_data = {campaign["salesforce_placement__opportunity"]: campaign
-                               for campaign in campaigns}
+            .filter(id__in=campaigns_ids) \
+            .aggregate(**annotation)
+        return campaigns
 
     def __opportunity_annotation(self):
         periods = self.kwargs.get("periods", [])
@@ -263,7 +257,7 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             )),
         )
 
-    def __prepare_hard_cost_flights(self):
+    def __prepare_hard_cost_flights(self, _id):
         annotation = dict(
             sf_hard_cost_total_cost=Sum("placements__flights__total_cost"),
             sf_hard_cost_our_cost=Sum("placements__flights__cost")
@@ -282,58 +276,51 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
         self.hard_cost_flights = {uid: hard_cost_dict.get(uid, empty_stats)
                                   for uid in self.opportunities_ids}
 
-    def __prepare_campaign_statistics(self):
+    def __prepare_campaign_statistics(self, campaigns_ids):
         periods = self.kwargs.get("periods", [])
         date_filter = statistic_date_filter(periods)
         date_f = reduce(lambda x, f: x | Q(**f), date_filter, Q())
 
         stats_queryset = CampaignStatistic.objects \
-            .filter(campaign_id__in=self.campaigns_ids) \
-            .filter(date_f)\
-            .values("campaign__salesforce_placement__opportunity") \
+            .filter(campaign_id__in=campaigns_ids) \
+            .filter(date_f) \
             .annotate(
             ordered_rate=F("campaign__salesforce_placement__ordered_rate"))
 
-        total_statistic = stats_queryset.annotate(
+        total_statistic = stats_queryset.aggregate(
             aw_clicks=Sum("clicks"),
             video_views_100_quartile=Sum("video_views_100_quartile")
-        ).values("campaign__salesforce_placement__opportunity", "aw_clicks", "video_views_100_quartile")
-
-        self.total_statistic = {statistic["campaign__salesforce_placement__opportunity"]: statistic
-                                for statistic in total_statistic}
+        )
 
         cpv_stats = stats_queryset \
-            .filter(campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV) \
-            .annotate(aw_impressions=Sum("impressions"),
+            .filter(
+            campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV) \
+            .annotate(cpv_client_cost=F("video_views") * F("ordered_rate")) \
+            .aggregate(aw_impressions=Sum("impressions"),
                        aw_video_views=Sum("video_views"),
-                       cpv_client_cost_sum=Sum(F("video_views") * F("ordered_rate"),
+                       cpv_client_cost_sum=Sum("cpv_client_cost",
                                                output_field=FloatField()),
-                       aw_cpv_cost=Sum("cost"))\
-            .values("campaign__salesforce_placement__opportunity", "aw_impressions", "aw_video_views",
-                    "cpv_client_cost_sum", "aw_cpv_cost")
-
-        self.cpv_stats = {statistic["campaign__salesforce_placement__opportunity"]: statistic
-                           for statistic in cpv_stats}
-
+                       aw_cpv_cost=Sum("cost"))
         cpm_stats = stats_queryset \
             .filter(
             campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM) \
-            .annotate(aw_impressions=Sum("impressions"),
-                       cpm_client_cost_sum=Sum(F("impressions") / Value(1000.) * F("ordered_rate"),
+            .annotate(
+            cpm_client_cost=F("impressions") / Value(1000.) * F("ordered_rate")) \
+            .aggregate(aw_impressions=Sum("impressions"),
+                       cpm_client_cost_sum=Sum("cpm_client_cost",
                                                output_field=FloatField()),
-                       aw_cpm_cost=Sum("cost"))\
-            .values("campaign__salesforce_placement__opportunity", "aw_impressions",
-                    "cpm_client_cost_sum", "aw_cpm_cost")
+                       aw_cpm_cost=Sum("cost"))
 
-        self.cpm_stats = {statistic["campaign__salesforce_placement__opportunity"]: statistic
-                     for statistic in cpm_stats}
+        return total_statistic, cpv_stats, cpm_stats
 
     def __get_opportunity_data(self, opportunity):
         hard_cost_data = self.hard_cost_flights.get(opportunity.id)
-        total_statistic = self.total_statistic.get(opportunity.id, dict())
-        cpv_stats = self.cpv_stats.get(opportunity.id, dict())
-        cpm_stats = self.cpm_stats.get(opportunity.id, dict())
-        campaigns_data = self.campaigns_data.get(opportunity.id, dict())
+
+        campaign_ids = self.campaigns_ids_map.get(opportunity.id)
+
+        total_statistic, cpv_stats, cpm_stats = self.__prepare_campaign_statistics(campaign_ids)
+        ad_group_types, creative, geographic = self.__prepare_campaign_extra_data(campaign_ids)
+        campaigns_data = self.__prepare_campaign_data(campaign_ids)
 
         cpm_client_cost = cpm_stats.get("cpm_client_cost_sum") or 0
         cpv_client_cost = cpv_stats.get("cpv_client_cost_sum") or 0
@@ -399,10 +386,10 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             vertical=opportunity.category_id,
             apex_deal=opportunity.apex_deal,
             campaigns=campaigns_data.get("ids"),
-            products=list(self.ad_group_types.get(opportunity.id, [])),
+            products=list(ad_group_types),
             targeting=targeting,
             demographic=ages | genders,
-            creative_lengths=list(self.creatives.get(opportunity.id, [])),
+            creative_lengths=list(creative),
             average_cpv=average_cpv,
             average_cpm=average_cpm,
             margin=margin,
@@ -413,38 +400,32 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             relevant_date_range=relevant_date_range,
             sf_cpm=sf_cpm,
             sf_cpv=sf_cpv,
-            geographic=list(self.geographics.get(opportunity.id, [])),
+            geographic=list(geographic),
             ctr=ctr,
             ctr_v=ctr_v,
             view_rate=view_rate,
             video100rate=video100rate
         )
 
-    def __prepare_campaign_extra_data(self):
+    def __prepare_campaign_extra_data(self, campaigns_ids):
         ad_group_types = AdGroup.objects.filter(
-            campaign_id__in=self.campaigns_ids) \
+            campaign_id__in=campaigns_ids) \
             .exclude(type="") \
-            .values("campaign__salesforce_placement__opportunity") \
-            .annotate(types=ArrayAgg("type", distinct=True)) \
-            .values_list("campaign__salesforce_placement__opportunity", "types")
-
-        self.ad_group_types = dict(ad_group_types)
-
-        creatives = VideoCreative.objects.filter(
-            statistics__ad_group__campaign_id__in=self.campaigns_ids) \
-            .values("statistics__ad_group__campaign__salesforce_placement__opportunity") \
-            .annotate(durations=ArrayAgg("duration", distinct=True)) \
-            .values_list("statistics__ad_group__campaign__salesforce_placement__opportunity", "durations")
-
-        self.creatives = dict(creatives)
-
-        geographics = GeoTarget.objects.filter(geo_performance__campaign_id__in=self.campaigns_ids) \
+            .values_list("type", flat=True) \
             .order_by() \
-            .values("geo_performance__campaign__salesforce_placement__opportunity") \
-            .annotate(names=ArrayAgg("name", distinct=True)) \
-            .values_list("geo_performance__campaign__salesforce_placement__opportunity", "names")
+            .distinct()
+        creative = VideoCreative.objects.filter(
+            statistics__ad_group__campaign_id__in=campaigns_ids) \
+            .values_list("duration", flat=True) \
+            .order_by() \
+            .distinct()
 
-        self.geographics = dict(geographics)
+        geographic = GeoTarget.objects.filter(
+            geo_performance__campaign_id__in=campaigns_ids) \
+            .values_list("name", flat=True) \
+            .order_by() \
+            .distinct()
+        return ad_group_types, creative, geographic
 
 
 def statistic_date_filter(periods):

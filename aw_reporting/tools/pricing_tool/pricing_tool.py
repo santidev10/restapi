@@ -22,9 +22,11 @@ class PricingTool:
         kwargs.update(self._get_date_kwargs(kwargs))
         kwargs['margin'] = kwargs.get('margin') or 30
         self.kwargs = kwargs
+        self.__opportunities_qs = None
+        self.user = user
+
         self.filter = PricingToolFiltering(kwargs)
         self.serializer = PricingToolSerializer(kwargs)
-        self._opportunities_qs, self.campaigns_ids_map = self.filter.apply(user=user)
         self.estimate_tool = PricingToolEstimate(kwargs)
 
     @classmethod
@@ -33,11 +35,11 @@ class PricingTool:
 
     @property
     def estimate(self):
-        self.estimate_tool.set_opportunities(self.get_opportunities_queryset(), self.campaigns_ids_map)
+        self.estimate_tool.set_opportunities(self.get_opportunities_queryset(ordering_by_aw_budget=False))
         return self.estimate_tool.estimate()
 
-    def get_opportunities_data(self, opportunities, campaigns_ids_map):
-        return self.serializer.get_opportunities_data(opportunities, campaigns_ids_map)
+    def get_opportunities_data(self, opportunities):
+        return self.serializer.get_opportunities_data(opportunities)
 
     @classmethod
     def get_campaigns_data(cls, campaigns_ids):
@@ -57,5 +59,7 @@ class PricingTool:
             end=max(d for _, d in periods or [(None, None)])
         )
 
-    def get_opportunities_queryset(self):
-        return self._opportunities_qs
+    def get_opportunities_queryset(self, ordering_by_aw_budget=True):
+        if self.__opportunities_qs is None:
+            self.__opportunities_qs = self.filter.apply(user=self.user, ordering_by_aw_budget=ordering_by_aw_budget)
+        return self.__opportunities_qs
