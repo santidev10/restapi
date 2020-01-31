@@ -74,6 +74,17 @@ class Command(BaseCommand):
                         reason = ["One of word, category, language, or negative_score not found."]
                         invalid_rows.append(row + reason)
                         continue
+
+                    if not overwrite:
+                        try:
+                            bad_word = BadWord.objects.get(name=word, language=language)
+                            reason = [f"'overwrite' parameter is set to False, but the word '{word}' with language "
+                                      f"'{language}' already exists in the database."]
+                            invalid_rows.append(row + reason)
+                            continue
+                        except Exception as e:
+                            pass
+
                     try:
                         bad_word = BadWord.all_objects.get(name=word, language=language)
                         bad_word.deleted_at = None
