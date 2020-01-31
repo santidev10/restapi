@@ -34,7 +34,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
 
     def _create_test_data(self, uid=1, manager=None):
         user = self.create_test_user()
-        account = self.create_account(user, "{}-".format(uid), manager)
+        account = self.create_account(user, "{}".format(uid), manager)
         campaign = Campaign.objects.create(
             id=uid, name="", account=account)
         ad_group = AdGroup.objects.create(
@@ -168,8 +168,8 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         return account, campaign
 
     def test_filter_manage_account(self):
-        account, _ = self._create_ad_group_statistic("rel")
-        self._create_ad_group_statistic("irr")
+        account, _ = self._create_ad_group_statistic("111")
+        self._create_ad_group_statistic("222")
         manager = account.managers.first()
 
         self._create_ad_group_statistic(1)
@@ -192,9 +192,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_am(self):
         am_1 = User.objects.create(id=1)
         am_2 = User.objects.create(id=2)
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  account_manager=am_1)
@@ -212,9 +212,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_ad_ops(self):
         ad_ops_1 = User.objects.create(id=1)
         ad_ops_2 = User.objects.create(id=2)
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  ad_ops_manager=ad_ops_1)
@@ -232,9 +232,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_sales(self):
         sales_1 = User.objects.create(id=1)
         sales_2 = User.objects.create(id=2)
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  sales_manager=sales_1)
@@ -251,9 +251,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_brands(self):
         brand_1 = "Test Brand 1"
         brand_2 = "Test Brand 2"
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  brand=brand_1)
@@ -269,9 +269,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         self.assertEqual(response.data[0]["id"], account_1.id)
 
     def test_filter_goal_types(self):
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1)
         self._create_opportunity(uid=2, campaign=campaign_2)
@@ -291,9 +291,9 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
     def test_filter_categories(self):
         category_1 = Category.objects.create(id="Test Category 1")
         category_2 = Category.objects.create(id="Test Category 2")
-        account_1, campaign_1 = self._create_ad_group_statistic("rel")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("irr",
+        account_2, campaign_2 = self._create_ad_group_statistic("222",
                                                                 manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1,
                                  category=category_1)
@@ -311,10 +311,10 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         test_region_1 = "Region 1"
         test_region_2 = "Region 2"
         test_region_3 = "Region 3"
-        account_1, campaign_1 = self._create_ad_group_statistic("rel_1")
+        account_1, campaign_1 = self._create_ad_group_statistic("111")
         manager = account_1.managers.first()
-        account_2, campaign_2 = self._create_ad_group_statistic("rel_2", manager=manager)
-        account_3, campaign_3 = self._create_ad_group_statistic("irr", manager=manager)
+        account_2, campaign_2 = self._create_ad_group_statistic("222", manager=manager)
+        account_3, campaign_3 = self._create_ad_group_statistic("333", manager=manager)
         self._create_opportunity(uid=1, campaign=campaign_1, territory=test_region_1)
         self._create_opportunity(uid=2, campaign=campaign_2, territory=test_region_2)
         self._create_opportunity(uid=3, campaign=campaign_3, territory=test_region_3)
@@ -338,7 +338,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
             affects data on CHF Trends
         Ticket: https://channelfactory.atlassian.net/browse/SAAS-2779
         """
-        account, campaign = self._create_ad_group_statistic("rel_1")
+        account, campaign = self._create_ad_group_statistic("111")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
@@ -366,7 +366,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         ("Global account visibility is OFF", (False, 1), dict()),
     ])
     def test_global_account_visibility(self, global_account_visibility, items_count):
-        account, campaign = self._create_ad_group_statistic("rel_1")
+        account, campaign = self._create_ad_group_statistic("111")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)
@@ -386,7 +386,7 @@ class GlobalTrendsDataTestCase(AwReportingAPITestCase):
         ("Visible all accounts is OFF", (False, 0), dict()),
     ])
     def test_visible_all_accounts(self, visible_all_accounts, expected_count):
-        account, campaign = self._create_ad_group_statistic("rel_1")
+        account, campaign = self._create_ad_group_statistic("1")
         manager = account.managers.first()
         self._create_opportunity(campaign)
         filters = dict(indicator=Indicator.CPV, breakdown=Breakdown.DAILY)

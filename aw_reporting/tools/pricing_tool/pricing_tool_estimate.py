@@ -27,16 +27,17 @@ AD_GROUP_COSTS_ANNOTATE = dict(
 
 
 class PricingToolEstimate:
-    def __init__(self, kwargs, opportunities=[], campaigns_ids_map={}):
+    def __init__(self, kwargs, opportunities=[]):
         self.kwargs = kwargs
-        self.set_opportunities(opportunities, campaigns_ids_map)
+        self.set_opportunities(opportunities)
 
-    def set_opportunities(self, opportunities, campaigns_ids_map):
+    def set_opportunities(self, opportunities):
         self.opportunities = []
         self.campaigns_ids = []
-        for opportunity in opportunities:
-            self.opportunities.append(opportunity.get("id"))
-            self.campaigns_ids.extend(campaigns_ids_map.get(opportunity.get("id"), []))
+        for opportunity_data in opportunities:
+            _id, campaign_ids = opportunity_data
+            self.opportunities.append(_id)
+            self.campaigns_ids.extend(campaign_ids)
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()

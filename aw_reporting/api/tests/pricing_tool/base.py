@@ -32,16 +32,16 @@ class PricingToolTestCaseBase(APITestCase):
         opp_data = {**default_opp_data, **(opp_data or dict())}
         camp_data = camp_data or dict(name="Campaign name")
         pl_data = pl_data or dict(ordered_rate=0.6)
-        opportunity = Opportunity.objects.create(id="opportunity_" + _id,
+        opportunity = Opportunity.objects.create(id="opportunity_" + str(_id),
                                                  name="",
                                                  **opp_data)
         placement = OpPlacement.objects.create(
-            id="op_placement_" + _id, name="", opportunity=opportunity,
+            id="op_placement_" + str(_id), name="", opportunity=opportunity,
             goal_type_id=goal_type,
             **pl_data)
 
         campaign = Campaign.objects.create(
-            id="campaign_" + _id,
+            id=int(_id),
             salesforce_placement=placement, **camp_data
         )
         if generate_statistic:

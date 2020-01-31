@@ -107,18 +107,18 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
                                                             account_creation=account_creation)
 
         managed_campaign = Campaign.objects.create(
-            id="444",
+            id=444,
             name="{} #{}".format(campaign_creation.name, campaign_creation.id),
             account=account,
         )
-        AdGroup.objects.create(id="666", name="", campaign=managed_campaign)
+        AdGroup.objects.create(id=666, name="", campaign=managed_campaign)
 
         campaign_2 = Campaign.objects.create(
-            id="554",
+            id=554,
             name="Another campaign #code",
             account=account,
         )
-        AdGroup.objects.create(id="777", name="", campaign=campaign_2)
+        AdGroup.objects.create(id=777, name="", campaign=campaign_2)
 
         url = self._get_url(account_creation.id)
 
@@ -159,7 +159,7 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         recreate_demo_data()
         user = self.create_test_user(connected=False)
 
-        url = self._get_url("demo")
+        url = self._get_url(DEMO_ACCOUNT_ID)
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -238,8 +238,8 @@ class AnalyticsAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
         account_creation.owner = user
         account_creation.save()
 
-        campaign = Campaign.objects.create(id=str(next(int_iterator)), account=account)
-        ad_group = AdGroup.objects.create(id=str(next(int_iterator)), campaign=campaign)
+        campaign = Campaign.objects.create(id=next(int_iterator), account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), campaign=campaign)
 
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [],

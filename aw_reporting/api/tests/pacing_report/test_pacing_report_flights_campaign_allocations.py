@@ -131,10 +131,10 @@ class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):
         by_id = {
             campaign["id"]: campaign for campaign in response.data
         }
-        self.assertEqual(by_id["1"]["goal_allocation"], allocation_1)
-        self.assertEqual(by_id["2"]["goal_allocation"], allocation_2)
-        self.assertEqual(by_id["3"]["goal_allocation"], allocation_3)
-        self.assertEqual(by_id["4"]["goal_allocation"], allocation_4)
+        self.assertEqual(by_id[1]["goal_allocation"], allocation_1)
+        self.assertEqual(by_id[2]["goal_allocation"], allocation_2)
+        self.assertEqual(by_id[3]["goal_allocation"], allocation_3)
+        self.assertEqual(by_id[4]["goal_allocation"], allocation_4)
 
     def test_reject_invalid_allocation_values(self):
         self.create_test_user()
