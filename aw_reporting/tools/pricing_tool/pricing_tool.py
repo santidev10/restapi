@@ -36,9 +36,8 @@ class PricingTool:
     def get_opportunities_data(self, opportunities):
         return self.serializer.get_opportunities_data(opportunities)
 
-    @classmethod
-    def get_campaigns_data(cls, campaigns_ids):
-        return PricingToolSerializer().get_campaigns_data(campaigns_ids)
+    def get_campaigns_data(self, campaigns_ids):
+        return self.serializer.get_campaigns_data(campaigns_ids)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')
