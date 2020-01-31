@@ -13,7 +13,8 @@ class SQTranscript(Timestampable):
     video_id = models.CharField(max_length=50, unique=True)
     video_id_hash = models.BigIntegerField(default=0, db_index=True)
     transcript = models.TextField(blank=True, null=True, default=None)
-    language = models.ForeignKey(AuditLanguage, blank=True, null=True, related_name='transcript_language')
+    language = models.ForeignKey(AuditLanguage, db_index=True, blank=True, null=True,
+                                 on_delete=models.CASCADE, related_name='transcript_language')
     submitted = models.DateTimeField(blank=True, null=True, default=None)
     retrieved = models.DateTimeField(blank=True, null=True, default=None)
     job_id = models.CharField(max_length=255, blank=True, null=True, default=None)
