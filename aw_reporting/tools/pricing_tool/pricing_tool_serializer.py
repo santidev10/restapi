@@ -196,9 +196,10 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
         self.kwargs = kwargs
         self.opportunities_ids = []
         self.campaigns_ids_map = {}
-        for opportunity in opportunities:
-            self.opportunities_ids.append(opportunity.get("salesforce_placement__opportunity"))
-            self.campaigns_ids_map[opportunity.get("salesforce_placement__opportunity")] = opportunity.get("ids", [])
+        for opportunity_data in opportunities:
+            _id, campaign_ids = opportunity_data
+            self.opportunities_ids.append(_id)
+            self.campaigns_ids_map[_id] = campaign_ids or []
 
     def get_data(self):
         self.__prepare_hard_cost_flights()
@@ -257,7 +258,7 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
             )),
         )
 
-    def __prepare_hard_cost_flights(self, _id):
+    def __prepare_hard_cost_flights(self):
         annotation = dict(
             sf_hard_cost_total_cost=Sum("placements__flights__total_cost"),
             sf_hard_cost_our_cost=Sum("placements__flights__cost")

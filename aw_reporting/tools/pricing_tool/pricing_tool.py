@@ -1,8 +1,5 @@
 from datetime import datetime
 
-from django.db.models import Sum
-
-from aw_reporting.models import Opportunity
 from aw_reporting.tools.pricing_tool.pricing_tool_estimate import \
     PricingToolEstimate
 from aw_reporting.tools.pricing_tool.pricing_tool_filtering import \
@@ -10,8 +7,6 @@ from aw_reporting.tools.pricing_tool.pricing_tool_filtering import \
 from aw_reporting.tools.pricing_tool.pricing_tool_serializer import \
     PricingToolSerializer
 from utils.datetime import now_in_default_tz, build_periods
-
-from aw_reporting.models import Campaign
 
 DATE_FORMAT = "%Y-%m-%d"
 

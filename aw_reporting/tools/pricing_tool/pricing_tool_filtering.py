@@ -187,8 +187,7 @@ class PricingToolFiltering:
 
         campaigns_queryset = Campaign.objects.get_queryset_for_user(user=user)\
             .values("salesforce_placement__opportunity")\
-            .annotate(ids=ArrayAgg("id"))\
-            .values("salesforce_placement__opportunity", "ids")
+            .annotate(ids=ArrayAgg("id"))
 
         campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters,
                                            model_options=ModelFiltersOptions.Campaign).all()
@@ -202,16 +201,7 @@ class PricingToolFiltering:
         if ordering_by_aw_budget is True:
             campaigns_queryset = campaigns_queryset.annotate(aw_budget=Sum("cost")).order_by("-aw_budget")
 
-        # campaigns_ids_map = {campaigns["salesforce_placement__opportunity"]: campaigns["ids"]
-        #                      for campaigns in campaigns_queryset}
-
-        # opportunity_queryset = Opportunity.objects.get_queryset_for_user(user=user)
-        #
-        # opportunity_queryset = apply_filters(opportunity_queryset, filters, model_options=ModelFiltersOptions.Opportunity)
-        #
-        # opportunity_queryset = opportunity_queryset.filter(id__in=campaigns_ids_map.keys()).values("id")
-
-        return campaigns_queryset
+        return campaigns_queryset.values_list("salesforce_placement__opportunity", "ids")
 
     def _filter_by_periods(self, queryset, model_options):
         periods = self.kwargs["periods"]

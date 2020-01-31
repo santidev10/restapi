@@ -34,9 +34,10 @@ class PricingToolEstimate:
     def set_opportunities(self, opportunities):
         self.opportunities = []
         self.campaigns_ids = []
-        for opportunity in opportunities:
-            self.opportunities.append(opportunity.get("salesforce_placement__opportunity"))
-            self.campaigns_ids.extend(opportunity.get("ids", []))
+        for opportunity_data in opportunities:
+            _id, campaign_ids = opportunity_data
+            self.opportunities.append(_id)
+            self.campaigns_ids.extend(campaign_ids)
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
