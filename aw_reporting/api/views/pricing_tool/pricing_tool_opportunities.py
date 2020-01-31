@@ -12,4 +12,4 @@ class PricingToolOpportunityView(APIView):
         paginator = PricingToolCampaignsPagination()
         queryset = toll_obj.get_opportunities_queryset()
         page_opportunities = paginator.paginate_queryset(queryset, request)
-        return paginator.get_paginated_response(data=toll_obj.get_opportunities_data(page_opportunities, toll_obj.campaigns_ids_map))
+        return paginator.get_paginated_response(data=toll_obj.get_opportunities_data(page_opportunities))
