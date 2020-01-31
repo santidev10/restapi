@@ -1,8 +1,10 @@
 import json
+import os
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.test import override_settings
+from moto import mock_cognitoidp
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -35,6 +37,14 @@ CUSTOM_AUTH_FLAGS = {
 class AuthAPITestCase(AwReportingAPITestCase):
     _url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
 
+    def setUp(self):
+        os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+        os.environ["AWS_SECURITY_TOKEN"] = "testing"
+        os.environ["AWS_SESSION_TOKEN"] = "testing"
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
+    @mock_cognitoidp
     def test_success(self):
         user = self.create_test_user()
         response = self.client.post(
@@ -68,6 +78,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
             }
         )
 
+    @mock_cognitoidp
     def test_success_has_connected_accounts(self):
         user = self.create_test_user()
         self.create_account(user)
@@ -78,6 +89,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["has_aw_accounts"], True)
 
+    @mock_cognitoidp
     def test_success_has_no_connected_accounts(self):
         user = self.create_test_user()
         response = self.client.post(
@@ -87,6 +99,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["has_aw_accounts"], False)
 
+    @mock_cognitoidp
     def test_success_has_no_disapproved_ad(self):
         user = self.create_test_user()
         response = self.client.post(
@@ -96,6 +109,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["has_disapproved_ad"], False)
 
+    @mock_cognitoidp
     def test_success_has_disapproved_ad(self):
         user = self.create_test_user()
         account = Account.objects.create(id="1", name="",
@@ -117,6 +131,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertIs(response.data["has_disapproved_ad"], True)
 
+    @mock_cognitoidp
     def test_case_insensitive(self):
         email = "MixedCase@Email.com"
         password = "test_password"
@@ -137,6 +152,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
 
             self.assertEqual(response.status_code, HTTP_200_OK)
 
+    @mock_cognitoidp
     def test_user_email_should_be_stored_in_lowercase(self):
         test_email = "Test@email.com"
         test_email_lower = test_email.lower()
@@ -152,6 +168,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         user.refresh_from_db()
         self.assertEqual(user.email, test_email_lower)
 
+    @mock_cognitoidp
     def test_user_unique_by_email_case_insensitive(self):
         test_email = "Test@email.com"
 
@@ -167,34 +184,28 @@ class AuthAPITestCase(AwReportingAPITestCase):
             self.fail()
 
     @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
+    @mock_cognitoidp
     def test_success_apex_user_auth(self):
-        email = "test.apex_user@testuser.com"
-        password = "password"
-        user = get_user_model().objects.create(
-            email=email
-        )
-        user.set_password(password)
+        user = self.create_test_user()
+        user.email = "test.apex_user@testuser.com"
         user.save()
 
         response = self.client.post(
-            self._url, json.dumps(dict(username=email, password=password)),
+            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
     @override_settings(APEX_HOST="http://apex:8000")
+    @mock_cognitoidp
     def test_error_apex_user_auth(self):
-        email = "test.apex_user@testuser.com"
-        password = "password"
-        user = get_user_model().objects.create(
-            email=email
-        )
-        user.set_password(password)
+        user = self.create_test_user()
+        user.email = "test.apex_user@testuser.com"
         user.save()
 
         response = self.client.post(
-            self._url, json.dumps(dict(username=email, password=password)),
+            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

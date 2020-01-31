@@ -186,7 +186,7 @@ GOOGLE_APP_OAUTH2_ORIGIN = "http://localhost"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
+        'userprofile.authentication.ExpiringTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -213,7 +213,7 @@ LOGGING = {
         "mail_admins": {
             "level": "ERROR",
             "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
+            "class": "saas.admin_email_handler.LimitedAdminEmailHandler",
             "formatter": "detail_formatter",
         },
         "slack_aw_update": {
@@ -276,6 +276,7 @@ SENDER_EMAIL_ADDRESS = SERVER_EMAIL
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
 EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
+ADMIN_EMAIL_LIMIT = 10000
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
 
@@ -285,7 +286,12 @@ YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = 'AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4
 
 from .configs.celery import *
 
-CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+CHANNEL_FACTORY_ACCOUNT_ID = 3386233102
+
+MCC_ACCOUNT_IDS = [
+    CHANNEL_FACTORY_ACCOUNT_ID,
+]
+
 MIN_AW_FETCH_DATE = date(2012, 1, 1)
 
 REGISTRATION_ACTION_EMAIL_ADDRESSES = [
@@ -320,6 +326,7 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "andrew.vonpelt@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 EMERGENCY_EMAIL_ADDRESSES = [
@@ -332,7 +339,8 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "andrew.vonpelt@channelfactory.com"
+    "andrew.vonpelt@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
@@ -344,12 +352,14 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
-    "sean.maguire@channelfactory.com"
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
@@ -441,7 +451,12 @@ BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
 
 REPORT_EXPIRATION_PERIOD = 24
+REPORT_VISIBLE_PERIOD = 90  # in days
 SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
+
+AUTH_TOKEN_EXPIRES = 30
+COGNITO_USER_POOL_ID = ""
+COGNITO_CLIENT_ID = ""
 
 if APM_ENABLED:
     ELASTIC_APM = {

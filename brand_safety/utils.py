@@ -13,13 +13,12 @@ class BrandSafetyQueryBuilder(object):
     MAX_SIZE = 10000
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
 
-    def __init__(self, data, overall_score: int = None, video_ids: list = None):
+    def __init__(self, data, video_ids: list = None, with_forced_filters=True):
         """
         :param data: dict -> Query options
-        :param overall_score: int -> Overall score threshold (gte for whitelist, lte for blacklist)
         :param video_ids: str -> Youtube ID (Query videos with channel_id=related_to)
         """
-        self.overall_score = overall_score
+        self.with_forced_filters = with_forced_filters
         self.video_ids = video_ids
         self.list_type = data.get("list_type", "whitelist")
         self.segment_type = int(data["segment_type"])
@@ -97,12 +96,6 @@ class BrandSafetyQueryBuilder(object):
         if self.segment_type == 1 and self.minimum_subscribers:
             must_queries.append(QueryBuilder().build().must().range().field("stats.subscribers").gte(self.minimum_subscribers).get())
 
-        if self.overall_score:
-            if self.list_type == constants.WHITELIST:
-                must_queries.append(QueryBuilder().build().must().range().field("brand_safety.overall_score").gte(self.minimum_subscribers).get())
-            else:
-                must_queries.append(QueryBuilder().build().must().range().field("brand_safety.overall_score").lte(self.minimum_subscribers).get())
-
         if self.video_ids:
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
 
@@ -115,7 +108,7 @@ class BrandSafetyQueryBuilder(object):
         if self.languages:
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |=  QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
@@ -125,29 +118,38 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(content_queries)
 
         if self.countries:
-            country_queries = Q()
+            country_queries = Q("bool")
             for country in self.countries:
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
             must_queries.append(country_queries)
 
         if self.severity_filters:
-            severity_queries = Q()
+            severity_queries = Q("bool")
             for category, scores in self.severity_filters.items():
                 for score in scores:
                     # Querying for categories with at least one unique word of target severity score
                     severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get()
             must_queries.append(severity_queries)
 
-        if self.brand_safety_categories and self.score_threshold:
-            safety_queries = Q()
-            for category in self.brand_safety_categories:
-                safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
-            must_queries.append(safety_queries)
+        if self.score_threshold is not None:
+            overall_score_query = QueryBuilder().build().must().range().field("brand_safety.overall_score").gt(self.score_threshold).get()
+            must_queries.append(overall_score_query)
+
+            if self.brand_safety_categories:
+                safety_queries = Q("bool")
+                for category in self.brand_safety_categories:
+                    safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
+                must_queries.append(safety_queries)
 
         query = Q(
-            'bool',
+            "bool",
             must=must_queries,
         )
+
+        if self.with_forced_filters is True:
+            forced_filters = self.es_manager.forced_filters()
+            query &= forced_filters
+
         return query
 
     def _map_blacklist_severity(self, score_threshold: int):
@@ -187,7 +189,7 @@ class BrandSafetyQueryBuilder(object):
     @staticmethod
     def map_content_categories(content_category_ids: list):
         mapping = {
-            _id: category for _id, category in AuditCategory.get_all(iab=True).items()
+            _id: category for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
         }
         to_string = [mapping[str(_id)] for _id in content_category_ids] or []
         return to_string

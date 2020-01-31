@@ -1,3 +1,3 @@
 import itertools
 
-int_iterator = itertools.count(1, 1)
+int_iterator = itertools.count(10000, 1)

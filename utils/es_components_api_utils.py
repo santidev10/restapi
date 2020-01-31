@@ -13,6 +13,7 @@ from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
+from utils.utils import prune_iab_categories
 from elasticsearch_dsl import Q
 
 import brand_safety.constants as constants
@@ -505,6 +506,11 @@ class APIViewMixin:
 
 class PaginatorWithAggregationMixin:
     def _get_response_data(self: CustomPageNumberPaginator, data):
+        for item in data:
+            try:
+                item['general_data']['iab_categories'] = prune_iab_categories(item['general_data']['iab_categories'])
+            except Exception:
+                continue
         response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
         object_list = self.page.paginator.object_list
         if isinstance(object_list, ESQuerysetAdapter):

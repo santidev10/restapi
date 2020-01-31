@@ -12,6 +12,7 @@ from brand_safety.api.views.pagination import BrandSafetyPaginator
 from brand_safety.models import BadWord
 from distutils.util import strtobool
 from utils.utils import remove_tags_punctuation
+from utils.lang import is_english
 
 
 class BadWordListApiView(ListCreateAPIView):
@@ -24,9 +25,9 @@ class BadWordListApiView(ListCreateAPIView):
         filters = {}
 
         search = self.request.query_params.get("search")
-        if search:
+        if search and is_english(search):
             if len(search) < self.MIN_SEARCH_LENGTH:
-                raise ValidationError("Search term must be at least {} characters.".format(self.MIN_SEARCH_LENGTH))
+                raise ValidationError("English search term must be at least {} characters.".format(self.MIN_SEARCH_LENGTH))
             filters["name__icontains"] = search
 
         category = self.request.query_params.get("category")
@@ -105,7 +106,7 @@ class BadWordListApiView(ListCreateAPIView):
                     if existing_word.deleted_at is not None:
                         existing_word.deleted_at = None
                         existing_word.save(update_fields=['deleted_at'])
-                        existing_word_serializer = self.serializer_class(existing_word, data=request.data)
+                        existing_word_serializer = self.serializer_class(existing_word, data=tag_data)
                         existing_word_serializer.is_valid(raise_exception=True)
                         existing_word_serializer.save()
                         result = existing_word_serializer.data

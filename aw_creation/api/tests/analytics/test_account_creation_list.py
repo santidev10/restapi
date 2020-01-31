@@ -77,7 +77,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
     def setUp(self):
         super(AnalyticsAccountCreationListAPITestCase, self).setUp()
         self.user = self.create_test_user()
-        self.mcc_account = Account.objects.create(can_manage_clients=True)
+        self.mcc_account = Account.objects.create(id=next(int_iterator), can_manage_clients=True)
         aw_connection = AWConnection.objects.create(refresh_token="token")
         AWAccountPermission.objects.create(aw_connection=aw_connection, account=self.mcc_account)
         AWConnectionToUserRelation.objects.create(connection=aw_connection, user=self.user)
@@ -160,11 +160,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_success_get(self):
-        account = Account.objects.create(id="123", name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
-        campaign = Campaign.objects.create(id=1, name="", account=account)
-        ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
+        campaign = Campaign.objects.create(id=next(int_iterator), name="", account=account)
+        ad_group = AdGroup.objects.create(id=next(int_iterator), name="", campaign=campaign)
         creative1 = VideoCreative.objects.create(id="SkubJruRo8w")
         creative2 = VideoCreative.objects.create(id="siFHgF9TOVA")
         date = datetime.now()
@@ -216,24 +216,24 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         )
 
     def test_success_sort_by(self):
-        account1 = Account.objects.create(id="123", name="",
+        account1 = Account.objects.create(id=next(int_iterator), name="",
                                           skip_creating_account_creation=True)
         account1.managers.add(self.mcc_account)
         stats = dict(account=account1, name="", impressions=10, video_views=9,
                      clicks=9, cost=9)
-        Campaign.objects.create(id=1, **stats)
-        Campaign.objects.create(id=2, **stats)
+        Campaign.objects.create(id=next(int_iterator), **stats)
+        Campaign.objects.create(id=next(int_iterator), **stats)
         top_account = AccountCreation.objects.create(
             name="Top account", owner=self.user, account=account1,
         )
 
-        account2 = Account.objects.create(id="456", name="",
+        account2 = Account.objects.create(id=next(int_iterator), name="",
                                           skip_creating_account_creation=True)
         account2.managers.add(self.mcc_account)
         stats = dict(account=account2, name="", impressions=3, video_views=2,
                      clicks=1, cost=3)
-        Campaign.objects.create(id=3, **stats)
-        Campaign.objects.create(id=4, **stats)
+        Campaign.objects.create(id=next(int_iterator), **stats)
+        Campaign.objects.create(id=next(int_iterator), **stats)
         AccountCreation.objects.create(
             name="Bottom account", owner=self.user, account=account2,
         )
@@ -289,7 +289,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         AccountCreation.objects.create(name="Empty", owner=self.user,
                                        is_ended=False, is_paused=False,
                                        is_approved=True)
-        account = Account.objects.create(id=1, name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         AccountCreation.objects.create(
@@ -300,22 +300,22 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
             impressions=10, video_views=10, clicks=10, cost=10
         )
         ad_group_1 = AdGroup.objects.create(
-            id=1, campaign=campaign, cost=10)
+            id=next(int_iterator), campaign=campaign, cost=10)
         AdGroupStatistic.objects.create(
             date=date(2018, 1, 1), ad_group=ad_group_1,
             cost=10, average_position=1, all_conversions=10)
-        account = Account.objects.create(id=2, name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         AccountCreation.objects.create(
             name="Minimum", owner=self.user, account=account,
         )
         campaign_2 = Campaign.objects.create(
-            id=2, name="", account=account,
+            id=next(int_iterator), name="", account=account,
             impressions=4, video_views=2, clicks=1, cost=1
         )
         ad_group_2 = AdGroup.objects.create(
-            id=2, campaign=campaign_2, cost=1)
+            id=next(int_iterator), campaign=campaign_2, cost=1)
         AdGroupStatistic.objects.create(
             date=date(2018, 1, 1), ad_group=ad_group_2,
             cost=1, average_position=1, all_conversions=5)
@@ -366,24 +366,24 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
         # ended
         ended_account = create_account()
-        Campaign.objects.create(name="ended 1", id="1", account=ended_account, status="ended")
-        Campaign.objects.create(name="ended 2", id="2", account=ended_account, status="ended")
-        Campaign.objects.create(name="ended 3", id="3", account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 1", id=next(int_iterator), account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 2", id=next(int_iterator), account=ended_account, status="ended")
+        Campaign.objects.create(name="ended 3", id=next(int_iterator), account=ended_account, status="ended")
         ended_account_creation = AccountCreation.objects.create(
             name="Ended", owner=self.user, account=ended_account, is_approved=True, sync_at=timezone.now())
         # paused
         paused_account = create_account()
-        Campaign.objects.create(name="paused 1", id="4", account=paused_account, status="paused")
-        Campaign.objects.create(name="serving", id="5", account=paused_account, status="removed")
-        Campaign.objects.create(name="paused 2", id="6", account=paused_account, status="paused")
+        Campaign.objects.create(name="paused 1", id=next(int_iterator), account=paused_account, status="paused")
+        Campaign.objects.create(name="serving", id=next(int_iterator), account=paused_account, status="removed")
+        Campaign.objects.create(name="paused 2", id=next(int_iterator), account=paused_account, status="paused")
         paused_account_creation = AccountCreation.objects.create(
             name="Paused", owner=self.user, account=paused_account, is_approved=True, sync_at=timezone.now())
         # running
         running_account = create_account()
-        Campaign.objects.create(name="paused 1", id="7", account=running_account, status="removed")
-        Campaign.objects.create(name="serving", id="8", account=running_account, status="serving")
-        Campaign.objects.create(name="paused 2", id="9", account=running_account, status="paused")
-        Campaign.objects.create(name="paused 2", id="10", account=running_account, status="ended")
+        Campaign.objects.create(name="paused 1", id=next(int_iterator), account=running_account, status="removed")
+        Campaign.objects.create(name="serving", id=next(int_iterator), account=running_account, status="serving")
+        Campaign.objects.create(name="paused 2", id=next(int_iterator), account=running_account, status="paused")
+        Campaign.objects.create(name="paused 2", id=next(int_iterator), account=running_account, status="ended")
         running_account_creation = AccountCreation.objects.create(
             name="Running", owner=self.user, account=running_account, sync_at=timezone.now(), is_approved=True)
         # pending
@@ -474,10 +474,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                                             is_managed=True)
         CampaignCreation.objects.create(name="", account_creation=ac)
 
-        account = Account.objects.create(id=1, name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
-        Campaign.objects.create(id=1, name="", account=account)
+        Campaign.objects.create(id=next(int_iterator), name="", account=account)
         managed_acc = AccountCreation.objects.create(name="", owner=self.user,
                                                      account=account,
                                                      is_managed=False)
@@ -489,7 +489,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
     # ended account cases
     def test_success_get_account_no_end_date(self):
-        account = Account.objects.create(id=1, name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         ac_creation = AccountCreation.objects.create(name="", owner=self.user, account=account)
@@ -539,10 +539,10 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(len(response.data["items"]), 0)
 
     def test_filter_campaigns_count_from_ad_words(self):
-        account = Account.objects.create(id=1, name="",
+        account = Account.objects.create(id=next(int_iterator), name="",
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
-        Campaign.objects.create(id=1, name="", account=account)
+        Campaign.objects.create(id=next(int_iterator), name="", account=account)
         ac = AccountCreation.objects.create(name="", account=account,
                                             owner=self.user, is_managed=False)
         AccountCreation.objects.create(name="", owner=self.user)
@@ -596,7 +596,7 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertEqual(response.data["items"][0]["id"], expected_account_creation.id)
 
     def test_chf_is_managed_has_value_on_analytics(self):
-        managed_account = Account.objects.create(id="1", name="managed",
+        managed_account = Account.objects.create(id=next(int_iterator), name="managed",
                                                  skip_creating_account_creation=True)
         managed_account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
@@ -609,11 +609,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertIsNotNone(accounts[account_creation.id]["is_managed"])
 
     def test_average_cpm_and_cpv(self):
-        account = Account.objects.create(id=1,
+        account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         impressions, views, cost = 1, 2, 3
         Campaign.objects.create(account=account,
@@ -634,11 +634,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertAlmostEqual(acc_data["average_cpm"], average_cpm)
 
     def test_average_cpm_and_cpv_is_reflect_to_user_settings(self):
-        account = Account.objects.create(id=1,
+        account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         Campaign.objects.create(account=account)
 
@@ -670,11 +670,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertIn("average_cpm", acc_data)
 
     def test_ctr_and_ctr_v(self):
-        account = Account.objects.create(id=1,
+        account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         impressions, views, clicks = 1, 2, 3
         Campaign.objects.create(account=account,
@@ -693,15 +693,15 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertAlmostEqual(acc_data["ctr_v"], ctr_v)
 
     def test_cost_aw_cost(self):
-        account = Account.objects.create(id=1,
+        account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         costs = (123, 234)
-        Campaign.objects.create(id=1, account=account, cost=costs[0])
-        Campaign.objects.create(id=2, account=account, cost=costs[1])
+        Campaign.objects.create(id=next(int_iterator), account=account, cost=costs[0])
+        Campaign.objects.create(id=next(int_iterator), account=account, cost=costs[1])
 
         user_settings = {
             UserSettingsKey.DASHBOARD_AD_WORDS_RATES: True
@@ -715,11 +715,11 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
         self.assertAlmostEqual(acc_data["cost"], sum(costs))
 
     def test_cost_always_aw_cost(self):
-        account = Account.objects.create(id=1,
+        account = Account.objects.create(id=next(int_iterator),
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
         opportunity = Opportunity.objects.create()
         placement_cpm = OpPlacement.objects.create(
@@ -751,26 +751,26 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
 
         campaigns = (
             Campaign.objects.create(
-                id=1, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_cpm, impressions=2323),
             Campaign.objects.create(
-                id=2, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_cpv, video_views=321),
             Campaign.objects.create(
-                id=3, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_outgoing_fee),
             Campaign.objects.create(
-                id=4, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_hard_cost),
             Campaign.objects.create(
-                id=5, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_dynamic_budget, cost=412),
             Campaign.objects.create(
-                id=6, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_cpv_rate_and_tech_fee,
                 video_views=245, cost=32),
             Campaign.objects.create(
-                id=7, account=account,
+                id=next(int_iterator), account=account,
                 salesforce_placement=placement_cpm_rate_and_tech_fee,
                 impressions=632, cost=241)
         )
@@ -826,12 +826,12 @@ class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase
                                          skip_creating_account_creation=True)
         account.managers.add(self.mcc_account)
         account_creation = AccountCreation.objects.create(
-            id=1, owner=self.request_user, account=account)
+            id=next(int_iterator), owner=self.request_user, account=account)
         account_creation.refresh_from_db()
 
-        Campaign.objects.create(id=1, salesforce_placement=placement_cpm,
+        Campaign.objects.create(id=next(int_iterator), salesforce_placement=placement_cpm,
                                 account=account, cost=1, impressions=1)
-        Campaign.objects.create(id=2, salesforce_placement=placement_cpv,
+        Campaign.objects.create(id=next(int_iterator), salesforce_placement=placement_cpv,
                                 account=account, cost=1, video_views=1)
 
         # show

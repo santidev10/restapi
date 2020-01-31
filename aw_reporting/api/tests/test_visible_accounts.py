@@ -25,8 +25,8 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_demo_account_is_first(self):
-        chf_manager = Account.objects.create(id="manager")
-        account = Account.objects.create(id="123", name="123")
+        chf_manager = Account.objects.create(id=111)
+        account = Account.objects.create(id=123, name="123")
         account.managers.add(chf_manager)
 
         recreate_demo_data()
@@ -35,7 +35,7 @@ class VisibleAccountsTestCase(ExtendedAPITestCase):
         query_params.update(user_id=user.id)
         url = "?".join([self.url, query_params.urlencode()])
 
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=chf_manager.id):
+        with override_settings(MCC_ACCOUNT_IDS=[chf_manager.id]):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, HTTP_200_OK)

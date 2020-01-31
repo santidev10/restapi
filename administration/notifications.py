@@ -81,7 +81,7 @@ def send_admin_notification(channel_id):
     send_mail(subject, message, sender, to, fail_silently=False)
 
 
-def send_html_email(subject, to, text_header, text_content, from_email=None):
+def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False):
     """
     Send email with html
     """
@@ -90,7 +90,8 @@ def send_html_email(subject, to, text_header, text_content, from_email=None):
         subject=subject,
         recipient_list=[to],
         html_message=html_email,
-        from_email=from_email or settings.SENDER_EMAIL_ADDRESS
+        from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
+        fail_silently=fail_silently
     )
 
 
@@ -100,7 +101,7 @@ def send_email(*_, subject, message=None, from_email=None, recipient_list, **kwa
         message=message,
         from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
         recipient_list=recipient_list,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -113,11 +114,10 @@ def send_welcome_email(user, request):
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
-    text_content = "Congratulations!" \
-                   " You've just registered on {}.\n\n" \
-                   "Kind regards\n" \
-                   "Channel Factory Team".format(request.get_host())
-    send_html_email(subject, to, text_header, text_content)
+    text_content = "Thank you for registering on ViewIQ! \n" \
+                   "We will review your account and send you an update " \
+                   "by email as soon as access is granted."
+    send_html_email(subject, to, text_header, text_content, fail_silently=True)
 
 
 def generate_html_email(text_header, text_content):

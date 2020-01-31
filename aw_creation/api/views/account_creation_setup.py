@@ -3,18 +3,27 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_creation.api.serializers import *
 from aw_creation.email_messages import send_tracking_tags_request
 from aw_creation.models import AccountCreation
-from aw_reporting.adwords_api import create_customer_account, \
-    update_customer_account, handle_aw_api_errors
+from aw_reporting.adwords_api import create_customer_account
+from aw_reporting.adwords_api import handle_aw_api_errors
+from aw_reporting.adwords_api import update_customer_account
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.views import forbidden_for_demo
-from aw_reporting.models import Account, AWConnection
-from utils.permissions import MediaBuyingAddOnPermission, user_has_permission, \
-    or_permission_classes
+from aw_reporting.models import AWConnection
+from aw_reporting.models import Account
+from utils.permissions import MediaBuyingAddOnPermission
+from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
+
+
+def is_demo(*args, **kwargs):
+    str_pk = kwargs.get("pk")
+    return str_pk.isnumeric() and int(str_pk) == DEMO_ACCOUNT_ID
 
 
 class AccountCreationSetupApiView(RetrieveUpdateAPIView):
@@ -80,7 +89,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         account_creation.save()
         return customer
 
-    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
+    @forbidden_for_demo(is_demo)
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -139,7 +148,7 @@ class AccountCreationSetupApiView(RetrieveUpdateAPIView):
         self.perform_update(serializer)
         return self.retrieve(self, request, *args, **kwargs)
 
-    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
+    @forbidden_for_demo(is_demo)
     def delete(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.account is not None:

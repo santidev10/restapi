@@ -1,11 +1,19 @@
+from botocore.exceptions import ClientError
+from botocore.exceptions import ParamValidationError
+import boto3
+from datetime import timedelta
+
 import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
+from django.utils import timezone
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.views import APIView
@@ -35,61 +43,53 @@ class UserAuthApiView(APIView):
     def post(self, request):
         """
         Login user
+        Each handler method returns a Response object that is used to return from the view
+            Each handler also may also raise ValidationErrors if necessary
         """
-        token = request.data.get("token")
-        auth_token = request.data.get("auth_token")
-        update_date_of_last_login = True
-        if token:
+        data = request.data
+        token = data.get("token")
+        auth_token = data.get("auth_token", "")
+        answer = data.get("answer")
+        username = data.get("username")
+        password = data.get("password")
+        session = data.get("session")
+        mfa_type = data.get("mfa_type")
+        is_temp_auth = auth_token.startswith("temp")
+
+        # If auth_token, check if valid token before any operations
+        if auth_token:
+            user, token = self._validate_get_user_token(auth_token)
+            client = boto3.client("cognito-idp") if is_temp_auth else None
+            # handle user auth with full access auth_token
+            if not is_temp_auth:
+                response = self.handle_post_login(user, False)
+
+            # handle create auth challenge with temp auth_token and mfa type
+            elif is_temp_auth and mfa_type and not username and not password:
+                response = self.mfa_create_challenge(client, user, data)
+
+            # handle submitting / verifying mfa challenge
+            elif auth_token and answer and session and is_temp_auth:
+                response = self.mfa_submit_challenge(client, user, data)
+
+            else:
+                response = self._get_invalid_response()
+
+        # Handle login with username / password and return temp auth_token for mfa
+        elif username and password:
+            response = self.handle_login(username, password)
+
+        # Google token
+        elif token and not auth_token:
             user = self.get_google_user(token)
-        elif auth_token:
-            try:
-                user = Token.objects.get(key=auth_token).user
-            except Token.DoesNotExist:
-                user = None
-            else:
-                update_date_of_last_login = False
+            self.set_auth_token(user)
+            response = self.handle_post_login(user, True)
+
+        # Login data sent by client invalid
         else:
-            user_email = request.data.get("username")
-            try:
-                user = get_user_model().objects.get(email=user_email)
-            except get_user_model().DoesNotExist:
-                user = None
-            else:
-                user_password = request.data.get("password")
-                if not user.check_password(user_password):
-                    user = None
+            response = self._get_invalid_response()
 
-        if not user:
-            return Response(
-                data={
-                    "error": ["Unable to authenticate user"
-                              " with provided credentials"]
-                },
-                status=HTTP_400_BAD_REQUEST)
-
-        request_origin = request.META.get("HTTP_ORIGIN") or request.META.get("HTTP_REFERER")
-
-        if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
-            return Response(
-                data={
-                    "error": "Unable to authenticate APEX user"
-                             " on this site. Please go to <a href='{apex_host}'>"
-                             "{apex_host}</a>".format(apex_host=settings.APEX_HOST)
-                },
-                status=HTTP_400_BAD_REQUEST)
-
-        Token.objects.get_or_create(user=user)
-        if update_date_of_last_login:
-            update_last_login(None, user)
-
-        response_data = self.serializer_class(user).data
-
-        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
-        if custom_auth_flags:
-            for name, value in custom_auth_flags.items():
-                response_data[name] = value
-
-        return Response(response_data)
+        return response
 
     def delete(self, request):
         """
@@ -123,3 +123,238 @@ class UserAuthApiView(APIView):
         except get_user_model().DoesNotExist:
             return None
         return user
+
+    def mfa_create_challenge(self, client, user, data):
+        """
+        Begin MFA login process by sending user challenge code through preferred medium (text | email)
+        """
+        mfa_type = data.get("mfa_type", "")
+        if mfa_type != "email" and mfa_type != "text":
+            raise LoginException("mfa_type option must either be email or text.")
+
+        user_attributes = [{"Name": "custom:mfa_type", "Value": mfa_type}]
+        if user.phone_number and user.phone_number_verified:
+            user_attributes.append({"Name": "phone_number", "Value": user.phone_number})
+        elif mfa_type == "text":
+            raise LoginException("You must have a verified phone number to use text MFA.")
+
+        error = None
+        should_update = False
+        try:
+            # Create / Update user with attributes
+            client.admin_create_user(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                Username=user.email,
+                UserAttributes=user_attributes,
+                MessageAction="SUPPRESS"
+            )
+        except ParamValidationError as err:
+            error = err.kwargs["report"]
+        except ClientError as err:
+            # User exists, update attributes
+            if err.response["Error"]["Code"] == "UsernameExistsException":
+                should_update = True
+            else:
+                error = err.response["Error"]["Message"]
+
+        if should_update:
+            try:
+                client.admin_update_user_attributes(
+                    UserPoolId=settings.COGNITO_USER_POOL_ID,
+                    Username=user.email,
+                    UserAttributes=user_attributes
+                )
+            except ClientError as err:
+                error = err.response["Error"]["Message"]
+
+        if error:
+            raise LoginException(error)
+        else:
+            try:
+                response = client.admin_initiate_auth(
+                    UserPoolId=settings.COGNITO_USER_POOL_ID,
+                    ClientId=settings.COGNITO_CLIENT_ID,
+                    AuthFlow="CUSTOM_AUTH",
+                    AuthParameters={
+                        "USERNAME": user.email,
+                    },
+                )
+            except ClientError as error:
+                raise LoginException(error.response["Error"]["Message"])
+            else:
+                res = {
+                    "session": response["Session"],
+                    "retries": response["ChallengeParameters"]["retries"]
+                }
+                status_code = HTTP_200_OK
+        return Response(data=res, status=status_code)
+
+    def mfa_submit_challenge(self, client, user, data):
+        """
+        Submit mfa code to Cognito and parse results
+            If successful, grant client auth_token to use for subsequent requests
+            If incorrect, respond with session for retries
+        :param client: Boto3 object
+        :param user: UserProfile
+        :param data: dict
+        :return:
+        """
+        self.mfa_validate_data(data)
+        try:
+            result = client.admin_respond_to_auth_challenge(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                ClientId=settings.COGNITO_CLIENT_ID,
+                Session=data["session"],
+                ChallengeName="CUSTOM_CHALLENGE",
+                ChallengeResponses={
+                    "USERNAME": user.email,
+                    "ANSWER": data["answer"]
+                },
+            )
+        except ParamValidationError as err:
+            raise LoginException(err.kwargs["report"])
+        except ClientError as err:
+            Token.objects.filter(user=user).delete()
+            # Most errs will have code NotAuthorizedMessage
+            if err.response["Error"]["Message"] != "Incorrect username or password.":
+                # Strip message since not all messages returned end with a period
+                message = err.response["Error"]["Message"].strip(".")
+            else:
+                message = "Max attempts exceeded"
+            message += ". Please log in again."
+            raise LoginException(message)
+        else:
+            if result.get("AuthenticationResult"):
+                # Replace temp auth_token for mfa process
+                self.set_auth_token(user)
+                response = self.handle_post_login(user, True)
+            else:
+                res = {
+                    "session": result["Session"],
+                    "retries": result["ChallengeParameters"]["retries"]
+                }
+                response = Response(data=res, status=HTTP_400_BAD_REQUEST)
+            return response
+
+    def mfa_validate_data(self, data):
+        errors = []
+        try:
+            data["session"]
+        except KeyError:
+            errors.append("Session required for MFA.")
+        try:
+            data["answer"] = str(data["answer"]).replace("-", "")
+        except KeyError:
+            errors.append("MFA challenge answer required for MFA.")
+        if errors:
+            raise LoginException(", ".join(errors))
+
+    def handle_login(self, email, password):
+        """
+        Validate user login with email and password
+        Once validated, send OK response and wait for client to initiate mfa auth by sending
+            auth_token prepended with "temp_" and preferred MFA type (text | email)
+        :param email: str
+        :param password: str
+        :return:
+        """
+        try:
+            user = get_user_model().objects.get(email=email)
+            if not user.check_password(password):
+                raise ValueError
+        except get_user_model().DoesNotExist:
+            raise LoginException(f"User with email does not exist: {email}.")
+        except ValueError:
+            raise LoginException("Invalid password.")
+
+        # send back mfa options
+        response = {
+            "username": email
+        }
+        if user.phone_number and user.phone_number_verified:
+            formatted = f"**(***)***-{user.phone_number[-4:]}"
+            response["phone_number"] = formatted
+
+        key = self.set_auth_token(user, temp=True)
+        response["auth_token"] = key
+        return Response(data=response)
+
+    def handle_post_login(self, user, update_date_of_last_login):
+        """
+        Post login validation
+        :param user:
+        :param update_date_of_last_login: bool
+        :return:
+        """
+        request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
+        if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
+            return Response(
+                data={
+                    "error": "Unable to authenticate APEX user"
+                             " on this site. Please go to <a href='{apex_host}'>"
+                             "{apex_host}</a>".format(apex_host=settings.APEX_HOST)
+                },
+                status=HTTP_400_BAD_REQUEST)
+
+        if update_date_of_last_login:
+            update_last_login(None, user)
+
+        response_data = self.serializer_class(user).data
+
+        custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
+        if custom_auth_flags:
+            for name, value in custom_auth_flags.items():
+                response_data[name] = value
+        return Response(response_data)
+
+    def _validate_get_user_token(self, key):
+        """
+        Retrieve user and token with provided auth_token key
+        Also validates if token is valid if was created within expire threshold
+        :param key: str
+        :return:
+        """
+        try:
+            token = Token.objects.get(key=key)
+            threshold = timezone.now() - timedelta(days=settings.AUTH_TOKEN_EXPIRES)
+            if token.created < threshold:
+                raise ValueError
+        except (Token.DoesNotExist, ValueError):
+            raise LoginException(f"Invalid token. Please log in again.")
+        return token.user, token
+
+    def _get_invalid_response(self):
+        response = Response(data="Unable to authenticate user. Please try logging in again.",
+                            status=HTTP_400_BAD_REQUEST)
+        return response
+    
+    @staticmethod
+    def set_auth_token(user, temp=False):
+        """
+        Set auth_token and reset created timestamp
+        :return:
+        """
+        params = {
+            "created": timezone.now()
+        }
+        token = Token.objects.filter(user=user)
+        if token.exists():
+            token = token[0]
+        else:
+            token = Token.objects.create(user=user)
+        key = token.generate_key()
+        if temp is True:
+            key = f"temp_{key}"[:40]
+        params["key"] = key
+        Token.objects.filter(user=user).update(**params)
+        user.refresh_from_db()
+        return key
+
+
+class LoginException(ValidationError):
+    def __init__(self, message):
+        data = {
+            "message": message,
+        }
+        super().__init__(data)
+

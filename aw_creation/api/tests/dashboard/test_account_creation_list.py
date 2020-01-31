@@ -125,7 +125,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
         }
-        with override_settings(CHANNEL_FACTORY_ACCOUNT_ID=self.mcc_account.id), \
+        with override_settings(MCC_ACCOUNT_IDS=[self.mcc_account.id]), \
              self.patch_user_settings(**user_settings):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -162,13 +162,13 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         recreate_demo_data()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        expected_account_id = "1"
+        expected_account_id = 1
         managed_account = Account.objects.create(
             id=expected_account_id, name="")
         managed_account.managers.add(chf_account)
-        Account.objects.create(id="2", name="")
-        Account.objects.create(id="3", name="")
-        Account.objects.create(id="4", name="")
+        Account.objects.create(id=3, name="")
+        Account.objects.create(id=4, name="")
+        Account.objects.create(id=5, name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -177,7 +177,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts_ids = {a["account"] for a in response.data["items"]}
-        self.assertEqual(accounts_ids, {"demo", expected_account_id})
+        self.assertEqual(accounts_ids, {DEMO_ACCOUNT_ID, expected_account_id})
 
     def test_brand(self):
         chf_account = Account.objects.create(

@@ -25,6 +25,7 @@ from django.conf import settings
 from utils.lang import remove_mentions_hashes_urls
 from utils.utils import remove_tags_punctuation
 from collections import defaultdict
+from datetime import timedelta
 
 """
 requirements:
@@ -152,7 +153,7 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
-                if v_id:
+                if v_id and len(v_id) < 51:
                     video = AuditVideo.get_or_create(v_id)
                     avp, _ = AuditVideoProcessor.objects.get_or_create(
                             audit=self.audit,
@@ -196,8 +197,10 @@ class Command(BaseCommand):
         for video_id, avp in videos.items():
             db_video = avp.video
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-            if not db_video_meta.name or not db_video.channel or not db_video_meta.duration:
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 channel_id = self.do_video_metadata_api_call(db_video_meta, video_id)
+                db_video.processed_time = timezone.now()
+                db_video.save(update_fields=['processed_time'])
             else:
                 channel_id = db_video.channel.channel_id
             if not channel_id: # video does not exist or is private now
@@ -229,6 +232,10 @@ class Command(BaseCommand):
         ))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
+        if db_video_meta.age_restricted == True:
+            avp.word_hits['exclusion'] = ['ytAgeRestricted']
+            self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
+            return False
         if self.inclusion_list:
             is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
@@ -249,7 +256,7 @@ class Command(BaseCommand):
             is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
             avp.word_hits['exclusion'] = hits
             if is_there:
-                self.append_to_channel(avp, [avp.channel_id], 'bad_video_ids')
+                self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
                 self.append_to_channel(avp, hits, 'exclusion_videos')
                 return False
         return True
@@ -354,6 +361,11 @@ class Command(BaseCommand):
                 db_video_meta.duration = i['contentDetails']['duration']
             except Exception as e:
                 pass
+            try:
+                if i['contentDetails']['contentRating']['ytRating'] == "ytAgeRestricted":
+                    db_video_meta.age_restricted = True
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)
@@ -394,7 +406,10 @@ class Command(BaseCommand):
         exclusion_list = {}
         for row in input_list:
             word = remove_tags_punctuation(row[0])
-            language = row[2]
+            try:
+                language = row[2]
+            except Exception as e:
+                language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(

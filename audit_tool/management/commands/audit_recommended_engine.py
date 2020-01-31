@@ -26,6 +26,7 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from django.conf import settings
 from collections import defaultdict
 from utils.utils import remove_tags_punctuation
+from datetime import timedelta
 
 """
 requirements:
@@ -200,7 +201,7 @@ class Command(BaseCommand):
             v_id = v_id.split("v=")[-1]
         if '?t=' in v_id:
             v_id = v_id.split("?t")[0]
-        if v_id:
+        if v_id and len(v_id) < 51:
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
@@ -252,8 +253,10 @@ class Command(BaseCommand):
             except Exception as e:
                 print("no video publish date")
                 pass
-            if not db_video_meta.keywords or not db_video_meta.duration:
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
                 self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
+                db_video.processed_time = timezone.now()
+                db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
             db_video.channel = channel
             db_video_meta.save()
@@ -316,6 +319,8 @@ class Command(BaseCommand):
             '' if not db_video_meta.description else db_video_meta.description,
             '' if not db_video_meta.keywords else db_video_meta.keywords,
         ))
+        if db_video_meta.age_restricted == True:
+            return False, ['ytAgeRestricted']
         if self.inclusion_list:
             is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
             hits['inclusion'] = b_hits
@@ -403,6 +408,11 @@ class Command(BaseCommand):
                 db_video_meta.duration = i['contentDetails']['duration']
             except Exception as e:
                 pass
+            try:
+                if i['contentDetails']['contentRating']['ytRating'] == "ytAgeRestricted":
+                    db_video_meta.age_restricted = True
+            except Exception as e:
+                pass
             str_long = db_video_meta.name
             if db_video_meta.keywords:
                 str_long = "{} {}".format(str_long, db_video_meta.keywords)
@@ -442,7 +452,10 @@ class Command(BaseCommand):
         exclusion_list = {}
         for row in input_list:
             word = remove_tags_punctuation(row[0])
-            language = row[2]
+            try:
+                language = row[2]
+            except Exception as e:
+                language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(

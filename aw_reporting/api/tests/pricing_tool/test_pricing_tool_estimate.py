@@ -673,20 +673,20 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id="2", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM)
-        campaign_1 = Campaign.objects.create(id="1",
+        campaign_1 = Campaign.objects.create(id=1,
                                              min_stat_date=stats_date,
                                              max_stat_date=stats_date,
                                              salesforce_placement=placement_1)
-        campaign_2 = Campaign.objects.create(id="2",
+        campaign_2 = Campaign.objects.create(id=2,
                                              min_stat_date=stats_date,
                                              max_stat_date=stats_date,
                                              salesforce_placement=placement_2)
         type_1 = "Bumper"
         type_2 = "In-stream"
         ad_group_1 = AdGroup.objects.create(
-            id="1", campaign=campaign_1, type=type_1, video_views=1)
+            id=1, campaign=campaign_1, type=type_1, video_views=1)
         ad_group_2 = AdGroup.objects.create(
-            id="2", campaign=campaign_2, type=type_2)
+            id=2, campaign=campaign_2, type=type_2)
 
         AdGroupStatistic.objects.create(ad_group=ad_group_1, date=stats_date,
                                         cost=1, video_views=1,
@@ -700,8 +700,8 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
                                      product_types_condition="and")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertIsNotNone(response.data["charts"]["cpm"])
-        self.assertIsNotNone(response.data["charts"]["cpv"])
+        self.assertIsNone(response.data["charts"]["cpm"])
+        self.assertIsNone(response.data["charts"]["cpv"])
 
     def test_filter_hidden_campaigns(self):
         opportunity = Opportunity.objects.create()
@@ -712,7 +712,7 @@ class PricingToolEstimateTestCase(ExtendedAPITestCase):
         placement_2 = OpPlacement.objects.create(
             id="2", opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPM)
-        account = Account.objects.create(id="id")
+        account = Account.objects.create(id=10)
         campaign_1 = Campaign.objects.create(id="1",
                                              account=account,
                                              min_stat_date=stats_date,

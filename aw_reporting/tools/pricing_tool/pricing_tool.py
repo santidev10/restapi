@@ -1,8 +1,5 @@
 from datetime import datetime
 
-from django.db.models import Sum
-
-from aw_reporting.models import Opportunity
 from aw_reporting.tools.pricing_tool.pricing_tool_estimate import \
     PricingToolEstimate
 from aw_reporting.tools.pricing_tool.pricing_tool_filtering import \
@@ -20,12 +17,12 @@ class PricingTool:
         kwargs.update(self._get_date_kwargs(kwargs))
         kwargs['margin'] = kwargs.get('margin') or 30
         self.kwargs = kwargs
+        self.__opportunities_qs = None
+        self.user = user
+
         self.filter = PricingToolFiltering(kwargs)
         self.serializer = PricingToolSerializer(kwargs)
-        self._opportunities_qs, self.campaigns_ids_map = self.filter.apply(
-            self._get_opportunity_queryset(user))
-        self.estimate_tool = PricingToolEstimate(
-            kwargs, self.get_opportunities_queryset(), self.campaigns_ids_map)
+        self.estimate_tool = PricingToolEstimate(kwargs)
 
     @classmethod
     def get_filters(cls, user=None):
@@ -33,10 +30,14 @@ class PricingTool:
 
     @property
     def estimate(self):
+        self.estimate_tool.set_opportunities(self.get_opportunities_queryset(ordering_by_aw_budget=False))
         return self.estimate_tool.estimate()
 
-    def get_opportunities_data(self, opportunities, campaigns_ids_map, user):
-        return self.serializer.get_opportunities_data(opportunities, campaigns_ids_map, user)
+    def get_opportunities_data(self, opportunities):
+        return self.serializer.get_opportunities_data(opportunities)
+
+    def get_campaigns_data(self, campaigns_ids):
+        return self.serializer.get_campaigns_data(campaigns_ids)
 
     def _get_date_kwargs(self, kwargs):
         quarters = kwargs.get('quarters')
@@ -52,10 +53,7 @@ class PricingTool:
             end=max(d for _, d in periods or [(None, None)])
         )
 
-    def _get_opportunity_queryset(self, user):
-        return Opportunity.objects.have_campaigns(user=user) \
-            .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
-            .order_by("-aw_budget")
-
-    def get_opportunities_queryset(self):
-        return self._opportunities_qs
+    def get_opportunities_queryset(self, ordering_by_aw_budget=True):
+        if self.__opportunities_qs is None:
+            self.__opportunities_qs = self.filter.apply(user=self.user, ordering_by_aw_budget=ordering_by_aw_budget)
+        return self.__opportunities_qs

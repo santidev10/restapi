@@ -112,9 +112,9 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
         "schedule": crontab(hour="*"),
     },
-    "update_custom_segment": {
-        "task": "segment.tasks.update_custom_segment.update_custom_segment",
-        "schedule": crontab(minute="*"),
+    "cache_pricing_tool_filters": {
+        "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
+        "schedule": crontab(minute=0, hour='*/6'),
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
@@ -183,6 +183,9 @@ class TaskExpiration:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
+    PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+
 
 
 class TaskTimeout:
@@ -194,3 +197,5 @@ class TaskTimeout:
     BRAND_SAFETY_CHANNEL_DISCOVERY = timedelta(minutes=30).total_seconds()
     BRAND_SAFETY_CHANNEL_OUTDATED = timedelta(hours=2).total_seconds()
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
+    RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
+    PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()

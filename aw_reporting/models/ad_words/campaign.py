@@ -15,15 +15,15 @@ class CampaignManager(models.Manager, UserRelatedManagerMixin):
 class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     objects = CampaignManager()
 
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250)
     account = models.ForeignKey(Account, null=True, related_name='campaigns', on_delete=models.CASCADE)
 
     start_date = models.DateField(null=True, db_index=True)
-    end_date = models.DateField(null=True)
-    type = models.CharField(max_length=20, null=True)
-    budget = models.FloatField(null=True)
-    status = models.CharField(max_length=10, null=True)
+    end_date = models.DateField(null=True, db_index=True)
+    type = models.CharField(max_length=20, null=True, db_index=True)
+    budget = models.FloatField(null=True, db_index=True)
+    status = models.CharField(max_length=10, null=True, db_index=True)
     update_time = models.DateTimeField(auto_now_add=True)
     sync_time = models.DateTimeField(null=True)
     salesforce_placement = models.ForeignKey(
@@ -31,6 +31,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
         null=True,
         related_name='adwords_campaigns',
         on_delete=models.SET_NULL,
+        db_index=True,
     )
     goal_allocation = models.FloatField(default=0)
 
@@ -49,8 +50,8 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
 
     budget_type = models.CharField(max_length=30, default=BudgetType.DAILY.value, null=False, blank=False)
 
-    _start = models.DateField(null=True)
-    _end = models.DateField(null=True)
+    _start = models.DateField(null=True, db_index=True)
+    _end = models.DateField(null=True, db_index=True)
     placement_code = models.CharField(max_length=10, null=True, default=None)
 
     SERVING_STATUSES = ("serving", "eligible", "pending", "suspended", "ended", "none")

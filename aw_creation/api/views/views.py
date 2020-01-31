@@ -591,6 +591,11 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
+def is_demo(*args,  **kwargs):
+    str_pk = kwargs.get("pk")
+    return str_pk.isnumeric() and int(str_pk) == DEMO_ACCOUNT_ID
+
+
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
@@ -606,7 +611,7 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         )
         return queryset
 
-    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
+    @forbidden_for_demo(is_demo)
     def create(self, request, *args, **kwargs):
         try:
             account_creation = AccountCreation.objects.get(

@@ -10,6 +10,7 @@ from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
+from segment.models.persistent.constants import YT_GENRE_CHANNELS
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -18,7 +19,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -27,6 +28,7 @@ def generate_segment(segment, query, size, sort=None, options=None):
     :param query: dict
     :param size: int
     :param sort: list -> Additional sort fields
+    :param add_uuid: Add uuid to document segments section
     :return:
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
@@ -40,6 +42,11 @@ def generate_segment(segment, query, size, sort=None, options=None):
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
             cursor_field = "stats.views"
+            # Exclude all age_restricted items
+            if options is None:
+                options = [
+                    QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
+                ]
         else:
             cursor_field = "stats.subscribers"
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
@@ -57,6 +64,8 @@ def generate_segment(segment, query, size, sort=None, options=None):
                         writer.writeheader()
 
                     for item in batch:
+                        if item.main.id in YT_GENRE_CHANNELS:
+                            continue
                         if len(top_three_items) < 3 \
                                 and getattr(item.general_data, "title", None) \
                                 and getattr(item.general_data, "thumbnail_image_url", None):
@@ -103,7 +112,8 @@ def generate_segment(segment, query, size, sort=None, options=None):
         aggregations["average_cpm"] /= seen or 1
         aggregations["average_cpv"] /= seen or 1
 
-        segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
+        if add_uuid:
+            segment.es_manager.add_to_segment_by_ids(item_ids[:DOCUMENT_SEGMENT_ITEMS_SIZE], segment.uuid)
         statistics = {
             "items_count": seen,
             "top_three_items": top_three_items,

@@ -534,7 +534,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             VideoQuartile100Rate=0,
         )
         test_report_data = [
-            dict(AdGroupId="missing", **common),
+            dict(AdGroupId=99, **common),
             dict(AdGroupId=ad_group.id, **common)
         ]
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
@@ -561,10 +561,10 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(id=1, campaign=campaign)
         AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
                                         average_position=1)
-        approved_ad_1 = "approved_1"
-        approved_ad_2 = "approved_2"
-        approved_ad_3 = "approved_3"
-        disapproved_ad_1 = "disapproved_1"
+        approved_ad_1 = 1
+        approved_ad_2 = 2
+        approved_ad_3 = 3
+        disapproved_ad_1 = 4
 
         common_data = dict(
             AdGroupId=ad_group.id,
@@ -1230,7 +1230,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                                        account=acc)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
-        self.assertTrue(str(acc.id) in to_update)
+        self.assertIn(acc.id, to_update)
 
 
 class FakeExceptionWithArgs:
