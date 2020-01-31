@@ -12,7 +12,7 @@ from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 
-LOCK_NAME = 'research_channels_aggs'
+LOCK_NAME = 'cache_research_channels_aggs'
 
 logger = logging.getLogger(__name__)
 
