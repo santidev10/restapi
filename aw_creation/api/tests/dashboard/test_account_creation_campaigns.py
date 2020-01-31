@@ -32,8 +32,8 @@ class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         user.add_custom_user_group(PermissionGroupNames.MANAGED_SERVICE)
-        campaign_id = "1"
-        ad_group_id = "1"
+        campaign_id = 1
+        ad_group_id = 1
         campaign = Campaign.objects.create(
             id=campaign_id, name="", account=account)
         AdGroup.objects.create(id=ad_group_id, name="", campaign=campaign)

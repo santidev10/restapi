@@ -70,7 +70,7 @@ class Audience(BaseModel):
 
 
 class RemarkList(BaseModel):
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250)
 
     def __str__(self):

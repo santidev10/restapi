@@ -46,9 +46,9 @@ class PacingReportFlightCampaignAllocationsChangedTestCase(ExtendedAPITestCase):
 
         response = self.client.get(self._get_url(1))
 
-        self.assertEqual(len(response.data['2'].values()), 3)
-        self.assertEqual(response.data['2']['1'], campaign_1.budget)
-        self.assertEqual(response.data['2']['2'], campaign_2.budget)
-        self.assertEqual(response.data['2']['3'], campaign_3.budget)
+        self.assertEqual(len(response.data[2].values()), 3)
+        self.assertEqual(response.data[2][1], campaign_1.budget)
+        self.assertEqual(response.data[2][2], campaign_2.budget)
+        self.assertEqual(response.data[2][3], campaign_3.budget)
 
 

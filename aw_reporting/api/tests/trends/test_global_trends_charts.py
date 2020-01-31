@@ -56,7 +56,7 @@ class GlobalTrendsChartsTestCase(AwReportingAPITestCase):
     def test_filters_by_global_account(self):
         today = datetime.now().date()
         test_impressions = 100
-        account_2 = self.create_account(self.user, "2-")
+        account_2 = self.create_account(self.user, "2")
         campaign_2 = Campaign.objects.create(
             id="2", name="", account=account_2)
         ad_group_2 = AdGroup.objects.create(
