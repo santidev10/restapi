@@ -2,6 +2,7 @@ import hashlib
 from utils.models import Timestampable
 from django.db import models
 from django.db import IntegrityError
+from audit_tool.models import AuditLanguage
 
 
 def get_hash_name(s):
@@ -12,6 +13,7 @@ class SQTranscript(Timestampable):
     video_id = models.CharField(max_length=50, unique=True)
     video_id_hash = models.BigIntegerField(default=0, db_index=True)
     transcript = models.TextField(blank=True, null=True, default=None)
+    language = models.ForeignKey(AuditLanguage, blank=True, null=True, related_name='transcript_language')
     submitted = models.DateTimeField(blank=True, null=True, default=None)
     retrieved = models.DateTimeField(blank=True, null=True, default=None)
     job_id = models.CharField(max_length=255, blank=True, null=True, default=None)
