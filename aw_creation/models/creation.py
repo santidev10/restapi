@@ -87,8 +87,7 @@ class AccountCreation(UniqueCreationItem):
                               on_delete=CASCADE,
                               null=True)
 
-    account = models.OneToOneField(
-        Account, related_name='account_creation',
+    account = models.OneToOneField(Account, related_name='account_creation',
         null=True, blank=True, on_delete=models.CASCADE,
     )
     is_paused = models.BooleanField(default=False)
