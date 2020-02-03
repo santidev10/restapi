@@ -43,6 +43,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "last_name",
                 "logo_url",
                 "phone_number",
+                "phone_number_verified",
                 "profile_image_url",
                 "token",
                 "is_active",
@@ -50,3 +51,13 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "user_type",
             }
         )
+
+    def test_set_user_verified(self):
+        user = self.create_test_user()
+        self.assertEqual(user.phone_number_verified, False)
+        data = {
+            "phone_number": "+19999999"
+        }
+        response = self._update(data)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["phone_number_verified"], True)
