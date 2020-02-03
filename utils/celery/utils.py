@@ -6,5 +6,5 @@ VHOST = "restapi"
 
 
 def get_queue_size(queue_name):
-    cl = Client(settings.RABBITMQ_API_URL, settings.RABBITMQ_API_USER, settings.RABBITMQ_API_PASSWORD)
+    cl = Client(settings.RABBITMQ_API_URL, settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD)
     return cl.get_queue_depth(VHOST, queue_name)
