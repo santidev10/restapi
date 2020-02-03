@@ -134,6 +134,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "brand_safety.tasks.video_discovery.video_discovery_scheduler",
         "schedule": 60 * 5,
     },
+    "userprofile_clean_device_auth_tokens": {
+        "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
+        "schedule": crontab(day_of_month="1", hour="1", minute="0"),
+    }
 }
 
 

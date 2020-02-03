@@ -10,6 +10,7 @@ from rest_framework.status import HTTP_201_CREATED
 from administration.api.serializers import UserActionCreateSerializer
 from administration.api.serializers import UserActionRetrieveSerializer
 from administration.models import UserAction
+from userprofile.api.views.user_finalize_response import UserFinalizeResponse
 from utils.api_paginator import CustomPageNumberPaginator
 
 
@@ -20,7 +21,7 @@ class UserActionPaginator(CustomPageNumberPaginator):
     page_size = 20
 
 
-class UserActionListCreateApiView(ListCreateAPIView):
+class UserActionListCreateApiView(UserFinalizeResponse, ListCreateAPIView):
     """
     User action list / create endpoint
     """
