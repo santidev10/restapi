@@ -55,8 +55,7 @@ class SendDailyEmailsTestCase(APITestCase):
         send_daily_email_reports(reports=["CampaignUnderMargin"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
-        expected_subject = "URGENT CAMPAIGN UNDER MARGIN: {}".format(
-            opportunity.name)
+        expected_subject = f"{ad_ops.name} Opportunities Under Margin Report"
         self.assertEqual(mail.outbox[0].subject, expected_subject)
         self.assertEqual(len(mail.outbox[0].to), 1)
         self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
