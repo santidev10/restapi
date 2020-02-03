@@ -33,6 +33,7 @@ class TestUserMixin:
         )
         user.set_password(user.password)
         user.save()
+        UserDeviceToken.objects.create(user=user)
         return user
 
     def create_admin_user(self, **kwargs):

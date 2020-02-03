@@ -2,11 +2,11 @@ from re import sub
 
 from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
-from rest_framework.authtoken.models import Token
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from userprofile.models import UserDeviceToken
 from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
 
@@ -20,9 +20,9 @@ class ApexUserCheck(MiddlewareMixin):
 
         try:
             token = sub("Token", "", request.META.get("HTTP_AUTHORIZATION", None))
-            token_obj = Token.objects.get(key=token.strip())
+            token_obj = UserDeviceToken.objects.get(key=token.strip())
             user = token_obj.user
-        except Token.DoesNotExist:
+        except UserDeviceToken.DoesNotExist:
             return
 
         user_email = user.email

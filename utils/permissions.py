@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from rest_framework.authtoken.models import Token
+from userprofile.models import UserDeviceToken
 from userprofile.permissions import PermissionGroupNames
 
 
@@ -38,8 +38,8 @@ class IsAuthQueryTokenPermission(permissions.BasePermission):
         if not token:
             return False
         try:
-            Token.objects.get(key=token)
-        except Token.DoesNotExist:
+            UserDeviceToken.objects.get(key=token)
+        except UserDeviceToken.DoesNotExist:
             return False
         return True
 

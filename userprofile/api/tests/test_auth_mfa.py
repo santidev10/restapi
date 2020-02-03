@@ -153,7 +153,7 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
                 self._url, json.dumps(dict(auth_token="1234")),
                 content_type="application/json",
             )
-        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_mfa_error_handling_username_exists(self):
         user, token = self._create_user()

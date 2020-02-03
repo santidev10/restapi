@@ -32,6 +32,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "can_access_media_buying",
                 "company",
                 "date_joined",
+                "device_id",
                 "email",
                 "first_name",
                 "google_account_id",
@@ -56,7 +57,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         self.assertEqual(user.phone_number_verified, False)
         data = {
-            "phone_number": "+19999999"
+            "phone_number": "+1123456789"
         }
         response = self._update(data)
         self.assertEqual(response.status_code, HTTP_200_OK)
