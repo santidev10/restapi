@@ -5,15 +5,19 @@ from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 
+from userprofile.models import UserDeviceToken
+
 
 class ExpiringTokenAuthentication(TokenAuthentication):
     """
     Validate tokens that are within creation threshold
     """
+    model = UserDeviceToken
+
     def authenticate_credentials(self, key):
         user, token = super().authenticate_credentials(key)
         threshold = timezone.now() - timedelta(days=settings.AUTH_TOKEN_EXPIRES)
-        if token.created < threshold:
+        if token.created_at < threshold:
             raise AuthenticationFailed("Token expired. Please log in again.")
         if token.key.startswith("temp_"):
             raise AuthenticationFailed(
