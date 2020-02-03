@@ -25,9 +25,9 @@ class BadWordCategoryListApiView(ListCreateAPIView):
             if scoring_options:
                 data["categories"] = serializer.data
                 data["scoring_options"] = [
-                    {"id": 1, "title": '1 - Low Risk'},
-                    {"id": 2, "title": '2 - Medium Risk'},
-                    {"id": 4, "title": '4 - High Risk'}
+                    {"id": 1, "title": "1 - Low Risk"},
+                    {"id": 2, "title": "2 - Medium Risk"},
+                    {"id": 4, "title": "4 - High Risk"}
                 ]
             else:
                 data = serializer.data
