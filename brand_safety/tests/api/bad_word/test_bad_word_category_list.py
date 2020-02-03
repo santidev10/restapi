@@ -9,11 +9,13 @@ from utils.utittests.test_case import ExtendedAPITestCase
 
 
 class BadWordCategoriesListTestCase(ExtendedAPITestCase):
-    def _request(self):
+    def _request(self, query_params=None):
         url = reverse(
             PathNames.BadWord.CATEGORY_LIST,
             [Namespace.BRAND_SAFETY],
         )
+        if query_params:
+            url += f"?{query_params}"
         return self.client.get(url)
 
     def setUp(self):
@@ -35,9 +37,15 @@ class BadWordCategoriesListTestCase(ExtendedAPITestCase):
         response = self._request()
         all_items = BadWordCategory.objects.all()
         self.assertEqual(set(all_items.values_list("id", flat=True)),
-                         set([item["id"] for item in response.data["categories"]]))
+                         set([item["id"] for item in response.data]))
         self.assertEqual(set(all_items.values_list("name", flat=True)),
-                         set([item["name"] for item in response.data["categories"]]))
+                         set([item["name"] for item in response.data]))
+        scores_response = self._request(query_params="scoring_options=True")
+        self.assertEqual(set(all_items.values_list("id", flat=True)),
+                         set([item["id"] for item in scores_response.data["categories"]]))
+        self.assertEqual(set(all_items.values_list("name", flat=True)),
+                         set([item["name"] for item in scores_response.data["categories"]]))
+
 
     def test_list_non_admin_success_empty(self):
         self.create_test_user()
