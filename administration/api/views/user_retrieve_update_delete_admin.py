@@ -5,12 +5,12 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-
 from administration.api.serializers import UserSerializer
 from administration.api.serializers import UserUpdateSerializer
+from userprofile.api.views.user_finalize_response import UserFinalizeResponse
 
 
-class UserRetrieveUpdateDeleteAdminApiView(RetrieveUpdateDestroyAPIView):
+class UserRetrieveUpdateDeleteAdminApiView(UserFinalizeResponse, RetrieveUpdateDestroyAPIView):
     """
     Admin user delete endpoint
     """

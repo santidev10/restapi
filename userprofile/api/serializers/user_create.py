@@ -18,6 +18,7 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import get_default_accesses
 from utils.lang import get_request_prefix
+from userprofile.models import UserDeviceToken
 
 
 class UserCreateSerializer(ModelSerializer):
@@ -86,13 +87,14 @@ class UserCreateSerializer(ModelSerializer):
         # new default access implementation
         for group_name in get_default_accesses():
             user.add_custom_user_group(group_name)
-
-        # set token
-        Token.objects.get_or_create(user=user)
         # update last login
         update_last_login(None, user)
-        # send email to admin
+        # set token
         request = self.context.get("request")
+        if not request.auth:
+            device_token = UserDeviceToken.objects.create(user=user)
+            request.auth = device_token
+            # send email to admin
         host = request.get_host()
         prefix = get_request_prefix(request)
         email_data = {

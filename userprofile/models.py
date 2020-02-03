@@ -1,7 +1,9 @@
 """
 Userprofile models module
 """
+import binascii
 import logging
+import os
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -12,6 +14,8 @@ from django.core import validators
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
+from rest_framework.authtoken.models import Token
+from uuid import uuid4
 
 from administration.notifications import send_html_email
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
@@ -192,13 +196,6 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         send_html_email(subject, self.email, text_header, text_content)
 
     @property
-    def token(self):
-        """
-        User auth token
-        """
-        return self.auth_token.key
-
-    @property
     def access(self):
         accesses = list(self.groups.values('name'))
         if self.is_staff:
@@ -217,3 +214,27 @@ class UserChannel(Timestampable):
 
     class Meta:
         unique_together = ("channel_id", "user")
+
+
+class UserDeviceToken(models.Model):
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name="tokens")
+    key = models.CharField(max_length=45, unique=True)
+    device_id = models.UUIDField(default=uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def generate_key(is_temp=False):
+        key = binascii.hexlify(os.urandom(20)).decode()
+        if is_temp is True:
+            key = f"temp_{key}"
+        return key
+
+    def update_key(self):
+        self.key = self.generate_key()
+        self.created_at = timezone.now()
+        self.save()
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = self.generate_key()
+        return super().save(*args, **kwargs)
