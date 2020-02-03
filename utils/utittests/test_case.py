@@ -3,9 +3,9 @@ from functools import wraps
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
+from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
 from utils.utittests.patch_user_settings import patch_user_settings
 
@@ -49,10 +49,10 @@ def with_authorized(create_user_fn):
     def wrapper(test_case_instance, auth=True, **kwargs):
         user = create_user_fn(test_case_instance, **kwargs)
         if auth:
-            Token.objects.get_or_create(user=user)
+            device_token = UserDeviceToken.objects.create(user=user)
             test_case_instance.request_user = user
             test_case_instance.client.credentials(
-                HTTP_AUTHORIZATION='Token {}'.format(user.token)
+                HTTP_AUTHORIZATION='Token {}'.format(device_token.key)
             )
         return user
 
