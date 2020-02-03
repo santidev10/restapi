@@ -1,3 +1,4 @@
+from distutils.util import strtobool
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.generics import ListCreateAPIView
@@ -15,10 +16,21 @@ class BadWordCategoryListApiView(ListCreateAPIView):
     search_fields = ("name", "=id",)
 
     def list(self, request, *args, **kwargs):
+        data = {}
+        scoring_options = strtobool(request.query_params["scoring_options"]) \
+            if "scoring_options" in request.query_params else False
         if request.user.is_staff:
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data
+            if scoring_options:
+                data["categories"] = serializer.data
+                data["scoring_options"] = {
+                    1: "Low Risk",
+                    2: "Medium Risk",
+                    4: "High Risk"
+                }
+            else:
+                data = serializer.data
         else:
             data = []
         return Response(data)
