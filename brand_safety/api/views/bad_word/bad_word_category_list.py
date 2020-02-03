@@ -19,12 +19,15 @@ class BadWordCategoryListApiView(ListCreateAPIView):
         if request.user.is_staff:
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
-            data["categories"] = serializer.data
-            data["scoring_options"] = {
-                1: "Low Risk",
-                2: "Medium Risk",
-                4: "High Risk"
-            }
+            if request.query_params["scoring_options"]:
+                data["categories"] = serializer.data
+                data["scoring_options"] = {
+                    1: "Low Risk",
+                    2: "Medium Risk",
+                    4: "High Risk"
+                }
+            else:
+                data = serializer.data
         else:
-            pass
+            data = []
         return Response(data)
