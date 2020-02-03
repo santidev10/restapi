@@ -184,7 +184,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
 
         response = self.client.post(
             self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
-            content_type="application/json", HTTP_ORIGIN="https://apex.viewiq.com"
+            content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
 

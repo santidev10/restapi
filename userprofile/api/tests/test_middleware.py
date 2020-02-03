@@ -33,7 +33,7 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
 
         response = self.client.get(self._url,
                                    content_type="application/json",
-                                   HTTP_ORIGIN="https://apex.viewiq.com")
+                                   HTTP_ORIGIN="http://localhost:8000")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
@@ -45,7 +45,7 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
 
         response = self.client.get(self._url,
                                    content_type="application/json",
-                                   HTTP_REFERER="https://apex.viewiq.com")
+                                   HTTP_ORIGIN="http://localhost:8000")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 
