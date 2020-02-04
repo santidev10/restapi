@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from userprofile.api.serializers import UserSerializer
 from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
+from userprofile.models import UserDeviceToken
 
 LOGIN_REQUEST_SCHEMA = openapi.Schema(
     title="Login request",
@@ -58,11 +59,12 @@ class UserAuthApiView(APIView):
 
         # If auth_token, check if valid token before any operations
         if auth_token:
-            user, token = self._validate_get_user_token(auth_token)
+            device_token = self._validate_user_device_token(auth_token)
+            user = device_token.user
             client = boto3.client("cognito-idp") if is_temp_auth else None
             # handle user auth with full access auth_token
             if not is_temp_auth:
-                response = self.handle_post_login(user, False)
+                response = self.handle_post_login(user, False, device_token)
 
             # handle create auth challenge with temp auth_token and mfa type
             elif is_temp_auth and mfa_type and not username and not password:
@@ -70,7 +72,7 @@ class UserAuthApiView(APIView):
 
             # handle submitting / verifying mfa challenge
             elif auth_token and answer and session and is_temp_auth:
-                response = self.mfa_submit_challenge(client, user, data)
+                response = self.mfa_submit_challenge(client, user, data, device_token)
 
             else:
                 response = self._get_invalid_response()
@@ -82,8 +84,8 @@ class UserAuthApiView(APIView):
         # Google token
         elif token and not auth_token:
             user = self.get_google_user(token)
-            self.set_auth_token(user)
-            response = self.handle_post_login(user, True)
+            device_auth_token = self.create_device_auth_token(user)
+            response = self.handle_post_login(user, True, device_auth_token)
 
         # Login data sent by client invalid
         else:
@@ -189,7 +191,7 @@ class UserAuthApiView(APIView):
                 status_code = HTTP_200_OK
         return Response(data=res, status=status_code)
 
-    def mfa_submit_challenge(self, client, user, data):
+    def mfa_submit_challenge(self, client, user, data, device_auth_token):
         """
         Submit mfa code to Cognito and parse results
             If successful, grant client auth_token to use for subsequent requests
@@ -197,6 +199,7 @@ class UserAuthApiView(APIView):
         :param client: Boto3 object
         :param user: UserProfile
         :param data: dict
+        :param device_auth_token:
         :return:
         """
         self.mfa_validate_data(data)
@@ -214,7 +217,7 @@ class UserAuthApiView(APIView):
         except ParamValidationError as err:
             raise LoginException(err.kwargs["report"])
         except ClientError as err:
-            Token.objects.filter(user=user).delete()
+            UserDeviceToken.objects.filter(user=user, key=data["auth_token"]).delete()
             # Most errs will have code NotAuthorizedMessage
             if err.response["Error"]["Message"] != "Incorrect username or password.":
                 # Strip message since not all messages returned end with a period
@@ -225,9 +228,9 @@ class UserAuthApiView(APIView):
             raise LoginException(message)
         else:
             if result.get("AuthenticationResult"):
-                # Replace temp auth_token for mfa process
-                self.set_auth_token(user)
-                response = self.handle_post_login(user, True)
+                # Update temp key for mfa process
+                device_auth_token.update_key()
+                response = self.handle_post_login(user, True, device_auth_token)
             else:
                 res = {
                     "session": result["Session"],
@@ -275,18 +278,20 @@ class UserAuthApiView(APIView):
             formatted = f"**(***)***-{user.phone_number[-4:]}"
             response["phone_number"] = formatted
 
-        key = self.set_auth_token(user, temp=True)
-        response["auth_token"] = key
+        device_token = self.create_device_auth_token(user, is_temp=True)
+        response["auth_token"] = device_token.key
         return Response(data=response)
 
-    def handle_post_login(self, user, update_date_of_last_login):
+    def handle_post_login(self, user, update_date_of_last_login, device_auth_token=None):
         """
         Post login validation
         :param user:
         :param update_date_of_last_login: bool
+        :param device_auth_token: UserDeviceToken
         :return:
         """
         request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
+
         if is_apex_user(user.email) and not is_correct_apex_domain(request_origin):
             return Response(
                 data={
@@ -300,6 +305,11 @@ class UserAuthApiView(APIView):
             update_last_login(None, user)
 
         response_data = self.serializer_class(user).data
+        if device_auth_token:
+            response_data.update({
+                "token": device_auth_token.key,
+                "device_id": device_auth_token.device_id
+            })
 
         custom_auth_flags = settings.CUSTOM_AUTH_FLAGS.get(user.email.lower())
         if custom_auth_flags:
@@ -307,48 +317,36 @@ class UserAuthApiView(APIView):
                 response_data[name] = value
         return Response(response_data)
 
-    def _validate_get_user_token(self, key):
+    def _validate_user_device_token(self, key):
         """
-        Retrieve user and token with provided auth_token key
+        Retrieve user and device token with provided auth_token key
         Also validates if token is valid if was created within expire threshold
         :param key: str
         :return:
         """
         try:
-            token = Token.objects.get(key=key)
+            device_token = UserDeviceToken.objects.get(key=key)
             threshold = timezone.now() - timedelta(days=settings.AUTH_TOKEN_EXPIRES)
-            if token.created < threshold:
+            if device_token.created_at < threshold:
                 raise ValueError
-        except (Token.DoesNotExist, ValueError):
+        except (UserDeviceToken.DoesNotExist, ValueError):
             raise LoginException(f"Invalid token. Please log in again.")
-        return token.user, token
+        return device_token
 
     def _get_invalid_response(self):
         response = Response(data="Unable to authenticate user. Please try logging in again.",
                             status=HTTP_400_BAD_REQUEST)
         return response
-    
+
     @staticmethod
-    def set_auth_token(user, temp=False):
+    def create_device_auth_token(user, is_temp=False):
         """
         Set auth_token and reset created timestamp
         :return:
         """
-        params = {
-            "created": timezone.now()
-        }
-        token = Token.objects.filter(user=user)
-        if token.exists():
-            token = token[0]
-        else:
-            token = Token.objects.create(user=user)
-        key = token.generate_key()
-        if temp is True:
-            key = f"temp_{key}"[:40]
-        params["key"] = key
-        Token.objects.filter(user=user).update(**params)
-        user.refresh_from_db()
-        return key
+        key = UserDeviceToken.generate_key(is_temp=is_temp)
+        device_token = UserDeviceToken.objects.create(user=user, key=key)
+        return device_token
 
 
 class LoginException(ValidationError):

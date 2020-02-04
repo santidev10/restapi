@@ -33,37 +33,41 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             probability=100,
             end__gte=self.date_end,
         )
+        messages = dict()
 
         for opp in opportunities:
-            risky_flights = self._get_risky_flights(opp)
-            self._send_for_flights(opp, risky_flights, self.date_end)
+            if not opp.ad_ops_manager:
+                continue
 
-    def _send_for_flights(self, opportunity, flights_with_pacing, date_end):
-        if len(flights_with_pacing) == 0:
+            ad_ops_manager = (opp.ad_ops_manager.name, opp.ad_ops_manager.email,)
+            risky_flights = self._get_risky_flights(opp)
+            messages[ad_ops_manager] = messages.get(ad_ops_manager, []) + \
+                                       self.get_flight_descriptions(risky_flights, self.date_end)
+
+        for ad_ops_manager, _messages in messages.items():
+            self._send_for_flights(ad_ops_manager, _messages)
+
+    def _send_for_flights(self, ad_ops_manager, messages):
+        if len(messages) == 0:
             return
 
+        name, email = ad_ops_manager
+
         msg = EmailMultiAlternatives(
-            self._get_subject(opportunity),
-            self._build_body(opportunity, flights_with_pacing, date_end),
+            self._get_subject(name),
+            self._build_body(name, messages),
             from_email=settings.EXPORTS_EMAIL_ADDRESS,
-            to=self._get_to(opportunity),
-            cc=self._get_cc(opportunity),
+            to=self.get_to([email]),
+            cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
             bcc=self.get_bcc(),
             headers={'X-Priority': 2},
             reply_to="",
         )
 
-        try:
-            msg.send(fail_silently=False)
-        except boto.ses.exceptions.SESIllegalAddressError:
-            logger.error("SESIllegalAddressError during sending daily campaign report: email - %s",
-                         self._get_to(opportunity))
+        msg.send(fail_silently=False)
 
-    def _get_subject(self, opportunity):
-        return "FLIGHT {problem} PACING for {opportunity}".format(
-            opportunity=opportunity.name,
-            problem=self._problem_str.upper()
-        )
+    def _get_subject(self, ad_ops_manager_name):
+        return f"{ad_ops_manager_name} Opportunities {self._problem_str.upper()} Pacing Report"
 
     def _get_risky_flights(self, opportunity):
         pacing_report = PacingReport()
@@ -86,28 +90,10 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         )
         return list(attention_flights)
 
-    def _get_to(self, opportunity):
-        to_recipients = []
-        if opportunity.ad_ops_manager.email:
-            to_recipients.append(opportunity.ad_ops_manager.email)
-        return self.get_to(to_recipients)
+    def _build_body(self, ad_ops_manager_name, messages):
 
-    def _get_cc(self, opportunity):
-        am = opportunity.account_manager
-        cc = [am.email] + settings.CF_AD_OPS_DIRECTORS \
-            if am else settings.CF_AD_OPS_DIRECTORS
-        return self.get_cc(cc)
-
-    def _build_body(self, opportunity, flights_with_pacing, date_end):
-        flight_descriptions = [
-            self._flight_description(item["flight"], item["pacing"], date_end)
-            for item in flights_with_pacing
-        ]
-        body_header = "Hi {ms_campaign_manager},".format(
-            ms_campaign_manager=opportunity.ad_ops_manager.name
-            if opportunity.ad_ops_manager else ""
-        )
-        main_body = "\n".join(flight_descriptions) \
+        body_header = f"Hi {ad_ops_manager_name},"
+        main_body = "\n".join(messages) \
                     + "\nPlease check and adjust IMMEDIATELY."
         return "\n\n".join([
             body_header,
@@ -115,6 +101,12 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             "Best,",
             "Channel Factory ViewIQ Team"
         ])
+
+    def get_flight_descriptions(self, flights_with_pacing, date_end):
+        return [
+            self._flight_description(item["flight"], item["pacing"], date_end)
+            for item in flights_with_pacing
+        ]
 
     def _flight_description(self, flight, pacing, date_end):
         return "The flight {flight_name} is {problem} pacing" \

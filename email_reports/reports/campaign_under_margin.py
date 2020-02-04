@@ -34,7 +34,9 @@ class CampaignUnderMargin(BaseEmailReport):
             probability=100,
             end__gte=today,  # If a campaign is ending within 7 days
             end__lte=today + timedelta(days=self.days_to_end - 1),
-        ).values("id", "name", "ad_ops_manager__email")
+        ).values("id", "name", "ad_ops_manager__email", "ad_ops_manager__name")
+
+        messages = dict()
 
         pacing_report = PacingReport()
         for opp in opportunities:
@@ -45,25 +47,28 @@ class CampaignUnderMargin(BaseEmailReport):
                 flights_data, plan_stats["cost"], plan_stats["plan_cost"])
 
             if margin is not None and margin < self.margin_bound:
-                to_recipients = []
-                if opp["ad_ops_manager__email"]:
-                    to_recipients.append(opp["ad_ops_manager__email"])
-                body = "{} is under margin at {:.2f}%. " \
-                       "Please adjust IMMEDIATELY.".format(opp["name"],
-                                                           margin * 100, )
-                msg = EmailMultiAlternatives(
-                    "URGENT CAMPAIGN UNDER MARGIN: {}".format(opp["name"]),
-                    body,
-                    from_email=settings.EXPORTS_EMAIL_ADDRESS,
-                    to=self.get_to(to_recipients),
-                    cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
-                    bcc=self.get_bcc(),
-                    headers={'X-Priority': 2},
-                    reply_to="",
-                )
+                ad_ops_manager = (opp['ad_ops_manager__name'], opp["ad_ops_manager__email"])
 
-                try:
-                    msg.send(fail_silently=False)
-                except boto.ses.exceptions.SESIllegalAddressError:
-                    logger.error("SESIllegalAddressError during sending campaign under margin report: email - %s",
-                                 self.get_to(to_recipients))
+                # body = "{} is under margin at {:.2f}%. " \
+                #        "Please adjust IMMEDIATELY.".format(opp["name"],
+                #                                            margin * 100, )
+
+                messages[ad_ops_manager] = messages.get(ad_ops_manager, "") + \
+                                     "{} is under margin at {:.2f}%.\n".format(opp["name"], margin * 100)
+
+
+        for ad_ops_manager, message in messages.items():
+            name, to_email = ad_ops_manager
+
+            msg = EmailMultiAlternatives(
+                f"{name} Opportunities Under Margin Report",
+                message + "Please adjust IMMEDIATELY.",
+                from_email=settings.EXPORTS_EMAIL_ADDRESS,
+                to=self.get_to([to_email]),
+                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                bcc=self.get_bcc(),
+                headers={'X-Priority': 2},
+                reply_to="",
+            )
+
+            msg.send(fail_silently=False)

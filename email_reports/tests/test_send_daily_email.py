@@ -12,6 +12,7 @@ from lxml import etree
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import CampaignStatus
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightStatistic
 from aw_reporting.models import OpPlacement
@@ -654,8 +655,11 @@ class SendDailyEmailsTestCase(APITestCase):
                                        ordered_units=ordered_views)
 
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+
         campaign = Campaign.objects.create(pk="1", name="",
-                                           salesforce_placement=placement)
+                                           salesforce_placement=placement,
+                                           status=CampaignStatus.ELIGIBLE.value)
+
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -706,7 +710,8 @@ class SendDailyEmailsTestCase(APITestCase):
 
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
         campaign = Campaign.objects.create(pk="1", name="",
-                                           salesforce_placement=placement)
+                                           salesforce_placement=placement,
+                                           status=CampaignStatus.ELIGIBLE.value)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),

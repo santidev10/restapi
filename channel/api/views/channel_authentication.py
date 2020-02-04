@@ -76,7 +76,7 @@ class ChannelAuthenticationApiView(APIView):
                                     access_token_expire_at=credentials.token_expiry,
                                     token_revocation=None)
 
-        user = self.get_or_create_user(credentials.access_token)
+        user, device_auth_token = self.get_or_create_user(credentials.access_token)
 
         if not user:
             return Response(status=HTTP_412_PRECONDITION_FAILED)
@@ -88,7 +88,7 @@ class ChannelAuthenticationApiView(APIView):
         self.send_update_channel_tasks(channel_id)
         flush_cache()
         return Response(status=HTTP_202_ACCEPTED,
-                        data={"auth_token": user.auth_token.key, "is_active": user.is_active})
+                        data={"auth_token": device_auth_token.key, "is_active": user.is_active})
 
     def create_auth_channel(self, auth_channel):
         manager = ChannelManager(Sections.AUTH)
@@ -142,8 +142,8 @@ class ChannelAuthenticationApiView(APIView):
         user = self.request.user
         if user and user.is_authenticated:
             self.set_user_avatar(user, access_token)
-            UserAuthApiView.set_auth_token(user)
-            return user
+            device_auth_token = UserAuthApiView.create_device_auth_token(user)
+            return user, device_auth_token
 
         # Starting user create procedure
         token_info_url = GOOGLE_API_TOKENINFO_URL_TEMPLATE.format(access_token)
@@ -182,9 +182,8 @@ class ChannelAuthenticationApiView(APIView):
             # Get or create auth token instance for user
 
             send_welcome_email(user, self.request)
-
-        UserAuthApiView.set_auth_token(user)
-        return user
+        device_auth_token = UserAuthApiView.create_device_auth_token(user)
+        return user, device_auth_token
 
     def obtain_extra_user_data(self, token, user_id):
         """

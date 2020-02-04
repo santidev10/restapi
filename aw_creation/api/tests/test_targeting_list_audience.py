@@ -2,13 +2,13 @@ from urllib.parse import urlencode
 
 from django.urls import reverse
 from django.utils import timezone
-from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_401_UNAUTHORIZED
 
 from aw_creation.models import *
 from aw_reporting.models import Audience
 from utils.utittests.test_case import ExtendedAPITestCase
+from userprofile.models import UserDeviceToken
 
 
 class InterestTargetingListTestCase(ExtendedAPITestCase):
@@ -52,7 +52,7 @@ class InterestTargetingListTestCase(ExtendedAPITestCase):
         self.assertIn(response.status_code,
                       (HTTP_403_FORBIDDEN, HTTP_401_UNAUTHORIZED))
 
-        token = Token.objects.create(user=user)
+        token = UserDeviceToken.objects.create(user=user)
         url = "{}?{}".format(
             str(url),
             urlencode({'auth_token': token.key}),
