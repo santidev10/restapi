@@ -25,6 +25,11 @@ class Command(BaseCommand):
             help="Set to True if you want to delete all tags in the database and reimport."
         )
 
+        parser.add_argument(
+            "--overwrite",
+            help="Default value is False. Set to True if you want to overwrite duplicate tags when importing."
+        )
+
     def handle(self, *args, **kwargs):
         file_name = kwargs["file_name"]
         invalid_rows_file_name = "invalid_new_tags.csv"
@@ -34,6 +39,14 @@ class Command(BaseCommand):
                 BadWord.objects.all().delete()
         except Exception:
             pass
+        try:
+            if kwargs["overwrite"]:
+                overwrite = True
+            else:
+                overwrite = False
+        except Exception:
+            overwrite = False
+
         counter = 0
         with open(file_name, "r") as f:
             reader = csv.reader(f)
@@ -61,6 +74,17 @@ class Command(BaseCommand):
                         reason = ["One of word, category, language, or negative_score not found."]
                         invalid_rows.append(row + reason)
                         continue
+
+                    if not overwrite:
+                        try:
+                            bad_word = BadWord.objects.get(name=word, language=language)
+                            reason = [f"'overwrite' parameter is set to False, but the word '{word}' with language "
+                                      f"'{language}' already exists in the database."]
+                            invalid_rows.append(row + reason)
+                            continue
+                        except Exception as e:
+                            pass
+
                     try:
                         bad_word = BadWord.all_objects.get(name=word, language=language)
                         bad_word.deleted_at = None

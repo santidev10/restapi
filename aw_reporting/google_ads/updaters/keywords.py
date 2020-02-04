@@ -58,7 +58,7 @@ class KeywordUpdater(UpdateMixin):
             stats = {
                 "keyword": keyword,
                 "date": row_obj.Date,
-                "ad_group_id": row_obj.AdGroupId,
+                "ad_group_id": int(row_obj.AdGroupId),
                 "video_views_25_quartile": quart_views(row_obj, 25),
                 "video_views_50_quartile": quart_views(row_obj, 50),
                 "video_views_75_quartile": quart_views(row_obj, 75),

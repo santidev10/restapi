@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from django.core import mail
 from django.utils import timezone
-from rest_framework.authtoken.models import Token
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
@@ -11,6 +10,7 @@ from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserProfile
+from userprofile.models import UserDeviceToken
 from utils.utittests.celery import mock_send_task
 from utils.utittests.response import MockResponse
 from utils.utittests.reverse import reverse
@@ -134,7 +134,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
             "image": {"isDefault": False},
         }
         user = UserProfile.objects.create(email=user_details["email"])
-        Token.objects.create(user=user, key="temp_")
         user.refresh_from_db()
         before = timezone.now()
 
@@ -153,6 +152,6 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         data = response.data
         self.assertIn('auth_token', data)
         self.assertFalse(data["auth_token"].startswith("temp_"))
-        self.assertFalse(Token.objects.get(user=user).key.startswith("temp_"))
-        self.assertFalse(user.auth_token.key.startswith("temp_"))
-        self.assertTrue(user.auth_token.created > before)
+        device_auth_token = UserDeviceToken.objects.get(user=user, key=data["auth_token"])
+        self.assertFalse(device_auth_token.key.startswith("temp_"))
+        self.assertTrue(device_auth_token.created_at > before)
