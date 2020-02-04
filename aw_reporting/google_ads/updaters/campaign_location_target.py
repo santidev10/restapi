@@ -35,9 +35,11 @@ class CampaignLocationTargetUpdater(UpdateMixin):
 
     def _generate_stat_instances(self, model, report, campaign_ids, saved_targeting):
         for row_obj in report:
-            if int(row_obj.CampaignId) not in campaign_ids or not row_obj.Id.isnumeric():
+            campaign_id = int(row_obj.CampaignId)
+            if campaign_id not in campaign_ids or not row_obj.Id.isnumeric():
                 continue
-            uid = (row_obj.CampaignId, int(row_obj.Id))
+            item_id = int(row_obj.Id)
+            uid = (campaign_id, item_id)
             stats = dict(
                 is_negative=row_obj.IsNegative == "true",
                 **get_base_stats(row_obj)
@@ -45,7 +47,7 @@ class CampaignLocationTargetUpdater(UpdateMixin):
             if len(row_obj.Id) > 7:  # this is a custom location
                 continue
             if uid in saved_targeting:
-                model.objects.filter(campaign_id=row_obj.CampaignId, geo_target_id=row_obj.Id).update(**stats)
+                model.objects.filter(campaign_id=campaign_id, geo_target_id=item_id).update(**stats)
                 continue
             else:
-                yield model(campaign_id=row_obj.CampaignId, geo_target_id=row_obj.Id, **stats)
+                yield model(campaign_id=campaign_id, geo_target_id=item_id, **stats)

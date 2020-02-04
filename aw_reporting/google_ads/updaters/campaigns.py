@@ -85,7 +85,7 @@ class CampaignUpdater(UpdateMixin):
         click_type_data = format_click_types_report(click_type_report, "CampaignId", "CampaignId")
         insert_stat = []
         for row_obj in report:
-            campaign_id = row_obj.CampaignId
+            campaign_id = int(row_obj.CampaignId)
             try:
                 end_date = datetime.strptime(row_obj.EndDate, constants.GET_DF)
             except ValueError:
@@ -116,7 +116,7 @@ class CampaignUpdater(UpdateMixin):
 
             statistic_data = {
                 "date": row_obj.Date,
-                "campaign_id": row_obj.CampaignId,
+                "campaign_id": campaign_id,
                 "device_id": get_device_id_by_name(row_obj.Device),
 
                 "video_views_25_quartile": quart_views(row_obj, 25),
@@ -181,7 +181,7 @@ class CampaignUpdater(UpdateMixin):
         create_campaign = []
         create_stat = []
         for row in report:
-            campaign_id = row.CampaignId
+            campaign_id = int(row.CampaignId)
             if campaign_id not in campaign_ids:
                 campaign_ids.append(campaign_id)
                 try:
@@ -207,7 +207,7 @@ class CampaignUpdater(UpdateMixin):
                 CampaignHourlyStatistic(
                     date=row.Date,
                     hour=row.HourOfDay,
-                    campaign_id=row.CampaignId,
+                    campaign_id=campaign_id,
                     video_views=row.VideoViews,
                     impressions=row.Impressions,
                     clicks=row.Clicks,
