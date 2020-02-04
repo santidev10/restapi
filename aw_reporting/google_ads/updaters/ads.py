@@ -62,7 +62,7 @@ class AdUpdater(UpdateMixin):
             create_stat = []
             updated_ads = []
             for row_obj in report:
-                ad_id = row_obj.Id
+                ad_id = int(row_obj.Id)
                 # update ads
                 if ad_id not in updated_ads:
                     updated_ads.append(ad_id)
@@ -75,7 +75,7 @@ class AdUpdater(UpdateMixin):
                         "is_disapproved": self.is_ad_disapproved(row_obj)
                     }
                     kwargs = {
-                        "id": ad_id, "ad_group_id": row_obj.AdGroupId
+                        "id": ad_id, "ad_group_id": int(row_obj.AdGroupId)
                     }
 
                     if ad_id in ad_ids:
