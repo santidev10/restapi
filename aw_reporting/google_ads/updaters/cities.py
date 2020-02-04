@@ -93,14 +93,14 @@ class CityUpdater(UpdateMixin):
         for row_obj in filter(
                 lambda i: i.CityCriteriaId.isnumeric() and int(i.CityCriteriaId) in top_cities, report):
             city_id = int(row_obj.CityCriteriaId)
-            date = latest_dates.get((city_id, row_obj.CampaignId))
+            date = latest_dates.get((city_id, int(row_obj.CampaignId)))
             row_date = datetime.strptime(row_obj.Date, GET_DF).date()
             if date and row_date <= date:
                 continue
             stats = {
                 "city_id": city_id,
                 "date": row_date,
-                "ad_group_id": row_obj.AdGroupId,
+                "ad_group_id": int(row_obj.AdGroupId),
             }
             stats.update(get_base_stats(row_obj))
             yield model(**stats)
@@ -112,7 +112,7 @@ class CityUpdater(UpdateMixin):
         summary_cities_costs = defaultdict(int)
         report_by_campaign = defaultdict(list)
         for r in report:
-            report_by_campaign[r.CampaignId].append(r)
+            report_by_campaign[int(r.CampaignId)].append(r)
             summary_cities_costs[r.CityCriteriaId] += int(r.Cost)
 
         # top for every campaign
