@@ -60,7 +60,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
             account_id = ac_info['id']
             ac_info['visible'] = account_id in visible_ids
 
-            hidden_types = types_settings.get(account_id, [])
+            hidden_types = types_settings.get(str(account_id), [])
             ac_info['campaign_types_visibility'] = [
                 dict(
                     id=ct,
@@ -95,7 +95,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
 
             for account in accounts:
                 # account visibility
-                uid = account['id']
+                uid = int(account['id'])
                 if account['visible']:
                     visible_accounts |= {uid}
                 else:
@@ -103,7 +103,7 @@ class VisibleAccountsApiView(APIView, GetUserMixin):
 
                 # campaign visibility
                 if 'campaign_types_visibility' in account:
-                    hidden_types[uid] = [
+                    hidden_types[str(uid)] = [
                         k for k, v in
                         account['campaign_types_visibility'].items()
                         if not v

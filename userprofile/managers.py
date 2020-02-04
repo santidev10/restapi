@@ -31,7 +31,7 @@ class UserRelatedManagerMixin:
 
         return global_visibility & (not visible_all_accounts)
 
-    def __filter_by_account_ids(self, queryset, account_ids: List[str]):
+    def __filter_by_account_ids(self, queryset, account_ids: List[int]):
         if self._account_id_ref is None:
             raise NotImplementedError("_account_id_ref should be defined")
         return queryset \
