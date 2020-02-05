@@ -23,6 +23,15 @@ from userprofile.utils import is_apex_user
 from userprofile.utils import is_correct_apex_domain
 from userprofile.models import UserDeviceToken
 
+LOGIN_REQUEST_SCHEMA = openapi.Schema(
+    title="Login request",
+    type=openapi.TYPE_OBJECT,
+    properties=dict(
+        username=openapi.Schema(type=openapi.TYPE_STRING),
+        password=openapi.Schema(type=openapi.TYPE_STRING),
+    ),
+)
+
 
 class UserAuthApiView(APIView):
     """
@@ -31,6 +40,7 @@ class UserAuthApiView(APIView):
     permission_classes = tuple()
     serializer_class = UserSerializer
 
+    @swagger_auto_schema(request_body=LOGIN_REQUEST_SCHEMA)
     def post(self, request):
         """
         Login user
