@@ -59,7 +59,7 @@ class VideoUpdater(UpdateMixin):
                         )
                     )
 
-                ad_group_id = row_obj.AdGroupId
+                ad_group_id = int(row_obj.AdGroupId)
                 if ad_group_id not in ad_group_ids:
                     continue
 
