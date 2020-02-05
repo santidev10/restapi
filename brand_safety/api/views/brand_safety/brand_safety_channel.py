@@ -34,7 +34,7 @@ class BrandSafetyChannelAPIView(APIView):
 
     def get(self, request, **kwargs):
         """
-        View to retrieve individual channel brand safety data
+        Retrieve individual channel and underlying video brand safety datas
         """
         channel_id = kwargs["pk"]
         query_params = request.query_params
@@ -113,6 +113,11 @@ class BrandSafetyChannelAPIView(APIView):
         return Response(status=HTTP_200_OK, data=response)
 
     def __get_transcript(self, captions):
+        """
+        Parse and format all captions within section
+        :param captions: Elasticsearch document captions section
+        :return: str
+        """
         if captions and captions.items:
             for caption in captions.items:
                 text = caption.text
@@ -121,6 +126,11 @@ class BrandSafetyChannelAPIView(APIView):
                     return transcript
 
     def _get_channel_video_data(self, channel_id):
+        """
+        Retrieve all video data for channel
+        :param channel_id: str
+        :return: list
+        """
         fields_to_load = ("main.id", "general_data.title", "general_data.thumbnail_image_url",
                           "general_data.youtube_published_at", "stats.views", "stats.engage_rate",
                           "captions", "brand_safety.overall_score")

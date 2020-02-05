@@ -63,6 +63,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         return mock_client
 
     def test_login_email_password_no_phone_not_verified(self):
+        """
+        Test username / password login and empty phone_number in response for missing phone numbers
+        """
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -81,6 +84,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertIsNone(response.data.get("phone_number"))
 
     def test_login_email_password_has_phone_not_verified(self):
+        """
+        Test username / password login and empty phone_number in response for unverified phone numbers
+        """
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -100,6 +106,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertIsNone(response.data.get("phone_number"))
 
     def test_login_email_password_has_phone_verified(self):
+        """
+        Test username / password login with phone_number in response for verified phone numbers
+        """
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
@@ -120,6 +129,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["phone_number"], "**(***)***-" + user.phone_number[-4:])
 
     def test_login_creates_temp_token(self):
+        """
+        Test username / password login with temp auth_token in response
+        """
         user, token = self._create_user(with_token=False)
         self.assertFalse(UserDeviceToken.objects.filter(user=user).exists())
         with patch("userprofile.api.views.user_auth.boto3.client"):
@@ -134,6 +146,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertTrue(created[0].key.startswith("temp_"))
 
     def test_login_token_temp(self):
+        """
+        Test username / password login removes existing auth_token
+        """
         user, token = self._create_user(temp=False)
         self.assertFalse(token.key.startswith("temp_"))
         with patch("userprofile.api.views.user_auth.boto3.client"):
@@ -147,6 +162,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertTrue(updated.key.startswith("temp_"))
 
     def test_invalid_token_auth(self):
+        """
+        Test invalid auth_token login
+        """
         self.create_test_user()
         with patch("userprofile.api.views.user_auth.boto3.client"):
             response = self.client.post(
@@ -156,6 +174,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_mfa_error_handling_username_exists(self):
+        """
+        Test handling creating duplicate Cognito user
+        """
         user, token = self._create_user()
         mock_client = MagicMock()
         mock_res = {
@@ -179,6 +200,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
     def test_mfa_error_handling_update_user(self):
+        """
+        Test handling trying creating then updating user
+        """
         user, token = self._create_user()
         mock_client = MagicMock()
         mock_exception_1 = {
@@ -203,6 +227,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["message"], mock_exception_2["Error"]["Message"])
 
     def test_mfa_start_challenge(self):
+        """
+        Test response for first step in mfa process
+        """
         user, token = self._create_user()
         mock_res = {
             "Session": "test_session",
@@ -220,6 +247,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
     def test_mfa_text_reject_not_verified_phone_number(self):
+        """
+        Test handle text mfa with non verified phone number
+        """
         user, token = self._create_user()
         with patch("userprofile.api.views.user_auth.boto3.client"):
             response = self.client.post(
@@ -229,6 +259,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_mfa_text_success_verified_phone_number(self):
+        """
+        Test handle text mfa with verified phone number
+        """
         user, token = self._create_user()
         user.phone_number = "+19999999"
         user.phone_number_verified = True
@@ -249,6 +282,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["retries"], mock_res["ChallengeParameters"]["retries"])
 
     def test_mfa_update_verified_phone_number(self):
+        """
+        Test update phone number with verified phone number
+        """
         user, token = self._create_user()
         user.phone_number = "+19999999"
         user.phone_number_verified = True
@@ -273,6 +309,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(phone_number_call_arg["Value"], user.phone_number)
 
     def test_mfa_retries_exceeded(self):
+        """
+        Test reject after max tries exceeded
+        """
         user, token = self._create_user()
         session = "test_session"
         retries = 0
@@ -298,6 +337,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(str(response.data["message"]), "Max attempts exceeded. Please log in again.")
 
     def test_mfa_submit_challenge_failure(self):
+        """
+        Test handle incorrect mfa answer
+        """
         user, token = self._create_user()
         session = "test_session"
         retries = 4
@@ -316,6 +358,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.data["retries"], retries)
 
     def test_mfa_submit_challenge_session_invalid(self):
+        """
+        Test handle invalid session
+        """
         user, token = self._create_user()
         session = "test_session"
         retries = 4
@@ -341,6 +386,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertEqual(str(response.data["message"]), "Invalid session for the user. Please log in again.")
 
     def test_mfa_submit_challenge_success(self):
+        """
+        Test handle successful mfa login
+        """
         user, token = self._create_user()
         mock_res = {
             "AuthenticationResult": {
@@ -389,6 +437,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertTrue(updated.created_at > before)
 
     def test_google_token_resets_auth_token(self):
+        """
+        Test google oauth login resets auth_token
+        """
         user, token = self._create_user()
         self.assertTrue(token.key.startswith("temp_"))
         before = timezone.now()
@@ -429,6 +480,9 @@ class MFAAuthAPITestCase(ExtendedAPITestCase):
         self.assertTrue(updated.created_at > before)
 
     def multiple_sign_in_multiple_tokens(self):
+        """
+        Test allow multiple auth_tokens per user (multi device login)
+        """
         email = str(next(int_iterator)) + "test@test.com"
         password = "test"
         user = get_user_model().objects.create(
