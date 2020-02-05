@@ -18,7 +18,7 @@ class BadWordSerializer(ModelSerializer):
             name = str(value).strip().lower()
             if is_english(name):
                 if len(name) < 3:
-                    raise ValidationError("BadWord names with English characters must be >=3 characters long.")
+                    raise ValidationError("Keywords must be at least 3 characters long.")
             return name
         except (ValueError, TypeError):
             raise ValidationError("Unable to process name: {}".format(value))
