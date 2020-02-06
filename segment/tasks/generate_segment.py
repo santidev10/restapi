@@ -6,6 +6,10 @@ import tempfile
 
 from django.conf import settings
 
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditVideoMeta
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.utils.bulk_search import bulk_search
@@ -19,7 +23,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, create_audit_items=False):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -55,6 +59,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                     QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                     QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                 ]
+        batch_ids = []
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
                 with open(filename, mode="a", newline="") as file:
@@ -101,7 +106,10 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                         seen += 1
                         if seen >= size:
                             raise MaxItemsException
+            batch_ids.clear()
         except MaxItemsException:
+            pass
+        if batch_ids and create_audit_items is True:
             pass
 
         # Average fields
