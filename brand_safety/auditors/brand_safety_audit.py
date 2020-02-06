@@ -19,6 +19,26 @@ from es_components.query_builder import QueryBuilder
 logger = logging.getLogger(__name__)
 
 
+""" BrandSafetyAudit - Used to run brand safety audit on channel and video documents
+Main methods: process_channels, process_videos
+
+Procedure process_channels:
+    1. Query for channel documents
+    2. Transform channel document objects to dictionaries to map all values (including missing doc keys)
+    3. Retrieve channel videos documents and blacklist data, transform video documents to dictionaries
+    4. Instantiate BrandSafetyChannelAudit for each channel and run audit
+    5. Instantiate BrandSafetyVideoAudit for each video and run audit
+    6. Index results
+    
+Procedure process_videos:
+    1. Query for video documents
+    2. Transform video document objects to dictionaries to map all values (including missing doc keys)
+    3. Retrieve blacklist data
+    4. Instantiate BrandSafetyVideoAudit for each video and run audit
+    5. Index results
+"""
+
+
 class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
@@ -35,7 +55,8 @@ class BrandSafetyAudit(object):
     THREAD_BATCH_SIZE = 5
     batch_counter = 0
 
-    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags", "brand_safety.updated_at")
+    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
+                      "brand_safety.updated_at")
     VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
                     "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 

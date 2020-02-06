@@ -29,6 +29,11 @@ class SegmentListAPIViewAdapter(ListAPIView):
         return serializer
 
     def get_queryset(self):
+        """
+        Query Elasticsearch for segment preview documents and paginate result
+
+        :return: iter
+        """
         pk = self.kwargs["pk"]
         try:
             segment = self.segment_model.objects.get(id=pk)
