@@ -3,7 +3,6 @@ from datetime import datetime
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
@@ -13,9 +12,9 @@ from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
 
+from aw_reporting.models import AgeGroupConstant
+from aw_reporting.models import GenderConstant
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
-from segment.models import CustomSegment
-from userprofile.models import UserProfile
 
 
 def get_hash_name(s):
@@ -410,6 +409,12 @@ class AuditVideoMeta(models.Model):
     duration = models.CharField(max_length=30, default=None, null=True)
     age_restricted = models.NullBooleanField(default=None, db_index=True)
 
+    age_group = models.ForeignKey(AgeGroupConstant, null=True, default=None)
+    gender = models.ForeignKey(GenderConstant, null=True, default=None, )
+    country = models.ForeignKey(AuditCountry, default=None, null=True, on_delete=models.CASCADE)
+    # channel_type = models.CharField(null=True, default=None)
+    # is_monetized = models.BooleanField(null=True, default=None)
+
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
@@ -508,37 +513,55 @@ class BlacklistItem(models.Model):
         return data
 
 
-class AuditVetItem(models.Model):
-    id = models.CharField(max_length=30, unique=True)
-
+class AuditVideoVet(models.Model):
     audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
-    checked_out_by = models.ForeignKey(UserProfile, null=True, on_delete=models.SET_NULL)
+    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
+
+    checked_out_by = models.ForeignKey("userprofile.UserProfile", null=True, on_delete=models.SET_NULL)
     checked_out_at = models.DateTimeField(auto_now_add=False, null=True, default=None)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, default=None)
     vetted = models.BooleanField(default=False, db_index=True)
     approved = models.BooleanField(default=False, db_index=True)
-    category = models.ForeignKey(AuditCategory, default=None, null=True, on_delete=models.CASCADE)
-    language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
-    country = models.ForeignKey(AuditCountry, default=None, null=True, on_delete=models.CASCADE)
     suitable = models.BooleanField(default=True, db_index=True)
-    age_group = models.CharField(null=True, max_length=50)
-    gender = models.CharField(null=True, default=None, max_length=50)
-    channel_type = models.CharField(null=True, default=None)
-    is_monetized = models.BooleanField(null=True, default=None)
 
-    # def __init__(self, *args, **kwargs):
-    #     if not self.id_hash:
-    #         self.id_hash = get_hash_name(kwargs["id"])
-    #     super().__init__(*args, **kwargs)
-    #
-    # # Keep a history of how this item was vetted
-    #
-    # def save(self, *args, **kwargs):
-    #     if not self.id:
-    #         raise ValueError("id field must have a value")
-    #     if not self.id_hash:
-    #         self.id_hash = get_hash_name(kwargs["id"])
-    #     super().save(*args, **kwargs)
-    #
-    # def get(self, ):
+
+class AuditChannelVet(models.Model):
+    audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
+    channel = models.ForeignKey(AuditChannel, on_delete=models.CASCADE)
+
+    checked_out_by = models.ForeignKey("userprofile.UserProfile", null=True, on_delete=models.SET_NULL)
+    checked_out_at = models.DateTimeField(auto_now_add=False, null=True, default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(null=True, default=None)
+    vetted = models.BooleanField(default=False, db_index=True)
+    approved = models.BooleanField(default=False, db_index=True)
+    suitable = models.BooleanField(default=True, db_index=True)
+
+
+class ChannelType(models.Model):
+    ID_CHOICES = [
+        (0, "MC / Brand"),
+        (1, "Regular UGC"),
+        (2, "Premium UGC"),
+    ]
+    CHANNEL_TYPE_CHOICES = [
+        ("MC / Brand", "MC / Brand"),
+        ("Regular UGC", "Regular UGC"),
+        ("Premium UGC", "Premium UGC"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_int = {val: key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPE_CHOICES)
+
+    @staticmethod
+    def from_string(value):
+        channel_type = ChannelType.objects.get(channel_type=value)
+        return channel_type
+
+    @staticmethod
+    def from_id(value):
+        channel_type = ChannelType.objects.get(id=value)
+        return channel_type
