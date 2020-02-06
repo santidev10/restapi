@@ -142,7 +142,7 @@ DATABASES = {
         'PORT': os.getenv('TRANSCRIPTS_DB_PORT', ''),  # Set to empty string for default.
     }
 }
-DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
+DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter', 'saas.db_router.TranscriptsDBRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
