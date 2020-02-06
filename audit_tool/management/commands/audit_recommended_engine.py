@@ -80,6 +80,8 @@ class Command(BaseCommand):
                 self.related_audits = self.audit.params.get('related_audits')
                 self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
                 self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+                self.include_unknown_views = self.audit.params.get('include_unknown_views')
+                self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
                 if not self.exclusion_hit_count:
                     self.exclusion_hit_count = 1
                 else:
@@ -300,13 +302,19 @@ class Command(BaseCommand):
     def check_video_matches_minimums(self, db_video_meta):
         if self.min_views:
             if db_video_meta.views < self.min_views:
-                return False
+                if db_video_meta.views == 0 and self.include_unknown_views == True:
+                    pass
+                else:
+                    return False
         if self.min_date:
             if db_video_meta.publish_date.replace(tzinfo=None) < self.min_date:
                 return False
         if self.min_likes:
             if db_video_meta.likes < self.min_likes:
-                return False
+                if db_video_meta.likes == 0 and self.include_unknown_likes == True:
+                    pass
+                else:
+                    return False
         if self.max_dislikes:
             if db_video_meta.dislikes > self.max_dislikes:
                 return False
