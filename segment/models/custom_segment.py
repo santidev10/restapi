@@ -5,6 +5,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.db import transaction
 from django.db.models import BigIntegerField
 from django.db.models import CharField
 from django.db.models import IntegerField
@@ -17,6 +18,12 @@ from django.db.models import PROTECT
 from django.utils import timezone
 
 from audit_tool.models import AuditProcessor
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoMeta
+from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditVideoVet
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
@@ -36,6 +43,7 @@ from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from utils.models import Timestampable
+from utils.utils import chunks_generator
 from segment.models.utils.segment_exporter import SegmentExporter
 
 logger = logging.getLogger(__name__)
@@ -62,12 +70,18 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            self.audit_model = AuditVideo
+            self.audit_meta_model = AuditVideoMeta
+            self.audit_vetting_model = AuditVideoVet
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 20000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+            self.audit_model = AuditChannel
+            self.audit_meta_model = AuditChannelMeta
+            self.audit_vetting_model = AuditChannelVet
             if not self.owner or not self.owner.has_perm("userprofile.monetization_filter"):
                 self.serializer = CustomSegmentChannelExportSerializer
             else:
@@ -103,6 +117,15 @@ class CustomSegment(SegmentMixin, Timestampable):
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
+
+    @property
+    def data_type(self):
+        data_type = self.segment_id_to_type[self.segment_type]
+        return data_type
+
+    @property
+    def audit_models(self):
+        return self.audit_model, self.audit_meta_model, self.audit_vetting_model
 
     def set_es_sections(self, sections, upsert_sections):
         self.es_manager.sections = sections
@@ -179,7 +202,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         if s3_key is None:
             s3_key = self.get_s3_key()
         export_content = self.s3_exporter._get_s3_object(s3_key, get_key=False)
-        item_ids = []
         url_index = None
         for byte in export_content["Body"].iter_lines():
             row = (byte.decode("utf-8")).split(",")
@@ -187,8 +209,7 @@ class CustomSegment(SegmentMixin, Timestampable):
                 url_index = row.index("URL")
                 continue
             item_id = self.parse_url(row[url_index], self.segment_type)
-            item_ids.append(item_id)
-        return item_ids
+            yield item_id
 
     def parse_url(self, url, item_type="0"):
         item_type = str(item_type)
@@ -198,6 +219,29 @@ class CustomSegment(SegmentMixin, Timestampable):
         }
         item_id = url.split(config[item_type])[-1]
         return item_id
+
+    def get_create_audit_items(self, audit, item_ids):
+        """
+        Get or create AuditChannel / AuditVideo, AuditChannelMeta / AuditVideoMeta, AuditChannelVet, AuditVideoVet
+        :param audit:
+        :param item_id:
+        :return:
+        """
+        # audit_items = []
+        # audit_meta_items = []
+        # audit_vet_items = []
+
+        audit_items = []
+        audit_meta_items = []
+        audit_vet_items = []
+
+        for batch in chunks_generator(item_ids, size=1000):
+            with transaction.atomic():
+                for _id in batch:
+                    audit_items.append(self.audit_model.get_or_create(_id))
+                    audit_meta_items.append(self.audit_meta_model.objects.get_or_create(**{self.data_type: _id}))
+                    audit_vet_items.append(self.audit_vetting_model.objects.get_or_create(**{self.data_type: _id, "audit": audit}))
+            return audit_items, audit_meta_items, audit_vet_items
 
 
 class CustomSegmentRelated(Model):

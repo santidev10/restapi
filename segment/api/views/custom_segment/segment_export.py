@@ -4,10 +4,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
 
-
-from audit_tool.models import AuditVetItem
 from segment.models import CustomSegment
-
 
 
 class SegmentExport(APIView):
@@ -21,7 +18,7 @@ class SegmentExport(APIView):
             audit = segment.audit
             if audit is None:
                 raise ValidationError(f"Segment: {segment.title} does not have an audit.")
-            vetted_items = [item.id for item in AuditVetItem.objects.filter(audit=audit, vetted=True)]
+            vetted_items = [item.id for item in segment.audit_vetting_model.objects.filter(audit=audit, vetted=True)]
             # get elastic search items and create csv
             data = segment.es_manager.get(vetted_items)
             content_generator = segment.serializer(data, many=True).data
