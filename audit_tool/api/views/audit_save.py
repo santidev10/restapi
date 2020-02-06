@@ -39,6 +39,8 @@ class AuditSaveApiView(APIView):
         max_recommended_type = query_params["max_recommended_type"] if "max_recommended_type" in query_params else "video"
         exclusion_hit_count = query_params["exclusion_hit_count"] if "exclusion_hit_count" in query_params else 1
         inclusion_hit_count = query_params["inclusion_hit_count"] if "inclusion_hit_count" in query_params else 1
+        include_unknown_views = strtobool(query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
+        include_unknown_likes = strtobool(query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
 
         if min_date:
             if '/' not in min_date:
@@ -107,6 +109,8 @@ class AuditSaveApiView(APIView):
             },
             'exclusion_hit_count': exclusion_hit_count,
             'inclusion_hit_count': inclusion_hit_count,
+            'include_unknown_views': include_unknown_views,
+            'include_unknown_likes': include_unknown_likes,
         }
         if not audit_id:
             if source_file is None:
@@ -174,6 +178,8 @@ class AuditSaveApiView(APIView):
             audit.params['max_recommended_type'] = max_recommended_type
             audit.params['exclusion_hit_count'] = exclusion_hit_count
             audit.params['inclusion_hit_count'] = inclusion_hit_count
+            audit.params['include_unknown_views'] = include_unknown_views
+            audit.params['include_unknown_likes'] = include_unknown_likes
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
