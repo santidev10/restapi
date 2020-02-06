@@ -403,6 +403,7 @@ class AuditVideoMeta(models.Model):
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
     age_restricted = models.NullBooleanField(default=None, db_index=True)
+    made_for_kids = models.NullBooleanField(default=None, db_index=True)
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
