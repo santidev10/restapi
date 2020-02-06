@@ -1,3 +1,5 @@
+import hashlib
+
 from datetime import date
 from datetime import timedelta
 
@@ -12,11 +14,12 @@ from django.template.loader import get_template
 
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
-from aw_reporting.models import User, SalesForceGoalType, Opportunity, \
-    OpPlacement, Account
+from aw_reporting.models import Campaign, User, SalesForceGoalType, Opportunity, \
+    OpPlacement, Account, CampaignStatus
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
+from es_components.utils import safe_div
 from utils.datetime import now_in_default_tz
 
 
@@ -84,9 +87,13 @@ class DailyCampaignReport(BaseEmailReport):
                and p["end"] >= self.before_yesterday \
                and p["goal_type_id"] < 2
 
+    def is_on_going_flight(self, f):
+        return None not in (f.get("start"), f.get("end")) \
+               and f["start"] <= self.today \
+               and f["end"] >= self.before_yesterday
+
     def _get_recipients(self, opportunity):
-        recipient_roles = self.roles or (OpportunityManager.ACCOUNT_MANAGER,
-                                         OpportunityManager.AD_OPS_MANAGER)
+        recipient_roles = self.roles or (OpportunityManager.AD_OPS_MANAGER,)
         opportunity_keys = [_manager_map.get(r) for r in recipient_roles]
         user_ids = list(filter(None, [(opportunity.get(k) or {}).get('id')
                                       for k in opportunity_keys]))
@@ -131,6 +138,7 @@ class DailyCampaignReport(BaseEmailReport):
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=self.get_to(to_emails),
                 bcc=self.get_bcc(),
+                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
                 reply_to="",
             )
             msg.attach_alternative(html_content, "text/html")
@@ -140,8 +148,8 @@ class DailyCampaignReport(BaseEmailReport):
             # send flight alerts
             for alert in self.flight_alerts:
                 msg = EmailMessage(
-                    subject=alert.get("subject"),
-                    body=alert.get("body"),
+                    subject=alert.subject,
+                    body=alert.body,
                     from_email=settings.EXPORTS_EMAIL_ADDRESS,
                     to=self.get_to(to_emails),
                     cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
@@ -203,8 +211,12 @@ class DailyCampaignReport(BaseEmailReport):
             placement_obj = get_object_or_404(OpPlacement, id=placement['id'])
             flights = report.get_flights(placement_obj)
 
+            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement['id'],
+                                                            status=CampaignStatus.ELIGIBLE.value).count()
+
             for flight in flights:
-                self.collect_flight_delivery_alert(flight, opportunity_obj)
+                if active_campaign_count > 0 and self.is_on_going_flight(flight):
+                    self.collect_flight_delivery_alert(flight, opportunity_obj)
 
                 for f in spend_fields:
                     opportunity[f] += flight.get(f) or 0
@@ -212,24 +224,38 @@ class DailyCampaignReport(BaseEmailReport):
     def collect_flight_delivery_alert(self, flight_data, opportunity_obj):
         alert_percentage = None
 
-        if self.check_flight_delivered(flight_data, 1):
-            alert_percentage = 100
-        elif self.check_flight_delivered(flight_data, 0.8):
-            alert_percentage = 80
+        control_percentages = sorted(
+            [int(percentage) for percentage in settings.PACING_NOTIFICATIONS],
+            reverse=True
+        )
+
+        for control_percentage in control_percentages:
+
+            if self.check_flight_delivered(flight_data, control_percentage):
+                alert_percentage = control_percentage
+                break
 
         if alert_percentage is not None:
-            self.flight_alerts.append(
-                get_flight_delivery_alert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
-                                          control_percentage=alert_percentage)
-            )
+            flight_alert = FlightAlert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
+                                       control_percentage=alert_percentage)
+            mail, created = SavedEmail.objects.get_or_create(id=flight_alert.__hash__())
+
+
+            if created is True:
+                self.flight_alerts.append(flight_alert)
+                mail.html = f"{flight_alert.subject}\n{flight_alert.body}"
+                mail.save()
 
     def check_flight_delivered(self, flight, control_percentage):
-        percentage = 0
-        if flight.get("goal_type_id") == SalesForceGoalType.CPM:
-            percentage = flight.get("impressions") / flight.get("plan_impressions")
-        elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
-            percentage = flight.get("video_views") / flight.get("plan_video_views")
-        return percentage >= control_percentage
+        try:
+            percentage = 0
+            if flight.get("goal_type_id") == SalesForceGoalType.CPM:
+                percentage = safe_div(flight.get("impressions", 0), flight.get("plan_impressions", 0)) or 0
+            elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
+                percentage = safe_div(flight.get("video_views", 0), flight.get("plan_video_views", 0)) or 0
+            return percentage * 100 >= control_percentage
+        except:
+            pass
 
 
 def _map_opportunity(opportunity):
@@ -276,11 +302,13 @@ def _calculate_with_general(opportunity, keys_map: dict):
     return opportunity
 
 
-def get_flight_delivery_alert(flight_name, opportunity_name, control_percentage):
-    return dict(
-        subject="{control_percentage}% DELIVERY - {flight_name}".format(
-            control_percentage=control_percentage, flight_name=flight_name),
-        body="{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
+class FlightAlert:
+    def __init__(self, flight_name, opportunity_name, control_percentage):
+        self.subject = "{control_percentage}% DELIVERY - {flight_name}".format(
+            control_percentage=control_percentage, flight_name=flight_name)
+        self.body = "{flight_name} in {opportunity_name} has delivered {control_percentage}% of its ordered units".format(
             flight_name=flight_name, control_percentage=control_percentage, opportunity_name=opportunity_name
         )
-    )
+
+    def __hash__(self):
+        return hashlib.md5(str(self.body).encode()).hexdigest()

@@ -186,7 +186,7 @@ GOOGLE_APP_OAUTH2_ORIGIN = "http://localhost"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
+        'userprofile.authentication.ExpiringTokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -286,7 +286,7 @@ YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY = 'AIzaSyBYaLX2KAXsmXs3mbsTYBvjCe1-GCHoTX4
 
 from .configs.celery import *
 
-CHANNEL_FACTORY_ACCOUNT_ID = "3386233102"
+CHANNEL_FACTORY_ACCOUNT_ID = 3386233102
 
 MCC_ACCOUNT_IDS = [
     CHANNEL_FACTORY_ACCOUNT_ID,
@@ -326,6 +326,7 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "andrew.vonpelt@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 EMERGENCY_EMAIL_ADDRESSES = [
@@ -338,7 +339,8 @@ EMERGENCY_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "andrew.vonpelt@channelfactory.com"
+    "andrew.vonpelt@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
@@ -350,12 +352,14 @@ ES_MONITORING_EMAIL_ADDRESSES = [
     "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
-    "sean.maguire@channelfactory.com"
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
     "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []
@@ -449,6 +453,12 @@ ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
 REPORT_EXPIRATION_PERIOD = 24
 REPORT_VISIBLE_PERIOD = 90  # in days
 SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
+
+AUTH_TOKEN_EXPIRES = 30
+COGNITO_USER_POOL_ID = ""
+COGNITO_CLIENT_ID = ""
+
+PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
 if APM_ENABLED:
     ELASTIC_APM = {

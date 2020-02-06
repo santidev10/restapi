@@ -123,7 +123,7 @@ class Command(BaseCommand):
                 if max_recommended_type == 'video' and pending_videos.filter(clean=True).count() > self.audit.max_recommended:
                     done = True
                 elif max_recommended_type == 'channel':
-                    unique_channels = pending_videos.filter(clean=True).values('video__channel_id').distinct()
+                    unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
                     if unique_channels.count() > self.audit.max_recommended:
                         done = True
             pending_videos = pending_videos.filter(processed__isnull=True)
@@ -227,7 +227,7 @@ class Command(BaseCommand):
         r = requests.get(url)
         data = r.json()
         if 'error' in data:
-            if data['error']['message'] == 'Invalid video.':
+            if data['error']['message'] in ['Invalid video.', 'Not Found']:
                 avp.processed = timezone.now()
                 avp.clean = False
                 avp.save()
@@ -452,7 +452,10 @@ class Command(BaseCommand):
         exclusion_list = {}
         for row in input_list:
             word = remove_tags_punctuation(row[0])
-            language = row[2]
+            try:
+                language = row[2]
+            except Exception as e:
+                language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(

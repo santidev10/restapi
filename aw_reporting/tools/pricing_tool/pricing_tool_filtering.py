@@ -58,11 +58,13 @@ class PricingToolFiltering:
         self.filter_item_ids = None
 
     @classmethod
-    def get_filters(cls, user):
+    def get_filters(cls, user, opportunities_ids=None):
 
         start, end = cls._get_default_dates()
 
-        opportunities_ids = Opportunity.objects.have_campaigns(user=user).values_list("id", flat=True)
+        if opportunities_ids is None:
+            opportunities_ids = Opportunity.objects.have_campaigns(user=user).values_list("id", flat=True)
+
         opportunities = Opportunity.objects.filter(id__in=opportunities_ids)
 
         brands = opportunities \
@@ -87,7 +89,7 @@ class PricingToolFiltering:
             quarters=[dict(id=c, name=c)
                       for c in list(sorted(quarter_days.keys()))],
             quarters_condition=CONDITIONS,
-            start=start, end=end,
+            start=str(start), end=str(end),
             compare_yoy=False,
 
             product_types=product_types,
@@ -108,7 +110,8 @@ class PricingToolFiltering:
             genders=list_to_filter(Genders),
             parents=list_to_filter(ParentStatuses),
             demographic_condition=CONDITIONS,
-            topics=Topic.objects.filter(parent=None).exclude(topicstatistic=None).order_by("name", "id").values("id", "name"),
+            topics=list(Topic.objects.filter(parent=None).exclude(topicstatistic=None)
+                        .order_by("name", "id").values("id", "name")),
             topics_condition=CONDITIONS,
             devices=list_to_filter(Devices),
             devices_condition=CONDITIONS,
@@ -148,10 +151,10 @@ class PricingToolFiltering:
                 base_ids &= new_ids
         return base_ids
 
-    def apply(self, queryset):
-        return self._filter(queryset)
+    def apply(self, user, ordering_by_aw_budget):
+        return self._filter(user, ordering_by_aw_budget)
 
-    def _filter(self, queryset):
+    def _filter(self, user, ordering_by_aw_budget):
 
         def apply_filters(queryset, filters, model_options):
             for filter in filters:
@@ -170,35 +173,35 @@ class PricingToolFiltering:
             self._filter_by_devices,
         )
 
-        filters = campaigns_filters + (
+        filters = (
             self._filter_by_brand,
             self._filter_by_categories,
             self._filter_by_apex,
             *self._filter_by_kpi(),
         )
 
-        queryset = apply_filters(queryset, filters, model_options=ModelFiltersOptions.Opportunity)
+        opportunity_queryset = Opportunity.objects.get_queryset_for_user(user=user)
 
-        if self.filter_item_ids is not None:
-            queryset = queryset.filter(id__in=self.filter_item_ids)
+        opportunity_queryset = apply_filters(opportunity_queryset, filters,
+                                             model_options=ModelFiltersOptions.Opportunity).values_list("id", flat=True)
 
-        opportunity_queryset = queryset.distinct()
+        campaigns_queryset = Campaign.objects.get_queryset_for_user(user=user)\
+            .values("salesforce_placement__opportunity")\
+            .annotate(ids=ArrayAgg("id"))
 
-        campaigns_queryset = Campaign.objects.values("salesforce_placement__opportunity")\
-                                 .annotate(ids=ArrayAgg("id"))\
-                                 .values("salesforce_placement__opportunity", "ids")
-
-        campaigns_queryset = campaigns_queryset\
-            .filter(salesforce_placement__opportunity__id__in=opportunity_queryset.values_list("id", flat=True))
         campaigns_queryset = apply_filters(campaigns_queryset, campaigns_filters,
                                            model_options=ModelFiltersOptions.Campaign).all()
 
-        campaigns_ids_map = {campaigns["salesforce_placement__opportunity"]: campaigns["ids"]
-                             for campaigns in campaigns_queryset}
+        if self.filter_item_ids is not None:
+            campaigns_queryset = campaigns_queryset.filter(id__in=self.filter_item_ids)
 
-        opportunity_queryset = opportunity_queryset.filter(id__in=campaigns_ids_map.keys())
 
-        return opportunity_queryset, campaigns_ids_map
+        campaigns_queryset = campaigns_queryset.filter(salesforce_placement__opportunity_id__in=list(opportunity_queryset))
+
+        if ordering_by_aw_budget is True:
+            campaigns_queryset = campaigns_queryset.annotate(aw_budget=Sum("cost")).order_by("-aw_budget")
+
+        return campaigns_queryset.values_list("salesforce_placement__opportunity", "ids")
 
     def _filter_by_periods(self, queryset, model_options):
         periods = self.kwargs["periods"]
@@ -344,8 +347,7 @@ class PricingToolFiltering:
         devices = self.kwargs.get("devices", [])
         if len(devices) == 0:
             return queryset, False
-        devices_condition = self.kwargs.get("devices_condition",
-                                            self.default_condition)
+        devices_condition = self.kwargs.get("devices_condition", self.default_condition)
         if devices_condition == "or" and model_options.filtering_or:
             query_exclude = dict((model_options.prefix + field, False) for i, field
                                  in enumerate(DEVICE_FIELDS)

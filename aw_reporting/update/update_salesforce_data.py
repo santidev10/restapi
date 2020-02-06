@@ -175,7 +175,7 @@ def update_opportunities(sc, opportunity_ids, debug_update):
             'account_id',
             flat=True).distinct()
 
-        aw_cid = ",".join(filter(lambda x: x is not None, ids))
+        aw_cid = ",".join([str(campaign_id) for campaign_id in filter(lambda x: x is not None, ids)])
         if not aw_cid:
             continue
 

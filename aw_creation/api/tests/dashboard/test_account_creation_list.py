@@ -90,7 +90,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         user.save()
 
     def test_success_get(self):
-        account = Account.objects.create(id="123", name="")
+        account = Account.objects.create(id=123, name="")
         account.managers.add(self.mcc_account)
         campaign = Campaign.objects.create(id=1, name="", account=account)
         ad_group = AdGroup.objects.create(id=1, name="", campaign=campaign)
@@ -162,13 +162,13 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         recreate_demo_data()
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        expected_account_id = "1"
+        expected_account_id = 1
         managed_account = Account.objects.create(
             id=expected_account_id, name="")
         managed_account.managers.add(chf_account)
-        Account.objects.create(id="2", name="")
-        Account.objects.create(id="3", name="")
-        Account.objects.create(id="4", name="")
+        Account.objects.create(id=3, name="")
+        Account.objects.create(id=4, name="")
+        Account.objects.create(id=5, name="")
         self.__set_non_admin_user_with_account(managed_account.id)
         user_settings = {
             UserSettingsKey.VISIBLE_ALL_ACCOUNTS: True
@@ -177,12 +177,12 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         accounts_ids = {a["account"] for a in response.data["items"]}
-        self.assertEqual(accounts_ids, {"demo", expected_account_id})
+        self.assertEqual(accounts_ids, {DEMO_ACCOUNT_ID, expected_account_id})
 
     def test_brand(self):
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="2", name="")
+        managed_account = Account.objects.create(id=next(int_iterator), name="")
         managed_account.managers.add(chf_account)
         test_brand = "Test Brand"
         opportunity = Opportunity.objects.create(brand=test_brand)
@@ -201,7 +201,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         placement = OpPlacement.objects.create(id=1, opportunity=opportunity)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="1", name="")
+        managed_account = Account.objects.create(id=next(int_iterator), name="")
         Campaign.objects.create(
             salesforce_placement=placement, account=managed_account)
         managed_account.managers.add(chf_account)
@@ -222,7 +222,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
             goal_type_id=SalesForceGoalType.HARD_COST)
         chf_account = Account.objects.create(
             id=settings.CHANNEL_FACTORY_ACCOUNT_ID, name="")
-        managed_account = Account.objects.create(id="1", name="")
+        managed_account = Account.objects.create(id=next(int_iterator), name="")
         managed_account.managers.add(chf_account)
         Campaign.objects.create(
             id="1", salesforce_placement=placement1, account=managed_account)

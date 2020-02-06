@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from oauth2client.client import OAuth2WebServerFlow
-from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -23,6 +22,7 @@ from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeCreator
 from userprofile.models import UserChannel
 from userprofile.models import get_default_accesses
+from userprofile.api.views.user_auth import UserAuthApiView
 from utils.celery.dmp_celery import send_task_channel_general_data_priority
 from utils.celery.dmp_celery import send_task_channel_stats_priority
 from utils.es_components_cache import flush_cache
@@ -76,7 +76,7 @@ class ChannelAuthenticationApiView(APIView):
                                     access_token_expire_at=credentials.token_expiry,
                                     token_revocation=None)
 
-        user = self.get_or_create_user(credentials.access_token)
+        user, device_auth_token = self.get_or_create_user(credentials.access_token)
 
         if not user:
             return Response(status=HTTP_412_PRECONDITION_FAILED)
@@ -88,7 +88,7 @@ class ChannelAuthenticationApiView(APIView):
         self.send_update_channel_tasks(channel_id)
         flush_cache()
         return Response(status=HTTP_202_ACCEPTED,
-                        data={"auth_token": user.auth_token.key, "is_active": user.is_active})
+                        data={"auth_token": device_auth_token.key, "is_active": user.is_active})
 
     def create_auth_channel(self, auth_channel):
         manager = ChannelManager(Sections.AUTH)
@@ -142,7 +142,8 @@ class ChannelAuthenticationApiView(APIView):
         user = self.request.user
         if user and user.is_authenticated:
             self.set_user_avatar(user, access_token)
-            return user
+            device_auth_token = UserAuthApiView.create_device_auth_token(user)
+            return user, device_auth_token
 
         # Starting user create procedure
         token_info_url = GOOGLE_API_TOKENINFO_URL_TEMPLATE.format(access_token)
@@ -181,9 +182,8 @@ class ChannelAuthenticationApiView(APIView):
             # Get or create auth token instance for user
 
             send_welcome_email(user, self.request)
-        token, _ = Token.objects.get_or_create(user=user)
-        user = token.user
-        return user
+        device_auth_token = UserAuthApiView.create_device_auth_token(user)
+        return user, device_auth_token
 
     def obtain_extra_user_data(self, token, user_id):
         """

@@ -9,7 +9,6 @@ from unittest.mock import patch
 
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
-from django.test import override_settings
 from django.test import TransactionTestCase
 from googleads.errors import AdWordsReportBadRequestError
 from requests import HTTPError
@@ -132,7 +131,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         statistic = zip(dates, costs, impressions, views, clicks)
         test_statistic_data = [
             dict(
-                CampaignId=campaign.id,
+                CampaignId=str(campaign.id),
                 Cost=cost * 10 ** 6,
                 Date=str(dt),
                 StartDate=str(campaign.start_date),
@@ -170,7 +169,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             for cta_click_data in cta_click_values:
                 test_cta_data.append(
                     dict(
-                        CampaignId=campaign.id,
+                        CampaignId=str(campaign.id),
                         Date=str(dt),
                         Clicks=cta_click_data.get("clicks"),
                         ClickType=cta_click_data.get("clicks_type"),
@@ -249,8 +248,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                         active_view_impressions)
         test_statistic_data = [
             dict(
-                CampaignId=campaign.id,
-                AdGroupId=ad_group.id,
+                CampaignId=str(campaign.id),
+                AdGroupId=str(ad_group.id),
                 AveragePosition=1,
                 Cost=cost * 10 ** 6,
                 Date=str(dt),
@@ -275,7 +274,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             for cta_click_data in cta_click_values:
                 test_cta_data.append(
                     dict(
-                        AdGroupId=ad_group.id,
+                        AdGroupId=str(ad_group.id),
                         Date=str(dt),
                         Device=device_str(Device.COMPUTER),
                         Clicks=cta_click_data.get("clicks"),
@@ -326,8 +325,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         test_report_data = [
             dict(
-                Id=geo_target.id,
-                CampaignId=campaign.id,
+                Id=str(geo_target.id),
+                CampaignId=str(campaign.id),
                 Impressions=1,
                 VideoViews=1,
                 Clicks=1,
@@ -368,7 +367,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         test_code = "PL1234567"
         test_report_data = [
             dict(
-                CampaignId=campaign.id,
+                CampaignId=str(campaign.id),
                 CampaignName="Campaign Name #{}, some other".format(test_code),
                 Cost=0,
                 Date=str(today),
@@ -430,7 +429,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         test_report_data = [
             dict(
-                AdGroupId=ad_group.id,
+                AdGroupId=str(ad_group.id),
                 Criteria=criteria,
                 Date=str(today),
                 Cost=0,
@@ -478,7 +477,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         test_report_data = [
             dict(
-                AdGroupId=ad_group.id,
+                AdGroupId=str(ad_group.id),
                 Criteria=criteria + "::123",
                 Date=str(today),
                 Cost=0,
@@ -534,8 +533,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             VideoQuartile100Rate=0,
         )
         test_report_data = [
-            dict(AdGroupId="missing", **common),
-            dict(AdGroupId=ad_group.id, **common)
+            dict(AdGroupId=str(99), **common),
+            dict(AdGroupId=str(ad_group.id), **common)
         ]
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
         test_stream = build_csv_byte_stream(fields, test_report_data)
@@ -561,13 +560,13 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         ad_group = AdGroup.objects.create(id=1, campaign=campaign)
         AdGroupStatistic.objects.create(ad_group=ad_group, date=now,
                                         average_position=1)
-        approved_ad_1 = "approved_1"
-        approved_ad_2 = "approved_2"
-        approved_ad_3 = "approved_3"
-        disapproved_ad_1 = "disapproved_1"
+        approved_ad_1 = 1
+        approved_ad_2 = 2
+        approved_ad_3 = 3
+        disapproved_ad_1 = 4
 
         common_data = dict(
-            AdGroupId=ad_group.id,
+            AdGroupId=str(ad_group.id),
             Date=str(today),
             AveragePosition=1,
             Cost=0,
@@ -584,12 +583,12 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         )
 
         test_report_data = [
-            dict(Id=approved_ad_1, **common_data),
-            dict(Id=approved_ad_2, CombinedApprovalStatus=None, **common_data),
-            dict(Id=approved_ad_3, CombinedApprovalStatus="any",
+            dict(Id=str(approved_ad_1), **common_data),
+            dict(Id=str(approved_ad_2), CombinedApprovalStatus=None, **common_data),
+            dict(Id=str(approved_ad_3), CombinedApprovalStatus="any",
                  **common_data),
 
-            dict(Id=disapproved_ad_1, CombinedApprovalStatus="disapproved",
+            dict(Id=str(disapproved_ad_1), CombinedApprovalStatus="disapproved",
                  **common_data),
         ]
         fields = AD_PERFORMANCE_REPORT_FIELDS
@@ -642,8 +641,8 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         )
 
         test_report_data = [
-            dict(Id=valid_ad_id, AdGroupId=valid_ad_group_id, **common_data),
-            dict(Id=invalid_ad_id, AdGroupId=invalid_ad_group_id,
+            dict(Id=str(valid_ad_id), AdGroupId=str(valid_ad_group_id), **common_data),
+            dict(Id=str(invalid_ad_id), AdGroupId=str(invalid_ad_group_id),
                  **common_data)
         ]
         fields = AD_PERFORMANCE_REPORT_FIELDS
@@ -928,7 +927,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         test_customers = [
             dict(
-                customerId=test_account_id,
+                customerId=str(test_account_id),
                 name="",
                 currencyCode="",
                 dateTimeZone="UTC",
@@ -1021,7 +1020,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         statistic_date = today - timedelta(days=2)
         test_statistic_data = [
             dict(
-                CampaignId=campaign.id,
+                CampaignId=str(campaign.id),
                 Cost=1 * 10 ** 6,
                 Date=str(statistic_date),
                 StartDate=str(campaign.start_date),
@@ -1070,7 +1069,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         statistic_date = today - timedelta(days=2)
         test_statistic_data = [
             dict(
-                CampaignId=campaign.id,
+                CampaignId=str(campaign.id),
                 Cost=1 * 10 ** 6,
                 Date=str(statistic_date),
                 StartDate=str(campaign.start_date),
@@ -1126,7 +1125,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         test_customers = [
             dict(
-                customerId=test_account_id,
+                customerId=str(test_account_id),
                 name="N" * name_limit,
                 currencyCode="",
                 dateTimeZone="UTC",
@@ -1158,7 +1157,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         test_account_id = next(int_iterator)
         test_customers = [
             dict(
-                customerId=test_account_id,
+                customerId=str(test_account_id),
                 name="name",
                 currencyCode="",
                 dateTimeZone="UTC",
@@ -1230,7 +1229,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                                        account=acc)
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
-        self.assertTrue(str(acc.id) in to_update)
+        self.assertIn(acc.id, to_update)
 
 
 class FakeExceptionWithArgs:

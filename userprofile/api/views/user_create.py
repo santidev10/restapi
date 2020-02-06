@@ -5,9 +5,10 @@ from rest_framework.views import APIView
 
 from userprofile.api.serializers import UserCreateSerializer
 from userprofile.api.serializers import UserSerializer
+from userprofile.api.views.user_finalize_response import UserFinalizeResponse
 
 
-class UserCreateApiView(APIView):
+class UserCreateApiView(UserFinalizeResponse, APIView):
     """
     User list / create endpoint
     """
@@ -26,4 +27,3 @@ class UserCreateApiView(APIView):
         user = serializer.save()
         response_data = self.retrieve_serializer_class(user).data
         return Response(response_data, status=HTTP_201_CREATED)
-

@@ -32,6 +32,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "can_access_media_buying",
                 "company",
                 "date_joined",
+                "device_id",
                 "email",
                 "first_name",
                 "google_account_id",
@@ -43,6 +44,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "last_name",
                 "logo_url",
                 "phone_number",
+                "phone_number_verified",
                 "profile_image_url",
                 "token",
                 "is_active",
@@ -50,3 +52,13 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "user_type",
             }
         )
+
+    def test_set_user_verified(self):
+        user = self.create_test_user()
+        self.assertEqual(user.phone_number_verified, False)
+        data = {
+            "phone_number": "+1123456789"
+        }
+        response = self._update(data)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["phone_number_verified"], True)

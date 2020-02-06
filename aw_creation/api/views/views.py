@@ -26,7 +26,6 @@ from django.shortcuts import get_object_or_404
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from openpyxl import load_workbook
-from rest_framework.authtoken.models import Token
 from rest_framework.generics import GenericAPIView
 from rest_framework.generics import ListAPIView
 from rest_framework.generics import ListCreateAPIView
@@ -76,6 +75,7 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.constants import Sections
 from segment.models import CustomSegment
+from userprofile.models import UserDeviceToken
 from utils.permissions import IsAuthQueryTokenPermission
 from utils.permissions import MediaBuyingAddOnPermission
 from utils.permissions import or_permission_classes
@@ -591,6 +591,11 @@ class CreationOptionsApiView(APIView):
         return Response(data=options)
 
 
+def is_demo(*args,  **kwargs):
+    str_pk = kwargs.get("pk")
+    return str_pk.isnumeric() and int(str_pk) == DEMO_ACCOUNT_ID
+
+
 class CampaignCreationListSetupApiView(ListCreateAPIView):
     serializer_class = CampaignCreationSetupSerializer
     permission_classes = (MediaBuyingAddOnPermission,)
@@ -606,7 +611,7 @@ class CampaignCreationListSetupApiView(ListCreateAPIView):
         )
         return queryset
 
-    @forbidden_for_demo(lambda *args, **kwargs: kwargs.get("pk") == DEMO_ACCOUNT_ID)
+    @forbidden_for_demo(is_demo)
     def create(self, request, *args, **kwargs):
         try:
             account_creation = AccountCreation.objects.get(
@@ -1881,7 +1886,7 @@ class AdGroupCreationTargetingExportApiView(TargetingListBaseAPIClass):
 
     def get_user(self):
         auth_token = self.request.query_params.get("auth_token")
-        token = Token.objects.get(key=auth_token)
+        token = UserDeviceToken.objects.get(key=auth_token)
         return token.user
 
     def get_data(self):

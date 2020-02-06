@@ -6,6 +6,7 @@ from distutils.util import strtobool
 from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
+from utils.lang import is_english
 
 
 class BadWordSerializer(ModelSerializer):
@@ -15,6 +16,9 @@ class BadWordSerializer(ModelSerializer):
     def validate_name(self, value):
         try:
             name = str(value).strip().lower()
+            if is_english(name):
+                if len(name) < 3:
+                    raise ValidationError("Keywords must be at least 3 characters long.")
             return name
         except (ValueError, TypeError):
             raise ValidationError("Unable to process name: {}".format(value))

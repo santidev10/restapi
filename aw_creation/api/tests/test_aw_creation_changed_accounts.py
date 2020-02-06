@@ -11,7 +11,7 @@ class ChangedAccountsAPITestCase(AwReportingAPITestCase):
     def test_success_get(self):
         user = self.create_test_user(auth=False)
         manager = Account.objects.create(id=1, name="")
-        account = Account.objects.create(id="123", name="",
+        account = Account.objects.create(id=123, name="",
                                          skip_creating_account_creation=True)
         account.managers.add(manager)
         AccountCreation.objects.create(

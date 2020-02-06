@@ -1,4 +1,5 @@
 import json
+import os
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -35,10 +36,17 @@ CUSTOM_AUTH_FLAGS = {
 class AuthAPITestCase(AwReportingAPITestCase):
     _url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
 
+    def setUp(self):
+        os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+        os.environ["AWS_SECURITY_TOKEN"] = "testing"
+        os.environ["AWS_SESSION_TOKEN"] = "testing"
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
     def test_success(self):
         user = self.create_test_user()
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -50,6 +58,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "can_access_media_buying",
                 "company",
                 "date_joined",
+                "device_id",
                 "email",
                 "first_name",
                 "google_account_id",
@@ -61,6 +70,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "last_name",
                 "logo_url",
                 "phone_number",
+                "phone_number_verified",
                 "token",
                 "is_active",
                 "has_accepted_GDPR",
@@ -72,7 +82,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         user = self.create_test_user()
         self.create_account(user)
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -81,7 +91,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
     def test_success_has_no_connected_accounts(self):
         user = self.create_test_user()
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -90,7 +100,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
     def test_success_has_no_disapproved_ad(self):
         user = self.create_test_user()
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -111,7 +121,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
         ad_group = AdGroup.objects.create(campaign=campaign)
         Ad.objects.create(ad_group=ad_group, is_disapproved=True)
         response = self.client.post(
-            self._url, json.dumps(dict(auth_token=user.auth_token.key)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -168,16 +178,12 @@ class AuthAPITestCase(AwReportingAPITestCase):
 
     @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
     def test_success_apex_user_auth(self):
-        email = "test.apex_user@testuser.com"
-        password = "password"
-        user = get_user_model().objects.create(
-            email=email
-        )
-        user.set_password(password)
+        user = self.create_test_user()
+        user.email = "test.apex_user@testuser.com"
         user.save()
 
         response = self.client.post(
-            self._url, json.dumps(dict(username=email, password=password)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -185,16 +191,12 @@ class AuthAPITestCase(AwReportingAPITestCase):
     @override_settings(CUSTOM_AUTH_FLAGS=CUSTOM_AUTH_FLAGS)
     @override_settings(APEX_HOST="http://apex:8000")
     def test_error_apex_user_auth(self):
-        email = "test.apex_user@testuser.com"
-        password = "password"
-        user = get_user_model().objects.create(
-            email=email
-        )
-        user.set_password(password)
+        user = self.create_test_user()
+        user.email = "test.apex_user@testuser.com"
         user.save()
 
         response = self.client.post(
-            self._url, json.dumps(dict(username=email, password=password)),
+            self._url, json.dumps(dict(auth_token=user.tokens.first().key)),
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

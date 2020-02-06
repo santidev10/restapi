@@ -20,13 +20,13 @@ class BaseClicksTypesStatisticsModel(Model):
 
 
 class BaseStatisticModel(BaseModel):
-    impressions = models.IntegerField(default=0)
-    video_views = models.IntegerField(default=0)
-    clicks = models.IntegerField(default=0)
+    impressions = models.IntegerField(default=0, db_index=True)
+    video_views = models.IntegerField(default=0, db_index=True)
+    clicks = models.IntegerField(default=0, db_index=True)
     cost = models.FloatField(default=0)
-    conversions = models.FloatField(default=0)
-    all_conversions = models.FloatField(default=0)
-    view_through = models.IntegerField(default=0)
+    conversions = models.FloatField(default=0, db_index=True)
+    all_conversions = models.FloatField(default=0, db_index=True)
+    view_through = models.IntegerField(default=0, db_index=True)
     video_views_25_quartile = models.FloatField(default=0)
     video_views_50_quartile = models.FloatField(default=0)
     video_views_75_quartile = models.FloatField(default=0)
@@ -57,8 +57,8 @@ class BaseStatisticModel(BaseModel):
 class ModelPlusDeNormFields(BaseStatisticModel):
     # for now we will use them in Pricing Tool
     de_norm_fields_are_recalculated = models.BooleanField(default=False, db_index=True)
-    min_stat_date = models.DateField(null=True)
-    max_stat_date = models.DateField(null=True)
+    min_stat_date = models.DateField(null=True, db_index=True)
+    max_stat_date = models.DateField(null=True, db_index=True)
 
     gender_undetermined = models.BooleanField(default=False)
     gender_male = models.BooleanField(default=False)

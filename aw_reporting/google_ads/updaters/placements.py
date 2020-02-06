@@ -76,7 +76,7 @@ class PlacementUpdater(UpdateMixin):
             stats = {
                 "yt_id": criteria,
                 "date": row_obj.Date,
-                "ad_group_id": row_obj.AdGroupId,
+                "ad_group_id": int(row_obj.AdGroupId),
                 "device_id": get_device_id_by_name(row_obj.Device),
                 "video_views_25_quartile": quart_views(row_obj, 25),
                 "video_views_50_quartile": quart_views(row_obj, 50),

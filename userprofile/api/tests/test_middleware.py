@@ -45,7 +45,7 @@ class ApexUserCheckTestCase(ExtendedAPITestCase):
 
         response = self.client.get(self._url,
                                    content_type="application/json",
-                                   HTTP_REFERER="http://localhost:8000")
+                                   HTTP_ORIGIN="http://localhost:8000")
 
         self.assertEqual(response.status_code, HTTP_200_OK)
 

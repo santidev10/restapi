@@ -31,16 +31,16 @@ def campaign_type_str(campaign_type_id):
 
 class VideoCreative(BaseStatisticModel):
     id = models.CharField(max_length=255, primary_key=True)
-    duration = models.IntegerField(null=True)
+    duration = models.IntegerField(null=True, db_index=True)
 
 
 class GeoTarget(models.Model):
     name = models.CharField(max_length=100)
     canonical_name = models.CharField(max_length=100)
     parent = models.ForeignKey('self', null=True, on_delete=models.CASCADE)
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, db_index=True)
     target_type = models.CharField(max_length=50)
-    status = models.CharField(max_length=20)
+    status = models.CharField(max_length=20, db_index=True)
 
     def __str__(self):
         return "%s" % self.canonical_name
@@ -70,7 +70,7 @@ class Audience(BaseModel):
 
 
 class RemarkList(BaseModel):
-    id = models.CharField(max_length=15, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=250)
 
     def __str__(self):
