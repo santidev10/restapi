@@ -212,6 +212,8 @@ class AuditProcessor(models.Model):
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
             'exclusion_hit_count': self.params.get('exclusion_hit_count'),
+            'include_unknown_likes': self.params.get('include_unknown_likes'),
+            'include_unknown_views': self.params.get('include_unknown_views'),
         }
         # if self.completed:
         #     try:
