@@ -5,16 +5,16 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
-from audit_tool.models import AuditLanguage
+# from audit_tool.models import AuditLanguage
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
-from transcripts.models import SQTranscript
+from transcripts.models import WatsonTranscript
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
 
 
-class SQTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
+class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
     def post(self, request):
         # Post Request takes a body, which is one dictionary, with the key being video_id and value being a dictionary
         # with the transcript and language identified by Watson, if provided
@@ -50,17 +50,17 @@ class SQTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 if watson_language:
                     lang_code = LANG_CODES[watson_language]
                     video.populate_general_data(language=watson_language, lang_code=lang_code)
-                sq_transcript = SQTranscript.get_or_create(video_id)
-                sq_transcript.transcript = transcript
-                try:
-                    sq_transcript.language = AuditLanguage.objects.get(lang_code)
-                except Exception:
-                    pass
-                sq_transcript.retrieved = datetime.now()
-                sq_transcript.save()
+                watson_transcript = WatsonTranscript.get_or_create(video_id)
+                watson_transcript.transcript = transcript
+                # try:
+                #     watson_transcript.language = AuditLanguage.objects.get(lang_code)
+                # except Exception:
+                #     pass
+                watson_transcript.retrieved = datetime.now()
+                watson_transcript.save()
                 AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
                                                    transcript=transcript)
-                populate_video_custom_captions(video, [transcript], [lang_code], "SQ")
+                populate_video_custom_captions(video, [transcript], [lang_code], "Watson")
                 manager.upsert([video])
         except Exception as e:
             raise ValidationError(e)

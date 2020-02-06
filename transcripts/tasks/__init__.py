@@ -1,2 +1,2 @@
 from .pull_custom_transcripts import pull_custom_transcripts
-from .submit_sq_transcripts import submit_sq_transcripts
+from .submit_watson_transcripts import submit_watson_transcripts

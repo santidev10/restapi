@@ -19,38 +19,38 @@ from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from django.conf import settings
-from transcripts.models import SQTranscript
+from transcripts.models import WatsonTranscript
 
 logger = logging.getLogger(__name__)
 
-LOCK_NAME = 'sq_transcripts'
-API_KEY = settings.SQ_API_KEY
-API_QUOTA = settings.SQ_API_QUOTA
-SQ_APITRACKER_KEY = 'sq_transcripts'
-batch_size = settings.SQ_BATCH_SIZE
-sandbox_mode = settings.SQ_SANDBOX_MODE
+LOCK_NAME = 'watson_transcripts'
+API_KEY = settings.WATSON_API_KEY
+API_QUOTA = settings.WATSON_API_QUOTA
+WATSON_APITRACKER_KEY = 'watson_transcripts'
+batch_size = settings.WATSON_BATCH_SIZE
+sandbox_mode = settings.WATSON_SANDBOX_MODE
 youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY)
-sq_api_url = "https://api.essepi.io/transcribe/v1/prod"
+watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
-def submit_sq_transcripts():
+def submit_watson_transcripts():
     try:
-        language = settings.SQ_LANGUAGE
-        country = settings.SQ_COUNTRY
-        yt_category = settings.SQ_CATEGORY
-        brand_safety_score = settings.SQ_SCORE_THRESHOLD
-        num_vids = settings.SQ_NUM_VIDEOS
+        language = settings.WATSON_LANGUAGE
+        country = settings.WATSON_COUNTRY
+        yt_category = settings.WATSON_CATEGORY
+        brand_safety_score = settings.WATSON_SCORE_THRESHOLD
+        num_vids = settings.WATSON_NUM_VIDEOS
     except Exception as e:
         raise e
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
-        api_tracker = APIScriptTracker.objects.get_or_create(name=SQ_APITRACKER_KEY)[0]
+        api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
         videos = get_no_custom_captions_vids(language=language, country=country, yt_category=yt_category,
                                              brand_safety_score=brand_safety_score, num_vids=num_vids)
         videos_request_batch = []
-        videos_sq_transcripts = []
+        videos_watson_transcripts = []
         for vid in videos:
             if api_tracker.cursor >= API_QUOTA:
                 now = datetime.now()
@@ -73,14 +73,14 @@ def submit_sq_transcripts():
                         yt_has_captions = False
                     else:
                         yt_has_captions = True
-                    # If YT API has no captions object for video, and we have no custom transcript for it, send to SQ
+                    # If YT API has no captions object for video, and we have no custom transcript for it, send to Watson
                     if not yt_has_captions:
                         try:
-                            sq_transcript = SQTranscript.get_or_create(vid_id)
-                            if sq_transcript.submitted:
+                            watson_transcript = WatsonTranscript.get_or_create(vid_id)
+                            if watson_transcript.submitted:
                                 continue
                             else:
-                                videos_sq_transcripts.append(sq_transcript)
+                                videos_watson_transcripts.append(watson_transcript)
                                 videos_request_batch.append(vid_id)
                         except Exception:
                             continue
@@ -88,7 +88,7 @@ def submit_sq_transcripts():
                     continue
             else:
                 api_endpoint = "/submitjob"
-                api_request = sq_api_url + api_endpoint
+                api_request = watson_api_url + api_endpoint
                 sandbox = sandbox_mode
                 url_list = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
                 request_body = {
@@ -102,13 +102,13 @@ def submit_sq_transcripts():
                 response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
                 api_tracker.cursor += 1
                 api_tracker.save()
-                for sq_transcript in videos_sq_transcripts:
-                    sq_transcript.submitted = datetime.now()
-                    sq_transcript.job_id = response.json()["Job Id"]
-                    sq_transcript.save()
+                for watson_transcript in videos_watson_transcripts:
+                    watson_transcript.submitted = datetime.now()
+                    watson_transcript.job_id = response.json()["Job Id"]
+                    watson_transcript.save()
                 videos_request_batch = []
         unlock(LOCK_NAME)
-        logger.debug("Finished pulling SQ transcripts task.")
+        logger.debug("Finished pulling Watson transcripts task.")
     except Exception as e:
         pass
 
