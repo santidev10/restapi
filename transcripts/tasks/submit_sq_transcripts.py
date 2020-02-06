@@ -34,8 +34,15 @@ sq_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
-def submit_sq_transcripts(language="English", country="United States", yt_category="News & Politics",
-                          brand_safety_score=70, num_vids=10000):
+def submit_sq_transcripts():
+    try:
+        language = settings.SQ_LANGUAGE
+        country = settings.SQ_COUNTRY
+        yt_category = settings.SQ_CATEGORY
+        brand_safety_score = settings.SQ_SCORE_THRESHOLD
+        num_vids = settings.SQ_NUM_VIDEOS
+    except Exception as e:
+        raise e
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         api_tracker = APIScriptTracker.objects.get_or_create(name=SQ_APITRACKER_KEY)[0]
