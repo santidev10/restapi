@@ -90,8 +90,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60
     },
-    "submit-sq-transcripts": {
-        "task": "transcripts.tasks.submit_sq_transcripts.submit_sq_transcripts",
+    "submit-watson-transcripts": {
+        "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
         "schedule": 15*60
     },
     "cache-video-aggregations": {
