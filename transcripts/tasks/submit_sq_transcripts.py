@@ -27,6 +27,8 @@ LOCK_NAME = 'sq_transcripts'
 API_KEY = settings.SQ_API_KEY
 API_QUOTA = settings.SQ_API_QUOTA
 SQ_APITRACKER_KEY = 'sq_transcripts'
+batch_size = settings.SQ_BATCH_SIZE
+sandbox_mode = settings.SQ_SANDBOX_MODE
 youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY)
 sq_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
@@ -51,7 +53,7 @@ def submit_sq_transcripts(language="English", country="United States", yt_catego
                 lock(lock_name=LOCK_NAME, max_retries=0, expire=timeout)
                 api_tracker.cursor = 0
                 return
-            if len(videos_request_batch) < 100:
+            if len(videos_request_batch) < batch_size:
                 vid_id = vid.main.id
                 options = {
                     "part": "id,snippet",
@@ -80,7 +82,12 @@ def submit_sq_transcripts(language="English", country="United States", yt_catego
             else:
                 api_endpoint = "/submitjob"
                 api_request = sq_api_url + api_endpoint
-                request_body = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
+                sandbox = sandbox_mode
+                url_list = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
+                request_body = {
+                    "sandbox": sandbox,
+                    "url_list": url_list
+                }
                 headers = {
                     "Content-Type": "application/json",
                     "x-api-key": API_KEY
