@@ -193,6 +193,7 @@ class AuditExportApiView(APIView):
             "Unique Bad Hit Words",
             "Video Count",
             "Brand Safety Score",
+            "Made For Kids",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -308,6 +309,7 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words,
                 video_count if video_count else "",
                 mapped_score,
+                v.made_for_kids,
             ]
             try:
                 if len(bad_word_categories) > 0:
