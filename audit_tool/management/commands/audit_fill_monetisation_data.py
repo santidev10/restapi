@@ -29,7 +29,7 @@ class Command(BaseCommand):
         with PidFile(piddir='.', pidname='check_monetised_campaigns.pid') as p:
             # get video/channel meta audits
             self.audits = AuditProcessor.objects.filter(
-                completed__lte=timezone.now() - timedelta(days=self.days)
+                completed__gte=timezone.now() - timedelta(days=self.days)
             ).exclude(audit_type=0)
             self.process_audits()
 
