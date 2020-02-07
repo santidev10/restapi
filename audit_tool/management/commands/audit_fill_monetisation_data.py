@@ -48,12 +48,14 @@ class Command(BaseCommand):
         videos = AuditVideoProcessor.objects.filter(audit=audit)
         for video in videos:
             channel_meta = video.channel.auditchannelmeta
-            channel_meta.monetised = True
-            channel_meta.save(update_fields=['monetised'])
+            if not channel_meta.monetised:
+                channel_meta.monetised = True
+                channel_meta.save(update_fields=['monetised'])
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
         for channel in channels:
             channel_meta = channel.channel.auditchannelmeta
-            channel_meta.monetised = True
-            channel_meta.save(update_fields=['monetised'])
+            if not channel_meta.monetised:
+                channel_meta.monetised = True
+                channel_meta.save(update_fields=['monetised'])
