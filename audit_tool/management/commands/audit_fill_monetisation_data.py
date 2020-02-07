@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
     def process_audits(self):
         for audit in self.audits:
-            if not audit.params.get('done_monetised'):
+            if audit.name and not audit.params.get('done_monetised'):
                 if 'campaign analysis' in audit.name.lower() or 'campaign audit' in audit.name.lower():
                     if audit.audit_type == 1:
                         self.mark_monetised_videos(audit)
