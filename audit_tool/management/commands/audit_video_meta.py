@@ -202,7 +202,7 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             else:
-                channel_id = db_video.channel.channel_id
+                channel_id = db_video.channel.channel_id if db_video.channel else None
             if not channel_id: # video does not exist or is private now
                 avp.clean = False
                 avp.processed = timezone.now()
