@@ -84,6 +84,10 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.placement_list = False
+        if self.audit.name:
+            if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
+                self.placement_list = True
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
         else:
@@ -213,6 +217,10 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
+                if self.placement_list:
+                    if not db_channel_meta.monetised:
+                        db_channel_meta.monetised = True
+                        db_channel_meta.save(update_fields=['monetised'])
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
                     db_channel_meta.last_uploaded_view_count = db_video_meta.views
