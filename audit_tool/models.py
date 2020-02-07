@@ -241,6 +241,7 @@ class AuditProcessor(models.Model):
             if e[0].started:
                 res['status'] = "Processing Export"
                 res['percent_done'] = e[0].percent_done
+                res['started'] = e[0].started
                 res['machine'] = e[0].machine
                 res['thread'] = e[0].thread
             else:
