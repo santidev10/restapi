@@ -1,4 +1,3 @@
-import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -45,7 +44,7 @@ class Command(BaseCommand):
     acps = {}
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -232,6 +231,8 @@ class Command(BaseCommand):
         ))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
+        if db_video_meta.made_for_kids == True:
+            self.append_to_channel(avp, [avp.video_id], 'made_for_kids')
         if db_video_meta.age_restricted == True:
             avp.word_hits['exclusion'] = ['ytAgeRestricted']
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
@@ -352,6 +353,10 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
+            except Exception as e:
+                pass
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
                     db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
