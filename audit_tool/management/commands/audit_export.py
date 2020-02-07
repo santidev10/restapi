@@ -39,7 +39,9 @@ class Command(BaseCommand):
 
     def process_export(self):
         self.export.started = timezone.now()
-        self.export.save(update_fields=['started'])
+        self.export.machine = self.machine_number
+        self.export.thread = self.thread_id
+        self.export.save(update_fields=['started', 'machine', 'thread'])
         export_funcs = AuditExportApiView()
         audit_type = self.audit.params.get('audit_type_original')
         if not audit_type:
