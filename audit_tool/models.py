@@ -241,6 +241,9 @@ class AuditProcessor(models.Model):
             if e[0].started:
                 res['status'] = "Processing Export"
                 res['percent_done'] = e[0].percent_done
+                res['started'] = e[0].started
+                res['machine'] = e[0].machine
+                res['thread'] = e[0].thread
             else:
                 res['status'] = "Export Queued"
         return res
@@ -443,6 +446,8 @@ class AuditExporter(models.Model):
     export_as_videos = models.BooleanField(default=False)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
+    machine = models.IntegerField(null=True, db_index=True)
+    thread = models.IntegerField(null=True, db_index=True)
 
     @property
     def owner(self):

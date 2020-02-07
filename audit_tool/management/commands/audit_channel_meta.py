@@ -81,6 +81,10 @@ class Command(BaseCommand):
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
         self.num_videos = self.audit.params.get('num_videos')
+        self.placement_list = False
+        if self.audit.name:
+            if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
+                self.placement_list = True
         if not self.num_videos:
             self.num_videos = 50
         if not self.audit.started:
@@ -216,6 +220,9 @@ class Command(BaseCommand):
             if db_channel_meta.name:
                 acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
             acp.save(update_fields=['clean', 'processed', 'word_hits'])
+            if self.placement_list and not db_channel_meta.monetised:
+                db_channel_meta.monetised = True
+                db_channel_meta.save(update_fields=['monetised'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
