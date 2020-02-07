@@ -132,17 +132,17 @@ DATABASES = {
         'HOST': os.getenv('AUDIT_DB_HOST', 'localhost'),
         'PORT': os.getenv('AUDIT_DB_PORT', ''),  # Set to empty string for default.
     },
-    'transcripts': {
-        # default values are for the TC only
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('TRANSCRIPTS_DB_NAME', 'transcripts'),
-        'USER': os.getenv('TRANSCRIPTS_DB_USER', 'admin_saas'),
-        'PASSWORD': os.getenv('TRANSCRIPTS_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
-        'HOST': os.getenv('TRANSCRIPTS_DB_HOST', 'localhost'),
-        'PORT': os.getenv('TRANSCRIPTS_DB_PORT', ''),  # Set to empty string for default.
-    }
+    # 'transcripts': {
+    #     # default values are for the TC only
+    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
+    #     'NAME': os.getenv('TRANSCRIPTS_DB_NAME', 'transcripts'),
+    #     'USER': os.getenv('TRANSCRIPTS_DB_USER', 'admin_saas'),
+    #     'PASSWORD': os.getenv('TRANSCRIPTS_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
+    #     'HOST': os.getenv('TRANSCRIPTS_DB_HOST', 'localhost'),
+    #     'PORT': os.getenv('TRANSCRIPTS_DB_PORT', ''),  # Set to empty string for default.
+    # }
 }
-DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter', 'saas.db_router.TranscriptsDBRouter']
+DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
