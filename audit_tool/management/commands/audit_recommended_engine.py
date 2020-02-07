@@ -406,6 +406,10 @@ class Command(BaseCommand):
                 db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
             except Exception as e:
                 pass
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
+            except Exception as e:
+                pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
