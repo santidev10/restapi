@@ -217,10 +217,9 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
-                if self.placement_list:
-                    if not db_channel_meta.monetised:
-                        db_channel_meta.monetised = True
-                        db_channel_meta.save(update_fields=['monetised'])
+                if self.placement_list and not db_channel_meta.monetised:
+                    db_channel_meta.monetised = True
+                    db_channel_meta.save(update_fields=['monetised'])
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
                     db_channel_meta.last_uploaded_view_count = db_video_meta.views

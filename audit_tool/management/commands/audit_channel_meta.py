@@ -220,10 +220,9 @@ class Command(BaseCommand):
             if db_channel_meta.name:
                 acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
             acp.save(update_fields=['clean', 'processed', 'word_hits'])
-            if self.placement_list:
-                if not db_channel_meta.monetised:
-                    db_channel_meta.monetised = True
-                    db_channel_meta.save(update_fields=['monetised'])
+            if self.placement_list and not db_channel_meta.monetised:
+                db_channel_meta.monetised = True
+                db_channel_meta.save(update_fields=['monetised'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
