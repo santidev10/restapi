@@ -10,4 +10,5 @@ fi
 
 ./manage.py migrate
 ./manage.py migrate --database=audit
+./manage.py migrate --database=transcripts
 ./manage.py shell -c "from django.contrib.auth import get_user_model; not get_user_model().objects.filter(email='admin@admin.admin').exists() and get_user_model().objects.create_superuser('admin', 'admin@admin.admin', 'admin')"
