@@ -446,8 +446,8 @@ class AuditExporter(models.Model):
     export_as_videos = models.BooleanField(default=False)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
-    machine = models.IntegerField(null=True)
-    thread = models.IntegerField(null=True)
+    machine = models.IntegerField(null=True, db_index=True)
+    thread = models.IntegerField(null=True, db_index=True)
 
     @property
     def owner(self):
