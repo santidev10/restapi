@@ -5,7 +5,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db import transaction
 from django.db.models import BigIntegerField
 from django.db.models import CharField
 from django.db.models import IntegerField
@@ -14,16 +13,10 @@ from django.db.models import Model
 from django.db.models import OneToOneField
 from django.db.models import CASCADE
 from django.db.models import UUIDField
-from django.db.models import PROTECT
+from django.db.models import SET_NULL
 from django.utils import timezone
 
 from audit_tool.models import AuditProcessor
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditVideo
-from audit_tool.models import AuditVideoMeta
-from audit_tool.models import AuditChannelVet
-from audit_tool.models import AuditVideoVet
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
@@ -43,8 +36,8 @@ from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from utils.models import Timestampable
-from utils.utils import chunks_generator
 from segment.models.utils.segment_exporter import SegmentExporter
+from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 
 logger = logging.getLogger(__name__)
 
@@ -62,27 +55,23 @@ class CustomSegment(SegmentMixin, Timestampable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.audit_utils = SegmentAuditUtils(self.segment_type)
 
         if self.segment_type == 0:
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
-            self.LIST_SIZE = 20000
+            self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-            self.audit_model = AuditVideo
-            self.audit_meta_model = AuditVideoMeta
-            self.audit_vetting_model = AuditVideoVet
+
         else:
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
-            self.LIST_SIZE = 20000
+            self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-            self.audit_model = AuditChannel
-            self.audit_meta_model = AuditChannelMeta
-            self.audit_vetting_model = AuditChannelVet
-            if not self.owner or not self.owner.has_perm("userprofile.monetization_filter"):
+            if not self.owner or (self.owner and not self.owner.has_perm("userprofile.monetization_filter")):
                 self.serializer = CustomSegmentChannelExportSerializer
             else:
                 self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
@@ -109,7 +98,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         _id: list_type for list_type, _id in list_type_to_id.items()
     }
 
-    audit = OneToOneField(AuditProcessor, related_name="segment", on_delete=PROTECT)
+    audit = OneToOneField(AuditProcessor, related_name="segment", null=True, on_delete=SET_NULL)
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
@@ -122,10 +111,6 @@ class CustomSegment(SegmentMixin, Timestampable):
     def data_type(self):
         data_type = self.segment_id_to_type[self.segment_type]
         return data_type
-
-    @property
-    def audit_models(self):
-        return self.audit_model, self.audit_meta_model, self.audit_vetting_model
 
     def set_es_sections(self, sections, upsert_sections):
         self.es_manager.sections = sections
@@ -156,29 +141,6 @@ class CustomSegment(SegmentMixin, Timestampable):
             s3_key = self.export.parse_download_url()
         export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
-
-    def get_es_manager(self, sections=None):
-        """
-        Get Elasticsearch manager based on segment type
-        :param sections:
-        :return:
-        """
-        if sections is None:
-            sections = self.SECTIONS
-        if self.segment_type == 0:
-            return VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
-        else:
-            return ChannelManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
-
-    def get_serializer(self):
-        """
-        Get export serializer
-        :return:
-        """
-        if self.segment_type == 0:
-            return
-        else:
-            return CustomSegmentChannelExportSerializer
 
     def get_s3_key(self, *args, **kwargs):
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
@@ -219,29 +181,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         }
         item_id = url.split(config[item_type])[-1]
         return item_id
-
-    def get_create_audit_items(self, audit, item_ids):
-        """
-        Get or create AuditChannel / AuditVideo, AuditChannelMeta / AuditVideoMeta, AuditChannelVet, AuditVideoVet
-        :param audit:
-        :param item_id:
-        :return:
-        """
-        # audit_items = []
-        # audit_meta_items = []
-        # audit_vet_items = []
-
-        audit_items = []
-        audit_meta_items = []
-        audit_vet_items = []
-
-        for batch in chunks_generator(item_ids, size=1000):
-            with transaction.atomic():
-                for _id in batch:
-                    audit_items.append(self.audit_model.get_or_create(_id))
-                    audit_meta_items.append(self.audit_meta_model.objects.get_or_create(**{self.data_type: _id}))
-                    audit_vet_items.append(self.audit_vetting_model.objects.get_or_create(**{self.data_type: _id, "audit": audit}))
-            return audit_items, audit_meta_items, audit_vet_items
 
 
 class CustomSegmentRelated(Model):

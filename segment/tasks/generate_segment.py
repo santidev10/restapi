@@ -6,13 +6,10 @@ import tempfile
 
 from django.conf import settings
 
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
-from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditVideoMeta
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.utils.bulk_search import bulk_search
+from segment.tasks.generate_audit_items import generate_audit_items
 from utils.brand_safety import map_brand_safety_score
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 
@@ -45,6 +42,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
+            data_type = "video"
             cursor_field = "stats.views"
             # Exclude all age_restricted items
             if options is None:
@@ -52,14 +50,15 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                     QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
                 ]
         else:
+            data_type = "channel"
             cursor_field = "stats.subscribers"
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
+            # for is_monetizable channel items to appear first on export
             if options is None:
                 options = [
                     QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                     QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                 ]
-        batch_ids = []
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
                 with open(filename, mode="a", newline="") as file:
@@ -69,6 +68,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                         writer.writeheader()
 
                     for item in batch:
+                        # YT_GENRE_CHANNELS have no data and should not be on any export
                         if item.main.id in YT_GENRE_CHANNELS:
                             continue
                         if len(top_three_items) < 3 \
@@ -84,6 +84,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                         row = segment.serializer(item).data
                         writer.writerow(row)
 
+                        # Calculating aggregations with each items already retrieved is much more efficient than
+                        # executing an additional aggregation query
                         aggregations["monthly_views"] += item.stats.last_30day_views or 0
                         aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
                         aggregations["views"] += item.stats.views or 0
@@ -104,13 +106,15 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             aggregations["audited_videos"] += item.brand_safety.videos_scored or 0
 
                         seen += 1
+                        # Number of results from bulk_search is imprecise
                         if seen >= size:
                             raise MaxItemsException
-            batch_ids.clear()
         except MaxItemsException:
             pass
-        if batch_ids and create_audit_items is True:
-            pass
+
+        # Create audit items for vetting process
+        if create_audit_items is True:
+            generate_audit_items(item_ids, segment, data_field=data_type)
 
         # Average fields
         aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))

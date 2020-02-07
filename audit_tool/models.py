@@ -112,6 +112,34 @@ class Comment(models.Model):
     found_items = JSONField(default=dict)
 
 
+class ChannelType(models.Model):
+    ID_CHOICES = [
+        (0, "MC / Brand"),
+        (1, "Regular UGC"),
+        (2, "Premium UGC"),
+    ]
+    CHANNEL_TYPE_CHOICES = [
+        ("MC / Brand", "MC / Brand"),
+        ("Regular UGC", "Regular UGC"),
+        ("Premium UGC", "Premium UGC"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_int = {val: key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPE_CHOICES)
+
+    @staticmethod
+    def from_string(value):
+        channel_type = ChannelType.objects.get(channel_type=value)
+        return channel_type
+
+    @staticmethod
+    def from_id(value):
+        channel_type = ChannelType.objects.get(id=value)
+        return channel_type
+
+
 class AuditProcessor(models.Model):
     AUDIT_TYPES = {
         '0': 'Recommendation Engine',
@@ -351,6 +379,10 @@ class AuditChannelMeta(models.Model):
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
 
+    age_group = models.ForeignKey(AgeGroupConstant, null=True, default=None, on_delete=models.SET_NULL)
+    channel_type = models.ForeignKey(ChannelType, null=True, default=None, on_delete=models.SET_NULL)
+    gender = models.ForeignKey(GenderConstant, null=True, default=None, on_delete=models.PROTECT)
+
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
     video_id = models.CharField(max_length=50, unique=True)
@@ -409,11 +441,6 @@ class AuditVideoMeta(models.Model):
     duration = models.CharField(max_length=30, default=None, null=True)
     age_restricted = models.NullBooleanField(default=None, db_index=True)
 
-    age_group = models.ForeignKey(AgeGroupConstant, null=True, default=None)
-    gender = models.ForeignKey(GenderConstant, null=True, default=None, )
-    country = models.ForeignKey(AuditCountry, default=None, null=True, on_delete=models.CASCADE)
-    # channel_type = models.CharField(null=True, default=None)
-    # is_monetized = models.BooleanField(null=True, default=None)
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -513,19 +540,6 @@ class BlacklistItem(models.Model):
         return data
 
 
-class AuditVideoVet(models.Model):
-    audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
-    video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
-
-    checked_out_by = models.ForeignKey("userprofile.UserProfile", null=True, on_delete=models.SET_NULL)
-    checked_out_at = models.DateTimeField(auto_now_add=False, null=True, default=None)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(null=True, default=None)
-    vetted = models.BooleanField(default=False, db_index=True)
-    approved = models.BooleanField(default=False, db_index=True)
-    suitable = models.BooleanField(default=True, db_index=True)
-
-
 class AuditChannelVet(models.Model):
     audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
     channel = models.ForeignKey(AuditChannel, on_delete=models.CASCADE)
@@ -538,30 +552,3 @@ class AuditChannelVet(models.Model):
     approved = models.BooleanField(default=False, db_index=True)
     suitable = models.BooleanField(default=True, db_index=True)
 
-
-class ChannelType(models.Model):
-    ID_CHOICES = [
-        (0, "MC / Brand"),
-        (1, "Regular UGC"),
-        (2, "Premium UGC"),
-    ]
-    CHANNEL_TYPE_CHOICES = [
-        ("MC / Brand", "MC / Brand"),
-        ("Regular UGC", "Regular UGC"),
-        ("Premium UGC", "Premium UGC"),
-    ]
-    to_str = dict(ID_CHOICES)
-    to_int = {val: key for key, val in to_str.items()}
-
-    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
-    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPE_CHOICES)
-
-    @staticmethod
-    def from_string(value):
-        channel_type = ChannelType.objects.get(channel_type=value)
-        return channel_type
-
-    @staticmethod
-    def from_id(value):
-        channel_type = ChannelType.objects.get(id=value)
-        return channel_type

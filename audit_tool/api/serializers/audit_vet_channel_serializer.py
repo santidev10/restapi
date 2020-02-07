@@ -2,16 +2,15 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import RelatedField
 
 from audit_tool.models import AuditChannelVet
-from audit_tool.models import AuditVideoVet
 from audit_tool.validators import AuditToolValidator
 from aw_reporting.validators import AwReportingValidator
 
 
-class AuditVideoChannelSerializer(ModelSerializer):
+class AuditChannelVetSerializer(ModelSerializer):
 
-    language = RelatedField(source="language")
-    country = RelatedField(source="country")
-    category = RelatedField(source="category.category_display_iab")
+    language = RelatedField(source="language", read_only=True)
+    country = RelatedField(source="country", read_only=True)
+    category = RelatedField(source="category.category_display_iab", read_only=True)
 
     class Meta:
         model = AuditChannelVet
@@ -37,7 +36,7 @@ class AuditVideoChannelSerializer(ModelSerializer):
 
     def validate_gender(self, value):
         """
-        Retrieve GenderConstant. Raises ValidationError if not found
+        Retrieve aw_reporting GenderConstant. Raises ValidationError if not found
         :param value: int | str
             int ID, str gender name
         :return: GenderConstant
@@ -47,7 +46,7 @@ class AuditVideoChannelSerializer(ModelSerializer):
 
     def validate_age_group(self, value):
         """
-        Retrieve AgeGroupConstant. Raises ValidationError if not found
+        Retrieve aw_reporting AgeGroupConstant. Raises ValidationError if not found
         :param value: int | str
         :return: AgeGroupConstant
         """
@@ -55,18 +54,38 @@ class AuditVideoChannelSerializer(ModelSerializer):
         return age_group
 
     def validate_language(self, value):
+        """
+        Retrieve audit_tool AuditLanguage. Raises ValidationError if not found
+        :param value: str
+        :return: AuditLanguage
+        """
         language = AuditToolValidator.validate_language(value)
         return language
 
     def validate_category(self, value):
+        """
+        Retrieve audit_tool AuditCategory. Raises ValidationError if not found
+        :param value: str
+        :return: AuditCategory
+        """
         category = AuditToolValidator.validate_category(value)
         return category
 
     def validate_country(self, value):
+        """
+        Retrieve audit_tool AuditCountry. Raises ValidationError if not found
+        :param value: str
+        :return: AuditCountry
+        """
         country = AuditToolValidator.validate_country(value)
         return country
 
     def validate_channel_type(self, value):
+        """
+        Retrieve audit_tool ChannelType. Raises ValidationError if not found
+        :param value: str
+        :return: ChannelType
+        """
         channel_type = AuditToolValidator.validate_channel_type(value)
         return channel_type
 
