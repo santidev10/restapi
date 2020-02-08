@@ -131,16 +131,7 @@ DATABASES = {
         'PASSWORD': os.getenv('AUDIT_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
         'HOST': os.getenv('AUDIT_DB_HOST', 'localhost'),
         'PORT': os.getenv('AUDIT_DB_PORT', ''),  # Set to empty string for default.
-    },
-    # 'transcripts': {
-    #     # default values are for the TC only
-    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    #     'NAME': os.getenv('TRANSCRIPTS_DB_NAME', 'transcripts'),
-    #     'USER': os.getenv('TRANSCRIPTS_DB_USER', 'admin_saas'),
-    #     'PASSWORD': os.getenv('TRANSCRIPTS_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
-    #     'HOST': os.getenv('TRANSCRIPTS_DB_HOST', 'localhost'),
-    #     'PORT': os.getenv('TRANSCRIPTS_DB_PORT', ''),  # Set to empty string for default.
-    # }
+    }
 }
 DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
 
