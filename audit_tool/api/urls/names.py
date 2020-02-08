@@ -10,4 +10,5 @@ class AuditPathName:
     AUDIT_FLAG = "audit_flag"
     AUDIT_HISTORY = "audit_history"
     AUDIT_PAUSE = "audit_pause"
+    AUDIT_VET = "audit_vet"
 
