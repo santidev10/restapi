@@ -5,7 +5,7 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
-# from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditLanguage
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
 from transcripts.models import WatsonTranscript
@@ -52,10 +52,10 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                     video.populate_general_data(language=watson_language, lang_code=lang_code)
                 watson_transcript = WatsonTranscript.get_or_create(video_id)
                 watson_transcript.transcript = transcript
-                # try:
-                #     watson_transcript.language = AuditLanguage.objects.get(lang_code)
-                # except Exception:
-                #     pass
+                try:
+                    watson_transcript.language = AuditLanguage.objects.get(lang_code)
+                except Exception:
+                    pass
                 watson_transcript.retrieved = datetime.now()
                 watson_transcript.save()
                 AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
