@@ -137,6 +137,10 @@ CELERY_BEAT_SCHEDULE = {
     "userprofile_clean_device_auth_tokens": {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
+    },
+    "audit_tool_check_in_vetting_items": {
+        "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items",
+        "schedule": 60 * 10,
     }
 }
 

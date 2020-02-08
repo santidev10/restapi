@@ -3,7 +3,6 @@ from rest_framework.exceptions import ValidationError
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
-from audit_tool.models import ChannelType
 
 
 class AuditToolValidator(object):
@@ -45,16 +44,3 @@ class AuditToolValidator(object):
             if should_raise:
                 raise ValidationError(f"Country: {value} not found.")
         return country
-
-    @staticmethod
-    def validate_channel_type(value, should_raise=True):
-        channel_type = None
-        try:
-            if type(value) is int:
-                channel_type = ChannelType.from_id(value)
-            else:
-                channel_type = ChannelType.from_string(value)
-        except ChannelType.DoesNotExist:
-            if should_raise:
-                raise ValidationError(f"ChannelType: {value} does not exist.")
-        return channel_type

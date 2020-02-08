@@ -12,8 +12,6 @@ from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
 
-from aw_reporting.models import AgeGroupConstant
-from aw_reporting.models import GenderConstant
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 
 
@@ -112,41 +110,11 @@ class Comment(models.Model):
     found_items = JSONField(default=dict)
 
 
-class ChannelType(models.Model):
-    ID_CHOICES = [
-        (0, "MC / Brand"),
-        (1, "Regular UGC"),
-        (2, "Premium UGC"),
-    ]
-    CHANNEL_TYPE_CHOICES = [
-        ("MC / Brand", "MC / Brand"),
-        ("Regular UGC", "Regular UGC"),
-        ("Premium UGC", "Premium UGC"),
-    ]
-    to_str = dict(ID_CHOICES)
-    to_int = {val: key for key, val in to_str.items()}
-
-    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
-    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPE_CHOICES)
-
-    @staticmethod
-    def from_string(value):
-        channel_type = ChannelType.objects.get(channel_type=value)
-        return channel_type
-
-    @staticmethod
-    def from_id(value):
-        channel_type = ChannelType.objects.get(id=value)
-        return channel_type
-
-
 class AuditProcessor(models.Model):
     AUDIT_TYPES = {
         '0': 'Recommendation Engine',
         '1': 'Video Meta Processor',
         '2': 'Channel Meta Processor',
-        '3': 'Channel Vetting Processor',
-        '4': 'Video Vetting Processor',
     }
     SOURCE_TYPES = {
         '0': 'Audit Tool',
@@ -381,10 +349,6 @@ class AuditChannelMeta(models.Model):
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
 
-    age_group = models.ForeignKey(AgeGroupConstant, null=True, default=None, on_delete=models.SET_NULL)
-    channel_type = models.ForeignKey(ChannelType, null=True, default=None, on_delete=models.SET_NULL)
-    gender = models.ForeignKey(GenderConstant, null=True, default=None, on_delete=models.PROTECT)
-
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
     video_id = models.CharField(max_length=50, unique=True)
@@ -543,14 +507,16 @@ class BlacklistItem(models.Model):
 
 
 class AuditChannelVet(models.Model):
-    audit = models.ForeignKey(AuditProcessor, null=True, on_delete=models.SET_NULL)
-    channel = models.ForeignKey(AuditChannel, on_delete=models.CASCADE)
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='vets', null=True, default=None, on_delete=models.CASCADE)
 
-    checked_out_by = models.ForeignKey("userprofile.UserProfile", null=True, on_delete=models.SET_NULL)
-    checked_out_at = models.DateTimeField(auto_now_add=False, null=True, default=None)
+    clean = models.BooleanField(default=False, db_index=True) # determined if suitable by user
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(null=True, default=None)
-    vetted = models.BooleanField(default=False, db_index=True)
-    approved = models.BooleanField(default=False, db_index=True)
-    suitable = models.BooleanField(default=True, db_index=True)
+    is_checked_out = models.BooleanField(default=False, db_index=True)
+    checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True) # vetted at by user
+    processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
+    skipped = models.NullBooleanField(default=None, db_index=True) # skipped if user uanble to view in region, or item was deleted
 
+    class Meta:
+        unique_together = ("audit", "channel")

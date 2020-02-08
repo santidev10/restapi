@@ -1,7 +1,14 @@
-from django.db import transaction
-
 from audit_tool.models import get_hash_name
+from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import Sections
+
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditProcessor
 from utils.utils import chunks_generator
+from utils.youtube_api import YoutubeAPIConnector
+
 
 """
 1. Get the ids of Channel / Videos that we need to create Audit models for
@@ -10,14 +17,15 @@ from utils.utils import chunks_generator
 
 """
 
+BATCH_SIZE = 200
 
-def generate_audit_items(items, segment=None, data_field="video", audit=None, audit_model=None, audit_meta_model=None,
-                         audit_vetting_model=None, es_manager=None):
+
+def generate_audit_items(item_ids, segment, data_field="video"):
     """
     Generate audit items for segment vetting process
     If segment is provided, all audit kwargs are not required as segment has all attributes
 
-    :param items: list -> int | str
+    :param item_ids: list -> str
     :param segment: CustomSegment
     :param data_field: str -> video | channel
     :param audit: AuditProcessor
@@ -27,68 +35,108 @@ def generate_audit_items(items, segment=None, data_field="video", audit=None, au
     :param es_manager: VideoManager | ChannelManager
     :return:
     """
-    if not items:
-        return
-
-    if segment is None:
-        if audit is None and audit_model is None and audit_meta_model is None and audit_vetting_model is None and es_manager is None:
-            raise ValueError("If segment is not provided, audit, audit_model, audit_meta_model, "
-                             "audit_vetting_model, and es_manager parameters are required.")
+    language_mapping = get_language_mapping()
+    country_mapping = get_country_mapping()
+    youtube_connector = YoutubeAPIConnector()
+    if data_field == "video":
+        audit_processor_type = 1
+        youtube_connector = youtube_connector.obtain_videos
+        meta_model_instantiator = instantiate_video_meta_model
+    elif data_field == "channel":
+        audit_processor_type = 2
+        youtube_connector = youtube_connector.obtain_channels
+        meta_model_instantiator = instantiate_channel_meta_model
     else:
-        audit = segment.audit
-        audit_model = segment.audit_utils.model
-        audit_meta_model = segment.audit_utils.meta_model
-        audit_vetting_model = segment.audit_utils.vetting_model
-        es_manager = segment.es_manager
+        raise ValueError(f"Unsupported data field: {data_field}")
+    audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
+        "audit_type": audit_processor_type,
+        "source": 1
+    })
+    if created:
+        segment.audit_id = audit.id
+        segment.save()
+    audit_model = segment.audit_utils.model
+    audit_meta_model = segment.audit_utils.meta_model
+    audit_vetting_model = segment.audit_utils.vetting_model
+    es_manager = segment.es_manager
+    es_manager.sections = (Sections.GENERAL_DATA, Sections.STATS)
 
-    audit_items = []
-    audit_meta_items = []
-    audit_vet_items = []
-    audit_items_to_create = []
-    audit_meta_to_create = []
-
+    # video_id, channel_id
     id_field = data_field + "_id"
-    for batch in chunks_generator(items, size=10000):
-        if type(batch[0]) is str:
-            item_ids = batch
-        else:
-            # Assume items are Elasticsearch documents
-            item_ids = [doc.main.id for doc in batch]
-
+    for batch in chunks_generator(item_ids, size=BATCH_SIZE):
+        batch = list(batch)
         # Get the ids of audit Channel / Video items we need to create
-        filter_query = {f"{id_field}__in": item_ids}
-        existing_audit_items = audit_model.objects.filter(**filter_query)
-        existing_audit_ids = set(existing_audit_items.values_list(id_field, flat=True))
+        filter_query = {f"{id_field}__in": batch}
+        existing_audit_items = list(audit_model.objects.filter(**filter_query))
+        existing_audit_ids = [getattr(item, id_field) for item in existing_audit_items]
 
         # Generate audit / audit meta items
-        to_create_ids = set(batch) - existing_audit_ids
+        to_create_ids = set(batch) - set(existing_audit_ids)
+        data = []
+        for ids in chunks_generator(to_create_ids, size=50):
+            response = youtube_connector(",".join(ids))["items"]
+            data.extend(response)
+        audit_model_to_create = [instantiate_audit_model(item, id_field, audit_model) for item in data]
+        audit_model.objects.bulk_create(audit_model_to_create)
 
-        if type(batch[0]) is str:
-            # Retrieve data for audit item instantiations
-            data = es_manager.get(to_create_ids)
-        else:
-            data = [doc for doc in batch if doc.main.id in to_create_ids]
+        # meta_data is tuple of created audit item
+        # and api response data (AuditChannel, {"snippet": ..., "statistics": ...})
+        # Must create first to assign FK to meta model
+        meta_data = zip(audit_model_to_create, data)
+        meta_to_create = [meta_model_instantiator(audit, data, language_mapping, country_mapping) for audit, data in meta_data]
+        audit_meta_model.objects.bulk_create(meta_to_create)
 
-        # Instantiate audit vetting items for transaction
-        for doc in data:
-            item_id = doc.main.id
-            audit_params = {
-                id_field: item_id,
-                f"{id_field}_hash": get_hash_name(item_id)
-            }
-            audit_item = audit_model(**audit_params)
-            meta_params = {
-                data_field: audit_item,
+        all_audit_items = list(existing_audit_items) + audit_model_to_create
+        audit_vetting_to_create = [audit_vetting_model(**{"audit": audit, data_field: obj}) for obj in all_audit_items]
+        audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
 
-            }
-            audit_meta = audit_meta_model(**meta_params)
-            audit_items_to_create.append(audit_item)
-            audit_meta_to_create.append(audit_meta)
 
-        # Create audit vetting items
-        with transaction.atomic():
-            for _id in batch:
-                audit_items.append(audit_model.get_or_create(_id))
-                audit_meta_items.append(audit_meta_model.objects.get_or_create(**{data_field: _id}))
-                audit_vet_items.append(
-                    audit_vetting_model.objects.get_or_create(**{data_field: _id, "audit": audit}))
+def instantiate_audit_model(data, id_field, audit_model):
+    audit_params = {
+        id_field: data["id"],
+        f"{id_field}_hash": get_hash_name(data["id"])
+    }
+    audit_item = audit_model(**audit_params)
+    return audit_item
+
+
+def instantiate_video_meta_model():
+    pass
+
+
+def instantiate_channel_meta_model(audit_item, data, language_mapping, country_mapping):
+    snippet = data.get("snippet", {})
+    stats = data.get("statistics", {})
+    branding = data.get("brandingSettings", {}).get("channel", {})
+    meta_params = {
+        "channel": audit_item,
+        "name": branding.get("title") or snippet.get("title"),
+        "description": branding.get("description") or snippet.get("description"),
+        "keywords": branding.get("keywords") or snippet.get("keywords"),
+        "default_language": branding.get("defaultLanguage"),
+        "country": branding.get("country") or snippet.get("country"),
+        "subscribers": int(stats["subscriberCount"]) if stats.get("subscriberCount") else None,
+        "view_count": int(stats["viewCount"]) if stats.get("viewCount") else None,
+        "video_count": int(stats["videoCount"]) if stats.get("videoCount") else None,
+    }
+    text = meta_params["name"] or "" + meta_params["description"] + meta_params["keywords"] or ""
+    detected_language = AuditUtils.get_language(text)
+    meta_params["language"] = language_mapping.get(detected_language)
+    meta_params["country"] = country_mapping.get(meta_params["country"])
+
+    meta_item = AuditChannelMeta(**meta_params)
+    return meta_item
+
+
+def get_language_mapping():
+    mapping = {
+        item.language: item for item in AuditLanguage.objects.all()
+    }
+    return mapping
+
+
+def get_country_mapping():
+    mapping = {
+        item.country: item for item in AuditCountry.objects.all()
+    }
+    return mapping

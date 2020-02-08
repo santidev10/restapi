@@ -58,6 +58,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         self.audit_utils = SegmentAuditUtils(self.segment_type)
 
         if self.segment_type == 0:
+            self.data_field = "video"
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
@@ -66,6 +67,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
 
         else:
+            self.data_field = "channel"
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
@@ -98,7 +100,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         _id: list_type for list_type, _id in list_type_to_id.items()
     }
 
-    audit = OneToOneField(AuditProcessor, related_name="segment", null=True, on_delete=SET_NULL)
+    audit_id = IntegerField(null=True, default=None, db_index=True)
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
