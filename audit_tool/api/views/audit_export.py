@@ -219,7 +219,10 @@ class AuditExportApiView(APIView):
         num_done = 0
         for avp in videos:
             vid = avp.video
-            v = vid.auditvideometa
+            try:
+                v = vid.auditvideometa
+            except Exception as e:
+                v = None
             v_channel = vid.channel
             acm = v_channel.auditchannelmeta if v_channel else None
             if num_done > self.MAX_ROWS:
@@ -284,16 +287,16 @@ class AuditExportApiView(APIView):
                 print("Problem calculating video score")
             data = [
                 "https://www.youtube.com/video/" + vid.video_id,
-                v.name,
+                v.name if v else "",
                 language,
                 category,
-                v.views,
-                v.likes,
-                v.dislikes,
-                'T' if v.emoji else 'F',
+                v.views if v else "",
+                v.likes if v else "",
+                v.dislikes if v else "",
+                'T' if v and v.emoji else 'F',
                 default_audio_language,
-                self.clean_duration(v.duration) if v.duration else "",
-                v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                self.clean_duration(v.duration) if v and v.duration else "",
+                v.publish_date.strftime("%m/%d/%Y") if v and v.publish_date else "",
                 acm.name if acm else "",
                 "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
                 channel_lang,
