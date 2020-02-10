@@ -9,10 +9,6 @@ class Migration(migrations.Migration):
         ('audit_tool', '0051_auto_20200207_2124'),
     ]
 
-    run_before = [
-        ('transcripts', '0001_initial')
-    ]
-
     operations = [
         migrations.AlterField(
             model_name='auditexporter',
