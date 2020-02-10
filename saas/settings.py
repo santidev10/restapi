@@ -131,7 +131,8 @@ DATABASES = {
         'PASSWORD': os.getenv('AUDIT_DB_PASSWORD', 'kA1tWRRUyTLnNe2Hi8PL'),
         'HOST': os.getenv('AUDIT_DB_HOST', 'localhost'),
         'PORT': os.getenv('AUDIT_DB_PORT', ''),  # Set to empty string for default.
-    }
+    },
+
 }
 DATABASE_ROUTERS = ['saas.db_router.AuditDBRouter']
 
