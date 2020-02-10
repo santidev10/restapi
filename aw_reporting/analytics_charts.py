@@ -289,7 +289,7 @@ class DeliveryChart:
             return
 
         placements = self.get_placements()
-        placements_start = placements.aggregate(Min("start"))['start__min']
+        placements_start = placements.values("start").aggregate(Min("start"))['start__min']
 
         if placements_start is None:
             return
