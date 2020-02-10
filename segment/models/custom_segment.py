@@ -10,13 +10,10 @@ from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
 from django.db.models import Model
-from django.db.models import OneToOneField
 from django.db.models import CASCADE
 from django.db.models import UUIDField
-from django.db.models import SET_NULL
 from django.utils import timezone
 
-from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
@@ -59,6 +56,8 @@ class CustomSegment(SegmentMixin, Timestampable):
 
         if self.segment_type == 0:
             self.data_field = "video"
+            # AuditProcessor audit_type
+            self.audit_type = 1
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
@@ -68,6 +67,7 @@ class CustomSegment(SegmentMixin, Timestampable):
 
         else:
             self.data_field = "channel"
+            self.audit_type = 2
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
             self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS

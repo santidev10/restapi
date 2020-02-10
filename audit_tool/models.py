@@ -520,3 +520,31 @@ class AuditChannelVet(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
+
+
+class ChannelType(models.Model):
+    ID_CHOICES = [
+        (0, "MC / BRAND"),
+        (1, "REGULAR UGC"),
+        (2, "PREMIUM UGC"),
+    ]
+    CHANNEL_TYPE_CHOICES = [
+        ("MC / Brand", "MC / Brand"),
+        ("Regular UGC", "Regular UGC"),
+        ("Premium UGC", "Premium UGC"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_int = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPE_CHOICES)
+
+    @staticmethod
+    def from_string(value):
+        channel_type = ChannelType.objects.get(channel_type=value)
+        return channel_type
+
+    @staticmethod
+    def from_id(value):
+        channel_type = ChannelType.objects.get(id=value)
+        return channel_type

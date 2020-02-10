@@ -4,6 +4,8 @@ from audit_tool.models import AuditCategory
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditLanguage
 
+from audit_tool.models import ChannelType
+
 
 class AuditToolValidator(object):
 
@@ -44,3 +46,27 @@ class AuditToolValidator(object):
             if should_raise:
                 raise ValidationError(f"Country: {value} not found.")
         return country
+
+    @staticmethod
+    def validate_iab_categories(values, should_raise=True):
+        if type(values) is str:
+            values = values[0]
+        try:
+            [AuditCategory.objects.filter(category_display_iab=val).exists for val in values]
+        except AuditCategory.DoesNotExist as e:
+            if should_raise:
+                raise ValidationError(f"Category does not exist: {e}")
+        return values
+
+    @staticmethod
+    def validate_channel_type(value, should_raise=True):
+        channel_type = None
+        item_id = value
+        try:
+            if type(item_id) is str:
+                item_id = ChannelType.to_int.get(item_id.lower())
+            channel_type = ChannelType.objects.get(id=item_id)
+        except ChannelType.DoesNotExist:
+            if should_raise:
+                raise ValueError(f"ChannelType: {value} not found.")
+        return channel_type

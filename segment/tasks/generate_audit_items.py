@@ -8,6 +8,8 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
+from segment.models import CustomSegment
+from saas import celery_app
 
 
 """
@@ -20,24 +22,20 @@ from utils.youtube_api import YoutubeAPIConnector
 BATCH_SIZE = 200
 
 
-def generate_audit_items(item_ids, segment, data_field="video"):
+@celery_app.task
+def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     """
     Generate audit items for segment vetting process
-    If segment is provided, all audit kwargs are not required as segment has all attributes
 
+    :param segment_id: CustomSegment id
     :param item_ids: list -> str
-    :param segment: CustomSegment
     :param data_field: str -> video | channel
-    :param audit: AuditProcessor
-    :param audit_model: AuditChannel | AuditVideo
-    :param audit_meta_model: AuditVideoMeta | AuditChannelMeta
-    :param audit_vetting_model: AuditChannelVet
-    :param es_manager: VideoManager | ChannelManager
     :return:
     """
     language_mapping = get_language_mapping()
     country_mapping = get_country_mapping()
     youtube_connector = YoutubeAPIConnector()
+    segment = CustomSegment.objects.get(id=segment_id)
     if data_field == "video":
         audit_processor_type = 1
         youtube_connector = youtube_connector.obtain_videos
@@ -48,6 +46,10 @@ def generate_audit_items(item_ids, segment, data_field="video"):
         meta_model_instantiator = instantiate_channel_meta_model
     else:
         raise ValueError(f"Unsupported data field: {data_field}")
+
+    if item_ids is None:
+        item_ids = segment.get_extract_export_ids()
+
     audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
         "audit_type": audit_processor_type,
         "source": 1
@@ -55,11 +57,10 @@ def generate_audit_items(item_ids, segment, data_field="video"):
     if created:
         segment.audit_id = audit.id
         segment.save()
+
     audit_model = segment.audit_utils.model
     audit_meta_model = segment.audit_utils.meta_model
     audit_vetting_model = segment.audit_utils.vetting_model
-    es_manager = segment.es_manager
-    es_manager.sections = (Sections.GENERAL_DATA, Sections.STATS)
 
     # video_id, channel_id
     id_field = data_field + "_id"
