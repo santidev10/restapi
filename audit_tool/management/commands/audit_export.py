@@ -44,7 +44,7 @@ class Command(BaseCommand):
                         thread=None,
                     )
             try:
-                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("id")[0]
+                self.export = AuditExporter.objects.filter(completed__isnull=True, started__isnull=True).order_by("pause", "id")[0]
                 self.audit = self.export.audit
             except Exception as e:
                 logger.exception(e)
