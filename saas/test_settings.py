@@ -21,6 +21,7 @@ MIGRATION_MODULES = {
     "aw_creation": None,
     "aw_reporting": None,
     "brand_safety": None,
+    "cache": None,
     "contenttypes": None,
     "email_reports": None,
     "keyword_tool": None,
