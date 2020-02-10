@@ -65,6 +65,7 @@ class Command(BaseCommand):
                 self.export.started = None
                 self.export.percent_done = 0
                 self.export.save(update_fields=['started', 'percent_done'])
+                print("problem with exporting channels {}, resetting audit back to 0".format(self.audit.audit_id))
                 raise Exception(e)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
         else:
@@ -74,6 +75,7 @@ class Command(BaseCommand):
                 self.export.started = None
                 self.export.percent_done = 0
                 self.export.save(update_fields=['started', 'percent_done'])
+                print("problem with exporting videos {}, resetting audit back to 0".format(self.audit.audit_id))
                 raise Exception(e)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
         if self.export.clean is not None:
