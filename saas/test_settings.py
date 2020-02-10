@@ -26,6 +26,7 @@ MIGRATION_MODULES = {
     "keyword_tool": None,
     "segment": None,
     "sessions": None,
+    "transcripts": None,
     "userprofile": None,
 }
 
