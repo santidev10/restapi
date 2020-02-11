@@ -144,11 +144,11 @@ class AuditProcessor(models.Model):
 
     @staticmethod
     def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None):
-        if export:
-            exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
-            all = AuditProcessor.objects.filter(id__in=exports)
-        else:
-            all = AuditProcessor.objects.all()
+        # if export:
+        #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
+        #     all = AuditProcessor.objects.filter(id__in=exports)
+        # else:
+        all = AuditProcessor.objects.all()
         if audit_type:
             all = all.filter(audit_type=audit_type)
         if running is not None:
@@ -161,7 +161,16 @@ class AuditProcessor(models.Model):
             'running': [],
             'completed': []
         }
-        for a in all.order_by("pause", "-completed", "id"):
+        audits = []
+        if export:
+            exports = AuditExporter.objects.filter(completed__isnull=False, audit_id__in=all.values_list('id', flat=True)).order_by("started", "audit__pause", "id")
+            for e in exports:
+                if e.audit not in audits:
+                    audits.append(e.audit)
+        else:
+            for a in all.order_by("pause", "-completed", "id"):
+                audits.append(a)
+        for a in audits:
             d = a.to_dict()
             status = 'running'
             if output:
