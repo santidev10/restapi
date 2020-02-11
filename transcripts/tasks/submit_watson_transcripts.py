@@ -67,7 +67,7 @@ def submit_watson_transcripts():
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
                                                  offset=offset)
             offset += num_vids
-            print(f"len(videos): {len(videos)}")
+            logger.debug(f"len(videos): {len(videos)}")
             for vid in videos:
                 if api_tracker.cursor >= API_QUOTA:
                     now = datetime.now()
@@ -76,9 +76,9 @@ def submit_watson_transcripts():
                     unlock(LOCK_NAME)
                     lock(lock_name=LOCK_NAME, max_retries=0, expire=timeout)
                     api_tracker.cursor = 0
-                    print(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
+                    logger.debug(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
                     return
-                print(f"len(videos_request_batch): {len(videos_request_batch)}")
+                logger.debug(f"len(videos_request_batch): {len(videos_request_batch)}")
                 if len(videos_request_batch) < batch_size:
                     vid_id = vid.main.id
                     options = {
@@ -91,7 +91,7 @@ def submit_watson_transcripts():
                         if len(yt_captions["items"]) < 1:
                             yt_has_captions = False
                         else:
-                            print(f"Video with id {vid_id} has YT captions: {yt_captions['items']}. Skipping...")
+                            logger.debug(f"Video with id {vid_id} has YT captions: {yt_captions['items']}. Skipping...")
                             yt_has_captions = True
                         # If YT API has no captions object for video, and we have no custom transcript for it, send to Watson
                         if not yt_has_captions:
@@ -105,10 +105,10 @@ def submit_watson_transcripts():
                                     if not sandbox_mode:
                                         videos_to_upsert.append(vid)
                             except Exception as e:
-                                print(e)
+                                logger.debug(e)
                                 continue
                     except Exception as e:
-                        print(e)
+                        logger.debug(e)
                         continue
                 else:
                     api_endpoint = "/submitjob"
@@ -123,15 +123,15 @@ def submit_watson_transcripts():
                         "Content-Type": "application/json",
                         "x-api-key": API_KEY
                     }
-                    print(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
+                    logger.debug(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
                     response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
                     api_tracker.save()
-                    print(f"Submitted Watson Transcript /submitjob API request for {batch_size} videos.")
-                    print(f"Response Status: {response.status_code}")
-                    print(f"Response Content: {response.content}")
-                    print(f"Watson API Requests submitted today: {api_tracker.cursor}")
+                    logger.debug(f"Submitted Watson Transcript /submitjob API request for {batch_size} videos.")
+                    logger.debug(f"Response Status: {response.status_code}")
+                    logger.debug(f"Response Content: {response.content}")
+                    logger.debug(f"Watson API Requests submitted today: {api_tracker.cursor}")
                     job_status = response.json()["Submission Status"]
                     job_id = response.json()["Job Id"]
                     for watson_transcript in videos_watson_transcripts:
@@ -148,10 +148,9 @@ def submit_watson_transcripts():
                     videos_request_batch = []
         unlock(LOCK_NAME)
         logger.debug("Finished submitting Watson transcripts task.")
-        print(f"Submitted {vids_submitted} video ids to Watson.")
-        print("Finished submitting Watson transcripts task.")
+        logger.debug(f"Submitted {vids_submitted} video ids to Watson.")
     except Exception as e:
-        print(e)
+        logger.debug(e)
         pass
 
 
