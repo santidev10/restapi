@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
 
-from audit_tool.models import AuditProcessor
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
@@ -55,7 +54,6 @@ class SegmentCreateApiViewV3(CreateAPIView):
                 "body": query_builder.query_body.to_dict()
             }
             CustomSegmentFileUpload.enqueue(query=query, segment=segment)
-            AuditProcessor.objects.create(segment=segment, audit_type=3)
             generate_custom_segment.delay(segment.id)
             res = self._get_response(query_builder.query_params, segment)
             response.append(res)
