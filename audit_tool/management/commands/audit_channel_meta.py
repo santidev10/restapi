@@ -340,7 +340,7 @@ class Command(BaseCommand):
         return True
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
+        keywords = re.findall(exp, remove_tags_punctuation(text))
         if len(keywords) >= count:
             return True, keywords
         return False, None
