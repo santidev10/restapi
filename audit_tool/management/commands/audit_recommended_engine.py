@@ -52,7 +52,7 @@ class Command(BaseCommand):
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
