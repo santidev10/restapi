@@ -285,7 +285,7 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion")
+        input_list = self.audit.params.get("exclusion") if self.audit.params else None
         if not input_list:
             return
         language_keywords_dict = defaultdict(list)
