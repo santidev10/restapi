@@ -12,6 +12,8 @@ from flashtext import KeywordProcessor
 from django.db.models import F
 from emoji import UNICODE_EMOJI
 
+from audit_tool.models import AuditCountry
+from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
@@ -295,3 +297,17 @@ class AuditUtils(object):
             }) for _id in item_ids
         ]
         manager.upsert(updated)
+
+    @staticmethod
+    def get_audit_language_mapping():
+        mapping = {
+            item.language: item for item in AuditLanguage.objects.all()
+        }
+        return mapping
+
+    @staticmethod
+    def get_audit_country_mapping():
+        mapping = {
+            item.country: item for item in AuditCountry.objects.all()
+        }
+        return mapping

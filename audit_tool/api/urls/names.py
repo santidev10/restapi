@@ -11,4 +11,5 @@ class AuditPathName:
     AUDIT_HISTORY = "audit_history"
     AUDIT_PAUSE = "audit_pause"
     AUDIT_VET = "audit_vet"
+    AUDIT_VETTING_OPTIONS = "audit_vetting_options"
 

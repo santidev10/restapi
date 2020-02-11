@@ -1,16 +1,16 @@
-from audit_tool.models import get_hash_name
-from brand_safety.auditors.utils import AuditUtils
-from es_components.constants import Sections
+from logging import getLogger
 
+from audit_tool.models import get_hash_name
 from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditCountry
-from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
-from utils.utils import chunks_generator
-from utils.youtube_api import YoutubeAPIConnector
+from brand_safety.auditors.utils import AuditUtils
 from segment.models import CustomSegment
 from saas import celery_app
+from utils.utils import chunks_generator
+from utils.youtube_api import YoutubeAPIConnector
 
+
+logger = getLogger(__name__)
 
 """
 1. Get the ids of Channel / Videos that we need to create Audit models for
@@ -32,8 +32,8 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     :param data_field: str -> video | channel
     :return:
     """
-    language_mapping = get_language_mapping()
-    country_mapping = get_country_mapping()
+    language_mapping = AuditUtils.get_audit_language_mapping()
+    country_mapping = AuditUtils.get_audit_country_mapping()
     youtube_connector = YoutubeAPIConnector()
     segment = CustomSegment.objects.get(id=segment_id)
     if data_field == "video":
@@ -62,35 +62,40 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     audit_meta_model = segment.audit_utils.meta_model
     audit_vetting_model = segment.audit_utils.vetting_model
 
+    seen = 0
     # video_id, channel_id
     id_field = data_field + "_id"
     for batch in chunks_generator(item_ids, size=BATCH_SIZE):
-        batch = list(batch)
-        # Get the ids of audit Channel / Video items we need to create
-        filter_query = {f"{id_field}__in": batch}
-        existing_audit_items = list(audit_model.objects.filter(**filter_query))
-        existing_audit_ids = [getattr(item, id_field) for item in existing_audit_items]
+        try:
+            batch = list(batch)
+            seen += len(batch)
+            # Get the ids of audit Channel / Video items we need to create
+            filter_query = {f"{id_field}__in": batch}
+            existing_audit_items = list(audit_model.objects.filter(**filter_query))
+            existing_audit_ids = [getattr(item, id_field) for item in existing_audit_items]
 
-        # Generate audit / audit meta items
-        to_create_ids = set(batch) - set(existing_audit_ids)
-        data = []
-        for ids in chunks_generator(to_create_ids, size=50):
-            response = youtube_connector(",".join(ids))["items"]
-            data.extend(response)
-        audit_model_to_create = [instantiate_audit_model(item, id_field, audit_model) for item in data]
-        audit_model.objects.bulk_create(audit_model_to_create)
+            # Generate audit / audit meta items
+            to_create_ids = set(batch) - set(existing_audit_ids)
+            data = []
+            for ids in chunks_generator(to_create_ids, size=50):
+                response = youtube_connector(",".join(ids))["items"]
+                data.extend(response)
+            audit_model_to_create = [instantiate_audit_model(item, id_field, audit_model) for item in data]
+            audit_model.objects.bulk_create(audit_model_to_create)
 
-        # meta_data is tuple of created audit item
-        # and api response data (AuditChannel, {"snippet": ..., "statistics": ...})
-        # Must create first to assign FK to meta model
-        meta_data = zip(audit_model_to_create, data)
-        meta_to_create = [meta_model_instantiator(audit, data, language_mapping, country_mapping) for audit, data in meta_data]
-        audit_meta_model.objects.bulk_create(meta_to_create)
+            # meta_data is tuple of created audit item
+            # and api response data (AuditChannel, {"snippet": ..., "statistics": ...})
+            # Must create first to assign FK to meta model
+            meta_data = zip(audit_model_to_create, data)
+            meta_to_create = [meta_model_instantiator(audit, data, language_mapping, country_mapping) for audit, data in meta_data]
+            audit_meta_model.objects.bulk_create(meta_to_create)
 
-        all_audit_items = list(existing_audit_items) + audit_model_to_create
-        audit_vetting_to_create = [audit_vetting_model(**{"audit": audit, data_field: obj}) for obj in all_audit_items]
-        audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
-
+            all_audit_items = list(existing_audit_items) + audit_model_to_create
+            audit_vetting_to_create = [audit_vetting_model(**{"audit": audit, data_field: obj}) for obj in all_audit_items]
+            audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
+        except Exception:
+            logger.exception("Error generating audit items")
+    print('seen', seen)
 
 def instantiate_audit_model(data, id_field, audit_model):
     audit_params = {
@@ -122,22 +127,10 @@ def instantiate_channel_meta_model(audit_item, data, language_mapping, country_m
     }
     text = meta_params["name"] or "" + meta_params["description"] + meta_params["keywords"] or ""
     detected_language = AuditUtils.get_language(text)
+    meta_params["default_language"] = language_mapping.get(detected_language)
     meta_params["language"] = language_mapping.get(detected_language)
     meta_params["country"] = country_mapping.get(meta_params["country"])
 
     meta_item = AuditChannelMeta(**meta_params)
     return meta_item
 
-
-def get_language_mapping():
-    mapping = {
-        item.language: item for item in AuditLanguage.objects.all()
-    }
-    return mapping
-
-
-def get_country_mapping():
-    mapping = {
-        item.country: item for item in AuditCountry.objects.all()
-    }
-    return mapping
