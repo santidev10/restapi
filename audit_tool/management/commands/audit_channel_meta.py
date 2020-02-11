@@ -166,7 +166,7 @@ class Command(BaseCommand):
             v_id = seed.split("/")[-1]
             if '?' in v_id:
                 v_id = v_id.split("?")[0]
-            return v_id
+            return v_id.replace(".", "")
         if 'youtube.com/user/' in seed:
             if seed[-1] == '/':
                 seed = seed[:-1]
