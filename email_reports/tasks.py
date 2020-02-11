@@ -10,6 +10,7 @@ from email_reports.reports import CampaignUnderPacing
 from email_reports.reports import DailyCampaignReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
+from email_reports.reports import DailyApexCampaignEmailReport
 from saas import celery_app
 
 __all__ = [
@@ -45,6 +46,7 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
 
 EMAIL_REPORT_CLASSES = (
     DailyCampaignReport,
+    DailyApexCampaignEmailReport,
     CampaignUnderMargin,
     TechFeeCapExceeded,
     CampaignUnderPacing,

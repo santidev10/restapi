@@ -54,6 +54,13 @@ CELERY_BEAT_SCHEDULE = {
                      "CampaignOverPacing", "ESMonitoringEmailReport"],
         ),
     },
+    "daily_apex_notifications": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["DailyApexCampaignEmailReport"],
+        ),
+    },
     "weekday-campaign-reports": {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
