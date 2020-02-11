@@ -323,9 +323,9 @@ class Command(BaseCommand):
     def check_video_is_clean(self, db_video_meta):
         hits = {}
         full_string = remove_tags_punctuation("{} {} {}".format(
-            '' if not db_video_meta.name else db_video_meta.name,
-            '' if not db_video_meta.description else db_video_meta.description,
-            '' if not db_video_meta.keywords else db_video_meta.keywords,
+            '' if not db_video_meta.name else db_video_meta.name.lower(),
+            '' if not db_video_meta.description else db_video_meta.description.lower(),
+            '' if not db_video_meta.keywords else db_video_meta.keywords.lower(),
         ))
         if db_video_meta.age_restricted == True:
             return False, ['ytAgeRestricted']
@@ -341,8 +341,7 @@ class Command(BaseCommand):
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 return True, hits
-            # else:
-            #     language = ""
+
             is_there = False
             b_hits = []
             if self.exclusion_list.get(language):
@@ -488,7 +487,7 @@ class Command(BaseCommand):
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
+        keywords = re.findall(exp, remove_tags_punctuation(text))
         if len(keywords) >= count:
             return True, keywords
         return False, None
