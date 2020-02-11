@@ -1,9 +1,12 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditProcessor
 from audit_tool.utils.audit_utils import AuditUtils
+from utils.views import get_object
 
 
 class AuditAdminAPIView(APIView):
@@ -15,7 +18,8 @@ class AuditAdminAPIView(APIView):
         """
         data = request.data
         audit_id = data["audit_id"]
-        audit = AuditProcessor.objects.get(id=audit_id)
+        params = {"id": audit_id}
+        audit = get_object(AuditProcessor, f"Audit with id: {audit_id} not found.", **params)
         audit_utils = AuditUtils(audit.audit_type)
         item_ids = data.get("item_ids", [])
         validated = self._validate_item_ids(item_ids, audit.audit_type)
@@ -24,6 +28,7 @@ class AuditAdminAPIView(APIView):
             .update(processed=None, clean=None)
         audit.completed = None
         audit.save()
+        return Response(status=HTTP_200_OK, data=validated)
 
     def _validate_item_ids(self, item_ids, audit_type):
         """

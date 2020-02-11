@@ -70,7 +70,7 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
             existing_audit_items = list(audit_model.objects.filter(**filter_query))
             existing_audit_ids = [getattr(item, id_field) for item in existing_audit_items]
 
-            # Generate audit / audit meta items
+            # Generate only new audit / audit meta items
             to_create_ids = set(batch) - set(existing_audit_ids)
             data = []
             for ids in chunks_generator(to_create_ids, size=50):
@@ -86,6 +86,7 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
             meta_to_create = [meta_model_instantiator(audit, data, language_mapping, country_mapping) for audit, data in meta_data]
             audit_meta_model.objects.bulk_create(meta_to_create)
 
+            # Create vetting items for all items retrieved in list
             all_audit_items = list(existing_audit_items) + audit_model_to_create
             audit_vetting_to_create = [audit_vetting_model(**{"audit": audit, data_field: obj}) for obj in all_audit_items]
             audit_vetting_model.objects.bulk_create(audit_vetting_to_create)

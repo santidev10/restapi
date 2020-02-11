@@ -39,7 +39,7 @@ class AuditChannelVetSerializer(Serializer):
     is_checked_out = BooleanField(required=False)
     suitable = BooleanField(required=False)
     processed = DateTimeField(required=False)
-    processed_by_user_id = IntegerField()
+    processed_by_user_id = IntegerField(required=False)
 
     def __init__(self, *args, **kwargs):
         try:
@@ -209,16 +209,16 @@ class AuditChannelVetSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def _save_elasticsearch(self, channel_id):
+    def _save_elasticsearch(self, channel_id, blacklist_categories):
         """
         Save vetting data to Elasticsearch
         :param channel_id: str
-        :param brand_safety: list
+        :param blacklist_categories: list -> [int, ...]
         :return: None
         """
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
-        task_us_data["brand_safety"] = [item.id for item in task_us_data["brand_safety"]]
+        task_us_data["brand_safety"] = blacklist_categories
         task_us_data["language"] = task_us_data["language"].language
         # Update Elasticsearch document
         channel_doc = Channel(channel_id)

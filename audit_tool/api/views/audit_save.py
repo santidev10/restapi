@@ -253,6 +253,10 @@ class AuditSaveApiView(APIView):
             segment = CustomSegment.objects.get(id=segment_id)
         except CustomSegment.DoesNotExist:
             raise ValidationError(f"Segment with id: {segment_id} does not exist.")
+
+        # If segment does not contain any items, then reject audit creation
+        if segment.statistics.get("items_count", 0) <= 0:
+            raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
             "audit_type": segment.audit_type,
             "source": 1
@@ -260,9 +264,6 @@ class AuditSaveApiView(APIView):
         if created:
             segment.audit_id = audit.id
             segment.save()
-        request_instructions = data.get("instructions")
-        # If first time saving instructions, create audit items for vetting
-        if request_instructions and not audit.params.get("instructions"):
             generate_audit_items.delay(segment.id, data_field=segment.data_field)
         # Update params with instructions
         audit.params.update({
