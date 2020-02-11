@@ -53,7 +53,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 watson_transcript = WatsonTranscript.get_or_create(video_id)
                 watson_transcript.transcript = transcript
                 try:
-                    watson_transcript.language = AuditLanguage.objects.get(lang_code)
+                    watson_transcript.language = AuditLanguage.objects.get(language=lang_code)
                 except Exception:
                     pass
                 watson_transcript.retrieved = datetime.now()

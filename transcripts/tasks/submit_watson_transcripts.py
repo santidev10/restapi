@@ -237,7 +237,21 @@ def get_no_custom_captions_vids(language=None, country=None, yt_category=None, b
         }
     )
 
-    s = s.query(custom_captions_parsed_query).query(no_custom_captions_query).query(no_yt_captions_query)
+    # Get videos with no Watson Transcripts submitted
+    no_watson_transcripts_query = Q(
+        {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "custom_captions.watson_job_id"
+                    }
+                }
+            }
+        }
+    )
+
+    s = s.query(custom_captions_parsed_query).query(no_custom_captions_query).query(no_yt_captions_query) \
+        .query(no_watson_transcripts_query)
 
     if language_query:
         s = s.query(language_query)
