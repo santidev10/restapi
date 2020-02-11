@@ -374,6 +374,16 @@ TESTIMONIALS = {
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
 }
 
+DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
+    "yaryna.kimak@sigma.software",
+    "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com"
+
+]
+
+DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"
+
 IS_TEST = False
 
 CACHE_ENABLED = False
