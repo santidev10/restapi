@@ -25,9 +25,7 @@ class BadWordListApiView(ListCreateAPIView):
         filters = {}
 
         search = self.request.query_params.get("search")
-        if search and is_english(search):
-            if len(search) < self.MIN_SEARCH_LENGTH:
-                raise ValidationError("English search term must be at least {} characters.".format(self.MIN_SEARCH_LENGTH))
+        if search:
             filters["name__icontains"] = search
 
         category = self.request.query_params.get("category")
