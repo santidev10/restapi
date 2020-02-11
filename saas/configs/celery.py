@@ -54,6 +54,13 @@ CELERY_BEAT_SCHEDULE = {
                      "CampaignOverPacing", "ESMonitoringEmailReport"],
         ),
     },
+    "daily_apex_notifications": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["DailyApexCampaignEmailReport"],
+        ),
+    },
     "weekday-campaign-reports": {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
@@ -128,7 +135,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(minute="*/10"),
     },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
@@ -145,6 +152,14 @@ CELERY_BEAT_SCHEDULE = {
     "userprofile_clean_device_auth_tokens": {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
+    },
+    "audit_tool_check_in_vetting_items": {
+        "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items",
+        "schedule": crontab(minute="*/10"),
+    },
+    "segment_update_statistics": {
+        "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
+        "schedule": crontab(minute="*/10"),
     }
 }
 

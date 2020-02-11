@@ -19,6 +19,10 @@ class SegmentCreationOptionsApiView(APIView):
                        "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold", "content_categories"]
 
     def post(self, request, *args, **kwargs):
+        """
+        Generate segment creation options
+        If segment_type in request, will respond with items count in request body filters
+        """
         options = self._validate_data(request.data)
         res_data = {
             "options": self._get_options()
@@ -42,6 +46,12 @@ class SegmentCreationOptionsApiView(APIView):
 
     @staticmethod
     def _get_options():
+        """
+        Get segment creation options
+        Try to get aggregation filters from cache for filters sorted by count
+
+        :return: dict
+        """
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
             countries = [
@@ -76,6 +86,12 @@ class SegmentCreationOptionsApiView(APIView):
         return options
 
     def _validate_data(self, data):
+        """
+        Validate request body
+
+        :param data: dict
+        :return: dict
+        """
         expected = self.OPTIONAL_FIELDS
         received = data.keys()
         try:

@@ -91,7 +91,7 @@ class PersistentSegmentImporter(object):
         while attempts <= self.EXPORT_ATTEMPT_LIMIT:
             logger.info(f"On export attempt {attempts} of {self.EXPORT_ATTEMPT_SLEEP}")
             query = self.segment.get_segment_items_query()
-            es_manager = self.segment.get_es_manager()
+            es_manager = self.segment.es_manager
             segment_items_count = es_manager.search(query, limit=0).execute().hits.total.value
 
             if segment_items_count == len(self.youtube_ids):

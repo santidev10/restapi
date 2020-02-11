@@ -36,6 +36,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     def _do_filters(self, queryset):
         """
         Filter queryset
+
+        :return: Queryset
         """
         filters = {}
         q_filter = Q()
@@ -65,6 +67,12 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         return queryset
 
     def _do_sorts(self, queryset):
+        """
+        Sort queryset
+
+        :param queryset: Queryset
+        :return: Queryset
+        """
         try:
             sort_by = self.request.query_params["sort_by"]
             if sort_by not in self.ALLOWED_SORTS:
@@ -83,6 +91,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     def get_queryset(self):
         """
         Prepare queryset to display
+
+        :return: Queryset
         """
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
         queryset = super().get_queryset().filter(owner=self.request.user, segment_type=segment_type)
@@ -93,6 +103,8 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
     def paginate_queryset(self, queryset):
         """
         Processing flat query param
+
+        :return: Queryset
         """
         flat = self.request.query_params.get("flat")
         if flat == "1":
@@ -100,6 +112,9 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         return super().paginate_queryset(queryset)
 
     def post(self, request, *args, **kwargs):
+        """
+        Validate request body, create CustomSegment and CustomSegmentFileUpload, invoke generate_custom_segment
+        """
         data = request.data
         validated_data = self._validate_data(data, request, kwargs)
         data.update(validated_data)
