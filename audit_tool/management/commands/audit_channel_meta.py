@@ -293,7 +293,7 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
@@ -317,7 +317,7 @@ class Command(BaseCommand):
                 return False
         if self.exclusion_list:
             try:
-                language = db_channel_meta.language.language
+                language = db_channel_meta.language.language.lower()
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
