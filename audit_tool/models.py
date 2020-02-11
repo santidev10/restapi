@@ -1,7 +1,6 @@
-import hashlib
 from datetime import datetime
 from datetime import timedelta
-
+from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
@@ -10,9 +9,7 @@ from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
-
-from django.contrib.auth import get_user_model
-
+import hashlib
 
 def get_hash_name(s):
     return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10 ** 8
