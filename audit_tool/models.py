@@ -163,7 +163,7 @@ class AuditProcessor(models.Model):
         }
         audits = []
         if export:
-            exports = AuditExporter.objects.filter(completed__isnull=False, audit_id__in=all.values_list('id', flat=True)).order_by("started", "audit__pause", "id")
+            exports = AuditExporter.objects.filter(completed__isnull=True, audit_id__in=all.values_list('id', flat=True)).order_by("started", "audit__pause", "id")
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
