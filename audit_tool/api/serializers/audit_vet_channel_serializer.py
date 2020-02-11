@@ -13,6 +13,8 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
+from brand_safety.languages import LANG_CODES
+from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 from es_components.constants import Sections
@@ -20,26 +22,29 @@ from es_components.constants import Sections
 
 class AuditChannelVetSerializer(Serializer):
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
+    has_vetting_history = False
 
     """
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
+    # Postgres fields
+    vetting_history = SerializerMethodField()
+    segment_title = SerializerMethodField()
+    url = SerializerMethodField()
+    checked_out_at = DateTimeField(required=False, allow_null=True)
+    suitable = BooleanField(required=False)
+    processed = DateTimeField(required=False)
+    processed_by_user_id = IntegerField(required=False)
+    language_code = CharField(required=False) # Field for saving vetting item
+
+    # Elasticsearch fields
+    language = SerializerMethodField()
     age_group = CharField(source="task_us_data.age_group", default=None)
     channel_type = CharField(source="task_us_data.channel_type", default=None)
     gender = CharField(source="task_us_data.gender", default=None)
     brand_safety = ListField(source="task_us_data.brand_safety", default=[])
-    language = CharField(source="task_us_data.language", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
-
-    vetting_history = SerializerMethodField()
-    segment_title = SerializerMethodField()
-
-    url = SerializerMethodField()
-    is_checked_out = BooleanField(required=False)
-    suitable = BooleanField(required=False)
-    processed = DateTimeField(required=False)
-    processed_by_user_id = IntegerField(required=False)
 
     def __init__(self, *args, **kwargs):
         try:
@@ -51,14 +56,6 @@ class AuditChannelVetSerializer(Serializer):
     def get_url(self, doc):
         url = f"https://www.youtube.com/channel/{doc.main.id}/"
         return url
-
-    def get_segment_title(self, *_, **__):
-        """
-        Get segment title if available
-        :return: None | str
-        """
-        title = getattr(self.segment, "title", None)
-        return title
 
     def get_vetting_history(self, doc):
         """
@@ -77,16 +74,44 @@ class AuditChannelVetSerializer(Serializer):
                 "data": f"{item.channel.auditchannelmeta.name} - {item.processed.strftime('%b %d %Y')}",
                 "suitable": item.clean
             } for item in vetting_items]
+        # Set bool for get_language method to return correct language field
+        self.has_vetting_history = bool(history)
         return history
 
-    def validate_language(self, value):
+    def get_language(self, doc):
         """
-        Retrieve audit_tool AuditLanguage. Raises ValidationError if not found
+        Elasticsearch document language
+        If item is has no vetting history, serialize general_data.language
+        Else if has been vetted, use vetting task_us_data section language
+        :param doc: Elasticsearch
+        :return: str
+        """
+        if self.has_vetting_history:
+            language = getattr(doc.task_us_data, "language", None)
+        else:
+            language = getattr(doc.general_data, "top_language", None)
+            language = LANG_CODES.get(language)
+        return language
+
+    def get_segment_title(self, *_, **__):
+        """
+        Get segment title if available
+        :return: None | str
+        """
+        title = getattr(self.segment, "title", None)
+        return title
+
+    def validate_language_code(self, value):
+        """
+        Retrieve language from LANG_CODES. Raises ValidationError if not found
         :param value: str
         :return: AuditLanguage
         """
-        language = AuditToolValidator.validate_language(value)
-        return language
+        try:
+            LANGUAGES[value]
+        except KeyError:
+            raise ValidationError(f"Invalid language: {value}")
+        return value
 
     def validate_iab_categories(self, value):
         """
@@ -174,7 +199,7 @@ class AuditChannelVetSerializer(Serializer):
         """
         data = {
             "clean": self.validated_data["suitable"],
-            "is_checked_out": False,
+            "checked_out_at": None,
             "processed": timezone.now(),
             "processed_by_user_id": self.validated_data["processed_by_user_id"],
         }
@@ -219,7 +244,7 @@ class AuditChannelVetSerializer(Serializer):
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
         task_us_data["brand_safety"] = blacklist_categories
-        task_us_data["language"] = task_us_data["language"].language
+        task_us_data["language"] = self.validated_data["language_code"]
         # Update Elasticsearch document
         channel_doc = Channel(channel_id)
         channel_doc.populate_monetization(**self.validated_data["monetization"])

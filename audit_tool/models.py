@@ -525,9 +525,8 @@ class AuditChannelVet(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     channel = models.ForeignKey(AuditChannel, db_index=True, related_name='vets', null=True, default=None, on_delete=models.CASCADE)
 
-    clean = models.BooleanField(default=False, db_index=True) # determined if suitable by user
+    clean = models.NullBooleanField(default=None, db_index=True) # determined if suitable by user
     created_at = models.DateTimeField(auto_now_add=True)
-    is_checked_out = models.BooleanField(default=False, db_index=True)
     checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True) # vetted at by user
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
@@ -576,7 +575,7 @@ class AuditAgeGroup(models.Model):
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
     age_group = models.CharField(max_length=25)
-    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None)
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None, related_name="children")
 
     @staticmethod
     def get_by_group():

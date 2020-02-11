@@ -12,10 +12,13 @@ from es_components.constants import Sections
 from segment.models import CustomSegment
 from utils.permissions import user_has_permission
 from utils.views import get_object
+from utils.views import validate_fields
 
 
 class AuditVetRetrieveUpdateAPIView(APIView):
-    ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
+    ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "channel_type", "gender", "iab_categories",
+                       "is_monetizable", "language", "vetting_id", "suitable", "language")
     serializer = AuditChannelVetSerializer
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
@@ -53,14 +56,18 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         except vetting_model.DoesNotExist:
             raise ValidationError("Vetting item does not exist.")
 
-        data["is_checked_out"] = vetting_item.is_checked_out = False
+        data["checked_out_at"] = vetting_item.checked_out_at = None
         data["processed"] = vetting_item.processed = timezone.now()
         data["processed_by_user_id"] = vetting_item.processed_by_user_id = request.user.id
         if skipped:
             self._processs_skipped(skipped, vetting_item)
             res = None
         else:
+            validate_fields(self.REQUIRED_FIELDS, list(data.keys()))
             data["suitable"] = data["suitable"]
+            # Rename field for validation since language is used as SerializerMethodField for Elasticsearch
+            # serialization and SerializerMethodField is read only
+            data["language_code"] = data.pop("language")
             serializer = self.serializer(vetting_item, data=data, segment=segment)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -78,7 +85,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         id_key = segment.data_field + "." + segment.data_field + "_id"
         params = {"id": segment.audit_id, "source": 1}
         audit = get_object(AuditProcessor, f"Audit with id: {segment.audit_id} not found", **params)
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, is_checked_out=False, processed=None).first()
+        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, checked_out_at=None, processed=None).first()
         # If next item is None, then all are checked out
         if next_item:
             item_id = attrgetter(id_key)(next_item)
@@ -86,7 +93,6 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             response = self._get_document(segment.es_manager, item_id)
             data = AuditChannelVetSerializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
-            next_item.is_checked_out = True
             next_item.checked_out_at = timezone.now()
             next_item.save()
         else:

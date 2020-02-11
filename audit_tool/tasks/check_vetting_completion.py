@@ -22,6 +22,9 @@ def check_vetting_completion():
             elif audit.audit_type == 2:
                 vetting_model = AuditChannelVet
             still_processing = vetting_model.objects.filter(audit=audit, processed=None)
-            if not still_processing:
+            # Must still check to set audits completed_at to None if admin flags vetting items
+            if still_processing:
+                audit.completed_at = None
+            else:
                 audit.completed_at = timezone.now()
-                audit.save()
+            audit.save()

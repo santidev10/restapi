@@ -31,7 +31,7 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     try:
         segment = CustomSegment.objects.get(id=segment_id)
     except CustomSegment.DoesNotExist:
-        logger.exception(f"generate_audit_items called for segment: {segment_id} doess not exist.")
+        logger.exception(f"generate_audit_items called for segment: {segment_id} does not exist.")
         return
 
     if data_field == "video":
