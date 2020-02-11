@@ -4,7 +4,6 @@ from django.conf import settings
 from django.utils import timezone
 
 from administration.notifications import send_html_email
-from audit_tool.models import AuditProcessor
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.tasks.generate_segment import generate_segment

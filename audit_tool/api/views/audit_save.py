@@ -14,7 +14,7 @@ from datetime import datetime
 from utils.permissions import user_has_permission
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
-from segment.tasks.generate_audit_items import generate_audit_items
+from audit_tool.tasks.generate_audit_items import generate_audit_items
 
 class AuditSaveApiView(APIView):
     permission_classes = (

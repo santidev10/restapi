@@ -11,11 +11,15 @@ from audit_tool.api.serializers.audit_vet_channel_serializer import AuditChannel
 from audit_tool.models import AuditProcessor
 from es_components.constants import Sections
 from segment.models import CustomSegment
+from utils.permissions import user_has_permission
 
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     serializer = AuditChannelVetSerializer
     es_sections = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
+    permission_classes = (
+        user_has_permission("userprofile.view_audit"),
+    )
 
     def get(self, request, *args, **kwargs):
         """
@@ -32,7 +36,6 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         audit_id = kwargs["pk"]
         segment = self._get_segment(audit_id)
-
         data = request.data
         skipped = data.get("skipped")
         vetting_model = segment.audit_utils.vetting_model

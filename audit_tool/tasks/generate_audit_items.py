@@ -12,17 +12,10 @@ from utils.youtube_api import YoutubeAPIConnector
 
 logger = getLogger(__name__)
 
-"""
-1. Get the ids of Channel / Videos that we need to create Audit models for
-2. Use those ids to create JUST audit models
-3. Create vetting items for ALL ids
-
-"""
-
-BATCH_SIZE = 200
+BATCH_SIZE = 1000
 
 
-@celery_app.task
+@celery_app.task(soft_time_limit=60 * 60 * 2)
 def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     """
     Generate audit items for segment vetting process
@@ -35,7 +28,12 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     language_mapping = AuditUtils.get_audit_language_mapping()
     country_mapping = AuditUtils.get_audit_country_mapping()
     youtube_connector = YoutubeAPIConnector()
-    segment = CustomSegment.objects.get(id=segment_id)
+    try:
+        segment = CustomSegment.objects.get(id=segment_id)
+    except CustomSegment.DoesNotExist:
+        logger.exception(f"generate_audit_items called for segment: {segment_id} doess not exist.")
+        return
+
     if data_field == "video":
         audit_processor_type = 1
         youtube_connector = youtube_connector.obtain_videos
@@ -62,13 +60,11 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
     audit_meta_model = segment.audit_utils.meta_model
     audit_vetting_model = segment.audit_utils.vetting_model
 
-    seen = 0
     # video_id, channel_id
     id_field = data_field + "_id"
     for batch in chunks_generator(item_ids, size=BATCH_SIZE):
         try:
             batch = list(batch)
-            seen += len(batch)
             # Get the ids of audit Channel / Video items we need to create
             filter_query = {f"{id_field}__in": batch}
             existing_audit_items = list(audit_model.objects.filter(**filter_query))
@@ -95,7 +91,7 @@ def generate_audit_items(segment_id, item_ids=None, data_field="video"):
             audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
         except Exception:
             logger.exception("Error generating audit items")
-    print('seen', seen)
+
 
 def instantiate_audit_model(data, id_field, audit_model):
     audit_params = {

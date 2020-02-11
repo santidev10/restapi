@@ -13,6 +13,7 @@ from audit_tool.api.views import AuditHistoryApiView
 from audit_tool.api.views import AuditPauseApiView
 from audit_tool.api.views import AuditVetRetrieveUpdateAPIView
 from audit_tool.api.views import AuditVettingOptionsAPIView
+from audit_tool.api.views import AuditAdminAPIView
 
 from .names import AuditPathName
 
@@ -27,4 +28,5 @@ urlpatterns = [
     url(r"^audit_tool/audits/pause/$", AuditPauseApiView.as_view(), name=AuditPathName.AUDIT_PAUSE),
     url(r"^audit_tool/audits/vet/(?P<pk>\d+)/$", AuditVetRetrieveUpdateAPIView.as_view(), name=AuditPathName.AUDIT_PAUSE),
     url(r"^audit_tool/audits/vetting_options/$", AuditVettingOptionsAPIView.as_view(), name=AuditPathName.AUDIT_VETTING_OPTIONS),
+    url(r"^audit_tool/audits/admin/$", AuditAdminAPIView.as_view(), name=AuditPathName.AUDIT_ADMIN),
 ]

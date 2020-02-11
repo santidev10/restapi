@@ -9,7 +9,6 @@ from django.conf import settings
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.utils.bulk_search import bulk_search
-from segment.tasks.generate_audit_items import generate_audit_items
 from utils.brand_safety import map_brand_safety_score
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 
@@ -20,7 +19,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, create_audit_items=False):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -42,7 +41,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
-            data_type = "video"
             cursor_field = "stats.views"
             # Exclude all age_restricted items
             if options is None:
@@ -50,7 +48,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                     QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
                 ]
         else:
-            data_type = "channel"
             cursor_field = "stats.subscribers"
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
             # for is_monetizable channel items to appear first on export
@@ -111,10 +108,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             raise MaxItemsException
         except MaxItemsException:
             pass
-
-        # Create audit items for vetting process
-        if create_audit_items is True:
-            generate_audit_items(item_ids, segment, data_field=data_type)
 
         # Average fields
         aggregations["average_brand_safety_score"] = map_brand_safety_score(aggregations["average_brand_safety_score"] // (seen or 1))

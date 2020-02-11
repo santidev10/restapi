@@ -1,5 +1,10 @@
-from audit_tool.models import AuditChannelType
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditVideoMeta
+from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditAgeGroup
+from audit_tool.models import AuditChannelType
 from audit_tool.models import AuditGender
 from brand_safety.languages import LANG_CODES
 from brand_safety.models import BadWordCategory
@@ -8,7 +13,37 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 
 
-class AuditOptions(object):
+class AuditUtils(object):
+    video_config = {
+        "audit_model": AuditVideo,
+        "meta_model": AuditVideoMeta,
+        "vetting_model": None, # Tech debt 4.8
+    }
+    channel_config = {
+        "audit_model": AuditChannel,
+        "meta_model": AuditChannelMeta,
+        "vetting_model": AuditChannelVet,
+    }
+
+    def __init__(self, audit_type=0):
+        self._audit_type = audit_type
+        self._config = {
+            1: self.video_config,
+            2: self.channel_config,
+        }
+
+    @property
+    def audit_model(self):
+        return self._config[self._audit_type]["audit_model"]
+
+    @property
+    def meta_model(self):
+        return self._config[self._audit_type]["meta_model"]
+
+    @property
+    def vetting_model(self):
+        return self._config[self._audit_type]["vetting_model"]
+
     @staticmethod
     def get_brand_safety_categories():
         all_categories = [{

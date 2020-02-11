@@ -120,7 +120,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(minute="*/10"),
     },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
@@ -140,7 +140,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "audit_tool_check_in_vetting_items": {
         "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items",
-        "schedule": 60 * 10,
+        "schedule": crontab(minute="*/10"),
+    },
+    "segment_update_statistics": {
+        "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
+        "schedule": crontab(minute="*/10"),
     }
 }
 
