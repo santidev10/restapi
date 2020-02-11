@@ -1,13 +1,8 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from utils.lang import fasttext_lang
-from dateutil.parser import parse
-from emoji import UNICODE_EMOJI
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -18,15 +13,20 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from datetime import datetime
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from utils.lang import remove_mentions_hashes_urls
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
 from collections import defaultdict
-from utils.utils import remove_tags_punctuation
+from datetime import datetime
 from datetime import timedelta
+from dateutil.parser import parse
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from emoji import UNICODE_EMOJI
+from pid import PidFile
+from utils.lang import fasttext_lang
+from utils.lang import remove_mentions_hashes_urls
+from utils.utils import remove_tags_punctuation
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
@@ -52,7 +52,7 @@ class Command(BaseCommand):
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -330,22 +330,24 @@ class Command(BaseCommand):
         if db_video_meta.age_restricted == True:
             return False, ['ytAgeRestricted']
         if self.inclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
+            is_there, b_hits = self.check_exists(full_string.lower(), self.inclusion_list, count=self.inclusion_hit_count)
             hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
         if self.exclusion_list:
             try:
-                language = db_video_meta.language.language
+                language = db_video_meta.language.language.lower()
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 return True, hits
-            else:
-                language = ""
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
-            if language != "":
-                is_there_b, b_hits_b = self.check_exists(full_string, self.exclusion_list[""], count=self.exclusion_hit_count)
+
+            is_there = False
+            b_hits = []
+            if self.exclusion_list.get(language):
+                is_there, b_hits = self.check_exists(full_string.lower(), self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "" and self.exclusion_list.get(""):
+                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
                 if not is_there and is_there_b:
                     is_there = True
                     b_hits = b_hits + b_hits_b
@@ -456,7 +458,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -471,19 +473,21 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                    "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                    "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
+        keywords = re.findall(exp, remove_tags_punctuation(text))
         if len(keywords) >= count:
             return True, keywords
         return False, None

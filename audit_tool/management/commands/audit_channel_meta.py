@@ -1,23 +1,23 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from datetime import timedelta
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
 from collections import defaultdict
+from datetime import timedelta
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from pid import PidFile
 from utils.utils import remove_tags_punctuation
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
@@ -293,7 +293,7 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
@@ -317,7 +317,7 @@ class Command(BaseCommand):
                 return False
         if self.exclusion_list:
             try:
-                language = db_channel_meta.language.language
+                language = db_channel_meta.language.language.lower()
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:

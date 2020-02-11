@@ -167,11 +167,4 @@ class BadWordListTestCase(ExtendedAPITestCase):
 
         self.assertEqual(len(response.data["items"]), 0)
 
-    def test_invalid_search_length(self):
-        self.create_admin_user()
-        search_term = "a" * (BadWordListApiView.MIN_SEARCH_LENGTH - 1)
-        response = self._request(search=search_term)
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
 
