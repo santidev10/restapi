@@ -17,6 +17,7 @@ class WatsonTranscript(Timestampable):
                                  on_delete=models.CASCADE, related_name='transcript_language')
     submitted = models.DateTimeField(blank=True, null=True, default=None)
     retrieved = models.DateTimeField(blank=True, null=True, default=None)
+    job_status = models.CharField(max_length=255, blank=True, null=True, default=None)
     job_id = models.CharField(max_length=255, blank=True, null=True, default=None)
 
     @staticmethod

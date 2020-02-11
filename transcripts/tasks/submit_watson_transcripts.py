@@ -14,6 +14,7 @@ from datetime import time
 from audit_tool.models import APIScriptTracker
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
+from es_components.constants import Sections
 from utils.lang import replace_apostrophes
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
@@ -56,8 +57,11 @@ def submit_watson_transcripts():
         print("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
+        videos_to_upsert = []
         videos_request_batch = []
         videos_watson_transcripts = []
+        manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, ),
+                               upsert_sections=(Sections.CUSTOM_CAPTIONS, ))
         while vids_submitted < num_vids:
             videos = get_no_custom_captions_vids(language=language, country=country, yt_category=yt_category,
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
@@ -98,6 +102,8 @@ def submit_watson_transcripts():
                                 else:
                                     videos_watson_transcripts.append(watson_transcript)
                                     videos_request_batch.append(vid_id)
+                                    if not sandbox_mode:
+                                        videos_to_upsert.append(vid)
                             except Exception as e:
                                 print(e)
                                 continue
@@ -126,16 +132,26 @@ def submit_watson_transcripts():
                     print(f"Response Status: {response.status_code}")
                     print(f"Response Content: {response.content}")
                     print(f"Watson API Requests submitted today: {api_tracker.cursor}")
+                    job_status = response.json()["Submission Status"]
+                    job_id = response.json()["Job Id"]
                     for watson_transcript in videos_watson_transcripts:
                         watson_transcript.submitted = timezone.now()
-                        watson_transcript.job_id = response.json()["Job Id"]
+                        watson_transcript.job_status = job_status
+                        watson_transcript.job_id = job_id
                         watson_transcript.save()
+                    videos_watson_transcripts = []
+                    if not sandbox_mode:
+                        for video in videos_to_upsert:
+                            video.populate_custom_captions(watson_job_id=job_id)
+                        manager.upsert(videos_to_upsert)
+                        videos_to_upsert = []
                     videos_request_batch = []
         unlock(LOCK_NAME)
         logger.debug("Finished submitting Watson transcripts task.")
         print(f"Submitted {vids_submitted} video ids to Watson.")
         print("Finished submitting Watson transcripts task.")
     except Exception as e:
+        print(e)
         pass
 
 
@@ -262,5 +278,5 @@ def get_no_custom_captions_vids(language=None, country=None, yt_category=None, b
     if brand_safety_query:
         s = s.query(brand_safety_query)
     s = s.sort({"stats.views": {"order": "desc"}})
-    s = s[offset:num_vids]
+    s = s[offset:offset+num_vids]
     return s.execute()
