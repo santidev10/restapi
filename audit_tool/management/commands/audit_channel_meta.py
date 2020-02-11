@@ -285,7 +285,7 @@ class Command(BaseCommand):
     def load_exclusion_list(self):
         if self.exclusion_list:
             return
-        input_list = self.audit.params.get("exclusion") if self.audit.params else None
+        input_list = self.audit.params.get("exclusion")
         if not input_list:
             return
         language_keywords_dict = defaultdict(list)
@@ -294,12 +294,14 @@ class Command(BaseCommand):
             word = remove_tags_punctuation(row[0])
             try:
                 language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
