@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
@@ -10,6 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
 import hashlib
+
 
 def get_hash_name(s):
     return int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16) % 10 ** 8
@@ -416,6 +418,7 @@ class AuditVideoMeta(models.Model):
     age_restricted = models.NullBooleanField(default=None, db_index=True)
     made_for_kids = models.NullBooleanField(default=None, db_index=True)
 
+
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
     video = models.ForeignKey(AuditVideo, db_index=True, related_name='avp_video', on_delete=models.CASCADE)
@@ -514,3 +517,110 @@ class BlacklistItem(models.Model):
                 else:
                     data.append(item)
         return data
+
+
+class AuditVet(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    clean = models.NullBooleanField(default=None, db_index=True)  # determined if suitable by user
+    created_at = models.DateTimeField(auto_now_add=True)
+    checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)  # vetted at by user
+    processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
+    skipped = models.NullBooleanField(default=None,
+                                      db_index=True)  # skipped if user uanble to view in region, or item was deleted
+
+    class Meta:
+        abstract = True
+
+
+class AuditChannelVet(AuditVet):
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='channel_vets', null=True, default=None, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("audit", "channel")
+
+
+class AuditChannelType(models.Model):
+    ID_CHOICES = [
+        (0, "MC / Brand"),
+        (1, "Regular UGC"),
+        (2, "Premium UGC"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    channel_type = models.CharField(max_length=20)
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditChannelType.to_id[value.lower()]
+        else:
+            item_id = value
+        item = AuditChannelType.objects.get(id=item_id)
+        return item
+
+
+class AuditAgeGroup(models.Model):
+    ID_CHOICES = [
+        (0, "0 - 3 Toddlers"),
+        (1, "4 - 8 Young Kids"),
+        (2, "9 - 12 Older Kids"),
+        (3, "13 - 17 Teens"),
+        (4, "18 - 35 Adults"),
+        (5, "36 - 54 Older Adults"),
+        (6, "55+ Seniors"),
+        (7, "Group - Kids (not teens)"), # parent=2
+        (8, "Group - Family Friendly"), # parent=3
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    age_group = models.CharField(max_length=25)
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None, related_name="children")
+
+    @staticmethod
+    def get_by_group():
+        """
+        Get age groups with subgroups
+        :return: dict
+        """
+        by_group = [{
+            "id": group.id,
+            "value": group.age_group,
+            "children": [{"id": child.id, "value": child.age_group} for child in AuditAgeGroup.objects.filter(parent_id=group.id)]
+         } for group in AuditAgeGroup.objects.filter(parent=None)]
+        return by_group
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditAgeGroup.to_id[value.lower()]
+        else:
+            item_id = value
+        item = AuditAgeGroup.objects.get(id=item_id)
+        return item
+
+
+class AuditGender(models.Model):
+    ID_CHOICES = [
+        (0, "Neutral"),
+        (1, "Female"),
+        (2, "Male"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    gender = models.CharField(max_length=15)
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditGender.to_id[value.lower()]
+        else:
+            item_id = value
+        gender = AuditGender.objects.get(id=item_id)
+        return gender

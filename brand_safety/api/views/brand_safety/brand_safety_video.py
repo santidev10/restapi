@@ -23,7 +23,7 @@ class BrandSafetyVideoAPIView(APIView):
 
     def get(self, request, **kwargs):
         """
-        View to retrieve individual video brand safety data
+        Retrieve individual video brand safety data
         """
         video_id = kwargs["pk"]
         category_mapping = BadWordCategory.get_category_mapping()

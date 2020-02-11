@@ -19,6 +19,9 @@ class SegmentCreateApiViewV3(CreateAPIView):
     serializer_class = CustomSegmentSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
+        """
         try:
             validated_data = self._validate_data(request.user.id, request.data)
         except SegmentCreationOptionsError as error:
@@ -56,7 +59,14 @@ class SegmentCreateApiViewV3(CreateAPIView):
             response.append(res)
         return Response(status=HTTP_201_CREATED, data=response)
 
-    def _validate_data(self, user_id: int, data: dict):
+    def _validate_data(self, user_id, data):
+        """
+        Validate request data
+        Raise ValidationError on invalid parameters
+        :param user_id: int
+        :param data: dict
+        :return: dict
+        """
         try:
             validated = self.validate_options(data)
             validated["segment_type"] = self.validate_segment_type(int(data["segment_type"]))
@@ -68,12 +78,22 @@ class SegmentCreateApiViewV3(CreateAPIView):
 
     @staticmethod
     def validate_segment_type(segment_type):
+        """
+        Validate request segment_type for creation
+        :param segment_type: int
+        :return: int
+        """
         if not 0 <= segment_type <= 2:
             raise ValueError(f"Invalid list_type: {segment_type}. Must 0-2, inclusive")
         return segment_type
 
     @staticmethod
     def validate_options(options: dict):
+        """
+        Copy and validate request options for creation
+        :param options: dict
+        :return:
+        """
         opts = options.copy()
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
@@ -87,6 +107,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         return opts
 
     def _create(self, data: dict):
+        """
+        Create segment with CustomSegmentSerializer
+        :param data: dict
+        :return: CustomSegment
+        """
         data["list_type"] = "whitelist"
         serializer = self.serializer_class(data=data)
         serializer.is_valid()

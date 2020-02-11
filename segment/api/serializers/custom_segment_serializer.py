@@ -22,6 +22,7 @@ class CustomSegmentSerializer(ModelSerializer):
         model = CustomSegment
         fields = (
             "id",
+            "audit_id",
             "created_at",
             "updated_at",
             "list_type",
