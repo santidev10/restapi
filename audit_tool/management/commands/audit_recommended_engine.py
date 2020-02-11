@@ -344,7 +344,13 @@ class Command(BaseCommand):
             else:
                 language = ""
             is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "":
+                is_there_b, b_hits_b = self.check_exists(full_string, self.exclusion_list[""], count=self.exclusion_hit_count)
+                if not is_there and is_there_b:
+                    is_there = True
+                    b_hits = b_hits + b_hits_b
             if is_there:
+                hits['exclusion'] = b_hits
                 return False, hits
         return True, hits
 
@@ -404,6 +410,10 @@ class Command(BaseCommand):
                 pass
             try:
                 db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
+            except Exception as e:
+                pass
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)

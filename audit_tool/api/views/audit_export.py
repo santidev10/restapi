@@ -193,6 +193,7 @@ class AuditExportApiView(APIView):
             "Unique Bad Hit Words",
             "Video Count",
             "Brand Safety Score",
+            "Made For Kids",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -219,7 +220,10 @@ class AuditExportApiView(APIView):
         num_done = 0
         for avp in videos:
             vid = avp.video
-            v = vid.auditvideometa
+            try:
+                v = vid.auditvideometa
+            except Exception as e:
+                v = None
             v_channel = vid.channel
             acm = v_channel.auditchannelmeta if v_channel else None
             if num_done > self.MAX_ROWS:
@@ -284,16 +288,16 @@ class AuditExportApiView(APIView):
                 print("Problem calculating video score")
             data = [
                 "https://www.youtube.com/video/" + vid.video_id,
-                v.name,
+                v.name if v else "",
                 language,
                 category,
-                v.views,
-                v.likes,
-                v.dislikes,
-                'T' if v.emoji else 'F',
+                v.views if v else "",
+                v.likes if v else "",
+                v.dislikes if v else "",
+                'T' if v and v.emoji else 'F',
                 default_audio_language,
-                self.clean_duration(v.duration) if v.duration else "",
-                v.publish_date.strftime("%m/%d/%Y") if v.publish_date else "",
+                self.clean_duration(v.duration) if v and v.duration else "",
+                v.publish_date.strftime("%m/%d/%Y") if v and v.publish_date else "",
                 acm.name if acm else "",
                 "https://www.youtube.com/channel/" + v_channel.channel_id if v_channel else "",
                 channel_lang,
@@ -308,6 +312,7 @@ class AuditExportApiView(APIView):
                 unique_bad_hit_words,
                 video_count if video_count else "",
                 mapped_score,
+                v.made_for_kids if v else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -405,6 +410,7 @@ class AuditExportApiView(APIView):
             "Last Video Views",
             "Last Video Category",
             "Num Bad Videos",
+            "Num Kids Videos",
             "Unique Exclusion Words (channel)",
             "Unique Exclusion Words (videos)",
             "Exclusion Words (channel)",
@@ -427,6 +433,7 @@ class AuditExportApiView(APIView):
         bad_video_hit_words = {}
         good_video_hit_words = {}
         bad_videos_count = {}
+        kid_videos_count = {}
         video_count = {}
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
@@ -449,6 +456,10 @@ class AuditExportApiView(APIView):
                         good_video_hit_words[full_channel_id] = set(i_v)
                 except Exception as e:
                     pass
+            try:
+                kid_videos_count[full_channel_id] = len(cid.word_hits.get('made_for_kids'))
+            except Exception as e:
+                pass
             if do_exclusion:
                 try:
                     bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
@@ -511,6 +522,7 @@ class AuditExportApiView(APIView):
                 v.last_uploaded_view_count if v.last_uploaded_view_count else "",
                 last_category,
                 bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
+                kid_videos_count.get(channel.channel_id) if kid_videos_count.get(channel.channel_id) else 0,
                 len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
                 len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
                     channel.channel_id) else 0,

@@ -1,4 +1,3 @@
-import string
 from django.core.management.base import BaseCommand
 import csv
 import logging
@@ -45,7 +44,7 @@ class Command(BaseCommand):
     acps = {}
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -85,6 +84,10 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.placement_list = False
+        if self.audit.name:
+            if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
+                self.placement_list = True
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
         else:
@@ -214,6 +217,9 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
+                if self.placement_list and not db_channel_meta.monetised:
+                    db_channel_meta.monetised = True
+                    db_channel_meta.save(update_fields=['monetised'])
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
                     db_channel_meta.last_uploaded_view_count = db_video_meta.views
@@ -232,6 +238,8 @@ class Command(BaseCommand):
         ))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
+        if db_video_meta.made_for_kids == True:
+            self.append_to_channel(avp, [avp.video_id], 'made_for_kids')
         if db_video_meta.age_restricted == True:
             avp.word_hits['exclusion'] = ['ytAgeRestricted']
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
@@ -352,6 +360,10 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
+            except Exception as e:
+                pass
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
                     db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
