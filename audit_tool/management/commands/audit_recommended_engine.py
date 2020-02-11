@@ -346,7 +346,7 @@ class Command(BaseCommand):
             is_there = False
             if self.exclusion_list.get(language):
                 is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
-            if language != "":
+            if language != "" and self.exclusion_list.get(""):
                 is_there_b, b_hits_b = self.check_exists(full_string, self.exclusion_list[""], count=self.exclusion_hit_count)
                 if not is_there and is_there_b:
                     is_there = True
@@ -474,6 +474,8 @@ class Command(BaseCommand):
             word = remove_tags_punctuation(row[0])
             try:
                 language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
