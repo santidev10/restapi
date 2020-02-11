@@ -1,13 +1,8 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from utils.lang import fasttext_lang
-from dateutil.parser import parse
-from emoji import UNICODE_EMOJI
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -18,15 +13,20 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from datetime import datetime
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from utils.lang import remove_mentions_hashes_urls
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
 from collections import defaultdict
-from utils.utils import remove_tags_punctuation
+from datetime import datetime
 from datetime import timedelta
+from dateutil.parser import parse
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from emoji import UNICODE_EMOJI
+from pid import PidFile
+from utils.lang import fasttext_lang
+from utils.lang import remove_mentions_hashes_urls
+from utils.utils import remove_tags_punctuation
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
