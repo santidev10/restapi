@@ -341,8 +341,8 @@ class Command(BaseCommand):
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 return True, hits
-            else:
-                language = ""
+            # else:
+            #     language = ""
             is_there = False
             if self.exclusion_list.get(language):
                 is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
