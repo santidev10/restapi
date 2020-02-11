@@ -118,6 +118,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
         "schedule": crontab(minute=0, hour='*/6'),
     },
+    "cache_global_trends_filters": {
+        "task": "cache.tasks.cache_global_trends_filters.cache_global_trends_filters",
+        "schedule": crontab(minute=0, hour='*/6'),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(hour="*"),
@@ -191,7 +195,7 @@ class TaskExpiration:
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
-
+    GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
 
 
 class TaskTimeout:
@@ -205,3 +209,4 @@ class TaskTimeout:
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
