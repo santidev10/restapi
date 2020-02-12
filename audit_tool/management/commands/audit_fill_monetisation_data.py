@@ -5,6 +5,7 @@ from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditVideoProcessor
 from es_components.managers import ChannelManager
 from es_components.constants import Sections
+from es_components.query_builder import QueryBuilder
 from django.utils import timezone
 from datetime import timedelta
 logger = logging.getLogger(__name__)
@@ -83,11 +84,11 @@ class Command(BaseCommand):
         upsert_index = 0
         while upsert_index < len(channel_ids):
             try:
-                channels = self.manager.get(ids=channel_ids[upsert_index:upsert_index+self.upsert_batch_size],
-                                            skip_none=True)
-                for channel in channels:
-                    channel.populate_monetization(is_monetizable=True)
-                self.manager.upsert(channels)
+                not_monetized_query = QueryBuilder().build().must_not().term().field("monetization.is_monetizable")\
+                    .value(True).get()
+                channel_ids_query = QueryBuilder().build().must().terms().field("main.id")\
+                    .value(channel_ids[upsert_index:upsert_index+self.upsert_batch_size]).get()
+                self.manager.update_monetization(not_monetized_query+channel_ids_query, is_monetizable=True)
             except Exception as e:
                 pass
             upsert_index += self.upsert_batch_size
