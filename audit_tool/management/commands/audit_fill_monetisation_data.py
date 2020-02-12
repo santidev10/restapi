@@ -4,7 +4,6 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditVideoProcessor
 from es_components.managers import ChannelManager
-from es_components.models import Channel
 from es_components.constants import Sections
 from django.utils import timezone
 from datetime import timedelta
