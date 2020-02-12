@@ -82,9 +82,12 @@ class Command(BaseCommand):
     def update_es_monetisation(self, channel_ids):
         upsert_index = 0
         while upsert_index < len(channel_ids):
-            channels = self.manager.get(ids=channel_ids[upsert_index:upsert_index+self.upsert_batch_size],
-                                        skip_none=True)
+            try:
+                channels = self.manager.get(ids=channel_ids[upsert_index:upsert_index+self.upsert_batch_size],
+                                            skip_none=True)
+                for channel in channels:
+                    channel.populate_monetization(is_monetizable=True)
+                self.manager.upsert(channels)
+            except Exception as e:
+                pass
             upsert_index += self.upsert_batch_size
-            for channel in channels:
-                channel.populate_monetization(is_monetizable=True)
-            self.manager.upsert(channels)
