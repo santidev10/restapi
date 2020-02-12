@@ -36,7 +36,7 @@ DATE_FORMAT = "%d/%m/%y"
 class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, **kwargs):
         # added just for testing on RC. Should be removed after testing
-        kwargs["debug"] = False
+        # kwargs["debug"] = False
 
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
@@ -70,9 +70,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
     def _get_csv_file_context(self, user):
-        campaigns = Campaign.objects.get_queryset_for_user(user=user) \
-            .filter(status=CampaignStatus.ELIGIBLE.value).values_list("id", flat=True)
-
+        campaigns = Campaign.objects.get_queryset_for_user(user=user).values_list("id", flat=True)
         campaigns_ids = list(campaigns)
 
         campaigns_statistics = self.__get_campaign_statistics(campaigns_ids)
