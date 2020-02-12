@@ -245,7 +245,7 @@ class Command(BaseCommand):
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
             return False
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
+            is_there, hits = self.check_exists(full_string.lower(), self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
@@ -259,9 +259,17 @@ class Command(BaseCommand):
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 avp.word_hits['exclusion'] = None
                 return True
-            else:
-                language = ""
-            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
+            is_there = False
+            hits = []
+            if self.exclusion_list.get(language):
+                is_there, hits = self.check_exists(full_string.lower(), self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "" and self.exclusion_list.get(""):
+                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
+                if not is_there and is_there_b:
+                    is_there = True
+                    hits = b_hits_b
+                elif hits and b_hits_b:
+                    hits = hits + b_hits_b
             avp.word_hits['exclusion'] = hits
             if is_there:
                 self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
@@ -420,12 +428,14 @@ class Command(BaseCommand):
             word = remove_tags_punctuation(row[0])
             try:
                 language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
