@@ -50,15 +50,19 @@ class Command(BaseCommand):
 
     def mark_monetised_videos(self, audit):
         videos = AuditVideoProcessor.objects.filter(audit=audit)
+        channel_ids = [video.channel.channel_id for video in videos]
+        channels = self.manager.get([channel_ids])
+        valid_channel_ids = [channel.main.id for channel in channels if channel]
         for video in videos:
             try: # possible the channel object isn't set on this audit
                 channel_meta = video.channel.auditchannelmeta
                 channel_id = video.channel.channel_id
-                channel = self.manager.get([channel_id])
+                channel = [channel_obj for channel_obj in channels if channel_obj.main.id == channel_id]
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
                 if channel:
+                    channel = channel[0]
                     channel.populate_monetization(is_monetizable=True)
             except Exception as e:
                 pass
