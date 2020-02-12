@@ -25,8 +25,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.days = options.get('days')
+        self.upsert_batch_size = options.get('upsert_batch_size')
         if not self.days:
             self.days = 3
+        if not self.upsert_batch_size or self.upsert_batch_size > 10000:
+            self.upsert_batch_size = 1000
 
         with PidFile(piddir='.', pidname='check_monetised_campaigns.pid') as p:
             # get video/channel meta audits
@@ -67,7 +70,10 @@ class Command(BaseCommand):
                     upsert_channels.append(channel)
             except Exception as e:
                 pass
-        self.manager.upsert(upsert_channels)
+        upsert_index = 0
+        while upsert_index < len(upsert_channels):
+            self.manager.upsert(upsert_channels[upsert_index:upsert_index+self.upsert_batch_size])
+            upsert_index += self.upsert_batch_size
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
@@ -88,4 +94,7 @@ class Command(BaseCommand):
                     upsert_channels.append(channel)
             except Exception as e:
                 pass
-        self.manager.upsert(upsert_channels)
+        upsert_index = 0
+        while upsert_index < len(upsert_channels):
+            self.manager.upsert(upsert_channels[upsert_index:upsert_index+self.upsert_batch_size])
+            upsert_index += self.upsert_batch_size
