@@ -53,48 +53,38 @@ class Command(BaseCommand):
 
     def mark_monetised_videos(self, audit):
         videos = AuditVideoProcessor.objects.filter(audit=audit)
-        channel_ids = [video.channel.channel_id for video in videos]
-        channels = self.manager.get(ids=channel_ids, skip_none=True)
-        upsert_channels = []
+        channel_ids = set()
         for video in videos:
             try: # possible the channel object isn't set on this audit
                 channel_meta = video.channel.auditchannelmeta
-                channel_id = video.channel.channel_id
-                channel = [channel_obj for channel_obj in channels if channel_obj.main.id == channel_id]
+                channel_ids.add(video.channel.channel_id)
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
-                if channel:
-                    channel = channel[0]
-                    channel.populate_monetization(is_monetizable=True)
-                    upsert_channels.append(channel)
             except Exception as e:
                 pass
-        upsert_index = 0
-        while upsert_index < len(upsert_channels):
-            self.manager.upsert(upsert_channels[upsert_index:upsert_index+self.upsert_batch_size])
-            upsert_index += self.upsert_batch_size
+        self.update_es_monetisation(list(channel_ids))
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
-        channel_ids = [channel.channel.channel_id for channel in channels]
-        channels = self.manager.get(ids=channel_ids, skip_none=True)
-        upsert_channels = []
+        channel_ids = set()
         for channel in channels:
             try: # possible the channel object isn't set on this audit
                 channel_meta = channel.channel.auditchannelmeta
-                channel_id = channel.channel.channel_id
-                channel = [channel_obj for channel_obj in channels if channel_obj.main.id == channel_id]
+                channel_ids.add(channel.channel.channel_id)
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
-                if channel:
-                    channel = channel[0]
-                    channel.populate_monetization(is_monetizable=True)
-                    upsert_channels.append(channel)
             except Exception as e:
                 pass
+        self.update_es_monetisation(list(channel_ids))
+
+    def update_es_monetisation(self, channel_ids):
         upsert_index = 0
-        while upsert_index < len(upsert_channels):
-            self.manager.upsert(upsert_channels[upsert_index:upsert_index+self.upsert_batch_size])
+        while upsert_index < len(channel_ids):
+            channels = self.manager.get(ids=channel_ids[upsert_index:upsert_index+self.upsert_batch_size],
+                                        skip_none=True)
             upsert_index += self.upsert_batch_size
+            for channel in channels:
+                channel.populate_monetization(is_monetizable=True)
+            self.manager.upsert(channels[upsert_index:upsert_index + self.upsert_batch_size])
