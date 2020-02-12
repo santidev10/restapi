@@ -42,8 +42,8 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
             ordered_rate=2.5
         )
         campaign = Campaign.objects.create(
-            id="1", account=account, name="campaign_1", salesforce_placement=placement,
-            status=CampaignStatus.ELIGIBLE.value
+            id="1", account=account, name="campaign_1",
+            salesforce_placement=placement
         )
         return campaign
 

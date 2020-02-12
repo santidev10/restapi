@@ -56,7 +56,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 body=self._get_body(),
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=self.get_to(settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES),
-                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                cc=self.get_cc([]),
                 bcc=self.get_bcc(),
         )
 
@@ -70,9 +70,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
     def _get_csv_file_context(self, user):
-        campaigns = Campaign.objects.get_queryset_for_user(user=user) \
-            .filter(status=CampaignStatus.ELIGIBLE.value).values_list("id", flat=True)
-
+        campaigns = Campaign.objects.get_queryset_for_user(user=user).values_list("id", flat=True)
         campaigns_ids = list(campaigns)
 
         campaigns_statistics = self.__get_campaign_statistics(campaigns_ids)
