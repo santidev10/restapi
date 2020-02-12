@@ -71,15 +71,21 @@ class Command(BaseCommand):
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
+        channel_ids = [channel.channel.channel_id for channel in channels]
+        channels = self.manager.get(ids=channel_ids, skip_none=True)
+        upsert_channels = []
         for channel in channels:
             try: # possible the channel object isn't set on this audit
                 channel_meta = channel.channel.auditchannelmeta
                 channel_id = channel.channel.channel_id
-                channel = self.manager.get([channel_id])
+                channel = [channel_obj for channel_obj in channels if channel_obj.main.id == channel_id]
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
                 if channel:
+                    channel = channel[0]
                     channel.populate_monetization(is_monetizable=True)
+                    upsert_channels.append(channel)
             except Exception as e:
                 pass
+        self.manager.upsert(upsert_channels)
