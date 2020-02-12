@@ -32,6 +32,7 @@ class Command(BaseCommand):
             self.upsert_batch_size = 1000
 
         with PidFile(piddir='.', pidname='check_monetised_campaigns.pid') as p:
+            self.channel_ids = set()
             # get video/channel meta audits
             self.audits = AuditProcessor.objects.filter(
                 completed__gte=timezone.now() - timedelta(days=self.days)
@@ -39,6 +40,7 @@ class Command(BaseCommand):
             self.manager = ChannelManager(sections=(Sections.MONETIZATION,),
                                           upsert_sections=(Sections.MONETIZATION,))
             self.process_audits()
+            self.update_es_monetisation()
 
     def process_audits(self):
         for audit in self.audits:
@@ -53,33 +55,30 @@ class Command(BaseCommand):
 
     def mark_monetised_videos(self, audit):
         videos = AuditVideoProcessor.objects.filter(audit=audit)
-        channel_ids = set()
         for video in videos:
             try: # possible the channel object isn't set on this audit
                 channel_meta = video.channel.auditchannelmeta
-                channel_ids.add(video.channel.channel_id)
+                self.channel_ids.add(video.channel.channel_id)
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
             except Exception as e:
                 pass
-        self.update_es_monetisation(list(channel_ids))
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
-        channel_ids = set()
         for channel in channels:
             try: # possible the channel object isn't set on this audit
                 channel_meta = channel.channel.auditchannelmeta
-                channel_ids.add(channel.channel.channel_id)
+                self.channel_ids.add(channel.channel.channel_id)
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
             except Exception as e:
                 pass
-        self.update_es_monetisation(list(channel_ids))
 
-    def update_es_monetisation(self, channel_ids):
+    def update_es_monetisation(self):
+        channel_ids = list(self.channel_ids)
         upsert_index = 0
         while upsert_index < len(channel_ids):
             try:
