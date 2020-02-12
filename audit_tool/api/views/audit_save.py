@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from audit_tool.api.serializers.audit_processor_serializer import AuditProcessorSerializer
 from audit_tool.models import AuditProcessor
 import csv
 from uuid import uuid4
@@ -12,6 +13,8 @@ from utils.aws.s3_exporter import S3Exporter
 from datetime import datetime
 from utils.permissions import user_has_permission
 from brand_safety.languages import LANGUAGES
+from segment.models import CustomSegment
+from audit_tool.tasks.generate_audit_items import generate_audit_items
 
 class AuditSaveApiView(APIView):
     permission_classes = (
@@ -240,6 +243,40 @@ class AuditSaveApiView(APIView):
                 exclusion_data.append(row_data)
                 categories.append(category)
         return exclusion_data, categories
+
+    def patch(self, request):
+        """
+        Update AuditProcessor fields
+        AuditProcessor params will always be updated with new data if provided
+        """
+        data = request.data
+        segment_id = data["segment_id"]
+        try:
+            segment = CustomSegment.objects.get(id=segment_id)
+        except CustomSegment.DoesNotExist:
+            raise ValidationError(f"Segment with id: {segment_id} does not exist.")
+
+        # If segment does not contain any items, then reject audit creation
+        if segment.statistics.get("items_count", 0) <= 0:
+            raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
+        audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
+            "audit_type": segment.audit_type,
+            "source": 1
+        })
+        if created:
+            segment.audit_id = audit.id
+            segment.save()
+            generate_audit_items.delay(segment.id, data_field=segment.data_field)
+        # Update params with instructions
+        audit.params.update({
+            "instructions": data.pop("instructions", "")
+        })
+        data["params"] = audit.params
+        serializer = AuditProcessorSerializer(audit, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data)
+
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME
