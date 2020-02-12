@@ -36,7 +36,7 @@ DATE_FORMAT = "%d/%m/%y"
 class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, **kwargs):
         # added just for testing on RC. Should be removed after testing
-        # kwargs["debug"] = False
+        kwargs["debug"] = False
 
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
