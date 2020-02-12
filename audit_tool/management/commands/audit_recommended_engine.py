@@ -349,6 +349,8 @@ class Command(BaseCommand):
                 is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
                 if not is_there and is_there_b:
                     is_there = True
+                    b_hits = b_hits_b
+                elif b_hits and b_hits_b:
                     b_hits = b_hits + b_hits_b
             if is_there:
                 hits['exclusion'] = b_hits
