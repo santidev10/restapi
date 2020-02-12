@@ -51,8 +51,8 @@ class Command(BaseCommand):
     def mark_monetised_videos(self, audit):
         videos = AuditVideoProcessor.objects.filter(audit=audit)
         channel_ids = [video.channel.channel_id for video in videos]
-        channels = self.manager.get([channel_ids])
-        valid_channel_ids = [channel.main.id for channel in channels if channel]
+        channels = self.manager.get(ids=channel_ids, skip_none=True)
+        upsert_channels = []
         for video in videos:
             try: # possible the channel object isn't set on this audit
                 channel_meta = video.channel.auditchannelmeta
@@ -64,8 +64,10 @@ class Command(BaseCommand):
                 if channel:
                     channel = channel[0]
                     channel.populate_monetization(is_monetizable=True)
+                    upsert_channels.append(channel)
             except Exception as e:
                 pass
+        self.manager.upsert(upsert_channels)
 
     def mark_monetised_channels(self, audit):
         channels = AuditChannelProcessor.objects.filter(audit=audit)
