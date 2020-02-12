@@ -26,7 +26,7 @@ from transcripts.models import WatsonTranscript
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = 'watson_transcripts'
-API_KEY = settings.WATSON_API_KEY
+API_KEY = settings.ESS_API_KEY
 API_QUOTA = settings.WATSON_API_QUOTA
 WATSON_APITRACKER_KEY = 'watson_transcripts'
 batch_size = settings.WATSON_BATCH_SIZE
