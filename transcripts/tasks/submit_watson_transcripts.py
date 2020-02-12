@@ -136,7 +136,7 @@ def submit_watson_transcripts():
                     for watson_transcript in videos_watson_transcripts:
                         watson_transcript.submitted = timezone.now()
                         watson_transcript.job_id = job_id
-                        watson_transcript.save()
+                        watson_transcript.save(update_fields=['submitted', 'job_id'])
                     videos_watson_transcripts = []
                     if not sandbox_mode:
                         for video in videos_to_upsert:

@@ -18,6 +18,7 @@ class WatsonTranscript(Timestampable):
     submitted = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
     retrieved = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
     job_id = models.CharField(max_length=255, blank=True, null=True, default=None, db_index=True)
+    job_id_hash = models.BigIntegerField(default=0, db_index=True)
 
     @staticmethod
     def get_or_create(video_id):
@@ -34,3 +35,8 @@ class WatsonTranscript(Timestampable):
             )
         except IntegrityError as e:
             return WatsonTranscript.objects.get(video_id=video_id)
+
+    def save(self, *args, **kwargs):
+        if 'update_fields' in kwargs and 'job_id' in kwargs['update_fields']:
+            self.job_id_hash = get_hash_name(self.job_id)
+        return super().save(*args, **kwargs)
