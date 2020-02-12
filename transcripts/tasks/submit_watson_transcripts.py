@@ -162,10 +162,8 @@ def get_no_custom_captions_vids(language=None, country=None, yt_category=None, b
     if language:
         language_query = Q(
             {
-                "term": {
-                    "general_data.language": {
-                        "value": language
-                    }
+                "terms": {
+                    "general_data.language": language
                 }
             }
         )
@@ -175,10 +173,8 @@ def get_no_custom_captions_vids(language=None, country=None, yt_category=None, b
     if country:
         country_query = Q(
             {
-                "term": {
-                    "general_data.country": {
-                        "value": country
-                    }
+                "terms": {
+                    "general_data.country": country
                 }
             }
         )
@@ -188,10 +184,8 @@ def get_no_custom_captions_vids(language=None, country=None, yt_category=None, b
     if yt_category:
         category_query = Q(
             {
-                "term": {
-                    "general_data.category": {
-                        "value": yt_category
-                    }
+                "terms": {
+                    "general_data.category": yt_category
                 }
             }
         )
