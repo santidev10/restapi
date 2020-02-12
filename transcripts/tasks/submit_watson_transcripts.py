@@ -38,12 +38,12 @@ watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def submit_watson_transcripts():
     try:
-        language = settings.WATSON_LANGUAGE
+        lang_code = settings.WATSON_LANG_CODE
         country = settings.WATSON_COUNTRY
         yt_category = settings.WATSON_CATEGORY
         brand_safety_score = settings.WATSON_SCORE_THRESHOLD
         num_vids = settings.WATSON_NUM_VIDEOS
-        logger.debug(f"language: {language}")
+        logger.debug(f"lang_code: {lang_code}")
         logger.debug(f"county: {country}")
         logger.debug(f"yt_category: {yt_category}")
         logger.debug(f"brand_safety_score: {brand_safety_score}")
@@ -63,7 +63,7 @@ def submit_watson_transcripts():
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, ),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, ))
         while vids_submitted < num_vids:
-            videos = get_no_custom_captions_vids(language=language, country=country, yt_category=yt_category,
+            videos = get_no_custom_captions_vids(lang_code=lang_code, country=country, yt_category=yt_category,
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
                                                  offset=offset)
             offset += num_vids
@@ -152,18 +152,18 @@ def submit_watson_transcripts():
         pass
 
 
-def get_no_custom_captions_vids(language=None, country=None, yt_category=None, brand_safety_score=None, num_vids=10000,
+def get_no_custom_captions_vids(lang_code=None, country=None, yt_category=None, brand_safety_score=None, num_vids=10000,
                                 offset=0):
     forced_filters = VideoManager().forced_filters()
     s = Search(using='default')
     s = s.index(Video.Index.name)
     s = s.query(forced_filters)
     # Get Videos Query for Specified Language
-    if language:
+    if lang_code:
         language_query = Q(
             {
                 "terms": {
-                    "general_data.language": language
+                    "general_data.lang_code": lang_code
                 }
             }
         )
