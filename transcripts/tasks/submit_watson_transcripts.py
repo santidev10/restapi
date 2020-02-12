@@ -43,18 +43,18 @@ def submit_watson_transcripts():
         yt_category = settings.WATSON_CATEGORY
         brand_safety_score = settings.WATSON_SCORE_THRESHOLD
         num_vids = settings.WATSON_NUM_VIDEOS
-        print(f"language: {language}")
-        print(f"county: {country}")
-        print(f"yt_category: {yt_category}")
-        print(f"brand_safety_score: {brand_safety_score}")
-        print(f"num_vids: {num_vids}")
+        logger.debug(f"language: {language}")
+        logger.debug(f"county: {country}")
+        logger.debug(f"yt_category: {yt_category}")
+        logger.debug(f"brand_safety_score: {brand_safety_score}")
+        logger.debug(f"num_vids: {num_vids}")
     except Exception as e:
         raise e
     vids_submitted = 0
     offset = 0
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
-        print("Starting submit_watson_transcripts task.")
+        logger.debug("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
         videos_to_upsert = []
