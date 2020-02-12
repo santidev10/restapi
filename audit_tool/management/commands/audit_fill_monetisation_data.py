@@ -87,4 +87,4 @@ class Command(BaseCommand):
             upsert_index += self.upsert_batch_size
             for channel in channels:
                 channel.populate_monetization(is_monetizable=True)
-            self.manager.upsert(channels[upsert_index:upsert_index + self.upsert_batch_size])
+            self.manager.upsert(channels)
