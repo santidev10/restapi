@@ -10,15 +10,14 @@ def get_hash_name(s):
 
 
 class WatsonTranscript(Timestampable):
-    video_id = models.CharField(max_length=50, unique=True)
+    video_id = models.CharField(max_length=50, unique=True, db_index=True)
     video_id_hash = models.BigIntegerField(default=0, db_index=True)
     transcript = models.TextField(blank=True, null=True, default=None)
     language = models.ForeignKey(AuditLanguage, db_index=True, null=True, default=None,
                                  on_delete=models.CASCADE, related_name='transcript_language')
-    submitted = models.DateTimeField(blank=True, null=True, default=None)
-    retrieved = models.DateTimeField(blank=True, null=True, default=None)
-    job_status = models.CharField(max_length=255, blank=True, null=True, default=None)
-    job_id = models.CharField(max_length=255, blank=True, null=True, default=None)
+    submitted = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
+    retrieved = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
+    job_id = models.CharField(max_length=255, blank=True, null=True, default=None, db_index=True)
 
     @staticmethod
     def get_or_create(video_id):

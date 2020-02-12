@@ -70,7 +70,7 @@ def submit_watson_transcripts():
             logger.debug(f"len(videos): {len(videos)}")
             for vid in videos:
                 if api_tracker.cursor >= API_QUOTA:
-                    now = datetime.now()
+                    now = datetime.now(tz=timezone.utc)
                     tomorrow = now.date() + timedelta(days=1)
                     timeout = (datetime.combine(tomorrow, time.min) - now).total_seconds()
                     unlock(LOCK_NAME)
@@ -132,11 +132,9 @@ def submit_watson_transcripts():
                     logger.debug(f"Response Status: {response.status_code}")
                     logger.debug(f"Response Content: {response.content}")
                     logger.debug(f"Watson API Requests submitted today: {api_tracker.cursor}")
-                    job_status = response.json()["Submission Status"]
                     job_id = response.json()["Job Id"]
                     for watson_transcript in videos_watson_transcripts:
                         watson_transcript.submitted = timezone.now()
-                        watson_transcript.job_status = job_status
                         watson_transcript.job_id = job_id
                         watson_transcript.save()
                     videos_watson_transcripts = []
