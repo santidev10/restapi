@@ -42,6 +42,8 @@ class AuditSaveApiView(APIView):
         include_unknown_views = strtobool(query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
         include_unknown_likes = strtobool(query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
 
+        if not name:
+            raise ValidationError("name is a required field")
         if min_date:
             if '/' not in min_date:
                 raise ValidationError("format of min_date must be mm/dd/YYYY")
