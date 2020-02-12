@@ -3,6 +3,9 @@ import logging
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditVideoProcessor
+from es_components.managers import ChannelManager
+from es_components.models import Channel
+from es_components.constants import Sections
 from django.utils import timezone
 from datetime import timedelta
 logger = logging.getLogger(__name__)
@@ -31,6 +34,8 @@ class Command(BaseCommand):
             self.audits = AuditProcessor.objects.filter(
                 completed__gte=timezone.now() - timedelta(days=self.days)
             ).exclude(audit_type=0)
+            self.manager = ChannelManager(sections=(Sections.MONETIZATION,),
+                                          upsert_sections=(Sections.MONETIZATION,))
             self.process_audits()
 
     def process_audits(self):
@@ -49,9 +54,13 @@ class Command(BaseCommand):
         for video in videos:
             try: # possible the channel object isn't set on this audit
                 channel_meta = video.channel.auditchannelmeta
+                channel_id = video.channel.channel_id
+                channel = self.manager.get([channel_id])
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
+                if channel:
+                    channel.populate_monetization(is_monetizable=True)
             except Exception as e:
                 pass
 
@@ -60,8 +69,12 @@ class Command(BaseCommand):
         for channel in channels:
             try: # possible the channel object isn't set on this audit
                 channel_meta = channel.channel.auditchannelmeta
+                channel_id = channel.channel.channel_id
+                channel = self.manager.get([channel_id])
                 if not channel_meta.monetised:
                     channel_meta.monetised = True
                     channel_meta.save(update_fields=['monetised'])
+                if channel:
+                    channel.populate_monetization(is_monetizable=True)
             except Exception as e:
                 pass
