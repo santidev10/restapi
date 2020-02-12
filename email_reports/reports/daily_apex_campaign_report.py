@@ -56,7 +56,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 body=self._get_body(),
                 from_email=settings.EXPORTS_EMAIL_ADDRESS,
                 to=self.get_to(settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES),
-                cc=self.get_cc(settings.CF_AD_OPS_DIRECTORS),
+                cc=self.get_cc([]),
                 bcc=self.get_bcc(),
         )
 
