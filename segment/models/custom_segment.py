@@ -178,7 +178,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     def parse_url(self, url, item_type="0"):
         item_type = str(item_type)
         config = {
-            "0": "/video/",
+            "0": "/watch?v=",
             "1": "/channel/",
         }
         item_id = url.split(config[item_type])[-1]

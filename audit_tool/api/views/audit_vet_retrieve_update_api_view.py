@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_200_OK
 
-from audit_tool.api.serializers.audit_vet_channel_serializer import AuditChannelVetSerializer
 from audit_tool.models import AuditProcessor
 from es_components.constants import Sections
 from segment.models import CustomSegment
@@ -17,9 +16,8 @@ from utils.views import validate_fields
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
-    REQUIRED_FIELDS = ("age_group", "brand_safety", "channel_type", "gender", "iab_categories",
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
                        "is_monetizable", "language", "vetting_id", "suitable", "language")
-    serializer = AuditChannelVetSerializer
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
     )
@@ -68,7 +66,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             # Rename field for validation since language is used as SerializerMethodField for Elasticsearch
             # serialization and SerializerMethodField is read only
             data["language_code"] = data.pop("language")
-            serializer = self.serializer(vetting_item, data=data, segment=segment)
+            serializer = segment.audit_utils.serializer(vetting_item, data=data, segment=segment)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             res = serializer.validated_data
@@ -91,9 +89,9 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             item_id = attrgetter(id_key)(next_item)
             segment.es_manager.sections = self.ES_SECTIONS
             response = self._get_document(segment.es_manager, item_id)
-            data = AuditChannelVetSerializer(response, segment=segment).data
+            data = segment.audit_utils.serializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
-            next_item.checked_out_at = timezone.now()
+            data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             next_item.save()
         else:
             data = "All items are currently being vetted."

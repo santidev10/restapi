@@ -2,7 +2,7 @@ from rest_framework.exceptions import ValidationError
 
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditCategory
-from audit_tool.models import AuditChannelType
+from audit_tool.models import AuditContentType
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
@@ -65,20 +65,20 @@ class AuditToolValidator(object):
         return values
 
     @staticmethod
-    def validate_channel_type(value, as_id=True, should_raise=True):
-        channel_type = None
+    def validate_content_type(value, as_id=True, should_raise=True):
+        content_type = None
         try:
-            channel_type = AuditChannelType.get(value)
+            content_type = AuditContentType.get(value)
             if as_id:
-                channel_type = channel_type.id
-        except (KeyError, AuditChannelType.DoesNotExist):
+                content_type = content_type.id
+        except (KeyError, AuditContentType.DoesNotExist):
             if should_raise:
                 if type(value) is str:
-                    message = f"AuditChannelType with channel_type: {value} not found."
+                    message = f"AuditContentType with channel_type: {value} not found."
                 else:
-                    message = f"AuditChannelType with id: {value} not found."
+                    message = f"AuditContentType with id: {value} not found."
                 raise ValidationError(message)
-        return channel_type
+        return content_type
 
     @staticmethod
     def validate_age_group(value, as_id=True, should_raise=True):

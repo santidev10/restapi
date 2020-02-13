@@ -1,9 +1,11 @@
-from audit_tool.api.serializers.audit_vet_channel_serializer import AuditChannelVetSerializer
+from audit_tool.api.serializers.audit_channel_vet_serializer import AuditChannelVetSerializer
+from audit_tool.api.serializers.audit_video_vet_serializer import AuditVideoVetSerializer
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditVideoVet
 
 
 class SegmentAuditUtils(object):
@@ -15,13 +17,11 @@ class SegmentAuditUtils(object):
         if segment_type not in range(2):
             raise ValueError(f"segment_type must be 0-1")
         self._segment_type = segment_type
-
         self._video_config = {
             "model": AuditVideo,
             "meta_model": AuditVideoMeta,
-            # Tech debt - Will create model and serializer in next step of ticket feature/VIQ-2951
-            "vetting_model": None,
-            "serializer": None,
+            "vetting_model": AuditVideoVet,
+            "serializer": AuditVideoVetSerializer,
         }
         self._channel_config = {
             "model": AuditChannel,
