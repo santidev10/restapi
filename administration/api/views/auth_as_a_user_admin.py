@@ -37,9 +37,10 @@ class AuthAsAUserAdminApiView(APIView):
         """
         Set new UserDeviceToken to set appropriate permissions for subsequent requests
         """
-        device_token = UserDeviceToken.objects.create(user_id=response.data["id"])
-        response.data.update({
-            "token": device_token.key,
-            "device_id": device_token.device_id,
-        })
+        if response.status_code == 200:
+            device_token = UserDeviceToken.objects.create(user_id=response.data["id"])
+            response.data.update({
+                "token": device_token.key,
+                "device_id": device_token.device_id,
+            })
         return super().finalize_response(request, response, *args, **kwargs)
