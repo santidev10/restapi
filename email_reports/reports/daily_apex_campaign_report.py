@@ -11,26 +11,26 @@ from django.contrib.auth import get_user_model
 from aw_reporting.models import device_str
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import CampaignStatus
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
+from userprofile.constants import UserSettingsKey
 
 logger = logging.getLogger(__name__)
 
 
-CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code", "account__name",
+CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code",
                     "salesforce_placement__ordered_rate", "salesforce_placement__goal_type_id")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
                 "video_views")
 
 CSV_HEADER = ("Date", "CID Name/Number", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign",
-              "Creative ID", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
+              "Creative ID", "Cost", "Impressions", "Clicks", "TrueView: Views",
               "Midpoint Views (Video)", "Complete Views (Video)")
 
-DATE_FORMAT = "%d/%m/%y"
+DATE_FORMAT = "%m/%d/%y"
 
 
 class DailyApexCampaignEmailReport(BaseEmailReport):
@@ -70,7 +70,8 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
     def _get_csv_file_context(self, user):
-        campaigns = Campaign.objects.get_queryset_for_user(user=user).values_list("id", flat=True)
+        campaigns = Campaign.objects.filter(account_id__in=user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))\
+            .values_list("id", flat=True)
         campaigns_ids = list(campaigns)
 
         campaigns_statistics = self.__get_campaign_statistics(campaigns_ids)
@@ -112,7 +113,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in campaigns_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.campaign__account__name or stats.campaign__account_id,
+                stats.campaign__account_id,
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
@@ -136,7 +137,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in creative_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.ad_group__campaign__account__name or stats.ad_group__campaign__account_id,
+                stats.ad_group__campaign__account_id,
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,

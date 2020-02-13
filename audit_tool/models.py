@@ -142,12 +142,12 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None):
+    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None, source=0):
         # if export:
         #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
         #     all = AuditProcessor.objects.filter(id__in=exports)
         # else:
-        all = AuditProcessor.objects.all()
+        all = AuditProcessor.objects.filter(source=source)
         if audit_type:
             all = all.filter(audit_type=audit_type)
         if running is not None:
