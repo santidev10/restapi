@@ -53,7 +53,11 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
     def test_send_email(self):
-        get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
+        user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
+        user.aw_settings.update(**{
+            UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
+        })
+        user.save()
         today = timezone.now().date()
         yesterday = today - timedelta(days=1)
         account = Account.objects.create(id="1", name="account_1", currency_code="USD")
@@ -83,7 +87,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count('account_1'), 2)
+        self.assertEqual(csv_context.count('campaign_1'), 2)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
         self.assertEqual(csv_context.count(today.strftime(DATE_FORMAT)), 0)
 
@@ -96,8 +100,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
         apex_user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
         apex_user.aw_settings.update(**{
-            UserSettingsKey.VISIBLE_ACCOUNTS: ["1"],
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True
+            UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
         })
         apex_user.save()
 
@@ -120,7 +123,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count('account_1'), 1)
+        self.assertEqual(csv_context.count('campaign_1'), 1)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 1)
 
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
@@ -132,7 +135,6 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         apex_user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
         apex_user.aw_settings.update(**{
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
-            UserSettingsKey.GLOBAL_ACCOUNT_VISIBILITY: True
         })
         apex_user.save()
 
