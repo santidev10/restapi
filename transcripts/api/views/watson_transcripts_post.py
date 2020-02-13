@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+from django.conf import settings
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
@@ -16,12 +17,19 @@ from utils.transform import populate_video_custom_captions
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
     def post(self, request):
-        # Post Request takes a body, which is one dictionary, with the key being video_id and value being a dictionary
+        # Post Request takes a body, which is a dictionary, with the keys "token" and "transcripts";
+        # "token" is our API token for authentication
+        # "transcripts" is a dictionary, with the key being the video_id and value being a dictionary
         # with the transcript and language identified by Watson, if provided
         body = json.loads(request.data)
+        token = body.get('token')
+        if token != settings.TRANSCRIPTS_API_TOKEN:
+            raise ValidationError("Invalid API Token.")
+
+        transcripts = body.get('transcripts')
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
-        video_ids = [vid_id for vid_id in body]
+        video_ids = [vid_id for vid_id in transcripts]
         videos = manager.get(video_ids)
         try:
             for video in videos:
@@ -32,7 +40,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 except Exception:
                     language = "English"
                     lang_code = "en"
-                watson_data = body[video_id]
+                watson_data = transcripts[video_id]
                 transcript = watson_data['transcript']
                 watson_language = None
                 try:
