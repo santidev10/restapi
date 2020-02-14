@@ -20,7 +20,7 @@ def check_in_vetting_items():
     Prevents items from being checked out permanently
     """
     is_acquired = REDIS_CLIENT.lock(LOCK_NAME, timeout=60 * 10).acquire(blocking=False)
-    if is_acquired or True:
+    if is_acquired:
         threshold = timezone.now() - timedelta(minutes=CHECKOUT_THRESHOLD)
         AuditChannelVet.objects.filter(checked_out_at__lt=threshold).update(checked_out_at=None)
         AuditVideoVet.objects.filter(checked_out_at__lt=threshold).update(checked_out_at=None)
