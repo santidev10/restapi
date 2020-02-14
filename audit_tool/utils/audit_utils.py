@@ -1,11 +1,14 @@
-from audit_tool.models import AuditChannel
-from audit_tool.models import AuditVideo
-from audit_tool.models import AuditChannelMeta
-from audit_tool.models import AuditVideoMeta
-from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditChannelType
+from audit_tool.models import AuditCategory
+from audit_tool.models import AuditChannel
+from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditContentType
+from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
+from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditVideo
+from audit_tool.models import AuditVideoMeta
 from brand_safety.languages import LANG_CODES
 from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
@@ -57,7 +60,7 @@ class AuditUtils(object):
         data = [{
             "id": item.id,
             "value": item.channel_type
-        } for item in AuditChannelType.objects.all()]
+        } for item in AuditContentType.objects.all()]
         return data
 
     @staticmethod
@@ -119,3 +122,24 @@ class AuditUtils(object):
         """
         age_groups = AuditAgeGroup.get_by_group()
         return age_groups
+
+    @staticmethod
+    def get_audit_language_mapping():
+        mapping = {
+            item.language: item for item in AuditLanguage.objects.all()
+        }
+        return mapping
+
+    @staticmethod
+    def get_audit_country_mapping():
+        mapping = {
+            item.country: item for item in AuditCountry.objects.all()
+        }
+        return mapping
+
+    @staticmethod
+    def get_audit_category_mapping():
+        mapping = {
+            item.category: item for item in AuditCategory.objects.all()
+        }
+        return mapping

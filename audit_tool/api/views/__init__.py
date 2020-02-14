@@ -6,6 +6,6 @@ from .audit_stop import AuditStopApiView
 from .audit_flag import AuditFlagApiView
 from .audit_history import AuditHistoryApiView
 from .audit_pause import AuditPauseApiView
-from .audit_vet_retrieve_update_api_view import AuditVetRetrieveUpdateAPIView
+from .audit_vet_retrieve_update import AuditVetRetrieveUpdateAPIView
 from .audit_vetting_options import AuditVettingOptionsAPIView
 from .audit_admin import AuditAdminAPIView
