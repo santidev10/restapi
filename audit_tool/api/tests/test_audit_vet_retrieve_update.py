@@ -4,11 +4,9 @@ from mock import patch
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
-from rest_framework.status import HTTP_403_FORBIDDEN
 from uuid import uuid4
 
 from audit_tool.api.urls.names import AuditPathName
-from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet

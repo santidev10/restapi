@@ -2,6 +2,7 @@ from django.utils import timezone
 
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditChannelVet
+from audit_tool.models import AuditVideoVet
 from utils.celery.tasks import REDIS_CLIENT
 
 
@@ -17,10 +18,11 @@ def check_vetting_completion():
         incomplete = AuditProcessor.objects.filter(completed=None, source=1)
         for audit in incomplete:
             if audit.audit_type == 1:
-                # Tech debt 4.8 - Add AuditVideoVet models
-                vetting_model = None
+                vetting_model = AuditVideoVet
             elif audit.audit_type == 2:
                 vetting_model = AuditChannelVet
+            else:
+                raise ValueError(f"Audit id: {audit.id} with incompatible audit_type: {audit.audit_type} with source: {audit.source}")
             still_processing = vetting_model.objects.filter(audit=audit, processed=None)
             # Must still check to set audits completed_at to None if admin flags vetting items
             if still_processing:
