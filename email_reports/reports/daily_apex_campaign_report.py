@@ -20,7 +20,7 @@ from userprofile.constants import UserSettingsKey
 logger = logging.getLogger(__name__)
 
 
-CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code",
+CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code", "account__name",
                     "salesforce_placement__ordered_rate", "salesforce_placement__goal_type_id")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
@@ -113,7 +113,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in campaigns_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.campaign__account_id,
+                stats.campaign__account__name or stats.campaign__account_id,
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
@@ -137,7 +137,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in creative_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.ad_group__campaign__account_id,
+                stats.ad_group__campaign__account__name or stats.ad_group__campaign__account_id,
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,
