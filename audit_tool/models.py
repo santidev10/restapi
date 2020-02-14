@@ -540,7 +540,14 @@ class AuditChannelVet(AuditVet):
         unique_together = ("audit", "channel")
 
 
-class AuditChannelType(models.Model):
+class AuditVideoVet(AuditVet):
+    video = models.ForeignKey(AuditVideo, db_index=True, related_name='video_vets', null=True, default=None, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("audit", "video")
+
+
+class AuditContentType(models.Model):
     ID_CHOICES = [
         (0, "MC / Brand"),
         (1, "Regular UGC"),
@@ -550,15 +557,15 @@ class AuditChannelType(models.Model):
     to_id = {val.lower(): key for key, val in to_str.items()}
 
     id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
-    channel_type = models.CharField(max_length=20)
+    content_type = models.CharField(max_length=20)
 
     @staticmethod
     def get(value):
         if type(value) is str:
-            item_id = AuditChannelType.to_id[value.lower()]
+            item_id = AuditContentType.to_id[value.lower()]
         else:
             item_id = value
-        item = AuditChannelType.objects.get(id=item_id)
+        item = AuditContentType.objects.get(id=item_id)
         return item
 
 
