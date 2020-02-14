@@ -23,6 +23,10 @@ from utils.celery.tasks import unlock
 from django.conf import settings
 from transcripts.models import WatsonTranscript
 
+from transcripts.api.urls.names import TranscriptsPathName
+from saas.urls.namespaces import Namespace
+from utils.utittests.reverse import reverse
+
 logger = logging.getLogger(__name__)
 
 LOCK_NAME = 'watson_transcripts'
@@ -123,8 +127,10 @@ def submit_watson_transcripts():
                         "Content-Type": "application/json",
                         "x-api-key": API_KEY
                     }
+                    call_back_url = settings.HOST + reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS])
                     logger.debug(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
-                    response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
+                    response = requests.post(api_request, data=json.dumps(request_body), headers=headers,
+                                             call_back_url=call_back_url)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
                     api_tracker.save()
