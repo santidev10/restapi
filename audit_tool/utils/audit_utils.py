@@ -59,7 +59,7 @@ class AuditUtils(object):
     def get_channel_types():
         data = [{
             "id": item.id,
-            "value": item.channel_type
+            "value": item.content_type
         } for item in AuditContentType.objects.all()]
         return data
 
