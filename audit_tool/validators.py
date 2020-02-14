@@ -13,6 +13,11 @@ class AuditToolValidator(object):
 
     @staticmethod
     def validate_category(value, should_raise=True):
+        """
+        Validate category values
+        :param value: int -> pk
+        :param should_raise: bool
+        """
         category = None
         try:
             category_id = int(value)
@@ -31,6 +36,11 @@ class AuditToolValidator(object):
 
     @staticmethod
     def validate_language(value, should_raise=True):
+        """
+        Validate language values
+        :param value: str
+        :param should_raise: bool
+        """
         language = None
         try:
             language = AuditLanguage.from_string(str(value).strip())
@@ -41,6 +51,11 @@ class AuditToolValidator(object):
 
     @staticmethod
     def validate_country(value, should_raise=True):
+        """
+        Validate category values
+        :param value: int -> pk
+        :param should_raise: bool
+        """
         country = None
         try:
             country = AuditCountry.objects.get(country=value)
@@ -65,12 +80,16 @@ class AuditToolValidator(object):
         return values
 
     @staticmethod
-    def validate_content_type(value, as_id=True, should_raise=True):
+    def validate_content_type(value, should_raise=True):
+        """
+        Validate category values
+        :param value: int | str
+        :param should_raise: bool
+        :return: AuditContentType
+        """
         content_type = None
         try:
             content_type = AuditContentType.get(value)
-            if as_id:
-                content_type = content_type.id
         except (KeyError, AuditContentType.DoesNotExist):
             if should_raise:
                 if type(value) is str:
@@ -81,12 +100,16 @@ class AuditToolValidator(object):
         return content_type
 
     @staticmethod
-    def validate_age_group(value, as_id=True, should_raise=True):
+    def validate_age_group(value, should_raise=True):
+        """
+        Validate age_group values
+        :param value: int | str
+        :param should_raise: bool
+        :return: AuditAgeGroup
+        """
         age_group = None
         try:
             age_group = AuditAgeGroup.get(value)
-            if as_id:
-                age_group = age_group.id
         except (KeyError, AuditAgeGroup.DoesNotExist):
             if should_raise:
                 if type(value) is str:
@@ -97,12 +120,16 @@ class AuditToolValidator(object):
         return age_group
 
     @staticmethod
-    def validate_gender(value, as_id=True, should_raise=True):
+    def validate_gender(value, should_raise=True):
+        """
+        Validate AuditGender values
+        :param value: int | str
+        :param should_raise: bool
+        :return: AuditGender
+        """
         gender = None
         try:
             gender = AuditGender.get(value)
-            if as_id:
-                gender = gender.id
         except (KeyError, AuditGender.DoesNotExist):
             if should_raise:
                 if type(value) is str:

@@ -258,7 +258,7 @@ class AuditSaveApiView(APIView):
             raise ValidationError(f"Segment with id: {segment_id} does not exist.")
 
         # If segment does not contain any items, then reject audit creation
-        if segment.statistics.get("items_count", 0) <= 0 or segment.export is None:
+        if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:
             raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
             "audit_type": segment.audit_type,

@@ -34,7 +34,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     language_code = CharField(required=False) # Field for saving vetting item
 
     def get_url(self, doc):
-        url = f"https://www.youtube.com/video/{doc.main.id}/"
+        url = f"https://www.youtube.com/watch?v={doc.main.id}/"
         return url
 
     def get_vetting_history(self, doc):
@@ -53,10 +53,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             history = [{
                 "data": f"{item.video.auditvideometa.name} - {item.processed.strftime('%b %d %Y')}",
                 "suitable": item.clean
-            } for item in vetting_items]
-        # Set bool for get_language method to return correct language field
-        # If has never been vetted before, should return general data language, else vetted language
-        self.has_vetting_history = bool(history)
+            } for item in vetting_items if hasattr(item.video, "auditvideometa")]
         return history
 
     def save(self, **kwargs):

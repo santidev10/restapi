@@ -29,16 +29,15 @@ class AuditVetBaseSerializer(Serializer):
     general_data_language_field = None
 
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
-    has_vetting_history = False
 
     # Elasticsearch fields
-    language = SerializerMethodField()
     age_group = CharField(source="task_us_data.age_group", default=None)
     content_type = CharField(source="task_us_data.content_type", default=None)
     gender = CharField(source="task_us_data.gender", default=None)
     brand_safety = ListField(source="task_us_data.brand_safety", default=[])
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    language = SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         try:
@@ -62,16 +61,16 @@ class AuditVetBaseSerializer(Serializer):
     def get_language(self, doc):
         """
         Elasticsearch document language
-        If item is has no vetting history, serialize general_data.language
+        If item is has no task_us_data langauge (not vetted before), serialize general_data.language
         Else if has been vetted, use vetting task_us_data section language
-        :param doc: Elasticsearch
+        :param doc: es_components.model
         :return: str
         """
-        if self.has_vetting_history:
-            language = getattr(doc.task_us_data, "language", None)
-        else:
+        if getattr(doc.task_us_data, "language", None) is None:
             language = getattr(doc.general_data, self.general_data_language_field, None)
             language = LANG_CODES.get(language)
+        else:
+            language = getattr(doc.task_us_data, "language", None)
         return language
 
     def get_segment_title(self, *_, **__):
@@ -105,12 +104,13 @@ class AuditVetBaseSerializer(Serializer):
 
     def validate_gender(self, value):
         """
-        Retrieve age_group enum value. Raises ValidationError if not found
+        Retrieve AuditGender value. Raises ValidationError if not found
         :param value: str
         :return: str
         """
         gender = AuditToolValidator.validate_gender(int(value))
-        return gender
+        gender_id = str(gender.id)
+        return gender_id
 
     def validate_age_group(self, value):
         """
@@ -119,7 +119,8 @@ class AuditVetBaseSerializer(Serializer):
         :return: AuditCategory
         """
         age_group = AuditToolValidator.validate_age_group(int(value))
-        return age_group
+        age_group_id = str(age_group.id)
+        return age_group_id
 
     def validate_content_type(self, value):
         """
@@ -128,7 +129,8 @@ class AuditVetBaseSerializer(Serializer):
         :return: str
         """
         content_type = AuditToolValidator.validate_content_type(int(value))
-        return content_type
+        content_type_id = str(content_type.id)
+        return content_type_id
 
     def validate_category(self, value):
         """
@@ -137,7 +139,8 @@ class AuditVetBaseSerializer(Serializer):
         :return: AuditCategory
         """
         category = AuditToolValidator.validate_category(value)
-        return category
+        category_id = str(category.id)
+        return category_id
 
     def validate_brand_safety(self, values):
         categories = []
@@ -147,13 +150,13 @@ class AuditVetBaseSerializer(Serializer):
             else:
                 key = "id"
             mapping = {
-                getattr(item, key): item
+                getattr(item, key): str(item.id)
                 for item in BadWordCategory.objects.all()
             }
             try:
                 categories = [mapping[val] for val in values]
             except KeyError as e:
-                raise ValidationError(f"Category not found: {e}")
+                raise ValidationError(f"Brand safety category not found: {e}")
         return categories
 
     def save_brand_safety(self, channel_id):
@@ -163,7 +166,7 @@ class AuditVetBaseSerializer(Serializer):
         :return: list -> Brand safety category ids
         """
         new_blacklist_scores = {
-            str(item.id): 100
+            str(item): 100
             for item in self.validated_data["task_us_data"]["brand_safety"]
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
