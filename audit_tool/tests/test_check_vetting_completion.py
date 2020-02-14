@@ -18,7 +18,7 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         for i in range(3):
             audit_item = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
             vetting_items.append(AuditVideoVet(audit=audit, video=audit_item, processed=before))
-        check_vetting_completion.run()
+            check_vetting_completion()
         audit.refresh_from_db()
         self.assertIsNotNone(audit.completed)
         self.assertTrue(audit.completed > before)
@@ -30,7 +30,7 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         for i in range(3):
             audit_item = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
             vetting_items.append(AuditChannelVet(audit=audit, channel=audit_item, processed=before))
-        check_vetting_completion.run()
+            check_vetting_completion()
         audit.refresh_from_db()
         self.assertIsNotNone(audit.completed)
         self.assertTrue(audit.completed > before)

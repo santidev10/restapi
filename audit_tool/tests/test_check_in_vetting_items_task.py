@@ -33,7 +33,7 @@ class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
         self.assertTrue(all(item.checked_out_at is not None for item in video_vets))
         self.assertTrue(all(item.checked_out_at is not None for item in channel_vets))
 
-        check_in_vetting_items.run()
+        check_in_vetting_items()
 
         self.assertTrue(all(item.checked_out_at is None for item in AuditVideoVet.objects.all()))
         self.assertTrue(all(item.checked_out_at is not None for item in AuditChannelVet.objects.all()))
@@ -56,7 +56,7 @@ class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):
         self.assertTrue(all(item.checked_out_at is not None for item in video_vets))
         self.assertTrue(all(item.checked_out_at is not None for item in channel_vets))
 
-        check_in_vetting_items.run()
+        check_in_vetting_items()
 
         self.assertTrue(all(item.checked_out_at is None for item in AuditVideoVet.objects.all()))
         self.assertTrue(all(item.checked_out_at is None for item in AuditChannelVet.objects.all()))
