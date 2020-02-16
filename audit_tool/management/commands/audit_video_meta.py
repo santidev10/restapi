@@ -76,7 +76,7 @@ class Command(BaseCommand):
             if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
-    def process_audit(self, num=500):
+    def process_audit(self, num=1000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
