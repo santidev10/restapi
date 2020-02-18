@@ -109,7 +109,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             data['data_type'] = segment.data_field
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
-            next_item.save()
+            next_item.save(update_fields=['checked_out_at'])
         else:
             raise ValidationError("All items are checked out. Please request from a different list.")
         return data
