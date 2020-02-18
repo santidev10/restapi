@@ -207,8 +207,8 @@ class Command(BaseCommand):
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
+                audit=self.audit,
+                video=video,
             )
             return avp
 
