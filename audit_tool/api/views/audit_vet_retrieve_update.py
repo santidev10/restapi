@@ -32,7 +32,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         segment = get_object(CustomSegment, f"Segment with audit_id: {audit_id} not found.", **params)
         params = {"id": segment.audit_id, "source": 1}
         audit = get_object(AuditProcessor, f"Audit with id: {segment.audit_id} not found", **params)
-        if audit.completed is not None:
+        if audit.completed is None:
             raise ValidationError("Vetting for this list is not ready, audit still running.")
         try:
             data = self._retrieve_next_vetting_item(segment, audit)
