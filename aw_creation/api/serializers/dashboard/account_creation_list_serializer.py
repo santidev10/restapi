@@ -203,7 +203,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         video_views_impressions = defaultdict(lambda: defaultdict(int))
 
         queryset = Campaign.objects \
-            .filter(**campaign_filter) \
+            .filter(**campaign_filter)
 
         with_ag_type = queryset.annotate(ag_type=Max("ad_groups__type"))
         for campaign in with_ag_type:
