@@ -13,6 +13,7 @@ from transcripts.models import WatsonTranscript
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
+from rest_framework.permissions import IsAuthenticated
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
@@ -40,22 +41,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                     lang_code = "en"
                 watson_data = transcripts[video_id]
                 transcript = watson_data['transcript']
-                watson_language = None
-                try:
-                    watson_language = watson_data['language']
-                    if watson_language in LANG_CODES:
-                        pass
-                    else:
-                        try:
-                            watson_language = LANGUAGES[watson_language]
-                        except Exception:
-                            watson_language = None
-                except Exception:
-                    pass
 
-                if watson_language:
-                    lang_code = LANG_CODES[watson_language]
-                    video.populate_general_data(language=watson_language, lang_code=lang_code)
                 watson_transcript = WatsonTranscript.get_or_create(video_id)
                 watson_transcript.transcript = transcript
                 try:
