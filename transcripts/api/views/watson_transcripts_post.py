@@ -13,11 +13,12 @@ from transcripts.models import WatsonTranscript
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
     def post(self, request):
+        permission_classes = (IsAdminUser,)
         # Post Request takes a body, which is a dictionary, with the keys "token" and "transcripts";
         # "token" is our API token for authentication
         # "transcripts" is a dictionary, with the key being the video_id and value being a dictionary
