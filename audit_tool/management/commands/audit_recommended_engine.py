@@ -72,7 +72,7 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0).order_by("pause", "id")[self.machine_number]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by("pause", "id")[self.machine_number]
                 self.language = self.audit.params.get('language')
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')

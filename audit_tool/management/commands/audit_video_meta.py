@@ -65,7 +65,7 @@ class Command(BaseCommand):
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
             #self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1, source=0).order_by("pause", "id")[self.machine_number]
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
