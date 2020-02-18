@@ -59,7 +59,7 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2, source=0).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
