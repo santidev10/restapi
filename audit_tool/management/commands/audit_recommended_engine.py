@@ -260,9 +260,10 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-            db_video.channel = channel
             db_video_meta.save()
-            db_video.save()
+            if db_video.channel != channel:
+                db_video.channel = channel
+                db_video.save(update_fields=['channel'])
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
             if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
                 db_channel_meta.name = i['snippet']['channelTitle']
