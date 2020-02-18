@@ -431,6 +431,9 @@ class AuditVideoProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "video")
+        index_together = [
+            ("audit", "processed"),
+        ]
 
 class AuditChannelProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -443,6 +446,9 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
+        index_together = [
+            ("audit", "processed"),
+        ]
 
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
