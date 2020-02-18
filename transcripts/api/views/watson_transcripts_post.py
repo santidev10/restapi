@@ -21,12 +21,10 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
         # "token" is our API token for authentication
         # "transcripts" is a dictionary, with the key being the video_id and value being a dictionary
         # with the transcript and language identified by Watson, if provided
-        body = json.loads(request.data)
-        token = body.get('token')
-        if token != settings.TRANSCRIPTS_API_TOKEN:
-            raise ValidationError("Invalid API Token.")
-
-        transcripts = body.get('transcripts')
+        query_params = request.query_params
+        if query_params.get("authorization") != settings.TRANSCRIPTS_API_TOKEN:
+            raise ValidationError("Invalid authorization token for POST /transcripts.")
+        transcripts = json.loads(request.data)
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
         video_ids = [vid_id for vid_id in transcripts]

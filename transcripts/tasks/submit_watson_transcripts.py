@@ -127,10 +127,12 @@ def submit_watson_transcripts():
                         "Content-Type": "application/json",
                         "x-api-key": API_KEY
                     }
-                    call_back_url = settings.HOST + reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS])
+                    callback_url = settings.HOST + \
+                                   reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS]) + \
+                                   f"?authorization={settings.TRANSCRIPTS_API_TOKEN}"
                     logger.debug(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
                     response = requests.post(api_request, data=json.dumps(request_body), headers=headers,
-                                             call_back_url=call_back_url)
+                                             callback_url=callback_url)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
                     api_tracker.save()
