@@ -7,6 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditProcessor
+from datetime import timedelta
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from utils.permissions import user_has_permission
@@ -32,7 +33,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         params = {"id": segment.audit_id, "source": 1}
         audit = get_object(AuditProcessor, f"Audit with id: {segment.audit_id} not found", **params)
         if audit.completed is not None:
-            raise ValidationError("Vetting for this list is complete. Please move on to the next list.")
+            raise ValidationError("Vetting for this list is not ready, audit still running.")
         try:
             data = self._retrieve_next_vetting_item(segment, audit)
         except MissingDocumentException:
@@ -97,7 +98,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         # id_key = video.video_id, channel.channel_id
         id_key = segment.data_field + "." + segment.data_field + "_id"
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, checked_out_at=None, processed=None).first()
+        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, checked_out_at__lt=timezone.now()-timedelta(minutes=30), processed=None).first()
         # If next item is None, then all are checked out
         if next_item:
             item_id = attrgetter(id_key)(next_item)
