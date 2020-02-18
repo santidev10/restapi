@@ -147,7 +147,7 @@ class Command(BaseCommand):
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
-        num = 25
+        num = 50
         start = thread_id * num
         for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
