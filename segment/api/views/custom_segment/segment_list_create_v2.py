@@ -1,5 +1,3 @@
-from functools import reduce
-
 from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db.models import IntegerField
 from django.db.models.functions import Cast
@@ -95,7 +93,15 @@ class SegmentListCreateApiViewV2(ListCreateAPIView):
         :return: Queryset
         """
         segment_type = CustomSegmentSerializer.map_to_id(self.kwargs["segment_type"], item_type="segment")
-        queryset = super().get_queryset().filter(owner=self.request.user, segment_type=segment_type)
+        # Filter queryset depending on permission level
+        user = self.request.user
+        if user.has_perm("userprofile.vet_audit_admin"):
+            base_filters = {}
+        elif user.has_perm("userprofile.vet_audit"):
+            base_filters = {"audit_id__isnull": False}
+        else:
+            base_filters = {"owner": self.request.user}
+        queryset = super().get_queryset().filter(**base_filters, segment_type=segment_type)
         queryset = self._do_filters(queryset)
         queryset = self._do_sorts(queryset)
         return queryset

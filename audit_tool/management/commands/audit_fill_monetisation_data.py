@@ -31,7 +31,6 @@ class Command(BaseCommand):
             self.days = 3
         if not self.upsert_batch_size or self.upsert_batch_size > 10000:
             self.upsert_batch_size = 1000
-
         with PidFile(piddir='.', pidname='check_monetised_campaigns.pid') as p:
             self.channel_ids = set()
             # get video/channel meta audits
@@ -44,6 +43,7 @@ class Command(BaseCommand):
             self.update_es_monetisation()
 
     def process_audits(self):
+        count = 0
         for audit in self.audits:
             if audit.name and not audit.params.get('done_monetised'):
                 if 'campaign analysis' in audit.name.lower() or 'campaign audit' in audit.name.lower():
@@ -52,7 +52,9 @@ class Command(BaseCommand):
                     else:
                         self.mark_monetised_channels(audit)
                     audit.params['done_monetised'] = True
+                    count += 1
                     audit.save(update_fields=['params'])
+        print("Done {} audits synced".format(count))
 
     def mark_monetised_videos(self, audit):
         videos = AuditVideoProcessor.objects.filter(audit=audit)

@@ -250,14 +250,17 @@ class AuditSaveApiView(APIView):
         AuditProcessor params will always be updated with new data if provided
         """
         data = request.data
-        segment_id = data["segment_id"]
+        segment_id = None
         try:
+            segment_id = data["segment_id"]
             segment = CustomSegment.objects.get(id=segment_id)
+        except KeyError:
+            raise ValidationError("You must provide a segment_id.")
         except CustomSegment.DoesNotExist:
             raise ValidationError(f"Segment with id: {segment_id} does not exist.")
 
         # If segment does not contain any items, then reject audit creation
-        if segment.statistics.get("items_count", 0) <= 0:
+        if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:
             raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
             "audit_type": segment.audit_type,
@@ -275,7 +278,10 @@ class AuditSaveApiView(APIView):
         serializer = AuditProcessorSerializer(audit, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(data=serializer.data)
+        res = {
+            "instructions": serializer.data["params"].get("instructions")
+        }
+        return Response(data=res)
 
 
 class AuditFileS3Exporter(S3Exporter):
