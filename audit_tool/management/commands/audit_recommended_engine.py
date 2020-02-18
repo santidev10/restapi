@@ -207,8 +207,8 @@ class Command(BaseCommand):
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
+                audit=self.audit,
+                video=video,
             )
             return avp
 
@@ -217,7 +217,7 @@ class Command(BaseCommand):
         if video.video_id is None:
             avp.clean = False
             avp.processed = timezone.now()
-            avp.save()
+            avp.save(update_fields=['clean', 'processed'])
             return
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
@@ -232,7 +232,7 @@ class Command(BaseCommand):
             if data['error']['message'] in ['Invalid video.', 'Not Found']:
                 avp.processed = timezone.now()
                 avp.clean = False
-                avp.save()
+                avp.save(update_fields=['clean', 'processed'])
                 return
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
@@ -260,9 +260,10 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-            db_video.channel = channel
             db_video_meta.save()
-            db_video.save()
+            if db_video.channel != channel:
+                db_video.channel = channel
+                db_video.save(update_fields=['channel'])
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
             if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
                 db_channel_meta.name = i['snippet']['channelTitle']
@@ -274,14 +275,15 @@ class Command(BaseCommand):
                         video=db_video,
                         audit=self.audit
                     )
+                    update_fields=['word_hits', 'clean']
                     v.word_hits = hits
                     if not v.video_source:
                         v.video_source = video
+                        update_fields.append("video_source")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
-                    v.save()
-
+                    v.save(update_fields=update_fields)
         avp.processed = timezone.now()
-        avp.save()
+        avp.save(update_fields=['processed'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
