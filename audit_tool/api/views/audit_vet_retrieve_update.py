@@ -13,7 +13,7 @@ from segment.models import CustomSegment
 from utils.permissions import user_has_permission
 from utils.views import get_object
 from utils.views import validate_fields
-
+from django.db.models import Q
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
@@ -98,7 +98,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         # id_key = video.video_id, channel.channel_id
         id_key = segment.data_field + "." + segment.data_field + "_id"
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, checked_out_at__lt=timezone.now()-timedelta(minutes=30), processed=None).first()
+        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now()-timedelta(minutes=30))).first()
         # If next item is None, then all are checked out
         if next_item:
             item_id = attrgetter(id_key)(next_item)
