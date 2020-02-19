@@ -7,12 +7,13 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditProcessor
+from datetime import timedelta
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from utils.permissions import user_has_permission
 from utils.views import get_object
 from utils.views import validate_fields
-
+from django.db.models import Q
 
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
@@ -31,8 +32,8 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         segment = get_object(CustomSegment, f"Segment with audit_id: {audit_id} not found.", **params)
         params = {"id": segment.audit_id, "source": 1}
         audit = get_object(AuditProcessor, f"Audit with id: {segment.audit_id} not found", **params)
-        if audit.completed is not None:
-            raise ValidationError("Vetting for this list is complete. Please move on to the next list.")
+        if audit.completed is None:
+            raise ValidationError("Vetting for this list is not ready, audit still running.")
         try:
             data = self._retrieve_next_vetting_item(segment, audit)
         except MissingDocumentException:
@@ -97,7 +98,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         # id_key = video.video_id, channel.channel_id
         id_key = segment.data_field + "." + segment.data_field + "_id"
-        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, checked_out_at=None, processed=None).first()
+        next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now()-timedelta(minutes=30))).first()
         # If next item is None, then all are checked out
         if next_item:
             item_id = attrgetter(id_key)(next_item)
@@ -105,9 +106,15 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             response = self._get_document(segment.es_manager, item_id)
             data = segment.audit_utils.serializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
+            data['data_type'] = segment.data_field
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
-            next_item.save()
+            try:
+                o = getattr(next_item, segment.data_field)
+                data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
+            except Exception as e:
+                pass
+            next_item.save(update_fields=['checked_out_at'])
         else:
             raise ValidationError("All items are checked out. Please request from a different list.")
         return data

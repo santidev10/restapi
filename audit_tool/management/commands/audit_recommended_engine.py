@@ -72,7 +72,7 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0).order_by("pause", "id")[self.machine_number]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by("pause", "id")[self.machine_number]
                 self.language = self.audit.params.get('language')
                 self.location = self.audit.params.get('location')
                 self.location_radius = self.audit.params.get('location_radius')
@@ -147,7 +147,7 @@ class Command(BaseCommand):
                     raise Exception("Audit completed, all videos processed")
                 else:
                     raise Exception("not first thread but audit is done")
-        num = 25
+        num = 50
         start = thread_id * num
         for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
@@ -207,8 +207,8 @@ class Command(BaseCommand):
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
+                audit=self.audit,
+                video=video,
             )
             return avp
 
@@ -217,7 +217,7 @@ class Command(BaseCommand):
         if video.video_id is None:
             avp.clean = False
             avp.processed = timezone.now()
-            avp.save()
+            avp.save(update_fields=['clean', 'processed'])
             return
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
@@ -232,7 +232,7 @@ class Command(BaseCommand):
             if data['error']['message'] in ['Invalid video.', 'Not Found']:
                 avp.processed = timezone.now()
                 avp.clean = False
-                avp.save()
+                avp.save(update_fields=['clean', 'processed'])
                 return
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
@@ -260,9 +260,10 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-            db_video.channel = channel
             db_video_meta.save()
-            db_video.save()
+            if db_video.channel != channel:
+                db_video.channel = channel
+                db_video.save(update_fields=['channel'])
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
             if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
                 db_channel_meta.name = i['snippet']['channelTitle']
@@ -274,14 +275,15 @@ class Command(BaseCommand):
                         video=db_video,
                         audit=self.audit
                     )
+                    update_fields=['word_hits', 'clean']
                     v.word_hits = hits
                     if not v.video_source:
                         v.video_source = video
+                        update_fields.append("video_source")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
-                    v.save()
-
+                    v.save(update_fields=update_fields)
         avp.processed = timezone.now()
-        avp.save()
+        avp.save(update_fields=['processed'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:

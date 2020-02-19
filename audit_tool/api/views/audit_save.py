@@ -11,6 +11,7 @@ import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 from datetime import datetime
+from django.utils import timezone
 from utils.permissions import user_has_permission
 from brand_safety.languages import LANGUAGES
 from segment.models import CustomSegment
@@ -264,12 +265,15 @@ class AuditSaveApiView(APIView):
             raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
         audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
             "audit_type": segment.audit_type,
-            "source": 1
+            "source": 1,
         })
         if created:
             segment.audit_id = audit.id
             segment.save()
             generate_audit_items.delay(segment.id, data_field=segment.data_field)
+            if not audit.completed:
+                audit.completed = timezone.now()
+                audit.save(update_fields=['completed'])
         # Update params with instructions
         audit.params.update({
             "instructions": data.pop("instructions", "")
