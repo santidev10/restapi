@@ -63,5 +63,5 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
             raise ValidationError(e)
         return Response(
             status=HTTP_200_OK,
-            data={f"Stored transcripts for {len(transcripts_ids)} videos: {','.join(transcripts_ids)}"}
+            data={f"Stored transcripts for {len(transcripts_ids)} videos: {', '.join(transcripts_ids)}"}
         )
