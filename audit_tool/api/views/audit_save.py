@@ -21,6 +21,7 @@ class AuditSaveApiView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
     )
+    LANGUAGES_REVERSE = {}
 
     def post(self, request):
         query_params = request.query_params
@@ -233,17 +234,26 @@ class AuditSaveApiView(APIView):
                 category = row[1].lower().strip()
             except Exception as e:
                 category = ""
-            try:
-                language = row[2].lower().strip()
-                if language not in LANGUAGES:
-                    language = ""
-            except Exception as e:
-                language = ""
+            language = self.find_language(row)
             row_data = [word, category, language]
             if word:
                 exclusion_data.append(row_data)
                 categories.append(category)
         return exclusion_data, categories
+
+    def find_language(self, row):
+        try:
+            language = row[2].lower().strip()
+            if language in LANGUAGES:
+                return language
+            if not self.LANGUAGES_REVERSE:
+                for k, v in LANGUAGES.items():
+                    self.LANGUAGES_REVERSE[v.lower()] = k
+            if language in self.LANGUAGES_REVERSE:
+                return self.LANGUAGES_REVERSE[language]
+            return ""
+        except Exception as e:
+            return ""
 
     def patch(self, request):
         """

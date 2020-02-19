@@ -106,6 +106,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             response = self._get_document(segment.es_manager, item_id)
             data = segment.audit_utils.serializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
+            data["title"] = response.general_data.title
             data['data_type'] = segment.data_field
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
