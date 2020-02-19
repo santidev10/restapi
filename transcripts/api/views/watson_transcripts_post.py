@@ -5,6 +5,7 @@ from django.conf import settings
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
+from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditLanguage
 from es_components.managers.video import VideoManager
@@ -13,12 +14,13 @@ from transcripts.models import WatsonTranscript
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
-from rest_framework.permissions import IsAdminUser
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
+    authentication_classes = []
+    permission_classes = []
+
     def post(self, request):
-        permission_classes = (IsAdminUser,)
         # Post Request takes a body, which is a dictionary, with the keys "token" and "transcripts";
         # "token" is our API token for authentication
         # "transcripts" is a dictionary, with the key being the video_id and value being a dictionary
@@ -26,11 +28,12 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
         query_params = request.query_params
         if query_params.get("authorization") != settings.TRANSCRIPTS_API_TOKEN:
             raise ValidationError("Invalid authorization token for POST /transcripts.")
-        transcripts = json.loads(request.data)
+        transcripts = request.data
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
         video_ids = [vid_id for vid_id in transcripts]
         videos = manager.get(video_ids)
+        transcripts_ids = []
         try:
             for video in videos:
                 video_id = video.main.id
@@ -46,7 +49,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 watson_transcript = WatsonTranscript.get_or_create(video_id)
                 watson_transcript.transcript = transcript
                 try:
-                    watson_transcript.language = AuditLanguage.objects.get(language=lang_code)
+                    watson_transcript.language = AuditLanguage.from_string(lang_code)
                 except Exception:
                     pass
                 watson_transcript.retrieved = datetime.now()
@@ -54,7 +57,11 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
                                                    transcript=transcript)
                 populate_video_custom_captions(video, [transcript], [lang_code], "Watson")
-                manager.upsert([video])
+                transcripts_ids.append(video_id)
+            manager.upsert(videos)
         except Exception as e:
             raise ValidationError(e)
-        pass
+        return Response(
+            status=HTTP_200_OK,
+            data={f"Stored transcripts for {len(transcripts_ids)} videos: {','.join(transcripts_ids)}"}
+        )
