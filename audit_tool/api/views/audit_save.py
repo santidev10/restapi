@@ -236,7 +236,13 @@ class AuditSaveApiView(APIView):
             try:
                 language = row[2].lower().strip()
                 if language not in LANGUAGES:
-                    language = ""
+                    found = False
+                    for k,v in LANGUAGES.items():
+                        if v.lower() == language:
+                            language = k
+                            found = True
+                    if not found:
+                        language = ""
             except Exception as e:
                 language = ""
             row_data = [word, category, language]
