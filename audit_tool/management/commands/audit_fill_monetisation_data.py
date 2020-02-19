@@ -44,7 +44,6 @@ class Command(BaseCommand):
 
     def process_audits(self):
         count = 0
-        audits = []
         for audit in self.audits:
             if audit.name and not audit.params.get('done_monetised'):
                 if 'campaign analysis' in audit.name.lower() or 'campaign audit' in audit.name.lower():
