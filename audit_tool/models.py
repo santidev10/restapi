@@ -215,6 +215,7 @@ class AuditProcessor(models.Model):
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
+            'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
             'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
