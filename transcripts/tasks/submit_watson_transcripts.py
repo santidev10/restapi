@@ -21,7 +21,7 @@ from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from django.conf import settings
-from transcripts.models import WatsonTranscript
+from audit_tool.models import AuditVideoTranscript
 
 from transcripts.api.urls.names import TranscriptsPathName
 from saas.urls.namespaces import Namespace
@@ -42,14 +42,14 @@ watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def submit_watson_transcripts():
     try:
-        lang_code = settings.WATSON_LANG_CODE
-        country = settings.WATSON_COUNTRY
-        yt_category = settings.WATSON_CATEGORY
+        lang_codes = settings.WATSON_LANG_CODE
+        countries = settings.WATSON_COUNTRY
+        yt_categories = settings.WATSON_CATEGORY
         brand_safety_score = settings.WATSON_SCORE_THRESHOLD
         num_vids = settings.WATSON_NUM_VIDEOS
-        logger.debug(f"lang_code: {lang_code}")
-        logger.debug(f"county: {country}")
-        logger.debug(f"yt_category: {yt_category}")
+        logger.debug(f"lang_code: {lang_codes}")
+        logger.debug(f"county: {countries}")
+        logger.debug(f"yt_category: {yt_categories}")
         logger.debug(f"brand_safety_score: {brand_safety_score}")
         logger.debug(f"num_vids: {num_vids}")
     except Exception as e:
@@ -67,7 +67,7 @@ def submit_watson_transcripts():
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, ),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, ))
         while vids_submitted < num_vids:
-            videos = get_no_custom_captions_vids(lang_code=lang_code, country=country, yt_category=yt_category,
+            videos = get_no_custom_captions_vids(lang_code=lang_codes, country=countries, yt_category=yt_categories,
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
                                                  offset=offset)
             offset += num_vids
@@ -100,7 +100,9 @@ def submit_watson_transcripts():
                         # If YT API has no captions object for video, and we have no custom transcript for it, send to Watson
                         if not yt_has_captions:
                             try:
-                                watson_transcript = WatsonTranscript.get_or_create(vid_id)
+                                lang_code = vid.general_data.lang_code
+                                watson_transcript = AuditVideoTranscript.get_or_create(video_id=vid_id,
+                                                                                       language=lang_code, source=1)
                                 if watson_transcript.submitted:
                                     continue
                                 else:

@@ -1,5 +1,4 @@
-import json
-from datetime import datetime
+from django.utils import timezone
 
 from django.conf import settings
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
@@ -7,10 +6,8 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_200_OK
 
-from audit_tool.models import AuditLanguage
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
-from transcripts.models import WatsonTranscript
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
@@ -46,16 +43,11 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 watson_data = transcripts[video_id]
                 transcript = watson_data['transcript']
 
-                watson_transcript = WatsonTranscript.get_or_create(video_id)
-                watson_transcript.transcript = transcript
-                try:
-                    watson_transcript.language = AuditLanguage.from_string(lang_code)
-                except Exception:
-                    pass
-                watson_transcript.retrieved = datetime.now()
+                watson_transcript = AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
+                                                                       transcript=transcript, source=1)
+                watson_transcript.retrieved = timezone.now()
                 watson_transcript.save()
-                AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
-                                                   transcript=transcript)
+
                 populate_video_custom_captions(video, [transcript], [lang_code], "Watson")
                 transcripts_ids.append(video_id)
             manager.upsert(videos)
