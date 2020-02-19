@@ -394,7 +394,7 @@ class AuditVideoTranscript(models.Model):
     submitted = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
     retrieved = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
     job_id = models.CharField(max_length=255, blank=True, null=True, default=None, db_index=True)
-    job_id_hash = models.BigIntegerField(db_index=True, default=None)
+    job_id_hash = models.BigIntegerField(db_index=True, default=0)
 
     class Meta:
         unique_together = ("video", "language")
