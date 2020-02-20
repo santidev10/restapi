@@ -11,6 +11,7 @@ from es_components.constants import Sections
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
+from transcripts.tasks import rescore_brand_safety_videos
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
@@ -29,7 +30,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
         video_ids = [vid_id for vid_id in transcripts]
-        videos = manager.get(video_ids)
+        videos = manager.get(video_ids, skip_none=True)
         transcripts_ids = []
         try:
             for video in videos:
@@ -51,6 +52,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 populate_video_custom_captions(video, [transcript], [lang_code], "Watson")
                 transcripts_ids.append(video_id)
             manager.upsert(videos)
+            rescore_brand_safety_videos.delay(vid_ids=transcripts_ids)
         except Exception as e:
             raise ValidationError(e)
         return Response(
