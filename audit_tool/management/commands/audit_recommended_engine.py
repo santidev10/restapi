@@ -108,51 +108,55 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        thread_id = self.thread_id
         if pending_videos.count() == 0:
-            if thread_id == 0:
+            if self.thread_id == 0:
                 pending_videos = self.process_seed_list()
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
-            done = False
-            if pending_videos.count() > self.MAX_VIDS:
-                done = True
-            else:
-                max_recommended_type = self.audit.params.get('max_recommended_type')
-                if not max_recommended_type:
-                    max_recommended_type = 'video'
-                if max_recommended_type == 'video' and pending_videos.filter(clean=True).count() > self.audit.max_recommended:
-                    done = True
-                elif max_recommended_type == 'channel':
-                    unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
-                    if unique_channels.count() > self.audit.max_recommended:
-                        done = True
-            pending_videos = pending_videos.filter(processed__isnull=True)
-            if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
-                done =  True
-            else:
-                pending_videos = pending_videos.order_by("id")
-            if done:
-                if thread_id == 0:
-                    self.audit.completed = timezone.now()
-                    self.audit.pause = 0
-                    self.audit.save(update_fields=['completed', 'pause'])
-                    print("Audit completed, all videos processed")
-                    a = AuditExporter.objects.create(
-                        audit=self.audit,
-                        owner_id=None,
-                        clean=True,
-                    )
-                    raise Exception("Audit completed, all videos processed")
-                else:
-                    raise Exception("not first thread but audit is done")
+            pending_videos = self.check_complete()
         num = 50
-        start = thread_id * num
+        start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
+        self.check_complete()
+
+    def check_complete(self):
+        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
+        if pending_videos.count() > self.MAX_VIDS:
+            self.complete_audit()
+        else:
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            if not max_recommended_type:
+                max_recommended_type = 'video'
+            if max_recommended_type == 'video' and pending_videos.filter(
+                    clean=True).count() > self.audit.max_recommended:
+                self.complete_audit()
+            elif max_recommended_type == 'channel':
+                unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
+                if unique_channels.count() > self.audit.max_recommended:
+                    self.complete_audit()
+        pending_videos = pending_videos.filter(processed__isnull=True)
+        if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
+            self.complete_audit()
+        else:
+            pending_videos = pending_videos.order_by("id")
+        return pending_videos
+
+    def complete_audit(self):
+        if self.thread_id == 0:
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
+            print("Audit completed, all videos processed")
+            a = AuditExporter.objects.create(
+                audit=self.audit,
+                owner_id=None,
+                clean=True,
+            )
+        raise Exception("Audit completed, all videos processed")
 
     def process_seed_file(self, seed_file):
         try:
