@@ -47,18 +47,18 @@ def submit_watson_transcripts():
         yt_categories = settings.WATSON_CATEGORY
         brand_safety_score = settings.WATSON_SCORE_THRESHOLD
         num_vids = settings.WATSON_NUM_VIDEOS
-        logger.debug(f"lang_code: {lang_codes}")
-        logger.debug(f"county: {countries}")
-        logger.debug(f"yt_category: {yt_categories}")
-        logger.debug(f"brand_safety_score: {brand_safety_score}")
-        logger.debug(f"num_vids: {num_vids}")
+        logger.error(f"lang_code: {lang_codes}")
+        logger.error(f"county: {countries}")
+        logger.error(f"yt_category: {yt_categories}")
+        logger.error(f"brand_safety_score: {brand_safety_score}")
+        logger.error(f"num_vids: {num_vids}")
     except Exception as e:
         raise e
     vids_submitted = 0
     offset = 0
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
-        logger.debug("Starting submit_watson_transcripts task.")
+        logger.error("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
         videos_to_upsert = []
@@ -71,7 +71,7 @@ def submit_watson_transcripts():
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
                                                  offset=offset)
             offset += num_vids
-            logger.debug(f"len(videos): {len(videos)}")
+            logger.error(f"len(videos): {len(videos)}")
             for vid in videos:
                 if api_tracker.cursor >= API_QUOTA:
                     now = datetime.now(tz=timezone.utc)
@@ -80,9 +80,9 @@ def submit_watson_transcripts():
                     unlock(LOCK_NAME)
                     lock(lock_name=LOCK_NAME, max_retries=0, expire=timeout)
                     api_tracker.cursor = 0
-                    logger.debug(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
+                    logger.error(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
                     return
-                logger.debug(f"len(videos_request_batch): {len(videos_request_batch)}")
+                logger.error(f"len(videos_request_batch): {len(videos_request_batch)}")
                 if len(videos_request_batch) < batch_size:
                     vid_id = vid.main.id
                     options = {
@@ -95,7 +95,7 @@ def submit_watson_transcripts():
                         if len(yt_captions["items"]) < 1:
                             yt_has_captions = False
                         else:
-                            logger.debug(f"Video with id {vid_id} has YT captions: {yt_captions['items']}. Skipping...")
+                            logger.error(f"Video with id {vid_id} has YT captions: {yt_captions['items']}. Skipping...")
                             yt_has_captions = True
                         # If YT API has no captions object for video, and we have no custom transcript for it, send to Watson
                         if not yt_has_captions:
@@ -111,10 +111,10 @@ def submit_watson_transcripts():
                                     if not sandbox_mode:
                                         videos_to_upsert.append(vid)
                             except Exception as e:
-                                logger.debug(e)
+                                logger.error(e)
                                 continue
                     except Exception as e:
-                        logger.debug(e)
+                        logger.error(e)
                         continue
                 else:
                     api_endpoint = "/submitjob"
@@ -132,16 +132,16 @@ def submit_watson_transcripts():
                     callback_url = settings.HOST + \
                                    reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS]) + \
                                    f"?authorization={settings.TRANSCRIPTS_API_TOKEN}"
-                    logger.debug(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
+                    logger.error(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
                     response = requests.post(api_request, data=json.dumps(request_body), headers=headers,
                                              callback_url=callback_url)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
                     api_tracker.save()
-                    logger.debug(f"Submitted Watson Transcript /submitjob API request for {batch_size} videos.")
-                    logger.debug(f"Response Status: {response.status_code}")
-                    logger.debug(f"Response Content: {response.content}")
-                    logger.debug(f"Watson API Requests submitted today: {api_tracker.cursor}")
+                    logger.error(f"Submitted Watson Transcript /submitjob API request for {batch_size} videos.")
+                    logger.error(f"Response Status: {response.status_code}")
+                    logger.error(f"Response Content: {response.content}")
+                    logger.error(f"Watson API Requests submitted today: {api_tracker.cursor}")
                     job_id = response.json()["Job Id"]
                     for watson_transcript in videos_watson_transcripts:
                         watson_transcript.submitted = timezone.now()
@@ -155,10 +155,10 @@ def submit_watson_transcripts():
                         videos_to_upsert = []
                     videos_request_batch = []
         unlock(LOCK_NAME)
-        logger.debug("Finished submitting Watson transcripts task.")
-        logger.debug(f"Submitted {vids_submitted} video ids to Watson.")
+        logger.error("Finished submitting Watson transcripts task.")
+        logger.error(f"Submitted {vids_submitted} video ids to Watson.")
     except Exception as e:
-        logger.debug(e)
+        logger.error(e)
         pass
 
 
