@@ -405,7 +405,7 @@ class Command(BaseCommand):
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
             if l not in self.db_languages:
-                self.db_languages[l], _ = AuditLanguage.objects.get_or_create(language=l)
+                self.db_languages[l], _ = AuditLanguage.from_string(l)
             return self.db_languages[l]
         except Exception as e:
             pass
