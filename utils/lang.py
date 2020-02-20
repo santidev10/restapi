@@ -4,7 +4,7 @@ from enum import Enum
 from functools import reduce
 from types import GeneratorType
 from typing import Sequence
-
+import langid
 from fasttext.FastText import _FastText as FastText
 
 fast_text_model = None
@@ -107,9 +107,17 @@ def fasttext_lang(s):
     if fast_text_model is None:
         fast_text_model = FastText('lid.176.bin')
     fast_text_result = fast_text_model.predict(s)
-    language = fast_text_result[0][0].split('__')[2].lower()
-    return language
+    try:
+        if fast_text_result[1][0] < .5:
+            return langid_lang(s)
+        else:
+            return fast_text_result[0][0].split('__')[-1].lower()
+    except Exception as e:
+        pass
 
+def langid_lang(s):
+    l = langid.classify(s)
+    return l[0].lower()
 
 def is_english(s):
     try:
@@ -117,7 +125,6 @@ def is_english(s):
         return True
     except UnicodeDecodeError:
         return False
-
 
 def merge_sort(generators, key=None):
     """
