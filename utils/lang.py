@@ -99,7 +99,7 @@ def replace_apostrophes(s):
     return apostrophe_regex.sub("'", s)
 
 
-# Returns Language Detected by FastText
+# Returns Language Detected by FastText, falls back to langid if assurance val is less than 50%
 def fasttext_lang(s):
     global fast_text_model
     s = remove_mentions_hashes_urls(s)
