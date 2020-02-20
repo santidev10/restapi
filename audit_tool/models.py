@@ -319,6 +319,11 @@ class AuditCategory(models.Model):
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
 
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditCountry.objects.get_or_create(country=in_var.upper())
+        return db_result
+
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
