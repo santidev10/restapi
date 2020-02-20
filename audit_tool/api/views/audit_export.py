@@ -8,9 +8,7 @@ from datetime import timedelta
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
-from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from es_components.managers import ChannelManager
@@ -203,15 +201,9 @@ class AuditExportApiView(APIView):
                 cols.extend(bad_word_categories)
         except Exception as e:
             pass
-        # video_ids = []
-        # hit_words = {}
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
-        # for vid in videos:
-        #     video_ids.append(vid.video_id)
-        #     hit_words[vid.video.video_id] = vid.word_hits
-        # video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit()
         rows = [cols]
         count = videos.count()
