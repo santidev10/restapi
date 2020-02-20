@@ -11,7 +11,7 @@ from es_components.constants import Sections
 from audit_tool.models import AuditVideoTranscript
 from brand_safety.languages import LANG_CODES, LANGUAGES
 from utils.transform import populate_video_custom_captions
-from transcripts.tasks import rescore_brand_safety_videos
+from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 
 
 class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):

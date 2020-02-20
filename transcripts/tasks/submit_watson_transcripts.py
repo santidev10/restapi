@@ -74,7 +74,7 @@ def submit_watson_transcripts():
             logger.error(f"len(videos): {len(videos)}")
             for vid in videos:
                 if api_tracker.cursor >= API_QUOTA:
-                    now = datetime.now(tz=timezone.utc)
+                    now = datetime.now()
                     tomorrow = now.date() + timedelta(days=1)
                     timeout = (datetime.combine(tomorrow, time.min) - now).total_seconds()
                     unlock(LOCK_NAME)
