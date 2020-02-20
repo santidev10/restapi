@@ -84,6 +84,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.db_languages = {}
         self.placement_list = False
         if self.audit.name:
             if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
@@ -374,7 +375,10 @@ class Command(BaseCommand):
                 pass
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
@@ -400,8 +404,9 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l not in self.db_languages:
+                self.db_languages[l], _ = AuditLanguage.from_string(l)
+            return self.db_languages[l]
         except Exception as e:
             pass
 
@@ -412,7 +417,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 

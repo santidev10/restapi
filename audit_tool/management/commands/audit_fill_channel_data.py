@@ -28,6 +28,10 @@ class Command(BaseCommand):
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
+    cache = {
+        'countries': {},
+        'languages': {}
+    }
 
     def add_arguments(self, parser):
         parser.add_argument('thread_id', type=int)
@@ -79,8 +83,9 @@ class Command(BaseCommand):
         try:
             str_long = remove_mentions_hashes_urls(str_long).lower()
             l = fasttext_lang(str_long)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            channel.language = db_lang
+            if l not in self.cache['languages']:
+                self.cache['languages'][l], _ = AuditLanguage.objects.get_or_create(language=l)
+            channel.language = self.cache['languages'][l]
             channel.save(update_fields=['language'])
         except Exception as e:
             pass
@@ -114,8 +119,9 @@ class Command(BaseCommand):
                     pass
                 try:
                     if i['brandingSettings']['channel']['defaultLanguage']:
-                        db_lang, _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
-                        db_channel_meta.default_language = db_lang
+                        if i['brandingSettings']['channel']['defaultLanguage'] not in self.cache['languages']:
+                            self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']], _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                        db_channel_meta.default_language = self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']]
                 except Exception as e:
                     pass
                 try:
@@ -124,7 +130,9 @@ class Command(BaseCommand):
                     country = None
                     pass
                 if country:
-                    db_channel_meta.country, _ = AuditCountry.objects.get_or_create(country=country)
+                    if country not in self.cache['countries']:
+                        self.cache['countries'][country] = AuditCountry.from_string(country)
+                    db_channel_meta.country, _ = self.cache['countries'][country]
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
                 try:
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])

@@ -82,6 +82,7 @@ class Command(BaseCommand):
 
     def update_es_monetisation(self):
         channel_ids = list(self.channel_ids)
+        print("Updating {} channels in ES.".format(len(channel_ids)))
         upsert_index = 0
         while upsert_index < len(channel_ids):
             try:

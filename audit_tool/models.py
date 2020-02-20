@@ -215,6 +215,7 @@ class AuditProcessor(models.Model):
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
+            'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
             'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
@@ -317,6 +318,11 @@ class AuditCategory(models.Model):
 
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
+
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditCountry.objects.get_or_create(country=in_var.upper())
+        return db_result
 
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
@@ -477,6 +483,22 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+
+    @staticmethod
+    def running():
+        for a in AuditExporter.objects.filter(started__isnull=False, completed__isnull=True):
+            print(a.to_dict())
+
+    def to_dict(self):
+        d = {
+            'started': self.started,
+            'audit': self.audit_id,
+            'audit_name': self.audit.name,
+            'machine': self.machine,
+            'thread': self.thread,
+            'percent_done': self.percent_done,
+        }
+        return d
 
     @property
     def owner(self):
