@@ -375,7 +375,10 @@ class Command(BaseCommand):
                 pass
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
