@@ -102,7 +102,7 @@ def replace_apostrophes(s):
 # Returns Language Detected by FastText, falls back to langid if assurance val is less than 50%
 def fasttext_lang(string):
     global fast_text_model
-    s = remove_mentions_hashes_urls(string)
+    string = remove_mentions_hashes_urls(string)
     string = string.replace("\n", " ")
     if fast_text_model is None:
         fast_text_model = FastText('lid.176.bin')
