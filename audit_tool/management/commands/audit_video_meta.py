@@ -417,7 +417,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
