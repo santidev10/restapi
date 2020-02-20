@@ -433,7 +433,10 @@ class Command(BaseCommand):
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
@@ -459,7 +462,7 @@ class Command(BaseCommand):
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
             if l not in self.db_languages:
-                self.db_languages[l], _ = AuditLanguage.objects.get_or_create(language=l)
+                self.db_languages[l], _ = AuditLanguage.from_string(l)
             return self.db_languages[l]
         except Exception as e:
             pass
