@@ -370,7 +370,7 @@ class AuditExportApiView(APIView):
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
-                audit.save()
+                audit.save(update_fields=['params'])
             os.remove(myfile.name)
         return s3_file_name, download_file_name
 
@@ -598,7 +598,7 @@ class AuditExportApiView(APIView):
             os.remove(myfile.name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
-                audit.save()
+                audit.save(update_fields=['params'])
         return s3_file_name, download_file_name
 
     def get_hit_words(self, hits, clean=None):
