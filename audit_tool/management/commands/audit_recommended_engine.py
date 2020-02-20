@@ -72,8 +72,7 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = \
-                AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by(
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by(
                     "pause", "id")[self.machine_number]
                 self.load_audit_params()
             except Exception as e:
@@ -82,6 +81,7 @@ class Command(BaseCommand):
             self.process_audit()
 
     def load_audit_params(self):
+        self.db_languages = {}
         self.language = self.audit.params.get('language')
         self.location = self.audit.params.get('location')
         self.location_radius = self.audit.params.get('location_radius')
@@ -458,8 +458,9 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l not in self.db_languages:
+                self.db_languages[l], _ = AuditLanguage.objects.get_or_create(language=l)
+            return self.db_languages[l]
         except Exception as e:
             pass
 

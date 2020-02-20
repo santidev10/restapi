@@ -84,6 +84,7 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.db_languages = {}
         self.placement_list = False
         if self.audit.name:
             if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
@@ -400,8 +401,9 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l not in self.db_languages:
+                self.db_languages[l], _ = AuditLanguage.objects.get_or_create(language=l)
+            return self.db_languages[l]
         except Exception as e:
             pass
 
