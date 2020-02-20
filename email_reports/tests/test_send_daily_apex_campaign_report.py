@@ -9,15 +9,18 @@ from django.utils import timezone
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import CampaignStatus
 from aw_reporting.models import AdGroup
 from aw_reporting.models import VideoCreative
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from es_components.constants import Sections
+from es_components.managers import VideoManager
+from es_components.models import Video
 from email_reports.tasks import send_daily_email_reports
 from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
+from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
 from userprofile.constants import UserSettingsKey
 
@@ -69,7 +72,13 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
         ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+
         creative = VideoCreative.objects.create(id=1)
+
+        video = Video("1")
+        video.populate_general_data(title="video_creative_1")
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+
         VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group, creative=creative, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group, creative=creative, video_views=102,
@@ -88,6 +97,8 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
         csv_context = attachment[0][1]
         self.assertEqual(csv_context.count('account_1'), 2)
+        self.assertEqual(csv_context.count('video_creative_1'), 1)
+        self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 1)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
         self.assertEqual(csv_context.count(today.strftime(DATE_FORMAT)), 0)
 
