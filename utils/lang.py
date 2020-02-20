@@ -100,24 +100,20 @@ def replace_apostrophes(s):
 
 
 # Returns Language Detected by FastText, falls back to langid if assurance val is less than 50%
-def fasttext_lang(s):
+def fasttext_lang(string):
     global fast_text_model
-    s = remove_mentions_hashes_urls(s)
-    s = s.replace("\n", " ")
+    s = remove_mentions_hashes_urls(string)
+    string = string.replace("\n", " ")
     if fast_text_model is None:
         fast_text_model = FastText('lid.176.bin')
-    fast_text_result = fast_text_model.predict(s)
+    fast_text_result = fast_text_model.predict(string)
     try:
         if fast_text_result[1][0] < .5:
-            return langid_lang(s)
+            return langid.classify(string)[0].lower()
         else:
             return fast_text_result[0][0].split('__')[-1].lower()
     except Exception as e:
         pass
-
-def langid_lang(s):
-    l = langid.classify(s)
-    return l[0].lower()
 
 def is_english(s):
     try:
