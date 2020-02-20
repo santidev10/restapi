@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 from pid.decorator import pidfile
 from django.utils import timezone
 import datetime
-from time import sleep
 
 """
 requirements:
@@ -24,16 +23,10 @@ class Command(BaseCommand):
     @pidfile(piddir=".", pidname="audit_cache_meta.pid")
     def handle(self, *args, **options):
         count = 0
-        loops = 0
-        max_loops = 4
-        # while loops < max_loops:
         audits = AuditProcessor.objects.filter(Q(completed__isnull=True) | Q(completed__gt=(timezone.now() - datetime.timedelta(hours=1))) ).order_by("-id")
         for audit in audits:
             count+=1
             self.do_audit_meta(audit)
-        loops += 1
-            # if loops < max_loops:
-            #     sleep(15)
         AuditProcessorCache.objects.all().exclude(audit__in=audits).delete()
         AuditProcessor.objects.filter(completed__isnull=False, pause__lt=0).update(pause=0)
         logger.info("Done {} audits.".format(count))

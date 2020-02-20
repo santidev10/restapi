@@ -1,4 +1,3 @@
-import string
 from collections import defaultdict
 from collections import namedtuple
 import csv
@@ -12,8 +11,6 @@ from flashtext import KeywordProcessor
 from django.db.models import F
 from emoji import UNICODE_EMOJI
 
-from audit_tool.models import AuditCountry
-from audit_tool.models import AuditLanguage
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from es_components.constants import MAIN_ID_FIELD
