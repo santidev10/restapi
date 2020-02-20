@@ -17,8 +17,6 @@ class AccountUpdater(UpdateMixin):
         for account in Account.objects.all():
             try:
                 int(account.id)
-                if "demo" in account.name.lower():
-                    continue
             except ValueError:
                 continue
             except AttributeError:

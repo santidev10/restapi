@@ -160,8 +160,6 @@ class GoogleAdsUpdater(object):
         for account in active_accounts_from_placements | active_accounts_from_opportunities:
             try:
                 int(account.id)
-                if "demo" in account.name.lower():
-                    continue
             except ValueError:
                 continue
             except AttributeError:
