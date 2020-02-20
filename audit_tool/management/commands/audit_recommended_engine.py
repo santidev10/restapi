@@ -72,34 +72,39 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by("pause", "id")[self.machine_number]
-                self.language = self.audit.params.get('language')
-                self.location = self.audit.params.get('location')
-                self.location_radius = self.audit.params.get('location_radius')
-                self.category = self.audit.params.get('category')
-                self.related_audits = self.audit.params.get('related_audits')
-                self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
-                self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
-                self.include_unknown_views = self.audit.params.get('include_unknown_views')
-                self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
-                if not self.exclusion_hit_count:
-                    self.exclusion_hit_count = 1
-                else:
-                    self.exclusion_hit_count = int(self.exclusion_hit_count)
-                if not self.inclusion_hit_count:
-                    self.inclusion_hit_count = 1
-                else:
-                    self.inclusion_hit_count = int(self.inclusion_hit_count)
-                self.min_date = self.audit.params.get('min_date')
-                if self.min_date:
-                    self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
-                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
-                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
+                self.audit = \
+                AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by(
+                    "pause", "id")[self.machine_number]
+                self.load_audit_params()
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
+
+    def load_audit_params(self):
+        self.language = self.audit.params.get('language')
+        self.location = self.audit.params.get('location')
+        self.location_radius = self.audit.params.get('location_radius')
+        self.category = self.audit.params.get('category')
+        self.related_audits = self.audit.params.get('related_audits')
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.include_unknown_views = self.audit.params.get('include_unknown_views')
+        self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
+        self.min_date = self.audit.params.get('min_date')
+        if self.min_date:
+            self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
+        self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+        self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+        self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
 
     def process_audit(self):
         self.load_inclusion_list()
