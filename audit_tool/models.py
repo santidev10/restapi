@@ -319,6 +319,11 @@ class AuditCategory(models.Model):
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
 
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditCountry.objects.get_or_create(country=in_var.upper())
+        return db_result
+
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
@@ -464,6 +469,22 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+
+    @staticmethod
+    def running():
+        for a in AuditExporter.objects.filter(started__isnull=False, completed__isnull=True):
+            print(a.to_dict())
+
+    def to_dict(self):
+        d = {
+            'started': self.started,
+            'audit': self.audit_id,
+            'audit_name': self.audit.name,
+            'machine': self.machine,
+            'thread': self.thread,
+            'percent_done': self.percent_done,
+        }
+        return d
 
     @property
     def owner(self):

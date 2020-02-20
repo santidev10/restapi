@@ -72,34 +72,39 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by("pause", "id")[self.machine_number]
-                self.language = self.audit.params.get('language')
-                self.location = self.audit.params.get('location')
-                self.location_radius = self.audit.params.get('location_radius')
-                self.category = self.audit.params.get('category')
-                self.related_audits = self.audit.params.get('related_audits')
-                self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
-                self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
-                self.include_unknown_views = self.audit.params.get('include_unknown_views')
-                self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
-                if not self.exclusion_hit_count:
-                    self.exclusion_hit_count = 1
-                else:
-                    self.exclusion_hit_count = int(self.exclusion_hit_count)
-                if not self.inclusion_hit_count:
-                    self.inclusion_hit_count = 1
-                else:
-                    self.inclusion_hit_count = int(self.inclusion_hit_count)
-                self.min_date = self.audit.params.get('min_date')
-                if self.min_date:
-                    self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
-                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
-                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by(
+                    "pause", "id")[self.machine_number]
+                self.load_audit_params()
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
+
+    def load_audit_params(self):
+        self.db_languages = {}
+        self.language = self.audit.params.get('language')
+        self.location = self.audit.params.get('location')
+        self.location_radius = self.audit.params.get('location_radius')
+        self.category = self.audit.params.get('category')
+        self.related_audits = self.audit.params.get('related_audits')
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.include_unknown_views = self.audit.params.get('include_unknown_views')
+        self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
+        self.min_date = self.audit.params.get('min_date')
+        if self.min_date:
+            self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
+        self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+        self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+        self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
 
     def process_audit(self):
         self.load_inclusion_list()
@@ -108,51 +113,55 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        thread_id = self.thread_id
         if pending_videos.count() == 0:
-            if thread_id == 0:
+            if self.thread_id == 0:
                 pending_videos = self.process_seed_list()
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
-            done = False
-            if pending_videos.count() > self.MAX_VIDS:
-                done = True
-            else:
-                max_recommended_type = self.audit.params.get('max_recommended_type')
-                if not max_recommended_type:
-                    max_recommended_type = 'video'
-                if max_recommended_type == 'video' and pending_videos.filter(clean=True).count() > self.audit.max_recommended:
-                    done = True
-                elif max_recommended_type == 'channel':
-                    unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
-                    if unique_channels.count() > self.audit.max_recommended:
-                        done = True
-            pending_videos = pending_videos.filter(processed__isnull=True)
-            if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
-                done =  True
-            else:
-                pending_videos = pending_videos.order_by("id")
-            if done:
-                if thread_id == 0:
-                    self.audit.completed = timezone.now()
-                    self.audit.pause = 0
-                    self.audit.save(update_fields=['completed', 'pause'])
-                    print("Audit completed, all videos processed")
-                    a = AuditExporter.objects.create(
-                        audit=self.audit,
-                        owner_id=None,
-                        clean=True,
-                    )
-                    raise Exception("Audit completed, all videos processed")
-                else:
-                    raise Exception("not first thread but audit is done")
+            pending_videos = self.check_complete()
         num = 50
-        start = thread_id * num
+        start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
+        self.check_complete()
+
+    def check_complete(self):
+        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
+        if pending_videos.count() > self.MAX_VIDS:
+            self.complete_audit()
+        else:
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            if not max_recommended_type:
+                max_recommended_type = 'video'
+            if max_recommended_type == 'video' and pending_videos.filter(
+                    clean=True).count() > self.audit.max_recommended:
+                self.complete_audit()
+            elif max_recommended_type == 'channel':
+                unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
+                if unique_channels.count() > self.audit.max_recommended:
+                    self.complete_audit()
+        pending_videos = pending_videos.filter(processed__isnull=True)
+        if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
+            self.complete_audit()
+        else:
+            pending_videos = pending_videos.order_by("id")
+        return pending_videos
+
+    def complete_audit(self):
+        if self.thread_id == 0:
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
+            print("Audit completed, all videos processed")
+            a = AuditExporter.objects.create(
+                audit=self.audit,
+                owner_id=None,
+                clean=True,
+            )
+        raise Exception("Audit completed, all videos processed")
 
     def process_seed_file(self, seed_file):
         try:
@@ -424,7 +433,10 @@ class Command(BaseCommand):
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
@@ -449,8 +461,10 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l:
+                if l not in self.db_languages:
+                    self.db_languages[l], _ = AuditLanguage.from_string(l)
+                return self.db_languages[l]
         except Exception as e:
             pass
 

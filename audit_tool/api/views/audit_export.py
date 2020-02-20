@@ -6,11 +6,11 @@ from uuid import uuid4
 from datetime import timedelta
 
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditCountry
 from audit_tool.models import AuditExporter
+from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditChannelProcessor
-from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
 from es_components.managers import ChannelManager
@@ -37,6 +37,7 @@ class AuditExportApiView(APIView):
                        "?key={key}&part=id,snippet&id={id}"
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     MAX_ROWS = 750000
+    cache = {}
 
     def get(self, request):
         query_params = request.query_params
@@ -143,6 +144,24 @@ class AuditExportApiView(APIView):
         except Exception as e:
             return ""
 
+    def get_lang(self, obj_id):
+        if 'language' not in self.cache:
+            self.cache['language'] = {}
+        if obj_id not in self.cache['language']:
+            self.cache['language'][obj_id] = AuditLanguage.objects.get(id=obj_id).language
+
+    def get_category(self, obj_id):
+        if 'category' not in self.cache:
+            self.cache['category'] = {}
+        if obj_id not in self.cache['category']:
+            self.cache['category'][obj_id] = AuditCategory.objects.get(id=obj_id).category_display_iab
+
+    def get_country(self, obj_id):
+        if 'country' not in self.cache:
+            self.cache['country'] = {}
+        if obj_id not in self.cache['country']:
+            self.cache['country'][obj_id] = AuditCountry.objects.get(id=obj_id).country
+
     def export_videos(self, audit, audit_id=None, clean=None, export=None):
         clean_string = 'none'
         if clean is not None:
@@ -203,15 +222,9 @@ class AuditExportApiView(APIView):
                 cols.extend(bad_word_categories)
         except Exception as e:
             pass
-        # video_ids = []
-        # hit_words = {}
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             videos = videos.filter(clean=clean)
-        # for vid in videos:
-        #     video_ids.append(vid.video_id)
-        #     hit_words[vid.video.video_id] = vid.word_hits
-        # video_meta = AuditVideoMeta.objects.filter(video_id__in=video_ids)
         auditor = BrandSafetyAudit()
         rows = [cols]
         count = videos.count()
@@ -229,19 +242,19 @@ class AuditExportApiView(APIView):
             if num_done > self.MAX_ROWS:
                 continue
             try:
-                language = v.language.language
+                language = self.get_lang(v.language_id)
             except Exception as e:
                 language = ""
             try:
-                category = v.category.category_display_iab
+                category = self.get_category(v.category_id)
             except Exception as e:
                 category = ""
             try:
-                country = acm.country.country
+                country = self.get_country(acm.country_id)
             except Exception as e:
                 country = ""
             try:
-                channel_lang = acm.language.language
+                channel_lang = self.get_lang(acm.language_id)
             except Exception as e:
                 channel_lang = ""
             try:
@@ -257,11 +270,11 @@ class AuditExportApiView(APIView):
             except Exception as e:
                 last_uploaded_view_count = ''
             try:
-                last_uploaded_category = acm.last_uploaded_category.category_display_iab
+                last_uploaded_category = self.get_category(acm.last_uploaded_category_id)
             except Exception as e:
                 last_uploaded_category = ''
             try:
-                default_audio_language = v.default_audio_language.language
+                default_audio_language = self.get_lang(v.default_audio_language_id)
             except Exception as e:
                 default_audio_language = ""
             v_word_hits = avp.word_hits
@@ -357,7 +370,7 @@ class AuditExportApiView(APIView):
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
-                audit.save()
+                audit.save(update_fields=['params'])
             os.remove(myfile.name)
         return s3_file_name, download_file_name
 
@@ -484,15 +497,15 @@ class AuditExportApiView(APIView):
             channel = db_channel.channel
             v = channel.auditchannelmeta
             try:
-                language = v.language.language
+                language = self.get_lang(v.language_id)
             except Exception as e:
                 language = ""
             try:
-                country = v.country.country
+                country = self.get_country(v.country_id)
             except Exception as e:
                 country = ""
             try:
-                last_category = v.last_uploaded_category.category_display_iab
+                last_category = self.get_category(v.last_uploaded_category_id)
             except Exception as e:
                 last_category = ""
             try:
@@ -585,7 +598,7 @@ class AuditExportApiView(APIView):
             os.remove(myfile.name)
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
-                audit.save()
+                audit.save(update_fields=['params'])
         return s3_file_name, download_file_name
 
     def get_hit_words(self, hits, clean=None):
