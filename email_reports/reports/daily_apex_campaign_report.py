@@ -13,9 +13,12 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import VideoCreativeStatistic
+from es_components.constants import Sections
+from es_components.managers import VideoManager
 from email_reports.reports.base import BaseEmailReport
 from utils.datetime import now_in_default_tz
 from userprofile.constants import UserSettingsKey
+from utils.youtube_api import resolve_videos_info
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +30,11 @@ STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "vi
                 "video_views")
 
 CSV_HEADER = ("Date", "CID Name/Number", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign",
-              "Creative ID", "Cost", "Impressions", "Clicks", "TrueView: Views",
+              "Creative Name", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
               "Midpoint Views (Video)", "Complete Views (Video)")
 
 DATE_FORMAT = "%m/%d/%y"
+YOUTUBE_LINK_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 
 class DailyApexCampaignEmailReport(BaseEmailReport):
@@ -119,6 +123,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 stats.campaign__id,
                 stats.campaign__name,
                 None,
+                None,
                 self.__get_revenue(stats, "campaign__"),
                 *self._get_stats_metrics(stats)
             ])
@@ -133,6 +138,9 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
     def __get_creative_statistics_rows(self, creative_statistics):
         rows = []
+        creative_statistics = list(creative_statistics)
+
+        creatives_info = self.__get_creative_info([stats.creative_id for stats in creative_statistics])
 
         for stats in creative_statistics:
             rows.append([
@@ -142,11 +150,24 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 None,
                 stats.ad_group__campaign__id,
                 stats.ad_group__campaign__name,
-                stats.creative_id,
+                creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
+                YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),
                 self.__get_revenue(stats, "ad_group__campaign__"),
                 *self._get_stats_metrics(stats)
             ])
         return rows
+
+
+    def __get_creative_info(self, creative_ids):
+        manager = VideoManager(Sections.GENERAL_DATA)
+        videos_map = {}
+        for video in manager.get(ids=creative_ids, skip_none=True):
+            videos_map[video.main.id] = video.to_dict()
+
+        unresolved_ids = list(set(creative_ids) - set(videos_map.keys()))
+        unresolved_videos_info = resolve_videos_info(unresolved_ids) if unresolved_ids else {}
+
+        return {**videos_map, **unresolved_videos_info}
 
     def _get_stats_metrics(self, stats):
         return (
