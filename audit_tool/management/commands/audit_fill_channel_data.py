@@ -132,7 +132,7 @@ class Command(BaseCommand):
                 if country:
                     if country not in self.cache['countries']:
                         self.cache['countries'][country] = AuditCountry.from_string(country)
-                    db_channel_meta.country, _ = self.cache['countries'][country]
+                    db_channel_meta.country = self.cache['countries'][country]
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
                 try:
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])
