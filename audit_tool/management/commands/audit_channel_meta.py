@@ -140,7 +140,7 @@ class Command(BaseCommand):
             v_id = self.get_channel_id(seed)
             if v_id:
                 channel = AuditChannel.get_or_create(v_id)
-                if channel.processed_time < timezone.now() - timedelta(days=30):
+                if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
                     channel.processed_time = None
                     channel.save(update_fields=['processed_time'])
                 AuditChannelMeta.objects.get_or_create(channel=channel)
