@@ -1,7 +1,5 @@
 import logging
 
-from django.db import transaction
-from django.db.models.signals import post_save
 from django.utils import timezone
 
 from aw_reporting.adwords_api import get_all_customers
@@ -19,8 +17,6 @@ class AccountUpdater(UpdateMixin):
         for account in Account.objects.all():
             try:
                 int(account.id)
-                if "demo" in account.name.lower():
-                    continue
             except ValueError:
                 continue
             except AttributeError:
@@ -33,7 +29,7 @@ class AccountUpdater(UpdateMixin):
         created_accounts = []
         accounts = get_all_customers(client)
         for e in accounts:
-            account_id = str(e['customerId'])
+            account_id = int(e['customerId'])
             account_obj = Account(
                 id=account_id,
                 name=e['name'],

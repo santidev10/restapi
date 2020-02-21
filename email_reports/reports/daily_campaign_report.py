@@ -1,3 +1,5 @@
+import hashlib
+
 from datetime import date
 from datetime import timedelta
 
@@ -77,7 +79,7 @@ class DailyCampaignReport(BaseEmailReport):
         if self.roles:
             self.roles = self.roles.split(",")
 
-        self.flight_alerts = set()
+        self.flight_alerts = []
 
     def is_on_going_placements(self, p):
         return None not in (p["goal_type_id"], p["start"], p["end"]) \
@@ -222,16 +224,27 @@ class DailyCampaignReport(BaseEmailReport):
     def collect_flight_delivery_alert(self, flight_data, opportunity_obj):
         alert_percentage = None
 
-        if self.check_flight_delivered(flight_data, 1):
-            alert_percentage = 100
-        elif self.check_flight_delivered(flight_data, 0.8):
-            alert_percentage = 80
+        control_percentages = sorted(
+            [int(percentage) for percentage in settings.PACING_NOTIFICATIONS],
+            reverse=True
+        )
+
+        for control_percentage in control_percentages:
+
+            if self.check_flight_delivered(flight_data, control_percentage):
+                alert_percentage = control_percentage
+                break
 
         if alert_percentage is not None:
-            self.flight_alerts.add(
-                FlightAlert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
-                            control_percentage=alert_percentage)
-            )
+            flight_alert = FlightAlert(flight_name=flight_data.get("name"), opportunity_name=opportunity_obj.name,
+                                       control_percentage=alert_percentage)
+            mail, created = SavedEmail.objects.get_or_create(id=flight_alert.__hash__())
+
+
+            if created is True:
+                self.flight_alerts.append(flight_alert)
+                mail.html = f"{flight_alert.subject}\n{flight_alert.body}"
+                mail.save()
 
     def check_flight_delivered(self, flight, control_percentage):
         try:
@@ -240,7 +253,7 @@ class DailyCampaignReport(BaseEmailReport):
                 percentage = safe_div(flight.get("impressions", 0), flight.get("plan_impressions", 0)) or 0
             elif flight.get("goal_type_id") == SalesForceGoalType.CPV:
                 percentage = safe_div(flight.get("video_views", 0), flight.get("plan_video_views", 0)) or 0
-            return percentage >= control_percentage
+            return percentage * 100 >= control_percentage
         except:
             pass
 
@@ -298,5 +311,4 @@ class FlightAlert:
         )
 
     def __hash__(self):
-        return hash(self.body)
-
+        return hashlib.md5(str(self.body).encode()).hexdigest()

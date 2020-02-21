@@ -7,6 +7,12 @@ from rest_framework.serializers import SerializerMethodField
 from brand_safety.languages import LANGUAGES
 from utils.brand_safety import map_brand_safety_score
 
+"""
+CustomSegment export serializers
+
+Each columns tuple for all serializers are used as headers for export files
+"""
+
 
 class CustomSegmentChannelExportSerializer(Serializer):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted")

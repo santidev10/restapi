@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.http import QueryDict
 from rest_framework.status import HTTP_200_OK
@@ -14,6 +15,9 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentRelated
 from segment.models import CustomSegmentFileUpload
 from utils.utittests.test_case import ExtendedAPITestCase
+from utils.utittests.int_iterator import int_iterator
+from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
 
 
 class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
@@ -21,12 +25,26 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         return reverse(Namespace.SEGMENT_V2 + ":" + Name.SEGMENT_LIST,
                        kwargs=dict(segment_type=segment_type))
 
+    def _create_segment(self, segment_params=None, export_params=None):
+        segment_params = segment_params if segment_params else {}
+        export_params = export_params if export_params else dict(query={})
+        if "uuid" not in segment_params:
+            segment_params["uuid"] = uuid.uuid4()
+        segment = CustomSegment.objects.create(**segment_params)
+        export = CustomSegmentFileUpload.objects.create(segment=segment, **export_params)
+        return segment, export
+
+    def _create_user(self, user_data=None):
+        user_data = user_data if user_data else dict(email=f"test{next(int_iterator)}@test.com")
+        user = get_user_model().objects.create(**user_data)
+        return user
+
     def test_owner_filter_list(self):
         user = self.create_test_user()
-        seg_1 = CustomSegment.objects.create(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
-        seg_2 = CustomSegment.objects.create(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
-        CustomSegmentFileUpload.objects.create(segment=seg_1, query={})
-        CustomSegmentFileUpload.objects.create(segment=seg_2, query={})
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2")
+        seg_1, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
+        seg_2, _ = self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
         expected_segments_count = 1
         response = self.client.get(self._get_url("video"))
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -262,3 +280,39 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         query_params = QueryDict("general_data.top_language=ga,ru").urlencode()
         response = self.client.get(f"{self._get_url('channel')}?{query_params}")
         self.assertEqual({s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
+
+    def test_audit_vet_admin_list(self):
+        """ Users with userprofile.vet_audit_admin permission should receive all segments """
+        Permissions.sync_groups()
+        admin_user = self.create_test_user()
+        admin_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+
+        test_user_1 = self._create_user()
+        test_user_2 = self._create_user()
+        test_user_3 = self._create_user()
+        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=1, title="test1", list_type=0, audit_id=1))
+        seg_2, _ = self._create_segment(dict(owner=test_user_2, segment_type=1, title="test2", list_type=0))
+        seg_3, _ = self._create_segment(dict(owner=test_user_3, segment_type=1, title="test3", list_type=0))
+
+        response = self.client.get(self._get_url('channel'))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 3)
+        self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_2.id, seg_3.id})
+
+    def test_audit_vetter_list(self):
+        """ Users with userprofile.vet_audit permission should recieve only lists with vetting enabled """
+        Permissions.sync_groups()
+        vetting_user = self.create_test_user()
+        vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
+
+        test_user_1 = self._create_user()
+        test_user_2 = self._create_user()
+        test_user_3 = self._create_user()
+        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=0, title="test1", list_type=0, audit_id=1))
+        seg_2, _ = self._create_segment(dict(owner=test_user_2, segment_type=0, title="test2", list_type=0))
+        seg_3, _ = self._create_segment(dict(owner=test_user_3, segment_type=0, title="test3", list_type=0, audit_id=2))
+
+        response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], 2)
+        self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_3.id})

@@ -4,7 +4,7 @@ from enum import Enum
 from functools import reduce
 from types import GeneratorType
 from typing import Sequence
-
+import langid
 from fasttext.FastText import _FastText as FastText
 
 fast_text_model = None
@@ -99,17 +99,21 @@ def replace_apostrophes(s):
     return apostrophe_regex.sub("'", s)
 
 
-# Returns Language Detected by FastText
-def fasttext_lang(s):
+# Returns Language Detected by FastText, falls back to langid if assurance val is less than 50%
+def fasttext_lang(string):
     global fast_text_model
-    s = remove_mentions_hashes_urls(s)
-    s = s.replace("\n", " ")
+    string = remove_mentions_hashes_urls(string)
+    string = string.replace("\n", " ")
     if fast_text_model is None:
         fast_text_model = FastText('lid.176.bin')
-    fast_text_result = fast_text_model.predict(s)
-    language = fast_text_result[0][0].split('__')[2].lower()
-    return language
-
+    fast_text_result = fast_text_model.predict(string)
+    try:
+        if fast_text_result[1][0] < .5:
+            return langid.classify(string)[0].lower()
+        else:
+            return fast_text_result[0][0].split('__')[-1].lower()
+    except Exception as e:
+        pass
 
 def is_english(s):
     try:
@@ -117,7 +121,6 @@ def is_english(s):
         return True
     except UnicodeDecodeError:
         return False
-
 
 def merge_sort(generators, key=None):
     """

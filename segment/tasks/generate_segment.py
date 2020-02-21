@@ -50,6 +50,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
         else:
             cursor_field = "stats.subscribers"
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
+            # for is_monetizable channel items to appear first on export
             if options is None:
                 options = [
                     QueryBuilder().build().must().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
@@ -64,6 +65,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                         writer.writeheader()
 
                     for item in batch:
+                        # YT_GENRE_CHANNELS have no data and should not be on any export
                         if item.main.id in YT_GENRE_CHANNELS:
                             continue
                         if len(top_three_items) < 3 \
@@ -79,6 +81,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                         row = segment.serializer(item).data
                         writer.writerow(row)
 
+                        # Calculating aggregations with each items already retrieved is much more efficient than
+                        # executing an additional aggregation query
                         aggregations["monthly_views"] += item.stats.last_30day_views or 0
                         aggregations["average_brand_safety_score"] += item.brand_safety.overall_score or 0
                         aggregations["views"] += item.stats.views or 0
@@ -99,6 +103,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             aggregations["audited_videos"] += item.brand_safety.videos_scored or 0
 
                         seen += 1
+                        # Number of results from bulk_search is imprecise
                         if seen >= size:
                             raise MaxItemsException
         except MaxItemsException:

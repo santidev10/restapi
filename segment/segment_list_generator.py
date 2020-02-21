@@ -20,6 +20,17 @@ from segment.tasks.generate_segment import generate_segment
 logger = logging.getLogger(__name__)
 
 
+""" SegmentListGenerator - Used to generate brand suitable target lists for all AuditCategory values
+
+Procedure:
+    1. Retrieve all AuditCategory values
+    2. Retrieve channel videos and blacklist data
+    3. Instantiate BrandSafetyChannelAudit for each channel and run audit
+    4. Instantiate BrandSafetyVideoAudit for each video and run audit
+    5. Index results
+"""
+
+
 class SegmentListGenerator(object):
     MAX_API_CALL_RETRY = 15
     RETRY_SLEEP_COEFFICIENT = 2

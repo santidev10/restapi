@@ -34,7 +34,9 @@ class Command(BaseCommand):
                     projected_completion = timezone.now() + timedelta(minutes=num_minutes)
                     audit.params['projected_completion'] = projected_completion.astimezone(
                         pytz.timezone('America/Los_Angeles')).strftime("%m/%d %I:%M %p")
+                    audit.params["avg_rate_per_minute"] = avg_rate_per_minute
                 else:
+                    audit.params["avg_rate_per_minute"] = None
                     audit.params['projected_completion'] = None
                 audit.save(update_fields=['params'])
             raise Exception("Done {} projected times".format(audits.count()))

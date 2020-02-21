@@ -113,6 +113,9 @@ class PermissionGroupNames:
     TRANSCRIPTS = "Transcripts"
     MONETIZATION = "Monetization"
     VIEW_CHANNEL_VIDEO_TABS = "View Channel/Video Tabs"
+    AUDIT_VET_ADMIN = "Vetting Tool Admin"
+    AUDIT_VET = "Vetting Tool"
+    CUSTOM_SEGMENTS = "custom_segments"
 
 
 class Permissions:
@@ -205,7 +208,14 @@ class Permissions:
         )),
         (PermissionGroupNames.MONETIZATION, (
             "monetization_filter",
-        ))
+        )),
+
+        (PermissionGroupNames.AUDIT_VET_ADMIN, (
+            "vet_audit_admin",
+        )),
+        (PermissionGroupNames.AUDIT_VET, (
+            "vet_audit",
+        )),
     )
 
     PERM_LIST = (
@@ -242,6 +252,8 @@ class Permissions:
         "download_audit",
         "view_audit",
         "flag_audit",
+        "vet_audit",
+        "vet_audit_admin",
         # Ads Analyzer
         "view_opportunity_list",
         "create_opportunity_report",

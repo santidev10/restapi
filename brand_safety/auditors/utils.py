@@ -1,4 +1,3 @@
-import string
 from collections import defaultdict
 from collections import namedtuple
 import csv

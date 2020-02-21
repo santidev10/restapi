@@ -34,6 +34,7 @@ from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from utils.models import Timestampable
 from segment.models.utils.segment_exporter import SegmentExporter
+from segment.models.utils.segment_audit_utils import SegmentAuditUtils
 
 logger = logging.getLogger(__name__)
 
@@ -51,21 +52,28 @@ class CustomSegment(SegmentMixin, Timestampable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        self.audit_utils = SegmentAuditUtils(self.segment_type)
 
         if self.segment_type == 0:
+            self.data_field = "video"
+            # AuditProcessor audit_type
+            self.audit_type = 1
             self.SORT_KEY = {VIEWS_FIELD: {"order": SortDirections.DESCENDING}}
-            self.LIST_SIZE = 20000
+            self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
             self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
+
         else:
+            self.data_field = "channel"
+            self.audit_type = 2
             self.SORT_KEY = {SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}
-            self.LIST_SIZE = 20000
+            self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-            if not self.owner or not self.owner.has_perm("userprofile.monetization_filter"):
+            if not self.owner or (self.owner and not self.owner.has_perm("userprofile.monetization_filter")):
                 self.serializer = CustomSegmentChannelExportSerializer
             else:
                 self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
@@ -92,6 +100,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         _id: list_type for list_type, _id in list_type_to_id.items()
     }
 
+    audit_id = IntegerField(null=True, default=None, db_index=True)
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)
     list_type = IntegerField(choices=LIST_TYPE_CHOICES)
@@ -99,6 +108,11 @@ class CustomSegment(SegmentMixin, Timestampable):
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
+
+    @property
+    def data_type(self):
+        data_type = self.segment_id_to_type[self.segment_type]
+        return data_type
 
     def set_es_sections(self, sections, upsert_sections):
         self.es_manager.sections = sections
@@ -130,29 +144,6 @@ class CustomSegment(SegmentMixin, Timestampable):
         export_content = self.s3_exporter.get_s3_export_content(s3_key, get_key=False).iter_chunks()
         return export_content
 
-    def get_es_manager(self, sections=None):
-        """
-        Get Elasticsearch manager based on segment type
-        :param sections:
-        :return:
-        """
-        if sections is None:
-            sections = self.SECTIONS
-        if self.segment_type == 0:
-            return VideoManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
-        else:
-            return ChannelManager(sections=sections, upsert_sections=(Sections.SEGMENTS,))
-
-    def get_serializer(self):
-        """
-        Get export serializer
-        :return:
-        """
-        if self.segment_type == 0:
-            return
-        else:
-            return CustomSegmentChannelExportSerializer
-
     def get_s3_key(self, *args, **kwargs):
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
         return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
@@ -166,6 +157,32 @@ class CustomSegment(SegmentMixin, Timestampable):
         if s3_key is None:
             s3_key = self.get_s3_key()
         self.s3_exporter.delete_obj(s3_key)
+
+    def get_extract_export_ids(self, s3_key=None):
+        """
+        Parse and extract Channel or video ids from csv export
+        :return:
+        """
+        if s3_key is None:
+            s3_key = self.get_s3_key()
+        export_content = self.s3_exporter._get_s3_object(s3_key, get_key=False)
+        url_index = None
+        for byte in export_content["Body"].iter_lines():
+            row = (byte.decode("utf-8")).split(",")
+            if url_index is None:
+                url_index = row.index("URL")
+                continue
+            item_id = self.parse_url(row[url_index], self.segment_type)
+            yield item_id
+
+    def parse_url(self, url, item_type="0"):
+        item_type = str(item_type)
+        config = {
+            "0": "/watch?v=",
+            "1": "/channel/",
+        }
+        item_id = url.split(config[item_type])[-1]
+        return item_id
 
 
 class CustomSegmentRelated(Model):

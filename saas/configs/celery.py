@@ -54,6 +54,13 @@ CELERY_BEAT_SCHEDULE = {
                      "CampaignOverPacing", "ESMonitoringEmailReport"],
         ),
     },
+    "daily_apex_notifications": {
+        "task": "email_reports.tasks.send_daily_email_reports",
+        "schedule": crontab(hour="13", minute="30"),
+        "kwargs": dict(
+            reports=["DailyApexCampaignEmailReport"],
+        ),
+    },
     "weekday-campaign-reports": {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
@@ -92,35 +99,39 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-channel-aggregations": {
         "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-keyword-aggregations": {
         "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-research-videos-defaults": {
         "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-research-keywords-defaults": {
         "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache_pricing_tool_filters": {
         "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
         "schedule": crontab(minute=0, hour='*/6'),
     },
+    "cache_global_trends_filters": {
+        "task": "cache.tasks.cache_global_trends_filters.cache_global_trends_filters",
+        "schedule": crontab(minute=0, hour='*/6'),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
-        "schedule": crontab(hour="*"),
+        "schedule": crontab(minute="*/10"),
     },
     "brand_safety_channel_discovery": {
         "task": "brand_safety.tasks.channel_discovery.channel_discovery_scheduler",
@@ -137,6 +148,18 @@ CELERY_BEAT_SCHEDULE = {
     "userprofile_clean_device_auth_tokens": {
         "task": "userprofile.tasks.clean_device_auth_tokens.clean_device_auth_tokens",
         "schedule": crontab(day_of_month="1", hour="1", minute="0"),
+    },
+    "audit_tool_check_in_vetting_items": {
+        "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items_task",
+        "schedule": crontab(minute="*/10"),
+    },
+    "audit_tool_check_vetting_completion": {
+        "task": "audit_tool.tasks.check_vetting_completion.check_vetting_completion_task",
+        "schedule": crontab(minute="*/10"),
+    },
+    "segment_update_statistics": {
+        "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
+        "schedule": crontab(minute="*/10"),
     }
 }
 
@@ -191,7 +214,7 @@ class TaskExpiration:
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
-
+    GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
 
 
 class TaskTimeout:
@@ -205,3 +228,4 @@ class TaskTimeout:
     BRAND_SAFETY_VIDEO_DISCOVERY = timedelta(minutes=30).total_seconds()
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()

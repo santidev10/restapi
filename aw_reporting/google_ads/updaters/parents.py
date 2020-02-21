@@ -45,7 +45,7 @@ class ParentUpdater(UpdateMixin):
             report = parent_performance_report(
                 client, dates=(min_date, max_date),
             )
-            ad_group_ids = {row_obj.AdGroupId for row_obj in report}
+            ad_group_ids = {int(row_obj.AdGroupId) for row_obj in report}
             generator = self._generate_stat_instances(ParentStatistic, ParentStatuses, report)
             ParentStatistic.objects.safe_bulk_create(generator)
 
@@ -53,7 +53,7 @@ class ParentUpdater(UpdateMixin):
 
     def _generate_stat_instances(self, model, statuses, report):
         for row_obj in report:
-            ad_group_id = row_obj.AdGroupId
+            ad_group_id = int(row_obj.AdGroupId)
             stats = {
                 "parent_status_id": statuses.index(row_obj.Criteria),
                 "date": row_obj.Date,
