@@ -27,6 +27,7 @@ class Command(BaseCommand):
                                          upsert_sections=(Sections.CUSTOM_CAPTIONS,))
             with open(file_name, "r") as f:
                 data = json.load(f)
+            vid_transcripts = {}
             videos = []
             for item in data:
                 try:
@@ -35,13 +36,25 @@ class Command(BaseCommand):
                         url = item["url"]
                         vid_id = url.split("=")[-1]
                         transcript = item["transcript"]
-                        video = video_manager.get([vid_id])
-                        if not video:
-                            continue
-                        populate_video_custom_captions(video, [transcript], ['en'], source="SQ")
-                        videos.append(video)
-                        AuditVideoTranscript.get_or_create(video_id=vid_id, language='en', transcript=transcript)
-                        print(f"Stored AuditVideoTranscript for Video with ID: {vid_id}.")
+                        vid_transcripts[vid_id] = transcript
                 except Exception:
                     continue
-            video_manager.upsert(videos)
+            vid_ids = [vid_id for vid_id in vid_transcripts]
+            batch_size = 1000
+            batch_index = 0
+
+            while batch_index < len(vid_ids):
+                logger.error(f"Retrieving videos {batch_index} to {batch_index+batch_size}.")
+                videos_batch = video_manager.get(vid_ids[batch_index:batch_index+batch_size], skip_none=True)
+                for video in videos_batch:
+                    try:
+                        video_transcript = vid_transcripts[video.main.id]
+                        populate_video_custom_captions(video, [video_transcript], ['en'], source="Watson")
+                        AuditVideoTranscript.get_or_create(video_id=vid_id, language='en', transcript=video_transcript)
+                        logger.error(f"Stored AuditVideoTranscript for Video with ID: {vid_id}.")
+                    except Exception:
+                        continue
+                logger.error(f"Upserting {len(videos_batch)} videos.")
+                video_manager.upsert(videos_batch)
+                logger.error(f"Upserted {len(videos_batch)} videos.")
+                batch_index += batch_size
