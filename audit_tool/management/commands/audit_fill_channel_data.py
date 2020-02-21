@@ -48,8 +48,9 @@ class Command(BaseCommand):
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
-            num = 200
+            num = 400
             start = self.thread_id * num
+            total_to_go = pending_channels.count()
             for channel in pending_channels.order_by("-id")[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
@@ -59,7 +60,10 @@ class Command(BaseCommand):
             if len(channels) > 0:
                 self.do_channel_metadata_api_call(channels)
             logger.info("Done {} channels".format(count))
-            raise Exception("Done {} channels".format(count))
+            total_pending = total_to_go - count
+            if total_pending < 0:
+                total_pending = 0
+            raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
 
     def fill_recent_video_timestamp(self):
         channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_view_count__isnull=True).order_by("-id")
