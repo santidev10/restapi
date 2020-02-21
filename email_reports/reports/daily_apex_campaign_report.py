@@ -29,8 +29,8 @@ CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code", "accou
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
                 "video_views")
 
-CSV_HEADER = ("Date", "CID Name/Number", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign",
-              "Creative Name", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
+CSV_HEADER = ("Date", "CID Name/Number", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
+              "Creative", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
               "Midpoint Views (Video)", "Complete Views (Video)")
 
 DATE_FORMAT = "%m/%d/%y"
@@ -124,6 +124,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 stats.campaign__name,
                 None,
                 None,
+                None,
                 self.__get_revenue(stats, "campaign__"),
                 *self._get_stats_metrics(stats)
             ])
@@ -150,6 +151,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 None,
                 stats.ad_group__campaign__id,
                 stats.ad_group__campaign__name,
+                stats.creative_id,
                 creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
                 YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),
                 self.__get_revenue(stats, "ad_group__campaign__"),
