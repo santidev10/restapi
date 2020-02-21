@@ -51,7 +51,7 @@ class Command(BaseCommand):
             num = 1000
             start = self.thread_id * num
             total_to_go = pending_channels.count()
-            for channel in pending_channels.order_by("-id")[start:start+num]:
+            for channel in pending_channels[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
                 if len(channels) == 50:
