@@ -149,18 +149,21 @@ class AuditExportApiView(APIView):
             self.cache['language'] = {}
         if obj_id not in self.cache['language']:
             self.cache['language'][obj_id] = AuditLanguage.objects.get(id=obj_id).language
+        return self.cache['language'][obj_id]
 
     def get_category(self, obj_id):
         if 'category' not in self.cache:
             self.cache['category'] = {}
         if obj_id not in self.cache['category']:
             self.cache['category'][obj_id] = AuditCategory.objects.get(id=obj_id).category_display_iab
+        return self.cache['category'][obj_id]
 
     def get_country(self, obj_id):
         if 'country' not in self.cache:
             self.cache['country'] = {}
         if obj_id not in self.cache['country']:
             self.cache['country'][obj_id] = AuditCountry.objects.get(id=obj_id).country
+        return self.cache['country'][obj_id]
 
     def export_videos(self, audit, audit_id=None, clean=None, export=None):
         clean_string = 'none'
