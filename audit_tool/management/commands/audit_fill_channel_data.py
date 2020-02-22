@@ -124,7 +124,7 @@ class Command(BaseCommand):
                 try:
                     if i['brandingSettings']['channel']['defaultLanguage']:
                         if i['brandingSettings']['channel']['defaultLanguage'] not in self.cache['languages']:
-                            self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']], _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                            self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']] = AuditLanguage.from_string(language=i['brandingSettings']['channel']['defaultLanguage'])
                         db_channel_meta.default_language = self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']]
                 except Exception as e:
                     pass
