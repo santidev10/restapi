@@ -463,7 +463,7 @@ class Command(BaseCommand):
             l = fasttext_lang(data)
             if l:
                 if l not in self.db_languages:
-                    self.db_languages[l], _ = AuditLanguage.from_string(l)
+                    self.db_languages[l] = AuditLanguage.from_string(l)
                 return self.db_languages[l]
         except Exception as e:
             pass
