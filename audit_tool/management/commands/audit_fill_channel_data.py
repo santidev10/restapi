@@ -88,7 +88,7 @@ class Command(BaseCommand):
             str_long = remove_mentions_hashes_urls(str_long).lower()
             l = fasttext_lang(str_long)
             if l not in self.cache['languages']:
-                self.cache['languages'][l], _ = AuditLanguage.objects.get_or_create(language=l)
+                self.cache['languages'][l] = AuditLanguage.from_string(l)
             channel.language = self.cache['languages'][l]
             channel.save(update_fields=['language'])
         except Exception as e:
