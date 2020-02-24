@@ -434,6 +434,7 @@ class AuditVideoProcessor(models.Model):
         unique_together = ("audit", "video")
         index_together = [
             ("audit", "processed"),
+            ("audit", "channel"),
         ]
 
 class AuditChannelProcessor(models.Model):
