@@ -224,7 +224,7 @@ class AuditProcessor(models.Model):
             'include_unknown_likes': self.params.get('include_unknown_likes'),
             'include_unknown_views': self.params.get('include_unknown_views'),
         }
-        d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
+        #d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
         files = self.params.get('files')
         if files:
             d['source_file'] = files.get('source')
