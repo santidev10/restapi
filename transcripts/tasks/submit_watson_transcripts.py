@@ -15,13 +15,13 @@ from audit_tool.models import APIScriptTracker
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 from es_components.constants import Sections
-from utils.lang import replace_apostrophes
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from django.conf import settings
 from audit_tool.models import AuditVideoTranscript
+from audit_tool.models import get_hash_name
 
 from transcripts.api.urls.names import TranscriptsPathName
 from saas.urls.namespaces import Namespace
@@ -147,7 +147,8 @@ def submit_watson_transcripts():
                     for watson_transcript in videos_watson_transcripts:
                         watson_transcript.submitted = timezone.now()
                         watson_transcript.job_id = job_id
-                        watson_transcript.save(update_fields=['submitted', 'job_id'])
+                        watson_transcript.job_id_hash = get_hash_name(job_id)
+                        watson_transcript.save(update_fields=['submitted', 'job_id', 'job_id_hash'])
                     videos_watson_transcripts = []
                     if not sandbox_mode:
                         for video in videos_to_upsert:

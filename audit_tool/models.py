@@ -415,10 +415,6 @@ class AuditVideoTranscript(models.Model):
             t.save(update_fields=['transcript'])
         return t
 
-    def save(self, *args, **kwargs):
-        if 'update_fields' in kwargs and 'job_id' in kwargs['update_fields']:
-            self.job_id_hash = get_hash_name(self.job_id)
-        return super().save(*args, **kwargs)
 
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)
