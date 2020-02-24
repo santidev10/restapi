@@ -80,6 +80,7 @@ def submit_watson_transcripts():
                     unlock(LOCK_NAME)
                     lock(lock_name=LOCK_NAME, max_retries=0, expire=timeout)
                     api_tracker.cursor = 0
+                    api_tracker.save()
                     logger.error(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
                     return
                 logger.error(f"len(videos_request_batch): {len(videos_request_batch)}")
@@ -121,20 +122,20 @@ def submit_watson_transcripts():
                     api_request = watson_api_url + api_endpoint
                     sandbox = sandbox_mode
                     url_list = [{"url": "https://www.youtube.com/watch?v="+vid_id} for vid_id in videos_request_batch]
+                    callback_url = settings.HOST + \
+                                   reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS]) + \
+                                   f"?authorization={settings.TRANSCRIPTS_API_TOKEN}"
                     request_body = {
                         "sandbox": sandbox,
-                        "url_list": url_list
+                        "url_list": url_list,
+                        "callback_url": callback_url
                     }
                     headers = {
                         "Content-Type": "application/json",
                         "x-api-key": API_KEY
                     }
-                    callback_url = settings.HOST + \
-                                   reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS]) + \
-                                   f"?authorization={settings.TRANSCRIPTS_API_TOKEN}"
                     logger.error(f"Sending Watson Transcript /submitjob API request for {batch_size} videos.")
-                    response = requests.post(api_request, data=json.dumps(request_body), headers=headers,
-                                             callback_url=callback_url)
+                    response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
                     api_tracker.save()
