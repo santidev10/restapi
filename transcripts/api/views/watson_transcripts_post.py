@@ -5,6 +5,7 @@ from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_403_FORBIDDEN
 
 from es_components.managers.video import VideoManager
 from es_components.constants import Sections
@@ -25,7 +26,10 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
         # with the transcript and language identified by Watson, if provided
         query_params = request.query_params
         if query_params.get("authorization") != settings.TRANSCRIPTS_API_TOKEN:
-            raise ValidationError("Invalid authorization token for POST /transcripts.")
+            return Response(
+                status=HTTP_403_FORBIDDEN,
+                data="Invalid authorization token for POST /transcripts."
+            )
         transcripts = request.data
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA),
                                upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.GENERAL_DATA))
@@ -57,5 +61,5 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
             raise ValidationError(e)
         return Response(
             status=HTTP_200_OK,
-            data={f"Stored transcripts for {len(transcripts_ids)} videos: {', '.join(transcripts_ids)}"}
+            data=f"Stored transcripts for {len(transcripts_ids)} videos: {', '.join(transcripts_ids)}"
         )
