@@ -11,6 +11,7 @@ from datetime import timedelta
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from utils.permissions import user_has_permission
+from utils.permissions import or_permission_classes
 from utils.views import get_object
 from utils.views import validate_fields
 from django.db.models import Q
@@ -22,7 +23,10 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                        "is_monetizable", "language", "vetting_id", "suitable", "language")
 
     permission_classes = (
-            user_has_permission("userprofile.vet_audit") | user_has_permission("userprofile.vet_audit_admin")
+        or_permission_classes(
+            user_has_permission("userprofile.vet_audit"),
+            user_has_permission("userprofile.vet_audit_admin")
+        )
     )
 
     def get(self, request, *args, **kwargs):
