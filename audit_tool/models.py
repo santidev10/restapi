@@ -224,12 +224,7 @@ class AuditProcessor(models.Model):
             'include_unknown_likes': self.params.get('include_unknown_likes'),
             'include_unknown_views': self.params.get('include_unknown_views'),
         }
-        # if self.completed:
-        #     try:
-        #         c = d['data']['count']
-        #         d['name'] = "{n}: [{c}]" . format(n=d['name'], c="{:,}".format(c))
-        #     except Exception as e:
-        #         pass
+        #d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
         files = self.params.get('files')
         if files:
             d['source_file'] = files.get('source')
@@ -439,6 +434,7 @@ class AuditVideoProcessor(models.Model):
         unique_together = ("audit", "video")
         index_together = [
             ("audit", "processed"),
+            ("audit", "channel"),
         ]
 
 class AuditChannelProcessor(models.Model):
