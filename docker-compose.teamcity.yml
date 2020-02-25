@@ -6,6 +6,7 @@ services:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
     volumes:
       - code:/app
+      - ./dist:/app/dist:rw
 
 volumes:
   code: {}
