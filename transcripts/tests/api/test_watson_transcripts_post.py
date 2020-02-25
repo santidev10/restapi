@@ -1,7 +1,6 @@
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from channel.api.urls.names import ChannelPathName
 from transcripts.api.urls.names import TranscriptsPathName
 from saas.urls.namespaces import Namespace
 from es_components.constants import Sections
@@ -14,6 +13,7 @@ from audit_tool.models import AuditLanguage
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+
 
 class WatsonTranscriptsPostTestCase(ExtendedAPITestCase, ESTestCase):
     url = reverse(TranscriptsPathName.WATSON_TRANSCRIPTS, [Namespace.TRANSCRIPTS])
