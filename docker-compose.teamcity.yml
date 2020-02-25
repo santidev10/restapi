@@ -5,4 +5,7 @@ services:
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
     volumes:
-      - .:/app
+      - code:/app
+
+volumes:
+  code: {}
