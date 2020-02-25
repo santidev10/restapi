@@ -1,5 +1,3 @@
-from django.utils import timezone
-
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
@@ -9,16 +7,13 @@ from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
-from audit_tool.models import AuditChannelVet
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
 from brand_safety.languages import LANG_CODES
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
-from es_components.models import Channel
 from es_components.constants import Sections
-
 
 
 class AuditVetBaseSerializer(Serializer):
@@ -38,6 +33,12 @@ class AuditVetBaseSerializer(Serializer):
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
     language = SerializerMethodField()
+
+    checked_out_at = DateTimeField(required=False, allow_null=True)
+    suitable = BooleanField(required=False)
+    processed = DateTimeField(required=False)
+    processed_by_user_id = IntegerField(required=False)
+    language_code = CharField(required=False) # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
         try:
@@ -66,11 +67,11 @@ class AuditVetBaseSerializer(Serializer):
         :param doc: es_components.model
         :return: str
         """
-        if getattr(doc.task_us_data, "language", None) is None:
+        if getattr(doc.task_us_data, "lang_code", None) is None:
             language = getattr(doc.general_data, self.general_data_language_field, None)
             language = LANG_CODES.get(language)
         else:
-            language = getattr(doc.task_us_data, "language", None)
+            language = getattr(doc.task_us_data, "lang_code", None)
         return language
 
     def get_segment_title(self, *_, **__):
@@ -193,7 +194,7 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
         task_us_data["brand_safety"] = blacklist_categories
-        task_us_data["language"] = self.validated_data["language_code"]
+        task_us_data["lang_code"] = self.validated_data["language_code"]
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])

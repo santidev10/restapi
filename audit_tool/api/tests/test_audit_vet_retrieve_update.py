@@ -112,6 +112,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/watch?v={video_audit.video_id}/")
         self.assertEqual(data["vetting_id"], new_video_vet.id)
+        self.assertEqual(data["suitable"], new_video_vet.clean)
         self.assertTrue(before < data["checked_out_at"])
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
@@ -136,7 +137,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         historical_video_vet_2 = AuditChannelVet.objects.create(
             audit=audit_2, channel=channel_audit, processed=before, clean=True
         )
-        new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit)
+        new_channel_vet = AuditChannelVet.objects.create(audit=audit_3, channel=channel_audit, clean=True)
 
         self.assertEqual(new_channel_vet.processed, None)
         self.assertEqual(new_channel_vet.checked_out_at, None)
@@ -165,6 +166,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(data["segment_title"], segment_3.title)
         self.assertEqual(data["url"], f"https://www.youtube.com/channel/{channel_audit.channel_id}/")
         self.assertEqual(data["vetting_id"], new_channel_vet.id)
+        self.assertEqual(data["suitable"], new_channel_vet.clean)
         self.assertTrue(before < data["checked_out_at"])
 
         vetting_history = sorted(data["vetting_history"], key=lambda item: item["suitable"])
@@ -366,7 +368,6 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             "skipped": 1
         }
         response = self.client.patch(self._get_url(kwargs=dict(pk=audit.id)), data=json.dumps(payload), content_type="application/json")
-        print(response.data)
         vetting_item.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(vetting_item.clean, False)
@@ -404,26 +405,28 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(self.mock_get_document.call_count, 0)
 
-    def test_reject_video_vetting_completed(self):
-        """ Reject getting next item for completed lists """
+    def test_handle_video_vetting_completed(self):
+        """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
         before = timezone.now()
         audit, segment = self._create_segment_audit(user, audit_params=dict(completed=before), segment_params=dict(segment_type=0, title="test_title"))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
+            mock_retrieve.return_value = None
             response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)
 
-    def test_reject_channel_vetting_completed(self):
-        """ Reject getting next item for completed lists """
+    def test_handle_channel_vetting_completed(self):
+        """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
         before = timezone.now()
         audit, segment = self._create_segment_audit(user, audit_params=dict(completed=before), segment_params=dict(segment_type=1, title="test_title"))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
+            mock_retrieve.return_value = None
             response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)

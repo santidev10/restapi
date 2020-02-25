@@ -6,6 +6,7 @@ import logging
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db.models import BigIntegerField
+from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import IntegerField
 from django.db.models import ForeignKey
@@ -108,6 +109,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
+    is_vetting_complete = BooleanField(default=False, db_index=True)
 
     @property
     def data_type(self):

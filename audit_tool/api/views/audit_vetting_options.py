@@ -7,7 +7,7 @@ from utils.permissions import user_has_permission
 
 class AuditVettingOptionsAPIView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        user_has_permission("userprofile.vet_audit") | user_has_permission("userprofile.vet_audit_admin")
     )
 
     def get(self, request, *args, **kwargs):

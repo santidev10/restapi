@@ -318,7 +318,6 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_3.id})
 
     def test_vetting_complete(self):
-        """ CustomSegment serialization should have a is_vetting_complete field for segments with vetting enabled """
         Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
@@ -326,12 +325,12 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         test_user_1 = self._create_user()
         test_user_2 = self._create_user()
         test_user_3 = self._create_user()
-        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=0, title="test1", list_type=0, audit_id=next(int_iterator)))
+        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=0, title="test1", list_type=0, audit_id=next(int_iterator), is_vetting_complete=True))
         seg_2, _ = self._create_segment(dict(owner=test_user_2, segment_type=0, title="test2", list_type=0, audit_id=next(int_iterator)))
         seg_3, _ = self._create_segment(dict(owner=test_user_3, segment_type=0, title="test3", list_type=0))
 
-        AuditProcessor.objects.create(id=seg_1.audit_id, completed=timezone.now())
-        AuditProcessor.objects.create(id=seg_2.audit_id, completed=None)
+        AuditProcessor.objects.create(id=seg_1.audit_id)
+        AuditProcessor.objects.create(id=seg_2.audit_id)
 
         response = self.client.get(self._get_url("video"))
         data = response.data
@@ -340,4 +339,4 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(data["items_count"], 3)
         self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
         self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
-        self.assertEqual(data["items"][2].get("is_vetting_complete"), None)
+        self.assertEqual(data["items"][2].get("is_vetting_complete"), False)

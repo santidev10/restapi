@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.status import HTTP_403_FORBIDDEN
 from audit_tool.api.serializers.audit_processor_serializer import AuditProcessorSerializer
 from audit_tool.models import AuditProcessor
 import csv
@@ -19,7 +20,7 @@ from audit_tool.tasks.generate_audit_items import generate_audit_items
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        user_has_permission("userprofile.view_audit")
     )
     LANGUAGES_REVERSE = {}
 
@@ -262,6 +263,8 @@ class AuditSaveApiView(APIView):
         """
         data = request.data
         segment_id = None
+        if not request.user.has_perm("userprofile.vet_audit_admin"):
+            raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
         try:
             segment_id = data["segment_id"]
             segment = CustomSegment.objects.get(id=segment_id)

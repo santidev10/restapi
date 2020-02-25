@@ -15,12 +15,14 @@ from utils.views import get_object
 from utils.views import validate_fields
 from django.db.models import Q
 
+
 class AuditVetRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
     REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
                        "is_monetizable", "language", "vetting_id", "suitable", "language")
+
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+            user_has_permission("userprofile.vet_audit") | user_has_permission("userprofile.vet_audit_admin")
     )
 
     def get(self, request, *args, **kwargs):
@@ -35,10 +37,19 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         if audit.completed is None:
             raise ValidationError("Vetting for this list is not ready, audit still running.")
         try:
-            data = self._retrieve_next_vetting_item(segment, audit)
+            if segment.is_vetting_complete is True:
+                raise VettingCompleteException
+            else:
+                data = self._retrieve_next_vetting_item(segment, audit)
+        except VettingCompleteException:
+            data = {
+                "message": "Vetting for this list is complete. Please move on to the next list."
+            }
         except MissingDocumentException:
-            data = 'The item you requested has been deleted. ' \
+            data = {
+                "message": 'The item you requested has been deleted. ' \
                    'Please save the item as "skipped" with option: "Doesn\'t Exist'
+            }
         return Response(status=HTTP_200_OK, data=data)
 
     def patch(self, request, *args, **kwargs):
@@ -109,6 +120,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             if response:
                 data["title"] = response.general_data.title
                 data['data_type'] = segment.data_field
+            data["suitable"] = next_item.clean
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
             try:
@@ -128,8 +140,8 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             Should set clean to False, skipped to False
         If skipped_type is 1, then skipped since unavailable in region
             Should set clean to False, skipped to True
-        :param skipped_type:
-        :param vetting_item:
+        :param skipped_type: int
+        :param vetting_item: audit_tool AuditChannelVet, AuditVideoVet
         :return:
         """
         vetting_item.clean = False
@@ -147,8 +159,8 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         Handle retrieving Elasticsearch document
         In some cases an item was avaiable during list creation was deleted before vetting could take place.
         Respond with prompt to save item as skipped
-        :param es_manager:
-        :param item_id:
+        :param es_manager: es_components ChannelManager, VideoManager
+        :param item_id: str
         :return:
         """
         try:
@@ -159,4 +171,8 @@ class AuditVetRetrieveUpdateAPIView(APIView):
 
 
 class MissingDocumentException(Exception):
+    pass
+
+
+class VettingCompleteException(Exception):
     pass

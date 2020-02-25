@@ -1,13 +1,7 @@
 from django.utils import timezone
-
-from rest_framework.serializers import BooleanField
-from rest_framework.serializers import CharField
-from rest_framework.serializers import DateTimeField
-from rest_framework.serializers import IntegerField
 from rest_framework.serializers import SerializerMethodField
 
 from audit_tool.models import AuditVideoVet
-from audit_tool.models import AuditChannel
 from audit_tool.models import get_hash_name
 from es_components.models import Channel
 from es_components.models import Video
@@ -27,11 +21,6 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     vetting_history = SerializerMethodField()
     segment_title = SerializerMethodField()
     url = SerializerMethodField()
-    checked_out_at = DateTimeField(required=False, allow_null=True)
-    suitable = BooleanField(required=False)
-    processed = DateTimeField(required=False)
-    processed_by_user_id = IntegerField(required=False)
-    language_code = CharField(required=False) # Field for saving vetting item
 
     def get_url(self, doc):
         url = f"https://www.youtube.com/watch?v={doc.main.id}/"

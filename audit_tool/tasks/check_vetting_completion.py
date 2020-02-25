@@ -4,6 +4,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditVideoVet
 from saas import celery_app
+from segment.models import CustomSegment
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
@@ -23,8 +24,12 @@ def check_vetting_completion_task():
 
 
 def check_vetting_completion():
-    incomplete = AuditProcessor.objects.filter(completed=None, source=1)
-    for audit in incomplete:
+    incomplete_segments = CustomSegment.objects.filter(audit_id__isnull=False, is_vetting_complete=False)
+    incomplete_audits = AuditProcessor.objects.filter(id__in=incomplete_segments.values_list("audit_id", flat=True))
+
+    incomplete = []
+    complete = []
+    for audit in incomplete_audits:
         if audit.audit_type == 1:
             vetting_model = AuditVideoVet
         elif audit.audit_type == 2:
@@ -35,7 +40,10 @@ def check_vetting_completion():
         still_processing = vetting_model.objects.filter(audit=audit, processed=None).exists()
         # Must still check to set audits completed_at to None if admin flags vetting items
         if still_processing:
-            audit.completed = None
+            incomplete.append(audit.id)
         else:
+            complete.append(audit.id)
             audit.completed = timezone.now()
-        audit.save()
+            audit.save()
+    CustomSegment.objects.filter(audit_id__in=complete).update(is_vetting_complete=True)
+    CustomSegment.objects.filter(audit_id__in=incomplete).update(is_vetting_complete=False)
