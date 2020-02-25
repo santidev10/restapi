@@ -6,3 +6,4 @@ Dockerfile*
 docker-compose*
 es-components/.git
 media
+dist

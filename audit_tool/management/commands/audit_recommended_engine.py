@@ -51,7 +51,7 @@ class Command(BaseCommand):
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
-    DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
+    DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
@@ -80,8 +80,14 @@ class Command(BaseCommand):
                 raise Exception("no audits to process at present")
             self.process_audit()
 
+    def get_lang_by_id(self, l_id):
+        if l_id not in self.db_language_ids:
+            self.db_language_ids[l_id] = AuditLanguage.objects.get(id=l_id).language.lower()
+        return self.db_language_ids[l_id]
+
     def load_audit_params(self):
         self.db_languages = {}
+        self.db_language_ids = {}
         self.language = self.audit.params.get('language')
         self.location = self.audit.params.get('location')
         self.location_radius = self.audit.params.get('location_radius')
@@ -292,11 +298,12 @@ class Command(BaseCommand):
                     v.clean = self.check_video_matches_minimums(db_video_meta)
                     v.save(update_fields=update_fields)
         avp.processed = timezone.now()
-        avp.save(update_fields=['processed'])
+        avp.channel = channel
+        avp.save(update_fields=['processed', 'channel'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if not db_video_meta.language or db_video_meta.language.language not in self.language:
+            if not db_video_meta.language or self.get_lang_by_id(db_video_meta.language_id) not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
@@ -347,7 +354,7 @@ class Command(BaseCommand):
                 return False, hits
         if self.exclusion_list:
             try:
-                language = db_video_meta.language.language.lower()
+                language = self.get_lang_by_id(db_video_meta.language_id)
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
