@@ -297,9 +297,9 @@ class Command(BaseCommand):
                         update_fields.append("video_source")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
                     v.save(update_fields=update_fields)
-            avp.processed = timezone.now()
-            avp.channel = channel
-            avp.save(update_fields=['processed', 'channel'])
+        avp.processed = timezone.now()
+        avp.channel = channel
+        avp.save(update_fields=['processed', 'channel'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
