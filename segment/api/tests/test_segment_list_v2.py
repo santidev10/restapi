@@ -1,11 +1,11 @@
-import json
-
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.http import QueryDict
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 import uuid
 
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.tests.test_brand_safety_list import GOOGLE_ADS_STATISTICS
 from segment.api.tests.test_brand_safety_list import STATISTICS_FIELDS_CHANNEL
@@ -316,3 +316,28 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
         self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_3.id})
+
+    def test_vetting_complete(self):
+        """ CustomSegment serialization should have a is_vetting_complete field for segments with vetting enabled """
+        Permissions.sync_groups()
+        vetting_user = self.create_test_user()
+        vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+
+        test_user_1 = self._create_user()
+        test_user_2 = self._create_user()
+        test_user_3 = self._create_user()
+        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=0, title="test1", list_type=0, audit_id=next(int_iterator)))
+        seg_2, _ = self._create_segment(dict(owner=test_user_2, segment_type=0, title="test2", list_type=0, audit_id=next(int_iterator)))
+        seg_3, _ = self._create_segment(dict(owner=test_user_3, segment_type=0, title="test3", list_type=0))
+
+        AuditProcessor.objects.create(id=seg_1.audit_id, completed=timezone.now())
+        AuditProcessor.objects.create(id=seg_2.audit_id, completed=None)
+
+        response = self.client.get(self._get_url("video"))
+        data = response.data
+        data["items"].sort(key=lambda x: x["id"])
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(data["items_count"], 3)
+        self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
+        self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
+        self.assertEqual(data["items"][2].get("is_vetting_complete"), None)

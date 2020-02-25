@@ -2,10 +2,11 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import SerializerMethodField
 import uuid
 
+from audit_tool.models import AuditProcessor
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
-
 from segment.models import CustomSegment
 from userprofile.models import UserProfile
 
@@ -17,6 +18,7 @@ class CustomSegmentSerializer(ModelSerializer):
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
+    is_vetting_complete = SerializerMethodField()
 
     class Meta:
         model = CustomSegment
@@ -31,7 +33,22 @@ class CustomSegmentSerializer(ModelSerializer):
             "statistics",
             "title",
             "title_hash",
+            "is_vetting_complete"
         )
+
+    def get_is_vetting_complete(self, instance):
+        """
+        Check if segment vetting is complete
+        :param instance: CustomSegment obj
+        :return:
+        """
+        is_vetting_complete = None
+        try:
+            audit = AuditProcessor.objects.get(id=instance.audit_id)
+            is_vetting_complete = bool(audit.completed)
+        except AuditProcessor.DoesNotExist:
+            pass
+        return is_vetting_complete
 
     def create(self, validated_data):
         validated_data.update({
@@ -103,3 +120,4 @@ class CustomSegmentSerializer(ModelSerializer):
         }
         to_id = config[item_type][value]
         return to_id
+
