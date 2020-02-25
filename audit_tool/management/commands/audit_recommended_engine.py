@@ -262,44 +262,44 @@ class Command(BaseCommand):
             raise Exception("problem with API response {}".format(str(data)))
         for i in data['items']:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
-        db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
-        db_video_meta.name = i['snippet']['title']
-        db_video_meta.description = i['snippet']['description']
-        try:
-            db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
-        except Exception as e:
-            print("no video publish date")
-            pass
-        if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
-            self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
-            db_video.processed_time = timezone.now()
-            db_video.save(update_fields=['processed_time'])
-        channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-        db_video_meta.save()
-        if db_video.channel != channel:
-            db_video.channel = channel
-            db_video.save(update_fields=['channel'])
-        db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
-        if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
-            db_channel_meta.name = i['snippet']['channelTitle']
-            db_channel_meta.save(update_fields=['name'])
-        is_clean, hits = self.check_video_is_clean(db_video_meta)
-        if is_clean:
-            if self.check_video_matches_criteria(db_video_meta, db_video):
-                v, _ = AuditVideoProcessor.objects.get_or_create(
-                    video=db_video,
-                    audit=self.audit
-                )
-                update_fields=['word_hits', 'clean']
-                v.word_hits = hits
-                if not v.video_source:
-                    v.video_source = video
-                    update_fields.append("video_source")
-                v.clean = self.check_video_matches_minimums(db_video_meta)
-                v.save(update_fields=update_fields)
-        avp.processed = timezone.now()
-        avp.channel = channel
-        avp.save(update_fields=['processed', 'channel'])
+            db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
+            db_video_meta.name = i['snippet']['title']
+            db_video_meta.description = i['snippet']['description']
+            try:
+                db_video_meta.publish_date = parse(i['snippet']['publishedAt'])
+            except Exception as e:
+                print("no video publish date")
+                pass
+            if not db_video.processed_time or db_video.processed_time < (timezone.now() - timedelta(days=30)):
+                self.do_video_metadata_api_call(db_video_meta, db_video.video_id)
+                db_video.processed_time = timezone.now()
+                db_video.save(update_fields=['processed_time'])
+            channel = AuditChannel.get_or_create(i['snippet']['channelId'])
+            db_video_meta.save()
+            if db_video.channel != channel:
+                db_video.channel = channel
+                db_video.save(update_fields=['channel'])
+            db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
+            if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
+                db_channel_meta.name = i['snippet']['channelTitle']
+                db_channel_meta.save(update_fields=['name'])
+            is_clean, hits = self.check_video_is_clean(db_video_meta)
+            if is_clean:
+                if self.check_video_matches_criteria(db_video_meta, db_video):
+                    v, _ = AuditVideoProcessor.objects.get_or_create(
+                        video=db_video,
+                        audit=self.audit
+                    )
+                    update_fields=['word_hits', 'clean']
+                    v.word_hits = hits
+                    if not v.video_source:
+                        v.video_source = video
+                        update_fields.append("video_source")
+                    v.clean = self.check_video_matches_minimums(db_video_meta)
+                    v.save(update_fields=update_fields)
+            avp.processed = timezone.now()
+            avp.channel = channel
+            avp.save(update_fields=['processed', 'channel'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
