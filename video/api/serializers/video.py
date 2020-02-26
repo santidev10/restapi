@@ -63,6 +63,8 @@ class VideoSerializer(ESDictSerializer):
                 if item.language_code == vid_lang_code:
                     text = item.text
                     break
+            if not text:
+                text = video.custom_captions.items[0].text
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text)
         return transcript
 
