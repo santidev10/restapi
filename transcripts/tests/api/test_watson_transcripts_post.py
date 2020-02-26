@@ -40,6 +40,10 @@ class WatsonTranscriptsPostTestCase(ExtendedAPITestCase, ESTestCase):
             },
             "main": {
                 "id": self.vid_id_2
+            },
+            "general_data": {
+                "language": "Spanish",
+                "lang_code": "es"
             }
         })
         VideoManager(sections=sections).upsert([video_1, video_2])
