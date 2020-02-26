@@ -25,7 +25,7 @@ from audit_tool.models import get_hash_name
 
 from transcripts.api.urls.names import TranscriptsPathName
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 

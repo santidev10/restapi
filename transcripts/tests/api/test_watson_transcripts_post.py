@@ -12,7 +12,7 @@ from es_components.tests.utils import ESTestCase
 from audit_tool.models import AuditVideoTranscript
 from audit_tool.models import AuditLanguage
 from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
 
 
