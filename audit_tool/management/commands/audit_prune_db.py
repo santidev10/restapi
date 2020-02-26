@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.days = 90
         with PidFile(piddir='.', pidname='audit_prune_db.pid') as p:
-            old_audits = AuditProcessor.objects.filter(completed__lt=timezone.now()-timedelta(days=self.days))
+            old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now()-timedelta(days=self.days))
             count = 0
             for audit in old_audits:
                 print("Deleting Audit {}".format(audit.id))
@@ -28,4 +28,3 @@ class Command(BaseCommand):
                 count+=1
             print("Deleted {} Audits.".format(count))
 
-            
