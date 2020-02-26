@@ -1,10 +1,10 @@
+from datetime import datetime
 from datetime import timedelta
 from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.utils import timezone
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
@@ -22,6 +22,7 @@ from email_reports.tasks import send_daily_email_reports
 from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
 from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
 from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.utittests.patch_now import patch_now
 from userprofile.constants import UserSettingsKey
 
 TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES = ["test@test.test", "test2@test.test"]
@@ -61,7 +62,9 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
         })
         user.save()
-        today = timezone.now().date()
+
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
         account = Account.objects.create(id="1", name="account_1", currency_code="USD")
 
@@ -84,7 +87,8 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
 
-        send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
@@ -115,14 +119,16 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         })
         apex_user.save()
 
-        today = timezone.now().date()
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
 
         campaign = self.create_campaign(account, today)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, f"Daily Campaign Report for {yesterday}")
@@ -149,12 +155,14 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         })
         apex_user.save()
 
-        today = timezone.now().date()
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
 
         campaign = self.create_campaign(account, today)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
         self.assertEqual(len(mail.outbox), 0)
