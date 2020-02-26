@@ -9,8 +9,8 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
 from audit_tool.tasks.check_in_vetting_items import check_in_vetting_items
 from audit_tool.tasks.check_in_vetting_items import CHECKOUT_THRESHOLD
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 class CheckInVettingItemsTaskTestCase(ExtendedAPITestCase):

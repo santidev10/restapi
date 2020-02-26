@@ -12,7 +12,7 @@ from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AdGroup
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdCreationListAPITestCase(ExtendedAPITestCase):

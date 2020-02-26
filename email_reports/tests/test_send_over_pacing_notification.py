@@ -14,7 +14,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from email_reports.tasks import send_daily_email_reports
 from utils.datetime import now_in_default_tz
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class SendDailyEmailsTestCase(APITestCase):

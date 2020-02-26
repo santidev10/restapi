@@ -17,8 +17,8 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from utils.datetime import now_in_default_tz
-from utils.utittests.patch_now import patch_now
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.patch_now import patch_now
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportPlacementsTestCase(ExtendedAPITestCase):

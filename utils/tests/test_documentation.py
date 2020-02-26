@@ -4,9 +4,9 @@ from saas.urls.namespaces import Namespace
 
 from utils.documentation import PathName
 from utils.documentation import schema_view
-from utils.utittests.generic_test import generic_test
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.generic_test import generic_test
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 from django.test import RequestFactory
 

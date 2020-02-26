@@ -3,11 +3,15 @@ from rest_framework.views import APIView
 
 from audit_tool.utils.audit_utils import AuditUtils
 from utils.permissions import user_has_permission
+from utils.permissions import or_permission_classes
 
 
 class AuditVettingOptionsAPIView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit"),
+        or_permission_classes(
+            user_has_permission("userprofile.vet_audit"),
+            user_has_permission("userprofile.vet_audit_admin")
+        ),
     )
 
     def get(self, request, *args, **kwargs):

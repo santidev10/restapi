@@ -8,8 +8,8 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserStatuses
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdminUpdateUserTestCase(ExtendedAPITestCase):

@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 CUSTOM_AUTH_FLAGS = {
     "test.user@testuser.com": {

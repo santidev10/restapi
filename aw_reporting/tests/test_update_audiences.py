@@ -9,8 +9,8 @@ from unittest.mock import patch
 from aw_reporting.models import Audience
 from aw_reporting.google_ads.updaters.audiences import update_audiences
 from aw_reporting.google_ads.updaters.audiences import AudienceAWLink
-from utils.utittests.generic_test import generic_test
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.generic_test import generic_test
+from utils.unittests.int_iterator import int_iterator
 
 
 class UpdateAudiencesTestCase(TestCase):

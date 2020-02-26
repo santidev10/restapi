@@ -12,8 +12,8 @@ from aw_reporting.models import Campaign, AdGroup, AdGroupStatistic, \
     CampaignHourlyStatistic, YTChannelStatistic, YTVideoStatistic
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.generic_test import generic_test
-from utils.utittests.patch_now import patch_now
+from utils.unittests.generic_test import generic_test
+from utils.unittests.patch_now import patch_now
 
 
 class TrackChartAPITestCase(AwReportingAPITestCase):

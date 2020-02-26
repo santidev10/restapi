@@ -20,9 +20,9 @@ from aw_reporting.models import SalesForceGoalType
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.recalculate_de_norm_fields import recalculate_de_norm_fields
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.patch_now import patch_now
+from utils.unittests.recalculate_de_norm_fields import recalculate_de_norm_fields
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.patch_now import patch_now
 
 
 class PricingToolEstimateTestCase(ExtendedAPITestCase):

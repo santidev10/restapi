@@ -13,7 +13,7 @@ from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
     Flight, GeoTargeting, device_str, Device
 from saas.urls.namespaces import Namespace
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.int_iterator import int_iterator
 
 
 class PricingToolCampaignTestCase(PricingToolTestCaseBase):

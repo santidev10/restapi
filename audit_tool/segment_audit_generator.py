@@ -1,6 +1,6 @@
-from django.utils import timezone
 import logging
 
+from django.utils import timezone
 from audit_tool.models import get_hash_name
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannelMeta
@@ -68,7 +68,8 @@ class SegmentAuditGenerator(object):
             "audit_type": self.audit_processor_type,
             "source": 1,
         }
-        defaults["started"] = defaults["updated"] = now
+        # Set timestamps to avoid automatic processing of audit scripts
+        defaults["started"] = defaults["updated"] = defaults["completed"] = now
         audit_processor, created = AuditProcessor.objects.get_or_create(id=self.segment.audit_id, defaults=defaults)
         if created:
             self.segment.audit_id = audit_processor.id

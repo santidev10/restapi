@@ -1,13 +1,13 @@
 import json
 
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 from rest_framework.status import HTTP_401_UNAUTHORIZED, \
     HTTP_400_BAD_REQUEST, HTTP_202_ACCEPTED, HTTP_200_OK
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Campaign
 from saas.urls.namespaces import Namespace
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 class PacingReportStatus(ExtendedAPITestCase):
     @staticmethod

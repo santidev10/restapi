@@ -17,7 +17,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 
 
 CUSTOM_AUTH_FLAGS = {

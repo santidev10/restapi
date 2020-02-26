@@ -33,10 +33,10 @@ from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_f
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.generic_test import generic_test
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.unittests.generic_test import generic_test
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 logger = logging.getLogger(__name__)
 
