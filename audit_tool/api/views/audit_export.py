@@ -45,6 +45,7 @@ class AuditExportApiView(APIView):
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         clean = query_params["clean"] if "clean" in query_params else None
         export_as_videos = bool(strtobool(query_params["export_as_videos"])) if "export_as_videos" in query_params else False
+        export_as_channels = bool(strtobool(query_params["export_as_channels"])) if "export_as_channels" in query_params else False
 
         # Validate audit_id
         if audit_id is None:
@@ -63,7 +64,8 @@ class AuditExportApiView(APIView):
             audit=audit,
             clean=clean,
             final=True,
-            export_as_videos=export_as_videos
+            export_as_videos=export_as_videos,
+            export_as_channels=export_as_channels,
         )
         if a.count() == 0:
             try:
@@ -72,6 +74,7 @@ class AuditExportApiView(APIView):
                     clean=clean,
                     completed__isnull=True,
                     export_as_videos=export_as_videos,
+                    export_as_channels=export_as_channels,
                 )
                 return Response({
                     'message': 'export still pending.',
@@ -82,7 +85,8 @@ class AuditExportApiView(APIView):
                     audit=audit,
                     clean=clean,
                     owner_id=request.user.id,
-                    export_as_videos=export_as_videos
+                    export_as_videos=export_as_videos,
+                    export_as_channels=export_as_channels,
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',
@@ -396,12 +400,13 @@ class AuditExportApiView(APIView):
             name = audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
+        file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_channels))
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
             audit=audit,
             clean=clean,
-            final=True
+            final=True,
+            export_as_channels=export.export_as_channels
         )
         if exports.count() > 0:
             return exports[0].file_name, None
