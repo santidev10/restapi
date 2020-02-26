@@ -1,3 +1,5 @@
+import logging
+
 from django.utils import timezone
 
 from audit_tool.models import AuditProcessor
@@ -5,8 +7,11 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditVideoVet
 from saas import celery_app
 from segment.models import CustomSegment
+from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
+
+logger = logging.getLogger(__name__)
 
 
 LOCK_NAME = "audit_tool.check_vetting_completion"
@@ -24,12 +29,22 @@ def check_vetting_completion_task():
 
 
 def check_vetting_completion():
-    incomplete_segments = CustomSegment.objects.filter(audit_id__isnull=False, is_vetting_complete=False)
-    incomplete_audits = AuditProcessor.objects.filter(id__in=list(incomplete_segments.values_list("audit_id", flat=True)))
-
-    incomplete = []
-    complete = []
-    for audit in incomplete_audits:
+    """
+    Check segment vetting completion
+    If was completed and now incomplete, delete vetted export
+    If newly completed, execute generate_vetted_segment task for segment
+    :return:
+    """
+    segment_audits = {
+        item.audit_id: item
+        for item in CustomSegment.objects.filter(audit_id__isnull=False)
+    }
+    audits = AuditProcessor.objects.filter(id__in=list(segment_audits.keys()))
+    for audit in audits:
+        segment = segment_audits.get(audit.id)
+        if segment is None:
+            logger.error(f"Audit with missing segment. audit_id: {audit.id}")
+            continue
         if audit.audit_type == 1:
             vetting_model = AuditVideoVet
         elif audit.audit_type == 2:
@@ -38,12 +53,16 @@ def check_vetting_completion():
             raise ValueError(
                 f"Audit id: {audit.id} with incompatible audit_type: {audit.audit_type} with source: {audit.source}")
         still_processing = vetting_model.objects.filter(audit=audit, processed=None).exists()
+        has_vetted_export = hasattr(segment, "vetted_export")
         # Must still check to set audits completed_at to None if admin flags vetting items
         if still_processing:
-            incomplete.append(audit.id)
+            segment.is_vetting_complete = False
+            if has_vetted_export:
+                segment.vetted_export.delete()
         else:
-            complete.append(audit.id)
+            if not has_vetted_export:
+                generate_vetted_segment.delay(segment.id)
+            segment.is_vetting_complete = True
             audit.completed = timezone.now()
             audit.save()
-    CustomSegment.objects.filter(audit_id__in=complete).update(is_vetting_complete=True)
-    CustomSegment.objects.filter(audit_id__in=incomplete).update(is_vetting_complete=False)
+        segment.save()
