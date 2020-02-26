@@ -6,7 +6,7 @@ from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Device
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import device_str
-from utils.utittests.patch_now import patch_now
+from utils.unittests.patch_now import patch_now
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
 

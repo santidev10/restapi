@@ -9,8 +9,8 @@ from ads_analyzer.reports.opportunity_targeting_report.s3_exporter import Opport
 from aw_reporting.models import Opportunity
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from saas import celery_app
-from utils.utittests.celery import mock_send_task
-from utils.utittests.str_iterator import str_iterator
+from utils.unittests.celery import mock_send_task
+from utils.unittests.str_iterator import str_iterator
 from .base import CreateOpportunityTargetingReportBaseTestCase
 
 

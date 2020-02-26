@@ -8,8 +8,8 @@ from aw_reporting.models import Category
 from aw_reporting.models import Opportunity
 from aw_reporting.models import User
 from aw_reporting.models import UserRole
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportOpportunitiesTestCase(ExtendedAPITestCase):

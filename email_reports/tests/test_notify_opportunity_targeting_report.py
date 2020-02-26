@@ -10,8 +10,8 @@ from ads_analyzer.models import OpportunityTargetingReport
 from aw_reporting.models import Opportunity
 from email_reports.tasks import notify_opportunity_targeting_report_is_ready
 from userprofile.models import UserProfile
-from utils.utittests.s3_mock import mock_s3
-from utils.utittests.str_iterator import str_iterator
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.str_iterator import str_iterator
 
 
 class NotifyOpportunityTargetReportTestCase(TransactionTestCase):

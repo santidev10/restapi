@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
 from aw_reporting.models import BudgetType
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AccountListAPITestCase(ExtendedAPITestCase):

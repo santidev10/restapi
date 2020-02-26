@@ -14,8 +14,8 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreviewApiViewTestCase
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 class SegmentPreviewApiViewTestCase(ExtendedAPITestCase, ESTestCase):

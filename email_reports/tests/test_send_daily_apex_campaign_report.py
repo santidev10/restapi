@@ -21,8 +21,8 @@ from es_components.models import Video
 from email_reports.tasks import send_daily_email_reports
 from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
 from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
-from utils.utittests.patch_now import patch_now
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.unittests.patch_now import patch_now
 from userprofile.constants import UserSettingsKey
 
 TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES = ["test@test.test", "test2@test.test"]

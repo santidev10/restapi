@@ -34,8 +34,8 @@ from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
 
 
 class AnalyticsAccountCreationListAPITestCase(AwReportingAPITestCase, ESTestCase):

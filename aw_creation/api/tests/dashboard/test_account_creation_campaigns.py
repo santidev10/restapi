@@ -11,8 +11,8 @@ from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DashboardAccountCreationCampaignsAPITestCase(ExtendedAPITestCase):

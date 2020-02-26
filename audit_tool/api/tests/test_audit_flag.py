@@ -6,8 +6,8 @@ from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 data = types.SimpleNamespace()
 data.brand_safety_score = types.SimpleNamespace()

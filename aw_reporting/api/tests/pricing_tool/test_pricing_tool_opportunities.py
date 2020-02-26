@@ -33,8 +33,8 @@ from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.query import Operator
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
 
 
 class PricingToolOpportunityTestCase(PricingToolTestCaseBase):

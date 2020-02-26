@@ -3,8 +3,8 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from administration.api.urls.names import AdministrationPathName
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdminDeleteUserTestCase(ExtendedAPITestCase):
