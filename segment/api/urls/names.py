@@ -9,6 +9,7 @@ class Name:
     SEGMENT_CREATION_OPTIONS = "segment_creation_options"
     SEGMENT_DELETE = "segment_delete"
     SEGMENT_CREATE = "segment_create"
+    SEGMENT_EXPORT = "segment_export"
 
     SEGMENT_PREVIEW = "segment_preview"
 

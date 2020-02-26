@@ -1,11 +1,11 @@
-import json
-
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.http import QueryDict
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 import uuid
 
+from audit_tool.models import AuditProcessor
 from saas.urls.namespaces import Namespace
 from segment.api.tests.test_brand_safety_list import GOOGLE_ADS_STATISTICS
 from segment.api.tests.test_brand_safety_list import STATISTICS_FIELDS_CHANNEL
@@ -281,6 +281,18 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(f"{self._get_url('channel')}?{query_params}")
         self.assertEqual({s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
 
+    def test_owner_list_no_vetting(self):
+        user = self.create_test_user()
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2", audit_id=0)
+        seg_1, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
+        seg_2, _ = self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        expected_segments_count = 1
+        response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(response.data["items"][0]["id"], seg_1.id)
+
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
         Permissions.sync_groups()
@@ -300,7 +312,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_2.id, seg_3.id})
 
     def test_audit_vetter_list(self):
-        """ Users with userprofile.vet_audit permission should recieve only lists with vetting enabled """
+        """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
         Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
@@ -316,3 +328,27 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["items_count"], 2)
         self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_3.id})
+
+    def test_vetting_complete(self):
+        Permissions.sync_groups()
+        vetting_user = self.create_test_user()
+        vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET_ADMIN)
+
+        test_user_1 = self._create_user()
+        test_user_2 = self._create_user()
+        test_user_3 = self._create_user()
+        seg_1, _ = self._create_segment(dict(owner=test_user_1, segment_type=0, title="test1", list_type=0, audit_id=next(int_iterator), is_vetting_complete=True))
+        seg_2, _ = self._create_segment(dict(owner=test_user_2, segment_type=0, title="test2", list_type=0, audit_id=next(int_iterator)))
+        seg_3, _ = self._create_segment(dict(owner=test_user_3, segment_type=0, title="test3", list_type=0))
+
+        AuditProcessor.objects.create(id=seg_1.audit_id)
+        AuditProcessor.objects.create(id=seg_2.audit_id)
+
+        response = self.client.get(self._get_url("video"))
+        data = response.data
+        data["items"].sort(key=lambda x: x["id"])
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(data["items_count"], 3)
+        self.assertEqual(data["items"][0].get("is_vetting_complete"), True)
+        self.assertEqual(data["items"][1].get("is_vetting_complete"), False)
+        self.assertEqual(data["items"][2].get("is_vetting_complete"), False)

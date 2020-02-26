@@ -4,6 +4,7 @@ from mock import patch
 from tempfile import mkstemp
 import csv
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 from uuid import uuid4
 
@@ -112,7 +113,7 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         )
         self.custom_segment_export_model.objects.create(segment=segment, query={})
         data = {
-            "segment_id": segment.id,
+            "audit_id": audit.id,
             "instructions": "new instructions"
         }
         with patch("audit_tool.api.views.audit_save.generate_audit_items") as mock_generate:
@@ -124,3 +125,11 @@ class AuditSaveAPITestCase(ExtendedAPITestCase):
         self.assertEqual(audit.params["instructions"], data["instructions"])
         self.assertFalse(mock_generate.delay.called)
         self.assertFalse(AuditChannelVet.objects.all())
+
+    def test_reject_parameters(self):
+        self.create_admin_user()
+        data = {
+            "segment_id": 1
+        }
+        response = self.client.patch(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

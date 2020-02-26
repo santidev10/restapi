@@ -151,11 +151,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "audit_tool_check_in_vetting_items": {
         "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items_task",
-        "schedule": crontab(minute="*/10"),
+        "schedule": crontab(minute="*/5"),
     },
     "audit_tool_check_vetting_completion": {
         "task": "audit_tool.tasks.check_vetting_completion.check_vetting_completion_task",
-        "schedule": crontab(minute="*/10"),
+        "schedule": crontab(minute="*/5"),
     },
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
