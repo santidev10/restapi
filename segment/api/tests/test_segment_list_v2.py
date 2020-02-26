@@ -281,6 +281,18 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         response = self.client.get(f"{self._get_url('channel')}?{query_params}")
         self.assertEqual({s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
 
+    def test_owner_list_no_vetting(self):
+        user = self.create_test_user()
+        seg_1_params = dict(uuid=uuid.uuid4(), owner=user, list_type=0, segment_type=0, title="1")
+        seg_2_params = dict(uuid=uuid.uuid4(), list_type=0, segment_type=0, title="2", audit_id=0)
+        seg_1, _ = self._create_segment(segment_params=seg_1_params, export_params=dict(query={}))
+        seg_2, _ = self._create_segment(segment_params=seg_2_params, export_params=dict(query={}))
+        expected_segments_count = 1
+        response = self.client.get(self._get_url("video"))
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["items_count"], expected_segments_count)
+        self.assertEqual(response.data["items"][0]["id"], seg_1.id)
+
     def test_audit_vet_admin_list(self):
         """ Users with userprofile.vet_audit_admin permission should receive all segments """
         Permissions.sync_groups()
@@ -300,7 +312,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         self.assertEqual(set([item["id"] for item in response.data["items"]]), {seg_1.id, seg_2.id, seg_3.id})
 
     def test_audit_vetter_list(self):
-        """ Users with userprofile.vet_audit permission should recieve only lists with vetting enabled """
+        """ Users with userprofile.vet_audit permission should receive only lists with vetting enabled """
         Permissions.sync_groups()
         vetting_user = self.create_test_user()
         vetting_user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
