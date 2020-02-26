@@ -27,8 +27,8 @@ from aw_reporting.salesforce import Connection
 from aw_reporting.update.recalculate_de_norm_fields import recalculate_de_norm_fields_for_account
 from aw_reporting.update.update_salesforce_data import update_salesforce_data
 from email_reports.reports.base import BaseEmailReport
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
 
 
 class UpdateSalesforceDataTestCase(TransactionTestCase):

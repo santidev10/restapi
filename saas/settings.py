@@ -60,6 +60,7 @@ PROJECT_APPS = (
     "keyword_tool",
     "related_tool",
     "segment",
+    "transcripts",
     "userprofile",
 )
 
@@ -467,6 +468,17 @@ SHOW_CAMPAIGNS_FOR_LAST_YEARS = 1
 AUTH_TOKEN_EXPIRES = 30
 COGNITO_USER_POOL_ID = ""
 COGNITO_CLIENT_ID = ""
+
+ESS_API_KEY = "GfEi3Os2Vt1bA1qnLLhNcjKaNkG0ljt2MZbL3rJb"
+WATSON_API_QUOTA = 0
+WATSON_SANDBOX_MODE = True
+WATSON_BATCH_SIZE = 100
+WATSON_LANG_CODE = ["en"]
+WATSON_COUNTRY = ["United States"]
+WATSON_CATEGORY = ["News & Politics"]
+WATSON_SCORE_THRESHOLD = 70
+WATSON_NUM_VIDEOS = 100
+TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 

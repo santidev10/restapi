@@ -12,8 +12,8 @@ from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 @patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment")

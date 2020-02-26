@@ -7,7 +7,7 @@ from aw_reporting.models import SalesForceGoalType, Opportunity, OpPlacement, \
     TopicStatistic, AdGroupStatistic, Audience, AudienceStatistic, \
     VideoCreative, VideoCreativeStatistic, Genders, AgeRanges, \
     Flight, GeoTargeting, device_str, Device
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
 class PricingToolTestCaseBase(APITestCase):

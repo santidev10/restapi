@@ -18,7 +18,7 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import GeoTarget
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 
 
 class AccountAPITestCase(AwReportingAPITestCase):

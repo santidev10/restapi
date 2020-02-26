@@ -14,9 +14,9 @@ from rest_framework.status import HTTP_401_UNAUTHORIZED
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from userprofile.models import UserDeviceToken
-from utils.utittests.reverse import reverse
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 CUSTOM_AUTH_FLAGS = {

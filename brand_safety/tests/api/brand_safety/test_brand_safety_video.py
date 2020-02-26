@@ -7,8 +7,8 @@ from es_components.managers import VideoManager
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BrandSafetyVideoApiViewTestCase(ExtendedAPITestCase, ESTestCase):

@@ -14,7 +14,7 @@ from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AdGroup
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 
 
 class AccountAPITestCase(AwReportingAPITestCase):

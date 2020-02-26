@@ -6,10 +6,10 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.csv_reports import PacingReportCSVExport
 from aw_reporting.reports.pacing_report import PacingReport
 from saas.urls.namespaces import Namespace
-from utils.utittests.csv import get_data_from_csv_response
-from utils.utittests.s3_mock import mock_s3
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.reverse import reverse
+from utils.unittests.csv import get_data_from_csv_response
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
 
 
 class PacingReportExportTestCase(ExtendedAPITestCase):

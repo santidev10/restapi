@@ -39,9 +39,6 @@ YOUTUBE_LINK_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, **kwargs):
-        # added just for testing on RC. Should be removed after testing
-        kwargs["debug"] = False
-
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
         self.today = now_in_default_tz().date()
@@ -54,6 +51,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return
 
         csv_context = self._get_csv_file_context(user.first())
+
+        if not csv_context:
+            logger.error("No data to send apex daily campaign report.")
+            return
 
         msg = EmailMessage(
                 subject=self._get_subject(),

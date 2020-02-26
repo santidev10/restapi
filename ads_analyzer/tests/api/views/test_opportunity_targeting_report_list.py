@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_403_FORBIDDEN
-from utils.utittests.s3_mock import mock_s3
+from utils.unittests.s3_mock import mock_s3
 
 from ads_analyzer.api.urls.names import AdsAnalyzerPathName
 from ads_analyzer.models import OpportunityTargetingReport
@@ -16,9 +16,9 @@ from aw_reporting.models import Opportunity
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):

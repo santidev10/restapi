@@ -94,8 +94,12 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 3600,
     },
     "pull-custom-transcripts": {
-        "task": "audit_tool.tasks.pull_custom_transcripts.pull_custom_transcripts",
+        "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 60
+    },
+    "submit-watson-transcripts": {
+        "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
+        "schedule": 15*60
     },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
@@ -151,11 +155,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "audit_tool_check_in_vetting_items": {
         "task": "audit_tool.tasks.check_in_vetting_items.check_in_vetting_items_task",
-        "schedule": crontab(minute="*/10"),
+        "schedule": crontab(minute="*/5"),
     },
     "audit_tool_check_vetting_completion": {
         "task": "audit_tool.tasks.check_vetting_completion.check_vetting_completion_task",
-        "schedule": crontab(minute="*/10"),
+        "schedule": crontab(minute="*/5"),
     },
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
@@ -176,7 +180,7 @@ class Queue:
     DELIVERY_STATISTIC_UPDATE = "delivery_statistic"
     EMAIL_REPORTS = "email_reports"
     HOURLY_STATISTIC = "hourly_statistic"
-    CUSTOM_TRANSCRIPTS = "custom_transcripts"
+    TRANSCRIPTS = "transcripts"
     CACHE_RESEARCH = "cache_research"
     BRAND_SAFETY_CHANNEL_LIGHT = "brand_safety_channel_light"
     BRAND_SAFETY_CHANNEL_PRIORITY = "brand_safety_channel_priority"
@@ -185,7 +189,7 @@ class Queue:
 
 
 CELERY_ROUTES_PREPARED = [
-    ("audit_tool.tasks.pull_custom_transcripts.*", {"queue": Queue.CUSTOM_TRANSCRIPTS}),
+    ("transcripts.tasks.*", {"queue": Queue.TRANSCRIPTS}),
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
     ("aw_reporting.update.*", {"queue": Queue.HOURLY_STATISTIC}),

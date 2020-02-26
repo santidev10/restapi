@@ -7,7 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_401_UNAUTHORIZED
 from rest_framework.status import HTTP_404_NOT_FOUND
-from utils.utittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import SalesForceGoalType
