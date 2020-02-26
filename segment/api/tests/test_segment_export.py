@@ -12,8 +12,8 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
