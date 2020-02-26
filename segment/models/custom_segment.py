@@ -9,24 +9,28 @@ from django.db.models import BigIntegerField
 from django.db.models import BooleanField
 from django.db.models import CharField
 from django.db.models import IntegerField
+from django.db.models import F
 from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import CASCADE
 from django.db.models import UUIDField
 from django.utils import timezone
 
+from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from brand_safety.constants import BLACKLIST
 from brand_safety.constants import CHANNEL
 from brand_safety.constants import VIDEO
 from brand_safety.constants import WHITELIST
+from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIEWS_FIELD
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import SortDirections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
+from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
@@ -150,6 +154,10 @@ class CustomSegment(SegmentMixin, Timestampable):
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
         return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
 
+    def get_vetted_s3_key(self, *args, **kwargs):
+        segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
+        return f"custom_segments/{self.owner_id}/{segment_type}/vetted/{self.title}.csv"
+
     def delete_export(self, s3_key=None):
         """
         Delete csv from s3
@@ -185,6 +193,22 @@ class CustomSegment(SegmentMixin, Timestampable):
         }
         item_id = url.split(config[item_type])[-1]
         return item_id
+
+    def get_vetted_items_query(self):
+        """
+        Create query for processed vetted items
+        :return:
+        """
+        annotation = {
+            "yt_id": F(f"{self.data_field}__{self.data_field}_id")
+        }
+        audit = AuditProcessor.objects.get(id=self.audit_id)
+        vetting_yt_ids = self.audit_utils.vetting_model.objects\
+            .filter(audit=audit, processed__isnull=False) \
+            .annotate(**annotation)\
+            .values_list("yt_id", flat=True)
+        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(list(vetting_yt_ids)).get()
+        return query
 
 
 class CustomSegmentRelated(Model):
