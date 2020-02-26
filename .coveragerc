@@ -1,8 +1,12 @@
 [run]
 branch = True
+source = ./
 omit =
     *tests*
     *migrations*
 
 [xml]
 output = coverage.xml
+
+[report]
+show_missing = True
