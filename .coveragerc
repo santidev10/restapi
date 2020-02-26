@@ -1,0 +1,8 @@
+[run]
+branch = True
+omit =
+    *tests*
+    *migrations*
+
+[xml]
+output = coverage.xml
