@@ -50,7 +50,8 @@ class Command(BaseCommand):
                     try:
                         video_transcript = vid_transcripts[video.main.id]
                         populate_video_custom_captions(video, [video_transcript], ['en'], source="Watson")
-                        AuditVideoTranscript.get_or_create(video_id=vid_id, language='en', transcript=video_transcript)
+                        AuditVideoTranscript.get_or_create(video_id=vid_id, language='en', transcript=video_transcript,
+                                                           source=1)
                         logger.error(f"Stored AuditVideoTranscript for Video with ID: {vid_id}.")
                     except Exception:
                         continue
