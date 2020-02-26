@@ -5,7 +5,6 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.utils import timezone
 
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
