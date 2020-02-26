@@ -1,14 +1,11 @@
 import logging
-import csv
 import json
 from django.core.management import BaseCommand
 from audit_tool.models import AuditVideoTranscript
 from es_components.managers.video import VideoManager
-from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_captions
 
-from pid.decorator import pidfile
 from pid import PidFile
 
 
