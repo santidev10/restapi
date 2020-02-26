@@ -1,5 +1,4 @@
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_200_OK
@@ -7,11 +6,14 @@ from rest_framework.status import HTTP_200_OK
 from audit_tool.models import AuditProcessor
 from segment.models import CustomSegment
 from segment.models import CustomSegmentVettedFileUpload
+from utils.permissions import user_has_permission
 from utils.views import get_object
 
 
 class AuditAdminAPIView(APIView):
-    permission_classes = (IsAdminUser,)
+    permission_classes = (
+        user_has_permission("userprofile.vet_audit_admin"),
+    )
 
     def patch(self, request, *args, **kwargs):
         """
@@ -31,7 +33,7 @@ class AuditAdminAPIView(APIView):
         segment.is_vetting_completed = False
         segment.save()
         try:
-            segment.vetting_export.delete()
+            segment.vetted_export.delete()
         except CustomSegmentVettedFileUpload.DoesNotExist:
             pass
         return Response(status=HTTP_200_OK)
