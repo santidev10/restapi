@@ -41,7 +41,7 @@ class Command(BaseCommand):
             if not audit.params.get('max_recommended_type') or audit.params.get('max_recommended_type') == 'video':
                 count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).count()
             else:
-                count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).values('video__channel_id').distinct().count()
+                count = AuditVideoProcessor.objects.filter(audit=audit, clean=True).values('channel_id').distinct().count()
             meta['count'] = count
         elif audit_type == 1:  # process videos
             meta['total'] = AuditVideoProcessor.objects.filter(audit=audit).count()
