@@ -1,0 +1,12 @@
+version: "2.4"
+
+services:
+  api:
+    environment:
+      TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+    volumes:
+      - code:/app
+      - ./dist:/app/dist:rw
+
+volumes:
+  code: {}
