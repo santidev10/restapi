@@ -4,7 +4,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_403_FORBIDDEN, \
     HTTP_404_NOT_FOUND
 
 from userprofile.models import UserDeviceToken
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class LoginAsAUserAPITestCase(ExtendedAPITestCase):

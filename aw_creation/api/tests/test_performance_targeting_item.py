@@ -8,7 +8,7 @@ from aw_creation.models import AccountCreation, CampaignCreation, AdGroupCreatio
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import Account, Campaign, AdGroup, KeywordStatistic
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PerformanceItemAPITestCase(ExtendedAPITestCase):

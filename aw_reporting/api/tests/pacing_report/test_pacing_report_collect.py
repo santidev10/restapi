@@ -5,9 +5,9 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from aw_reporting.api.urls.names import Name
 from saas.urls.namespaces import Namespace
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.s3_mock import mock_s3
-from utils.utittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.reverse import reverse
 
 EXPECT_MESSSAGE = "Report is in queue for preparing. Task position in queue is 1. After it is finished exporting, " \
                   "you will receive message via email."

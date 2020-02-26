@@ -11,9 +11,9 @@ from es_components.managers import KeywordManager
 from es_components.models.keyword import Keyword
 from keywords.api.names import KeywordPathName
 from saas.urls.namespaces import Namespace
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class KeywordRetrieveUpdateApiViewTestCase(ExtendedAPITestCase, ESTestCase):

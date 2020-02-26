@@ -70,11 +70,11 @@ from aw_reporting.google_ads.updaters.parents import ParentUpdater
 from aw_reporting.google_ads.updaters.topics import TopicUpdater
 from aw_reporting.google_ads.utils import max_ready_date
 from utils.exception import ExceptionWithArgs
-from utils.utittests.csv import build_csv_byte_stream
-from utils.utittests.generic_test import generic_test
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
-from utils.utittests.redis_mock import MockRedis
+from utils.unittests.csv import build_csv_byte_stream
+from utils.unittests.generic_test import generic_test
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.redis_mock import MockRedis
 
 
 class UpdateAwAccountsTestCase(TransactionTestCase):

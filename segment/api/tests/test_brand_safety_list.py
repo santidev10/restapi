@@ -7,7 +7,7 @@ from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent import PersistentSegmentVideo
 from segment.models.persistent.constants import PersistentSegmentCategory
 from segment.api.views.brand_safety.brand_safety_list import PersistentSegmentListApiView
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 GOOGLE_ADS_STATISTICS = ("video_view_rate", "ctr", "ctr_v", "average_cpv", "average_cpm")

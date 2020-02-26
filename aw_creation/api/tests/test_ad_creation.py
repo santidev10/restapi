@@ -17,8 +17,8 @@ from aw_reporting.models import Ad
 from es_components.tests.utils import ESTestCase
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.generic_test import generic_test
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.generic_test import generic_test
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase, ESTestCase):

@@ -17,7 +17,7 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from utils.aws.s3 import get_s3_client
-from utils.utittests.s3_mock import mock_s3
+from utils.unittests.s3_mock import mock_s3
 
 
 S3_BUCKET = settings.AMAZON_S3_REPORTS_BUCKET_NAME

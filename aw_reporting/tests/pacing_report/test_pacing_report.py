@@ -16,8 +16,8 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.reports.pacing_report import PacingReport
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportTestCase(ExtendedAPITestCase):

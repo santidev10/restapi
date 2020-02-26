@@ -18,7 +18,7 @@ from aw_reporting.models import User
 from aw_reporting.models import goal_type_str
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.int_iterator import int_iterator
 
 
 class GlobalTrendsFiltersTestCase(AwReportingAPITestCase):

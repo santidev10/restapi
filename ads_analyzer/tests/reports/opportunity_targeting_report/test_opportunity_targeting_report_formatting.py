@@ -6,7 +6,7 @@ from ads_analyzer.tests.reports.opportunity_targeting_report.test_opportunity_ta
     CreateOpportunityTargetingReportTargetTestCase
 from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
-from utils.utittests.generic_test import generic_test
+from utils.unittests.generic_test import generic_test
 
 
 class CreateOpportunityTargetingReportTargetFormattingTestCase(CreateOpportunityTargetingReportTargetTestCase):
