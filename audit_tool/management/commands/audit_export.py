@@ -65,8 +65,10 @@ class Command(BaseCommand):
                 file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             except Exception as e:
                 self.export.started = None
+                self.export.machine = None
+                self.export.thread = None
                 self.export.percent_done = 0
-                self.export.save(update_fields=['started', 'percent_done'])
+                self.export.save(update_fields=['started', 'percent_done', 'machine', 'thread'])
                 print("problem with exporting channels {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
@@ -76,7 +78,9 @@ class Command(BaseCommand):
             except Exception as e:
                 self.export.started = None
                 self.export.percent_done = 0
-                self.export.save(update_fields=['started', 'percent_done'])
+                self.export.machine = None
+                self.export.thread = None
+                self.export.save(update_fields=['started', 'percent_done', 'machine', 'thread'])
                 print("problem with exporting videos {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)

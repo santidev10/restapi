@@ -48,9 +48,10 @@ class Command(BaseCommand):
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
-            num = 200
+            num = 500
             start = self.thread_id * num
-            for channel in pending_channels.order_by("-id")[start:start+num]:
+            total_to_go = pending_channels.count()
+            for channel in pending_channels[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
                 if len(channels) == 50:
@@ -59,7 +60,10 @@ class Command(BaseCommand):
             if len(channels) > 0:
                 self.do_channel_metadata_api_call(channels)
             logger.info("Done {} channels".format(count))
-            raise Exception("Done {} channels".format(count))
+            total_pending = total_to_go - count
+            if total_pending < 0:
+                total_pending = 0
+            raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
 
     def fill_recent_video_timestamp(self):
         channels = AuditChannelMeta.objects.filter(video_count__gt=0, last_uploaded_view_count__isnull=True).order_by("-id")
@@ -84,7 +88,7 @@ class Command(BaseCommand):
             str_long = remove_mentions_hashes_urls(str_long).lower()
             l = fasttext_lang(str_long)
             if l not in self.cache['languages']:
-                self.cache['languages'][l], _ = AuditLanguage.objects.get_or_create(language=l)
+                self.cache['languages'][l] = AuditLanguage.from_string(l)
             channel.language = self.cache['languages'][l]
             channel.save(update_fields=['language'])
         except Exception as e:
@@ -120,7 +124,7 @@ class Command(BaseCommand):
                 try:
                     if i['brandingSettings']['channel']['defaultLanguage']:
                         if i['brandingSettings']['channel']['defaultLanguage'] not in self.cache['languages']:
-                            self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']], _ = AuditLanguage.objects.get_or_create(language=i['brandingSettings']['channel']['defaultLanguage'])
+                            self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']] = AuditLanguage.from_string(language=i['brandingSettings']['channel']['defaultLanguage'])
                         db_channel_meta.default_language = self.cache['languages'][i['brandingSettings']['channel']['defaultLanguage']]
                 except Exception as e:
                     pass
@@ -132,7 +136,7 @@ class Command(BaseCommand):
                 if country:
                     if country not in self.cache['countries']:
                         self.cache['countries'][country] = AuditCountry.from_string(country)
-                    db_channel_meta.country, _ = self.cache['countries'][country]
+                    db_channel_meta.country = self.cache['countries'][country]
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
                 try:
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])

@@ -7,7 +7,7 @@ from typing import Sequence
 import langid
 from fasttext.FastText import _FastText as FastText
 
-fast_text_model = None
+FAST_TEXT_MODEL = None
 
 
 def flatten(l):
@@ -101,19 +101,24 @@ def replace_apostrophes(s):
 
 # Returns Language Detected by FastText, falls back to langid if assurance val is less than 50%
 def fasttext_lang(string):
-    global fast_text_model
+    # pylint: disable=global-statement
+    global FAST_TEXT_MODEL
+    # pylint: enable=global-statement
     string = remove_mentions_hashes_urls(string)
     string = string.replace("\n", " ")
-    if fast_text_model is None:
-        fast_text_model = FastText('lid.176.bin')
-    fast_text_result = fast_text_model.predict(string)
+    if FAST_TEXT_MODEL is None:
+        FAST_TEXT_MODEL = FastText('lid.176.bin')
+    fast_text_result = FAST_TEXT_MODEL.predict(string)
     try:
         if fast_text_result[1][0] < .5:
             return langid.classify(string)[0].lower()
         else:
             return fast_text_result[0][0].split('__')[-1].lower()
-    except Exception as e:
-        pass
+    # pylint: disable=broad-except
+    except Exception as something_bad:
+        return ""
+    # pylint: enable=broad-except
+
 
 def is_english(s):
     try:
