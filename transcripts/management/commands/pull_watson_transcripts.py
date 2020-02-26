@@ -59,6 +59,6 @@ class Command(BaseCommand):
                     except Exception:
                         continue
                 logger.error(f"Upserting {len(videos_batch)} videos.")
-                # video_manager.upsert(videos_batch)
+                video_manager.upsert(videos_batch)
                 logger.error(f"Upserted {len(videos_batch)} videos.")
                 batch_index += batch_size
