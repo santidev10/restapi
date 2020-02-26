@@ -15,3 +15,4 @@ class Namespace:
     HIGHLIGHTS = "highlights_api_urls"
     DOCUMENTATION = "documentation"
     HEALTHCHECK = "healthcheck"
+    TRANSCRIPTS = "transcripts"
