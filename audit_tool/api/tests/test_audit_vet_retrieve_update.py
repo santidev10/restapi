@@ -4,6 +4,7 @@ from mock import patch
 from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 from uuid import uuid4
 
 from audit_tool.api.urls.names import AuditPathName
@@ -25,7 +26,7 @@ from utils.utittests.test_case import ExtendedAPITestCase
 from utils.utittests.int_iterator import int_iterator
 
 
-class AuditAdminTestCase(ExtendedAPITestCase):
+class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
     custom_segment_model = None
     custom_segment_export_model = None
 
@@ -46,7 +47,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         return url
 
     def _create_segment_audit(self, user, audit_params=None, segment_params=None):
-        default_audit_params = dict(source=1, audit_type=2, params=dict(instructions="test instructions"))
+        default_audit_params = dict(source=1, audit_type=2, params=dict(instructions="test instructions"), completed=timezone.now())
         default_segment_params = dict(
             owner=user, title="test", segment_type=0, list_type=0, statistics={"items_count": 1}, uuid=uuid4()
         )
@@ -66,6 +67,13 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         doc.populate_task_us_data(**default_task_us)
         doc.populate_monetization(**default_monetzation)
         return doc
+
+    def test_reject_permissions(self):
+        self.create_test_user()
+        url = self._get_url(kwargs=dict(pk=1))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(self.mock_get_document.call_count, 0)
 
     def test_get_next_video_vetting_item_with_history_success(self):
         """ Test retrieving next vetting item in video audit """
@@ -88,7 +96,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(new_video_vet.processed, None)
         self.assertEqual(new_video_vet.checked_out_at, None)
         task_us = dict(
-            language="en",
+            lang_code="en",
             age_group="1",
             gender="2",
             brand_safety=["3", "4"],
@@ -102,7 +110,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(data["language"], task_us["language"])
+        self.assertEqual(data["language"], task_us["lang_code"])
         self.assertEqual(data["age_group"], task_us["age_group"])
         self.assertEqual(data["gender"], task_us["gender"])
         self.assertEqual(data["brand_safety"], task_us["brand_safety"])
@@ -142,7 +150,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(new_channel_vet.processed, None)
         self.assertEqual(new_channel_vet.checked_out_at, None)
         task_us = dict(
-            language="ko",
+            lang_code="ko",
             age_group="0",
             gender="2",
             brand_safety=["1", "2"],
@@ -156,7 +164,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         response = self.client.get(url)
         data = response.data
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(data["language"], task_us["language"])
+        self.assertEqual(data["language"], task_us["lang_code"])
         self.assertEqual(data["age_group"], task_us["age_group"])
         self.assertEqual(data["gender"], task_us["gender"])
         self.assertEqual(data["brand_safety"], task_us["brand_safety"])
@@ -174,6 +182,25 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertTrue(channel_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
+
+    def test_patch_required_parameters(self):
+        user = self.create_admin_user()
+        before = timezone.now()
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
+        audit_item_yt_id = f"video{next(int_iterator)}"
+        audit_item = AuditVideo.objects.create(video_id=audit_item_yt_id)
+        AuditVideoMeta.objects.create(video=audit_item, name="test meta name")
+        vetting_item = AuditVideoVet.objects.create(audit=audit, video=audit_item, checked_out_at=before)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 0,
+            "is_monetizable": True,
+            "language": "es",
+            "suitable": False
+        }
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        response = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_video_vetting_item_success(self):
         user = self.create_admin_user()
@@ -387,7 +414,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         AuditVideoVet.objects.bulk_create(vetting_items)
         url = self._get_url(kwargs=dict(pk=audit.id))
         response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["message"], "All items are checked out. Please request from a different list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
 
     def test_get_channel_all_checked_out(self):
@@ -402,19 +430,21 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         AuditChannelVet.objects.bulk_create(vetting_items)
         url = self._get_url(kwargs=dict(pk=audit.id))
         response = self.client.get(url)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["message"], "All items are checked out. Please request from a different list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
 
     def test_handle_video_vetting_completed(self):
         """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
         before = timezone.now()
-        audit, segment = self._create_segment_audit(user, audit_params=dict(completed=before), segment_params=dict(segment_type=0, title="test_title"))
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title", is_vetting_complete=True))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
             mock_retrieve.return_value = None
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Vetting for this list is complete. Please move on to the next list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)
 
@@ -422,11 +452,12 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         """ Handle getting next item for completed lists. Should return message notifying user list is completed """
         user = self.create_admin_user()
         before = timezone.now()
-        audit, segment = self._create_segment_audit(user, audit_params=dict(completed=before), segment_params=dict(segment_type=1, title="test_title"))
+        audit, segment = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title", is_vetting_complete=True))
         url = self._get_url(kwargs=dict(pk=audit.id))
         with patch("audit_tool.api.views.audit_vet_retrieve_update.AuditVetRetrieveUpdateAPIView._retrieve_next_vetting_item") as mock_retrieve:
             mock_retrieve.return_value = None
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Vetting for this list is complete. Please move on to the next list.")
         self.assertEqual(self.mock_get_document.call_count, 0)
         self.assertEqual(mock_retrieve.call_count, 0)

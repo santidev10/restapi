@@ -26,7 +26,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         or_permission_classes(
             user_has_permission("userprofile.vet_audit"),
             user_has_permission("userprofile.vet_audit_admin")
-        )
+        ),
     )
 
     def get(self, request, *args, **kwargs):
@@ -134,7 +134,9 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                 pass
             next_item.save(update_fields=['checked_out_at'])
         else:
-            raise ValidationError("All items are checked out. Please request from a different list.")
+            data = {
+                "message": "All items are checked out. Please request from a different list."
+            }
         return data
 
     def _processs_skipped(self, skipped_type, vetting_item):

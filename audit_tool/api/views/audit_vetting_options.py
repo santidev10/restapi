@@ -11,7 +11,7 @@ class AuditVettingOptionsAPIView(APIView):
         or_permission_classes(
             user_has_permission("userprofile.vet_audit"),
             user_has_permission("userprofile.vet_audit_admin")
-        )
+        ),
     )
 
     def get(self, request, *args, **kwargs):
