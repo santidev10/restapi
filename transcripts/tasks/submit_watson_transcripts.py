@@ -80,7 +80,7 @@ def submit_watson_transcripts():
                     unlock(LOCK_NAME)
                     lock(lock_name=LOCK_NAME, max_retries=0, expire=timeout)
                     api_tracker.cursor = 0
-                    api_tracker.save()
+                    api_tracker.save(update_fields=["cursor"])
                     logger.error(f"EXCEEDED {API_QUOTA} Watson API Requests today. Locking task for {timeout} seconds.")
                     return
                 logger.error(f"len(videos_request_batch): {len(videos_request_batch)}")
@@ -138,7 +138,7 @@ def submit_watson_transcripts():
                     response = requests.post(api_request, data=json.dumps(request_body), headers=headers)
                     vids_submitted += batch_size
                     api_tracker.cursor += 1
-                    api_tracker.save()
+                    api_tracker.save(update_fields=["cursor"])
                     logger.error(f"Submitted Watson Transcript /submitjob API request for {batch_size} videos.")
                     logger.error(f"Response Status: {response.status_code}")
                     logger.error(f"Response Content: {response.content}")

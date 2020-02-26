@@ -51,7 +51,7 @@ class WatsonTranscriptsPostApiView(RetrieveUpdateDestroyAPIView):
                 watson_transcript = AuditVideoTranscript.get_or_create(video_id=video_id, language=lang_code,
                                                                        transcript=transcript, source=1)
                 watson_transcript.retrieved = timezone.now()
-                watson_transcript.save()
+                watson_transcript.save(update_fields=["retrieved"])
 
                 populate_video_custom_captions(video, [transcript], [lang_code], "Watson")
                 transcripts_ids.append(video_id)
