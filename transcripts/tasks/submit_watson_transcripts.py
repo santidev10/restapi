@@ -19,13 +19,13 @@ from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
+from utils.unittests.reverse import reverse
 from django.conf import settings
 from audit_tool.models import AuditVideoTranscript
 from audit_tool.models import get_hash_name
 
 from transcripts.api.urls.names import TranscriptsPathName
 from saas.urls.namespaces import Namespace
-from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
