@@ -154,6 +154,8 @@ class Command(BaseCommand):
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
+                #if seed[-1] == '/':
+                #    seed = seed[:-1]
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
