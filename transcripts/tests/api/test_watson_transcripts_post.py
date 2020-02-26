@@ -1,3 +1,4 @@
+import json
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -13,6 +14,7 @@ from audit_tool.models import AuditLanguage
 from utils.utittests.int_iterator import int_iterator
 from utils.utittests.reverse import reverse
 from utils.utittests.test_case import ExtendedAPITestCase
+
 
 
 class WatsonTranscriptsPostTestCase(ExtendedAPITestCase, ESTestCase):
@@ -59,7 +61,7 @@ class WatsonTranscriptsPostTestCase(ExtendedAPITestCase, ESTestCase):
                 "transcript": "Test Transcript Two"
             }
         }
-        response = self.client.post(url, data=request_body)
+        response = self.client.post(url, data=json.dumps(request_body))
         audit_transcript_1 = AuditVideoTranscript.get_or_create(video_id=self.vid_id_1, language='en', source=1)
         audit_transcript_2 = AuditVideoTranscript.get_or_create(video_id=self.vid_id_2, language='es', source=1)
         AuditVideoTranscript.get_or_create(video_id=self.vid_id_2, language='es', transcript=None, source=1)
