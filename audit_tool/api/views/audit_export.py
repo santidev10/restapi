@@ -4,6 +4,7 @@ import requests
 import os
 from uuid import uuid4
 from datetime import timedelta
+from collections import defaultdict
 
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditCountry
@@ -219,10 +220,15 @@ class AuditExportApiView(APIView):
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
+            bad_words_category_mapping = dict()
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
                 cols.extend(bad_word_categories)
+                for i in range(len(audit.params['exclusion'])):
+                    bad_word = audit.params['exclusion'][i][0]
+                    category = audit.params['exclusion_category'][i]
+                    bad_words_category_mapping[bad_word] = category
         except Exception as e:
             pass
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
@@ -332,19 +338,12 @@ class AuditExportApiView(APIView):
             ]
             try:
                 if len(bad_word_categories) > 0:
-                    bad_word_category_dict = {}
+                    bad_word_category_dict = defaultdict(list)
                     bad_words = unique_bad_hit_words.split(",")
                     for word in bad_words:
                         try:
-                            for i in range(len(audit.params['exclusion'])):
-                                if audit.params['exclusion'][i][0] == word:
-                                    word_index = i
-                                    break
-                            category = audit.params['exclusion_category'][word_index]
-                            if category in bad_word_category_dict:
-                                bad_word_category_dict[category].append(word)
-                            else:
-                                bad_word_category_dict[category] = [word]
+                            word_category = bad_words_category_mapping.get(word)
+                            bad_word_category_dict[word_category].append(word)
                         except Exception as e:
                             pass
                     for category in bad_word_categories:
@@ -438,10 +437,15 @@ class AuditExportApiView(APIView):
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
+            bad_words_category_mapping = dict()
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
                 cols.extend(bad_word_categories)
+                for i in range(len(audit.params['exclusion'])):
+                    bad_word = audit.params['exclusion'][i][0]
+                    category = audit.params['exclusion_category'][i]
+                    bad_words_category_mapping[bad_word] = category
         except Exception as e:
             pass
         good_hit_words = {}
@@ -553,7 +557,7 @@ class AuditExportApiView(APIView):
             ]
             try:
                 if len(bad_word_categories) > 0:
-                    bad_word_category_dict = {}
+                    bad_word_category_dict = defaultdict(list)
                     bad_words = set()
                     if channel.channel_id in bad_hit_words:
                         bad_words = bad_words.union(bad_hit_words[channel.channel_id])
@@ -561,15 +565,8 @@ class AuditExportApiView(APIView):
                         bad_words = bad_words.union(bad_video_hit_words[channel.channel_id])
                     for word in bad_words:
                         try:
-                            for i in range(len(audit.params['exclusion'])):
-                                if audit.params['exclusion'][i][0] == word:
-                                    word_index = i
-                                    break
-                            category = audit.params['exclusion_category'][word_index]
-                            if category in bad_word_category_dict:
-                                bad_word_category_dict[category].append(word)
-                            else:
-                                bad_word_category_dict[category] = [word]
+                            word_category = bad_words_category_mapping.get(word)
+                            bad_word_category_dict[word_category].append(word)
                         except Exception as e:
                             pass
                     for category in bad_word_categories:
