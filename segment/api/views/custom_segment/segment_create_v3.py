@@ -11,12 +11,16 @@ from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
+from utils.permissions import user_has_permission
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
     response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
                        "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending")
     serializer_class = CustomSegmentSerializer
+    permission_classes = (
+        user_has_permission("userprofile.vet_audit_admin"),
+    )
 
     def post(self, request, *args, **kwargs):
         """
