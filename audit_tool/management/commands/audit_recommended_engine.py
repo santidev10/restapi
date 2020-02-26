@@ -6,6 +6,7 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -289,6 +290,10 @@ class Command(BaseCommand):
                     v, _ = AuditVideoProcessor.objects.get_or_create(
                         video=db_video,
                         audit=self.audit
+                    )
+                    AuditChannelProcessor.objects.get_or_create(
+                        audit=self.audit,
+                        channel=channel
                     )
                     update_fields=['word_hits', 'clean']
                     v.word_hits = hits
