@@ -39,9 +39,6 @@ YOUTUBE_LINK_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 class DailyApexCampaignEmailReport(BaseEmailReport):
     def __init__(self, *args, **kwargs):
-        # added just for testing on RC. Should be removed after testing
-        kwargs["debug"] = False
-
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
         self.today = now_in_default_tz().date()
