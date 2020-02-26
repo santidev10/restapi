@@ -63,7 +63,9 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
             UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
         })
         user.save()
-        today = timezone.now().date()
+
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
         account = Account.objects.create(id="1", name="account_1", currency_code="USD")
 
@@ -86,7 +88,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
 
-        with patch_now(datetime(today.year, today.month, today.day)):
+        with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
@@ -118,14 +120,15 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         })
         apex_user.save()
 
-        today = timezone.now().date()
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
 
         campaign = self.create_campaign(account, today)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        with patch_now(datetime(today.year, today.month, today.day)):
+        with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
@@ -153,13 +156,14 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         })
         apex_user.save()
 
-        today = timezone.now().date()
+        now = datetime(2017, 1, 1)
+        today = now.date()
         yesterday = today - timedelta(days=1)
 
         campaign = self.create_campaign(account, today)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        with patch_now(datetime(today.year, today.month, today.day)):
+        with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
         self.assertEqual(len(mail.outbox), 0)

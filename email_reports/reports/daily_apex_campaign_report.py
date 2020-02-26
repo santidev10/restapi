@@ -52,6 +52,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
         csv_context = self._get_csv_file_context(user.first())
 
+        if not csv_context:
+            logger.error("No data to send apex daily campaign report.")
+            return
+
         msg = EmailMessage(
                 subject=self._get_subject(),
                 body=self._get_body(),
