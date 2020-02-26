@@ -71,7 +71,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(all(item.processed is None for item in test_video_vets))
         self.assertTrue(all(item.clean is None for item in test_video_vets))
-        self.assertEqual(audit.completed, None)
+        self.assertEqual(segment.is_vetting_complete, False)
 
     def test_success_report_channels(self):
         """
@@ -100,7 +100,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertTrue(all(item.processed is None for item in test_channel_vets))
         self.assertTrue(all(item.clean is None for item in test_channel_vets))
-        self.assertEqual(audit.completed, None)
+        self.assertEqual(segment.is_vetting_complete, False)
 
     def test_reject_permissions(self):
         self.create_test_user()

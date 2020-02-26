@@ -15,28 +15,32 @@ from utils.utittests.int_iterator import int_iterator
 class CheckVettingCompletion(ExtendedAPITestCase):
     def test_video_completion_success(self):
         before = timezone.now()
-        audit = AuditProcessor.objects.create(source=1, audit_type=1)
+        audit = AuditProcessor.objects.create(source=1, audit_type=1, completed=before)
         segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=False,
                                                title="", list_type=0, segment_type=0)
         vetting_items = []
         for i in range(3):
             audit_item = AuditVideo.objects.create(video_id=f"video_id{next(int_iterator)}")
             vetting_items.append(AuditVideoVet(audit=audit, video=audit_item, processed=before))
-            check_vetting_completion()
+        AuditVideoVet.objects.bulk_create(vetting_items)
+        check_vetting_completion()
         audit.refresh_from_db()
+        segment.refresh_from_db()
         self.assertEqual(segment.is_vetting_complete, True)
         self.assertTrue(audit.completed > before)
         
     def test_channel_completion_success(self):
         before = timezone.now()
-        audit = AuditProcessor.objects.create(source=1, audit_type=2, completed=None)
+        audit = AuditProcessor.objects.create(source=1, audit_type=2, completed=before)
         segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=False,
                                                title="", list_type=0, segment_type=0)
         vetting_items = []
         for i in range(3):
             audit_item = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
             vetting_items.append(AuditChannelVet(audit=audit, channel=audit_item, processed=before))
-            check_vetting_completion()
+        AuditChannelVet.objects.bulk_create(vetting_items)
+        check_vetting_completion()
         audit.refresh_from_db()
+        segment.refresh_from_db()
         self.assertEqual(segment.is_vetting_complete, True)
         self.assertTrue(audit.completed > before)

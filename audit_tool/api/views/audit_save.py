@@ -20,7 +20,7 @@ from audit_tool.tasks.generate_audit_items import generate_audit_items
 
 class AuditSaveApiView(APIView):
     permission_classes = (
-        user_has_permission("userprofile.view_audit")
+        user_has_permission("userprofile.view_audit"),
     )
     LANGUAGES_REVERSE = {}
 
@@ -262,16 +262,21 @@ class AuditSaveApiView(APIView):
         AuditProcessor params will always be updated with new data if provided
         """
         data = request.data
-        segment_id = None
+        audit_id = data.get("audit_id")
+        segment_id = data.get("segment_id")
         if not request.user.has_perm("userprofile.vet_audit_admin"):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
+        if not audit_id or not segment_id:
+            raise ValidationError("You must provide a segment_id or audit_id.")
         try:
-            segment_id = data["segment_id"]
-            segment = CustomSegment.objects.get(id=segment_id)
+            if segment_id:
+                segment = CustomSegment.objects.get(id=segment_id)
+            else:
+                segment = CustomSegment.objects.get(audit_id=audit_id)
         except KeyError:
-            raise ValidationError("You must provide a segment_id.")
+            raise ValidationError("You must provide a audit_id.")
         except CustomSegment.DoesNotExist:
-            raise ValidationError(f"Segment with id: {segment_id} does not exist.")
+            raise ValidationError(f"Segment does not exist with parameters: {data}.")
 
         # If segment does not contain any items, then reject audit creation
         if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:

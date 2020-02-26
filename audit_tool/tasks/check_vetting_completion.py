@@ -25,7 +25,7 @@ def check_vetting_completion_task():
 
 def check_vetting_completion():
     incomplete_segments = CustomSegment.objects.filter(audit_id__isnull=False, is_vetting_complete=False)
-    incomplete_audits = AuditProcessor.objects.filter(id__in=incomplete_segments.values_list("audit_id", flat=True))
+    incomplete_audits = AuditProcessor.objects.filter(id__in=list(incomplete_segments.values_list("audit_id", flat=True)))
 
     incomplete = []
     complete = []

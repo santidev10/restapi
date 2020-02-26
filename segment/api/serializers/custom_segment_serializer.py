@@ -18,7 +18,7 @@ class CustomSegmentSerializer(ModelSerializer):
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
-    is_vetting_complete = BooleanField()
+    is_vetting_complete = BooleanField(required=False)
 
     class Meta:
         model = CustomSegment

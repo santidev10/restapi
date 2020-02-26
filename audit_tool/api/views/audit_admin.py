@@ -22,13 +22,13 @@ class AuditAdminAPIView(APIView):
         segment_params = {"audit_id": audit_id}
         audit = get_object(AuditProcessor, f"Audit with id: {audit_id} not found.", **audit_params)
         segment = get_object(CustomSegment, f"Segment with audit id: {audit_id} not found.", **segment_params)
-        item_ids = data.get("item_ids", [])
+        item_ids = data.get("item_ids", "")
         update_filter = self._validate_item_ids(item_ids, audit.audit_type)
         segment.audit_utils.vetting_model.objects\
             .filter(audit=audit, **update_filter)\
             .update(processed=None, clean=None)
-        audit.completed = None
-        audit.save()
+        segment.is_vetting_completed = False
+        segment.save()
         return Response(status=HTTP_200_OK)
 
     def _validate_item_ids(self, item_ids, audit_type):
