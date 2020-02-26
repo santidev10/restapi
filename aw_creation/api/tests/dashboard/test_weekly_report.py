@@ -31,12 +31,12 @@ from aw_reporting.models import age_range_str
 from aw_reporting.models import gender_str
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
-from utils.utittests.generic_test import generic_test
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.xlsx import get_sheet_from_response
+from utils.unittests.generic_test import generic_test
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.xlsx import get_sheet_from_response
 from es_components.tests.utils import ESTestCase
 from es_components.managers.video import VideoManager
 from es_components.models import Video

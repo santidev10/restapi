@@ -13,8 +13,8 @@ from userprofile.constants import UserTypeRegular
 from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
 from userprofile.models import UserProfile
-from utils.utittests.generic_test import generic_test
-from utils.utittests.reverse import reverse
+from utils.unittests.generic_test import generic_test
+from utils.unittests.reverse import reverse
 from userprofile.permissions import PermissionGroupNames
 
 

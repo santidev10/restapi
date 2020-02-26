@@ -13,8 +13,8 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
 from saas.urls.namespaces import Namespace
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AuditAdminTestCase(ExtendedAPITestCase):

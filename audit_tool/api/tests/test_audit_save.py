@@ -14,8 +14,8 @@ from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannelVet
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AuditSaveAPITestCase(ExtendedAPITestCase):

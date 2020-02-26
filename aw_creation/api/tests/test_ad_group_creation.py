@@ -12,7 +12,7 @@ from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
 from utils.lang import flatten
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AdGroupAPITestCase(ExtendedAPITestCase):

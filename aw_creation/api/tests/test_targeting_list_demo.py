@@ -7,7 +7,7 @@ from aw_creation.models import *
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.demo.recreate_demo_data import recreate_demo_data
 from aw_reporting.models import AdGroup
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DemoTargetingListTestCase(ExtendedAPITestCase):

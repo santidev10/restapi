@@ -1,8 +1,8 @@
-from utils.utittests.reverse import reverse
+from utils.unittests.reverse import reverse
 from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
 from saas.urls.namespaces import Namespace
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 from django.utils import timezone
 from datetime import timedelta
 

@@ -15,14 +15,14 @@ from es_components.models.channel import ChannelSectionBrandSafety
 from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from utils.brand_safety import map_brand_safety_score
-from utils.utittests.csv import get_data_from_csv_response
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.csv import get_data_from_csv_response
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 import brand_safety.constants as constants
 
-from utils.utittests.s3_mock import mock_s3
+from utils.unittests.s3_mock import mock_s3
 
 EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 

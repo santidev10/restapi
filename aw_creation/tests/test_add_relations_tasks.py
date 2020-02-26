@@ -14,7 +14,7 @@ from aw_reporting.models import Account
 from aw_reporting.models import Ad
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class AddRelationsTestCase(ExtendedAPITestCase):

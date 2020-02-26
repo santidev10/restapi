@@ -8,8 +8,8 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
 from audit_tool.tasks.check_vetting_completion import check_vetting_completion
 from segment.models import CustomSegment
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 class CheckVettingCompletion(ExtendedAPITestCase):

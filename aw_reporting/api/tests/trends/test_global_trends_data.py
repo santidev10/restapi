@@ -24,9 +24,9 @@ from aw_reporting.models import User
 from saas.urls.namespaces import Namespace
 from userprofile.constants import UserSettingsKey
 from utils.datetime import now_in_default_tz
-from utils.utittests.generic_test import generic_test
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
+from utils.unittests.generic_test import generic_test
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
 
 
 class GlobalTrendsDataTestCase(AwReportingAPITestCase):

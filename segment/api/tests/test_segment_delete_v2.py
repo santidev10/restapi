@@ -15,7 +15,7 @@ from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreview
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):

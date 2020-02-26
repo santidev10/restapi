@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from aw_reporting.models import GeoTarget
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class DocumentsTestCase(ExtendedAPITestCase):

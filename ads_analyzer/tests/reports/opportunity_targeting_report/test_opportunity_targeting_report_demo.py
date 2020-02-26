@@ -7,7 +7,7 @@ from aw_reporting.models import gender_str
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from utils.utittests.patch_now import patch_now
+from utils.unittests.patch_now import patch_now
 
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase

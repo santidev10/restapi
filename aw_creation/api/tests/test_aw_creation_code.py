@@ -13,7 +13,7 @@ from aw_reporting.api.tests.base import Account
 from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.models import BudgetType
 from es_components.tests.utils import ESTestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.int_iterator import int_iterator
 
 
 class CreationCodeAPITestCase(AwReportingAPITestCase, ESTestCase):

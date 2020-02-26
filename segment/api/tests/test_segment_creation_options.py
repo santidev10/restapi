@@ -10,7 +10,7 @@ from audit_tool.models import AuditCategory
 from cache.models import CacheItem
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")

@@ -13,12 +13,12 @@ from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserChannel
 from userprofile.permissions import Permissions
-from utils.utittests.celery import mock_send_task
-from utils.utittests.es_components_patcher import SearchDSLPatcher
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.response import MockResponse
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.celery import mock_send_task
+from utils.unittests.es_components_patcher import SearchDSLPatcher
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.response import MockResponse
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
