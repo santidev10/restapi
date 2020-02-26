@@ -266,7 +266,7 @@ class AuditSaveApiView(APIView):
         segment_id = data.get("segment_id")
         if not request.user.has_perm("userprofile.vet_audit_admin"):
             raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
-        if not audit_id or not segment_id:
+        if not audit_id and not segment_id:
             raise ValidationError("You must provide a segment_id or audit_id.")
         try:
             if segment_id:
