@@ -102,7 +102,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count(TEST_CAMP_ID), 2)
+        self.assertEqual(csv_context.count(str(TEST_CAMP_ID)), 2)
         self.assertEqual(csv_context.count("video_creative_1"), 1)
         self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 1)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
@@ -142,7 +142,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count(TEST_CAMP_ID), 1)
+        self.assertEqual(csv_context.count(str(TEST_CAMP_ID)), 1)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 1)
 
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
