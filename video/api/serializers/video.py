@@ -55,11 +55,19 @@ class VideoSerializer(ESDictSerializer):
                 if item.language_code == vid_lang_code:
                     text = item.text
                     break
+            for item in video.captions.items:
+                if item.language_code == "en":
+                    text = item.text
+                    break
             if not text:
                 text = video.captions.items[0].text
         if not text and 'custom_captions' in video and 'items' in video.custom_captions:
             for item in video.custom_captions.items:
                 if item.language_code == vid_lang_code:
+                    text = item.text
+                    break
+            for item in video.captions.items:
+                if item.language_code == "en":
                     text = item.text
                     break
             if not text:
