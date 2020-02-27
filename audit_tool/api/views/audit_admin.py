@@ -25,7 +25,7 @@ class AuditAdminAPIView(APIView):
         segment_params = {"audit_id": audit_id}
         audit = get_object(AuditProcessor, f"Audit with id: {audit_id} not found.", **audit_params)
         segment = get_object(CustomSegment, f"Segment with audit id: {audit_id} not found.", **segment_params)
-        item_ids = data.get("item_ids", "")
+        item_ids = data.get("items_ids", "")
         update_filter = self._validate_item_ids(item_ids, audit.audit_type)
         segment.audit_utils.vetting_model.objects \
             .filter(audit=audit, **update_filter) \
@@ -47,26 +47,29 @@ class AuditAdminAPIView(APIView):
         :return: item_ids
         """
         filters = {}
-        err_suffix = " Please check ids and resubmit."
         err = None
+        split_seq = None
         filter_prefix = None
-        try:
-            item_ids = item_ids.split(",")
-        except (AttributeError, TypeError):
-            err = "item_ids must be a comma separated string of ids."
+        id_validator = None
+        if audit_type == 1:
+            split_seq = "/watch?v="
+            filter_prefix = "video__video_id__in"
+            id_validator = lambda x: type(x) is not str or len(x) != 11
+        elif audit_type == 2:
+            split_seq = "/channel/"
+            filter_prefix = "channel__channel_id__in"
+            id_validator = lambda x: type(x) is not str or len(x) != 24
         else:
-            if audit_type == 1:
-                filter_prefix = "video__video_id__in"
-                invalid = any(type(item) is not str or len(item) > 11 for item in item_ids)
-                if invalid:
-                    err = "Invalid video ids." + err_suffix
-            elif audit_type == 2:
-                filter_prefix = "channel__channel_id__in"
-                invalid = any(type(item) is not str or len(item) < 24 for item in item_ids)
-                if invalid:
-                    err = "Invalid channel ids." + err_suffix
-            else:
-                err = f"Invalid audit_type: {audit_type}"
+            err = f"Invalid audit_type: {audit_type}"
+
+        try:
+            item_ids = [_id.strip().split(split_seq)[-1] for _id in item_ids.split("\n") if _id]
+            invalid = any(id_validator(item) for item in item_ids)
+            if invalid:
+                err = f"Invalid urls. Please check that urls match this format: https://www.youtube.com{split_seq}YOUTUBE_ID"
+        except (AttributeError, TypeError):
+            err = "Each row of items_ids must contain one item."
+
         if err:
             raise ValidationError(err)
         filters[filter_prefix] = item_ids
