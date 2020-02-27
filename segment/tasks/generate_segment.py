@@ -19,7 +19,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -124,7 +124,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
             "top_three_items": top_three_items,
             **aggregations,
         }
-        s3_key = segment.get_s3_key()
+        s3_key = segment.get_s3_key() if s3_key is None else s3_key
         segment.s3_exporter.export_file_to_s3(filename, s3_key)
         download_url = segment.s3_exporter.generate_temporary_url(s3_key, time_limit=3600 * 24 * 7)
         results = {

@@ -23,13 +23,13 @@ from utils.youtube_api import resolve_videos_info
 logger = logging.getLogger(__name__)
 
 
-CAMPAIGNS_FIELDS = ("name", "id", "account_id", "account__currency_code", "account__name",
-                    "salesforce_placement__ordered_rate", "salesforce_placement__goal_type_id")
+CAMPAIGNS_FIELDS = ("name", "id", "account__currency_code", "salesforce_placement__ordered_rate",
+                    "salesforce_placement__goal_type_id")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
                 "video_views")
 
-CSV_HEADER = ("Date", "CID Name/Number", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
+CSV_HEADER = ("Date", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
               "Creative", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
               "Midpoint Views (Video)", "Complete Views (Video)")
 
@@ -118,7 +118,6 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in campaigns_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.campaign__account__name or stats.campaign__account_id,
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
@@ -147,7 +146,6 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in creative_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
-                stats.ad_group__campaign__account__name or stats.ad_group__campaign__account_id,
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,

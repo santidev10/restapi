@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from rest_framework.exceptions import APIException
 from rest_framework.exceptions import ValidationError
 from rest_framework.status import HTTP_404_NOT_FOUND
 
@@ -20,7 +21,7 @@ def xlsx_response(title, xlsx):
 def get_object(model, message, code=HTTP_404_NOT_FOUND, should_raise=True, **kwargs):
     """
     Utility function to retrieve model objects
-    Raises DRF ValidationError with message if not found
+    Raises DRF APIException with message if not found
     :param model: Django model
     :param message: str
     :param code: Http code
@@ -33,7 +34,7 @@ def get_object(model, message, code=HTTP_404_NOT_FOUND, should_raise=True, **kwa
         obj = model.objects.get(**kwargs)
     except model.DoesNotExist:
         if should_raise:
-            raise ValidationError(message, code=code)
+            raise CustomAPIException(code, message)
     return obj
 
 
@@ -54,3 +55,10 @@ def validate_fields(expected, received, should_raise=True):
     else:
         validated = True
     return validated
+
+
+class CustomAPIException(APIException):
+    def __init__(self, status_code, detail):
+        super().__init__()
+        self.status_code = status_code
+        self.detail = detail
