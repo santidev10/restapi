@@ -25,7 +25,9 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
         data = obj.uncached_count()
     elif part == "get_data":
         options = options or ((0, 50), {})
-        data = obj.uncached_get_data(0, 50)
+        start = options[0][0]
+        end = options[0][1]
+        data = obj.uncached_get_data(start, end)
     else:
         return
     set_to_cache(obj, part, options, data, timeout)
