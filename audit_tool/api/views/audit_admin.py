@@ -68,7 +68,7 @@ class AuditAdminAPIView(APIView):
             if invalid:
                 err = f"Invalid urls. Please check that urls match this format: https://www.youtube.com{split_seq}YOUTUBE_ID"
         except (AttributeError, TypeError):
-            err = "Each row of items_ids must contain one item."
+            err = "Each row must contain one item."
 
         if err:
             raise ValidationError(err)
