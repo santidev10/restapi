@@ -4,6 +4,8 @@ from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
+
 from uuid import uuid4
 
 from audit_tool.api.urls.names import AuditPathName
@@ -13,6 +15,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoVet
 from saas.urls.namespaces import Namespace
+from segment.models import CustomSegmentVettedFileUpload
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
@@ -65,13 +68,15 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             "audit_id": audit.id,
             "item_ids": ",".join([item.video_id for item in test_video_audits])
         }
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         [item.refresh_from_db() for item in test_video_vets]
         audit.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(segment.is_vetting_complete, False)
         self.assertTrue(all(item.processed is None for item in test_video_vets))
         self.assertTrue(all(item.clean is None for item in test_video_vets))
-        self.assertEqual(segment.is_vetting_complete, False)
+        self.assertFalse(CustomSegmentVettedFileUpload.objects.filter(segment=segment).exists())
 
     def test_success_report_channels(self):
         """
@@ -94,13 +99,15 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             "audit_id": audit.id,
             "item_ids": ",".join([item.channel_id for item in test_channel_audits]),
         }
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         [item.refresh_from_db() for item in test_channel_vets]
         audit.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(segment.is_vetting_complete, False)
         self.assertTrue(all(item.processed is None for item in test_channel_vets))
         self.assertTrue(all(item.clean is None for item in test_channel_vets))
-        self.assertEqual(segment.is_vetting_complete, False)
+        self.assertFalse(CustomSegmentVettedFileUpload.objects.filter(segment=segment).exists())
 
     def test_reject_permissions(self):
         self.create_test_user()
@@ -173,7 +180,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             "item_ids": ""
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
 
     def test_audit_not_found(self):
         """ Test handling audit not found """
@@ -188,4 +195,4 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             "item_ids": ""
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

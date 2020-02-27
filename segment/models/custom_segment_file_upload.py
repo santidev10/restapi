@@ -81,5 +81,16 @@ class CustomSegmentFileUpload(Model):
         return s3_key
 
 
+class CustomSegmentVettedFileUpload(Model):
+    completed_at = DateTimeField(null=True, default=None)
+    created_at = DateTimeField(auto_now_add=True)
+    download_url = TextField(null=True)
+    segment = OneToOneField(CustomSegment, related_name="vetted_export", on_delete=CASCADE)
+
+    def get_ids_query(self):
+        # Get the ids of vetted items in segment
+        pass
+
+
 class CustomSegmentFileUploadQueueEmptyException(Exception):
     pass
