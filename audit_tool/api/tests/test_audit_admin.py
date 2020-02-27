@@ -20,6 +20,10 @@ from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
+CHANNEL_PREFIX = "https://www.youtube.com/channel/"
+VIDEO_PREFIX = "https://www.youtube.com/watch?v="
+
+
 class AuditAdminTestCase(ExtendedAPITestCase):
     custom_segment_model = None
     custom_segment_export_model = None
@@ -60,13 +64,13 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             segment_params=dict(segment_type=0)
         )
         audit.refresh_from_db()
-        test_video_audits = [AuditVideo(video_id=f"video{idx}") for idx in range(10)]
+        test_video_audits = [AuditVideo(video_id=f"{idx}test_video_id"[:11]) for idx in range(10)]
         AuditVideo.objects.bulk_create(test_video_audits)
         test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in test_video_audits]
         AuditVideoVet.objects.bulk_create(test_video_vets)
         data = {
             "audit_id": audit.id,
-            "item_ids": ",".join([item.video_id for item in test_video_audits])
+            "items_ids": "\n".join([VIDEO_PREFIX + item.video_id for item in test_video_audits])
         }
         CustomSegmentVettedFileUpload.objects.create(segment=segment)
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
@@ -91,13 +95,13 @@ class AuditAdminTestCase(ExtendedAPITestCase):
             segment_params=dict(segment_type=1)
         )
         audit.refresh_from_db()
-        test_channel_audits = [AuditChannel(channel_id=f"test_youtube_channel_id{idx}") for idx in range(10)]
+        test_channel_audits = [AuditChannel(channel_id=f"{idx}test_youtube_channel_id"[:24]) for idx in range(10)]
         AuditChannel.objects.bulk_create(test_channel_audits)
         test_channel_vets = [AuditChannelVet(audit=audit, channel=c_audit, processed=now, clean=True) for c_audit in test_channel_audits]
         AuditChannelVet.objects.bulk_create(test_channel_vets)
         data = {
             "audit_id": audit.id,
-            "item_ids": ",".join([item.channel_id for item in test_channel_audits]),
+            "items_ids": "\n".join([CHANNEL_PREFIX + item.channel_id for item in test_channel_audits]),
         }
         CustomSegmentVettedFileUpload.objects.create(segment=segment)
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
@@ -114,8 +118,8 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         response = self.client.patch(self._get_url())
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
 
-    def test_reject_invalid_item_ids(self):
-        """ item_ids to be reported should be a comma separated string """
+    def test_reject_invalid_items_ids(self):
+        """ items_ids to be reported should be a newline separated string """
         user = self.create_admin_user()
         audit, segment = self._create_segment_audit(
             user,
@@ -124,13 +128,68 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         )
         data = {
             "audit_id": audit.id,
-            "item_ids": [1, 2, 3]
+            "items_ids": [1, 2, 3]
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_reject_channel_item_ids(self):
-        """ item_ids to be reported should match the type (video, channel) of the CustomSegment """
+    def test_reject_report_videos_format(self):
+        """
+        Admin reporting of vetting items should reset AuditProcessor
+            completed and AuditVideoVet objects vetting fields
+        """
+        user = self.create_admin_user()
+        now = timezone.now()
+        audit, segment = self._create_segment_audit(
+            user,
+            audit_params=dict(audit_type=1, completed=now),
+            segment_params=dict(segment_type=0)
+        )
+        audit.refresh_from_db()
+        test_video_audits = [AuditVideo(video_id=f"{idx}wrong"[:11]) for idx in range(10)]
+        AuditVideo.objects.bulk_create(test_video_audits)
+        test_video_vets = [AuditVideoVet(audit=audit, video=v_audit, processed=now, clean=True) for v_audit in test_video_audits]
+        AuditVideoVet.objects.bulk_create(test_video_vets)
+        data = {
+            "audit_id": audit.id,
+            "items_ids": "\n".join([VIDEO_PREFIX + item.video_id for item in test_video_audits])
+        }
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
+        response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
+        [item.refresh_from_db() for item in test_video_vets]
+        audit.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_reject_report_channels_format(self):
+        """
+        Admin reporting of vetting items should reset AuditProcessor
+            completed and AuditChannelVet vetting fields
+        """
+        user = self.create_admin_user()
+        now = timezone.now()
+        audit, segment = self._create_segment_audit(
+            user,
+            audit_params=dict(audit_type=2, completed=now),
+            segment_params=dict(segment_type=1)
+        )
+        audit.refresh_from_db()
+        test_channel_audits = [AuditChannel(channel_id=f"test_youtube_channel_id_wrong_length{idx}") for idx in range(10)]
+        AuditChannel.objects.bulk_create(test_channel_audits)
+        test_channel_vets = [AuditChannelVet(audit=audit, channel=c_audit, processed=now, clean=True) for c_audit in
+                             test_channel_audits]
+        AuditChannelVet.objects.bulk_create(test_channel_vets)
+        data = {
+            "audit_id": audit.id,
+            "items_ids": "\n".join([CHANNEL_PREFIX + item.channel_id for item in test_channel_audits]),
+        }
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
+        response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
+        [item.refresh_from_db() for item in test_channel_vets]
+        audit.refresh_from_db()
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_reject_channel_items_ids(self):
+        """ items_ids to be reported should match the type (video, channel) of the CustomSegment """
         user = self.create_admin_user()
         audit, segment = self._create_segment_audit(
             user,
@@ -142,13 +201,13 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         test_ids = ",".join([f"test{idx}" for idx in range(10)])
         data = {
             "audit_id": audit.id,
-            "item_ids": test_ids
+            "items_ids": test_ids
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_reject_video_item_ids(self):
-        """ item_ids to be reported should match the type (video, channel) of the CustomSegment """
+    def test_reject_video_items_ids(self):
+        """ items_ids to be reported should match the type (video, channel) of the CustomSegment """
         user = self.create_admin_user()
         audit, segment = self._create_segment_audit(
             user,
@@ -157,10 +216,10 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         )
         # CustomSegment is type 0 (video)
         # Youtube video ids are length 11
-        test_ids = ",".join([f"test_youtube_channel_id_{idx}" for idx in range(10)])
+        test_ids = "\n".join([f"test_video_id_wrong_length{idx}" for idx in range(10)])
         data = {
             "audit_id": audit.id,
-            "item_ids": test_ids
+            "items_ids": test_ids
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -177,7 +236,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         segment.save()
         data = {
             "audit_id": audit.id,
-            "item_ids": ""
+            "items_ids": ""
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
@@ -192,7 +251,7 @@ class AuditAdminTestCase(ExtendedAPITestCase):
         )
         data = {
             "audit_id": 9999,
-            "item_ids": ""
+            "items_ids": ""
         }
         response = self.client.patch(self._get_url(), json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
