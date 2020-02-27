@@ -27,7 +27,7 @@ from userprofile.constants import UserSettingsKey
 
 TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES = ["test@test.test", "test2@test.test"]
 
-TEST_CAMP_ID = "12345"
+TEST_CAMP_ID = 12345
 
 class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
@@ -39,7 +39,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
             probability=100,
         )
         placement = OpPlacement.objects.create(
-            id="1",
+            id=1,
             name="Placement",
             start=today - timedelta(days=2),
             end=today + timedelta(days=2),
@@ -59,16 +59,16 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
     def test_send_email(self):
-        user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
+        user = get_user_model().objects.create(id=1, username="Paul", email="1@mail.cz")
         user.aw_settings.update(**{
-            UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1]
         })
         user.save()
 
         now = datetime(2017, 1, 1)
         today = now.date()
         yesterday = today - timedelta(days=1)
-        account = Account.objects.create(id="1", name="account_1", currency_code="USD")
+        account = Account.objects.create(id=1, name="account_1", currency_code="USD")
 
         campaign = self.create_campaign(account, today)
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
@@ -103,7 +103,7 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
         csv_context = attachment[0][1]
         self.assertEqual(csv_context.count(TEST_CAMP_ID), 2)
-        self.assertEqual(csv_context.count('video_creative_1'), 1)
+        self.assertEqual(csv_context.count("video_creative_1"), 1)
         self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 1)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
         self.assertEqual(csv_context.count(today.strftime(DATE_FORMAT)), 0)
@@ -113,11 +113,11 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
     def test_send_email_selected_account(self):
-        account = Account.objects.create(id="1", name="account_1", currency_code="USD")
+        account = Account.objects.create(id=1, name="account_1", currency_code="USD")
 
-        apex_user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
+        apex_user = get_user_model().objects.create(id=1, username="Paul", email="1@mail.cz")
         apex_user.aw_settings.update(**{
-            UserSettingsKey.VISIBLE_ACCOUNTS: ["1"]
+            UserSettingsKey.VISIBLE_ACCOUNTS: [1]
         })
         apex_user.save()
 
@@ -150,8 +150,8 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_REPORT_EMAIL_ADDRESSES",
            TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES)
     def test_send_email_without_selected_account(self):
-        account = Account.objects.create(id="1", name="account_1", currency_code="USD")
-        apex_user = get_user_model().objects.create(id="1", username="Paul", email="1@mail.cz")
+        account = Account.objects.create(id=1, name="account_1", currency_code="USD")
+        apex_user = get_user_model().objects.create(id=1, username="Paul", email="1@mail.cz")
         apex_user.aw_settings.update(**{
             UserSettingsKey.VISIBLE_ACCOUNTS: [],
         })
