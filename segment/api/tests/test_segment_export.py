@@ -40,16 +40,6 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         user = get_user_model().objects.create(**user_data)
         return user
 
-    def test_owner_export_success(self):
-        """ Users should be able to export their own lists """
-        user = self.create_test_user()
-        segment, export = self._create_segment(segment_params=dict(owner=user))
-        with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()),\
-                patch.object(CustomSegment, "get_export_file") as mock_export:
-            response = self.client.get(self._get_url(segment.id))
-        self.assertEqual(response.status_code, HTTP_200_OK)
-        mock_export.assert_called_once()
-
     def test_reject_vetting(self):
         """ Users without vetting admin permissions should not be able to export vetting lists """
         test_user = self._create_user()
