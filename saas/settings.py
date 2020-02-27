@@ -376,11 +376,8 @@ TESTIMONIALS = {
 }
 
 DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
-    "yaryna.kimak@sigma.software",
-    "bryan.ngo@channelfactory.com",
-    "sean.maguire@channelfactory.com",
-    "alex.peace@channelfactory.com"
-
+    "62E6332FA4E74AAAA0F647EAEABEFD85@dbx.datorama.com",
+    "visadatacentral@starcomww.com"
 ]
 
 DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"
