@@ -14,6 +14,7 @@ from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
+from utils.aws.s3_exporter import ReportNotFoundException
 
 
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
@@ -81,8 +82,11 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         audit = AuditProcessor.objects.create(source=1)
         segment, export = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
         with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()), \
-                patch("segment.api.views.custom_segment.segment_export.SegmentExport._vetted_items_generator") as mock_generate:
+                patch("segment.api.views.custom_segment.segment_export.SegmentExport._vetted_items_generator") as mock_generate, \
+                patch.object(CustomSegment, "get_export_file") as mock_export:
             url = self._get_url(segment.id) + "?vetted=true"
+            mock_export.side_effect = ReportNotFoundException
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
         mock_generate.assert_called_once()
+        mock_export.assert_called_once()
