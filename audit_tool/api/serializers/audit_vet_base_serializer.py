@@ -26,12 +26,12 @@ class AuditVetBaseSerializer(Serializer):
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
 
     # Elasticsearch fields
-    age_group = CharField(source="task_us_data.age_group", default=None)
-    content_type = CharField(source="task_us_data.content_type", default=None)
-    gender = CharField(source="task_us_data.gender", default=None)
-    brand_safety = ListField(source="task_us_data.brand_safety", default=[])
+    age_group = IntegerField(source="task_us_data.age_group", default=None)
+    content_type = IntegerField(source="task_us_data.content_type", default=None)
+    gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -58,6 +58,18 @@ class AuditVetBaseSerializer(Serializer):
 
     def _save_vetting_item(self, *args, **kwargs):
         raise NotImplementedError
+
+    def get_brand_safety(self, doc):
+        """
+        Convert document brand_safety list strings to integers for Postgres pk queries
+        :param doc: es_components.model
+        :return: list -> [int, int, ...]
+        """
+        try:
+            brand_safety = [int(item) for item in doc.task_us_data.brand_safety]
+        except AttributeError:
+            brand_safety = []
+        return brand_safety
 
     def get_language(self, doc):
         """
