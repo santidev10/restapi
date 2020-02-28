@@ -631,6 +631,8 @@ class AuditExportApiView(APIView):
         videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
         bad_words = {}
         good_words = {}
+        count = 0
+        total = videos.count()
         for video in videos:
             hits = video.word_hits
             for word in hits.get('exclusion', []):
@@ -643,13 +645,17 @@ class AuditExportApiView(APIView):
                     good_words[word] = 1
                 else:
                     good_words[word]+=1
-        export.percent_done = 50
-        export.save(update_fields=['percent_done'])
+            count+=1
+            if count % 250 == 0:
+                export.percent_done = round(count / total * 100 * 0.4)
+                export.save(update_fields=['percent_done'])
         for word, count in bad_words.iteritems():
             rows.append([word, count, 'e'])
+        export.percent_done = 60
+        export.save(update_fields=['percent_done'])
         for word, count in good_words.iteritems():
             rows.append([word, count, 'i'])
-        export.percent_done = 75
+        export.percent_done = 80
         export.save(update_fields=['percent_done'])
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)

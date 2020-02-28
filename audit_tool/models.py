@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
