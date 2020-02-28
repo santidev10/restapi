@@ -5,12 +5,13 @@ import os
 import tempfile
 
 from django.conf import settings
+from django.db.models import F
 
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
+from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
-from segment.models.persistent.constants import YT_GENRE_CHANNELS
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -19,7 +20,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None, vetted=False):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -29,6 +30,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
     :param size: int
     :param sort: list -> Additional sort fields
     :param add_uuid: Add uuid to document segments section
+    :param get_exists_params: dict -> Parameters to pass to get_exists util method
     :return:
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
@@ -58,6 +60,23 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                 ]
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
+                extra_data = {}
+                # Retrieve Postgres vetting data for vetting exports
+                if vetted is True:
+                    # channel__channel_id
+                    related_item_id_field = f"{segment.data_field}__{segment.data_field}_id"
+                    item_ids = [item.main.id for item in batch]
+                    id_query = {
+                        f"{related_item_id_field}__in": item_ids
+                    }
+                    data = segment.audit_utils.vetting_model.objects\
+                        .filter(audit_id=segment.audit_id, **id_query)\
+                        .annotate(item_id=F(related_item_id_field))\
+                        .values("skipped", "clean", "item_id")
+                    extra_data = {
+                        item.pop("item_id"): item for item in data
+                    }
+
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
                     writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -78,7 +97,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             })
 
                         item_ids.append(item.main.id)
-                        row = segment.serializer(item).data
+                        # Most serializers do not use extra_data
+                        data = extra_data.get(item.main.id)
+                        row = segment.serializer(item, extra_data=extra_data).data
                         writer.writerow(row)
 
                         # Calculating aggregations with each items already retrieved is much more efficient than

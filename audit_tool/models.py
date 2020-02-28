@@ -560,7 +560,7 @@ class AuditVet(models.Model):
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)  # vetted at by user
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
     skipped = models.NullBooleanField(default=None,
-                                      db_index=True)  # skipped if user uanble to view in region, or item was deleted
+                                      db_index=True)  # skipped if user unable to view in region, or item was deleted
 
     class Meta:
         abstract = True

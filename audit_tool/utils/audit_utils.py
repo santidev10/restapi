@@ -14,6 +14,7 @@ from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
+from segment.models.constants import VETTED_MAPPING
 
 
 class AuditUtils(object):
@@ -143,3 +144,18 @@ class AuditUtils(object):
             item.category: item for item in AuditCategory.objects.all()
         }
         return mapping
+
+    @staticmethod
+    def get_vetting_value(skipped, suitability):
+        if skipped is False:
+            # skipped because item is unavailable e.g. Deleted from youtube
+            key = 0
+        elif skipped is True:
+            # skipped because item is unavailable in a region
+            key = 1
+        elif suitability is False:
+            key = 2
+        elif suitability is True:
+            key = 3
+        vetted_value = VETTED_MAPPING[key]
+        return vetted_value
