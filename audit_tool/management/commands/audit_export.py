@@ -60,7 +60,18 @@ class Command(BaseCommand):
         audit_type = self.audit.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit.audit_type
-        if (audit_type == 2 and not self.export.export_as_videos) or (audit_type==0 and self.export.export_as_channels):
+        if self.export.export_as_keywords:
+            try:
+                file_name, _ = export_funcs.export_keywords(self.audit, self.audit.id, export=self.export)
+            except Exception as e:
+                self.export.started = None
+                self.export.machine = None
+                self.export.thread = None
+                self.export.percent_done = 0
+                self.export.save(update_fields=['started', 'percent_done', 'machine', 'thread'])
+                print("problem with exporting keywords {}, resetting audit back to 0".format(self.audit.id))
+                raise Exception(e)
+        elif (audit_type == 2 and not self.export.export_as_videos) or (audit_type==0 and self.export.export_as_channels):
             try:
                 file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             except Exception as e:

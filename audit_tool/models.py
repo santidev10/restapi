@@ -471,6 +471,7 @@ class AuditExporter(models.Model):
     owner_id = IntegerField(null=True, blank=True)
     export_as_videos = models.BooleanField(default=False, db_index=True)
     export_as_channels = models.BooleanField(default=False, db_index=True)
+    export_as_keywords = models.BooleanField(default=False, db_index=True)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)

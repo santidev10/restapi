@@ -164,10 +164,15 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
             print("Audit completed, all videos processed")
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            export_as_channels = False
+            if max_recommended_type and max_recommended_type=='channel':
+                export_as_channels = True
             a = AuditExporter.objects.create(
                 audit=self.audit,
                 owner_id=None,
                 clean=True,
+                export_as_channels=export_as_channels,
             )
         raise Exception("Audit completed, all videos processed")
 
