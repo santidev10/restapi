@@ -443,6 +443,7 @@ class AuditExportApiView(APIView):
             "Inclusion Words (video)",
             "Brand Safety Score",
             "Monetised",
+            "Error",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -538,6 +539,10 @@ class AuditExportApiView(APIView):
                         v.save(update_fields=['monetised'])
                 except Exception as e:
                     pass
+            try:
+                error_str = str(db_channel.word_hits.get('error'))
+            except Exception as e:
+                error_str = ""
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + channel.channel_id,
@@ -563,6 +568,7 @@ class AuditExportApiView(APIView):
                     channel.channel_id) else "",
                 mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
+                error_str,
             ]
             try:
                 if len(bad_word_categories) > 0:
