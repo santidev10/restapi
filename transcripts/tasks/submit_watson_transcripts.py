@@ -92,7 +92,7 @@ def submit_watson_transcripts():
                     }
                     try:
                         # Check if YT API contains a captions object for the Video.
-                        yt_captions  = youtube.captions().list(**options).execute()
+                        yt_captions = youtube.captions().list(**options).execute()
                         if len(yt_captions["items"]) < 1:
                             yt_has_captions = False
                         else:
