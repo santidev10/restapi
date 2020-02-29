@@ -5,8 +5,8 @@ import os
 import tempfile
 
 from django.conf import settings
-from django.db.models import F
 
+from audit_tool.utils.audit_utils import AuditUtils
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
@@ -63,19 +63,10 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                 extra_data = {}
                 # Retrieve Postgres vetting data for vetting exports
                 if vetted is True:
-                    # channel__channel_id
-                    related_item_id_field = f"{segment.data_field}__{segment.data_field}_id"
                     item_ids = [item.main.id for item in batch]
-                    id_query = {
-                        f"{related_item_id_field}__in": item_ids
-                    }
-                    data = segment.audit_utils.vetting_model.objects\
-                        .filter(audit_id=segment.audit_id, **id_query)\
-                        .annotate(item_id=F(related_item_id_field))\
-                        .values("skipped", "clean", "item_id")
-                    extra_data = {
-                        item.pop("item_id"): item for item in data
-                    }
+                    extra_data = AuditUtils.get_vetting_data(
+                        segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
+                    )
 
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
@@ -98,7 +89,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
                         item_ids.append(item.main.id)
                         # Most serializers do not use extra_data
-                        data = extra_data.get(item.main.id)
                         row = segment.serializer(item, extra_data=extra_data).data
                         writer.writerow(row)
 

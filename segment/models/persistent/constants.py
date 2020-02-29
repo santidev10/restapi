@@ -265,7 +265,10 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
 
 SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.last_30day_views",
                         "brand_safety.overall_score", "general_data.thumbnail_image_url", "brand_safety.language",
-                        "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm", "ads_stats.average_cpv")
+                        "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm",
+                        "ads_stats.average_cpv", "task_us_data.age_group", "task_us_data.brand_safety",
+                        "task_us_data.content_type", "task_us_data.gender", "task_us_data.iab_categories",
+                        "task_us_data.lang_code")
 CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "general_data.iab_categories", "brand_safety.videos_scored", "stats.observed_videos_dislikes",
                                                 "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "monetization.is_monetizable", "task_us_data.created_at")
 VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "general_data.iab_categories", "stats.likes", "stats.dislikes", "general_data.category")

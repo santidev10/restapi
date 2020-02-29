@@ -180,7 +180,7 @@ class AuditVetBaseSerializer(Serializer):
         """
         new_blacklist_scores = {
             str(item): 100
-            for item in self.validated_data["task_us_data"]["brand_safety"]
+            for item in self.validated_data.get("task_us_data", {}).get("brand_safety", [])
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
             item_id=channel_id,
