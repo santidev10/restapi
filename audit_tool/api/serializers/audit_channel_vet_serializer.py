@@ -81,7 +81,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         for key, value in data.items():
             setattr(self.instance, key, value)
         self.instance.save(update_fields=list(data.keys()))
-        if self.validated_data["monetization"]["is_monetizable"] is True:
+        if self.validated_data["monetization"].get("is_monetizable") is True:
             channel_meta.monetised = True
             channel_meta.save()
 
@@ -91,7 +91,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         :param channel_id: str
         :return: None
         """
-        if self.validated_data["monetization"]["is_monetizable"] is True:
+        if self.validated_data["monetization"].get("is_monetizable") is True:
             # Update all channel videos monetization
             query = QueryBuilder().build().must().term().field(f"{Sections.CHANNEL}.id").value(channel_id).get()
             VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True)

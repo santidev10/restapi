@@ -88,7 +88,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
         :param channel_id: str
         :return: None
         """
-        if channel_id and self.validated_data["monetization"]["is_monetizable"] is True:
+        if channel_id and self.validated_data["monetization"].get("is_monetizable") is True:
             try:
                 channel_meta = self.instance.channel.auditchannelmeta
                 channel_meta.monetised = True

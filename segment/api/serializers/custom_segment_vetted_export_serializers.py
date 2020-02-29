@@ -1,3 +1,4 @@
+from rest_framework.serializers import BooleanField
 from rest_framework.serializers import SerializerMethodField
 
 from audit_tool.models import AuditAgeGroup
@@ -55,7 +56,7 @@ class CustomSegmentVettedExportSerializerMixin(object):
 
     def get_vetted(self, obj):
         """
-        extra_data provided by inheritance
+        extra_data provided by base class
         :param obj:
         :return:
         """
@@ -80,9 +81,11 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentVettedExportSerial
 class CustomSegmentVideoVettedExportSerializer(CustomSegmentVettedExportSerializerMixin, CustomSegmentVideoExportSerializer):
     columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score", "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender", "Content_Type")
 
+    Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
     Brand_Safety = SerializerMethodField("get_brand_safety")
     Language = SerializerMethodField("get_language")
     Age_Group = SerializerMethodField("get_content_type")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_age_group")
+    Vetted = SerializerMethodField("get_vetted")
 

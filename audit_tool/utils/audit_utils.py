@@ -149,6 +149,14 @@ class AuditUtils(object):
 
     @staticmethod
     def get_vetting_value(skipped, suitability):
+        """
+        Get vetted value depending on vetting results
+        :param skipped: None | bool
+        :param suitability: None | bool
+        :return: str
+        """
+        # Default that item has not been vetted / processed yet
+        key = 4
         if skipped is False:
             # skipped because item is unavailable e.g. Deleted from youtube
             key = 0
