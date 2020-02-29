@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework.serializers import SerializerMethodField
 
+from audit_tool.models import AuditChannel
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
 from es_components.models import Channel
@@ -54,13 +55,12 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
         if not self.instance:
             raise ValueError("To save serializer, must be provided instance object"
                              "during instantiation.")
-        video_meta = self.instance.video.auditvideometa
-        video_id = video_meta.video.video_id
+        video_id = self.instance.video.video_id
         self._save_vetting_item()
         blacklist_categories = self.save_brand_safety(video_id)
         try:
-            channel_id = video_meta.video.channel.channel_id
-        except AttributeError:
+            channel_id = self.instance.video.channel.channel_id
+        except (AttributeError, AuditChannel.DoesNotExist):
             channel_id = None
         self.save_elasticsearch(video_id, blacklist_categories)
         if channel_id:
