@@ -2,9 +2,7 @@ from django.http import StreamingHttpResponse
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
 
-from audit_tool.utils.audit_utils import AuditUtils
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from utils.aws.s3_exporter import ReportNotFoundException
@@ -19,7 +17,6 @@ class SegmentExport(APIView):
 
     def get(self, request, pk, *_):
         segment = get_object(CustomSegment, f"Custom segment with id: {pk} not found.", id=pk)
-        segment.set_vetting()
         if request.query_params.get("vetted"):
             # Get completed vetted list if available
             try:
@@ -30,6 +27,7 @@ class SegmentExport(APIView):
         else:
             segment = CustomSegment.objects.get(id=pk)
             content_generator = segment.get_export_file()
+
         if content_generator:
             response = StreamingHttpResponse(
                 content_generator,
