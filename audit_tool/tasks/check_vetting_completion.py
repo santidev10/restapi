@@ -8,7 +8,6 @@ from audit_tool.models import AuditVideoVet
 from saas import celery_app
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
-from segment.models import CustomSegmentVettedFileUpload
 from utils.celery.tasks import REDIS_CLIENT
 from utils.celery.tasks import unlock
 
