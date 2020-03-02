@@ -796,7 +796,6 @@ class SendDailyEmailsTestCase(APITestCase):
         ordered_views = 1000
         test_cost_1, test_views_1 = 123, 540
         test_cost_2, test_views_2 = 1240, 480
-        days_left = 3
 
         now = datetime(2017, 1, 1)
         today = now.date()
