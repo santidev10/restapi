@@ -380,6 +380,10 @@ DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
     "visadatacentral@starcomww.com"
 ]
 
+DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
+    "bryan.ngo@channelfactory.com"
+]
+
 DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"
 
 IS_TEST = False
