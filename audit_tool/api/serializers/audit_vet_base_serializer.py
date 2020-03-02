@@ -26,12 +26,12 @@ class AuditVetBaseSerializer(Serializer):
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
 
     # Elasticsearch fields
-    age_group = CharField(source="task_us_data.age_group", default=None)
-    content_type = CharField(source="task_us_data.content_type", default=None)
-    gender = CharField(source="task_us_data.gender", default=None)
-    brand_safety = ListField(source="task_us_data.brand_safety", default=[])
+    age_group = IntegerField(source="task_us_data.age_group", default=None)
+    content_type = IntegerField(source="task_us_data.content_type", default=None)
+    gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -47,6 +47,18 @@ class AuditVetBaseSerializer(Serializer):
             pass
         super().__init__(*args, **kwargs)
 
+    def validate(self, data):
+        """
+        Validate SerializerMethodFields
+        :param data: dict
+        :return: dict
+        """
+        data["task_us_data"].update({
+            "brand_safety": self.validate_brand_safety(self.initial_data.get("brand_safety", [])),
+            "language": self.validate_language_code(self.initial_data.get("lang_code", ""))
+        })
+        return data
+
     def get_url(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -58,6 +70,18 @@ class AuditVetBaseSerializer(Serializer):
 
     def _save_vetting_item(self, *args, **kwargs):
         raise NotImplementedError
+
+    def get_brand_safety(self, doc):
+        """
+        Convert document brand_safety list strings to integers for Postgres pk queries
+        :param doc: es_components.model
+        :return: list -> [int, int, ...]
+        """
+        try:
+            brand_safety = [int(item) for item in doc.task_us_data.brand_safety]
+        except AttributeError:
+            brand_safety = []
+        return brand_safety
 
     def get_language(self, doc):
         """
@@ -168,7 +192,7 @@ class AuditVetBaseSerializer(Serializer):
         """
         new_blacklist_scores = {
             str(item): 100
-            for item in self.validated_data["task_us_data"]["brand_safety"]
+            for item in self.validated_data["task_us_data"].get("brand_safety", [])
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
             item_id=channel_id,
@@ -194,7 +218,7 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
         task_us_data["brand_safety"] = blacklist_categories
-        task_us_data["lang_code"] = self.validated_data["language_code"]
+        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])

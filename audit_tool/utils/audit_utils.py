@@ -1,3 +1,5 @@
+from django.db.models import F
+
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
@@ -14,6 +16,7 @@ from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
+from segment.models.constants import VETTED_MAPPING
 
 
 class AuditUtils(object):
@@ -146,3 +149,49 @@ class AuditUtils(object):
             item.category: item for item in AuditCategory.objects.all()
         }
         return mapping
+
+    @staticmethod
+    def get_vetting_value(skipped, suitability):
+        """
+        Get vetted value depending on vetting results
+        :param skipped: None | bool
+        :param suitability: None | bool
+        :return: str
+        """
+        # Default that item has not been vetted / processed yet
+        key = 4
+        if skipped is False:
+            # skipped because item is unavailable e.g. Deleted from youtube
+            key = 0
+        elif skipped is True:
+            # skipped because item is unavailable in a region
+            key = 1
+        elif suitability is False:
+            key = 2
+        elif suitability is True:
+            key = 3
+        vetted_value = VETTED_MAPPING[key]
+        return vetted_value
+
+    @staticmethod
+    def get_vetting_data(vetting_model, audit_id, item_ids, data_field):
+        """
+        Retrieve vetting data used for CustomSegment vetted exports
+        :param vetting_model: AuditChannelVet, AuditVideoVet
+        :param audit_id: int
+        :param item_ids: list: list of youtube ids -> [str, str, ...]
+        :param data_field: str -> video, channel
+        :return:
+        """
+        related_item_id_field = f"{data_field}__{data_field}_id"
+        id_query = {
+            f"{related_item_id_field}__in": item_ids
+        }
+        data = vetting_model.objects \
+            .filter(audit_id=audit_id, **id_query) \
+            .annotate(item_id=F(related_item_id_field)) \
+            .values("skipped", "clean", "item_id")
+        vetting_data = {
+            item.pop("item_id"): item for item in data
+        }
+        return vetting_data

@@ -84,7 +84,8 @@ class SegmentAuditGenerator(object):
                     batch = [_id for _id in batch if len(_id) == 24]
                 # Get the ids of audit Channel / Video items we need to create
                 # tuple (item.id, item.channel_id)
-                rows = get_exists(batch, self.table_name, select_fields=self.select_fields, where_id_field=self.id_field)
+                rows = get_exists(item_ids=batch, model_name=self.table_name,
+                                  select_fields=self.select_fields, where_id_field=self.id_field)
                 try:
                     existing_audit_ids, existing_item_ids = list(zip(*rows))
                 except ValueError:

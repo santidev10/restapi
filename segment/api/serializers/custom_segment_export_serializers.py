@@ -25,6 +25,10 @@ class CustomSegmentChannelExportSerializer(Serializer):
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
 
+    def __init__(self, instance, *args, **kwargs):
+        self.extra_data = kwargs.pop("extra_data", {})
+        super().__init__(instance, *args, **kwargs)
+
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
 
@@ -68,6 +72,10 @@ class CustomSegmentVideoExportSerializer(Serializer):
     Category = SerializerMethodField("get_category")
     Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
+
+    def __init__(self, instance, *args, **kwargs):
+        self.extra_data = kwargs.pop("extra_data", {})
+        super().__init__(instance, *args, **kwargs)
 
     def get_url(self, obj):
         return f"https://www.youtube.com/watch?v={obj.main.id}"
