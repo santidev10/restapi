@@ -16,7 +16,7 @@ def generate_vetted_segment(segment_id, recipient=None):
     """
     Generate vetted custom segment export
     :param segment_id: int
-    :param recipient: str -> Email of export. Used for vetting exports still in progreess
+    :param recipient: str -> Email of export. Used for vetting exports still in progress
     If false, generate export and email user
     :return:
     """
@@ -24,14 +24,17 @@ def generate_vetted_segment(segment_id, recipient=None):
         segment = CustomSegment.objects.get(id=segment_id)
         segment.set_vetting()
         query = segment.get_vetted_items_query()
-        s3_key = segment.get_vetted_s3_key(suffix=str(timezone.now()))
+        # If recipient, vetting is still in progress. Generate temp export as progress of vetting may rapidly change
+        s3_key_suffix = str(timezone.now()) if recipient else None
+        s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
         results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key, vetted=True)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:
-            # Do not save export in progress since progress may rapidly change
-            if hasattr(segment, "vetted_export"):
+            try:
                 segment.vetted_export.delete()
+            except CustomSegmentVettedFileUpload.DoesNotExist:
+                pass
             vetted_export = CustomSegmentVettedFileUpload.objects.create(segment=segment)
             vetted_export.download_url = results["download_url"]
             vetted_export.completed_at = timezone.now()
