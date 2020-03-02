@@ -10,12 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
+import importlib
 import os
 import socket
 from datetime import date
-import importlib
-
-APM_ENABLED = os.getenv("APM_ENABLED", "0") == "1"
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -482,12 +480,14 @@ TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
+APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
+    aws_env = os.getenv("aws_env", "dev")
     ELASTIC_APM = {
-        "SERVICE_NAME": "viewiq-api",
+        "SERVICE_NAME": f"restapi-{aws_env}-{hostname}",
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
-        "SERVER_URL": "http://apm-server:8200",
+        "SERVER_URL": os.getenv("APM_SERVER_URL"),
         "DEBUG": True,
     }
     MIDDLEWARE = ['elasticapm.contrib.django.middleware.TracingMiddleware'] + MIDDLEWARE
