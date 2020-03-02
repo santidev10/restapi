@@ -363,8 +363,9 @@ class AuditExportApiView(APIView):
                 print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -594,8 +595,9 @@ class AuditExportApiView(APIView):
                 print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
