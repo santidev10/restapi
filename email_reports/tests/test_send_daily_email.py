@@ -658,8 +658,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
-
+                                           status=CampaignStatus.SERVING.value)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -712,7 +711,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
+                                           status=CampaignStatus.SERVING.value)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -772,7 +771,7 @@ class SendDailyEmailsTestCase(APITestCase):
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
         campaign = Campaign.objects.create(pk="1", name="",
                                            salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
+                                           status=CampaignStatus.SERVING.value)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -791,6 +790,56 @@ class SendDailyEmailsTestCase(APITestCase):
 
         self.assertEqual(email.body, "Flight in Opportunity has delivered 100% of its ordered units")
         self.assertEqual(email.subject, "100% DELIVERY - Flight")
+
+    def test_flight_alerts_not_sent_for_ended_campaign(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        ordered_views = 1000
+        test_cost_1, test_views_1 = 123, 540
+        test_cost_2, test_views_2 = 1240, 480
+
+        now = datetime(2017, 1, 1)
+        today = now.date()
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100,
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        flight = Flight.objects.create(id="1", name="Flight", placement=placement,
+                                       start=today - timedelta(days=10),
+                                       end=today - timedelta(days=1),
+                                       ordered_units=ordered_views)
+
+        FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
+        campaign = Campaign.objects.create(pk="1", name="",
+                                           salesforce_placement=placement,
+                                           status=CampaignStatus.ENDED.value)
+
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=2),
+                                         video_views=test_views_1,
+                                         cost=test_cost_1)
+        CampaignStatistic.objects.create(campaign=campaign,
+                                         date=today - timedelta(days=1),
+                                         video_views=test_views_2,
+                                         cost=test_cost_2)
+
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[-1]
+
+        self.assertNotEqual(email.body, "Flight in Opportunity has delivered 100% of its ordered units")
 
     def test_debug_emails(self):
         debug_emails = [
