@@ -596,6 +596,7 @@ class AuditExportApiView(APIView):
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
             wr.writerows(rows)
+            print("written rows to {}".format(file_name))
             # for row in rows:
             #     wr.writerow(row)
 
@@ -604,6 +605,7 @@ class AuditExportApiView(APIView):
             download_file_name = file_name
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             os.remove(myfile.name)
+            print("copied {} to S3".format(file_name))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
