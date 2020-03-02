@@ -657,9 +657,7 @@ class SendDailyEmailsTestCase(APITestCase):
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
 
         campaign = Campaign.objects.create(pk="1", name="",
-                                           salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
-
+                                           salesforce_placement=placement)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -711,8 +709,7 @@ class SendDailyEmailsTestCase(APITestCase):
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
 
         campaign = Campaign.objects.create(pk="1", name="",
-                                           salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
+                                           salesforce_placement=placement)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),
@@ -771,8 +768,7 @@ class SendDailyEmailsTestCase(APITestCase):
 
         FlightStatistic.objects.create(flight=flight, video_views=test_views_1+test_views_2)
         campaign = Campaign.objects.create(pk="1", name="",
-                                           salesforce_placement=placement,
-                                           status=CampaignStatus.ELIGIBLE.value)
+                                           salesforce_placement=placement)
 
         CampaignStatistic.objects.create(campaign=campaign,
                                          date=today - timedelta(days=2),

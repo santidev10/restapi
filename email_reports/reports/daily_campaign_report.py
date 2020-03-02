@@ -14,8 +14,8 @@ from django.template.loader import get_template
 
 from aw_reporting.api.views.pacing_report.pacing_report_helper import \
     PacingReportHelper
-from aw_reporting.models import Campaign, User, SalesForceGoalType, Opportunity, \
-    OpPlacement, Account, CampaignStatus
+from aw_reporting.models import User, SalesForceGoalType, Opportunity, \
+    OpPlacement, Account
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
 from email_reports.reports.base import BaseEmailReport
@@ -211,11 +211,8 @@ class DailyCampaignReport(BaseEmailReport):
             placement_obj = get_object_or_404(OpPlacement, id=placement['id'])
             flights = report.get_flights(placement_obj)
 
-            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement['id'],
-                                                            status=CampaignStatus.ELIGIBLE.value).count()
-
             for flight in flights:
-                if active_campaign_count > 0 and self.is_on_going_flight(flight):
+                if self.is_on_going_flight(flight):
                     self.collect_flight_delivery_alert(flight, opportunity_obj)
 
                 for f in spend_fields:
