@@ -489,7 +489,6 @@ if APM_ENABLED:
         "SERVICE_NAME": "restapi",
         "ENVIRONMENT": aws_env,
         "SERVICE_VERSION": "latest",
-        "FRAMEWORK_NAME": "Django",
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
         "SERVER_URL": os.getenv("APM_SERVER_URL"),
