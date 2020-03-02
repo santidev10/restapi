@@ -1055,9 +1055,6 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
 
-        import pdb
-        pdb.set_trace()
-
         response = self._request(creative_lengths=[0, 4],
                                  creative_lengths_condition="and")
 
