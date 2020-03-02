@@ -147,7 +147,7 @@ class Command(BaseCommand):
                     clean=True).count() > self.audit.max_recommended:
                 self.complete_audit()
             elif max_recommended_type == 'channel':
-                unique_channels = AuditChannelProcessor.objects.filter(audit=self.audit).count()
+                unique_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
                     #pending_videos.filter(clean=True).values('channel_id').distinct()
                 if unique_channels.count() > self.audit.max_recommended:
                     self.complete_audit()
