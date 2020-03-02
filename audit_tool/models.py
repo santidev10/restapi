@@ -132,6 +132,11 @@ class AuditProcessor(models.Model):
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
 
+    class Meta:
+        index_together = [
+            ("source", "completed", "audit_type"),
+        ]
+
     def remove_exports(self):
         exports = []
         for b, c in self.params.items():
@@ -474,6 +479,11 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+
+    class Meta:
+        index_together = [
+            ("audit", "completed"),
+        ]
 
     @staticmethod
     def running():
