@@ -330,6 +330,12 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "alex.peace@channelfactory.com",
 ]
 
+VETTING_EXPORT_EMAIL_RECIPIENTS = [
+    "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
+]
+
 EMERGENCY_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
     "oleksandr.demianyshyn@sigma.software",
