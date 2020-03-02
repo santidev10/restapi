@@ -483,9 +483,9 @@ PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
 APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
-    aws_env = os.getenv("aws_env", "dev")
+    aws_env = os.getenv("AWS_ENV", "dev")
     ELASTIC_APM = {
-        "SERVICE_NAME": f"restapi-{aws_env}-{hostname}",
+        "SERVICE_NAME": f"restapi-{aws_env}",
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
         "SERVER_URL": os.getenv("APM_SERVER_URL"),
