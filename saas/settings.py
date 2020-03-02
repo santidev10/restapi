@@ -484,8 +484,12 @@ PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
     aws_env = os.getenv("AWS_ENV", "dev")
+    # ref: https://www.elastic.co/guide/en/apm/agent/python/current/configuration.html
     ELASTIC_APM = {
-        "SERVICE_NAME": f"restapi-{aws_env}",
+        "SERVICE_NAME": "restapi",
+        "ENVIRONMENT": aws_env,
+        "SERVICE_VERSION": "latest",
+        "FRAMEWORK_NAME": "Django",
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
         "SERVER_URL": os.getenv("APM_SERVER_URL"),
