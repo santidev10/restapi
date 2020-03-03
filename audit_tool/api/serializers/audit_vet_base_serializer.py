@@ -220,8 +220,10 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data["brand_safety"] = blacklist_categories
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = {}
-        if task_us_data.get("lang_code") and LANGUAGES.get(task_us_data["lang_code"]):
-            general_data[self.general_data_language_field] = task_us_data["lang_code"]
+        lang_code = task_us_data.get("lang_code")
+        if lang_code and LANGUAGES.get(lang_code):
+            language = LANGUAGES[lang_code]
+            general_data[self.general_data_language_field] = language
         if task_us_data.get("iab_categories"):
             general_data["iab_categories"] = task_us_data["iab_categories"]
         # Update Elasticsearch document
