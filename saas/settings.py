@@ -330,6 +330,12 @@ AUDIT_TOOL_EMAIL_RECIPIENTS = [
     "alex.peace@channelfactory.com",
 ]
 
+VETTING_EXPORT_EMAIL_RECIPIENTS = [
+    "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
+]
+
 EMERGENCY_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
     "oleksandr.demianyshyn@sigma.software",
@@ -378,6 +384,10 @@ TESTIMONIALS = {
 DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
     "62E6332FA4E74AAAA0F647EAEABEFD85@dbx.datorama.com",
     "visadatacentral@starcomww.com"
+]
+
+DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
+    "bryan.ngo@channelfactory.com"
 ]
 
 DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"

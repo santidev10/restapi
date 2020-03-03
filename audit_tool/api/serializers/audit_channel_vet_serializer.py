@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework.serializers import SerializerMethodField
 
+from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import get_hash_name
 from es_components.models import Channel
@@ -58,9 +59,11 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         if not self.instance:
             raise ValueError("To save serializer, must be provided instance object"
                              "during instantiation.")
-        channel_meta = self.instance.channel.auditchannelmeta
-        channel_id = channel_meta.channel.channel_id
-
+        channel_id = self.instance.channel.channel_id
+        try:
+            channel_meta = self.instance.channel.auditchannelmeta
+        except AuditChannelMeta.DoesNotExist:
+            channel_meta = None
         self._save_vetting_item(channel_meta, channel_id)
         blacklist_categories = self.save_brand_safety(channel_id)
         self.save_elasticsearch(channel_id, blacklist_categories)
@@ -81,7 +84,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         for key, value in data.items():
             setattr(self.instance, key, value)
         self.instance.save(update_fields=list(data.keys()))
-        if self.validated_data["monetization"]["is_monetizable"] is True:
+        if channel_meta and self.validated_data["monetization"].get("is_monetizable") is True:
             channel_meta.monetised = True
             channel_meta.save()
 
@@ -91,7 +94,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         :param channel_id: str
         :return: None
         """
-        if self.validated_data["monetization"]["is_monetizable"] is True:
+        if self.validated_data["monetization"].get("is_monetizable") is True:
             # Update all channel videos monetization
             query = QueryBuilder().build().must().term().field(f"{Sections.CHANNEL}.id").value(channel_id).get()
             VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True)

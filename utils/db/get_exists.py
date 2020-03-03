@@ -1,7 +1,7 @@
 from django.db import connections
 
 
-def get_exists(item_ids, model_name, select_fields="id", where_id_field="id"):
+def get_exists(item_ids=None, model_name=None, select_fields="id", where_id_field="id"):
     """
     Util function to check existence of ids in table
     :param item_ids: list

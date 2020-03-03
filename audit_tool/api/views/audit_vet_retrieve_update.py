@@ -73,12 +73,11 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             validate_fields(self.REQUIRED_FIELDS, list(data.keys()))
             # Rename field for validation since language is used as SerializerMethodField for Elasticsearch
             # serialization and SerializerMethodField is read only
-            data["language_code"] = data.pop("language")
+            data["lang_code"] = data.pop("language")
             serializer = segment.audit_utils.serializer(vetting_item, data=data, segment=segment)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             res = serializer.validated_data
-            res["task_us_data"]["language"] = res.pop("language_code")
         return Response(status=HTTP_200_OK, data=res)
 
     def _validate_patch_params(self, audit_id, data):

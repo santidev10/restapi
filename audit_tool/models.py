@@ -121,7 +121,7 @@ class AuditProcessor(models.Model):
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
-    completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
@@ -130,6 +130,11 @@ class AuditProcessor(models.Model):
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
+
+    class Meta:
+        index_together = [
+            ("source", "completed", "audit_type"),
+        ]
 
     def remove_exports(self):
         exports = []
@@ -476,6 +481,11 @@ class AuditExporter(models.Model):
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
 
+    class Meta:
+        index_together = [
+            ("audit", "completed"),
+        ]
+
     @staticmethod
     def running():
         for a in AuditExporter.objects.filter(started__isnull=False, completed__isnull=True):
@@ -561,7 +571,7 @@ class AuditVet(models.Model):
     processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)  # vetted at by user
     processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
     skipped = models.NullBooleanField(default=None,
-                                      db_index=True)  # skipped if user uanble to view in region, or item was deleted
+                                      db_index=True)  # skipped if user unable to view in region, or item was deleted
 
     class Meta:
         abstract = True

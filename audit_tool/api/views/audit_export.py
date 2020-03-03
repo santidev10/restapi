@@ -371,8 +371,9 @@ class AuditExportApiView(APIView):
                 print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -603,14 +604,17 @@ class AuditExportApiView(APIView):
                 print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            print("written rows to {}".format(file_name))
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
             download_file_name = file_name
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             os.remove(myfile.name)
+            print("copied {} to S3".format(file_name))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])

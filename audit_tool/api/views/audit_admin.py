@@ -27,15 +27,16 @@ class AuditAdminAPIView(APIView):
         segment = get_object(CustomSegment, f"Segment with audit id: {audit_id} not found.", **segment_params)
         item_ids = data.get("items_ids", "")
         update_filter = self._validate_item_ids(item_ids, audit.audit_type)
-        segment.audit_utils.vetting_model.objects \
-            .filter(audit=audit, **update_filter) \
-            .update(processed=None, clean=None)
-        segment.is_vetting_completed = False
-        segment.save()
-        try:
-            segment.vetted_export.delete()
-        except CustomSegmentVettedFileUpload.DoesNotExist:
-            pass
+        to_update = segment.audit_utils.vetting_model.objects \
+            .filter(audit=audit, **update_filter)
+        if to_update.exists():
+            to_update.update(processed=None, clean=None)
+            segment.is_vetting_complete = False
+            segment.save()
+            try:
+                segment.vetted_export.delete()
+            except CustomSegmentVettedFileUpload.DoesNotExist:
+                pass
         return Response(status=HTTP_200_OK)
 
     def _validate_item_ids(self, item_ids, audit_type):

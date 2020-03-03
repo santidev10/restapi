@@ -23,15 +23,15 @@ class AuditVetBaseSerializer(Serializer):
     document_model = None
     general_data_language_field = None
 
-    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION)
+    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA)
 
     # Elasticsearch fields
-    age_group = CharField(source="task_us_data.age_group", default=None)
-    content_type = CharField(source="task_us_data.content_type", default=None)
-    gender = CharField(source="task_us_data.gender", default=None)
-    brand_safety = ListField(source="task_us_data.brand_safety", default=[])
+    age_group = IntegerField(source="task_us_data.age_group", default=None)
+    content_type = IntegerField(source="task_us_data.content_type", default=None)
+    gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
     checked_out_at = DateTimeField(required=False, allow_null=True)
@@ -47,6 +47,18 @@ class AuditVetBaseSerializer(Serializer):
             pass
         super().__init__(*args, **kwargs)
 
+    def validate(self, data):
+        """
+        Validate SerializerMethodFields
+        :param data: dict
+        :return: dict
+        """
+        data["task_us_data"].update({
+            "brand_safety": self.validate_brand_safety(self.initial_data.get("brand_safety", [])),
+            "language": self.validate_language_code(self.initial_data.get("lang_code", ""))
+        })
+        return data
+
     def get_url(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -59,6 +71,18 @@ class AuditVetBaseSerializer(Serializer):
     def _save_vetting_item(self, *args, **kwargs):
         raise NotImplementedError
 
+    def get_brand_safety(self, doc):
+        """
+        Convert document brand_safety list strings to integers for Postgres pk queries
+        :param doc: es_components.model
+        :return: list -> [int, int, ...]
+        """
+        try:
+            brand_safety = [int(item) for item in doc.task_us_data.brand_safety]
+        except AttributeError:
+            brand_safety = []
+        return brand_safety
+
     def get_language(self, doc):
         """
         Elasticsearch document language
@@ -67,11 +91,11 @@ class AuditVetBaseSerializer(Serializer):
         :param doc: es_components.model
         :return: str
         """
-        if getattr(doc.task_us_data, "lang_code", None) is None:
+        if getattr(doc.task_us_data, "lang_code", None):
+            language = doc.task_us_data.lang_code
+        else:
             language = getattr(doc.general_data, self.general_data_language_field, None)
             language = LANG_CODES.get(language)
-        else:
-            language = getattr(doc.task_us_data, "lang_code", None)
         return language
 
     def get_segment_title(self, *_, **__):
@@ -168,7 +192,7 @@ class AuditVetBaseSerializer(Serializer):
         """
         new_blacklist_scores = {
             str(item): 100
-            for item in self.validated_data["task_us_data"]["brand_safety"]
+            for item in self.validated_data["task_us_data"].get("brand_safety", [])
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
             item_id=channel_id,
@@ -194,10 +218,18 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
         task_us_data["brand_safety"] = blacklist_categories
-        task_us_data["lang_code"] = self.validated_data["language_code"]
+        task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
+        general_data = {}
+        lang_code = task_us_data.get("lang_code")
+        if lang_code and LANGUAGES.get(lang_code):
+            language = LANGUAGES[lang_code]
+            general_data[self.general_data_language_field] = language
+        if task_us_data.get("iab_categories"):
+            general_data["iab_categories"] = task_us_data["iab_categories"]
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
+        doc.populate_general_data(**general_data)
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])

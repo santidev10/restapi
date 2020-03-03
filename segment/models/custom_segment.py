@@ -34,6 +34,8 @@ from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
+from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
+from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
@@ -120,6 +122,12 @@ class CustomSegment(SegmentMixin, Timestampable):
         data_type = self.segment_id_to_type[self.segment_type]
         return data_type
 
+    def set_vetting(self):
+        if self.segment_type == 0:
+            self.serializer = CustomSegmentVideoVettedExportSerializer
+        else:
+            self.serializer = CustomSegmentChannelVettedExportSerializer
+
     def set_es_sections(self, sections, upsert_sections):
         self.es_manager.sections = sections
         self.es_manager.upsert_sections = upsert_sections
@@ -154,9 +162,10 @@ class CustomSegment(SegmentMixin, Timestampable):
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
         return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
 
-    def get_vetted_s3_key(self, *args, **kwargs):
+    def get_vetted_s3_key(self, suffix=None):
+        suffix = suffix if suffix is not None else ""
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
-        return f"custom_segments/{self.owner_id}/{segment_type}/vetted/{self.title}.csv"
+        return f"custom_segments/{self.owner_id}/{segment_type}/vetted/{self.title}{suffix}.csv"
 
     def delete_export(self, s3_key=None):
         """

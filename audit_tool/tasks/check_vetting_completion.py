@@ -31,13 +31,12 @@ def check_vetting_completion_task():
 def check_vetting_completion():
     """
     Check segment vetting completion
-    If was completed and now incomplete, delete vetted export
     If newly completed, execute generate_vetted_segment task for segment
     :return:
     """
     segment_audits = {
         item.audit_id: item
-        for item in CustomSegment.objects.filter(audit_id__isnull=False)
+        for item in CustomSegment.objects.filter(audit_id__isnull=False, is_vetting_complete=False)
     }
     audits = AuditProcessor.objects.filter(id__in=list(segment_audits.keys()))
     for audit in audits:
@@ -53,16 +52,10 @@ def check_vetting_completion():
             raise ValueError(
                 f"Audit id: {audit.id} with incompatible audit_type: {audit.audit_type} with source: {audit.source}")
         still_processing = vetting_model.objects.filter(audit=audit, processed=None).exists()
-        has_vetted_export = hasattr(segment, "vetted_export")
-        # Must still check to set audits completed_at to None if admin flags vetting items
-        if still_processing:
-            segment.is_vetting_complete = False
-            if has_vetted_export:
-                segment.vetted_export.delete()
-        else:
-            if not has_vetted_export:
-                generate_vetted_segment.delay(segment.id)
+        # Create permanent export for completed vetted segment
+        if not still_processing:
+            generate_vetted_segment.delay(segment.id)
             segment.is_vetting_complete = True
             audit.completed = timezone.now()
             audit.save()
-        segment.save()
+            segment.save()
