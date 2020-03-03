@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
@@ -147,7 +146,7 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None, source=0):
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None, limit=None):
         # if export:
         #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
         #     all = AuditProcessor.objects.filter(id__in=exports)
@@ -172,7 +171,10 @@ class AuditProcessor(models.Model):
                 if e.audit not in audits:
                     audits.append(e.audit)
         else:
-            for a in all.order_by("pause", "-completed", "id"):
+            all = all.order_by("pause", "-completed", "id")
+            if limit:
+                all = all[cursor:cursor+limit]
+            for a in all:
                 audits.append(a)
         for a in audits:
             d = a.to_dict()
@@ -474,7 +476,9 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner_id = IntegerField(null=True, blank=True)
-    export_as_videos = models.BooleanField(default=False)
+    export_as_videos = models.BooleanField(default=False, db_index=True)
+    export_as_channels = models.BooleanField(default=False, db_index=True)
+    export_as_keywords = models.BooleanField(default=False, db_index=True)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)

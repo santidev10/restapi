@@ -45,6 +45,8 @@ class AuditExportApiView(APIView):
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         clean = query_params["clean"] if "clean" in query_params else None
         export_as_videos = bool(strtobool(query_params["export_as_videos"])) if "export_as_videos" in query_params else False
+        export_as_channels = bool(strtobool(query_params["export_as_channels"])) if "export_as_channels" in query_params else False
+        export_as_keywords = bool(strtobool(query_params["export_as_keywords"])) if "export_as_keywords" in query_params else False
 
         # Validate audit_id
         if audit_id is None:
@@ -63,7 +65,9 @@ class AuditExportApiView(APIView):
             audit=audit,
             clean=clean,
             final=True,
-            export_as_videos=export_as_videos
+            export_as_videos=export_as_videos,
+            export_as_channels=export_as_channels,
+            export_as_keywords=export_as_keywords,
         )
         if a.count() == 0:
             try:
@@ -72,6 +76,8 @@ class AuditExportApiView(APIView):
                     clean=clean,
                     completed__isnull=True,
                     export_as_videos=export_as_videos,
+                    export_as_channels=export_as_channels,
+                    export_as_keywords=export_as_keywords,
                 )
                 return Response({
                     'message': 'export still pending.',
@@ -82,7 +88,9 @@ class AuditExportApiView(APIView):
                     audit=audit,
                     clean=clean,
                     owner_id=request.user.id,
-                    export_as_videos=export_as_videos
+                    export_as_videos=export_as_videos,
+                    export_as_channels=export_as_channels,
+                    export_as_keywords=export_as_keywords,
                 )
                 return Response({
                     'message': 'Processing.  You will receive an email when your export is ready.',
@@ -397,12 +405,13 @@ class AuditExportApiView(APIView):
             name = audit.params['name'].replace("/", "-")
         except Exception as e:
             name = audit_id
-        file_name = 'export_{}_{}_{}.csv'.format(audit_id, name, clean_string)
+        file_name = 'export_{}_{}_{}_{}.csv'.format(audit_id, name, clean_string, str(export.export_as_channels))
         # If audit already exported, simply generate and return temp link
         exports = AuditExporter.objects.filter(
             audit=audit,
             clean=clean,
-            final=True
+            final=True,
+            export_as_channels=export.export_as_channels
         )
         if exports.count() > 0:
             return exports[0].file_name, None
@@ -609,6 +618,66 @@ class AuditExportApiView(APIView):
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
+        return s3_file_name, download_file_name
+
+    def export_keywords(self, audit, audit_id=None, export=None):
+        if not audit_id:
+            audit_id = audit.id
+        file_name = 'keywords_{}.csv'.format(audit_id)
+        # If audit already exported, simply generate and return temp link
+        exports = AuditExporter.objects.filter(
+            audit=audit,
+            final=True,
+            export_as_keywords=True
+        )
+        if exports.count() > 0:
+            return exports[0].file_name, None
+        cols = [
+            "Hit Word",
+            "Count",
+            "Word Type",
+        ]
+        rows = [cols]
+        videos = AuditVideoProcessor.objects.filter(audit_id=audit_id)
+        bad_words = {}
+        good_words = {}
+        count = 0
+        total = videos.count()
+        for video in videos:
+            hits = video.word_hits
+            for word in hits.get('exclusion', []):
+                if word not in bad_words:
+                    bad_words[word] = 1
+                else:
+                    bad_words[word]+=1
+            for word in hits.get('inclusion', []):
+                if word not in good_words:
+                    good_words[word] = 1
+                else:
+                    good_words[word]+=1
+            count+=1
+            if count % 250 == 0:
+                export.percent_done = round(count / total * 100 * 0.4)
+                export.save(update_fields=['percent_done'])
+        for word, count in bad_words.iteritems():
+            rows.append([word, count, 'e'])
+        export.percent_done = 60
+        export.save(update_fields=['percent_done'])
+        for word, count in good_words.iteritems():
+            rows.append([word, count, 'i'])
+        export.percent_done = 80
+        export.save(update_fields=['percent_done'])
+        with open(file_name, 'w+', newline='') as myfile:
+            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+            for row in rows:
+                wr.writerow(row)
+        export.percent_done = 100
+        export.save(update_fields=['percent_done'])
+        with open(file_name) as myfile:
+            s3_file_name = uuid4().hex
+            download_file_name = file_name
+            AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
+            os.remove(myfile.name)
         return s3_file_name, download_file_name
 
     def get_hit_words(self, hits, clean=None):
