@@ -387,7 +387,9 @@ DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
 ]
 
 DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
-    "bryan.ngo@channelfactory.com"
+    "bryan.ngo@channelfactory.com",
+    "sean.maguire@channelfactory.com",
+    "alex.peace@channelfactory.com",
 ]
 
 DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"
