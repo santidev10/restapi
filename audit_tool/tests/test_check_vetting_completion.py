@@ -65,12 +65,12 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         self.assertTrue(hasattr(segment, "vetted_export"))
         mock_generate_vetted.assert_called_once()
 
-    def test_channel_to_incomplete(self, mock_generate_vetted):
+    def test_channel_ignore(self, mock_generate_vetted):
+        """ Should not generate for incomplete lists """
         before = timezone.now()
         audit = AuditProcessor.objects.create(source=1, audit_type=2, completed=before)
-        segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=True,
+        segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=False,
                                                title="", list_type=0, segment_type=1)
-        CustomSegmentVettedFileUpload.objects.create(segment=segment)
         audit_item = AuditChannel.objects.create(channel_id=f"channel_id{next(int_iterator)}")
         AuditChannelVet.objects.create(audit=audit, channel=audit_item, processed=None)
         check_vetting_completion()
@@ -78,14 +78,13 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         segment.refresh_from_db()
         self.assertEqual(segment.is_vetting_complete, False)
         self.assertEqual(mock_generate_vetted.call_count, 0)
-        self.assertFalse(hasattr(segment, "vetted_export"))
 
-    def test_video_to_incomplete(self, mock_generate_vetted):
+    def test_video_to_ignore(self, mock_generate_vetted):
+        """ Should not generate for incomplete lists """
         before = timezone.now()
         audit = AuditProcessor.objects.create(source=1, audit_type=1, completed=before)
         segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=True,
                                                title="", list_type=0, segment_type=0)
-        CustomSegmentVettedFileUpload.objects.create(segment=segment)
         audit_item = AuditVideo.objects.create(video_id=f"v_id{next(int_iterator)}")
         AuditVideoVet.objects.create(audit=audit, video=audit_item, processed=None)
         check_vetting_completion()
@@ -93,4 +92,3 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         segment.refresh_from_db()
         self.assertEqual(segment.is_vetting_complete, False)
         self.assertEqual(mock_generate_vetted.call_count, 0)
-        self.assertFalse(hasattr(segment, "vetted_export"))

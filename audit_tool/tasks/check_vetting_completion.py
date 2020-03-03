@@ -31,7 +31,6 @@ def check_vetting_completion_task():
 def check_vetting_completion():
     """
     Check segment vetting completion
-    If was completed and now incomplete, delete vetted export
     If newly completed, execute generate_vetted_segment task for segment
     :return:
     """

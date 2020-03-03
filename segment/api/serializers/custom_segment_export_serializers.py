@@ -33,11 +33,13 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return f"https://www.youtube.com/channel/{obj.main.id}"
 
     def get_language(self, obj):
-        brand_safety_language = getattr(obj.brand_safety, "language", "") or ""
-        if brand_safety_language == "all":
+        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        if not lang_code:
+            lang_code = getattr(obj.brand_safety, "language", "")
+        if lang_code == "all":
             language = "All"
         else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+            language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -45,7 +47,9 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        categories = getattr(obj.general_data, "iab_categories", []) or []
+        categories = getattr(obj.task_us_data, "iab_categories", [])
+        if not categories:
+            categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join(categories)
         return joined
 
@@ -81,11 +85,13 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return f"https://www.youtube.com/watch?v={obj.main.id}"
 
     def get_language(self, obj):
-        brand_safety_language = getattr(obj.brand_safety, "language", None)
-        if brand_safety_language == "all":
+        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        if not lang_code:
+            lang_code = getattr(obj.brand_safety, "language", "")
+        if lang_code == "all":
             language = "All"
         else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+            language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -93,6 +99,8 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return score
 
     def get_category(self, obj):
-        categories = getattr(obj.general_data, "iab_categories", []) or []
+        categories = getattr(obj.task_us_data, "iab_categories", [])
+        if not categories:
+            categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join(categories)
         return joined
