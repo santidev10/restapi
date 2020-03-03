@@ -53,6 +53,7 @@ VIDEO_CATEGORIES = {
 DISABLED = "Disabled"
 UNKNOWN = "Unknown"
 YOUTUBE = "youtube"
+SDB = "sdb"
 EMOJI = "emoji"
 
 AUDIT_KEYWORD_MAPPING = {
