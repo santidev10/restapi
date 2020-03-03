@@ -156,6 +156,7 @@ class DailyCampaignReport(BaseEmailReport):
                     bcc=self.get_bcc(),
                 )
                 msg.send(fail_silently=False)
+            self.flight_alerts = []
 
             # save the email
             SavedEmail.objects.create(id=context["email_uid"],
