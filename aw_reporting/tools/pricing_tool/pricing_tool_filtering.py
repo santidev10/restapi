@@ -5,7 +5,6 @@ from operator import and_
 
 from django.db.models import BooleanField
 from django.db.models import Case
-from django.db.models import Count
 from django.db.models import F
 from django.db.models import FloatField
 from django.db.models import IntegerField
@@ -53,7 +52,6 @@ CONDITIONS = [
 
 class PricingToolFiltering:
     default_condition = "or"
-    exclude_default_condition = "and"
 
     def __init__(self, kwargs):
         self.kwargs = kwargs
@@ -265,7 +263,7 @@ class PricingToolFiltering:
         exclude_targeting_types = set(TARGETING_TYPES) - set(targeting_types)
         if exclude_targeting_types:
             exclude_fields = ["has_{}".format(t) for t in exclude_targeting_types]
-            queryset = queryset.exclude(build_query_bool(exclude_fields, self.exclude_default_condition, true_value))
+            queryset = queryset.exclude(build_query_bool(exclude_fields, self.default_condition, true_value))
 
         return queryset, True
 
@@ -280,7 +278,7 @@ class PricingToolFiltering:
     def __exclude_by_demographic(self, queryset, model_options, exclude_fields):
         if exclude_fields:
             exclude_fields = [f"{model_options.prefix}{f}" for f in exclude_fields]
-            return queryset.exclude(build_query_bool(exclude_fields, self.exclude_default_condition))
+            return queryset.exclude(build_query_bool(exclude_fields, self.default_condition))
         return queryset
 
     def _filter_by_gender(self, queryset, model_options):
@@ -376,11 +374,16 @@ class PricingToolFiltering:
         if len(devices) == 0:
             return queryset, False
         devices_condition = self.kwargs.get("devices_condition", self.default_condition)
+
         if devices_condition == "or" and model_options.filtering_or:
             query_exclude = dict((model_options.prefix + field, False) for i, field
                                  in enumerate(DEVICE_FIELDS)
                                  if i in devices)
-            queryset = queryset.exclude(**query_exclude)
+
+            query_exclude_invalid_types = dict((model_options.prefix + field, True) for i, field
+                                 in enumerate(DEVICE_FIELDS)
+                                 if i not in devices)
+            queryset = queryset.exclude(**query_exclude).exclude(**query_exclude_invalid_types)
 
         elif devices_condition == "and" and model_options.filtering_and:
             query_filter = dict((model_options.prefix + field, True) for i, field
@@ -391,6 +394,7 @@ class PricingToolFiltering:
                                 in enumerate(DEVICE_FIELDS)
                                 if i not in devices)
             queryset = queryset.filter(**query_filter).exclude(**query_exclude)
+
         return queryset.distinct(), True
 
     def _filter_by_apex(self, queryset, *args):
