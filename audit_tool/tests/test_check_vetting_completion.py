@@ -83,7 +83,7 @@ class CheckVettingCompletion(ExtendedAPITestCase):
         """ Should not generate for incomplete lists """
         before = timezone.now()
         audit = AuditProcessor.objects.create(source=1, audit_type=1, completed=before)
-        segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=True,
+        segment = CustomSegment.objects.create(audit_id=audit.id, uuid=uuid.uuid4(), is_vetting_complete=False,
                                                title="", list_type=0, segment_type=0)
         audit_item = AuditVideo.objects.create(video_id=f"v_id{next(int_iterator)}")
         AuditVideoVet.objects.create(audit=audit, video=audit_item, processed=None)
