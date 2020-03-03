@@ -122,7 +122,7 @@ class AuditProcessor(models.Model):
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
-    completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
@@ -131,6 +131,11 @@ class AuditProcessor(models.Model):
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
+
+    class Meta:
+        index_together = [
+            ("source", "completed", "audit_type"),
+        ]
 
     def remove_exports(self):
         exports = []
@@ -474,6 +479,11 @@ class AuditExporter(models.Model):
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)
     thread = models.IntegerField(null=True, db_index=True)
+
+    class Meta:
+        index_together = [
+            ("audit", "completed"),
+        ]
 
     @staticmethod
     def running():

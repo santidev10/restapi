@@ -24,6 +24,7 @@ djangorestframework-csv==2.1.0
 djangorestframework==3.8.2
 docutils==0.14
 drf-yasg==1.11.1
+elastic-apm==5.4.3
 elasticsearch==7.1.0
 emoji==0.5.4
 et-xmlfile==1.0.1

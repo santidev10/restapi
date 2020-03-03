@@ -958,11 +958,13 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
+        VideoCreativeStatistic.objects.create(creative=creative_1,
+                                              ad_group=ad_group_4, **common)
 
         response = self._request(creative_lengths=[0])
-        self.assertEqual(len(response.data["items"]), 2)
+        self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),
-                         {opportunity_1.id, opportunity_2.id})
+                         {opportunity_2.id})
 
     def test_pricing_tool_opportunity_filters_by_creative_length_or(self):
         opportunity_1, campaign_1 = self._create_opportunity_campaign("1")
@@ -993,6 +995,8 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                                                   duration=1000)  # 1sec
         creative_2 = VideoCreative.objects.create(id="XXX",
                                                   duration=60000)  # 60sec
+        creative_3 = VideoCreative.objects.create(id="ZZZ",
+                                                  duration=0)  # 60sec
 
         common = dict(impressions=1, date=today)
         VideoCreativeStatistic.objects.create(creative=creative_1,
@@ -1002,9 +1006,12 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         VideoCreativeStatistic.objects.create(creative=creative_1,
                                               ad_group=ad_group_3, **common)
+        VideoCreativeStatistic.objects.create(creative=creative_3,
+                                              ad_group=ad_group_4, **common)
 
         response = self._request(creative_lengths=[0, 4],
                                  creative_lengths_condition="or")
+
         self.assertEqual(len(response.data["items"]), 2)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),
                          {opportunity_1.id, opportunity_2.id})
@@ -1050,6 +1057,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
 
         response = self._request(creative_lengths=[0, 4],
                                  creative_lengths_condition="and")
+
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["id"], opportunity_1.id)
 
@@ -1634,6 +1642,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
                                               ad_group=ad_group_1, **common)
         VideoCreativeStatistic.objects.create(creative=creative_2,
                                               ad_group=ad_group_2, **common)
+
         response = self._request(creative_lengths=[0])
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(set([i["id"] for i in response.data["items"]]),

@@ -216,8 +216,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         self.assertEqual(
-            OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key).split("&X-Amz-Signature")[0],
-            response_json.get("download_link").split('&X-Amz-Signature')[0]
+            OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key).split("?X-Amz-Algorithm")[0],
+            response_json.get("download_link").split("?X-Amz-Algorithm")[0]
         )
 
     def test_report_expire(self):

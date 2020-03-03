@@ -253,6 +253,15 @@ class Command(BaseCommand):
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
+                quota_exceed = False
+                try:
+                    if 'quota' in data['error']['message'].lower():
+                        quota_exceed = True
+                except Exception as e:
+                    pass
+                if quota_exceed:
+                    logger.info("QUOTA EXCEEDED STOP ASAP!")
+                    raise Exception("QUOTA EXCEEDED STOP ASAP!")
                 logger.info("problem with api call for video {}".format(db_channel.channel_id))
                 acp.clean = False
                 acp.processed = timezone.now()

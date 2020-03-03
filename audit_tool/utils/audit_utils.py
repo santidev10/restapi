@@ -74,15 +74,18 @@ class AuditUtils(object):
         :return: list
         """
         iab_categories = []
+        bad_tier_1s = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
+                       "Content Source", "Content Source Geo"]
         for tier_1, tier_2_values in IAB_TIER2_CATEGORIES_MAPPING.items():
-            category = {
-                "id": tier_1,
-                "value": tier_1,
-                "children": [{
-                    "value": child
-                } for child in tier_2_values]
-            }
-            iab_categories.append(category)
+            if tier_1 not in bad_tier_1s:
+                category = {
+                    "id": tier_1,
+                    "value": tier_1,
+                    "children": [{
+                        "value": child
+                    } for child in tier_2_values]
+                }
+                iab_categories.append(category)
         return iab_categories
 
     @staticmethod

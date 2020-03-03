@@ -147,7 +147,7 @@ class Command(BaseCommand):
                     clean=True).count() > self.audit.max_recommended:
                 self.complete_audit()
             elif max_recommended_type == 'channel':
-                unique_channels = AuditChannelProcessor.objects.filter(audit=self.audit).count()
+                unique_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
                     #pending_videos.filter(clean=True).values('channel_id').distinct()
                 if unique_channels.count() > self.audit.max_recommended:
                     self.complete_audit()
@@ -292,10 +292,6 @@ class Command(BaseCommand):
                         video=db_video,
                         audit=self.audit
                     )
-                    AuditChannelProcessor.objects.get_or_create(
-                        audit=self.audit,
-                        channel=channel
-                    )
                     update_fields=['word_hits', 'clean']
                     v.word_hits = hits
                     if not v.video_source:
@@ -303,6 +299,11 @@ class Command(BaseCommand):
                         update_fields.append("video_source")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
                     v.save(update_fields=update_fields)
+                    if v.clean:
+                        AuditChannelProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            channel=channel
+                        )
         avp.processed = timezone.now()
         avp.channel = channel
         avp.save(update_fields=['processed', 'channel'])

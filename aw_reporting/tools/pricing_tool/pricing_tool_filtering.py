@@ -1,5 +1,7 @@
 from collections import defaultdict
 from functools import reduce
+from operator import or_
+from operator import and_
 
 from django.db.models import BooleanField
 from django.db.models import Case
@@ -17,6 +19,7 @@ from django.db.models.expressions import Combinable
 from django.db.models.expressions import CombinedExpression
 from django.db.models.expressions import Value
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.contrib.postgres.aggregates import StringAgg
 
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AgeRanges
@@ -50,6 +53,7 @@ CONDITIONS = [
 
 class PricingToolFiltering:
     default_condition = "or"
+    exclude_default_condition = "and"
 
     def __init__(self, kwargs):
         self.kwargs = kwargs
@@ -256,9 +260,14 @@ class PricingToolFiltering:
         queryset = queryset.annotate(**annotation)
 
         fields = ["has_{}".format(t) for t in targeting_types]
+        queryset = queryset.filter(build_query_bool(fields, condition, true_value))
 
-        return queryset.filter(
-            build_query_bool(fields, condition, true_value)), True
+        exclude_targeting_types = set(TARGETING_TYPES) - set(targeting_types)
+        if exclude_targeting_types:
+            exclude_fields = ["has_{}".format(t) for t in exclude_targeting_types]
+            queryset = queryset.exclude(build_query_bool(exclude_fields, self.exclude_default_condition, true_value))
+
+        return queryset, True
 
     def _filter_by_demographic(self):
         return [
@@ -266,6 +275,13 @@ class PricingToolFiltering:
             self._filter_by_age,
             self._filter_parent_status
         ]
+
+
+    def __exclude_by_demographic(self, queryset, model_options, exclude_fields):
+        if exclude_fields:
+            exclude_fields = [f"{model_options.prefix}{f}" for f in exclude_fields]
+            return queryset.exclude(build_query_bool(exclude_fields, self.exclude_default_condition))
+        return queryset
 
     def _filter_by_gender(self, queryset, model_options):
         genders = self.kwargs.get("genders")
@@ -275,7 +291,11 @@ class PricingToolFiltering:
                                     self.default_condition)
         campaign_fields = [GENDER_FIELDS[g] for g in genders]
         fields = [f"{model_options.prefix}{f}" for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+
+        queryset = queryset.filter(build_query_bool(fields, condition))
+        queryset = self.__exclude_by_demographic(queryset, model_options, set(GENDER_FIELDS) - set(campaign_fields))
+
+        return queryset, True
 
     def _filter_by_age(self, queryset, model_options):
         ages = self.kwargs.get("ages")
@@ -285,7 +305,11 @@ class PricingToolFiltering:
                                     self.default_condition)
         campaign_fields = [AGE_FIELDS[g] for g in ages]
         fields = [f"{model_options.prefix}{f}" for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+
+        queryset = queryset.filter(build_query_bool(fields, condition))
+        queryset = self.__exclude_by_demographic(queryset, model_options, set(AGE_FIELDS) - set(campaign_fields))
+
+        return queryset, True
 
     def _filter_parent_status(self, queryset, model_options):
         parents = self.kwargs.get("parents")
@@ -295,7 +319,11 @@ class PricingToolFiltering:
                                     self.default_condition)
         campaign_fields = [PARENT_FIELDS[g] for g in parents]
         fields = [f"{model_options.prefix}{f}" for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+
+        queryset = queryset.filter(build_query_bool(fields, condition))
+        queryset = self.__exclude_by_demographic(queryset, model_options, set(PARENT_FIELDS) - set(campaign_fields))
+
+        return queryset, True
 
     def _filter_by_geo_targeting(self, queryset, model_options):
         geo_targets = self.kwargs.get("geo_locations", [])
@@ -358,7 +386,11 @@ class PricingToolFiltering:
             query_filter = dict((model_options.prefix + field, True) for i, field
                                 in enumerate(DEVICE_FIELDS)
                                 if i in devices)
-            queryset = queryset.filter(**query_filter)
+
+            query_exclude = dict((model_options.prefix + field, True) for i, field
+                                in enumerate(DEVICE_FIELDS)
+                                if i not in devices)
+            queryset = queryset.filter(**query_filter).exclude(**query_exclude)
         return queryset.distinct(), True
 
     def _filter_by_apex(self, queryset, *args):
@@ -540,40 +572,47 @@ class PricingToolFiltering:
                                  ad_group_link):
         video_lengths_filter = VIDEO_LENGTHS
 
-        def get_creative_length_annotation(l_id):
-            min_val, max_val = video_lengths_filter[l_id]
-            criteria = {
-                "{}videos_stats__creative__duration__gte".format(
-                    ad_group_link): min_val * 1000,
-                "{}videos_stats__impressions__gt".format(ad_group_link): 0,
-            }
-            if max_val is not None:
-                criteria["{}videos_stats__creative__duration__lte".format(
-                    ad_group_link)] = max_val * 1000
-            ann = Count(
-                Case(
+        def get_creative_length_annotation(lengths_ids):
+
+            when_list = []
+
+            for l_id in lengths_ids:
+                min_val, max_val = video_lengths_filter[l_id]
+                criteria = {
+                    "{}videos_stats__creative__duration__gte".format(
+                        ad_group_link): min_val * 1000,
+                    "{}videos_stats__impressions__gt".format(ad_group_link): 0,
+                }
+                if max_val is not None:
+                    criteria["{}videos_stats__creative__duration__lte".format(
+                        ad_group_link)] = max_val * 1000
+                when_list.append(
                     When(
-                        then='{}videos_stats__id'.format(ad_group_link),
+                        then=Value(str(l_id)),
                         **criteria
-                    ),
+                    )
+                )
+            ann = StringAgg(
+                Case(
+                    *when_list,
                     output_field=IntegerField(),
+                    default=Value("None")
                 ),
+                delimiter=";",
+                distinct=True
             )
             return ann
 
         creative_lengths_condition = self.kwargs.get("creative_lengths_condition") or "or"
-        operator = "|" if creative_lengths_condition == "or" else "&"
-        creative_length_annotate = get_creative_length_annotation(
-            creative_lengths[0])
-        for length_id in creative_lengths[1:]:
-            creative_length_annotate = CombinedExpression(
-                creative_length_annotate, operator,
-                get_creative_length_annotation(length_id),
-                output_field=IntegerField()
-            )
+        operator = or_ if creative_lengths_condition == "or" else and_
+        creative_length_annotate = get_creative_length_annotation(creative_lengths)
+
         queryset = queryset.annotate(
             creative_length_annotate=creative_length_annotate)
-        queryset = queryset.filter(creative_length_annotate__gt=0)
+
+        query = reduce(operator, [Q(**{'creative_length_annotate__contains': l_id}) for l_id in creative_lengths], Q())
+
+        queryset = queryset.exclude(creative_length_annotate__contains="None").filter(query)
         return queryset
 
     @staticmethod

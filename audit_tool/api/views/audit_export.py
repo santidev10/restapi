@@ -363,8 +363,9 @@ class AuditExportApiView(APIView):
                 print("export at {}".format(export.percent_done))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
@@ -434,6 +435,7 @@ class AuditExportApiView(APIView):
             "Inclusion Words (video)",
             "Brand Safety Score",
             "Monetised",
+            "Error",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -529,6 +531,10 @@ class AuditExportApiView(APIView):
                         v.save(update_fields=['monetised'])
                 except Exception as e:
                     pass
+            try:
+                error_str = str(db_channel.word_hits.get('error'))
+            except Exception as e:
+                error_str = ""
             data = [
                 v.name,
                 "https://www.youtube.com/channel/" + channel.channel_id,
@@ -554,6 +560,7 @@ class AuditExportApiView(APIView):
                     channel.channel_id) else "",
                 mapped_score if mapped_score else "",
                 'true' if v.monetised else "",
+                error_str,
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -588,14 +595,17 @@ class AuditExportApiView(APIView):
                 print("export at {}, {}/{}".format(export.percent_done, num_done, count))
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
+            print("written rows to {}".format(file_name))
+            # for row in rows:
+            #     wr.writerow(row)
 
         with open(file_name) as myfile:
             s3_file_name = uuid4().hex
             download_file_name = file_name
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             os.remove(myfile.name)
+            print("copied {} to S3".format(file_name))
             if audit and audit.completed:
                 audit.params['export_{}'.format(clean_string)] = s3_file_name
                 audit.save(update_fields=['params'])
