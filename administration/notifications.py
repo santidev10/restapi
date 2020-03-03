@@ -88,7 +88,7 @@ def send_html_email(subject, to, text_header, text_content, from_email=None, fai
     html_email = generate_html_email(text_header, text_content)
     send_email(
         subject=subject,
-        recipient_list=[to],
+        recipient_list=[to] if type(to) is str else to,
         html_message=html_email,
         from_email=from_email or settings.SENDER_EMAIL_ADDRESS,
         fail_silently=fail_silently

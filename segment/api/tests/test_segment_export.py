@@ -4,7 +4,6 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
-from rest_framework.response import Response
 import uuid
 
 from audit_tool.models import AuditProcessor
@@ -12,9 +11,10 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models import CustomSegmentVettedFileUpload
 from utils.unittests.test_case import ExtendedAPITestCase
 from utils.unittests.int_iterator import int_iterator
-from utils.aws.s3_exporter import ReportNotFoundException
+from utils.aws.s3_exporter import S3Exporter
 
 
 class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
@@ -46,34 +46,27 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         test_user = self._create_user()
         self.create_test_user()
         segment, export = self._create_segment(segment_params=dict(owner=test_user))
-        with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()),\
-                patch.object(CustomSegment, "get_export_file") as mock_export:
-            url = self._get_url(segment.id) + "?vetted=true"
-            response = self.client.get(url)
+        url = self._get_url(segment.id) + "?vetted=true"
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(mock_export.call_count, 0)
 
     def test_reject_vetting_progress(self):
         """ Users without vetting admin permissions should not be able to export vetting lists progress """
         user = self._create_user()
         self.create_test_user()
         segment, export = self._create_segment(segment_params=dict(owner=user))
-        with patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
-            url = self._get_url(segment.id) + "?vetted=true"
-            response = self.client.get(url)
+        url = self._get_url(segment.id) + "?vetted=true"
+        response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
-        self.assertEqual(mock_generate.call_count, 0)
 
     def test_vetting_admin_export_success(self):
         """ Admin users should be able to export all lists """
         test_user = self._create_user()
         self.create_admin_user()
         segment, export = self._create_segment(segment_params=dict(owner=test_user))
-        with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()),\
-                patch.object(CustomSegment, "get_export_file") as mock_export:
+        with patch.object(S3Exporter, "exists", return_value=True):
             response = self.client.get(self._get_url(segment.id))
         self.assertEqual(response.status_code, HTTP_200_OK)
-        mock_export.assert_called_once()
 
     def test_vetting_admin_export_progress_success(self):
         """ Admin users should be able to export progress of all lists """
@@ -81,14 +74,12 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         audit = AuditProcessor.objects.create(source=1)
         segment, export = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
-        with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()), \
-                patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate, \
-                patch.object(CustomSegment, "get_export_file") as mock_export:
-            url = self._get_url(segment.id) + "?vetted=true"
-            mock_export.side_effect = ReportNotFoundException
-            response = self.client.get(url)
+        with patch.object(S3Exporter, "exists", return_value=False), \
+             patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
+                url = self._get_url(segment.id) + "?vetted=true"
+                response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        mock_export.assert_called_once()
+        self.assertIsNotNone(response.data.get("message"))
         mock_generate.delay.assert_called_once()
 
     def test_vetting_completed_admin_export_success(self):
@@ -97,10 +88,11 @@ class SegmentExportAPIViewTestCase(ExtendedAPITestCase):
         self.create_admin_user()
         audit = AuditProcessor.objects.create(source=1)
         segment, export = self._create_segment(segment_params=dict(owner=test_user, audit_id=audit.id))
-        with patch("segment.api.views.custom_segment.segment_export.StreamingHttpResponse", return_value=Response()), \
-             patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate, \
-                patch.object(CustomSegment, "get_export_file") as mock_export:
+        CustomSegmentVettedFileUpload.objects.create(segment=segment)
+        with patch.object(S3Exporter, "exists", return_value=True),\
+            patch("segment.api.views.custom_segment.segment_export.generate_vetted_segment") as mock_generate:
             url = self._get_url(segment.id) + "?vetted=true"
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        mock_export.assert_called_once()
+        self.assertIsNotNone(response.data.get("download_url"))
+        self.assertEqual(mock_generate.call_count, 0)

@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.utils import timezone
 
 from saas import celery_app
@@ -16,27 +17,33 @@ def generate_vetted_segment(segment_id, recipient=None):
     """
     Generate vetted custom segment export
     :param segment_id: int
-    :param recipient: str -> Email of export. Used for vetting exports still in progreess
-    If false, generate export and email user
+    :param recipient: str -> Email of export. Used for vetting exports still in progress
+    If recipient, then user requests vetted export in progress
+    Else, vetting is complete. Create CustomSegmentVettedFileUpload and notify admins
     :return:
     """
     try:
         segment = CustomSegment.objects.get(id=segment_id)
         segment.set_vetting()
         query = segment.get_vetted_items_query()
-        s3_key = segment.get_vetted_s3_key(suffix=str(timezone.now()))
+        # If recipient, user requested export of vetting in progress. Generate temp export as vetting progress
+        # may rapidly change
+        s3_key_suffix = str(timezone.now()) if recipient else None
+        s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
         results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key, vetted=True)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:
-            # Do not save export in progress since progress may rapidly change
-            if hasattr(segment, "vetted_export"):
+            try:
                 segment.vetted_export.delete()
+            except CustomSegmentVettedFileUpload.DoesNotExist:
+                pass
             vetted_export = CustomSegmentVettedFileUpload.objects.create(segment=segment)
             vetted_export.download_url = results["download_url"]
             vetted_export.completed_at = timezone.now()
             vetted_export.save()
             segment.save()
+            send_export_email(settings.VETTING_EXPORT_EMAIL_RECIPIENTS, segment.title, results["download_url"])
     except CustomSegment.DoesNotExist:
         logger.error(f"Segment with id: {segment_id} does not exist.")
     except Exception:
