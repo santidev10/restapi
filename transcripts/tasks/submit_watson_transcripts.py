@@ -61,7 +61,6 @@ def submit_watson_transcripts():
         logger.info("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
-        videos_to_upsert = []
         videos_request_batch = []
         videos_watson_transcripts = []
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, ),
@@ -109,8 +108,6 @@ def submit_watson_transcripts():
                                 else:
                                     videos_watson_transcripts.append(watson_transcript)
                                     videos_request_batch.append(vid_id)
-                                    if not sandbox_mode:
-                                        videos_to_upsert.append(vid)
                             except Exception as e:
                                 logger.error(e)
                                 continue
@@ -151,6 +148,7 @@ def submit_watson_transcripts():
                         watson_transcript.save(update_fields=['submitted', 'job_id', 'job_id_hash'])
                     videos_watson_transcripts = []
                     if not sandbox_mode:
+                        videos_to_upsert = manager.get(videos_request_batch, skip_none=True)
                         for video in videos_to_upsert:
                             video.populate_custom_captions(watson_job_id=job_id)
                         manager.upsert(videos_to_upsert)

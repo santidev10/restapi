@@ -10,6 +10,7 @@ from userprofile.api.views import UserPasswordChangeApiView
 from userprofile.api.views import UserPasswordResetApiView
 from userprofile.api.views import UserPasswordSetApiView
 from userprofile.api.views import UserProfileApiView
+from userprofile.api.views import WhiteLabelApiView
 
 urlpatterns = [
     url(r'^users/$', UserCreateApiView.as_view(), name=UserprofilePathName.CREATE_USER),
@@ -25,4 +26,5 @@ urlpatterns = [
     url(r'^contact_forms/$',
         ContactFormApiView.as_view(), name="contact_from"),
     url(r'^error_report/$', ErrorReportApiView.as_view(), name="error_report"),
+    url(r'^config/$', WhiteLabelApiView.as_view(), name="white_label"),
 ]
