@@ -1,7 +1,7 @@
-import hashlib
 from datetime import datetime
 from datetime import timedelta
-
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
 from django.db import models
@@ -10,8 +10,7 @@ from django.db.models import IntegerField
 from django.db.models import Q
 from django.utils import timezone
 from es_components.iab_categories import YOUTUBE_TO_IAB_CATEGORIES_MAPPING
-
-from django.contrib.auth import get_user_model
+import hashlib
 
 
 def get_hash_name(s):
@@ -123,7 +122,7 @@ class AuditProcessor(models.Model):
     created = models.DateTimeField(auto_now_add=True, db_index=True)
     started = models.DateTimeField(auto_now_add=False, db_index=True, default=None, null=True)
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
-    completed = models.DateTimeField(auto_now_add=False, default=None, null=True)
+    completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
@@ -132,6 +131,11 @@ class AuditProcessor(models.Model):
     temp_stop = models.BooleanField(default=False, db_index=True)
     audit_type = models.IntegerField(db_index=True, default=0)
     source = models.IntegerField(db_index=True, default=0)
+
+    class Meta:
+        index_together = [
+            ("source", "completed", "audit_type"),
+        ]
 
     def remove_exports(self):
         exports = []
@@ -143,12 +147,12 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None):
-        if export:
-            exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
-            all = AuditProcessor.objects.filter(id__in=exports)
-        else:
-            all = AuditProcessor.objects.all()
+    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None, source=0):
+        # if export:
+        #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
+        #     all = AuditProcessor.objects.filter(id__in=exports)
+        # else:
+        all = AuditProcessor.objects.filter(source=source)
         if audit_type:
             all = all.filter(audit_type=audit_type)
         if running is not None:
@@ -161,7 +165,16 @@ class AuditProcessor(models.Model):
             'running': [],
             'completed': []
         }
-        for a in all.order_by("pause", "-completed", "id"):
+        audits = []
+        if export:
+            exports = AuditExporter.objects.filter(completed__isnull=True, audit_id__in=all.values_list('id', flat=True)).order_by("started", "audit__pause", "id")
+            for e in exports:
+                if e.audit not in audits:
+                    audits.append(e.audit)
+        else:
+            for a in all.order_by("pause", "-completed", "id"):
+                audits.append(a)
+        for a in audits:
             d = a.to_dict()
             status = 'running'
             if output:
@@ -207,18 +220,16 @@ class AuditProcessor(models.Model):
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
+            'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
             'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
             'exclusion_hit_count': self.params.get('exclusion_hit_count'),
+            'include_unknown_likes': self.params.get('include_unknown_likes'),
+            'include_unknown_views': self.params.get('include_unknown_views'),
         }
-        # if self.completed:
-        #     try:
-        #         c = d['data']['count']
-        #         d['name'] = "{n}: [{c}]" . format(n=d['name'], c="{:,}".format(c))
-        #     except Exception as e:
-        #         pass
+        #d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
         files = self.params.get('files')
         if files:
             d['source_file'] = files.get('source')
@@ -239,6 +250,9 @@ class AuditProcessor(models.Model):
             if e[0].started:
                 res['status'] = "Processing Export"
                 res['percent_done'] = e[0].percent_done
+                res['started'] = e[0].started
+                res['machine'] = e[0].machine
+                res['thread'] = e[0].thread
             else:
                 res['status'] = "Export Queued"
         return res
@@ -305,6 +319,11 @@ class AuditCategory(models.Model):
 class AuditCountry(models.Model):
     country = models.CharField(max_length=64, unique=True)
 
+    @staticmethod
+    def from_string(in_var):
+        db_result, _ = AuditCountry.objects.get_or_create(country=in_var.upper())
+        return db_result
+
 class AuditChannel(models.Model):
     channel_id = models.CharField(max_length=50, unique=True)
     channel_id_hash = models.BigIntegerField(default=0, db_index=True)
@@ -370,22 +389,32 @@ class AuditVideo(models.Model):
 
 
 class AuditVideoTranscript(models.Model):
+    SOURCE_OPTIONS = {
+        0: "Custom Transcripts",
+        1: "Watson"
+    }
     video = models.ForeignKey(AuditVideo, on_delete=models.CASCADE)
     language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     transcript = models.TextField(default=None, null=True)
+    source = models.IntegerField(default=0, db_index=True)
+    submitted = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
+    retrieved = models.DateTimeField(blank=True, null=True, default=None, db_index=True)
+    job_id = models.CharField(max_length=255, blank=True, null=True, default=None, db_index=True)
+    job_id_hash = models.BigIntegerField(db_index=True, default=0)
 
     class Meta:
         unique_together = ("video", "language")
 
     @staticmethod
-    def get_or_create(video_id, language='en', transcript=None):
+    def get_or_create(video_id, language='en', transcript=None, source=0):
         v = AuditVideo.get_or_create(video_id)
         lang = AuditLanguage.from_string(language) if language else None
-        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang)
+        t, _ = AuditVideoTranscript.objects.get_or_create(video=v, language=lang, source=source)
         if transcript:
             t.transcript = transcript
             t.save(update_fields=['transcript'])
         return t
+
 
 class AuditVideoMeta(models.Model):
     video = models.OneToOneField(AuditVideo, on_delete=models.CASCADE)
@@ -403,6 +432,8 @@ class AuditVideoMeta(models.Model):
     default_audio_language = models.ForeignKey(AuditLanguage, default=None, null=True, on_delete=models.CASCADE)
     duration = models.CharField(max_length=30, default=None, null=True)
     age_restricted = models.NullBooleanField(default=None, db_index=True)
+    made_for_kids = models.NullBooleanField(default=None, db_index=True)
+
 
 class AuditVideoProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -416,6 +447,9 @@ class AuditVideoProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "video")
+        index_together = [
+            ("audit", "processed"),
+        ]
 
 class AuditChannelProcessor(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -428,6 +462,9 @@ class AuditChannelProcessor(models.Model):
 
     class Meta:
         unique_together = ("audit", "channel")
+        index_together = [
+            ("audit", "processed"),
+        ]
 
 class AuditExporter(models.Model):
     audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
@@ -440,6 +477,29 @@ class AuditExporter(models.Model):
     export_as_videos = models.BooleanField(default=False)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
+    machine = models.IntegerField(null=True, db_index=True)
+    thread = models.IntegerField(null=True, db_index=True)
+
+    class Meta:
+        index_together = [
+            ("audit", "completed"),
+        ]
+
+    @staticmethod
+    def running():
+        for a in AuditExporter.objects.filter(started__isnull=False, completed__isnull=True):
+            print(a.to_dict())
+
+    def to_dict(self):
+        d = {
+            'started': self.started,
+            'audit': self.audit_id,
+            'audit_name': self.audit.name,
+            'machine': self.machine,
+            'thread': self.thread,
+            'percent_done': self.percent_done,
+        }
+        return d
 
     @property
     def owner(self):
@@ -500,3 +560,117 @@ class BlacklistItem(models.Model):
                 else:
                     data.append(item)
         return data
+
+
+class AuditVet(models.Model):
+    audit = models.ForeignKey(AuditProcessor, db_index=True, on_delete=models.CASCADE)
+    clean = models.NullBooleanField(default=None, db_index=True)  # determined if suitable by user
+    created_at = models.DateTimeField(auto_now_add=True)
+    checked_out_at = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)
+    processed = models.DateTimeField(default=None, null=True, auto_now_add=False, db_index=True)  # vetted at by user
+    processed_by_user_id = IntegerField(null=True, default=None, db_index=True)
+    skipped = models.NullBooleanField(default=None,
+                                      db_index=True)  # skipped if user unable to view in region, or item was deleted
+
+    class Meta:
+        abstract = True
+
+
+class AuditChannelVet(AuditVet):
+    channel = models.ForeignKey(AuditChannel, db_index=True, related_name='channel_vets', null=True, default=None, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("audit", "channel")
+
+
+class AuditVideoVet(AuditVet):
+    video = models.ForeignKey(AuditVideo, db_index=True, related_name='video_vets', null=True, default=None, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("audit", "video")
+
+
+class AuditContentType(models.Model):
+    ID_CHOICES = [
+        (0, "MC / Brand"),
+        (1, "Regular UGC"),
+        (2, "Premium UGC"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    content_type = models.CharField(max_length=20)
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditContentType.to_id[value.lower()]
+        else:
+            item_id = value
+        item = AuditContentType.objects.get(id=item_id)
+        return item
+
+
+class AuditAgeGroup(models.Model):
+    ID_CHOICES = [
+        (0, "0 - 3 Toddlers"),
+        (1, "4 - 8 Young Kids"),
+        (2, "9 - 12 Older Kids"),
+        (3, "13 - 17 Teens"),
+        (4, "18 - 35 Adults"),
+        (5, "36 - 54 Older Adults"),
+        (6, "55+ Seniors"),
+        (7, "Group - Kids (not teens)"), # parent=2
+        (8, "Group - Family Friendly"), # parent=3
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    age_group = models.CharField(max_length=25)
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, default=None, related_name="children")
+
+    @staticmethod
+    def get_by_group():
+        """
+        Get age groups with subgroups
+        :return: dict
+        """
+        by_group = [{
+            "id": group.id,
+            "value": group.age_group,
+            "children": [{"id": child.id, "value": child.age_group} for child in AuditAgeGroup.objects.filter(parent_id=group.id)]
+         } for group in AuditAgeGroup.objects.filter(parent=None)]
+        return by_group
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditAgeGroup.to_id[value.lower()]
+        else:
+            item_id = value
+        item = AuditAgeGroup.objects.get(id=item_id)
+        return item
+
+
+class AuditGender(models.Model):
+    ID_CHOICES = [
+        (0, "Neutral"),
+        (1, "Female"),
+        (2, "Male"),
+    ]
+    to_str = dict(ID_CHOICES)
+    to_id = {val.lower(): key for key, val in to_str.items()}
+
+    id = models.IntegerField(primary_key=True, choices=ID_CHOICES)
+    gender = models.CharField(max_length=15)
+
+    @staticmethod
+    def get(value):
+        if type(value) is str:
+            item_id = AuditGender.to_id[value.lower()]
+        else:
+            item_id = value
+        gender = AuditGender.objects.get(id=item_id)
+        return gender

@@ -8,7 +8,7 @@ from aw_reporting.api.urls.names import Name
 from aw_reporting.models import Opportunity, OpPlacement, Flight, Campaign, Account
 from aw_reporting.api.views.pacing_report.pacing_report_flights_campaign_allocations import PacingReportFlightsCampaignAllocationsView
 from saas.urls.namespaces import Namespace
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class PacingReportFlightCampaignAllocationsTestCase(ExtendedAPITestCase):

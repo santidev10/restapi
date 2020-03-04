@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.status import HTTP_403_FORBIDDEN
+from audit_tool.api.serializers.audit_processor_serializer import AuditProcessorSerializer
 from audit_tool.models import AuditProcessor
 import csv
 from uuid import uuid4
@@ -10,13 +12,17 @@ import json
 from django.conf import settings
 from utils.aws.s3_exporter import S3Exporter
 from datetime import datetime
+from django.utils import timezone
 from utils.permissions import user_has_permission
 from brand_safety.languages import LANGUAGES
+from segment.models import CustomSegment
+from audit_tool.tasks.generate_audit_items import generate_audit_items
 
 class AuditSaveApiView(APIView):
     permission_classes = (
         user_has_permission("userprofile.view_audit"),
     )
+    LANGUAGES_REVERSE = {}
 
     def post(self, request):
         query_params = request.query_params
@@ -39,7 +45,11 @@ class AuditSaveApiView(APIView):
         max_recommended_type = query_params["max_recommended_type"] if "max_recommended_type" in query_params else "video"
         exclusion_hit_count = query_params["exclusion_hit_count"] if "exclusion_hit_count" in query_params else 1
         inclusion_hit_count = query_params["inclusion_hit_count"] if "inclusion_hit_count" in query_params else 1
+        include_unknown_views = strtobool(query_params["include_unknown_views"]) if "include_unknown_views" in query_params else False
+        include_unknown_likes = strtobool(query_params["include_unknown_likes"]) if "include_unknown_likes" in query_params else False
 
+        if name:
+            name = name.strip()
         if min_date:
             if '/' not in min_date:
                 raise ValidationError("format of min_date must be mm/dd/YYYY")
@@ -107,6 +117,8 @@ class AuditSaveApiView(APIView):
             },
             'exclusion_hit_count': exclusion_hit_count,
             'inclusion_hit_count': inclusion_hit_count,
+            'include_unknown_views': include_unknown_views,
+            'include_unknown_likes': include_unknown_likes,
         }
         if not audit_id:
             if source_file is None:
@@ -174,6 +186,8 @@ class AuditSaveApiView(APIView):
             audit.params['max_recommended_type'] = max_recommended_type
             audit.params['exclusion_hit_count'] = exclusion_hit_count
             audit.params['inclusion_hit_count'] = inclusion_hit_count
+            audit.params['include_unknown_views'] = include_unknown_views
+            audit.params['include_unknown_likes'] = include_unknown_likes
             audit.save()
         else:
             audit = AuditProcessor.objects.create(
@@ -221,17 +235,76 @@ class AuditSaveApiView(APIView):
                 category = row[1].lower().strip()
             except Exception as e:
                 category = ""
-            try:
-                language = row[2].lower().strip()
-                if language not in LANGUAGES:
-                    language = ""
-            except Exception as e:
-                language = ""
+            language = self.find_language(row)
             row_data = [word, category, language]
             if word:
                 exclusion_data.append(row_data)
                 categories.append(category)
         return exclusion_data, categories
+
+    def find_language(self, row):
+        try:
+            language = row[2].lower().strip()
+            if language in LANGUAGES:
+                return language
+            if not self.LANGUAGES_REVERSE:
+                for k, v in LANGUAGES.items():
+                    self.LANGUAGES_REVERSE[v.lower()] = k
+            if language in self.LANGUAGES_REVERSE:
+                return self.LANGUAGES_REVERSE[language]
+            return ""
+        except Exception as e:
+            return ""
+
+    def patch(self, request):
+        """
+        Update AuditProcessor fields
+        AuditProcessor params will always be updated with new data if provided
+        """
+        data = request.data
+        audit_id = data.get("audit_id")
+        segment_id = data.get("segment_id")
+        if not request.user.has_perm("userprofile.vet_audit_admin"):
+            raise ValidationError("You do not have access to perform this action.", code=HTTP_403_FORBIDDEN)
+        if not audit_id and not segment_id:
+            raise ValidationError("You must provide a segment_id or audit_id.")
+        try:
+            if segment_id:
+                segment = CustomSegment.objects.get(id=segment_id)
+            else:
+                segment = CustomSegment.objects.get(audit_id=audit_id)
+        except KeyError:
+            raise ValidationError("You must provide a audit_id.")
+        except CustomSegment.DoesNotExist:
+            raise ValidationError(f"Segment does not exist with parameters: {data}.")
+
+        # If segment does not contain any items, then reject audit creation
+        if segment.statistics.get("items_count", 0) <= 0 or getattr(segment, "export", None) is None:
+            raise ValidationError(f"The list: {segment.title} does not contain any items. Please create a new list.")
+        audit, created = AuditProcessor.objects.get_or_create(id=segment.audit_id, defaults={
+            "audit_type": segment.audit_type,
+            "source": 1,
+        })
+        if created:
+            segment.audit_id = audit.id
+            segment.save()
+            generate_audit_items.delay(segment.id, data_field=segment.data_field)
+            if not audit.completed:
+                audit.completed = timezone.now()
+                audit.save(update_fields=['completed'])
+        # Update params with instructions
+        audit.params.update({
+            "instructions": data.pop("instructions", "")
+        })
+        data["params"] = audit.params
+        serializer = AuditProcessorSerializer(audit, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        res = {
+            "instructions": serializer.data["params"].get("instructions")
+        }
+        return Response(data=res)
+
 
 class AuditFileS3Exporter(S3Exporter):
     bucket_name = settings.AMAZON_S3_AUDITS_FILES_BUCKET_NAME

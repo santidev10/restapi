@@ -156,6 +156,7 @@ class DailyCampaignReport(BaseEmailReport):
                     bcc=self.get_bcc(),
                 )
                 msg.send(fail_silently=False)
+            self.flight_alerts = []
 
             # save the email
             SavedEmail.objects.create(id=context["email_uid"],
@@ -211,8 +212,8 @@ class DailyCampaignReport(BaseEmailReport):
             placement_obj = get_object_or_404(OpPlacement, id=placement['id'])
             flights = report.get_flights(placement_obj)
 
-            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement['id'],
-                                                            status=CampaignStatus.ELIGIBLE.value).count()
+            active_campaign_count = Campaign.objects.filter(salesforce_placement_id=placement['id']).\
+                exclude(status=CampaignStatus.ENDED.value).count()
 
             for flight in flights:
                 if active_campaign_count > 0 and self.is_on_going_flight(flight):

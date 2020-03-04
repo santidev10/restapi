@@ -15,8 +15,8 @@ from aw_reporting.models import Campaign
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from utils.utittests.s3_mock import S3TestCase
-from utils.utittests.str_iterator import str_iterator
+from utils.unittests.s3_mock import S3TestCase
+from utils.unittests.str_iterator import str_iterator
 
 
 class CreateOpportunityTargetingReportBaseTestCase(TransactionTestCase, S3TestCase):

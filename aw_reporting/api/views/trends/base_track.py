@@ -3,35 +3,10 @@ from datetime import datetime
 from rest_framework.views import APIView
 
 from aw_reporting.models import DATE_FORMAT
+from aw_reporting.api.views.trends.constants import INDICATORS
 
 
 class TrackApiBase(APIView):
-    indicators = (
-        ("average_cpv", "CPV"),
-        ("average_cpm", "CPM"),
-        ("video_view_rate", "View Rate"),
-        ("ctr", "CTR(i)"),
-        ("ctr_v", "CTR(v)"),
-        ("impressions", "Impressions"),
-        ("video_views", "Views"),
-        ("clicks", "Clicks"),
-        ("cost", "Costs"),
-    )
-    breakdowns = (
-        ("daily", "Daily"),
-        ("hourly", "Hourly"),
-    )
-    dimensions = (
-        ("creative", "Creatives"),
-        ("device", "Devices"),
-        ("age", "Ages"),
-        ("gender", "Genders"),
-        ("video", "Top videos"),
-        ("channel", "Top channels"),
-        ("interest", "Top interests"),
-        ("topic", "Top topics"),
-        ("keyword", "Top keywords"),
-    )
 
     def get_filters(self):
         data = self.request.query_params
@@ -45,7 +20,7 @@ class TrackApiBase(APIView):
             account=int(account_id_str) if isinstance(account_id_str, str) and account_id_str.isnumeric() else account_id_str,
             accounts=accounts,
             campaign=data.get("campaign"),
-            indicator=data.get("indicator", self.indicators[0][0]),
+            indicator=data.get("indicator", INDICATORS[0][0]),
             breakdown=data.get("breakdown"),
             dimension=data.get("dimension"),
             start_date=datetime.strptime(start_date, DATE_FORMAT).date()

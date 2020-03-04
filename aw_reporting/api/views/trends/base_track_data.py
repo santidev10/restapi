@@ -14,13 +14,14 @@ class BaseTrackDataApiView(TrackApiBase):
 
     def get(self, request, *args, **kwargs):
         filters = self.get_filters()
-        visible_accounts = self._get_accounts(request) \
-            .values_list("id", flat=True)
+        visible_accounts = self._get_accounts(request)
 
         if filters["accounts"] is not None:
             visible_accounts = visible_accounts\
                 .filter(id__in=filters["accounts"])
         del filters["accounts"]
+
+        visible_accounts = list(visible_accounts.values_list("id", flat=True))
 
         chart = DeliveryChart(
             visible_accounts,

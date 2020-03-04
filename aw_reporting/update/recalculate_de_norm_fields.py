@@ -15,6 +15,7 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Coalesce
+from django.contrib.postgres.aggregates import ArrayAgg
 
 from aw_reporting.models import ALL_AGE_RANGES
 from aw_reporting.models import ALL_DEVICES
@@ -23,8 +24,14 @@ from aw_reporting.models import ALL_PARENTS
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 from aw_reporting.models import Flight
 from aw_reporting.models import FlightStatistic
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import RemarkStatistic
+from aw_reporting.models import TopicStatistic
 from aw_reporting.models.ad_words.statistic import ModelDenormalizedFields
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
@@ -51,9 +58,9 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             "de_norm_fields_are_recalculated": False,
             account_ref: account_id,
         }
-        queryset = model.objects \
-            .filter(**filter_dict) \
-            .order_by("id")
+        queryset = model.objects.filter(**filter_dict)
+        items_ids = list(queryset.values_list("id", flat=True))
+
         if not settings.IS_TEST:
             logger.debug(
                 "Calculating de-norm fields. Model={}, account_id={}".format(
@@ -62,7 +69,7 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
                 ))
 
         ag_link = "ad_groups__" if model is Campaign else ""
-        items = queryset.values("id")
+        items = model.objects.filter(id__in=items_ids).values("id").order_by("id")
 
         data = items.annotate(
             min_date=Min("statistics__date"),
@@ -85,42 +92,44 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
             defaultdict(dict)
         )
 
-        # Targeting data
-        audience_data = items.annotate(
-            count=Count("{}audiences__audience_id".format(ag_link)),
-        )
-        audience_data = {e["id"]: e["count"] for e in audience_data}
+        if model is Campaign:
+            ad_group_ids_map = AdGroup.objects.filter(campaign_id__in=items_ids)\
+                .values("campaign_id").order_by("campaign_id").annotate(ids=ArrayAgg("id"))
+            ad_group_ids_map = {item.get("campaign_id"): item.get("ids") for item in ad_group_ids_map}
+        else:
+            ad_group_ids_map = {_id: [_id] for _id in items_ids}
 
-        keyword_data = items.annotate(
-            count=Count("{}keywords__keyword".format(ag_link)),
-        )
-        keyword_data = {e["id"]: e["count"] for e in keyword_data}
+        aggregated_data = {}
 
-        channel_data = items.annotate(
-            count=Count("{}channel_statistics__id".format(ag_link)),
-        )
-        channel_data = {e["id"]: e["count"] for e in channel_data}
+        for key, ids in ad_group_ids_map.items():
+            _item_filter = {f"ad_group_id__in": ids}
+            aggregated_data[key] = {}
 
-        video_data = items.annotate(
-            count=Count("{}managed_video_statistics__id".format(ag_link)),
-        )
-        video_data = {e["id"]: e["count"] for e in video_data}
+            aggregated_data[key]["audience_count"] = AudienceStatistic.objects.filter(**_item_filter)\
+                .aggregate(count=Count("id")).get("count")
 
-        rem_data = items.annotate(
-            count=Count("{}remark_statistic__remark_id".format(ag_link)),
-        )
-        rem_data = {e["id"]: e["count"] for e in rem_data}
+            aggregated_data[key]["keyword_count"] = KeywordStatistic.objects.filter(**_item_filter)\
+                .aggregate(count=Count("id")).get("count")
 
-        topic_data = items.annotate(
-            count=Count("{}topics__topic_id".format(ag_link)),
-        )
-        topic_data = {e["id"]: e["count"] for e in topic_data}
+            aggregated_data[key]["channel_count"] = YTChannelStatistic.objects.filter(**_item_filter)\
+                .aggregate(count=Count("id")).get("count")
+
+            aggregated_data[key]["video_count"] = YTVideoStatistic.objects.filter(**_item_filter)\
+                .aggregate(count=Count("id")).get("count")
+
+            aggregated_data[key]["rem_count"] = RemarkStatistic.objects.filter(**_item_filter) \
+                .aggregate(count=Count("id")).get("count")
+
+            aggregated_data[key]["topic_count"] = TopicStatistic.objects.filter(**_item_filter) \
+                .aggregate(count=Count("id")).get("count")
+
 
         update = {}
         for i in data:
             uid = i["id"]
             sum_stats = sum_statistic_map.get(uid, {})
             stats = stats_by_id[uid]
+
             update[uid] = dict(
                 de_norm_fields_are_recalculated=True,
 
@@ -130,12 +139,12 @@ def _recalculate_de_norm_fields_for_account_campaigns_and_groups(account_id):
                 **sum_stats,
                 **stats,
 
-                has_interests=bool(audience_data.get(uid)),
-                has_keywords=bool(keyword_data.get(uid)),
-                has_channels=bool(channel_data.get(uid)),
-                has_videos=bool(video_data.get(uid)),
-                has_remarketing=bool(rem_data.get(uid)),
-                has_topics=bool(topic_data.get(uid)),
+                has_interests=bool(aggregated_data.get(uid, {}).get("audience_count")),
+                has_keywords=bool(aggregated_data.get(uid, {}).get("keyword_count")),
+                has_channels=bool(aggregated_data.get(uid, {}).get("channel_count")),
+                has_videos=bool(aggregated_data.get(uid, {}).get("video_count")),
+                has_remarketing=bool(aggregated_data.get(uid, {}).get("rem_count")),
+                has_topics=bool(aggregated_data.get(uid, {}).get("topic_count")),
             )
 
         for uid, updates in update.items():

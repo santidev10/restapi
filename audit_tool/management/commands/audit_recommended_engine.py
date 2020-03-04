@@ -1,16 +1,12 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from utils.lang import fasttext_lang
-from dateutil.parser import parse
-from emoji import UNICODE_EMOJI
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
@@ -18,15 +14,20 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
-from datetime import datetime
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from utils.lang import remove_mentions_hashes_urls
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
 from collections import defaultdict
-from utils.utils import remove_tags_punctuation
+from datetime import datetime
 from datetime import timedelta
+from dateutil.parser import parse
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from emoji import UNICODE_EMOJI
+from pid import PidFile
+from utils.lang import fasttext_lang
+from utils.lang import remove_mentions_hashes_urls
+from utils.utils import remove_tags_punctuation
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
@@ -51,8 +52,8 @@ class Command(BaseCommand):
     DATA_RECOMMENDED_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                "?key={key}&part=id,snippet&relatedToVideoId={id}" \
                                "&type=video&maxResults=50{language}"
-    DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+    DATA_VIDEO_API_URL = "https://www.googleapis.com/youtube/v3/videos" \
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -72,32 +73,45 @@ class Command(BaseCommand):
             self.machine_number = 0
         with PidFile(piddir='.', pidname='recommendation_{}.pid'.format(self.thread_id)) as p:
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0).order_by("pause", "id")[self.machine_number]
-                self.language = self.audit.params.get('language')
-                self.location = self.audit.params.get('location')
-                self.location_radius = self.audit.params.get('location_radius')
-                self.category = self.audit.params.get('category')
-                self.related_audits = self.audit.params.get('related_audits')
-                self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
-                self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
-                if not self.exclusion_hit_count:
-                    self.exclusion_hit_count = 1
-                else:
-                    self.exclusion_hit_count = int(self.exclusion_hit_count)
-                if not self.inclusion_hit_count:
-                    self.inclusion_hit_count = 1
-                else:
-                    self.inclusion_hit_count = int(self.inclusion_hit_count)
-                self.min_date = self.audit.params.get('min_date')
-                if self.min_date:
-                    self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
-                self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
-                self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
-                self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=0, source=0).order_by(
+                    "pause", "id")[self.machine_number]
+                self.load_audit_params()
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
             self.process_audit()
+
+    def get_lang_by_id(self, l_id):
+        if l_id not in self.db_language_ids:
+            self.db_language_ids[l_id] = AuditLanguage.objects.get(id=l_id).language.lower()
+        return self.db_language_ids[l_id]
+
+    def load_audit_params(self):
+        self.db_languages = {}
+        self.db_language_ids = {}
+        self.language = self.audit.params.get('language')
+        self.location = self.audit.params.get('location')
+        self.location_radius = self.audit.params.get('location_radius')
+        self.category = self.audit.params.get('category')
+        self.related_audits = self.audit.params.get('related_audits')
+        self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
+        self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.include_unknown_views = self.audit.params.get('include_unknown_views')
+        self.include_unknown_likes = self.audit.params.get('include_unknown_likes')
+        if not self.exclusion_hit_count:
+            self.exclusion_hit_count = 1
+        else:
+            self.exclusion_hit_count = int(self.exclusion_hit_count)
+        if not self.inclusion_hit_count:
+            self.inclusion_hit_count = 1
+        else:
+            self.inclusion_hit_count = int(self.inclusion_hit_count)
+        self.min_date = self.audit.params.get('min_date')
+        if self.min_date:
+            self.min_date = datetime.strptime(self.min_date, "%m/%d/%Y")
+        self.min_views = int(self.audit.params.get('min_views')) if self.audit.params.get('min_views') else None
+        self.min_likes = int(self.audit.params.get('min_likes')) if self.audit.params.get('min_likes') else None
+        self.max_dislikes = int(self.audit.params.get('max_dislikes')) if self.audit.params.get('max_dislikes') else None
 
     def process_audit(self):
         self.load_inclusion_list()
@@ -106,51 +120,56 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        thread_id = self.thread_id
         if pending_videos.count() == 0:
-            if thread_id == 0:
+            if self.thread_id == 0:
                 pending_videos = self.process_seed_list()
             else:
                 raise Exception("waiting for seed list to finish on thread 0")
         else:
-            done = False
-            if pending_videos.count() > self.MAX_VIDS:
-                done = True
-            else:
-                max_recommended_type = self.audit.params.get('max_recommended_type')
-                if not max_recommended_type:
-                    max_recommended_type = 'video'
-                if max_recommended_type == 'video' and pending_videos.filter(clean=True).count() > self.audit.max_recommended:
-                    done = True
-                elif max_recommended_type == 'channel':
-                    unique_channels = pending_videos.filter(clean=True).values('channel_id').distinct()
-                    if unique_channels.count() > self.audit.max_recommended:
-                        done = True
-            pending_videos = pending_videos.filter(processed__isnull=True)
-            if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
-                done =  True
-            else:
-                pending_videos = pending_videos.order_by("id")
-            if done:
-                if thread_id == 0:
-                    self.audit.completed = timezone.now()
-                    self.audit.pause = 0
-                    self.audit.save(update_fields=['completed', 'pause'])
-                    print("Audit completed, all videos processed")
-                    a = AuditExporter.objects.create(
-                        audit=self.audit,
-                        owner_id=None,
-                        clean=True,
-                    )
-                    raise Exception("Audit completed, all videos processed")
-                else:
-                    raise Exception("not first thread but audit is done")
-        num = 25
-        start = thread_id * num
+            pending_videos = self.check_complete()
+        num = 50
+        start = self.thread_id * num
         for video in pending_videos[start:start+num]:
             self.do_recommended_api_call(video)
         self.audit.updated = timezone.now()
         self.audit.save(update_fields=['updated'])
+        self.check_complete()
+
+    def check_complete(self):
+        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
+        if pending_videos.count() > self.MAX_VIDS:
+            self.complete_audit()
+        else:
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            if not max_recommended_type:
+                max_recommended_type = 'video'
+            if max_recommended_type == 'video' and pending_videos.filter(
+                    clean=True).count() > self.audit.max_recommended:
+                self.complete_audit()
+            elif max_recommended_type == 'channel':
+                unique_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
+                    #pending_videos.filter(clean=True).values('channel_id').distinct()
+                if unique_channels.count() > self.audit.max_recommended:
+                    self.complete_audit()
+        pending_videos = pending_videos.filter(processed__isnull=True)
+        if pending_videos.count() == 0:  # we've processed ALL of the items so we close the audit
+            self.complete_audit()
+        else:
+            pending_videos = pending_videos.order_by("id")
+        return pending_videos
+
+    def complete_audit(self):
+        if self.thread_id == 0:
+            self.audit.completed = timezone.now()
+            self.audit.pause = 0
+            self.audit.save(update_fields=['completed', 'pause'])
+            print("Audit completed, all videos processed")
+            a = AuditExporter.objects.create(
+                audit=self.audit,
+                owner_id=None,
+                clean=True,
+            )
+        raise Exception("Audit completed, all videos processed")
 
     def process_seed_file(self, seed_file):
         try:
@@ -205,8 +224,8 @@ class Command(BaseCommand):
             v_id = v_id.strip()
             video = AuditVideo.get_or_create(v_id)
             avp, _ = AuditVideoProcessor.objects.get_or_create(
-                    audit=self.audit,
-                    video=video,
+                audit=self.audit,
+                video=video,
             )
             return avp
 
@@ -215,7 +234,7 @@ class Command(BaseCommand):
         if video.video_id is None:
             avp.clean = False
             avp.processed = timezone.now()
-            avp.save()
+            avp.save(update_fields=['clean', 'processed'])
             return
         url = self.DATA_RECOMMENDED_API_URL.format(
             key=self.DATA_API_KEY,
@@ -230,7 +249,7 @@ class Command(BaseCommand):
             if data['error']['message'] in ['Invalid video.', 'Not Found']:
                 avp.processed = timezone.now()
                 avp.clean = False
-                avp.save()
+                avp.save(update_fields=['clean', 'processed'])
                 return
             elif data['error']['message'] == 'Invalid relevance language.':
                 self.audit.params['error'] = 'Invalid relevance language.'
@@ -258,9 +277,10 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             channel = AuditChannel.get_or_create(i['snippet']['channelId'])
-            db_video.channel = channel
             db_video_meta.save()
-            db_video.save()
+            if db_video.channel != channel:
+                db_video.channel = channel
+                db_video.save(update_fields=['channel'])
             db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(channel=channel)
             if not db_channel_meta.name or db_channel_meta.name != i['snippet']['channelTitle']:
                 db_channel_meta.name = i['snippet']['channelTitle']
@@ -272,18 +292,25 @@ class Command(BaseCommand):
                         video=db_video,
                         audit=self.audit
                     )
+                    update_fields=['word_hits', 'clean']
                     v.word_hits = hits
                     if not v.video_source:
                         v.video_source = video
+                        update_fields.append("video_source")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
-                    v.save()
-
+                    v.save(update_fields=update_fields)
+                    if v.clean:
+                        AuditChannelProcessor.objects.get_or_create(
+                            audit=self.audit,
+                            channel=channel
+                        )
         avp.processed = timezone.now()
-        avp.save()
+        avp.channel = channel
+        avp.save(update_fields=['processed', 'channel'])
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:
-            if not db_video_meta.language or db_video_meta.language.language not in self.language:
+            if not db_video_meta.language or self.get_lang_by_id(db_video_meta.language_id) not in self.language:
                 return False
         if self.category:
             if int(db_video_meta.category.category) not in self.category:
@@ -300,13 +327,19 @@ class Command(BaseCommand):
     def check_video_matches_minimums(self, db_video_meta):
         if self.min_views:
             if db_video_meta.views < self.min_views:
-                return False
+                if db_video_meta.views == 0 and self.include_unknown_views == True:
+                    pass
+                else:
+                    return False
         if self.min_date:
             if db_video_meta.publish_date.replace(tzinfo=None) < self.min_date:
                 return False
         if self.min_likes:
             if db_video_meta.likes < self.min_likes:
-                return False
+                if db_video_meta.likes == 0 and self.include_unknown_likes == True:
+                    pass
+                else:
+                    return False
         if self.max_dislikes:
             if db_video_meta.dislikes > self.max_dislikes:
                 return False
@@ -322,21 +355,30 @@ class Command(BaseCommand):
         if db_video_meta.age_restricted == True:
             return False, ['ytAgeRestricted']
         if self.inclusion_list:
-            is_there, b_hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
+            is_there, b_hits = self.check_exists(full_string.lower(), self.inclusion_list, count=self.inclusion_hit_count)
             hits['inclusion'] = b_hits
             if not is_there:
                 return False, hits
         if self.exclusion_list:
             try:
-                language = db_video_meta.language.language
+                language = self.get_lang_by_id(db_video_meta.language_id)
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 return True, hits
-            else:
-                language = ""
-            is_there, b_hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
+            is_there = False
+            b_hits = []
+            if self.exclusion_list.get(language):
+                is_there, b_hits = self.check_exists(full_string.lower(), self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "" and self.exclusion_list.get(""):
+                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
+                if not is_there and is_there_b:
+                    is_there = True
+                    b_hits = b_hits_b
+                elif b_hits and b_hits_b:
+                    b_hits = b_hits + b_hits_b
             if is_there:
+                hits['exclusion'] = b_hits
                 return False, hits
         return True, hits
 
@@ -398,10 +440,17 @@ class Command(BaseCommand):
                 db_video_meta.dislikes = int(i['statistics']['dislikeCount'])
             except Exception as e:
                 pass
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
+            except Exception as e:
+                pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
@@ -426,8 +475,10 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l:
+                if l not in self.db_languages:
+                    self.db_languages[l] = AuditLanguage.from_string(l)
+                return self.db_languages[l]
         except Exception as e:
             pass
 
@@ -438,7 +489,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -453,19 +504,21 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                    "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                    "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
+        keywords = re.findall(exp, remove_tags_punctuation(text))
         if len(keywords) >= count:
             return True, keywords
         return False, None

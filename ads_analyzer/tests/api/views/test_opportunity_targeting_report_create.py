@@ -19,12 +19,12 @@ from saas import celery_app
 from saas.urls.namespaces import Namespace
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import Permissions
-from utils.utittests.celery import mock_send_task
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.patch_now import patch_now
-from utils.utittests.reverse import reverse
-from utils.utittests.s3_mock import mock_s3
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.celery import mock_send_task
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.reverse import reverse
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class OpportunityTargetingReportBaseAPIViewTestCase(ExtendedAPITestCase):
@@ -216,8 +216,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         )
 
         self.assertEqual(
-            OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key).split("&X-Amz-Signature")[0],
-            response_json.get("download_link").split('&X-Amz-Signature')[0]
+            OpportunityTargetingReportS3Exporter.generate_temporary_url(file_key).split("?X-Amz-Algorithm")[0],
+            response_json.get("download_link").split("?X-Amz-Algorithm")[0]
         )
 
     def test_report_expire(self):

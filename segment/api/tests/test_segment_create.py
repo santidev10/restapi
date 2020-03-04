@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.status import HTTP_201_CREATED
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_403_FORBIDDEN
 import uuid
 
 from saas.urls.namespaces import Namespace
@@ -12,8 +13,8 @@ from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.int_iterator import int_iterator
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
 
 
 @patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment")
@@ -21,8 +22,17 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
     def _get_url(self):
         return reverse(Namespace.SEGMENT_V3 + ":" + Name.SEGMENT_CREATE)
 
-    def test_reject_bad_request(self, mock_generate):
+    def test_reject_permission(self, mock_generate):
         self.create_test_user()
+        payload = {}
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+        self.assertEqual(mock_generate.call_count, 0)
+
+    def test_reject_bad_request(self, mock_generate):
+        self.create_admin_user()
         payload = {
             "list_type": "whitelist",
             "segment_type": 2
@@ -34,7 +44,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(mock_generate.call_count, 0)
 
     def test_invalid_date(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["es"],
             "list_type": "whitelist",
@@ -51,7 +61,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(mock_generate.call_count, 0)
 
     def test_reject_invalid_segment_type(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -65,7 +75,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_reject_invalid_date(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -80,7 +90,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_success_response_create(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -98,7 +108,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertTrue(data["pending"])
 
     def test_create_integer_values(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
@@ -117,7 +127,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(query["params"]["minimum_views"], int(payload["minimum_views"].replace(",", "")))
 
     def test_reject_duplicate_title_create(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload_1 = {
             "languages": ["en"],
             "score_threshold": 1,
@@ -141,7 +151,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         self.assertEqual(response_2.status_code, HTTP_400_BAD_REQUEST)
 
     def test_segment_creation(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "languages": ["pt"],
             "score_threshold": 1,
@@ -177,7 +187,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             self.assertEqual(mock_generate.delay.call_count, 2)
 
     def test_segment_creation_raises_deletes(self, mock_generate):
-        self.create_test_user()
+        self.create_admin_user()
         payload = {
             "title": "test_raises",
             "score_threshold": 0,

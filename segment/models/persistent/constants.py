@@ -241,7 +241,9 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
     "Gaming": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Gaming.jpg",
     "Video Gaming": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Gaming.jpg",
     "People & Blogs": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/PeopleBlogs.jpg",
+    "Social": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/PeopleBlogs.jpg",
     "Comedy": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Comedy.jpg",
+    "Comedy TV": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Comedy.jpg",
     "Entertainment": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Entertainment.jpg",
     "Pop Culture": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Entertainment.jpg",
     "News & Politics": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/NewsPolitics.jpg",
@@ -251,6 +253,7 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
     "Science & Technology": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/ScienceTechnology.jpg",
     "Technology & Computing": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/ScienceTechnology.jpg",
     "Nonprofits & Activism": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/NonprofitActivism.jpg",
+    "Non-Profit Organizations": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/NonprofitActivism.jpg",
     "Movies": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Movies.png",
     "Shows": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Shows.jpg",
     "Television": "https://viewiq-prod.s3.amazonaws.com/persistent-segments/brand_safety/thumbnails/Shows.jpg",
@@ -262,9 +265,12 @@ CATEGORY_THUMBNAIL_IMAGE_URLS = {
 
 SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.last_30day_views",
                         "brand_safety.overall_score", "general_data.thumbnail_image_url", "brand_safety.language",
-                        "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm", "ads_stats.average_cpv")
+                        "ads_stats.ctr", "ads_stats.ctr_v", "ads_stats.video_view_rate", "ads_stats.average_cpm",
+                        "ads_stats.average_cpv", "task_us_data.age_group", "task_us_data.brand_safety",
+                        "task_us_data.content_type", "task_us_data.gender", "task_us_data.iab_categories",
+                        "task_us_data.lang_code", "monetization.is_monetizable",)
 CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "general_data.iab_categories", "brand_safety.videos_scored", "stats.observed_videos_dislikes",
-                                                "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "monetization.is_monetizable", "task_us_data.created_at")
+                                                "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "task_us_data.created_at")
 VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "general_data.iab_categories", "stats.likes", "stats.dislikes", "general_data.category")
 
 YT_GENRE_CHANNELS = {

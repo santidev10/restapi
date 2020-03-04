@@ -10,9 +10,9 @@ from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.api.views.bad_word import BadWordListApiView
 from saas.urls.namespaces import Namespace
-from utils.utittests.int_iterator import int_iterator
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class BadWordListTestCase(ExtendedAPITestCase):
@@ -166,12 +166,5 @@ class BadWordListTestCase(ExtendedAPITestCase):
         response = self._request(search=test_search_query)
 
         self.assertEqual(len(response.data["items"]), 0)
-
-    def test_invalid_search_length(self):
-        self.create_admin_user()
-        search_term = "a" * (BadWordListApiView.MIN_SEARCH_LENGTH - 1)
-        response = self._request(search=search_term)
-
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
 

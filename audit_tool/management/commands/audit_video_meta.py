@@ -1,13 +1,8 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from utils.lang import fasttext_lang
-from dateutil.parser import parse
-from emoji import UNICODE_EMOJI
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditCategory
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
@@ -18,15 +13,19 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
-from utils.lang import remove_mentions_hashes_urls
-from utils.utils import remove_tags_punctuation
 from collections import defaultdict
 from datetime import timedelta
+from dateutil.parser import parse
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from emoji import UNICODE_EMOJI
+from pid import PidFile
+from utils.lang import remove_mentions_hashes_urls
+from utils.lang import fasttext_lang
+from utils.utils import remove_tags_punctuation
 
+logger = logging.getLogger(__name__)
 """
 requirements:
     we receive a list of video URLs.
@@ -45,7 +44,7 @@ class Command(BaseCommand):
     acps = {}
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
-                            "?key={key}&part=id,snippet,statistics,contentDetails&id={id}"
+                            "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
     DATA_CHANNEL_API_URL = "https://www.googleapis.com/youtube/v3/channels" \
                          "?key={key}&part=id,statistics,brandingSettings&id={id}"
     CATEGORY_API_URL = "https://www.googleapis.com/youtube/v3/videoCategories" \
@@ -66,7 +65,7 @@ class Command(BaseCommand):
         with PidFile(piddir='.', pidname='audit_video_meta_{}.pid'.format(self.thread_id)) as p:
             #self.check_thread_limit_reached()
             try:
-                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1).order_by("pause", "id")[self.machine_number]
+                self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=1, source=0).order_by("pause", "id")[self.machine_number]
             except Exception as e:
                 logger.exception(e)
                 raise Exception("no audits to process at present")
@@ -77,7 +76,7 @@ class Command(BaseCommand):
             if AuditProcessor.objects.filter(audit_type=0, completed__isnull=True).count() > self.machine_number:
                 raise Exception("Can not run more video processors while recommendation engine is running")
 
-    def process_audit(self, num=500):
+    def process_audit(self, num=2000):
         self.load_inclusion_list()
         self.load_exclusion_list()
         if not self.audit.started:
@@ -85,6 +84,11 @@ class Command(BaseCommand):
             self.audit.save(update_fields=['started'])
         self.exclusion_hit_count = self.audit.params.get('exclusion_hit_count')
         self.inclusion_hit_count = self.audit.params.get('inclusion_hit_count')
+        self.db_languages = {}
+        self.placement_list = False
+        if self.audit.name:
+            if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
+                self.placement_list = True
         if not self.exclusion_hit_count:
             self.exclusion_hit_count = 1
         else:
@@ -150,6 +154,8 @@ class Command(BaseCommand):
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
+                #if seed[-1] == '/':
+                #    seed = seed[:-1]
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
@@ -202,7 +208,7 @@ class Command(BaseCommand):
                 db_video.processed_time = timezone.now()
                 db_video.save(update_fields=['processed_time'])
             else:
-                channel_id = db_video.channel.channel_id
+                channel_id = db_video.channel.channel_id if db_video.channel else None
             if not channel_id: # video does not exist or is private now
                 avp.clean = False
                 avp.processed = timezone.now()
@@ -214,6 +220,9 @@ class Command(BaseCommand):
                 db_channel_meta, _ = AuditChannelMeta.objects.get_or_create(
                         channel=db_video.channel,
                 )
+                if self.placement_list and not db_channel_meta.monetised:
+                    db_channel_meta.monetised = True
+                    db_channel_meta.save(update_fields=['monetised'])
                 if db_video_meta.publish_date and (not db_channel_meta.last_uploaded or db_channel_meta.last_uploaded < db_video_meta.publish_date):
                     db_channel_meta.last_uploaded = db_video_meta.publish_date
                     db_channel_meta.last_uploaded_view_count = db_video_meta.views
@@ -232,12 +241,14 @@ class Command(BaseCommand):
         ))
         if self.audit.params.get('do_videos'):
             self.append_to_channel(avp, [avp.video_id], 'processed_video_ids')
+        if db_video_meta.made_for_kids == True:
+            self.append_to_channel(avp, [avp.video_id], 'made_for_kids')
         if db_video_meta.age_restricted == True:
             avp.word_hits['exclusion'] = ['ytAgeRestricted']
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
             return False
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
+            is_there, hits = self.check_exists(full_string.lower(), self.inclusion_list, count=self.inclusion_hit_count)
             avp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
@@ -245,15 +256,23 @@ class Command(BaseCommand):
                 self.append_to_channel(avp, hits, 'inclusion_videos')
         if self.exclusion_list:
             try:
-                language = db_video_meta.language.language
+                language = db_video_meta.language.language.lower()
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 avp.word_hits['exclusion'] = None
                 return True
-            else:
-                language = ""
-            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
+            is_there = False
+            hits = []
+            if self.exclusion_list.get(language):
+                is_there, hits = self.check_exists(full_string.lower(), self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "" and self.exclusion_list.get(""):
+                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
+                if not is_there and is_there_b:
+                    is_there = True
+                    hits = b_hits_b
+                elif hits and b_hits_b:
+                    hits = hits + b_hits_b
             avp.word_hits['exclusion'] = hits
             if is_there:
                 self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
@@ -352,9 +371,16 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
             db_video_meta.emoji = self.audit_video_meta_for_emoji(db_video_meta)
+            try:
+                db_video_meta.made_for_kids = i['status']['madeForKids']
+            except Exception as e:
+                pass
             if 'defaultAudioLanguage' in i['snippet']:
                 try:
-                    db_video_meta.default_audio_language = AuditLanguage.from_string(i['snippet']['defaultAudioLanguage'])
+                    lang = i['snippet']['defaultAudioLanguage']
+                    if lang not in self.db_languages:
+                        self.db_languages[lang] = AuditLanguage.from_string(lang)
+                    db_video_meta.default_audio_language = self.db_languages[lang]
                 except Exception as e:
                     pass
             try:
@@ -380,8 +406,9 @@ class Command(BaseCommand):
         try:
             data = remove_mentions_hashes_urls(data).lower()
             l = fasttext_lang(data)
-            db_lang, _ = AuditLanguage.objects.get_or_create(language=l)
-            return db_lang
+            if l not in self.db_languages:
+                self.db_languages[l] = AuditLanguage.from_string(l)
+            return self.db_languages[l]
         except Exception as e:
             pass
 
@@ -392,7 +419,7 @@ class Command(BaseCommand):
         if not input_list:
             return
         regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w))) for w in input_list])
+                "|".join([r"\b{}\b".format(re.escape(remove_tags_punctuation(w.lower()))) for w in input_list])
         )
         self.inclusion_list = re.compile(regexp)
 
@@ -407,13 +434,15 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list

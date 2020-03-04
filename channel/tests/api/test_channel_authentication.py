@@ -11,10 +11,10 @@ from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
 from userprofile.models import UserProfile
 from userprofile.models import UserDeviceToken
-from utils.utittests.celery import mock_send_task
-from utils.utittests.response import MockResponse
-from utils.utittests.reverse import reverse
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.celery import mock_send_task
+from utils.unittests.response import MockResponse
+from utils.unittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class ChannelAuthenticationTestCase(ExtendedAPITestCase):

@@ -19,6 +19,11 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
     MINIMUM_ITEMS_COUNT = 100
 
     def get_queryset(self):
+        """
+        Filter queryset depending on APEX request HTTP_ORIGIN or HTTP_REFERER
+
+        :return: Queryset
+        """
         request_origin = self.request.META.get("HTTP_ORIGIN", "") or self.request.META.get("HTTP_REFERER", "")
         if is_correct_apex_domain(request_origin):
             queryset = super().get_queryset().filter(Q(category=PersistentSegmentCategory.APEX) | Q(is_master=True))
@@ -27,6 +32,10 @@ class PersistentSegmentListApiView(DynamicPersistentModelViewMixin, ListAPIView)
         return queryset
 
     def finalize_response(self, request, response, *args, **kwargs):
+        """
+        Format data for response and excludes items with items_count values less than threshold
+        :return: Response
+        """
         data = {
             "master_blacklist": None,
             "master_whitelist": None,

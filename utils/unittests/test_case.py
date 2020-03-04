@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from userprofile.models import UserDeviceToken
 from userprofile.models import UserProfile
-from utils.utittests.patch_user_settings import patch_user_settings
+from utils.unittests.patch_user_settings import patch_user_settings
 
 logger = logging.getLogger(__name__)
 

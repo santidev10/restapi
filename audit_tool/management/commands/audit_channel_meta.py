@@ -1,23 +1,23 @@
-import string
-from django.core.management.base import BaseCommand
 import csv
 import logging
 import re
 import requests
-from django.utils import timezone
-from datetime import timedelta
+from audit_tool.api.views.audit_save import AuditFileS3Exporter
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoProcessor
-logger = logging.getLogger(__name__)
-from pid import PidFile
-from audit_tool.api.views.audit_save import AuditFileS3Exporter
-from django.conf import settings
 from collections import defaultdict
+from datetime import timedelta
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from pid import PidFile
 from utils.utils import remove_tags_punctuation
+
+logger = logging.getLogger(__name__)
 
 """
 requirements:
@@ -59,7 +59,7 @@ class Command(BaseCommand):
         try:
             with PidFile(piddir='.', pidname='audit_channel_meta_{}.pid'.format(self.thread_id)) as p:
                 try:
-                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2).order_by("pause", "id")[self.machine_number]
+                    self.audit = AuditProcessor.objects.filter(temp_stop=False, completed__isnull=True, audit_type=2, source=0).order_by("pause", "id")[self.machine_number]
                 except Exception as e:
                     logger.exception(e)
                     raise Exception("no audits to process at present")
@@ -81,6 +81,10 @@ class Command(BaseCommand):
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
         self.num_videos = self.audit.params.get('num_videos')
+        self.placement_list = False
+        if self.audit.name:
+            if 'campaign analysis' in self.audit.name.lower() or 'campaign audit' in self.audit.name.lower():
+                self.placement_list = True
         if not self.num_videos:
             self.num_videos = 50
         if not self.audit.started:
@@ -97,8 +101,6 @@ class Command(BaseCommand):
             else:
                 raise Exception("waiting to process seed list on thread 0")
         else:
-            channels = pending_channels.values_list('channel_id', flat=True)
-            AuditChannel.objects.filter(id__in=channels, processed_time__lt=timezone.now()-timedelta(days=30)).update(processed_time=None)
             pending_channels = pending_channels.filter(processed__isnull=True)
         if pending_channels.count() == 0:  # we've processed ALL of the items so we close the audit
             if self.thread_id == 0:
@@ -138,6 +140,9 @@ class Command(BaseCommand):
             v_id = self.get_channel_id(seed)
             if v_id:
                 channel = AuditChannel.get_or_create(v_id)
+                if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
+                    channel.processed_time = None
+                    channel.save(update_fields=['processed_time'])
                 AuditChannelMeta.objects.get_or_create(channel=channel)
                 acp, _ = AuditChannelProcessor.objects.get_or_create(
                         audit=self.audit,
@@ -162,7 +167,7 @@ class Command(BaseCommand):
             v_id = seed.split("/")[-1]
             if '?' in v_id:
                 v_id = v_id.split("?")[0]
-            return v_id
+            return v_id.replace(".", "")
         if 'youtube.com/user/' in seed:
             if seed[-1] == '/':
                 seed = seed[:-1]
@@ -216,6 +221,9 @@ class Command(BaseCommand):
             if db_channel_meta.name:
                 acp.clean = self.check_channel_is_clean(db_channel_meta, acp)
             acp.save(update_fields=['clean', 'processed', 'word_hits'])
+            if self.placement_list and not db_channel_meta.monetised:
+                db_channel_meta.monetised = True
+                db_channel_meta.save(update_fields=['monetised'])
 
     def get_videos(self, acp):
         db_channel = acp.channel
@@ -245,6 +253,15 @@ class Command(BaseCommand):
             r = requests.get(url)
             data = r.json()
             if r.status_code != 200:
+                quota_exceed = False
+                try:
+                    if 'quota' in data['error']['message'].lower():
+                        quota_exceed = True
+                except Exception as e:
+                    pass
+                if quota_exceed:
+                    logger.info("QUOTA EXCEEDED STOP ASAP!")
+                    raise Exception("QUOTA EXCEEDED STOP ASAP!")
                 logger.info("problem with api call for video {}".format(db_channel.channel_id))
                 acp.clean = False
                 acp.processed = timezone.now()
@@ -286,13 +303,15 @@ class Command(BaseCommand):
         for row in input_list:
             word = remove_tags_punctuation(row[0])
             try:
-                language = row[2]
+                language = row[2].lower()
+                if language == "un":
+                    language = ""
             except Exception as e:
                 language = ""
             language_keywords_dict[language].append(word)
         for lang, keywords in language_keywords_dict.items():
             lang_regexp = "({})".format(
-                "|".join([r"\b{}\b".format(re.escape(w)) for w in keywords])
+                "|".join([r"\b{}\b".format(re.escape(w.lower())) for w in keywords])
             )
             exclusion_list[lang] = re.compile(lang_regexp)
         self.exclusion_list = exclusion_list
@@ -304,28 +323,36 @@ class Command(BaseCommand):
                 '' if not db_channel_meta.keywords else db_channel_meta.keywords,
         ))
         if self.inclusion_list:
-            is_there, hits = self.check_exists(full_string, self.inclusion_list, count=self.inclusion_hit_count)
+            is_there, hits = self.check_exists(full_string.lower(), self.inclusion_list, count=self.inclusion_hit_count)
             acp.word_hits['inclusion'] = hits
             if not is_there:
                 return False
         if self.exclusion_list:
             try:
-                language = db_channel_meta.language.language
+                language = db_channel_meta.language.language.lower()
             except Exception as e:
                 language = ""
             if language not in self.exclusion_list and "" not in self.exclusion_list:
                 acp.word_hits['exclusion'] = None
                 return True
-            else:
-                language = ""
-            is_there, hits = self.check_exists(full_string, self.exclusion_list[language], count=self.exclusion_hit_count)
+            is_there = False
+            hits = []
+            if self.exclusion_list.get(language):
+                is_there, hits = self.check_exists(full_string.lower(), self.exclusion_list[language], count=self.exclusion_hit_count)
+            if language != "" and self.exclusion_list.get(""):
+                is_there_b, b_hits_b = self.check_exists(full_string.lower(), self.exclusion_list[""], count=self.exclusion_hit_count)
+                if not is_there and is_there_b:
+                    is_there = True
+                    hits = b_hits_b
+                elif hits and b_hits_b:
+                    hits = hits + b_hits_b
             acp.word_hits['exclusion'] = hits
             if is_there:
                 return False
         return True
 
     def check_exists(self, text, exp, count=1):
-        keywords = re.findall(exp, remove_tags_punctuation(text.lower()))
+        keywords = re.findall(exp, remove_tags_punctuation(text))
         if len(keywords) >= count:
             return True, keywords
         return False, None

@@ -181,7 +181,7 @@ class YoutubeAPIConnector(object):
 
     def obtain_videos(self,
                       videos_ids,
-                      part="id,statistics",
+                      part="id,status,snippet,statistics,contentDetails",
                       max_results=50,
                       page_token=None):
         """
@@ -225,7 +225,7 @@ class YoutubeAPIConnector(object):
         while tries_count <= self.max_connect_retries:
             try:
                 result = method.execute()
-            except Exception:
+            except Exception as e:
                 tries_count += 1
                 if tries_count <= self.max_connect_retries:
                     sleep_seconds_count = self.max_connect_retries \

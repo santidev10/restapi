@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.urls import reverse
 from rest_framework.status import HTTP_204_NO_CONTENT
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_404_NOT_FOUND
 import uuid
 
@@ -14,7 +15,7 @@ from segment.api.tests.test_brand_safety_preview import PersistentSegmentPreview
 from segment.api.urls.names import Name
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
@@ -57,3 +58,13 @@ class SegmentDeleteApiViewV2TestCase(ExtendedAPITestCase, ESTestCase):
         query = QueryBuilder().build().must().term().field(SEGMENTS_UUID_FIELD).value(segment_uuid).get()
         items = segment.es_manager.search(query=query).execute()
         self.assertEqual(items.hits.total.value, 0)
+
+    def test_reject_segment_audit(self):
+        """ Segments with audit vetting enabled can not be deleted """
+        user = self.create_test_user()
+        CustomSegment.objects.create(owner=user, uuid=uuid.uuid4(), id=1, list_type=0, segment_type=0, title="test_1", audit_id=1)
+        CustomSegment.objects.create(id=2, uuid=uuid.uuid4(), list_type=0, segment_type=0, title="test_1")
+        response = self.client.delete(
+            self._get_url("video") + "1/"
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

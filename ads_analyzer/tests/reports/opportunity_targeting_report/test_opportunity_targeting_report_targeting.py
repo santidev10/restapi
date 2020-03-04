@@ -16,8 +16,8 @@ from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Video
 from es_components.tests.utils import ESTestCase
-from utils.utittests.patch_now import patch_now
-from utils.utittests.str_iterator import str_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.str_iterator import str_iterator
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
 

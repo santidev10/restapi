@@ -10,7 +10,7 @@ from es_components.managers import VideoManager
 from es_components.models import Channel
 from es_components.models import Keyword
 from es_components.models import Video
-from utils.utittests.test_case import ExtendedAPITestCase
+from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class TargetingItemsSearchAPITestCase(ExtendedAPITestCase, ESTestCase):

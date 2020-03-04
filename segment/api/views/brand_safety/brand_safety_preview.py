@@ -5,7 +5,7 @@ from utils.permissions import user_has_permission
 
 class PersistentSegmentPreviewAPIView(SegmentListAPIViewAdapter):
     """
-    View to provide preview data for persistent segments
+    Retrieve preview data for persistent segments
     """
     permission_classes = (
         user_has_permission("userprofile.view_audit_segments"),

@@ -14,10 +14,10 @@ from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
 from utils.aws.s3 import get_s3_client
 from utils.datetime import TIMESTAMP_FORMAT
-from utils.utittests.test_case import ExtendedAPITestCase
-from utils.utittests.s3_mock import mock_s3
-from utils.utittests.patch_now import patch_now
-from utils.utittests.reverse import reverse
+from utils.unittests.test_case import ExtendedAPITestCase
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.patch_now import patch_now
+from utils.unittests.reverse import reverse
 
 S3_BUCKET = settings.AMAZON_S3_BUCKET_NAME
 

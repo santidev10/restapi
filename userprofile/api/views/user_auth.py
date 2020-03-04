@@ -45,7 +45,7 @@ class UserAuthApiView(APIView):
         """
         Login user
         Each handler method returns a Response object that is used to return from the view
-            Each handler also may also raise ValidationErrors if necessary
+            and each handler may also raise LoginException ValidationErrors
         """
         data = request.data
         token = data.get("token")
@@ -102,7 +102,7 @@ class UserAuthApiView(APIView):
         Token.objects.get(user=request.user).delete()
         return Response()
 
-    def get_google_user(self, token):
+    def get_google_user(self, token: str):
         """
         Check token is valid and grab google user
         """
@@ -129,6 +129,12 @@ class UserAuthApiView(APIView):
     def mfa_create_challenge(self, client, user, data):
         """
         Begin MFA login process by sending user challenge code through preferred medium (text | email)
+        Create or update user with mfa type and send session
+
+        :param client: boto3
+        :param user: UserProfile
+        :param data: dict
+        :return: Response
         """
         mfa_type = data.get("mfa_type", "")
         if mfa_type != "email" and mfa_type != "text":
@@ -194,13 +200,14 @@ class UserAuthApiView(APIView):
     def mfa_submit_challenge(self, client, user, data, device_auth_token):
         """
         Submit mfa code to Cognito and parse results
-            If successful, grant client auth_token to use for subsequent requests
-            If incorrect, respond with session for retries
-        :param client: Boto3 object
+        If successful, grant client auth_token to use for subsequent requests
+        If incorrect, respond with session for retries
+
+        :param client: boto3
         :param user: UserProfile
         :param data: dict
-        :param device_auth_token:
-        :return:
+        :param device_auth_token: UserDeviceToken
+        :return: Response
         """
         self.mfa_validate_data(data)
         try:
@@ -240,6 +247,12 @@ class UserAuthApiView(APIView):
             return response
 
     def mfa_validate_data(self, data):
+        """
+        Validate request body for mfa
+
+        :param data: dict
+        :return: None
+        """
         errors = []
         try:
             data["session"]
@@ -255,11 +268,12 @@ class UserAuthApiView(APIView):
     def handle_login(self, email, password):
         """
         Validate user login with email and password
-        Once validated, send OK response and wait for client to initiate mfa auth by sending
-            auth_token prepended with "temp_" and preferred MFA type (text | email)
+        Once validated, send 200 response and wait for client to initiate mfa auth by sending
+            auth_token prefixed with "temp_" and preferred MFA type (text | email)
+
         :param email: str
         :param password: str
-        :return:
+        :return: Response
         """
         try:
             user = get_user_model().objects.get(email=email)
@@ -285,10 +299,11 @@ class UserAuthApiView(APIView):
     def handle_post_login(self, user, update_date_of_last_login, device_auth_token=None):
         """
         Post login validation
-        :param user:
+
+        :param user: UserProfile
         :param update_date_of_last_login: bool
         :param device_auth_token: UserDeviceToken
-        :return:
+        :return: Response
         """
         request_origin = self.request.META.get("HTTP_ORIGIN") or self.request.META.get("HTTP_REFERER")
 
@@ -321,8 +336,9 @@ class UserAuthApiView(APIView):
         """
         Retrieve user and device token with provided auth_token key
         Also validates if token is valid if was created within expire threshold
+
         :param key: str
-        :return:
+        :return: UserDeviceToken
         """
         try:
             device_token = UserDeviceToken.objects.get(key=key)
@@ -334,6 +350,9 @@ class UserAuthApiView(APIView):
         return device_token
 
     def _get_invalid_response(self):
+        """
+        :return: Response
+        """
         response = Response(data="Unable to authenticate user. Please try logging in again.",
                             status=HTTP_400_BAD_REQUEST)
         return response
@@ -342,7 +361,8 @@ class UserAuthApiView(APIView):
     def create_device_auth_token(user, is_temp=False):
         """
         Set auth_token and reset created timestamp
-        :return:
+
+        :return: UserDeviceToken
         """
         key = UserDeviceToken.generate_key(is_temp=is_temp)
         device_token = UserDeviceToken.objects.create(user=user, key=key)

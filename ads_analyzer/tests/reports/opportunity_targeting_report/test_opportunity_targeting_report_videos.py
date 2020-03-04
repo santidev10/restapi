@@ -5,9 +5,9 @@ from unittest.case import skip
 from aw_reporting.models import Ad
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import SalesForceGoalType
-from utils.utittests.generic_test import generic_test
-from utils.utittests.patch_now import patch_now
-from utils.utittests.str_iterator import str_iterator
+from utils.unittests.generic_test import generic_test
+from utils.unittests.patch_now import patch_now
+from utils.unittests.str_iterator import str_iterator
 from .base import ColumnsDeclaration
 from .base import CreateOpportunityTargetingReportSheetTestCase
 
