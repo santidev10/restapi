@@ -62,7 +62,7 @@ class Command(BaseCommand):
             audit_type = self.audit.audit_type
         if self.export.export_as_keywords:
             try:
-                file_name, _ = export_funcs.export_keywords(self.audit, self.audit.id, export=self.export)
+                file_name, _, count = export_funcs.export_keywords(self.audit, self.audit.id, export=self.export)
             except Exception as e:
                 self.export.started = None
                 self.export.machine = None
@@ -83,6 +83,9 @@ class Command(BaseCommand):
                 print("problem with exporting channels {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
+            if self.export.clean is not None:
+                count = count.filter(clean=self.export.clean)
+            count = count.count()
         else:
             try:
                 file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
@@ -95,9 +98,9 @@ class Command(BaseCommand):
                 print("problem with exporting videos {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if self.export.clean is not None:
-            count = count.filter(clean=self.export.clean)
-        count = count.count()
+            if self.export.clean is not None:
+                count = count.filter(clean=self.export.clean)
+            count = count.count()
         self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
         self.export.completed = timezone.now()
         self.export.file_name = file_name
