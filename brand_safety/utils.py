@@ -128,7 +128,7 @@ class BrandSafetyQueryBuilder(object):
             for category, scores in self.severity_filters.items():
                 for score in scores:
                     # Querying for categories with at least one unique word of target severity score
-                    severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").gt(0).get()
+                    severity_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.severity_counts.{score}").lte(0).get()
             must_queries.append(severity_queries)
 
         if self.score_threshold is not None:
