@@ -645,16 +645,17 @@ class AuditExportApiView(APIView):
         total = videos.count()
         for video in videos:
             hits = video.word_hits
-            for word in hits.get('exclusion', []):
-                if word not in bad_words:
-                    bad_words[word] = 1
-                else:
-                    bad_words[word]+=1
-            for word in hits.get('inclusion', []):
-                if word not in good_words:
-                    good_words[word] = 1
-                else:
-                    good_words[word]+=1
+            if hits:
+                for word in hits.get('exclusion', []):
+                    if word not in bad_words:
+                        bad_words[word] = 1
+                    else:
+                        bad_words[word]+=1
+                for word in hits.get('inclusion', []):
+                    if word not in good_words:
+                        good_words[word] = 1
+                    else:
+                        good_words[word]+=1
             count+=1
             if count % 250 == 0:
                 export.percent_done = round(count / total * 100 * 0.4)
