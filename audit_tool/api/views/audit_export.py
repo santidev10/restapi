@@ -653,7 +653,7 @@ class AuditExportApiView(APIView):
                             bad_words[word] = 1
                         else:
                             bad_words[word]+=1
-                e = word in hits.get('inclusion', [])
+                e = hits.get('inclusion', [])
                 if e:
                     for word in e:
                         if word not in good_words:
