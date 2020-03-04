@@ -10,6 +10,7 @@ from audit_tool.models import AuditProcessor
 from datetime import timedelta
 from es_components.constants import Sections
 from segment.models import CustomSegment
+from segment.tasks.generate_vetted_segment import generate_vetted_segment
 from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
 from utils.views import get_object
@@ -62,10 +63,11 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         audit_id = kwargs["pk"]
         data = request.data
-        vetting_item, segment, skipped = self._validate_patch_params(audit_id, data)
+        vetting_item, segment, audit, skipped = self._validate_patch_params(audit_id, data)
         data["checked_out_at"] = vetting_item.checked_out_at = None
         data["processed"] = vetting_item.processed = timezone.now()
         data["processed_by_user_id"] = vetting_item.processed_by_user_id = request.user.id
+
         if skipped is not None:
             self._processs_skipped(skipped, vetting_item)
             res = None
@@ -78,6 +80,14 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             res = serializer.validated_data
+
+        # Check vetting completion
+        if not segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).exists():
+            segment.is_vetting_complete = True
+            audit.completed = timezone.now()
+            audit.save()
+            segment.save()
+            generate_vetted_segment.delay(segment.id)
         return Response(status=HTTP_200_OK, data=res)
 
     def _validate_patch_params(self, audit_id, data):
@@ -88,8 +98,10 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         :param data: dict
         :return: tuple
         """
-        params = {"audit_id": audit_id}
-        segment = get_object(CustomSegment, f"Segment with audit_id: {audit_id} not found.", **params)
+        segment_params = {"audit_id": audit_id}
+        segment = get_object(CustomSegment, f"Segment with audit_id: {audit_id} not found.", **segment_params)
+        audit_params = {"id": audit_id}
+        audit = get_object(AuditProcessor, f"Audit with audit_id: {audit_id} not found.", **audit_params)
         skipped = data.get("skipped")
         vetting_model = segment.audit_utils.vetting_model
         try:
@@ -101,7 +113,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             raise ValidationError("Vetting item does not exist.")
         if vetting_item.processed is not None:
             raise ValidationError("Item has been vetted. Please continue to the next item.")
-        return vetting_item, segment, skipped
+        return vetting_item, segment, audit, skipped
 
     def _retrieve_next_vetting_item(self, segment, audit):
         """
