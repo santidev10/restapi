@@ -1,6 +1,9 @@
 from utils.lang import ExtendedEnum
 
 
+DEFAULT_DOMAIN = "viewiq.channelfactory"
+
+
 class UserSettingsKey:
     DASHBOARD_CAMPAIGNS_SEGMENTED = "dashboard_campaigns_segmented"
     DASHBOARD_AD_WORDS_RATES = "dashboard_ad_words_rates"
