@@ -664,11 +664,11 @@ class AuditExportApiView(APIView):
             if count % 250 == 0:
                 export.percent_done = round(count / total * 100 * 0.4)
                 export.save(update_fields=['percent_done'])
-        for word, count in bad_words.iteritems():
+        for word, count in bad_words.items():
             rows.append([word, count, 'e'])
         export.percent_done = 60
         export.save(update_fields=['percent_done'])
-        for word, count in good_words.iteritems():
+        for word, count in good_words.items():
             rows.append([word, count, 'i'])
         export.percent_done = 80
         export.save(update_fields=['percent_done'])
