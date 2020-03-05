@@ -208,7 +208,7 @@ def get_unparsed_vids(lang_code, num_vids):
             }
         }
     )
-    if language:
+    if lang_code:
         s = s.query(q1).query(q2).query(q3)
     else:
         s = s.query(q2).query(q3)
