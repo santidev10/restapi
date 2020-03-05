@@ -49,7 +49,7 @@ def pull_custom_transcripts():
         if lang_codes:
             for lang_code in lang_codes:
                 logger.debug(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
-                unparsed_vids = get_unparsed_vids(lang_code, num_vids)
+                unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
                 video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
@@ -76,7 +76,7 @@ def pull_custom_transcripts():
                 logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
         else:
             logger.debug(f"Pulling {num_vids} custom transcripts.")
-            unparsed_vids = get_unparsed_vids("", num_vids)
+            unparsed_vids = get_unparsed_vids(num_vids=num_vids)
             vid_languages = {}
             for vid in unparsed_vids:
                 if "general_data" in vid and "language" in vid.general_data:
@@ -166,7 +166,7 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
         soups_dict[vid_id] = None
 
 
-def get_unparsed_vids(lang_code, num_vids):
+def get_unparsed_vids(lang_code=None, num_vids=1000):
     forced_filters = VideoManager().forced_filters()
     s = Search(using='default')
     s = s.index(Video.Index.name)
@@ -196,22 +196,36 @@ def get_unparsed_vids(lang_code, num_vids):
             }
         }
     )
-    # Get Videos with no custom_captions.transcripts_checked
+    # Get Videos that haven't had custom_captions updated in over a month
     q3 = Q(
+        {
+            "bool": {
+                "should": {
+                    "range": {
+                        "custom_captions.updated_at": {
+                            "lte": "now-1M/d"
+                        }
+                    }
+                }
+            }
+        }
+    )
+    # Get Videos with no custom_captions.items field
+    q4 = Q(
         {
             "bool": {
                 "must_not": {
                     "exists": {
-                        "field": "custom_captions.transcripts_checked"
+                        "field": "custom_captions.items"
                     }
                 }
             }
         }
     )
     if lang_code:
-        s = s.query(q1).query(q2).query(q3)
+        s = s.query(q1).query(q2).query(q3).query(q4)
     else:
-        s = s.query(q2).query(q3)
+        s = s.query(q2).query(q3).query(q4)
     s = s.sort({"stats.views": {"order": "desc"}})
     s = s[:num_vids]
     return s.execute()
