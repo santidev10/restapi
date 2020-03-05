@@ -49,8 +49,7 @@ def pull_custom_transcripts():
         if lang_codes:
             for lang_code in lang_codes:
                 logger.debug(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
-                language = LANGUAGES[lang_code]
-                unparsed_vids = get_unparsed_vids(language, num_vids)
+                unparsed_vids = get_unparsed_vids(lang_code, num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
                 video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
@@ -167,18 +166,18 @@ async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, 
         soups_dict[vid_id] = None
 
 
-def get_unparsed_vids(language, num_vids):
+def get_unparsed_vids(lang_code, num_vids):
     forced_filters = VideoManager().forced_filters()
     s = Search(using='default')
     s = s.index(Video.Index.name)
     s = s.query(forced_filters)
     # Get Videos Query for Specified Language
-    if language:
+    if lang_code:
         q1 = Q(
             {
                 "term": {
-                    "general_data.language": {
-                        "value": language
+                    "general_data.lang_code": {
+                        "value": lang_code
                     }
                 }
             }
