@@ -212,13 +212,24 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
     q4 = Q(
         {
             "bool": {
-                "should": {
-                    "range": {
+                "should": [
+                    {
+                      "range": {
                         "custom_captions.updated_at": {
-                            "lte": "now-1M/d"
+                          "lte": "now-1M/d"
                         }
+                      }
+                    },
+                    {
+                      "bool": {
+                        "must_not": {
+                          "exists": {
+                            "field": "custom_captions"
+                          }
+                        }
+                      }
                     }
-                }
+                ]
             }
         }
     )
@@ -227,5 +238,6 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
     else:
         s = s.query(q2).query(q3).query(q4)
     s = s.sort({"stats.views": {"order": "desc"}})
+
     s = s[:num_vids]
     return s.execute()
