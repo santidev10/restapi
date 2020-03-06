@@ -39,6 +39,7 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
+    MAX_SOURCE_VIDEOS = 750000
     categories = {}
     audit = None
     acps = {}
@@ -151,6 +152,7 @@ class Command(BaseCommand):
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
+        counter = 0
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
@@ -166,6 +168,9 @@ class Command(BaseCommand):
                             video=video,
                     )
                     vids.append(avp)
+                    counter+=1
+            if counter > self.MAX_SOURCE_VIDEOS:
+                return vids
         if len(vids) == 0:
             self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
