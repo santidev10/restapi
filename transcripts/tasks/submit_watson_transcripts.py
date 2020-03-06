@@ -57,7 +57,7 @@ def submit_watson_transcripts():
     vids_submitted = 0
     offset = 0
     try:
-        lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        lock(lock_name=LOCK_NAME, max_retries=0, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         logger.info("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
