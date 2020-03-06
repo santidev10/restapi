@@ -54,28 +54,35 @@ def pull_custom_transcripts():
                 video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                              upsert_sections=(Sections.CUSTOM_CAPTIONS,))
                 start = time.perf_counter()
-                all_video_soups_dict = asyncio.run(create_video_soups_dict(vid_ids, lang_code))
+                all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
                 all_videos = video_manager.get(list(vid_ids))
                 for vid_obj in all_videos:
                     vid_id = vid_obj.main.id
-                    transcript_soup = all_video_soups_dict[vid_id]
-                    transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
-                    if transcript_text != "":
-                        AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code, transcript=str(transcript_soup))
-                        logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                        transcripts_counter += 1
-                    populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
+                    lang_codes_soups_dict = all_videos_lang_soups_dict[vid_id]
+                    transcript_texts = []
+                    lang_codes = []
+                    for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
+                        transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
+                        if transcript_text != "":
+                            AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code,
+                                                               transcript=str(transcript_soup))
+                            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+                            transcripts_counter += 1
+                            transcript_texts.append(transcript_text)
+                            lang_codes.append(vid_lang_code)
+                    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes)
                     vid_counter += 1
-                    logger.debug(f"Parsed video with id: {vid_id}")
-                    logger.debug(f"Number of videos parsed: {vid_counter}")
-                    logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
+                    logger.info(f"Parsed video with id: {vid_id}")
+                    logger.info(f"Number of videos parsed: {vid_counter}")
+                    logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
                 video_manager.upsert(all_videos)
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
-                logger.debug(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
-                logger.debug(f"Total number of videos retrieved so far: {vid_counter}. Total time elapsed: {total_elapsed} seconds.")
+                logger.info(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
+                logger.info(f"Total number of videos retrieved so far: {vid_counter}. "
+                            f"Total time elapsed: {total_elapsed} seconds.")
         else:
-            logger.debug(f"Pulling {num_vids} custom transcripts.")
+            logger.info(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids(num_vids=num_vids)
             vid_languages = {}
             for vid in unparsed_vids:
@@ -109,23 +116,23 @@ def pull_custom_transcripts():
                     transcripts_counter += 1
                 populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
                 vid_counter += 1
-                logger.debug(f"Parsed video with id: {vid_id}")
-                logger.debug(f"Number of videos parsed: {vid_counter}")
-                logger.debug(f"Number of transcripts retrieved: {transcripts_counter}")
+                logger.info(f"Parsed video with id: {vid_id}")
+                logger.info(f"Number of videos parsed: {vid_counter}")
+                logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
             video_manager.upsert(all_videos)
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
-            logger.debug(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+            logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
-        logger.debug("Finished pulling custom transcripts task.")
+        logger.info("Finished pulling custom transcripts task.")
     except Exception as e:
         pass
 
 
-async def create_video_soups_dict(vid_ids: set, lang_code: str):
+async def create_video_soups_dict(vid_ids: set):
     soups_dict = {}
     async with ClientSession() as session:
-        await asyncio.gather(*[update_soup_dict(session, vid_id, lang_code, soups_dict) for vid_id in vid_ids])
+        await asyncio.gather(*[update_soup_dict(session, vid_id, soups_dict) for vid_id in vid_ids])
     return soups_dict
 
 
@@ -137,31 +144,48 @@ async def create_video_soups_dict_multi_lang(vids_lang_code_dict: dict):
     return soups_dict
 
 
-async def update_soup_dict(session: ClientSession, vid_id: str, lang_code: str, soups_dict):
-    transcript_url = "http://video.google.com/timedtext?lang={}&v=".format(lang_code)
-    vid_transcript_url = transcript_url + vid_id
+async def update_soup_dict(session: ClientSession, vid_id: str, soups_dict):
+    lang_code_transcript_urls = {}
+    lang_codes_url = f"http://video.google.com/timedtext?type=list&v={vid_id}"
+    lang_codes_response = await session.request(method="GET", url=lang_codes_url)
+    soup = bs(await lang_codes_response.text(), "xml")
+    tracks = soup.find_all("track")
+    for track in tracks:
+        lang_code = track["lang_code"]
+        name = track["name"]
+        transcript_url = f"http://video.google.com/timedtext?lang={lang_code}&v={vid_id}"
+        if name:
+            transcript_url += f"&name={name}"
+        lang_code_transcript_urls[lang_code] = transcript_url
+    if not lang_code_transcript_urls:
+        soups_dict[vid_id] = None
+        return
     counter = 0
-    while counter < TASK_RETRY_COUNTS:
-        try:
-            transcript_response = await session.request(method="GET", url=vid_transcript_url)
-            if transcript_response.status == 429:
+    lang_code_soups_dict = {}
+    for lang_code, vid_transcript_url in lang_code_transcript_urls.items():
+        while counter < TASK_RETRY_COUNTS:
+            try:
+                transcript_response = await session.request(method="GET", url=vid_transcript_url)
+                if transcript_response.status == 429:
+                    await asyncio.sleep(TASK_RETRY_TIME)
+                    counter += 1
+                    logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
+                                 f"Sleeping for {TASK_RETRY_TIME} seconds.")
+                else:
+                    if transcript_response.status == 200:
+                        soup = bs(await transcript_response.text(), "xml")
+                        lang_code_soups_dict[lang_code] = soup
+                    break
+            except HTTPTooManyRequests:
                 await asyncio.sleep(TASK_RETRY_TIME)
                 counter += 1
                 logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
                       f"Sleeping for {TASK_RETRY_TIME} seconds.")
-            else:
-                break
-        except HTTPTooManyRequests:
-            await asyncio.sleep(TASK_RETRY_TIME)
-            counter += 1
-            logger.debug(f"Transcript request for video {vid_id} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."
-                  f"Sleeping for {TASK_RETRY_TIME} seconds.")
-        except Exception as e:
-            logger.debug(e)
-            raise e
-    if transcript_response.status == 200:
-        soup = bs(await transcript_response.text(), "xml")
-        soups_dict[vid_id] = soup
+            except Exception as e:
+                logger.debug(e)
+                raise e
+    if lang_code_soups_dict:
+        soups_dict[vid_id] = lang_code_soups_dict
     else:
         soups_dict[vid_id] = None
 
