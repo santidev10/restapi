@@ -170,10 +170,13 @@ class AuditProcessor(models.Model):
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
+            ret['items_count'] = len(audits)
         else:
+            ret['items_count'] = all.count()
             all = all.order_by("pause", "-completed", "id")
             if limit:
-                all = all[cursor:cursor+limit]
+                start = (cursor - 1) * limit
+                all = all[start:start+limit]
             for a in all:
                 audits.append(a)
         for a in audits:

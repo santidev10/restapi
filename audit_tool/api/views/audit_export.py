@@ -631,7 +631,7 @@ class AuditExportApiView(APIView):
             export_as_keywords=True
         )
         if exports.count() > 0:
-            return exports[0].file_name, None
+            return exports[0].file_name, None, 0
         cols = [
             "Hit Word",
             "Count",
@@ -645,32 +645,38 @@ class AuditExportApiView(APIView):
         total = videos.count()
         for video in videos:
             hits = video.word_hits
-            for word in hits.get('exclusion', []):
-                if word not in bad_words:
-                    bad_words[word] = 1
-                else:
-                    bad_words[word]+=1
-            for word in hits.get('inclusion', []):
-                if word not in good_words:
-                    good_words[word] = 1
-                else:
-                    good_words[word]+=1
+            if hits:
+                e = hits.get('exclusion', [])
+                if e:
+                    for word in e:
+                        if word not in bad_words:
+                            bad_words[word] = 1
+                        else:
+                            bad_words[word]+=1
+                e = hits.get('inclusion', [])
+                if e:
+                    for word in e:
+                        if word not in good_words:
+                            good_words[word] = 1
+                        else:
+                            good_words[word]+=1
             count+=1
             if count % 250 == 0:
                 export.percent_done = round(count / total * 100 * 0.4)
                 export.save(update_fields=['percent_done'])
-        for word, count in bad_words.iteritems():
+
+        for word, count in bad_words.items():
             rows.append([word, count, 'e'])
         export.percent_done = 60
         export.save(update_fields=['percent_done'])
-        for word, count in good_words.iteritems():
+        for word, count in good_words.items():
             rows.append([word, count, 'i'])
         export.percent_done = 80
         export.save(update_fields=['percent_done'])
+        word_counter = len(rows)
         with open(file_name, 'w+', newline='') as myfile:
             wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            for row in rows:
-                wr.writerow(row)
+            wr.writerows(rows)
         export.percent_done = 100
         export.save(update_fields=['percent_done'])
         with open(file_name) as myfile:
@@ -678,7 +684,7 @@ class AuditExportApiView(APIView):
             download_file_name = file_name
             AuditS3Exporter.export_to_s3(myfile.buffer.raw, s3_file_name, download_file_name)
             os.remove(myfile.name)
-        return s3_file_name, download_file_name
+        return s3_file_name, download_file_name, word_counter
 
     def get_hit_words(self, hits, clean=None):
         uniques = set()
