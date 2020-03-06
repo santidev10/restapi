@@ -196,8 +196,20 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
             }
         }
     )
-    # Get Videos that haven't had custom_captions updated in over a month
+    # Get Videos with no custom_captions.items field
     q3 = Q(
+        {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "custom_captions.items"
+                    }
+                }
+            }
+        }
+    )
+    # Get Videos that haven't had custom_captions updated in over a month
+    q4 = Q(
         {
             "bool": {
                 "should": {
@@ -205,18 +217,6 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
                         "custom_captions.updated_at": {
                             "lte": "now-1M/d"
                         }
-                    }
-                }
-            }
-        }
-    )
-    # Get Videos with no custom_captions.items field
-    q4 = Q(
-        {
-            "bool": {
-                "must_not": {
-                    "exists": {
-                        "field": "custom_captions.items"
                     }
                 }
             }
