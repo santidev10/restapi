@@ -70,7 +70,7 @@ def pull_custom_transcripts():
                             transcripts_counter += 1
                             transcript_texts.append(transcript_text)
                             lang_codes.append(vid_lang_code)
-                    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes)
+                    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
                     vid_counter += 1
                     logger.info(f"Parsed video with id: {vid_id}")
                     logger.info(f"Number of videos parsed: {vid_counter}")
