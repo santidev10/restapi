@@ -13,7 +13,6 @@ services:
       - chf.restapi.env
     sysctls:
       - net.core.somaxconn=1024
-    command: ["uwsgi","--ini", "/etc/uwsgi/restapi.ini"]
     logging:
       driver: gelf
       options:
