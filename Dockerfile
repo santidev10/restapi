@@ -1,14 +1,6 @@
-FROM python:3.7 as base
-WORKDIR /usr/lib/uwsgi/plugins/
-RUN apt update && \
-	apt install -y \
-		uwsgi \
-		uwsgi-src \
-		libcap-dev && \
-	uwsgi --build-plugin \
-		"/usr/src/uwsgi/plugins/python python37" && \
-	chmod 644 python37_plugin.so
+FROM python:3.7.4 as base
 ENV PYTHONUNBUFFERED 1
+RUN pip install uwsgi
 COPY ./requirements.txt /tmp/
 COPY ./es_components/requirements.txt /tmp/requirements.es_componenets.txt
 COPY ./uwsgi-restapi.ini /etc/uwsgi/restapi.ini
