@@ -46,31 +46,21 @@ def pull_custom_transcripts():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         init_es_connection()
+        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+                                     upsert_sections=(Sections.CUSTOM_CAPTIONS,))
         if lang_codes:
             for lang_code in lang_codes:
                 logger.debug(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
                 unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
-                video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                             upsert_sections=(Sections.CUSTOM_CAPTIONS,))
                 start = time.perf_counter()
                 all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
                 all_videos = video_manager.get(list(vid_ids))
                 for vid_obj in all_videos:
                     vid_id = vid_obj.main.id
-                    lang_codes_soups_dict = all_videos_lang_soups_dict[vid_id]
-                    transcript_texts = []
-                    lang_codes = []
-                    for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
-                        transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
-                        if transcript_text != "":
-                            AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code,
-                                                               transcript=str(transcript_soup))
-                            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                            transcripts_counter += 1
-                            transcript_texts.append(transcript_text)
-                            lang_codes.append(vid_lang_code)
-                    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
+                    parse_and_store_transcript_soups(vid_obj=vid_obj,
+                                                      lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                                      transcripts_counter=transcripts_counter)
                     vid_counter += 1
                     logger.info(f"Parsed video with id: {vid_id}")
                     logger.info(f"Number of videos parsed: {vid_counter}")
@@ -84,37 +74,30 @@ def pull_custom_transcripts():
         else:
             logger.info(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids(num_vids=num_vids)
-            vid_languages = {}
-            for vid in unparsed_vids:
-                if "general_data" in vid and "language" in vid.general_data:
-                    vid_languages[vid.main.id] = vid.general_data.language
-                else:
-                    vid_languages[vid.main.id] = "English"
-            vid_lang_codes = {}
-            for vid_id in vid_languages:
-                try:
-                    vid_lang = vid_languages[vid_id]
-                    lang_code = LANG_CODES[vid_lang]
-                    vid_lang_codes[vid_id] = lang_code
-                except Exception:
-                    vid_lang_codes[vid_id] = 'en'
-            vid_ids = {vid_id for vid_id in vid_lang_codes}
-            video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                         upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+            # vid_languages = {}
+            # for vid in unparsed_vids:
+            #     if "general_data" in vid and "language" in vid.general_data:
+            #         vid_languages[vid.main.id] = vid.general_data.language
+            #     else:
+            #         vid_languages[vid.main.id] = "English"
+            # vid_lang_codes = {}
+            # for vid_id in vid_languages:
+            #     try:
+            #         vid_lang = vid_languages[vid_id]
+            #         lang_code = LANG_CODES[vid_lang]
+            #         vid_lang_codes[vid_id] = lang_code
+            #     except Exception:
+            #         vid_lang_codes[vid_id] = 'en'
+            # vid_ids = {vid_id for vid_id in vid_lang_codes}
+            vid_ids = set([vid.main.id for vid in unparsed_vids])
             start = time.perf_counter()
-            all_video_soups_dict = asyncio.run(create_video_soups_dict_multi_lang(vid_lang_codes))
+            all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
             all_videos = video_manager.get(list(vid_ids))
             for vid_obj in all_videos:
                 vid_id = vid_obj.main.id
-                lang_code = vid_lang_codes[vid_id]
-                transcript_soup = all_video_soups_dict[vid_id]
-                transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
-                if transcript_text != "":
-                    AuditVideoTranscript.get_or_create(video_id=vid_id, language=lang_code,
-                                                       transcript=str(transcript_soup))
-                    logger.debug(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
-                    transcripts_counter += 1
-                populate_video_custom_captions(vid_obj, [transcript_text], [lang_code])
+                parse_and_store_transcript_soups(vid_obj=vid_obj,
+                                                  lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                                  transcripts_counter=transcripts_counter)
                 vid_counter += 1
                 logger.info(f"Parsed video with id: {vid_id}")
                 logger.info(f"Number of videos parsed: {vid_counter}")
@@ -129,6 +112,22 @@ def pull_custom_transcripts():
         pass
 
 
+def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter, vid_counter):
+    vid_id = vid_obj.main.id
+    transcript_texts = []
+    lang_codes = []
+    for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
+        transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
+        if transcript_text != "":
+            AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
+                                               transcript=str(transcript_soup))
+            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+            transcripts_counter += 1
+            transcript_texts.append(transcript_text)
+            lang_codes.append(vid_lang_code)
+    populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
+
+
 async def create_video_soups_dict(vid_ids: set):
     soups_dict = {}
     async with ClientSession() as session:
@@ -139,7 +138,7 @@ async def create_video_soups_dict(vid_ids: set):
 async def create_video_soups_dict_multi_lang(vids_lang_code_dict: dict):
     soups_dict = {}
     async with ClientSession() as session:
-        await asyncio.gather(*[update_soup_dict(session, vid_id, vids_lang_code_dict[vid_id], soups_dict)
+        await asyncio.gather(*[update_soup_dict(session, vid_id, soups_dict)
                                for vid_id in vids_lang_code_dict])
     return soups_dict
 
