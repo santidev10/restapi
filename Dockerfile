@@ -19,4 +19,5 @@ FROM base as dev
 COPY ./requirements.dev.txt /tmp/
 RUN pip install -r /tmp/requirements.dev.txt
 VOLUME /app
+COPY ./ /app
 CMD ["python","./manage.py", "runserver", "0.0.0.0:5000"]
