@@ -18,6 +18,11 @@ services:
       options:
         gelf-address: udp://chf-${aws_env}-logstash.chfaws:12201
         tag: restapi
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent localhost:5000/api/healthcheck/status/ || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 6
 
   celery_worker:
     command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports,export,transcripts,cache_research", "-c", "8"]
