@@ -7,6 +7,7 @@ RUN pip install -r /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.es_componenets.txt
 WORKDIR /app
 ENV PYTHONPATH=/app
+RUN chown -R www-data:www-data /app
 EXPOSE 5000
 
 FROM base as prod
