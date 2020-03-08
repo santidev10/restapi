@@ -26,9 +26,9 @@ class ForecastToolEstimate:
     CPV_BUFFER = 0.015
     CPM_BUFFER = 2
 
-    def __init__(self, kwargs, opportunities):
+    def __init__(self, kwargs, campaigns):
         self.kwargs = kwargs
-        self.opportunities = opportunities
+        self.campaigns = list(campaigns.values_list("id", flat=True))
 
     def estimate(self):
         queryset = self._get_ad_group_statistic_queryset()
@@ -48,7 +48,7 @@ class ForecastToolEstimate:
 
     def _get_ad_group_statistic_queryset(self):
         queryset = AdGroupStatistic.objects.filter(
-            ad_group__campaign__salesforce_placement__opportunity__in=self.opportunities,
+            ad_group__campaign_id__in=self.campaigns,
         )
         queryset = self._filter_out_hidden_data(queryset)
         queryset = self._filter_specified_date_range(queryset)

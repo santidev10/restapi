@@ -156,8 +156,9 @@ class AuditProcessor(models.Model):
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
+        date_gte = None
         if num_days > 0:
-            all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+            date_gte = timezone.now() - timedelta(days=num_days)
         if search:
             all = all.filter(name__icontains=search.lower())
         ret = {
@@ -170,11 +171,16 @@ class AuditProcessor(models.Model):
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
+            ret['items_count'] = len(audits)
         else:
+            ret['items_count'] = all.count()
             all = all.order_by("pause", "-completed", "id")
             if limit:
-                all = all[cursor:cursor+limit]
+                start = (cursor - 1) * limit
+                all = all[start:start+limit]
             for a in all:
+                if date_gte and a.completed and a.completed < date_gte:
+                    break
                 audits.append(a)
         for a in audits:
             d = a.to_dict()
