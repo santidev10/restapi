@@ -12,7 +12,7 @@ EXPOSE 5000
 FROM base as prod
 COPY --chown=www-data:www-data ./ /app
 USER www-data
-CMD ["uwsgi", "--ini", "/app/uwsi-restapi.ini"]
+CMD ["uwsgi", "--ini", "/app/uwsgi-restapi.ini"]
 
 
 FROM base as dev
