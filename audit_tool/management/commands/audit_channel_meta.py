@@ -35,7 +35,7 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     max_pages = 10
-    MAX_SOURCE_CHANNELS = 250000
+    MAX_SOURCE_CHANNELS = 100000
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
