@@ -94,9 +94,11 @@ def pull_custom_transcripts():
             all_videos = video_manager.get(list(vid_ids))
             for vid_obj in all_videos:
                 vid_id = vid_obj.main.id
-                parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                                 lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                                 transcripts_counter=transcripts_counter)
+                transcripts_counter = parse_and_store_transcript_soups(
+                    vid_obj=vid_obj,
+                    lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                    transcripts_counter=transcripts_counter
+                )
                 vid_counter += 1
                 print(f"Parsed video with id: {vid_id}")
                 print(f"Number of videos parsed: {vid_counter}")
@@ -113,7 +115,7 @@ def pull_custom_transcripts():
 
 def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
     if not lang_codes_soups_dict:
-        return
+        return transcripts_counter
     vid_id = vid_obj.main.id
     transcript_texts = []
     lang_codes = []
@@ -127,6 +129,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
             transcript_texts.append(transcript_text)
             lang_codes.append(vid_lang_code)
     populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
+    return transcripts_counter
 
 
 async def create_video_soups_dict(vid_ids: set):
