@@ -36,7 +36,7 @@ class AuditListApiView(APIView):
                                   .format(query_params["num_days"], type(query_params["num_days"])))
         if search:
             return Response({
-                'audits': AuditProcessor.get(running=False, audit_type=0, search=search, source=source, cursor=cursor, limit=limit),
+                'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
             })
         else:
             return Response({
