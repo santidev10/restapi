@@ -33,20 +33,6 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["domain_name"], DEFAULT_DOMAIN)
 
-    def test_hyphen(self):
-        """ Should ignore rc- for rc-* subdomains """
-        domain_name = "rc-testdomain.viewiq"
-        server_name = domain_name + ".com"
-        config = {
-            "sub_domain": domain_name,
-            "email": "testdomain@email.com"
-        }
-        self._create_whitelabel("testdomain.viewiq", config)
-        with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.get(self._url, SERVER_NAME=server_name)
-        self.assertEqual(config["sub_domain"], response.data["sub_domain"])
-        self.assertEqual(config["email"], response.data["email"])
-
     def test_subdomain_success(self):
         """ Should handle subdomain """
         domain_name = "testsubdomain.viewiq"
