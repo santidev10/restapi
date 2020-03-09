@@ -49,7 +49,7 @@ def pull_custom_transcripts():
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS,))
         if lang_codes:
             for lang_code in lang_codes:
-                logger.info(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
+                print(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
                 unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
                 start = time.perf_counter()
@@ -61,17 +61,17 @@ def pull_custom_transcripts():
                                                      lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
                                                      transcripts_counter=transcripts_counter)
                     vid_counter += 1
-                    logger.info(f"Parsed video with id: {vid_id}")
-                    logger.info(f"Number of videos parsed: {vid_counter}")
-                    logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
+                    print(f"Parsed video with id: {vid_id}")
+                    print(f"Number of videos parsed: {vid_counter}")
+                    print(f"Number of transcripts retrieved: {transcripts_counter}")
                 video_manager.upsert(all_videos)
                 elapsed = time.perf_counter() - start
                 total_elapsed += elapsed
-                logger.info(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
-                logger.info(f"Total number of videos retrieved so far: {vid_counter}. "
+                print(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
+                print(f"Total number of videos retrieved so far: {vid_counter}. "
                             f"Total time elapsed: {total_elapsed} seconds.")
         else:
-            logger.info(f"Pulling {num_vids} custom transcripts.")
+            print(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids(num_vids=num_vids)
             # vid_languages = {}
             # for vid in unparsed_vids:
@@ -98,20 +98,22 @@ def pull_custom_transcripts():
                                                  lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
                                                  transcripts_counter=transcripts_counter)
                 vid_counter += 1
-                logger.info(f"Parsed video with id: {vid_id}")
-                logger.info(f"Number of videos parsed: {vid_counter}")
-                logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
+                print(f"Parsed video with id: {vid_id}")
+                print(f"Number of videos parsed: {vid_counter}")
+                print(f"Number of transcripts retrieved: {transcripts_counter}")
             video_manager.upsert(all_videos)
             elapsed = time.perf_counter() - start
             total_elapsed += elapsed
-            logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+            print(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
-        logger.info("Finished pulling custom transcripts task.")
+        print("Finished pulling custom transcripts task.")
     except Exception as e:
         pass
 
 
 def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
+    if not lang_codes_soups_dict:
+        return
     vid_id = vid_obj.main.id
     transcript_texts = []
     lang_codes = []
@@ -120,7 +122,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
-            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+            print(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
             transcripts_counter += 1
             transcript_texts.append(transcript_text)
             lang_codes.append(vid_lang_code)
