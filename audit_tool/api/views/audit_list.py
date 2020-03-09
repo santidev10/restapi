@@ -23,8 +23,12 @@ class AuditListApiView(APIView):
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
         source = int(query_params["source"]) if "source" in query_params else 0
-        cursor = int(query_params["cursor"]) if "cursor" in query_params else 0
+        cursor = int(query_params["cursor"]) if "cursor" in query_params else None
         limit = int(query_params["limit"]) if "limit" in query_params else None
+        if limit and (limit < 15 or limit > 100):
+            limit = 25
+        if cursor and cursor < 1:
+            cursor = 1
         try:
             num_days = int(query_params["num_days"]) if "num_days" in query_params else -1
         except ValueError:
@@ -32,7 +36,7 @@ class AuditListApiView(APIView):
                                   .format(query_params["num_days"], type(query_params["num_days"])))
         if search:
             return Response({
-                'audits': AuditProcessor.get(running=False, audit_type=0, search=search, source=source, cursor=cursor, limit=limit),
+                'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
             })
         else:
             return Response({
