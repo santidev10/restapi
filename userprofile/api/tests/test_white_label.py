@@ -1,3 +1,4 @@
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 
@@ -27,7 +28,8 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
     def test_rc(self):
         """ Should return default for rc.viewiq """
         domain_name = "rc.viewiq.com"
-        response = self.client.get(self._url, SERVER_NAME=domain_name)
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.get(self._url, SERVER_NAME=domain_name)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["domain_name"], DEFAULT_DOMAIN)
 
@@ -40,7 +42,8 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "email": "testdomain@email.com"
         }
         self._create_whitelabel("testdomain.viewiq", config)
-        response = self.client.get(self._url, SERVER_NAME=server_name)
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.get(self._url, SERVER_NAME=server_name)
         self.assertEqual(config["sub_domain"], response.data["sub_domain"])
         self.assertEqual(config["email"], response.data["email"])
 
@@ -53,7 +56,8 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "email": "testsubdomain@email.com"
         }
         self._create_whitelabel("testsubdomain.viewiq", config)
-        response = self.client.get(self._url, SERVER_NAME=server_name)
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.get(self._url, SERVER_NAME=server_name)
         self.assertEqual(config["sub_domain"], response.data["sub_domain"])
         self.assertEqual(config["email"], response.data["email"])
 
@@ -66,6 +70,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "email": "multiple.subdomain.viewiq@email.com"
         }
         self._create_whitelabel(domain_name, config)
-        response = self.client.get(self._url, SERVER_NAME=server_name)
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.get(self._url, SERVER_NAME=server_name)
         self.assertEqual(config["sub_domain"], response.data["sub_domain"])
         self.assertEqual(config["email"], response.data["email"])
