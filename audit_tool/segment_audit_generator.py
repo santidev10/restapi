@@ -12,12 +12,14 @@ from segment.models import CustomSegment
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
 from utils.db.get_exists import get_exists
+from utils.db.functions import safe_bulk_create
 
 logger = logging.getLogger(__name__)
 
 
 class SegmentAuditGenerator(object):
     BATCH_SIZE = 1000
+    CREATE_BATCH_SIZE = None
     segment = None
     audit_processor_type = None
     audit_model = None
@@ -36,6 +38,7 @@ class SegmentAuditGenerator(object):
     def __init__(self, segment_id, data_field="video"):
         # video_id, channel_id
         self.id_field = data_field + "_id"
+        self.CREATE_BATCH_SIZE = self.BATCH_SIZE // 2
         try:
             self.segment = CustomSegment.objects.get(id=segment_id)
             self.audit_model = self.segment.audit_utils.model
@@ -97,7 +100,7 @@ class SegmentAuditGenerator(object):
                 data = self.retrieve_youtube(self.youtube_connector, to_create_ids)
 
                 audit_model_to_create = [self.instantiate_audit_model(item, self.id_field, self.audit_model) for item in data]
-                self.audit_model.objects.bulk_create(audit_model_to_create)
+                safe_bulk_create(self.audit_model, audit_model_to_create, batch_size=self.CREATE_BATCH_SIZE)
 
                 # meta_data is tuple of created audit item
                 # and api response data (AuditChannel, {"snippet": ..., "statistics": ...})
@@ -107,7 +110,7 @@ class SegmentAuditGenerator(object):
                     self.meta_model_instantiator(audit, data, language_mapping=self.language_mapping, country_mapping=self.country_mapping, category_mapping=self.category_mapping)
                     for audit, data in meta_data if audit
                 ]
-                self.audit_meta_model.objects.bulk_create(meta_to_create)
+                safe_bulk_create(self.audit_meta_model, meta_to_create, batch_size=self.CREATE_BATCH_SIZE)
 
                 # Create vetting items for all items retrieved in list
                 all_audit_ids = list(existing_audit_ids) + [audit.id for audit in audit_model_to_create]
@@ -115,7 +118,7 @@ class SegmentAuditGenerator(object):
                     self.audit_vetting_model(**{"audit": audit_processor, self.id_field: _id})
                     for _id in all_audit_ids
                 ]
-                self.audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
+                safe_bulk_create(self.audit_vetting_model, audit_vetting_to_create, batch_size=self.CREATE_BATCH_SIZE)
             except Exception:
                 logger.exception("Error generating audit items")
 
