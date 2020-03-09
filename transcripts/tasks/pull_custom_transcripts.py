@@ -18,7 +18,6 @@ from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from brand_safety.languages import LANGUAGES, LANG_CODES
 from aiohttp.web import HTTPTooManyRequests
 from django.conf import settings
 
@@ -44,13 +43,13 @@ def pull_custom_transcripts():
     vid_counter = 0
     transcripts_counter = 0
     try:
-        lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         init_es_connection()
         video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS,))
         if lang_codes:
             for lang_code in lang_codes:
-                logger.debug(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
+                logger.info(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
                 unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
                 vid_ids = set([vid.main.id for vid in unparsed_vids])
                 start = time.perf_counter()
@@ -59,8 +58,8 @@ def pull_custom_transcripts():
                 for vid_obj in all_videos:
                     vid_id = vid_obj.main.id
                     parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                                      lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                                      transcripts_counter=transcripts_counter)
+                                                     lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                                     transcripts_counter=transcripts_counter)
                     vid_counter += 1
                     logger.info(f"Parsed video with id: {vid_id}")
                     logger.info(f"Number of videos parsed: {vid_counter}")
@@ -96,8 +95,8 @@ def pull_custom_transcripts():
             for vid_obj in all_videos:
                 vid_id = vid_obj.main.id
                 parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                                  lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                                  transcripts_counter=transcripts_counter)
+                                                 lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                                 transcripts_counter=transcripts_counter)
                 vid_counter += 1
                 logger.info(f"Parsed video with id: {vid_id}")
                 logger.info(f"Number of videos parsed: {vid_counter}")
@@ -112,7 +111,7 @@ def pull_custom_transcripts():
         pass
 
 
-def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter, vid_counter):
+def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
     vid_id = vid_obj.main.id
     transcript_texts = []
     lang_codes = []
