@@ -34,7 +34,7 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    max_pages = 4
+    max_pages = 10
     MAX_SOURCE_CHANNELS = 250000
     audit = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
