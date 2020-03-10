@@ -16,6 +16,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
 from utils.utils import remove_tags_punctuation
+from audit_tool.utils.audit_utils import AuditUtils
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,10 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    max_pages = 4
-    MAX_SOURCE_CHANNELS = 250000
+    max_pages = 10
+    MAX_SOURCE_CHANNELS = 50000
     audit = None
+    num_clones = 0
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -150,15 +152,20 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
             counter += 1
-            if counter > self.MAX_SOURCE_CHANNELS:
-                return vids
-        if len(vids) == 0:
+            if len(vids) > self.MAX_SOURCE_CHANNELS:
+                self.clone_audit()
+                vids = []
+        if counter == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
+
+    def clone_audit(self):
+        self.num_clones+=1
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones)
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
