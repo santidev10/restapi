@@ -218,7 +218,7 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
                     {
                       "range": {
                         "custom_captions.updated_at": {
-                          "lte": datetime.now() - timedelta(days=30)
+                          "lte": datetime.now() - timedelta(days=settings.CUSTOM_TRANSCRIPTS_OUTDATED_AT)
                         }
                       }
                     },
