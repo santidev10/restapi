@@ -16,6 +16,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pid import PidFile
 from utils.utils import remove_tags_punctuation
+from audit_tool.utils.audit_utils import AuditUtils
 
 logger = logging.getLogger(__name__)
 
@@ -164,16 +165,7 @@ class Command(BaseCommand):
 
     def clone_audit(self):
         self.num_clones+=1
-        old_audit = self.audit
-        params = old_audit.params
-        params['name'] = "{}: {}".format(params['name'], self.num_clones+1)
-        self.audit = AuditProcessor.objects.create(
-            started=timezone.now(),
-            name=params['name'].lower(),
-            params=params,
-            pause=old_audit.pause,
-            audit_type=2,
-        )
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones)
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
