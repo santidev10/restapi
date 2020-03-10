@@ -44,8 +44,8 @@ class ForecastToolFiltering:
         filters = dict(
             quarters=[dict(id=c, name=c) for c in list(sorted(quarter_days.keys()))],
             quarters_condition=CONDITIONS,
-            start=start,
-            end=end,
+            start=str(start),
+            end=str(end),
             compare_yoy=False,
             product_types=product_types,
             product_types_condition=CONDITIONS,
