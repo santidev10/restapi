@@ -39,6 +39,7 @@ class Command(BaseCommand):
     MAX_SOURCE_CHANNELS = 50000
     audit = None
     num_clones = 0
+    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -165,7 +166,9 @@ class Command(BaseCommand):
 
     def clone_audit(self):
         self.num_clones+=1
-        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones)
+        if not self.original_audit_name:
+            self.original_audit_name = self.audit.params['name']
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:

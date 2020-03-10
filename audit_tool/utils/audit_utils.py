@@ -175,9 +175,12 @@ class AuditUtils(object):
         return vetted_value
 
     @staticmethod
-    def clone_audit(audit, clone_number=1):
+    def clone_audit(audit, clone_number=1, name=None):
         params = audit.params
-        params['name'] = "{}: {}".format(params['name'], clone_number + 1)
+        if not name:
+            params['name'] = "{}: {}".format(params['name'], clone_number + 1)
+        else:
+            params['name'] = "{}: {}".format(name, clone_number + 1)
         return AuditProcessor.objects.create(
             started=timezone.now(),
             name=params['name'].lower(),

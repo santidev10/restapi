@@ -45,6 +45,7 @@ class Command(BaseCommand):
     audit = None
     acps = {}
     num_clones = 0
+    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
@@ -184,7 +185,9 @@ class Command(BaseCommand):
 
     def clone_audit(self):
         self.num_clones+=1
-        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones)
+        if not self.original_audit_name:
+            self.original_audit_name = self.audit.params['name']
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
