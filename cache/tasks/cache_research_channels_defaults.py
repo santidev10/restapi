@@ -37,7 +37,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
 def cache_research_channels_defaults():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.RESEARCH_CACHING)
-        logger.debug("Starting default research channels caching.")
+        logger.info("Starting default research channels caching.")
         default_sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
                     Sections.TASK_US_DATA)
@@ -73,23 +73,23 @@ def cache_research_channels_defaults():
         queryset_adapter.sort = sort
         obj = queryset_adapter
         # Caching Count
-        logger.debug("Caching default research channels count.")
+        logger.info("Caching default research channels count.")
         part = "count"
         update_cache(obj, part)
         # Caching Get_data
-        logger.debug("Caching default research channels data.")
+        logger.info("Caching default research channels data.")
         part = "get_data"
         update_cache(obj, part)
         # Caching Count for Aggregations Query
-        logger.debug("Caching default research channels aggregations count.")
+        logger.info("Caching default research channels aggregations count.")
         obj.sort = None
         part = "count"
         update_cache(obj, part)
         # Caching Data for Aggregations Query
-        logger.debug("Caching default research channels aggregations data.")
+        logger.info("Caching default research channels aggregations data.")
         part = "get_data"
         update_cache(obj, part, options=((0, 0), {}))
-        logger.debug("Finished default research channels caching.")
+        logger.info("Finished default research channels caching.")
 
         # Caching for Admin Sections
         admin_manager = ChannelManager(admin_sections)
@@ -109,23 +109,23 @@ def cache_research_channels_defaults():
         obj = admin_queryset_adapter
         obj.sort = sort
         # Caching Count
-        logger.debug("Caching admin research channels count.")
+        logger.info("Caching admin research channels count.")
         part = "count"
         update_cache(obj, part)
         # Caching Get_data
-        logger.debug("Caching admin research channels data.")
+        logger.info("Caching admin research channels data.")
         part = "get_data"
         update_cache(obj, part)
         # Caching Count for Aggregations Query
-        logger.debug("Caching admin research channels aggregations count.")
+        logger.info("Caching admin research channels aggregations count.")
         obj.sort = None
         part = "count"
         update_cache(obj, part)
         # Caching Data for Aggregations Query
-        logger.debug("Caching admin research channels aggregations data.")
+        logger.info("Caching admin research channels aggregations data.")
         part = "get_data"
         update_cache(obj, part, options=((0, 0), {}))
-        logger.debug("Finished admin research channels caching.")
+        logger.info("Finished admin research channels caching.")
         unlock(LOCK_NAME)
     except Exception as e:
         pass

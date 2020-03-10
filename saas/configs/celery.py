@@ -95,7 +95,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 5*60
+        "schedule": 90
     },
     "submit-watson-transcripts": {
         "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
