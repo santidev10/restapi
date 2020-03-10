@@ -20,6 +20,7 @@ from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from aiohttp.web import HTTPTooManyRequests
 from django.conf import settings
+from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 
 logger = logging.getLogger(__name__)
 
@@ -35,67 +36,54 @@ def pull_custom_transcripts():
         lang_codes = settings.CUSTOM_TRANSCRIPTS_LANGUAGES
     except Exception as e:
         lang_codes = ['en']
+
     try:
         num_vids = settings.CUSTOM_TRANSCRIPTS_RATE
     except Exception as e:
         num_vids = 1000
-    total_elapsed = 0
-    vid_counter = 0
-    transcripts_counter = 0
+
     try:
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         init_es_connection()
-        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                     upsert_sections=(Sections.CUSTOM_CAPTIONS,))
         if lang_codes:
             for lang_code in lang_codes:
                 logger.info(f"Pulling {num_vids} '{lang_code}' custom transcripts.")
                 unparsed_vids = get_unparsed_vids(lang_code=lang_code, num_vids=num_vids)
-                vid_ids = set([vid.main.id for vid in unparsed_vids])
-                start = time.perf_counter()
-                all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
-                all_videos = video_manager.get(list(vid_ids))
-                for vid_obj in all_videos:
-                    vid_id = vid_obj.main.id
-                    parse_and_store_transcript_soups(vid_obj=vid_obj,
-                                                     lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                                                     transcripts_counter=transcripts_counter)
-                    vid_counter += 1
-                    # logger.info(f"Parsed video with id: {vid_id}")
-                    # logger.info(f"Number of videos parsed: {vid_counter}")
-                    # logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
-                video_manager.upsert(all_videos)
-                elapsed = time.perf_counter() - start
-                total_elapsed += elapsed
-                logger.info(f"Upserted {len(all_videos)} '{lang_code}' videos in {elapsed} seconds.")
-                logger.info(f"Total number of videos retrieved so far: {vid_counter}. "
-                            f"Total time elapsed: {total_elapsed} seconds.")
+                pull_and_update_transcripts(unparsed_vids)
         else:
             logger.info(f"Pulling {num_vids} custom transcripts.")
             unparsed_vids = get_unparsed_vids(num_vids=num_vids)
-            vid_ids = set([vid.main.id for vid in unparsed_vids])
-            start = time.perf_counter()
-            all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
-            all_videos = video_manager.get(list(vid_ids))
-            for vid_obj in all_videos:
-                vid_id = vid_obj.main.id
-                transcripts_counter = parse_and_store_transcript_soups(
-                    vid_obj=vid_obj,
-                    lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
-                    transcripts_counter=transcripts_counter
-                )
-                vid_counter += 1
-                # logger.info(f"Parsed video with id: {vid_id}")
-                # logger.info(f"Number of videos parsed: {vid_counter}")
-                # logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
-            video_manager.upsert(all_videos)
-            elapsed = time.perf_counter() - start
-            total_elapsed += elapsed
-            logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+            pull_and_update_transcripts(unparsed_vids)
         unlock(LOCK_NAME)
         logger.info("Finished pulling custom transcripts task.")
     except Exception as e:
         pass
+
+
+def pull_and_update_transcripts(unparsed_vids):
+    video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+                                 upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+    total_elapsed = 0
+    transcripts_counter = 0
+    vid_counter = 0
+    vid_ids = set([vid.main.id for vid in unparsed_vids])
+    start = time.perf_counter()
+    all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
+    all_videos = video_manager.get(list(vid_ids))
+    for vid_obj in all_videos:
+        vid_id = vid_obj.main.id
+        transcripts_counter = parse_and_store_transcript_soups(vid_obj=vid_obj,
+                                         lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
+                                         transcripts_counter=transcripts_counter)
+        vid_counter += 1
+        # logger.info(f"Parsed video with id: {vid_id}")
+        # logger.info(f"Number of videos parsed: {vid_counter}")
+        # logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
+    video_manager.upsert(all_videos)
+    elapsed = time.perf_counter() - start
+    total_elapsed += elapsed
+    logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+    rescore_brand_safety_videos.delay(vid_ids=list(vid_ids))
 
 
 def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
@@ -109,7 +97,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
-            # logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
             transcripts_counter += 1
             transcript_texts.append(transcript_text)
             lang_codes.append(vid_lang_code)
@@ -226,13 +214,6 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
             "bool": {
                 "should": [
                     {
-                      "range": {
-                        "custom_captions.updated_at": {
-                          "lte": "now-1M/d"
-                        }
-                      }
-                    },
-                    {
                       "bool": {
                         "must_not": {
                           "exists": {
@@ -240,15 +221,24 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
                           }
                         }
                       }
+                    },
+                    {
+                        "bool": {
+                            "must_not": {
+                                "exists": {
+                                    "field": "custom_captions.transcripts_checked_v2"
+                                }
+                            }
+                        }
                     }
                 ]
             }
         }
     )
     if lang_code:
-        s = s.query(q1).query(q2).query(q3).query(q4)
+        s = s.query(q1+q2+q3+q4)
     else:
-        s = s.query(q2).query(q3).query(q4)
+        s = s.query(q2+q3+q4)
     s = s.sort({"stats.views": {"order": "desc"}})
 
     s = s[:num_vids]

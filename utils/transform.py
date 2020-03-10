@@ -9,4 +9,4 @@ def populate_video_custom_captions(video, transcript_texts=[], transcript_langua
         )
         for text, language_code in zip(transcript_texts, transcript_languages) if text != ""
     ]
-    video.populate_custom_captions(transcripts_checked=True, items=transcripts)
+    video.populate_custom_captions(transcripts_checked_v2=True, items=transcripts)
