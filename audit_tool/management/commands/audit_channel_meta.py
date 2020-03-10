@@ -35,8 +35,9 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     max_pages = 10
-    MAX_SOURCE_CHANNELS = 100000
+    MAX_SOURCE_CHANNELS = 50000
     audit = None
+    num_clones = 0
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -151,14 +152,28 @@ class Command(BaseCommand):
                 vids.append(acp)
             counter += 1
             if counter > self.MAX_SOURCE_CHANNELS:
-                return vids
-        if len(vids) == 0:
+                self.clone_audit()
+                vids = []
+        if counter == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
         return vids
+
+    def clone_audit(self):
+        self.num_clones+=1
+        old_audit = self.audit
+        params = old_audit.params
+        params['name'] = "{}: {}".format(params['name'], self.num_clones+1)
+        self.audit = AuditProcessor.objects.create(
+            started=timezone.now(),
+            name=params['name'].lower(),
+            params=params,
+            pause=old_audit.pause,
+            audit_type=2,
+        )
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
