@@ -5,8 +5,6 @@ from elasticsearch_dsl import Q
 import asyncio
 import time
 from aiohttp import ClientSession
-from datetime import datetime
-from datetime import timedelta
 
 from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
