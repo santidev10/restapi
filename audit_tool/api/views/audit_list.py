@@ -37,6 +37,7 @@ class AuditListApiView(APIView):
         if search:
             return Response({
                 'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
+                'audit_types': AuditProcessor.AUDIT_TYPES,
             })
         else:
             return Response({
