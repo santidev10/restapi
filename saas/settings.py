@@ -429,6 +429,7 @@ AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME = "viewiq-dev-custom-segments"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
+AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 
 MAX_AVATAR_SIZE_MB = 10.
 
