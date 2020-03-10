@@ -1,7 +1,7 @@
 from utils.lang import ExtendedEnum
 
 
-DEFAULT_DOMAIN = "viewiq.channelfactory"
+DEFAULT_DOMAIN = "viewiq"
 
 
 class UserSettingsKey:
