@@ -5,6 +5,8 @@ from elasticsearch_dsl import Q
 import asyncio
 import time
 from aiohttp import ClientSession
+from datetime import datetime
+from datetime import timedelta
 
 from es_components.connections import init_es_connection
 from bs4 import BeautifulSoup as bs
@@ -72,7 +74,7 @@ def pull_and_update_transcripts(unparsed_vids):
     all_videos = video_manager.get(list(vid_ids))
     for vid_obj in all_videos:
         vid_id = vid_obj.main.id
-        parse_and_store_transcript_soups(vid_obj=vid_obj,
+        transcripts_counter = parse_and_store_transcript_soups(vid_obj=vid_obj,
                                          lang_codes_soups_dict=all_videos_lang_soups_dict[vid_id],
                                          transcripts_counter=transcripts_counter)
         vid_counter += 1
@@ -97,7 +99,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
-            # logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
+            logger.info(f"VIDEO WITH ID {vid_id} HAS A CUSTOM TRANSCRIPT.")
             transcripts_counter += 1
             transcript_texts.append(transcript_text)
             lang_codes.append(vid_lang_code)
@@ -216,7 +218,7 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
                     {
                       "range": {
                         "custom_captions.updated_at": {
-                          "lte": "now-1M/d"
+                          "lte": datetime.now() - timedelta(days=30)
                         }
                       }
                     },
@@ -234,9 +236,9 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
         }
     )
     if lang_code:
-        s = s.query(q1).query(q2).query(q3).query(q4)
+        s = s.query(q1+q2+q3+q4)
     else:
-        s = s.query(q2).query(q3).query(q4)
+        s = s.query(q2+q3+q4)
     s = s.sort({"stats.views": {"order": "desc"}})
 
     s = s[:num_vids]
