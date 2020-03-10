@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def cache_channel_aggregations():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.RESEARCH_CACHING)
-        logger.debug("Starting channel aggregations caching.")
+        logger.info("Starting channel aggregations caching.")
         sections = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.ADS_STATS,
                     Sections.CUSTOM_PROPERTIES, Sections.SOCIAL, Sections.BRAND_SAFETY, Sections.CMS,
                     Sections.TASK_US_DATA, Sections.ANALYTICS, Sections.MONETIZATION)
@@ -32,15 +32,15 @@ def cache_channel_aggregations():
 
         cached_channel_aggregations, _ = CacheItem.objects.get_or_create(key=CHANNEL_AGGREGATIONS_KEY)
 
-        logger.debug("Collecting channel aggregations.")
+        logger.info("Collecting channel aggregations.")
         aggregations = manager.get_aggregation(
             search=manager.search(filters=manager.forced_filters()),
             properties=aggregation_params
         )
-        logger.debug("Saving channel aggregations.")
+        logger.info("Saving channel aggregations.")
         cached_channel_aggregations.value = aggregations
         cached_channel_aggregations.save()
-        logger.debug("Finished channel aggregations caching.")
+        logger.info("Finished channel aggregations caching.")
         unlock(LOCK_NAME)
     except Exception as e:
         pass

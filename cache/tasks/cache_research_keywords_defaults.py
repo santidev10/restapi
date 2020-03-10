@@ -37,7 +37,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
 def cache_research_keywords_defaults():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.RESEARCH_CACHING)
-        logger.debug("Starting default research channels caching.")
+        logger.info("Starting default research channels caching.")
         default_sections = (Sections.MAIN, Sections.STATS)
 
         fields_to_load = ['main', 'stats']
@@ -63,23 +63,23 @@ def cache_research_keywords_defaults():
         queryset_adapter.sort = sort
         obj = queryset_adapter
         # Caching Count
-        logger.debug("Caching default research keywords count.")
+        logger.info("Caching default research keywords count.")
         part = "count"
         update_cache(obj, part)
         # Caching Get_data
-        logger.debug("Caching default research keywords get_data.")
+        logger.info("Caching default research keywords get_data.")
         part = "get_data"
         update_cache(obj, part)
         # Caching Count for Aggregations Query
-        logger.debug("Caching default research keywords aggregations count.")
+        logger.info("Caching default research keywords aggregations count.")
         obj.sort = None
         part = "count"
         update_cache(obj, part)
         # Caching Data for Aggregations Query
-        logger.debug("Caching default research keywords aggregations get_data.")
+        logger.info("Caching default research keywords aggregations get_data.")
         part = "get_data"
         update_cache(obj, part, options=((0, 0), {}))
-        logger.debug("Finished default research keywords caching.")
+        logger.info("Finished default research keywords caching.")
         unlock(LOCK_NAME)
     except Exception as e:
         pass
