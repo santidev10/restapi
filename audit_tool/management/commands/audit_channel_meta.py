@@ -39,6 +39,7 @@ class Command(BaseCommand):
     MAX_SOURCE_CHANNELS = 50000
     audit = None
     num_clones = 0
+    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_CHANNEL_VIDEOS_API_URL = "https://www.googleapis.com/youtube/v3/search" \
                                   "?key={key}&part=id&channelId={id}&order=date{page_token}" \
@@ -141,6 +142,9 @@ class Command(BaseCommand):
             seed = row[0]
             v_id = self.get_channel_id(seed)
             if v_id:
+                if len(vids) >= self.MAX_SOURCE_CHANNELS:
+                    self.clone_audit()
+                    vids = []
                 channel = AuditChannel.get_or_create(v_id)
                 if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
                     channel.processed_time = None
@@ -151,10 +155,7 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 vids.append(acp)
-            counter += 1
-            if len(vids) > self.MAX_SOURCE_CHANNELS:
-                self.clone_audit()
-                vids = []
+                counter += 1
         if counter == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
@@ -165,7 +166,9 @@ class Command(BaseCommand):
 
     def clone_audit(self):
         self.num_clones+=1
-        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones)
+        if not self.original_audit_name:
+            self.original_audit_name = self.audit.params['name']
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def get_channel_id(self, seed):
         if 'youtube.com/channel/' in seed:
