@@ -165,6 +165,9 @@ class Command(BaseCommand):
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
                 if v_id and len(v_id) < 51:
+                    if len(vids) >= self.MAX_SOURCE_VIDEOS:
+                        self.clone_audit()
+                        vids = []
                     video = AuditVideo.get_or_create(v_id)
                     avp, _ = AuditVideoProcessor.objects.get_or_create(
                             audit=self.audit,
@@ -172,9 +175,6 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
                     counter+=1
-            if len(vids) >= self.MAX_SOURCE_VIDEOS:
-                self.clone_audit()
-                vids = []
         if counter == 0:
             self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()

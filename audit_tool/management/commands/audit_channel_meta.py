@@ -142,6 +142,9 @@ class Command(BaseCommand):
             seed = row[0]
             v_id = self.get_channel_id(seed)
             if v_id:
+                if len(vids) >= self.MAX_SOURCE_CHANNELS:
+                    self.clone_audit()
+                    vids = []
                 channel = AuditChannel.get_or_create(v_id)
                 if channel.processed_time and channel.processed_time < timezone.now() - timedelta(days=30):
                     channel.processed_time = None
@@ -152,10 +155,7 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 vids.append(acp)
-            counter += 1
-            if len(vids) >= self.MAX_SOURCE_CHANNELS:
-                self.clone_audit()
-                vids = []
+                counter += 1
         if counter == 0:
             self.audit.params['error'] = "no valid YouTube Channel URL's in seed file"
             self.audit.completed = timezone.now()
