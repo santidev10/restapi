@@ -171,7 +171,7 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
                     counter+=1
-            if counter > self.MAX_SOURCE_VIDEOS:
+            if len(vids) > self.MAX_SOURCE_VIDEOS:
                 self.clone_audit()
                 vids = []
         if counter == 0:

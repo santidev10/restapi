@@ -152,7 +152,7 @@ class Command(BaseCommand):
                 )
                 vids.append(acp)
             counter += 1
-            if counter > self.MAX_SOURCE_CHANNELS:
+            if len(vids) > self.MAX_SOURCE_CHANNELS:
                 self.clone_audit()
                 vids = []
         if counter == 0:
