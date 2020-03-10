@@ -216,13 +216,6 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
             "bool": {
                 "should": [
                     {
-                      "range": {
-                        "custom_captions.updated_at": {
-                          "lte": datetime.now() - timedelta(days=settings.CUSTOM_TRANSCRIPTS_OUTDATED_AT)
-                        }
-                      }
-                    },
-                    {
                       "bool": {
                         "must_not": {
                           "exists": {
@@ -230,6 +223,15 @@ def get_unparsed_vids(lang_code=None, num_vids=1000):
                           }
                         }
                       }
+                    },
+                    {
+                        "bool": {
+                            "must_not": {
+                                "exists": {
+                                    "field": "custom_captions.transcripts_checked_v2"
+                                }
+                            }
+                        }
                     }
                 ]
             }
