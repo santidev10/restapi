@@ -178,9 +178,9 @@ class AuditUtils(object):
     def clone_audit(audit, clone_number=1, name=None):
         params = audit.params
         if not name:
-            params['name'] = "{}: {}".format(params['name'], clone_number + 1)
+            params['name'] = "{}: Part {}".format(params['name'], clone_number + 1)
         else:
-            params['name'] = "{}: {}".format(name, clone_number + 1)
+            params['name'] = "{}: Part {}".format(name, clone_number + 1)
         return AuditProcessor.objects.create(
             started=timezone.now(),
             name=params['name'].lower(),
