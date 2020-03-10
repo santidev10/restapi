@@ -183,7 +183,7 @@ class AuditUtils(object):
             name=params['name'].lower(),
             params=params,
             pause=audit.pause,
-            audit_type=audit.type,
+            audit_type=audit.audit_type,
         )
 
     @staticmethod
