@@ -54,12 +54,20 @@ class ChannelAuthenticationApiView(APIView):
                                                                          "Please try to authorize other YT channel"})
 
         channel_id = items[0].get("id")
-
-        if not AuthChannel.objects.filter(channel_id=channel_id).exists():
-
+        try:
+            auth_channel = AuthChannel.objects.get(channel_id=channel_id)
+            if auth_channel.token_revocation is not None:
+                AuthChannel.objects\
+                    .filter(channel_id=channel_id)\
+                    .update(channel_id=channel_id,
+                            refresh_token=credentials.refresh_token,
+                            access_token=credentials.access_token,
+                            client_id=settings.GOOGLE_APP_AUD,
+                            client_secret=settings.GOOGLE_APP_SECRET,
+                            access_token_expire_at=credentials.token_expiry)
+        except AuthChannel.DoesNotExist:
             if not credentials.refresh_token:
                 return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "No auth token"})
-
             channel = AuthChannel.objects.create(channel_id=channel_id,
                                                  refresh_token=credentials.refresh_token,
                                                  access_token=credentials.access_token,
@@ -68,13 +76,6 @@ class ChannelAuthenticationApiView(APIView):
                                                  access_token_expire_at=credentials.token_expiry)
             self.create_auth_channel(channel)
             send_admin_notification(channel_id)
-        else:
-            auth_channel = AuthChannel.objects.get(channel_id=channel_id)
-            if auth_channel.token_revocation is not None:
-                auth_channel.update(access_token=credentials.access_token,
-                                    refresh_token=credentials.refresh_token,
-                                    access_token_expire_at=credentials.token_expiry,
-                                    token_revocation=None)
 
         user, device_auth_token = self.get_or_create_user(credentials.access_token)
 
