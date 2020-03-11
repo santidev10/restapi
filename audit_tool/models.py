@@ -216,7 +216,7 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.params.get('related_audits'),
+            'related_audits': self.get_related_audits(),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -281,9 +281,11 @@ class AuditProcessor(models.Model):
                         'name': AuditProcessor.objects.get(id=related).name
                     })
                 except Exception as e:
-                    pass
+                    d.append({
+                        'id': related,
+                        'name': 'deleted audit',
+                    })
         return d
-
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
