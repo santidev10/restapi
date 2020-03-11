@@ -22,6 +22,7 @@ class AuditVetBaseSerializer(Serializer):
     """
     document_model = None
     general_data_language_field = None
+    general_data_lang_code_field = "lang_code"
 
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA)
 
@@ -94,8 +95,7 @@ class AuditVetBaseSerializer(Serializer):
         if getattr(doc.task_us_data, "lang_code", None):
             language = doc.task_us_data.lang_code
         else:
-            language = getattr(doc.general_data, self.general_data_language_field, None)
-            language = LANG_CODES.get(language)
+            language = getattr(doc.general_data, self.general_data_lang_code_field, None)
         return language
 
     def get_segment_title(self, *_, **__):
@@ -224,6 +224,7 @@ class AuditVetBaseSerializer(Serializer):
         if lang_code and LANGUAGES.get(lang_code):
             language = LANGUAGES[lang_code]
             general_data[self.general_data_language_field] = language
+            general_data[self.general_data_lang_code_field] = lang_code
         if task_us_data.get("iab_categories"):
             general_data["iab_categories"] = task_us_data["iab_categories"]
         # Update Elasticsearch document

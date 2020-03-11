@@ -5,7 +5,6 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
-from brand_safety.languages import LANG_CODES
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -44,8 +43,7 @@ class BrandSafetyVideoSerializer(Serializer):
     def get_transcript(self, video):
         text = ""
         try:
-            vid_language = video.general_data.language
-            vid_lang_code = LANG_CODES[vid_language.capitalize()]
+            vid_lang_code = video.general_data.lang_code
         except Exception as e:
             vid_lang_code = 'en'
 
