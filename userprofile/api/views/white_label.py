@@ -8,6 +8,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.models import WhiteLabel
+from userprofile.api.serializers.white_label import WhiteLabelSerializer
 from userprofile.api.views.user_avatar import ImageUploadParser
 from utils.file_storage.s3_connector import upload_file
 from utils.views import validate_fields
@@ -31,14 +32,15 @@ class WhiteLabelApiView(APIView):
         if all_domains:
             if not request.user or not request.user.is_staff:
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
-            data = [item.config for item in WhiteLabel.objects.all()]
+            # data = [item.config for item in WhiteLabel.objects.all()]
+            data = WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data
         else:
             try:
                 domain = (request.get_host() or "").lower().split('viewiq')[0]
                 sub_domain = domain.strip(".") or DEFAULT_DOMAIN
             except IndexError:
                 sub_domain = DEFAULT_DOMAIN
-            data = WhiteLabel.get(domain=sub_domain).config
+            data = WhiteLabelSerializer(WhiteLabel.get(domain=sub_domain)).data
         return Response(data)
 
     def patch(self, request):
@@ -50,6 +52,34 @@ class WhiteLabelApiView(APIView):
         return Response(data=data)
 
     def post(self, request):
+        if request.content_type == "application/json":
+            response = self._save_domain(request)
+        elif request.content_type == "image/png":
+            response = self._save_image(request)
+        else:
+            raise ValidationError(f"Unsupported Content-Type header: {request.content_type}")
+        return response
+
+    def _save_domain(self, request):
+        data = request.data
+        validate_fields(data.keys(), self.ALLOWED_KEYS, should_raise=True)
+        domain = data["domain"]
+        errs = []
+        try:
+            if len(domain) > 63:
+                errs.append("Domain may only be 63 characters or less.")
+            if domain[0] == "-" or domain[-1] == "-":
+                errs.append("Domain may not start or end with hyphens.")
+            if not domain[0].isalpha:
+                errs.append("Domain must start with a letter.")
+        except IndexError:
+            errs.append("You must provide a domain value.")
+        if errs:
+            raise ValidationError(errs)
+        white_label = WhiteLabel.objects.create(domain=domain, config=data)
+        return Response(data=white_label.config)
+
+    def _save_image(self, request):
         domain = request.query_params.get("domain")
         white_label = get_object(WhiteLabel, domain=domain)
         image_type = request.query_params.get("image_type")

@@ -50,6 +50,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         self._create_whitelabel(sub_domain, config)
         with override_settings(ALLOWED_HOSTS=['*']):
             response = self.client.get(self._url, SERVER_NAME=server_name)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(config["domain"], response.data["domain"])
         self.assertEqual(config["email"], response.data["email"])
 
@@ -64,6 +65,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         self._create_whitelabel(sub_domain, config)
         with override_settings(ALLOWED_HOSTS=['*']):
             response = self.client.get(self._url, SERVER_NAME=server_name)
+        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(config["domain"], response.data["domain"])
         self.assertEqual(config["email"], response.data["email"])
 
@@ -115,7 +117,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_post_success(self):
+    def test_post_image_success(self):
         self.create_admin_user()
         image_name = "test_logo_image.png"
         with override_settings(ALLOWED_HOSTS=['*']), \
@@ -125,6 +127,20 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             response = self.client.post(url, image, content_type="image/png")
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["image_url"], image_name)
+
+    def test_post_domain_success(self):
+        self.create_admin_user()
+        payload = {
+            "domain": "test_new_domain",
+            "logo": "test_logo_url"
+        }
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        white_label = WhiteLabel.objects.get(domain=payload["domain"])
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(payload["domain"], white_label.config["domain"])
+        self.assertEqual(payload["logo"], white_label.config["logo"])
 
     def test_invalid_image_field_fail(self):
         self.create_admin_user()
