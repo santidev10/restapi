@@ -25,14 +25,13 @@ class WhiteLabelApiView(APIView):
     )
     parser_classes = (JSONParser, ImageUploadParser)
     IMAGE_FIELDS = ("favicon", "logo")
-    ALLOWED_KEYS = IMAGE_FIELDS + ("domain", "disable",  "name")
+    ALLOWED_CONFIG_FIELDS = IMAGE_FIELDS + ("domain", "disable",  "name")
 
     def get(self, request):
         all_domains = request.query_params.get("all")
         if all_domains:
             if not request.user or not request.user.is_staff:
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
-            # data = [item.config for item in WhiteLabel.objects.all()]
             data = WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data
         else:
             try:
@@ -45,10 +44,13 @@ class WhiteLabelApiView(APIView):
 
     def patch(self, request):
         data = request.data
-        validate_fields(data.keys(), self.ALLOWED_KEYS, should_raise=True)
-        white_label = get_object(WhiteLabel, domain=data["domain"])
-        white_label.config.update(data)
-        white_label.save()
+        pk = data.get("id")
+        config = data.get("config", {})
+        white_label = get_object(WhiteLabel, id=pk)
+        validate_fields(config.keys(), self.ALLOWED_CONFIG_FIELDS, should_raise=True)
+        serializer = WhiteLabelSerializer(white_label, data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(data=data)
 
     def post(self, request):
@@ -62,30 +64,20 @@ class WhiteLabelApiView(APIView):
 
     def _save_domain(self, request):
         data = request.data
-        validate_fields(data.keys(), self.ALLOWED_KEYS, should_raise=True)
-        domain = data["domain"]
-        errs = []
-        try:
-            if len(domain) > 63:
-                errs.append("Domain may only be 63 characters or less.")
-            if domain[0] == "-" or domain[-1] == "-":
-                errs.append("Domain may not start or end with hyphens.")
-            if not domain[0].isalpha:
-                errs.append("Domain must start with a letter.")
-        except IndexError:
-            errs.append("You must provide a domain value.")
-        if errs:
-            raise ValidationError(errs)
-        white_label = WhiteLabel.objects.create(domain=domain, config=data)
-        return Response(data=white_label.config)
+        config = data.get("conifg", {})
+        validate_fields(config.keys(), self.ALLOWED_CONFIG_FIELDS, should_raise=True)
+        serializer = WhiteLabelSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data)
 
     def _save_image(self, request):
-        domain = request.query_params.get("domain")
-        white_label = get_object(WhiteLabel, domain=domain)
+        pk = request.query_params.get("id")
+        white_label = get_object(WhiteLabel, id=pk)
         image_type = request.query_params.get("image_type")
         if image_type not in self.IMAGE_FIELDS:
             raise ValidationError(f"Invalid image_type: {image_type}")
-        filename = f"branding/{domain}_{image_type}.png"
+        filename = f"branding/{white_label.domain}_{image_type}.png"
         image = request.FILES["file"]
         params = {"ACL": "public-read"}
         image_url = upload_file(filename, image, image.content_type,
