@@ -276,9 +276,13 @@ class AuditProcessor(models.Model):
         if r:
             for related in r:
                 try:
+                    a = AuditProcessor.objects.get(id=related)
+                    if not a.name:
+                        a.name = a.params['name'].lower()
+                        a.save(update_fields=['name'])
                     d.append({
                         'id': related,
-                        'name': AuditProcessor.objects.get(id=related).name
+                        'name': a.name
                     })
                 except Exception as e:
                     d.append({
