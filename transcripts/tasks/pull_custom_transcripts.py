@@ -87,11 +87,12 @@ def pull_and_update_transcripts(unparsed_vids):
 
 
 def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts_counter):
-    if not lang_codes_soups_dict:
-        return transcripts_counter
-    vid_id = vid_obj.main.id
     transcript_texts = []
     lang_codes = []
+    if not lang_codes_soups_dict:
+        populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
+        return transcripts_counter
+    vid_id = vid_obj.main.id
     for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
         transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
         if transcript_text != "":
