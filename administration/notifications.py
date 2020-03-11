@@ -128,7 +128,7 @@ def generate_html_email(text_header, text_content):
     :return:
     """
     host = settings.HOST
-    html = get_template("main_v2.html")
+    html = get_template("main_v3.html")
     context = {"text_header": text_header,
                "text_content": text_content,
                "host": host}
