@@ -282,7 +282,7 @@ class AuditProcessor(models.Model):
                         a.save(update_fields=['name'])
                     d.append({
                         'id': related,
-                        'name': a.name
+                        'name': a.params['name']
                     })
                 except Exception as e:
                     d.append({
