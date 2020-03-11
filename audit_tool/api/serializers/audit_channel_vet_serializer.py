@@ -16,6 +16,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
     general_data_language_field = "top_language"
+    general_data_lang_code_field = "top_lang_code"
     document_model = Channel
 
     # Postgres fields

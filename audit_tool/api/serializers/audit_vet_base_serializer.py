@@ -22,7 +22,7 @@ class AuditVetBaseSerializer(Serializer):
     """
     document_model = None
     general_data_language_field = None
-    general_data_lang_code_field = "lang_code"
+    general_data_lang_code_field = None
 
     SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA)
 
