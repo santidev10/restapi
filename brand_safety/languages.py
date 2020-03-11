@@ -183,6 +183,8 @@ LANGUAGES = {
     "yo": "Yoruba",
     "za": "Zhuang; Chuang",
     "zh": "Chinese",
+    "zh-c": "Chinese - Cantonese",
+    "zh-m": "Chinese - Mandarin",
     "zu": "Zulu",
 }
 
@@ -372,5 +374,7 @@ LANG_CODES = {
     'Yoruba': 'yo',
     'Zhuang; Chuang': 'za',
     'Chinese': 'zh',
+    'Chinese - Cantonese': 'zh-c',
+    'Chinese - Mandarin)': 'zh-m',
     'Zulu': 'zu'
 }
