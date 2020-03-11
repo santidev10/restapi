@@ -26,7 +26,8 @@ services:
       retries: 6
 
   celery_worker:
-    command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports,export,transcripts,cache_research", "-c", "8"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "celery,reports,email_reports,export,transcripts,cache_research",
+              "-n", "celery_worker@%h", "-c", "8"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -41,7 +42,8 @@ services:
         tag: restapi_celery_worker
 
   celery_worker_delivery:
-    command: ["celery", "-A", "saas", "worker", "-Q", "delivery_statistic", "-c", "${CELERY_DELIVERY_CONCURRENCY}", "--max-memory-per-child=2000000"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "delivery_statistic", "-c", "${CELERY_DELIVERY_CONCURRENCY}",
+              "-n", "celery_worker_delivery@%h", "--max-memory-per-child=2000000"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -56,7 +58,8 @@ services:
         tag: restapi_celery_worker_delivery
 
   celery_worker_hourly:
-    command: ["celery", "-A", "saas", "worker", "-Q", "hourly_statistic", "-c", "${CELERY_HOURLY_CONCURRENCY}"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "hourly_statistic", "-c", "${CELERY_HOURLY_CONCURRENCY}",
+              "-n", "celery_worker_hourly@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -71,7 +74,8 @@ services:
         tag: restapi_celery_worker_google_ads_campaigns
 
   celery_worker_segments:
-    command: ["celery", "-A", "saas", "worker", "-Q", "segments", "-c", "${CELERY_SEGMENTS_CONCURRENCY}"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "segments", "-c", "${CELERY_SEGMENTS_CONCURRENCY}",
+              "-n", "celery_worker_segments@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -86,7 +90,7 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_worker_schedulers:
-    command: ["celery", "-A", "saas", "worker", "-Q", "schedulers", "-c", "4"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "schedulers", "-c", "4", "-n", "celery_worker_segments@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -101,7 +105,9 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_worker_brand_safety_channel_light:
-    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_channel_light", "-c", "${CELERY_BRAND_SAFETY_CHANNEL_LIGHT_CONCURRENCY}"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_channel_light",
+              "-c", "${CELERY_BRAND_SAFETY_CHANNEL_LIGHT_CONCURRENCY}",
+              "-n", "celery_worker_brand_safety_channel_light@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -116,7 +122,9 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_worker_brand_safety_channel_priority:
-    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_channel_priority", "-c", "${CELERY_BRAND_SAFETY_CHANNEL_PRIORITY_CONCURRENCY}"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_channel_priority",
+              "-c", "${CELERY_BRAND_SAFETY_CHANNEL_PRIORITY_CONCURRENCY}",
+              "-n", "celery_worker_brand_safety_channel_priority@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
@@ -131,7 +139,9 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_worker_brand_safety_video_priority:
-    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_video_priority", "-c", "${CELERY_BRAND_SAFETY_VIDEO_PRIORITY_CONCURRENCY}"]
+    command: ["celery", "-A", "saas", "worker", "-Q", "brand_safety_video_priority",
+              "-c", "${CELERY_BRAND_SAFETY_VIDEO_PRIORITY_CONCURRENCY}",
+              "-n", "celery_worker_brand_safety_video_priority@%h"]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
