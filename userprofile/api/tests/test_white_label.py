@@ -2,6 +2,7 @@ from io import BytesIO
 import json
 from unittest.mock import patch
 
+from django.contrib.auth.models import Permission
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
@@ -29,6 +30,13 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
     def test_no_permissions_success(self):
         """ Should accept GET request with no params with no permissions """
         response = self.client.get(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_permissions_success(self):
+        """ Should accept GET request for all with permissions """
+        user = self.create_test_user()
+        user.add_custom_user_permission("domain_management")
+        response = self.client.get(self._url + "?all=true")
         self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_rc(self):

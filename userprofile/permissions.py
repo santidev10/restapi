@@ -116,6 +116,7 @@ class PermissionGroupNames:
     AUDIT_VET_ADMIN = "Vetting Tool Admin"
     AUDIT_VET = "Vetting Tool"
     CUSTOM_SEGMENTS = "custom_segments"
+    DOMAIN_MANAGEMENT = "Domain Management"
 
 
 class Permissions:
@@ -216,6 +217,9 @@ class Permissions:
         (PermissionGroupNames.AUDIT_VET, (
             "vet_audit",
         )),
+        (PermissionGroupNames.DOMAIN_MANAGEMENT, (
+            "domain_management",
+        ))
     )
 
     PERM_LIST = (
@@ -262,6 +266,7 @@ class Permissions:
         "transcripts_filter",
         # Monetization
         "monetization_filter",
+        "domain_management"
     )
 
     @staticmethod

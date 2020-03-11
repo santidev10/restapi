@@ -1,7 +1,6 @@
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -16,12 +15,13 @@ from utils.views import get_object
 from utils.views import CustomAPIException
 from utils.permissions import ReadOnly
 from utils.permissions import or_permission_classes
+from utils.permissions import user_has_permission
 
 
 class WhiteLabelApiView(APIView):
     READ_ONLY = ("GET",)
     permission_classes = (
-        or_permission_classes(IsAdminUser, ReadOnly),
+        or_permission_classes(user_has_permission("userprofile.domain_management"), ReadOnly),
     )
     parser_classes = (JSONParser, ImageUploadParser)
     IMAGE_FIELDS = ("favicon", "logo")
@@ -30,7 +30,7 @@ class WhiteLabelApiView(APIView):
     def get(self, request):
         all_domains = request.query_params.get("all")
         if all_domains:
-            if not request.user or not request.user.is_staff:
+            if not request.user or not request.user.has_perm("userprofile.domain_management"):
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
             data = WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data
         else:
