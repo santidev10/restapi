@@ -4,7 +4,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.views import APIView
 
 from audit_tool.models import AuditCategory
-from brand_safety.languages import LANG_CODES
+from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
 from cache.models import CacheItem
@@ -58,20 +58,24 @@ class SegmentCreationOptionsApiView(APIView):
                 {"common": item["key"]}
                 for item in agg_cache.value["general_data.country"]["buckets"]
             ]
-            lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
 
             languages = []
-            for lang in lang_str:
+            for code in lang_codes:
                 try:
-                    code = LANG_CODES[lang]
+                    lang = LANGUAGES[code]
                 except KeyError:
-                    code = lang
+                    lang = code
                 languages.append({"id": code, "title": lang})
+            if "zh-c" not in lang_codes:
+                languages.append({"id": "zh-c", "title": "Chinese - Cantonese"})
+            if "zh-m" not in lang_codes:
+                languages.append({"id": "zh-m", "title": "Chinese - Mandarin"})
         except (CacheItem.DoesNotExist, KeyError):
             countries = CountryListApiView().get().data
             languages = [
                 {"id": code, "title": lang}
-                for lang, code in LANG_CODES.items()
+                for code, lang in LANGUAGES.items()
             ]
         options = {
             "brand_safety_categories": [

@@ -12,7 +12,7 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
-from brand_safety.languages import LANG_CODES
+from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
@@ -105,18 +105,22 @@ class AuditUtils(object):
     def get_languages():
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
-            lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
             languages = []
-            for lang in lang_str:
+            for code in lang_codes:
                 try:
-                    code = LANG_CODES[lang]
+                    lang = LANGUAGES[code]
                 except KeyError:
-                    code = lang
+                    lang = code
                 languages.append({"id": code, "value": lang})
+            if "zh-c" not in lang_codes:
+                languages.append({"id": "zh-c", "value": "Chinese - Cantonese"})
+            if "zh-m" not in lang_codes:
+                languages.append({"id": "zh-m", "value": "Chinese - Mandarin"})
         except (CacheItem.DoesNotExist, KeyError):
             languages = [
-                {"id": code, "title": lang}
-                for lang, code in LANG_CODES.items()
+                {"id": code, "value": lang}
+                for code, lang in LANGUAGES.items()
             ]
         return languages
 
