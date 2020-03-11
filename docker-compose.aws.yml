@@ -146,7 +146,7 @@ services:
         tag: restapi_celery_worker_lists
 
   celery_beat:
-    command: ["celery", "-A", "saas", "beat"]
+    command: ["celery", "-A", "saas", "beat", "--pidfile="]
     image: 001549769873.dkr.ecr.us-east-1.amazonaws.com/chf/restapi:${aws_env}
     hostname: ${HOSTNAME}
     restart: always
