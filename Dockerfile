@@ -11,6 +11,8 @@ EXPOSE 5000
 
 FROM base as prod
 COPY --chown=www-data:www-data ./ /app
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 USER www-data
 CMD ["uwsgi", "--ini", "/app/uwsi-restapi.ini"]
 
