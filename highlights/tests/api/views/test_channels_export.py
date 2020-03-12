@@ -144,7 +144,7 @@ class HighlightChannelItemsApiViewTestCase(ExtendedAPITestCase, ESTestCase):
         data = get_data_from_csv_response(response)
         headers = next(data)
 
-        views_index = headers.index("monthly_views")
+        views_index = headers.index("thirty_days_views")
 
         response_views = [int(row[views_index]) for row in data]
 
