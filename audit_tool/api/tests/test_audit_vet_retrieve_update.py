@@ -2,6 +2,8 @@ import json
 from mock import patch
 
 from django.utils import timezone
+from elasticsearch.exceptions import NotFoundError
+from elasticsearch.exceptions import RequestError
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -22,6 +24,8 @@ from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 from es_components.models import Video
+from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 from saas.urls.namespaces import Namespace
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -187,6 +191,88 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertTrue(channel_meta.name in vetting_history[0]["data"])
         self.assertEqual(vetting_history[1]["suitable"], historical_video_vet_2.clean)
         self.assertTrue(channel_meta.name in vetting_history[1]["data"])
+
+    def test_get_next_video_vetting_item_missing(self, mock_generate_vetted):
+        """ Test handling retrieving next vetting item with missing AuditVideo or invalid video_id """
+        user = self.create_admin_user()
+        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=0, title="test_title_2"))
+
+        v_id_1 = f"video{next(int_iterator)}"
+        v_id_2 = ""
+
+        video_audit_1 = AuditVideo.objects.create(video_id=v_id_1, video_id_hash=get_hash_name(v_id_1))
+        AuditVideoMeta.objects.create(video=video_audit_1, name="test meta name")
+
+        video_audit_2 = AuditVideo.objects.create(video_id=v_id_2, video_id_hash=get_hash_name(v_id_2))
+        AuditVideoMeta.objects.create(video=video_audit_2, name="test meta name")
+
+        AuditVideoVet.objects.create(audit=audit_1, video=video_audit_1)
+        AuditVideoVet.objects.create(audit=audit_2, video=video_audit_2)
+        AuditVideoVet.objects.create(audit=audit_3)
+
+        self.patcher.stop()
+        with patch.object(VideoManager, "get") as mock_get:
+            mock_get.side_effect = NotFoundError
+            url = self._get_url(kwargs=dict(pk=audit_1.id))
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
+
+        with patch.object(VideoManager, "get") as mock_get:
+            mock_get.side_effect = RequestError
+            url = self._get_url(kwargs=dict(pk=audit_2.id))
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
+
+        # Handle missing VideoAudit
+        url = self._get_url(kwargs=dict(pk=audit_3.id))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
+
+    def test_get_next_channel_vetting_item_missing(self, mock_generate_vetted):
+        """ Test handling retrieving next vetting item with missing AuditChannel or invalid channel_id """
+        user = self.create_admin_user()
+        before = timezone.now()
+        audit_1, segment_1 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_1"))
+        audit_2, segment_2 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_2"))
+        audit_3, segment_3 = self._create_segment_audit(user, segment_params=dict(segment_type=1, title="test_title_2"))
+
+        c_id_1 = f"channel_test_id_{next(int_iterator)}"
+        c_id_2 = ""
+        channel_audit_1 = AuditChannel.objects.create(channel_id=c_id_1, channel_id_hash=get_hash_name(c_id_1))
+        AuditChannelMeta.objects.create(channel=channel_audit_1, name="test meta name")
+
+        channel_audit_2 = AuditChannel.objects.create(channel_id=c_id_2, channel_id_hash=get_hash_name(c_id_2))
+        AuditChannelMeta.objects.create(channel=channel_audit_2, name="test meta name")
+
+        AuditChannelVet.objects.create(audit=audit_1, channel=channel_audit_1)
+        AuditChannelVet.objects.create(audit=audit_2, channel=channel_audit_2)
+        AuditChannelVet.objects.create(audit=audit_3)
+
+        self.patcher.stop()
+        with patch.object(ChannelManager, "get") as mock_get:
+            mock_get.side_effect = NotFoundError
+            url = self._get_url(kwargs=dict(pk=audit_1.id))
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
+
+        with patch.object(ChannelManager, "get") as mock_get:
+            mock_get.side_effect = RequestError
+            url = self._get_url(kwargs=dict(pk=audit_2.id))
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
+
+        # Handle missing ChannelAudit
+        url = self._get_url(kwargs=dict(pk=audit_3.id))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(response.data["message"])
 
     def test_patch_required_parameters(self, mock_generate_vetted):
         user = self.create_admin_user()
