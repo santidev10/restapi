@@ -215,7 +215,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         ChannelManager(sections=sections).upsert([channel_one, channel_two])
 
         # test sorting by _score:desc
-        desc_url = self.url + "?" + urllib.parse.urlencode({
+        desc_url = self.url + urllib.parse.urlencode({
             "general_data.title": "quick brown fox",
             "general_data.description": "quick brown fox",
             "sort": "_score:desc",
@@ -225,7 +225,7 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(desc_items[0]['general_data']['title'], channel_one_title)
 
         # test sort _score:asc
-        asc_url = self.url + "?" + urllib.parse.urlencode({
+        asc_url = self.url + urllib.parse.urlencode({
             "general_data.title": "quick brown fox",
             "general_data.description": "quick brown fox",
             "sort": "_score:asc",
