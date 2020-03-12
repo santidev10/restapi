@@ -261,6 +261,9 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "url",
             "iab_categories",
             "views",
+            "thirty_days_views",
+            "seven_days_views",
+            "last_day_views",
             "likes",
             "dislikes",
             "comments",
@@ -335,6 +338,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-        rows = sorted(data[1:], key=lambda x: x[8])
-        self.assertEqual(5, int(rows[0][8]))
-        self.assertEqual(8, int(rows[1][8]))
+        rows = sorted(data[1:], key=lambda x: x[11])
+        self.assertEqual(5, int(rows[0][11]))
+        self.assertEqual(8, int(rows[1][11]))

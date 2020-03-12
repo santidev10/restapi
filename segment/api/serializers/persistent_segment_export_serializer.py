@@ -23,6 +23,10 @@ class PersistentSegmentVideoExportSerializer(Serializer):
     Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
 
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("extra_data", None)
+        super().__init__(*args, **kwargs)
+
     def get_url(self, obj):
         return f"https://www.youtube.com/video/{obj.main.id}/"
 
@@ -61,6 +65,10 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     Views = IntegerField(source="stats.views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("extra_data", None)
+        super().__init__(*args, **kwargs)
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}/"

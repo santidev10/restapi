@@ -107,6 +107,7 @@ def create_account():
         id=DEMO_ACCOUNT_ID,
         name=DEMO_NAME,
         skip_creating_account_creation=True,
+        timezone="UTC",
     )
     account.save()
     return account

@@ -44,8 +44,8 @@ class ForecastToolFiltering:
         filters = dict(
             quarters=[dict(id=c, name=c) for c in list(sorted(quarter_days.keys()))],
             quarters_condition=CONDITIONS,
-            start=start,
-            end=end,
+            start=str(start),
+            end=str(end),
             compare_yoy=False,
             product_types=product_types,
             product_types_condition=CONDITIONS,
@@ -143,16 +143,8 @@ class ForecastToolFiltering:
         if targeting_types is None:
             return queryset, False
         condition = self.kwargs.get("targeting_types_condition", self.default_condition)
-        true_value = Value(1)
-        annotation = {
-            "has_" + t: Max(Case(
-                When(**{"has_" + t: Value(True), "then": true_value}),
-                output_field=BooleanField(),
-                default=Value(0)))
-            for t in TARGETING_TYPES}
-        queryset = queryset.annotate(**annotation)
         fields = ["has_{}".format(t) for t in targeting_types]
-        return queryset.filter(build_query_bool(fields, condition, true_value)), True
+        return queryset.filter(build_query_bool(fields, condition, True)), True
 
     def _filter_by_demographic(self):
         return [

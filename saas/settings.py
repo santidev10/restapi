@@ -429,6 +429,7 @@ AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME = "viewiq-dev-custom-segments"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
+AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 
 MAX_AVATAR_SIZE_MB = 10.
 
@@ -496,7 +497,7 @@ if APM_ENABLED:
     ELASTIC_APM = {
         "SERVICE_NAME": "restapi",
         "ENVIRONMENT": apm_env,
-        "SERVICE_VERSION": "latest",
+        "SERVICE_VERSION": os.getenv("APP_VERSION", "dev"),
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
         "SERVER_URL": os.getenv("APM_SERVER_URL"),
