@@ -39,20 +39,21 @@ def get_object(model, message=None, code=HTTP_404_NOT_FOUND, should_raise=True, 
     return obj
 
 
-def validate_fields(expected, received, should_raise=True):
+def validate_fields(expected, received, should_raise=True, message="Missing fields"):
     """
-    Utility function to validate recieved fields the same as expected
+    Utility function to validate fields the same as expected
     Raises DRF ValidationError with message of
     :param expected: iter [str...]
     :param received: iter [str...]
     :param should_raise: bool
+    :param message: str
     :return: bool
     """
     validated = False
     remains = set(expected) - set(received)
     if remains:
         if should_raise:
-            raise ValidationError(f"Missing fields: {remains}")
+            raise ValidationError(f"{message}: {list(remains)}")
     else:
         validated = True
     return validated

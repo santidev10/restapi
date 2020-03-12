@@ -32,7 +32,10 @@ class WhiteLabelApiView(APIView):
         if all_domains:
             if not request.user or not request.user.has_perm("userprofile.domain_management"):
                 raise CustomAPIException(HTTP_403_FORBIDDEN, None)
-            data = WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data
+            data = {
+                "domains": WhiteLabelSerializer(WhiteLabel.objects.all(), many=True).data,
+                "permissions": settings.DOMAIN_MANAGEMENT_PERMISSIONS,
+            }
         else:
             try:
                 domain = (request.get_host() or "").lower().split('viewiq')[0]
@@ -48,6 +51,8 @@ class WhiteLabelApiView(APIView):
         config = data.get("config", {})
         white_label = get_object(WhiteLabel, id=pk)
         validate_fields(config.keys(), self.ALLOWED_CONFIG_FIELDS, should_raise=True)
+        validate_fields(config.get("disable", []), settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True, message="Invalid permissions")
+        # serializer will update existing config with request config
         serializer = WhiteLabelSerializer(white_label, data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -64,7 +69,12 @@ class WhiteLabelApiView(APIView):
 
     def _save_domain(self, request):
         data = request.data
-        config = data.get("conifg", {})
+        config = data.get("config", {})
+        if config.get("disable") is not None:
+            validate_fields(config["disable"], settings.DOMAIN_MANAGEMENT_PERMISSIONS, should_raise=True, message="Invalid permissions")
+        else:
+            config["disable"] = settings.DOMAIN_MANAGEMENT_PERMISSIONS
+        data["config"] = config
         validate_fields(config.keys(), self.ALLOWED_CONFIG_FIELDS, should_raise=True)
         serializer = WhiteLabelSerializer(data=data)
         serializer.is_valid(raise_exception=True)
