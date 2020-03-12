@@ -135,7 +135,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             "emails",
             "subscribers",
             "thirty_days_subscribers",
+            "views",
             "thirty_days_views",
+            "seven_days_views",
+            "last_day_views",
             "views_per_video",
             "sentiment",
             "engage_rate",
@@ -163,6 +166,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             subscribers=123,
             last_30day_subscribers=12,
             last_30day_views=321,
+            last_7day_views=101,
+            last_day_views=20,
+            views = 3000,
             views_per_video=123.4,
             sentiment=0.23,
             total_videos_count=10,
@@ -193,7 +199,10 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             ",".join(channel.general_data.emails),
             channel.stats.subscribers,
             channel.stats.last_30day_subscribers,
+            channel.stats.views,
             channel.stats.last_30day_views,
+            channel.stats.last_7day_views,
+            channel.stats.last_day_views,
             channel.stats.views_per_video,
             channel.stats.sentiment,
             channel.stats.engage_rate,
@@ -380,6 +389,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
         csv_data = get_data_from_csv_response(response)
         data = list(csv_data)
-        rows = sorted(data[1:], key=lambda x: x[12])
-        self.assertEqual(4, int(rows[0][12]))
-        self.assertEqual(6, int(rows[1][12]))
+        rows = sorted(data[1:], key=lambda x: x[15])
+        self.assertEqual(4, int(rows[0][15]))
+        self.assertEqual(6, int(rows[1][15]))
