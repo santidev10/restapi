@@ -108,7 +108,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             }
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label.refresh_from_db()
         config = payload["config"]
         self.assertEqual(response.status_code, HTTP_200_OK)
@@ -131,7 +131,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             }
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(white_label.config["logo"], payload["config"]["logo"])
@@ -148,7 +148,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             }
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_duplicate_domain_fail(self):
@@ -160,7 +160,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "domain": white_label_2.domain
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_post_duplicate_domain_fail(self):
@@ -170,7 +170,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             "domain": white_label.domain
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.post(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_post_image_success(self):
@@ -194,7 +194,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             }
         }
         with override_settings(ALLOWED_HOSTS=['*']):
-            response = self.client.post(self._url, json.dumps(payload), content_type="application/json")
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label = WhiteLabel.objects.get(domain=payload["domain"])
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.status_code, HTTP_200_OK)

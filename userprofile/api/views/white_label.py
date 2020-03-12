@@ -54,7 +54,7 @@ class WhiteLabelApiView(APIView):
         return Response(data=data)
 
     def post(self, request):
-        if request.content_type == "application/json":
+        if "application/json" in request.content_type:
             response = self._save_domain(request)
         elif request.content_type == "image/png":
             response = self._save_image(request)
