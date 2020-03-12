@@ -14,17 +14,17 @@ RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
 RABBITMQ_API_URL = "{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
 DEFAULT_CELERY_BROKER_URL = "amqp://{user}:{password}@{host}:{port}".format(
     user=RABBITMQ_USER, password=RABBITMQ_PASSWORD, host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
-celery_broker_url = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
-celery_result_backend = os.getenv("result_backend", "elasticsearch://example.com:9200/celery/task_result")
-celery_result_extended = True
+CELERY_BROKER_URL = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
+CELERY_RESULT_EXTENDED = True
 
-dmp_celery_broker_url = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)
-dmp_celery_result_backend = os.getenv("DMP_RESULT_BACKEND", celery_result_backend)
-dmp_celery_result_extended = True
+DMP_CELERY_BROKER_URL = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)
+DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEND)
+DMP_CELERY_RESULT_EXTENDED = True
 
-celery_timezone = "UTC"
+CELERY_TIMEZONE = "UTC"
 
-celery_beat_schedule = {
+CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
         "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",
         "schedule": crontab(hour="*", minute="*/5"),
@@ -184,7 +184,7 @@ class Queue:
     SCHEDULERS = "schedulers"
 
 
-TASK_ROUTES_PREPARED = [
+CELERY_ROUTES_PREPARED = [
     ("transcripts.tasks.*", {"queue": Queue.TRANSCRIPTS}),
     ("aw_reporting.google_ads.tasks.update_campaigns.*", {"queue": Queue.HOURLY_STATISTIC}),
     ("aw_reporting.google_ads.tasks.update_without_campaigns.*", {"queue": Queue.DELIVERY_STATISTIC_UPDATE}),
@@ -200,7 +200,7 @@ TASK_ROUTES_PREPARED = [
 # dirty fix for celery. fixes AttributeError
 re._pattern_type = re.Pattern
 
-celery_task_routes = (TASK_ROUTES_PREPARED,)
+CELERY_TASK_ROUTES = (CELERY_ROUTES_PREPARED,)
 
 
 class TaskExpiration:
