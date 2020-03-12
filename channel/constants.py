@@ -23,9 +23,9 @@ CHANNEL_CSV_HEADERS = [
     "subscribers",
     "thirty_days_subscribers",
     "views",
-    "monthly_views",
-    "weekly_views",
-    "daily_views",
+    "thirty_days_views",
+    "seven_days_views",
+    "last_day_views",
     "views_per_video",
     "sentiment",
     "engage_rate",
@@ -36,4 +36,3 @@ CHANNEL_CSV_HEADERS = [
     "ctr_v",
     "average_cpv",
 ]
-

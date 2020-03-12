@@ -73,9 +73,9 @@ class CustomSegmentChannelVettedExportSerializer(CustomSegmentVettedExportSerial
 
     Brand_Safety = SerializerMethodField("get_brand_safety")
     Language = SerializerMethodField("get_language")
-    Age_Group = SerializerMethodField("get_content_type")
+    Content_Type = SerializerMethodField("get_content_type")
     Gender = SerializerMethodField("get_gender")
-    Content_Type = SerializerMethodField("get_age_group")
+    Age_Group = SerializerMethodField("get_age_group")
 
 
 class CustomSegmentVideoVettedExportSerializer(CustomSegmentVettedExportSerializerMixin, CustomSegmentVideoExportSerializer):
@@ -84,8 +84,8 @@ class CustomSegmentVideoVettedExportSerializer(CustomSegmentVettedExportSerializ
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
     Brand_Safety = SerializerMethodField("get_brand_safety")
     Language = SerializerMethodField("get_language")
-    Age_Group = SerializerMethodField("get_content_type")
+    Content_Type = SerializerMethodField("get_content_type")
     Gender = SerializerMethodField("get_gender")
-    Content_Type = SerializerMethodField("get_age_group")
+    Age_Group = SerializerMethodField("get_age_group")
     Vetted = SerializerMethodField("get_vetted")
 
