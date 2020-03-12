@@ -6,7 +6,7 @@ from celery import Celery
 from celery.backends.base import DisabledBackend
 
 dmp_celery_app = Celery("update")
-dmp_celery_app.config_from_object("django.conf:settings", namespace="DMP_CELERY")
+dmp_celery_app.config_from_object("django.conf:settings", namespace="dmp_celery")
 logger = logging.getLogger(__name__)
 
 WAIT_RESULTS_TIMEOUT = 20
