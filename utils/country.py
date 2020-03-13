@@ -4,7 +4,7 @@ import pycountry
 def get_country_by_code(country_code):
     country = None
     if country_code:
-        country_obj = pycountry.countries.get(alpha_2=country_code)
+        country_obj = pycountry.countries.get(alpha_2=country_code) or pycountry.countries.get(alpha_3=country_code)
         if hasattr(country_obj, 'common_name'):
             country = country_obj.common_name
         elif hasattr(country_obj, 'name'):
