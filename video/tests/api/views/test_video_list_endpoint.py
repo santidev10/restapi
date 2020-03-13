@@ -75,17 +75,18 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         """
         self.create_admin_user()
         video_ids = [str(next(int_iterator)) for i in range(2)]
-        video_one_title = "Herp derpsum herp derp sherper herp derp derpus herpus derpus"
-        video_one = Video(**{
+        most_relevant_video_title = \
+            "Herp derpsum herp derp sherper herp derp derpus herpus derpus"
+        most_relevant_video = Video(**{
             "meta": {
                 "id": video_ids[0],
             },
             "general_data": {
-                "title": video_one_title,
+                "title": most_relevant_video_title,
                 "description": "herp derper repper herpus"
             },
         })
-        video_two = Video(**{
+        least_relevant_video = Video(**{
             "meta": {
                 "id": video_ids[1],
             },
@@ -94,7 +95,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
                 "description": "reeper sherpus lurpy derps herp derp",
             },
         })
-        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([video_one, video_two])
+        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([
+            most_relevant_video,
+            least_relevant_video
+        ])
 
         search_term = "herp derp"
         desc_url = self.get_url() + urllib.parse.urlencode({
@@ -104,7 +108,10 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         })
         desc_response = self.client.get(desc_url)
         desc_items = desc_response.data['items']
-        self.assertEqual(desc_items[0]['general_data']['title'], video_one_title)
+        self.assertEqual(
+            desc_items[0]['general_data']['title'],
+            most_relevant_video_title
+        )
 
         asc_url = self.get_url() + urllib.parse.urlencode({
             "general_data.title": search_term,
@@ -113,4 +120,7 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         })
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data['items']
-        self.assertEqual(asc_items[-1]['general_data']['title'], video_one_title)
+        self.assertEqual(
+            asc_items[-1]['general_data']['title'],
+            most_relevant_video_title
+        )

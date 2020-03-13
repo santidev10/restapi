@@ -192,17 +192,17 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
         user.add_custom_user_permission("channel_list")
 
         channel_ids = [str(next(int_iterator)) for i in range(2)]
-        channel_one_title = "the quick brown fox the quick brown fox quick brown fox"
-        channel_one = Channel(**{
+        most_relevant_channel_title = "the quick brown fox the quick brown fox quick brown fox"
+        most_relevant_channel = Channel(**{
             "meta": {
                 "id": channel_ids[0],
             },
             "general_data": {
-                "title": channel_one_title,
+                "title": most_relevant_channel_title,
                 "description": "the quick brown fox jumps over the lazy dog the quick brown fox jumps over the lazy dog"
             }
         })
-        channel_two = Channel(**{
+        least_relevant_channel = Channel(**{
             "meta": {
                 "id": channel_ids[1],
             },
@@ -212,24 +212,25 @@ class ChannelListTestCase(ExtendedAPITestCase, ESTestCase):
             }
         })
         sections = [Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.CMS, Sections.AUTH]
-        ChannelManager(sections=sections).upsert([channel_one, channel_two])
+        ChannelManager(sections=sections).upsert([most_relevant_channel, least_relevant_channel])
 
+        search_term = "quick brown fox"
         # test sorting by _score:desc
-        desc_url = self.url + urllib.parse.urlencode({
-            "general_data.title": "quick brown fox",
-            "general_data.description": "quick brown fox",
+        desc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
             "sort": "_score:desc",
         })
         desc_response = self.client.get(desc_url)
         desc_items = desc_response.data['items']
-        self.assertEqual(desc_items[0]['general_data']['title'], channel_one_title)
+        self.assertEqual(desc_items[0]['general_data']['title'], most_relevant_channel_title)
 
         # test sort _score:asc
-        asc_url = self.url + urllib.parse.urlencode({
-            "general_data.title": "quick brown fox",
-            "general_data.description": "quick brown fox",
+        asc_url = self.url + "?" + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
             "sort": "_score:asc",
         })
         asc_response = self.client.get(asc_url)
         asc_items = asc_response.data['items']
-        self.assertEqual(asc_items[-1]['general_data']['title'], channel_one_title)
+        self.assertEqual(asc_items[-1]['general_data']['title'], most_relevant_channel_title)
