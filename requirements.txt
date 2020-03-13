@@ -60,6 +60,7 @@ psycopg2==2.8.4
 pyasn1-modules==0.2.6
 pyasn1==0.4.7
 pybind11==2.3.0
+pycountry==18.12.8
 pyrabbit==1.1.0
 PySocks==1.6.7
 python-dateutil==2.6.0
