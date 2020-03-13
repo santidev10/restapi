@@ -156,6 +156,7 @@ class Command(BaseCommand):
         reader = csv.reader(f)
         vids = []
         counter = 0
+        processed_ids = []
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
@@ -164,7 +165,8 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
-                if v_id and len(v_id) < 51:
+                if v_id and len(v_id) < 51 and not v_id in processed_ids:
+                    processed_ids.append(v_id)
                     if len(vids) >= self.MAX_SOURCE_VIDEOS:
                         self.clone_audit()
                         vids = []
