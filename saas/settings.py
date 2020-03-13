@@ -497,7 +497,7 @@ if APM_ENABLED:
     ELASTIC_APM = {
         "SERVICE_NAME": "restapi",
         "ENVIRONMENT": apm_env,
-        "SERVICE_VERSION": "latest",
+        "SERVICE_VERSION": os.getenv("APP_VERSION", "dev"),
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
         "SERVER_URL": os.getenv("APM_SERVER_URL"),
@@ -505,6 +505,9 @@ if APM_ENABLED:
     }
     MIDDLEWARE = ['elasticapm.contrib.django.middleware.TracingMiddleware'] + MIDDLEWARE
     INSTALLED_APPS = INSTALLED_APPS + ('elasticapm.contrib.django',)
+
+
+DOMAIN_MANAGEMENT_PERMISSIONS = ()
 
 try:
     from .local_settings import *

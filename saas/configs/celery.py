@@ -168,10 +168,6 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
-# Suggestion from this thread https://github.com/celery/celery/issues/4226
-CELERY_BROKER_POOL_LIMIT = None
-
-
 class Queue:
     DEFAULT = "celery"
     REPORTS = "reports"
