@@ -506,6 +506,9 @@ if APM_ENABLED:
     MIDDLEWARE = ['elasticapm.contrib.django.middleware.TracingMiddleware'] + MIDDLEWARE
     INSTALLED_APPS = INSTALLED_APPS + ('elasticapm.contrib.django',)
 
+
+DOMAIN_MANAGEMENT_PERMISSIONS = ()
+
 try:
     from .local_settings import *
 except ImportError:

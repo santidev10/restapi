@@ -1,6 +1,8 @@
 from operator import attrgetter
 
 from django.utils import timezone
+from elasticsearch.exceptions import NotFoundError
+from elasticsearch.exceptions import RequestError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -50,7 +52,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             data = {
                 "message": "Vetting for this list is complete. Please move on to the next list."
             }
-        except MissingDocumentException:
+        except MissingItemException:
             data = {
                 "message": 'The item you requested has been deleted. ' \
                    'Please save the item as "skipped" with option: "Doesn\'t Exist'
@@ -127,7 +129,10 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         next_item = segment.audit_utils.vetting_model.objects.filter(audit=audit, processed__isnull=True).filter(Q(checked_out_at__isnull=True) | Q(checked_out_at__lt=timezone.now()-timedelta(minutes=30))).first()
         # If next item is None, then all are checked out
         if next_item:
-            item_id = attrgetter(id_key)(next_item)
+            try:
+                item_id = attrgetter(id_key)(next_item)
+            except AttributeError:
+                raise MissingItemException
             segment.es_manager.sections = self.ES_SECTIONS
             response = self._get_document(segment.es_manager, item_id)
             data = segment.audit_utils.serializer(response, segment=segment).data
@@ -174,7 +179,8 @@ class AuditVetRetrieveUpdateAPIView(APIView):
     def _get_document(self, es_manager, item_id):
         """
         Handle retrieving Elasticsearch document
-        In some cases an item was avaiable during list creation was deleted before vetting could take place.
+        In some cases an item was avaiable during list creation was deleted before vetting could take place or
+            has invalid item_id
         Respond with prompt to save item as skipped
         :param es_manager: es_components ChannelManager, VideoManager
         :param item_id: str
@@ -182,12 +188,14 @@ class AuditVetRetrieveUpdateAPIView(APIView):
         """
         try:
             document = es_manager.get([item_id])[0]
-        except IndexError:
-            raise MissingDocumentException
+            if not document:
+                raise NotFoundError
+        except (IndexError, NotFoundError, RequestError):
+            raise MissingItemException
         return document
 
 
-class MissingDocumentException(Exception):
+class MissingItemException(Exception):
     pass
 
 
