@@ -147,9 +147,9 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         cache, _ = CacheItem.objects.get_or_create(key="channel_aggregations")
         cache.value = {
             "general_data.country": {"buckets": [
-                {"key": "United States", "doc_count": 96894},
-                {"key": "India", "doc_count": 33589},
-                {"key": "United Kingdom", "doc_count": 18372},
+                {"key": "US", "doc_count": 96894},
+                {"key": "IN", "doc_count": 33589},
+                {"key": "GB", "doc_count": 18372},
             ]},
             "general_data.lang_code": {"buckets": [
                 {"key": "en", "doc_count": 344633},
