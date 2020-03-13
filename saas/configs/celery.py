@@ -95,7 +95,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 60
+        "schedule": 90
     },
     "submit-watson-transcripts": {
         "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
@@ -166,10 +166,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/10"),
     }
 }
-
-
-# Suggestion from this thread https://github.com/celery/celery/issues/4226
-CELERY_BROKER_POOL_LIMIT = None
 
 
 class Queue:

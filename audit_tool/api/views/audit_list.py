@@ -23,8 +23,12 @@ class AuditListApiView(APIView):
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
         source = int(query_params["source"]) if "source" in query_params else 0
-        cursor = int(query_params["cursor"]) if "cursor" in query_params else None
-        limit = int(query_params["limit"]) if "limit" in query_params else None
+        try:
+            cursor = int(query_params["cursor"]) if "cursor" in query_params else None
+            limit = int(query_params["limit"]) if "limit" in query_params else None
+        except Exception as e:
+            cursor = None
+            limit = None
         if limit and (limit < 15 or limit > 100):
             limit = 25
         if cursor and cursor < 1:
@@ -37,6 +41,7 @@ class AuditListApiView(APIView):
         if search:
             return Response({
                 'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
+                'audit_types': AuditProcessor.AUDIT_TYPES,
             })
         else:
             return Response({

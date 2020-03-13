@@ -50,17 +50,18 @@ class BrandSafetyVideoSerializer(Serializer):
             vid_lang_code = 'en'
 
         if 'captions' in video and 'items' in video.captions:
-            if len(video.captions.items) == 1:
-                text = video.captions.items[0].text
-            else:
-                for item in video.captions.items:
-                    if item.language_code == vid_lang_code:
-                        text = item.text
-                        break
-        if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            for item in video.custom_captions.items:
+            for item in video.captions.items:
                 if item.language_code == vid_lang_code:
                     text = item.text
                     break
+            if not text:
+                text = video.captions.items[0].text
+        if not text and 'custom_captions' in video and 'items' in video.custom_captions:
+            for item in video.custom_captions.items:
+                if item.language_code[:2] == vid_lang_code:
+                    text = item.text
+                    break
+            if not text:
+                text = video.custom_captions.items[0].text
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript

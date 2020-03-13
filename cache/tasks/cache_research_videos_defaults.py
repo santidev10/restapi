@@ -37,7 +37,7 @@ def update_cache(obj, part, options=None, timeout=TIMEOUT):
 def cache_research_videos_defaults():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.RESEARCH_CACHING)
-        logger.debug("Starting default research videos caching.")
+        logger.info("Starting default research videos caching.")
         default_sections = (Sections.MAIN, Sections.CHANNEL, Sections.GENERAL_DATA, Sections.BRAND_SAFETY,
                             Sections.STATS, Sections.ADS_STATS, Sections.MONETIZATION, Sections.CAPTIONS, Sections.CMS,
                             Sections.CUSTOM_CAPTIONS)
@@ -72,23 +72,23 @@ def cache_research_videos_defaults():
         queryset_adapter.sort = sort
         obj = queryset_adapter
         # Caching Count
-        logger.debug("Caching default research videos count.")
+        logger.info("Caching default research videos count.")
         part = "count"
         update_cache(obj, part)
         # Caching Get_data
-        logger.debug("Caching default research videos data.")
+        logger.info("Caching default research videos data.")
         part = "get_data"
         update_cache(obj, part)
         # Caching Count for Aggregations Query
-        logger.debug("Caching default research videos aggregations count.")
+        logger.info("Caching default research videos aggregations count.")
         obj.sort = None
         part = "count"
         update_cache(obj, part)
         # Caching Data for Aggregations Query
-        logger.debug("Caching default research videos aggregations data.")
+        logger.info("Caching default research videos aggregations data.")
         part = "get_data"
         update_cache(obj, part, options=((0,0), {}))
-        logger.debug("Finished default research videos caching.")
+        logger.info("Finished default research videos caching.")
 
         # Caching for Admin Sections
         admin_manager = VideoManager(admin_sections)
@@ -105,23 +105,23 @@ def cache_research_videos_defaults():
         obj = admin_queryset_adapter
         obj.sort = sort
         # Caching Count
-        logger.debug("Caching admin research videos count.")
+        logger.info("Caching admin research videos count.")
         part = "count"
         update_cache(obj, part)
         # Caching Get_data
-        logger.debug("Caching admin research videos data.")
+        logger.info("Caching admin research videos data.")
         part = "get_data"
         update_cache(obj, part)
         # Caching Count for Aggregations Query
-        logger.debug("Caching admin research videos aggregations count.")
+        logger.info("Caching admin research videos aggregations count.")
         obj.sort = None
         part = "count"
         update_cache(obj, part)
         # Caching Data for Aggregations Query
-        logger.debug("Caching admin research videos aggregations data.")
+        logger.info("Caching admin research videos aggregations data.")
         part = "get_data"
         update_cache(obj, part, options=((0, 0), {}))
-        logger.debug("Finished admin research videos caching.")
+        logger.info("Finished admin research videos caching.")
         unlock(LOCK_NAME)
     except Exception as e:
         pass

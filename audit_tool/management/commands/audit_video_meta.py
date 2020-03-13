@@ -24,6 +24,7 @@ from pid import PidFile
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
 from utils.utils import remove_tags_punctuation
+from audit_tool.utils.audit_utils import AuditUtils
 
 logger = logging.getLogger(__name__)
 """
@@ -43,6 +44,8 @@ class Command(BaseCommand):
     categories = {}
     audit = None
     acps = {}
+    num_clones = 0
+    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
@@ -162,6 +165,9 @@ class Command(BaseCommand):
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
                 if v_id and len(v_id) < 51:
+                    if len(vids) >= self.MAX_SOURCE_VIDEOS:
+                        self.clone_audit()
+                        vids = []
                     video = AuditVideo.get_or_create(v_id)
                     avp, _ = AuditVideoProcessor.objects.get_or_create(
                             audit=self.audit,
@@ -169,15 +175,19 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
                     counter+=1
-            if counter > self.MAX_SOURCE_VIDEOS:
-                return vids
-        if len(vids) == 0:
+        if counter == 0:
             self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
         return vids
+
+    def clone_audit(self):
+        self.num_clones+=1
+        if not self.original_audit_name:
+            self.original_audit_name = self.audit.params['name']
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')

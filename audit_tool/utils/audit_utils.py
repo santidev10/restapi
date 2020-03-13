@@ -9,6 +9,7 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from brand_safety.languages import LANG_CODES
@@ -17,7 +18,7 @@ from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from segment.models.constants import VETTED_MAPPING
-
+from django.utils import timezone
 
 class AuditUtils(object):
     video_config = {
@@ -172,6 +173,21 @@ class AuditUtils(object):
             key = 3
         vetted_value = VETTED_MAPPING[key]
         return vetted_value
+
+    @staticmethod
+    def clone_audit(audit, clone_number=1, name=None):
+        params = audit.params
+        if not name:
+            params['name'] = "{}: Part {}".format(params['name'], clone_number + 1)
+        else:
+            params['name'] = "{}: Part {}".format(name, clone_number + 1)
+        return AuditProcessor.objects.create(
+            started=timezone.now(),
+            name=params['name'].lower(),
+            params=params,
+            pause=audit.pause,
+            audit_type=audit.audit_type,
+        )
 
     @staticmethod
     def get_vetting_data(vetting_model, audit_id, item_ids, data_field):

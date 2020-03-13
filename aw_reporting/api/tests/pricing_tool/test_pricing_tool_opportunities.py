@@ -1065,9 +1065,11 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         opportunity_1, campaign_1 = self._create_opportunity_campaign(
             "1", camp_data=dict(device_computers=True, device_mobile=True))
         opportunity_2, campaign_2 = self._create_opportunity_campaign(
-            "2", camp_data=dict(device_computers=True, device_tablets=True))
+            "2", camp_data=dict(device_tablets=True))
         self._create_opportunity_campaign(
             "3", camp_data=dict(device_other=True))
+        opportunity_4, campaign_4 = self._create_opportunity_campaign(
+            "4", camp_data=dict(device_mobile=True))
 
         # test OR
         response = self._request(devices=[1, 2],
@@ -1075,7 +1077,7 @@ class PricingToolOpportunityTestCase(PricingToolTestCaseBase):
         self.assertEqual(response.status_code, HTTP_200_OK)
         opportunities = response.data["items"]
         self.assertEqual(set(c["id"] for c in opportunities),
-                         {opportunity_1.id, opportunity_2.id})
+                         {opportunity_2.id, opportunity_4.id})
 
         # test AND
         response = self._request(devices=[0, 1],

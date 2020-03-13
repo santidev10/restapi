@@ -123,6 +123,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
+    # this name field is LOWERCASED for searching, use params['name'] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
@@ -216,7 +217,7 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.params.get('related_audits'),
+            'related_audits': self.get_related_audits(),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -276,14 +277,20 @@ class AuditProcessor(models.Model):
         if r:
             for related in r:
                 try:
+                    a = AuditProcessor.objects.get(id=related)
+                    if not a.name:
+                        a.name = a.params['name'].lower()
+                        a.save(update_fields=['name'])
                     d.append({
                         'id': related,
-                        'name': AuditProcessor.objects.get(id=related).name
+                        'name': a.params['name']
                     })
                 except Exception as e:
-                    pass
+                    d.append({
+                        'id': related,
+                        'name': 'deleted audit',
+                    })
         return d
-
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
