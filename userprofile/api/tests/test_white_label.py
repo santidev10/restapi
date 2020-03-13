@@ -229,7 +229,6 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label = WhiteLabel.objects.get(domain=payload["domain"])
         self.assertEqual(response.status_code, HTTP_200_OK)
-        self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(payload["domain"], white_label.domain)
         self.assertEqual(payload["config"]["logo"], white_label.config["logo"])
 
