@@ -151,10 +151,10 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
                 {"key": "India", "doc_count": 33589},
                 {"key": "United Kingdom", "doc_count": 18372},
             ]},
-            "general_data.top_language": {"buckets": [
-                {"key": "English", "doc_count": 344633},
-                {"key": "Spanish", "doc_count": 48062},
-                {"key": "Arabic", "doc_count": 29714},
+            "general_data.lang_code": {"buckets": [
+                {"key": "en", "doc_count": 344633},
+                {"key": "es", "doc_count": 48062},
+                {"key": "ar", "doc_count": 29714},
             ]}
         }
         cache.save()
