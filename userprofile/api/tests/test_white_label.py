@@ -11,6 +11,7 @@ from rest_framework.status import HTTP_403_FORBIDDEN
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.models import WhiteLabel
+from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
@@ -30,6 +31,16 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         """ Should accept GET request with no params with no permissions """
         response = self.client.get(self._url)
         self.assertEqual(response.status_code, HTTP_200_OK)
+
+    def test_permissions_success(self):
+        """ Should accept GET request for all with permissions """
+        user = self.create_test_user()
+        user.add_custom_user_permission("domain_management")
+        response = self.client.get(self._url + "?all=true")
+        data = response.data
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertIsNotNone(data["domains"])
+        self.assertIsNotNone(data["permissions"])
 
     def test_rc(self):
         """ GET Should return default for rc.viewiq """
@@ -99,7 +110,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
                 "disable": ["google_oauth"],
             }
         }
-        with override_settings(ALLOWED_HOSTS=['*']):
+        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=["google_oauth"]):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         white_label.refresh_from_db()
         config = payload["config"]
@@ -155,6 +166,21 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_patch_invalid_disable_fail(self):
+        """ Reject disable permissions that do not match """
+        self.create_admin_user()
+        white_label_1 = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
+        valid_permissions = ["valid_permission"]
+        payload = {
+            "id": white_label_1.id,
+            "config": {
+                "disable": [valid_permissions[0], "not a valid permission"]
+            }
+        }
+        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=valid_permissions):
+            response = self.client.patch(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
     def test_post_duplicate_domain_fail(self):
         self.create_admin_user()
         white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
@@ -164,6 +190,20 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         with override_settings(ALLOWED_HOSTS=['*']):
             response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_post_default_disable(self):
+        """ Disable all permissions for new domain if not provided"""
+        self.create_admin_user()
+        domain = f"test_domain_{next(int_iterator)}"
+        permissions = ["perm_1", "perm_2", "perm_3"]
+        payload = {
+            "domain": domain
+        }
+        with override_settings(ALLOWED_HOSTS=['*'], DOMAIN_MANAGEMENT_PERMISSIONS=permissions):
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
+        white_label = WhiteLabel.objects.get(domain=domain)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertEqual(white_label.config["disable"], permissions)
 
     def test_post_image_success(self):
         self.create_admin_user()
