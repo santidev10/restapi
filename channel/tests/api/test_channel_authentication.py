@@ -76,7 +76,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         """
         test_error = {
             "detail": "This account doesn't include any channels. "
-                      "Please try to authorize other YT channel"
+                      "Please try to authorize another YouTube account with channels."
         }
 
         flow().step2_exchange().refresh_token = "^test_refresh_token$"

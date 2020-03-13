@@ -51,7 +51,7 @@ class ChannelAuthenticationApiView(APIView):
 
         if not items:
             return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "This account doesn't include any channels. "
-                                                                         "Please try to authorize other YT channel"})
+                                                                         "Please try to authorize another YouTube account with channels."})
 
         channel_id = items[0].get("id")
         try:
