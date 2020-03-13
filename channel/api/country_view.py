@@ -1,3 +1,5 @@
+from utils.country import get_country_code
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -12,4 +14,12 @@ class CountryListApiView(APIView):
     permission_classes = tuple()
 
     def get(self, *args, **kwargs):
-        return Response([{'common':c} for c in COUNTRIES])
+        return Response(
+            [
+                {
+                    "id": get_country_code(c),
+                    "common": c
+                }
+                for c in COUNTRIES
+            ]
+        )

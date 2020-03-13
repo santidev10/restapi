@@ -57,7 +57,10 @@ class SegmentCreationOptionsApiView(APIView):
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
             countries = [
-                {"common": get_country_by_code(item["key"])}
+                {
+                    "id": item["key"],
+                    "common": get_country_by_code(item["key"])
+                }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
             lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
