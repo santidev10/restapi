@@ -162,7 +162,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), {}, content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        for i, country in enumerate(cache.value["general_data.country"]["buckets"]):
-            self.assertEqual(response.data["options"]["countries"][i]["common"], country["key"])
-        for i, lang in enumerate(cache.value["general_data.top_language"]["buckets"]):
-            self.assertEqual(response.data["options"]["languages"][i]["title"], lang["key"])
+        for i, country in enumerate(cache.value["general_data.country_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["country_code"][i]["common"], country["key"])
+        for i, lang in enumerate(cache.value["general_data.lang_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["lang_code"][i]["title"], lang["key"])
