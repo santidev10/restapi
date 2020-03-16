@@ -97,6 +97,8 @@ class Command(BaseCommand):
         if pending_channels.count() == 0:
             if self.thread_id == 0:
                 self.process_seed_list()
+                if self.num_clones > 0:
+                    raise Exception("Done processing seed list, split audit into {} parts".format(self.num_clones+1))
                 pending_channels = AuditChannelProcessor.objects.filter(
                         audit=self.audit,
                         processed__isnull=True

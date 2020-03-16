@@ -23,13 +23,13 @@ from utils.youtube_api import resolve_videos_info
 logger = logging.getLogger(__name__)
 
 
-CAMPAIGNS_FIELDS = ("name", "id", "account__currency_code", "salesforce_placement__ordered_rate",
+CAMPAIGNS_FIELDS = ("name", "id", "account__name", "account__currency_code", "salesforce_placement__ordered_rate",
                     "salesforce_placement__goal_type_id")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
                 "video_views")
 
-CSV_HEADER = ("Date", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
+CSV_HEADER = ("Date", "CID", "Advertiser Currency", "Device Type", "Campaign ID", "Campaign", "Creative ID",
               "Creative", "Creative Source", "Revenue (Adv Currency)", "Impressions", "Clicks", "TrueView: Views",
               "Midpoint Views (Video)", "Complete Views (Video)")
 
@@ -105,6 +105,9 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return round(ordered_rate * obj.impressions / 1000, 2)
 
 
+    def get_campaign_name(self, account_name):
+        return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name)
+
     def __get_campaign_statistics(self, campaign_ids):
         return CampaignStatistic.objects\
             .filter(campaign_id__in=campaign_ids, date=self.yesterday) \
@@ -118,10 +121,11 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in campaigns_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
+                self.get_campaign_name(stats.campaign__account__name),
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
-                stats.campaign__name,
+                stats.campaign__account__name,
                 None,
                 None,
                 None,
@@ -146,10 +150,11 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         for stats in creative_statistics:
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
+                self.get_campaign_name(stats.ad_group__campaign__account__name),
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,
-                stats.ad_group__campaign__name,
+                stats.ad_group__campaign__account__name,
                 stats.creative_id,
                 creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
                 YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),

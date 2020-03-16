@@ -123,6 +123,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
+    # this name field is LOWERCASED for searching, use params['name'] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
