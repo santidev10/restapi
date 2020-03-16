@@ -507,6 +507,29 @@ if APM_ENABLED:
     INSTALLED_APPS = INSTALLED_APPS + ('elasticapm.contrib.django',)
 
 
+APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
+    "VISA APEX UK Hungary + Slovakia Christmas Q4'19 OP003977":
+        " MK~SK_CN~Cash Conversion Xmas_MN~NONE_YQ~20Q1_CP~TBC_OB~AWA_PK~Reach",
+
+    "VISA APEX UK Hungary + Slovakia Christmas Q4'19 OP003977":
+        " MK~HU_CN~Cash Conversion I Pay Visa_MN~NONE_YQ~20Q1_CP~TBC_OB~AWA_PK~Reach",
+
+    "VISA Spain APEX UK Contactless Q1'20 OP004244":
+        "MK~ES_CN~Contactless_MN~VCM_YQ~20Q1Q2_CP~P20020_SP~N/A_AC~CC",
+
+    "VISA Italy APEX UK I Pay Visa Q2'20 OP004362":
+        " MK~IT_CN~IPAYVISA_MN~VBR_YQ~20Q2Q3_CP~POP20658_SP~N/A_AC~CC_OB~RVB_U1~Global",
+
+    "VISA Poland APEX UK Pay Visa Ecom Aliexpress Q1'20 OP004245":
+        " MK~PL_CN~IPV-Ecomm AliExpress_MN~ALT_YQ~20Q2_CP~P19610_SP~N/A_AC~DOE_OB~RVB",
+
+    "VISA Poland APEX UK I Pay Visa Q1'20 OP004138":
+        " MK~PL_CN~IPV2 Jan Mar_MN~NONE_YQ~20Q1Q2_CP~PO#TBC_SP~N/A_AC~CC_OB~RVB",
+
+    "VISA Poland APEX UK XB US Corridor Q1-Q2'20 OP004344":
+        " MK~PL_CN~Crossborder US corridor_MN~NONE_YQ~20Q2Q3_CP~P19664_SP~N/A_AC~CB_OB~RVB"
+}
+
 DOMAIN_MANAGEMENT_PERMISSIONS = ()
 
 try:
