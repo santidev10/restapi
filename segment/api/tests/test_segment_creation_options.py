@@ -1,6 +1,5 @@
 import json
 import types
-from utils.country import get_country_by_code
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -12,6 +11,8 @@ from cache.models import CacheItem
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
+from es_components.countries import COUNTRIES
+from brand_safety.languages import LANGUAGES
 
 
 @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
@@ -163,8 +164,9 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), {}, content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        for i, country in enumerate(cache.value["general_data.country_code"]["buckets"]):
-            self.assertEqual(response.data["options"]["country"][i]["id"], country["key"])
-            self.assertEqual(response.data["options"]["country"][i]["common"], get_country_by_code(country["key"]))
-        for i, lang in enumerate(cache.value["general_data.lang_code"]["buckets"]):
-            self.assertEqual(response.data["options"]["lang_code"][i]["title"], lang["key"])
+        for i, country_code in enumerate(cache.value["general_data.country_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["countries"][i]["id"], country_code["key"])
+            self.assertEqual(response.data["options"]["countries"][i]["common"], COUNTRIES[country_code["key"]][0])
+        for i, lang_code in enumerate(cache.value["general_data.lang_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["languages"][i]["id"], lang_code["key"])
+            self.assertEqual(response.data["options"]["languages"][i]["title"], LANGUAGES[lang_code["key"]])

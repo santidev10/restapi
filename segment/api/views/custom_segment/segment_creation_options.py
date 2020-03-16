@@ -1,5 +1,3 @@
-from utils.country import get_country_by_code
-
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -14,6 +12,7 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from channel.api.country_view import CountryListApiView
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
+from es_components.countries import COUNTRIES
 
 
 class SegmentCreationOptionsApiView(APIView):
@@ -59,7 +58,7 @@ class SegmentCreationOptionsApiView(APIView):
             countries = [
                 {
                     "id": item["key"],
-                    "common": get_country_by_code(item["key"])
+                    "common": COUNTRIES[item["key"]][0]
                 }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
