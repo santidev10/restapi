@@ -69,7 +69,6 @@ def submit_watson_transcripts():
             videos = get_no_custom_captions_vids(lang_code=lang_codes, country=countries, yt_category=yt_categories,
                                                  brand_safety_score=brand_safety_score, num_vids=num_vids,
                                                  offset=offset)
-            # videos = get_1k_english_vids()
             offset += num_vids
             logger.info(f"len(videos): {len(videos)}")
             for vid in videos:
@@ -161,25 +160,6 @@ def submit_watson_transcripts():
     except Exception as e:
         logger.error(e)
         pass
-
-
-def get_1k_english_vids():
-    channel_ids = ["UCG8rbF3g2AMX70yOd8vqIZg", "UCpko_-a4wgz2u_DgDgd9fqA"]
-    forced_filters = VideoManager().forced_filters()
-    s = Search(using='default')
-    s = s.index(Video.Index.name)
-    s = s.query(forced_filters)
-    channels_query = Q(
-        {
-            "terms": {
-                "channel.id": channel_ids
-            }
-        }
-    )
-    s = s.query(channels_query)
-    s = s.sort({"stats.views": {"order": "desc"}})
-    s = s[:1000]
-    return s.execute()
 
 
 def get_no_custom_captions_vids(lang_code=None, country=None, yt_category=None, brand_safety_score=None, num_vids=10000,
