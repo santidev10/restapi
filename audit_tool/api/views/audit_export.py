@@ -541,7 +541,9 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
             try:
-                error_str = str(db_channel.word_hits.get('error'))
+                error_str = db_channel.word_hits.get('error')
+                if not error_str:
+                    error_str = ""
             except Exception as e:
                 error_str = ""
             data = [
