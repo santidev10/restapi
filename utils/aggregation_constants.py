@@ -36,7 +36,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
         "general_data.country_code",
         "general_data.top_category",
         "general_data.top_language",
-        "general_data.lang_code",
+        "general_data.top_lang_code",
         "general_data.iab_categories",
         "social.facebook_likes:max",
         "social.facebook_likes:min",
