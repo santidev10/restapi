@@ -139,11 +139,13 @@ class Command(BaseCommand):
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
+        processed_ids = []
         counter = 0
         for row in reader:
             seed = row[0]
             v_id = self.get_channel_id(seed)
-            if v_id:
+            if v_id and not v_id in processed_ids:
+                processed_ids.append(v_id)
                 if len(vids) >= self.MAX_SOURCE_CHANNELS:
                     self.clone_audit()
                     vids = []
