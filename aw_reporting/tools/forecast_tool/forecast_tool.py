@@ -1,8 +1,6 @@
 from datetime import datetime
 
-from django.db.models import Sum
-
-from aw_reporting.models import Opportunity
+from aw_reporting.models import Campaign
 from aw_reporting.tools.forecast_tool.forecast_tool_estimate import ForecastToolEstimate
 from aw_reporting.tools.forecast_tool.forecast_tool_filtering import ForecastToolFiltering
 from utils.datetime import now_in_default_tz, build_periods
@@ -20,10 +18,10 @@ class ForecastTool:
         kwargs["margin"] = kwargs.get("margin") or self.default_margin
         self.kwargs = kwargs
         self.filter = ForecastToolFiltering(kwargs)
-        self._opportunities_qs = self.filter.apply(
-            self._get_opportunity_queryset())
+        self._campaigns_qs = self.filter.apply(
+            self._get_campaigns_queryset())
         self.estimate_tool = ForecastToolEstimate(
-            kwargs, self.get_opportunities_queryset())
+            kwargs, self.get_campaigns_queryset())
 
     @classmethod
     def get_filters(cls):
@@ -47,10 +45,8 @@ class ForecastTool:
             end=max(d for _, d in periods or [(None, None)])
         )
 
-    def _get_opportunity_queryset(self):
-        return Opportunity.objects \
-            .annotate(aw_budget=Sum("placements__adwords_campaigns__cost")) \
-            .order_by("-aw_budget")
+    def _get_campaigns_queryset(self):
+        return Campaign.objects
 
-    def get_opportunities_queryset(self):
-        return self._opportunities_qs
+    def get_campaigns_queryset(self):
+        return self._campaigns_qs

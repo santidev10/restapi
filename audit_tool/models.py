@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
@@ -124,6 +123,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
+    # this name field is LOWERCASED for searching, use params['name'] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
@@ -147,7 +147,7 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None, source=0):
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None, limit=None):
         # if export:
         #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
         #     all = AuditProcessor.objects.filter(id__in=exports)
@@ -157,8 +157,9 @@ class AuditProcessor(models.Model):
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
+        date_gte = None
         if num_days > 0:
-            all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+            date_gte = timezone.now() - timedelta(days=num_days)
         if search:
             all = all.filter(name__icontains=search.lower())
         ret = {
@@ -171,8 +172,16 @@ class AuditProcessor(models.Model):
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
+            ret['items_count'] = len(audits)
         else:
-            for a in all.order_by("pause", "-completed", "id"):
+            ret['items_count'] = all.count()
+            all = all.order_by("pause", "-completed", "id")
+            if limit:
+                start = (cursor - 1) * limit
+                all = all[start:start+limit]
+            for a in all:
+                if date_gte and a.completed and a.completed < date_gte:
+                    break
                 audits.append(a)
         for a in audits:
             d = a.to_dict()
@@ -208,7 +217,7 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.params.get('related_audits'),
+            'related_audits': self.get_related_audits(),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -268,14 +277,20 @@ class AuditProcessor(models.Model):
         if r:
             for related in r:
                 try:
+                    a = AuditProcessor.objects.get(id=related)
+                    if not a.name:
+                        a.name = a.params['name'].lower()
+                        a.save(update_fields=['name'])
                     d.append({
                         'id': related,
-                        'name': AuditProcessor.objects.get(id=related).name
+                        'name': a.params['name']
                     })
                 except Exception as e:
-                    pass
+                    d.append({
+                        'id': related,
+                        'name': 'deleted audit',
+                    })
         return d
-
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
@@ -474,7 +489,9 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner_id = IntegerField(null=True, blank=True)
-    export_as_videos = models.BooleanField(default=False)
+    export_as_videos = models.BooleanField(default=False, db_index=True)
+    export_as_channels = models.BooleanField(default=False, db_index=True)
+    export_as_keywords = models.BooleanField(default=False, db_index=True)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)

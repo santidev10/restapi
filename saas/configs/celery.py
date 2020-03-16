@@ -95,7 +95,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 60
+        "schedule": 90
     },
     "submit-watson-transcripts": {
         "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
@@ -133,6 +133,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_global_trends_filters.cache_global_trends_filters",
         "schedule": crontab(minute=0, hour='*/6'),
     },
+    "cache_forecast_tool_filters": {
+        "task": "cache.tasks.cache_forecast_tool_filters.cache_forecast_tool_filters",
+        "schedule": crontab(minute=0, hour='*/6'),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
@@ -162,10 +166,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/10"),
     }
 }
-
-
-# Suggestion from this thread https://github.com/celery/celery/issues/4226
-CELERY_BROKER_POOL_LIMIT = None
 
 
 class Queue:
@@ -215,6 +215,7 @@ class TaskExpiration:
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
 
 
 class TaskTimeout:
@@ -229,3 +230,4 @@ class TaskTimeout:
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()

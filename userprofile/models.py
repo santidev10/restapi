@@ -20,6 +20,7 @@ from uuid import uuid4
 from administration.notifications import send_html_email
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
+from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import PermissionHandler
@@ -238,3 +239,16 @@ class UserDeviceToken(models.Model):
         if not self.key:
             self.key = self.generate_key()
         return super().save(*args, **kwargs)
+
+
+class WhiteLabel(models.Model):
+    domain = models.CharField(max_length=255, unique=True)
+    config = JSONField(default=dict)
+
+    @staticmethod
+    def get(domain):
+        try:
+            white_label = WhiteLabel.objects.get(domain=domain)
+        except WhiteLabel.DoesNotExist:
+            white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
+        return white_label

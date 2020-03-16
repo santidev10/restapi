@@ -164,10 +164,15 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
             print("Audit completed, all videos processed")
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            export_as_channels = False
+            if max_recommended_type and max_recommended_type=='channel':
+                export_as_channels = True
             a = AuditExporter.objects.create(
                 audit=self.audit,
                 owner_id=None,
                 clean=True,
+                export_as_channels=export_as_channels,
             )
         raise Exception("Audit completed, all videos processed")
 
@@ -262,7 +267,7 @@ class Command(BaseCommand):
         except Exception as e:
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
-        for i in data['items']:
+        for i in d:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i['snippet']['title']
@@ -297,6 +302,9 @@ class Command(BaseCommand):
                     if not v.video_source:
                         v.video_source = video
                         update_fields.append("video_source")
+                    if not v.channel and channel:
+                        v.channel = channel
+                        update_fields.append("channel")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
                     v.save(update_fields=update_fields)
                     if v.clean:
@@ -305,8 +313,11 @@ class Command(BaseCommand):
                             channel=channel
                         )
         avp.processed = timezone.now()
-        avp.channel = channel
-        avp.save(update_fields=['processed', 'channel'])
+        update_fields = ['processed']
+        if not avp.channel:
+            avp.channel = video.channel
+            update_fields.append("channel")
+        avp.save(update_fields=update_fields)
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:

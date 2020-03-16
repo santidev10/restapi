@@ -18,9 +18,9 @@ process:
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        self.days = 90
+        self.days = 180
         with PidFile(piddir='.', pidname='audit_prune_db.pid') as p:
-            old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now()-timedelta(days=self.days))
+            old_audits = AuditProcessor.objects.filter(source=0, completed__lt=timezone.now()-timedelta(days=self.days)).exclude(completed__isnull=True)
             count = 0
             for audit in old_audits:
                 print("Deleting Audit {}".format(audit.id))

@@ -34,9 +34,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl --silent localhost:5000/api/healthcheck/status/ || exit 1"]
-      interval: 30s
+      interval: 15s
       timeout: 3s
-      retries: 30
+      retries: 3
+      start_period: 2m
 
   celery_worker:
     image: viewiq-restapi
@@ -127,17 +128,6 @@ services:
     image: kibana:7.1.0
     environment:
       ELASTICSEARCH_HOSTS: http://es:9200
-
-  logstash:
-    image: viewiq/logstash
-    build:
-      context: ./.docker/logstash
-    environment:
-      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
-      LOGSTASH_ES_HOST: es
-    depends_on:
-      es:
-        condition: service_healthy
 
   # APM
   apm-es:

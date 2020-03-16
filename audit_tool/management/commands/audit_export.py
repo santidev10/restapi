@@ -60,7 +60,18 @@ class Command(BaseCommand):
         audit_type = self.audit.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit.audit_type
-        if audit_type == 2 and not self.export.export_as_videos:
+        if self.export.export_as_keywords:
+            try:
+                file_name, _, count = export_funcs.export_keywords(self.audit, self.audit.id, export=self.export)
+            except Exception as e:
+                self.export.started = None
+                self.export.machine = None
+                self.export.thread = None
+                self.export.percent_done = 0
+                self.export.save(update_fields=['started', 'percent_done', 'machine', 'thread'])
+                print("problem with exporting keywords {}, resetting audit back to 0".format(self.audit.id))
+                raise Exception(e)
+        elif (audit_type == 2 and not self.export.export_as_videos) or (audit_type==0 and self.export.export_as_channels):
             try:
                 file_name, _ = export_funcs.export_channels(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
             except Exception as e:
@@ -72,6 +83,9 @@ class Command(BaseCommand):
                 print("problem with exporting channels {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditChannelProcessor.objects.filter(audit=self.audit)
+            if self.export.clean is not None:
+                count = count.filter(clean=self.export.clean)
+            count = count.count()
         else:
             try:
                 file_name, _ = export_funcs.export_videos(self.audit, self.audit.id, clean=self.export.clean, export=self.export)
@@ -84,9 +98,9 @@ class Command(BaseCommand):
                 print("problem with exporting videos {}, resetting audit back to 0".format(self.audit.id))
                 raise Exception(e)
             count = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if self.export.clean is not None:
-            count = count.filter(clean=self.export.clean)
-        count = count.count()
+            if self.export.clean is not None:
+                count = count.filter(clean=self.export.clean)
+            count = count.count()
         self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
         self.export.completed = timezone.now()
         self.export.file_name = file_name

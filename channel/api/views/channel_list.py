@@ -102,6 +102,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         "general_data.youtube_published_at:asc",
         "brand_safety.overall_score:desc",
         "brand_safety.overall_score:asc",
+        "_score:desc",
+        "_score:asc"
     )
 
     terms_filter = TERMS_FILTER
