@@ -35,9 +35,9 @@ class UserPasswordResetApiView(APIView):
         subject = "ViewIQ > Password reset notification"
         text_header = "Dear {} \n".format(user.get_full_name())
         message = "Click the link below to reset your password.\n" \
-                  "{}\n\n" \
-                  "Please do not respond to this email.\n\n" \
-                  "Kind regards, Channel Factory Team".format(reset_uri)
+                  "{}" \
+                  "<br><br>" \
+                  "Please do not respond to this email".format(reset_uri)
         send_html_email(
             subject, email, text_header, message)
         return Response(status=HTTP_202_ACCEPTED)
