@@ -95,6 +95,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
     vid_id = vid_obj.main.id
     for vid_lang_code, transcript_soup in lang_codes_soups_dict.items():
         transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
+        transcript_text = transcript_text.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         if transcript_text != "":
             AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_code,
                                                transcript=str(transcript_soup))
