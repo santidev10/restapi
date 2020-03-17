@@ -113,10 +113,10 @@ class AuditUtils(object):
                 except KeyError:
                     lang = code
                 languages.append({"id": code, "value": lang})
-            if "zh-c" not in lang_codes:
-                languages.append({"id": "zh-c", "value": "Chinese - Cantonese"})
-            if "zh-m" not in lang_codes:
-                languages.append({"id": "zh-m", "value": "Chinese - Mandarin"})
+            if "yue" not in lang_codes:
+                languages.append({"id": "yue", "value": "Chinese - Cantonese"})
+            if "cmn" not in lang_codes:
+                languages.append({"id": "cmn", "value": "Chinese - Mandarin"})
         except (CacheItem.DoesNotExist, KeyError):
             languages = [
                 {"id": code, "value": lang}
