@@ -105,7 +105,7 @@ class AuditUtils(object):
     def get_languages():
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
-            lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
             languages = []
             for code in lang_codes:
                 try:
