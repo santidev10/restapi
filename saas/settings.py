@@ -532,6 +532,13 @@ APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
 
 DOMAIN_MANAGEMENT_PERMISSIONS = ()
 
+PASSWORD_POLICY = {
+    "length": 8,
+    "uppercase": 1,
+    "numbers": 1,
+    "special": 1,
+}
+
 try:
     from .local_settings import *
 except ImportError:
