@@ -375,6 +375,6 @@ LANG_CODES = {
     'Zhuang; Chuang': 'za',
     'Chinese': 'zh',
     'Chinese - Cantonese': 'zh-yue',
-    'Chinese - Mandarin)': 'zh-cmn',
+    'Chinese - Mandarin': 'zh-cmn',
     'Zulu': 'zu'
 }
