@@ -280,7 +280,7 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
                 if r == 204:
                     logger.debug(
                         'Flight %s %s %s was updated: %s' % (
-                            flight.id, str(flight.sstart),
+                            flight.id, str(flight.start),
                             str(flight.placement.goal_type_id), str(update)
                         )
                     )
