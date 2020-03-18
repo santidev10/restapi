@@ -20,6 +20,7 @@ from userprofile.models import get_default_accesses
 from utils.lang import get_request_prefix
 from userprofile.models import UserDeviceToken
 
+from userprofile.validators import password_validators
 
 class UserCreateSerializer(ModelSerializer):
     """
@@ -29,7 +30,12 @@ class UserCreateSerializer(ModelSerializer):
     last_name = CharField(max_length=255, required=True)
     company = CharField(max_length=255, required=True)
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
-    verify_password = CharField(max_length=255, required=True)
+    verify_password = CharField(max_length=255, required=True, validators=[
+        password_validators.upper_case_password_validator,
+        password_validators.min_length_password_validator,
+        password_validators.special_char_password_validator,
+        password_validators.numeric_password_validator
+    ])
     email = EmailField(
         max_length=254,
         validators=[
