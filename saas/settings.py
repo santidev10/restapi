@@ -271,10 +271,10 @@ LOGGING = {
 }
 
 SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
-SENDER_EMAIL_ADDRESS = SERVER_EMAIL
+SENDER_EMAIL_ADDRESS = "viewiq@viewiq.com"
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
-EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
+EXPORTS_EMAIL_ADDRESS = "notify@viewiq.com"
 ADMIN_EMAIL_LIMIT = 10000
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1

@@ -271,7 +271,11 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
                 if getattr(e, "status", 0) == 404:
                     logger.info(str(e))
                 else:
-                    logger.critical("Unhandled exception: %s" % str(e))
+                    try:
+                        message = f"{flight.name}: {flight.placement.opportunity.ad_ops_manager}\n"
+                    except (AttributeError, OpPlacement.DoesNotExist, Opportunity.DoesNotExist):
+                        message = str(e)
+                    logger.critical("Unhandled exception: %s" % message)
             else:
                 if r == 204:
                     logger.debug(

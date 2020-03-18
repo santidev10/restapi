@@ -39,5 +39,5 @@ def video_update(video_ids):
     to_rescore = auditor.channels_to_rescore
     # Remove brand safety section for channels to rescore. Will be rescored by discovery task
     query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(to_rescore).get()
-    auditor.channel_manager.remove_sections(query, (Sections.BRAND_SAFETY,))
+    auditor.channel_manager.remove_sections(query, (Sections.BRAND_SAFETY,), proceed_conflict=True)
 
