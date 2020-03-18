@@ -61,6 +61,62 @@ class SendDailyEmailsTestCase(APITestCase):
         self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
         self.assertEqual(SavedEmail.objects.count(), 1)
 
+    def test_send_to_account_by_timezone(self):
+        ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
+        today = timezone.now().date()
+        account = Account.objects.create(id=1, timezone=settings.DEFAULT_TIMEZONE)
+        opportunity = Opportunity.objects.create(
+            id="solo", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100, aw_cid=account.id
+        )
+        placement = OpPlacement.objects.create(
+            id="1",
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(id="1", name="", placement=placement,
+                              start=today.replace(day=1),
+                              end=today.replace(day=28), ordered_units=1000)
+        Campaign.objects.create(pk="1", name="",
+                                salesforce_placement=placement)
+
+        account_2 = Account.objects.create(id=2, timezone="Asia/Manila")
+        opportunity_2 = Opportunity.objects.create(
+            id="solo2", name="Opportunity",
+            ad_ops_manager=ad_ops,
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            probability=100, aw_cid=account_2.id
+        )
+        placement_2 = OpPlacement.objects.create(
+            id=2,
+            name="Placement",
+            start=today - timedelta(days=2),
+            end=today + timedelta(days=2),
+            opportunity=opportunity_2,
+            goal_type_id=SalesForceGoalType.CPV,
+        )
+        Flight.objects.create(id=2, name="", placement=placement_2,
+                              start=today.replace(day=1),
+                              end=today.replace(day=28), ordered_units=1000)
+        Campaign.objects.create(pk=2, name="",
+                                salesforce_placement=placement_2)
+
+        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
+        self.assertEqual(len(mail.outbox[0].to), 1)
+        self.assertEqual(mail.outbox[0].to[0], ad_ops.email)
+        self.assertEqual(mail.outbox[0].from_email, settings.EXPORTS_EMAIL_ADDRESS)
+        self.assertEqual(SavedEmail.objects.count(), 1)
+
     def test_do_not_send_un_subscribed(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
         get_user_model().objects.create(

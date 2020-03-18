@@ -1,9 +1,14 @@
 import logging
 import traceback
+import pytz
+
+from datetime import datetime
+from datetime import timedelta
 
 from django.conf import settings
 
 from administration.notifications import send_email
+from aw_reporting.models import Account
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
@@ -16,14 +21,16 @@ from saas import celery_app
 __all__ = [
     "send_daily_email_reports",
     "notify_opportunity_targeting_report_is_ready",
+    "schedule_daily_reports"
 ]
 
 logger = logging.getLogger(__name__)
+HOUR_TO_SEND_DAILY_REPORTS = 6
 
 
 @celery_app.task
 def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, fake_tech_fee_cap=None, roles=None,
-                             debug=settings.DEBUG_EMAIL_NOTIFICATIONS):
+                             debug=settings.DEBUG_EMAIL_NOTIFICATIONS, timezone_name=None):
     kwargs = dict(
         host=settings.HOST,
         debug=debug,
@@ -31,6 +38,7 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
         days_to_end=days_to_end,
         fake_tech_fee_cap=fake_tech_fee_cap,
         roles=roles,
+        timezone_name=timezone_name,
     )
 
     for report_class in EMAIL_REPORT_CLASSES:
@@ -72,3 +80,20 @@ def notify_opportunity_targeting_report_is_ready(report_id):
             message=body,
             recipient_list=[email],
         )
+
+@celery_app.task
+def schedule_daily_reports(**kwargs):
+
+    timezones = Account.objects.values_list("timezone", flat=True).distinct()
+
+    utc_timezone = pytz.timezone("UTC")
+    utc_now = datetime.utcnow()
+
+    for timezone_name in timezones:
+        tz = pytz.timezone(timezone_name)
+        utc_offset = abs(tz._utcoffset.total_seconds())
+        time_to_execute = datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
+                                   hour=HOUR_TO_SEND_DAILY_REPORTS, tzinfo=utc_timezone) + \
+                          timedelta(seconds=utc_offset)
+
+        send_daily_email_reports.apply_async(eta=time_to_execute, timezone_name=timezone_name, **kwargs)

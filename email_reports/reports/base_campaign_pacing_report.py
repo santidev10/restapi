@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
+from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
@@ -15,14 +16,24 @@ from utils.datetime import now_in_default_tz
 logger = logging.getLogger(__name__)
 
 
-class BaseCampaignPacingEmailReport(BaseEmailReport):
+class BaseCampaignEmailReport(BaseEmailReport):
+    def __init__(self, *args, timezone_name=None, **kwargs):
+        super(BaseCampaignEmailReport, self).__init__(*args, **kwargs)
+
+        self.today = now_in_default_tz(tz_str=timezone_name).date()
+        self.aw_cid = self.__get_aw_cid(timezone_name)
+
+    def __get_aw_cid(self, timezone_name):
+        if timezone_name is not None:
+            return list(Account.objects.filter(timezone=timezone_name).values_list("id", flat=True).distinct())
+
+class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
     _problem_str = None
 
     def __init__(self, *args, **kwargs):
         super(BaseCampaignPacingEmailReport, self).__init__(*args, **kwargs)
         self.pacing_bound = kwargs.get("pacing_bound", .25)
         self.days_to_end = kwargs.get("pacing_bound", 3)
-        self.today = now_in_default_tz().date()
         self.date_end = self.today + timedelta(days=self.days_to_end)
 
     def _is_risky_pacing(self, pacing):
@@ -33,6 +44,8 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             probability=100,
             end__gte=self.date_end,
         )
+        if self.aw_cid is not None:
+            opportunities = opportunities.filter(aw_cid__in=self.aw_cid)
         messages = dict()
 
         for opp in opportunities:

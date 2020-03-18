@@ -18,9 +18,8 @@ from aw_reporting.models import Campaign, User, SalesForceGoalType, Opportunity,
     OpPlacement, Account, CampaignStatus
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.models import SavedEmail, get_uid
-from email_reports.reports.base import BaseEmailReport
+from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
 from es_components.utils import safe_div
-from utils.datetime import now_in_default_tz
 
 
 spend_units_fields = ("today_goal", "yesterday_delivered",
@@ -66,12 +65,11 @@ _manager_map = {
 }
 
 
-class DailyCampaignReport(BaseEmailReport):
+class DailyCampaignReport(BaseCampaignEmailReport):
 
     def __init__(self, *args, **kwargs):
         super(DailyCampaignReport, self).__init__(*args, **kwargs)
 
-        self.today = now_in_default_tz().date()
         self.yesterday = self.today - timedelta(days=1)
         self.before_yesterday = self.yesterday - timedelta(days=1)
 
@@ -104,7 +102,7 @@ class DailyCampaignReport(BaseEmailReport):
         html = get_template('daily_campaign_report.html')
 
         report = PacingReport()
-        opportunities = report.get_opportunities({})
+        opportunities = report.get_opportunities({}, aw_cid=self.aw_cid)
 
         for opportunity in opportunities:
             if (opportunity.get('start') or date.min) > self.today \
