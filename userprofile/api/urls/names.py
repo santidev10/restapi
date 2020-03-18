@@ -7,3 +7,4 @@ class UserprofilePathName:
     AVATAR = "avatar"
     USER_PROFILE = "user_profile"
     CREATE_USER = "user_create"
+    CHANGE_PASSWORD = "change_password"
