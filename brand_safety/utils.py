@@ -106,9 +106,10 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
         if self.languages:
+            lang_code_field = "lang_code" if self.segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field(f"general_data.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
