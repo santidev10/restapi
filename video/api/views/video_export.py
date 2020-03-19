@@ -46,4 +46,5 @@ class VideoListExportApiView(ESDataS3ExportApiView, APIView):
         return f"Videos export report {name}.csv"
 
     def _get_url_to_export(self, export_name):
-        return settings.HOST + reverse("{}:{}".format(Namespace.VIDEO, Name.VIDEO_EXPORT), args=(export_name,))
+        host_link = self.get_host_link(self.request)
+        return host_link + reverse("{}:{}".format(Namespace.VIDEO, Name.VIDEO_EXPORT), args=(export_name,))
