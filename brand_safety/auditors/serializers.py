@@ -47,16 +47,23 @@ class BrandSafetyVideoSerializer(Serializer):
             vid_lang_code = video.general_data.lang_code
         except Exception as e:
             vid_lang_code = 'en'
-
+        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
+        lang_code_priorities.insert(0, vid_lang_code)
         if 'captions' in video and 'items' in video.captions:
-            for item in video.captions.items:
-                if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
-                    text = item.text
+            available_lang_codes = [item.language_code[:2].lower() for item in video.captions.items]
+            best_lang_code = None
+            for lang_code in lang_code_priorities:
+                if lang_code in available_lang_codes:
+                    best_lang_code = lang_code
                     break
-            if not text:
+            if best_lang_code:
+                for item in video.captions.items:
+                    if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
+                        text = item.text
+                        break
+            else:
                 text = video.captions.items[0].text
         if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.insert(0, vid_lang_code)
             available_lang_codes = [item.language_code[:2].lower() for item in video.custom_captions.items]
             best_lang_code = None
             for lang_code in lang_code_priorities:
