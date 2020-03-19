@@ -88,6 +88,7 @@ class UserSerializer(ModelSerializer):
     Retrieve user serializer
     """
     can_access_media_buying = SerializerMethodField()
+    domain = CharField(max_length=255)
 
     class Meta:
         """
@@ -99,6 +100,7 @@ class UserSerializer(ModelSerializer):
             "first_name",
             "last_name",
             "company",
+            "domain",
             "phone_number",
             "phone_number_verified",
             "email",

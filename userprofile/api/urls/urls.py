@@ -22,7 +22,7 @@ urlpatterns = [
     url(r'^set_password/$', UserPasswordSetApiView.as_view(),
         name="set_password"),
     url(r'^change_password/$', UserPasswordChangeApiView.as_view(),
-        name="change_password"),
+        name=UserprofilePathName.CHANGE_PASSWORD),
     url(r'^contact_forms/$',
         ContactFormApiView.as_view(), name="contact_from"),
     url(r'^error_report/$', ErrorReportApiView.as_view(), name="error_report"),
