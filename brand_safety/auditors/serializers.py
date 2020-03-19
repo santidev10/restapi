@@ -34,6 +34,7 @@ class BrandSafetyVideoSerializer(Serializer):
     channel_title = CharField(source="channel.title", default="")
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
+    language = CharField(source="general_data.lang_code", default="")
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
 
