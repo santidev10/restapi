@@ -6,6 +6,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from es_components.countries import COUNTRY_CODES
 
 
 class BrandSafetyQueryBuilder(object):
@@ -121,7 +122,8 @@ class BrandSafetyQueryBuilder(object):
         if self.countries:
             country_queries = Q("bool")
             for country in self.countries:
-                country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
+                country_code = COUNTRY_CODES.get(country)
+                country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(country_code).get()
             must_queries.append(country_queries)
 
         if self.severity_filters:
