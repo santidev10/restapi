@@ -49,34 +49,30 @@ class BrandSafetyVideoSerializer(Serializer):
         except Exception as e:
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
-        lang_code_priorities.insert(0, vid_lang_code)
+        lang_code_priorities.insert(0, vid_lang_code.lower())
         if 'captions' in video and 'items' in video.captions:
-            available_lang_codes = [item.language_code[:2].lower() for item in video.captions.items]
-            best_lang_code = None
-            for lang_code in lang_code_priorities:
-                if lang_code in available_lang_codes:
-                    best_lang_code = lang_code
-                    break
-            if best_lang_code:
-                for item in video.captions.items:
-                    if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
-                        text = item.text
-                        break
-            else:
-                text = video.captions.items[0].text
+            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                      captions_items=video.captions.items)
         if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            available_lang_codes = [item.language_code[:2].lower() for item in video.custom_captions.items]
-            best_lang_code = None
-            for lang_code in lang_code_priorities:
-                if lang_code in available_lang_codes:
-                    best_lang_code = lang_code
-                    break
-            if best_lang_code:
-                for item in video.custom_captions.items:
-                    if item.language_code[:2].lower() == vid_lang_code:
-                        text = item.text
-                        break
-            else:
-                text = video.custom_captions.items[0].text
+            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                      captions_items=video.custom_captions.items)
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript
+
+    @staticmethod
+    def get_best_available_transcript(lang_code_priorities, captions_items):
+        # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
+        available_lang_codes = [item.language_code[:2].lower() for item in captions_items]
+        best_lang_code = None
+        for lang_code in lang_code_priorities:
+            if lang_code in available_lang_codes:
+                best_lang_code = lang_code
+                break
+        if best_lang_code:
+            for item in captions_items:
+                if item.language_code[:2].lower() == best_lang_code:
+                    text = item.text
+                    break
+        else:
+            text = captions_items[0].text
+        return text
