@@ -29,7 +29,8 @@ class KeywordListExportApiView(ESDataS3ExportApiView, APIView):
         return f"Keywords export report {name}.csv"
 
     def _get_url_to_export(self, export_name):
-        return settings.HOST + reverse(
+        host_link = self.get_host_link(self.request)
+        return host_link + reverse(
             "{}:{}".format(Namespace.KEYWORD,  KeywordPathName.KEYWORD_EXPORT),
             args=(export_name,)
         )

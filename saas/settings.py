@@ -403,7 +403,7 @@ CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
-HOST = "https://viewiq.channelfactory.com"
+HOST = "https://viewiq.com"
 APEX_HOST = "https://apex.viewiq.com"
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
