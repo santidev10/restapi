@@ -49,7 +49,8 @@ class BrandSafetyVideoSerializer(Serializer):
         except Exception as e:
             vid_lang_code = 'en'
         lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
-        lang_code_priorities.insert(0, vid_lang_code.lower())
+        if vid_lang_code:
+            lang_code_priorities.insert(0, vid_lang_code.lower())
         if 'captions' in video and 'items' in video.captions:
             text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
                                                       captions_items=video.captions.items)
