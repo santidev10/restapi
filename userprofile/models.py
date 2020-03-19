@@ -265,7 +265,7 @@ class WhiteLabel(models.Model):
         try:
             white_label = WhiteLabel.objects.get(domain=domain)
         except WhiteLabel.DoesNotExist:
-            white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
+            white_label, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
         return white_label
 
     @staticmethod
