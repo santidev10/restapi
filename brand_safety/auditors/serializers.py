@@ -5,6 +5,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -55,11 +56,19 @@ class BrandSafetyVideoSerializer(Serializer):
             if not text:
                 text = video.captions.items[0].text
         if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            for item in video.custom_captions.items:
-                if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
-                    text = item.text
+            lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY.insert(0, vid_lang_code)
+            available_lang_codes = [item.language_code[:2].lower() for item in video.custom_captions.items]
+            best_lang_code = None
+            for lang_code in lang_code_priorities:
+                if lang_code in available_lang_codes:
+                    best_lang_code = lang_code
                     break
-            if not text:
+            if best_lang_code:
+                for item in video.custom_captions.items:
+                    if item.language_code[:2].lower() == vid_lang_code:
+                        text = item.text
+                        break
+            else:
                 text = video.custom_captions.items[0].text
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript
