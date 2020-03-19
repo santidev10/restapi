@@ -22,6 +22,7 @@ class AdminUpdateUserTestCase(ExtendedAPITestCase):
             "first_name",
             "last_name",
             "company",
+            "domain",
             "phone_number",
             "phone_number_verified",
             "email",

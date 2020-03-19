@@ -4,12 +4,17 @@ from django.urls import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 from saas.urls.namespaces import Namespace
+from userprofile.constants import DEFAULT_DOMAIN
+from userprofile.models import WhiteLabel
 from userprofile.api.urls.names import UserprofilePathName
 from utils.unittests.test_case import ExtendedAPITestCase
 
 
 class UserProfileTestCase(ExtendedAPITestCase):
     _url = reverse(Namespace.USER_PROFILE + ":" + UserprofilePathName.USER_PROFILE)
+
+    def setUp(self):
+        _, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
 
     def _update(self, data):
         return self.client.put(self._url, json.dumps(data),
@@ -33,6 +38,7 @@ class UserProfileTestCase(ExtendedAPITestCase):
                 "company",
                 "date_joined",
                 "device_id",
+                "domain",
                 "email",
                 "first_name",
                 "google_account_id",

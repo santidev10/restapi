@@ -6,6 +6,7 @@ from rest_framework.serializers import SerializerMethodField
 
 from aw_reporting.models import Ad
 from userprofile.api.serializers.validators import phone_validator
+from userprofile.models import WhiteLabel
 
 
 class UserSerializer(ModelSerializer):
@@ -20,6 +21,7 @@ class UserSerializer(ModelSerializer):
     last_name = CharField(max_length=255, required=True)
     phone_number = CharField(max_length=15, required=True, validators=[phone_validator])
     user_type = CharField(max_length=255)
+    domain = CharField(max_length=255)
 
     class Meta:
         """
@@ -32,6 +34,7 @@ class UserSerializer(ModelSerializer):
             "can_access_media_buying",
             "company",
             "date_joined",
+            "domain",
             "email",
             "first_name",
             "google_account_id",
@@ -75,3 +78,7 @@ class UserSerializer(ModelSerializer):
 
     def get_can_access_media_buying(self, obj: PermissionsMixin):
         return obj.has_perm("userprofile.view_media_buying")
+
+    def validate_sub_domain(self, sub_domain):
+        sub_domain_obj = WhiteLabel.get(sub_domain)
+        return sub_domain_obj

@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.status import HTTP_403_FORBIDDEN
 
-from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.models import WhiteLabel
 from userprofile.api.serializers.white_label import WhiteLabelSerializer
 from userprofile.api.views.user_avatar import ImageUploadParser
@@ -37,11 +36,7 @@ class WhiteLabelApiView(APIView):
                 "permissions": settings.DOMAIN_MANAGEMENT_PERMISSIONS,
             }
         else:
-            try:
-                domain = (request.get_host() or "").lower().split('viewiq')[0]
-                sub_domain = domain.strip(".") or DEFAULT_DOMAIN
-            except IndexError:
-                sub_domain = DEFAULT_DOMAIN
+            sub_domain = WhiteLabel.extract_sub_domain(request.get_host() or "")
             data = WhiteLabelSerializer(WhiteLabel.get(domain=sub_domain)).data
         return Response(data)
 

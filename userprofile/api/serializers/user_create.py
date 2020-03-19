@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.core.validators import EmailValidator
 from django.core.validators import MaxLengthValidator
-from rest_framework.authtoken.models import Token
 from rest_framework.serializers import CharField
 from rest_framework.serializers import EmailField
 from rest_framework.serializers import ModelSerializer
@@ -17,6 +16,7 @@ from userprofile.constants import UserAnnualAdSpend
 from userprofile.constants import UserStatuses
 from userprofile.constants import UserTypeRegular
 from userprofile.models import get_default_accesses
+from userprofile.models import WhiteLabel
 from utils.lang import get_request_prefix
 from userprofile.models import UserDeviceToken
 
@@ -50,6 +50,7 @@ class UserCreateSerializer(ModelSerializer):
                                 validators=[extended_enum(UserAnnualAdSpend)])
     user_type = CharField(max_length=255, required=True, allow_blank=False, allow_null=False,
                           validators=[extended_enum(UserTypeRegular)])
+    domain = CharField(max_length=255, required=False)
 
     class Meta:
         """
@@ -59,6 +60,7 @@ class UserCreateSerializer(ModelSerializer):
         fields = (
             "annual_ad_spend",
             "company",
+            "domain",
             "email",
             "first_name",
             "last_name",
@@ -79,6 +81,12 @@ class UserCreateSerializer(ModelSerializer):
             raise ValidationError("Password and verify password don't match")
         return data
 
+    def get_domain(self):
+        request = self.context.get("request")
+        domain = WhiteLabel.extract_sub_domain(request.get_host() or "")
+        domain_obj = WhiteLabel.get(domain)
+        return domain_obj
+
     def save(self, **kwargs):
         """
         Make 'post-save' actions
@@ -88,7 +96,8 @@ class UserCreateSerializer(ModelSerializer):
         user.set_password(user.password)
         user.status = UserStatuses.PENDING.value
         user.is_active = False
-        user.save(update_fields=["password", "status", "is_active"])
+        user.domain = self.get_domain()
+        user.save(update_fields=["password", "status", "is_active", "domain"])
 
         # new default access implementation
         for group_name in get_default_accesses():

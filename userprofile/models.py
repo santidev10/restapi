@@ -137,6 +137,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
+    domain = models.ForeignKey("WhiteLabel", on_delete=models.SET_NULL, null=True)
 
     # GDPR Cookie Compliance
     has_accepted_GDPR = models.NullBooleanField(default=None)
@@ -184,10 +185,10 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         """
         Send email to user when admin makes it active
         """
-        host = request.get_host()
         protocol = "http://"
         if request.is_secure():
             protocol = "https://"
+        host = self.domain_name or request.get_host()
         link = "{}{}/login".format(protocol, host)
         subject = "Access to ViewIQ"
         text_header = "Dear {} \n".format(self.get_full_name())
@@ -207,6 +208,17 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     def logo_url(self):
         logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
         return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
+
+    @property
+    def domain_name(self):
+        try:
+            if self.domain.domain == DEFAULT_DOMAIN:
+                domain_name = f"{DEFAULT_DOMAIN}.com"
+            else:
+                domain_name = f"{self.domain.domain}.{DEFAULT_DOMAIN}.com"
+        except (WhiteLabel.DoesNotExist, AttributeError):
+            domain_name = None
+        return domain_name
 
 
 class UserChannel(Timestampable):
@@ -245,10 +257,22 @@ class WhiteLabel(models.Model):
     domain = models.CharField(max_length=255, unique=True)
     config = JSONField(default=dict)
 
+    def __str__(self):
+        return self.domain
+
     @staticmethod
     def get(domain):
         try:
             white_label = WhiteLabel.objects.get(domain=domain)
         except WhiteLabel.DoesNotExist:
-            white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
+            white_label, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
         return white_label
+
+    @staticmethod
+    def extract_sub_domain(host):
+        try:
+            domain = host.lower().split('viewiq')[0]
+            sub_domain = domain.strip(".") or DEFAULT_DOMAIN
+        except (IndexError, AttributeError):
+            sub_domain = DEFAULT_DOMAIN
+        return sub_domain
