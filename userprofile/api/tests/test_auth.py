@@ -59,6 +59,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "company",
                 "date_joined",
                 "device_id",
+                "domain",
                 "email",
                 "first_name",
                 "google_account_id",
