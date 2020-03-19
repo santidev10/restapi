@@ -36,7 +36,7 @@ class WhiteLabelApiView(APIView):
                 "permissions": settings.DOMAIN_MANAGEMENT_PERMISSIONS,
             }
         else:
-            sub_domain = WhiteLabelSerializer.extract_sub_domain(request.get_host() or "")
+            sub_domain = WhiteLabel.extract_sub_domain(request.get_host() or "")
             data = WhiteLabelSerializer(WhiteLabel.get(domain=sub_domain)).data
         return Response(data)
 
