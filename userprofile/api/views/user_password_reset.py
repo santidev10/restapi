@@ -39,5 +39,5 @@ class UserPasswordResetApiView(APIView):
                   "<br><br>" \
                   "Please do not respond to this email".format(reset_uri)
         send_html_email(
-            subject, email, text_header, message)
+            subject, email, text_header, message, host=host)
         return Response(status=HTTP_202_ACCEPTED)

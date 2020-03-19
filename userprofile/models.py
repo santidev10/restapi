@@ -189,13 +189,14 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         if request.is_secure():
             protocol = "https://"
         host = self.domain_name or request.get_host()
-        link = "{}{}/login".format(protocol, host)
+        host_address = f"{protocol}{host}"
+        link = f"{host_address}/login"
         subject = "Access to ViewIQ"
         text_header = "Dear {} \n".format(self.get_full_name())
         text_content = "Congratulations! You now have access to ViewIQ!\n" \
                        " Click <a href='{link}'>here</a> to access your account." \
             .format(link=link)
-        send_html_email(subject, self.email, text_header, text_content)
+        send_html_email(subject, self.email, text_header, text_content, host=host_address)
 
     @property
     def access(self):

@@ -19,7 +19,8 @@ class ESDataS3Exporter(S3Exporter):
 class ESDataS3ExportApiView(S3ExportApiView):
     s3_exporter = ESDataS3Exporter
 
-    def get_host_link(self, request):
+    @staticmethod
+    def get_host_link(request):
         protocol = "https" if request.is_secure() else "http"
         host_link = f"{protocol}://" + request.get_host()
         return host_link
