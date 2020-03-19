@@ -6,6 +6,7 @@ from es_components.constants import Sections
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
+from es_components.countries import COUNTRY_CODES
 
 
 class BrandSafetyQueryBuilder(object):
@@ -106,9 +107,10 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
         if self.languages:
+            lang_code_field = "lang_code" if self.segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
             for lang in self.languages:
-                lang_queries |= QueryBuilder().build().should().term().field("brand_safety.language").value(lang).get()
+                lang_queries |= QueryBuilder().build().should().term().field(f"general_data.{lang_code_field}").value(lang).get()
             must_queries.append(lang_queries)
 
         if self.content_categories:
@@ -120,7 +122,8 @@ class BrandSafetyQueryBuilder(object):
         if self.countries:
             country_queries = Q("bool")
             for country in self.countries:
-                country_queries |= QueryBuilder().build().should().term().field("general_data.country").value(country).get()
+                country_code = COUNTRY_CODES.get(country)
+                country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(country_code).get()
             must_queries.append(country_queries)
 
         if self.severity_filters:

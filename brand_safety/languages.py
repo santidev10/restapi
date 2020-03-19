@@ -203,3 +203,8 @@ LANGUAGES = {
 }
 
 LANG_CODES = {value: key for key, value in LANGUAGES.items()}
+
+TRANSCRIPTS_LANGUAGE_PRIORITY = [
+    'en', 'es', 'fr', 'de', 'it', 'pt', 'sv', 'no', 'da', 'fi', 'nl', 'pl', 'ru', 'uk', 'sk', 'sl', 'cs', 'hu',  'bg',
+    'ro', 'sr', 'el', 'zh', 'ko', 'ja', 'tl', 'vi', 'th', 'ms', 'ta', 'id', 'hi', 'ar', 'tr', 'la', 'lt', 'hr'
+]

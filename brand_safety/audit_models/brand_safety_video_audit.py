@@ -36,12 +36,15 @@ class BrandSafetyVideoAudit(object):
             data.get("title", "") or "",
             data.get("description", "") or "",
             data.get("tags", "") or "",
-            data.get("transcript", "") or "",
         ])
+        transcript_text = data.get("transcript", "") or ""
         detected = {
-            "has_emoji": self.audit_utils.has_emoji(text),
-            "language": self.audit_utils.get_language(text)
+            "has_emoji": self.audit_utils.has_emoji(text + ", " + transcript_text)
         }
+        if not data.get("language"):
+            detected["language"] = self.audit_utils.get_language(text)
+        if transcript_text:
+            detected["transcript_language"] = self.audit_utils.get_language(transcript_text)
         data.update(detected)
         self.metadata = data
         
@@ -62,10 +65,14 @@ class BrandSafetyVideoAudit(object):
             self.metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
             universal_processor = False
+        try:
+            transcript_processor = self.language_processors[self.metadata["transcript_language"]]
+        except KeyError:
+            transcript_processor = keyword_processor
         tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, keyword_processor)
         title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, keyword_processor)
         description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION, keyword_processor)
-        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, keyword_processor)
+        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, transcript_processor)
         all_hits = tag_hits + title_hits + description_hits + transcript_hits
         # Calculate Universal keywords hits, if not all processor
         if universal_processor:
@@ -115,7 +122,7 @@ class BrandSafetyVideoAudit(object):
             "id": self.metadata["id"],
             "brand_safety": {
                 "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
-                "language": self.metadata["language"],
+                "transcript_language": self.metadata.get("transcript_language"),
                 "categories": {
                     category: {
                         "category_score": category_score,

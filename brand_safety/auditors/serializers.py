@@ -5,6 +5,7 @@ from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 
 from video.api.serializers.video import REGEX_TO_REMOVE_TIMEMARKS
+from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 
 
 class BrandSafetyChannelSerializer(Serializer):
@@ -33,6 +34,7 @@ class BrandSafetyVideoSerializer(Serializer):
     channel_title = CharField(source="channel.title", default="")
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
+    language = CharField(source="general_data.lang_code", default="")
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
 
@@ -46,20 +48,32 @@ class BrandSafetyVideoSerializer(Serializer):
             vid_lang_code = video.general_data.lang_code
         except Exception as e:
             vid_lang_code = 'en'
-
+        lang_code_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
+        if vid_lang_code:
+            lang_code_priorities.insert(0, vid_lang_code.lower())
         if 'captions' in video and 'items' in video.captions:
-            for item in video.captions.items:
-                if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
-                    text = item.text
-                    break
-            if not text:
-                text = video.captions.items[0].text
+            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                      captions_items=video.captions.items)
         if not text and 'custom_captions' in video and 'items' in video.custom_captions:
-            for item in video.custom_captions.items:
-                if item.language_code.lower() == vid_lang_code or item.language_code[:2].lower() == vid_lang_code:
-                    text = item.text
-                    break
-            if not text:
-                text = video.custom_captions.items[0].text
+            text = self.get_best_available_transcript(lang_code_priorities=lang_code_priorities,
+                                                      captions_items=video.custom_captions.items)
         transcript = re.sub(REGEX_TO_REMOVE_TIMEMARKS, "", text or "")
         return transcript
+
+    @staticmethod
+    def get_best_available_transcript(lang_code_priorities, captions_items):
+        # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
+        available_lang_codes = [item.language_code[:2].lower() for item in captions_items]
+        best_lang_code = None
+        for lang_code in lang_code_priorities:
+            if lang_code in available_lang_codes:
+                best_lang_code = lang_code
+                break
+        if best_lang_code:
+            for item in captions_items:
+                if item.language_code[:2].lower() == best_lang_code:
+                    text = item.text
+                    break
+        else:
+            text = captions_items[0].text
+        return text
