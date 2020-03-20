@@ -1,13 +1,9 @@
 from unittest.mock import patch
 
-from datetime import datetime
-import pytz
-
 from django.test import TestCase
 
 from aw_reporting.models import Account
 from email_reports.tasks import schedule_daily_reports
-from email_reports.tasks import get_time_to_execute
 
 
 class ScheduleDailyReportsCase(TestCase):
@@ -34,19 +30,3 @@ class ScheduleDailyReportsCase(TestCase):
 
         self.assertIn("Europe/Rome", str(call_args_list[2]))
         self.assertIn(reports_args, str(call_args_list[2]))
-
-
-class TimeToExececuteCase(TestCase):
-    def test(self):
-        utc_now = datetime.now(pytz.utc)
-
-        timezone_names = (
-            "Atlantic/Canary", "Asia/Bangkok", "Europe/Rome", "America/Vancouver", "America/New_York",
-            "Europe/Helsinki", "Asia/Hong_Kong", "Australia/Perth", "Asia/Jakarta"
-        )
-
-        for timezone_name in timezone_names:
-            tz = pytz.timezone(timezone_name)
-            exec_time = get_time_to_execute(utc_now, timezone_name)
-            self.assertEqual(exec_time.astimezone(tz).hour, 6, f"{timezone_name} - {exec_time} - {exec_time.astimezone(tz)}")
-            self.assertTrue(0 <= (exec_time - utc_now).total_seconds() / 3600 < 24)

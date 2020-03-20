@@ -3,7 +3,6 @@ import traceback
 import pytz
 
 from datetime import datetime
-from datetime import timedelta
 
 from django.conf import settings
 
@@ -16,6 +15,7 @@ from email_reports.reports import DailyCampaignReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
 from email_reports.reports import DailyApexCampaignEmailReport
+from utils.datetime import from_local_to_utc
 from saas import celery_app
 
 __all__ = [
@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-HOUR_TO_SEND_DAILY_REPORTS = 6
+HOUR_SEND_DAILY_REPORTS = 6
 
 
 @celery_app.task
@@ -83,21 +83,13 @@ def notify_opportunity_targeting_report_is_ready(report_id):
 
 @celery_app.task
 def schedule_daily_reports(**kwargs):
+    utc_now = datetime.now(pytz.utc)
+    local_execution_time = datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
+                                    hour=HOUR_SEND_DAILY_REPORTS,)
 
     timezones = Account.objects.values_list("timezone", flat=True).distinct()
-    utc_now = datetime.now(pytz.utc)
 
     for timezone_name in timezones:
-        time_to_execute = get_time_to_execute(utc_now, timezone_name)
+        time_to_execute = from_local_to_utc(utc_now, timezone_name, local_execution_time)
 
         send_daily_email_reports.apply_async(eta=time_to_execute, timezone_name=timezone_name, **kwargs)
-
-
-def get_time_to_execute(utc_now, timezone_name):
-    tz = pytz.timezone(timezone_name)
-    tz_dt = tz.localize(datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
-                               hour=HOUR_TO_SEND_DAILY_REPORTS))
-    time_to_execute = tz_dt.astimezone(pytz.utc)
-    if time_to_execute < utc_now:
-        time_to_execute = time_to_execute + timedelta(days=1)
-    return time_to_execute
