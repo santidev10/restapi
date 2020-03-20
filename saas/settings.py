@@ -508,12 +508,6 @@ if APM_ENABLED:
 
 
 APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
-    "VISA APEX UK Hungary + Slovakia Christmas Q4'19 OP003977":
-        " MK~SK_CN~Cash Conversion Xmas_MN~NONE_YQ~20Q1_CP~TBC_OB~AWA_PK~Reach",
-
-    "VISA APEX UK Hungary + Slovakia Christmas Q4'19 OP003977":
-        " MK~HU_CN~Cash Conversion I Pay Visa_MN~NONE_YQ~20Q1_CP~TBC_OB~AWA_PK~Reach",
-
     "VISA Spain APEX UK Contactless Q1'20 OP004244":
         "MK~ES_CN~Contactless_MN~VCM_YQ~20Q1Q2_CP~P20020_SP~N/A_AC~CC",
 
