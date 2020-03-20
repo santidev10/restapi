@@ -71,10 +71,10 @@ class SegmentCreationOptionsApiView(APIView):
                 except KeyError:
                     lang = code
                 languages.append({"id": code, "title": lang})
-            if "yue" not in lang_codes:
-                languages.append({"id": "yue", "title": "Chinese - Cantonese"})
-            if "cmn" not in lang_codes:
-                languages.append({"id": "cmn", "title": "Chinese - Mandarin"})
+            if "zh-yue" not in lang_codes:
+                languages.append({"id": "zh-yue", "title": "Chinese - Cantonese"})
+            if "zh-cmn" not in lang_codes:
+                languages.append({"id": "zh-cmn", "title": "Chinese - Mandarin"})
         except (CacheItem.DoesNotExist, KeyError):
             countries = CountryListApiView().get().data
             languages = [
