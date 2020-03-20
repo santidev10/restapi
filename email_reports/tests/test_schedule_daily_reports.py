@@ -22,11 +22,7 @@ class ScheduleDailyReportsCase(TestCase):
 
         self.assertEqual(send_daily_email_reports.call_count, 3)
         call_args_list = send_daily_email_reports.call_args_list
-        self.assertIn("Atlantic/Canary", str(call_args_list[0]))
-        self.assertIn(reports_args, str(call_args_list[0]))
-
-        self.assertIn("Asia/Bangkok", str(call_args_list[1]))
-        self.assertIn(reports_args, str(call_args_list[1]))
-
-        self.assertIn("Europe/Rome", str(call_args_list[2]))
-        self.assertIn(reports_args, str(call_args_list[2]))
+        self.assertIn("Atlantic/Canary", str(call_args_list))
+        self.assertIn("Asia/Bangkok", str(call_args_list))
+        self.assertIn("Europe/Rome", str(call_args_list))
+        self.assertIn(reports_args, str(call_args_list))
