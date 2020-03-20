@@ -35,7 +35,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
     def get_language(self, obj):
         lang_code = getattr(obj.task_us_data, "lang_code", "")
         if not lang_code:
-            lang_code = getattr(obj.brand_safety, "language", "")
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
         if lang_code == "all":
             language = "All"
         else:
@@ -87,7 +87,7 @@ class CustomSegmentVideoExportSerializer(Serializer):
     def get_language(self, obj):
         lang_code = getattr(obj.task_us_data, "lang_code", "")
         if not lang_code:
-            lang_code = getattr(obj.brand_safety, "language", "")
+            lang_code = getattr(obj.general_data, "lang_code", "")
         if lang_code == "all":
             language = "All"
         else:
