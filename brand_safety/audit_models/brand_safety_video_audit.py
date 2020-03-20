@@ -43,7 +43,7 @@ class BrandSafetyVideoAudit(object):
         }
         if not data.get("language"):
             detected["language"] = self.audit_utils.get_language(text)
-        if transcript_text:
+        if transcript_text and not data.get("transcript_language"):
             detected["transcript_language"] = self.audit_utils.get_language(transcript_text)
         data.update(detected)
         self.metadata = data
