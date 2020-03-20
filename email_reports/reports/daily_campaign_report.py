@@ -102,7 +102,7 @@ class DailyCampaignReport(BaseCampaignEmailReport):
         html = get_template('daily_campaign_report.html')
 
         report = PacingReport()
-        opportunities = report.get_opportunities({}, aw_cid=self.aw_cid)
+        opportunities = report.get_opportunities({}, aw_cid=self.timezone_accounts())
 
         for opportunity in opportunities:
             if (opportunity.get('start') or date.min) > self.today \

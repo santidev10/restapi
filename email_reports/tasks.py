@@ -85,15 +85,19 @@ def notify_opportunity_targeting_report_is_ready(report_id):
 def schedule_daily_reports(**kwargs):
 
     timezones = Account.objects.values_list("timezone", flat=True).distinct()
-
-    utc_timezone = pytz.timezone("UTC")
-    utc_now = datetime.utcnow()
+    utc_now = datetime.now(pytz.utc)
 
     for timezone_name in timezones:
-        tz = pytz.timezone(timezone_name)
-        utc_offset = abs(tz._utcoffset.total_seconds())
-        time_to_execute = datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
-                                   hour=HOUR_TO_SEND_DAILY_REPORTS, tzinfo=utc_timezone) + \
-                          timedelta(seconds=utc_offset)
+        time_to_execute = get_time_to_execute(utc_now, timezone_name)
 
         send_daily_email_reports.apply_async(eta=time_to_execute, timezone_name=timezone_name, **kwargs)
+
+
+def get_time_to_execute(utc_now, timezone_name):
+    tz = pytz.timezone(timezone_name)
+    tz_dt = tz.localize(datetime(day=utc_now.day, month=utc_now.month, year=utc_now.year,
+                               hour=HOUR_TO_SEND_DAILY_REPORTS))
+    time_to_execute = tz_dt.astimezone(pytz.utc)
+    if time_to_execute < utc_now:
+        time_to_execute = time_to_execute + timedelta(days=1)
+    return time_to_execute

@@ -12,6 +12,8 @@ from aw_reporting.models import Opportunity
 from aw_reporting.models import User
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
 from email_reports.tasks import send_daily_email_reports
+from utils.unittests.patch_now import patch_now
+from utils.datetime import now_in_default_tz
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -213,7 +215,9 @@ class SendDailyEmailsTestCase(APITestCase):
                                               email="2@mail.be")
         sm = User.objects.create(id="3", name="David", email="3@mail.com")
 
-        today = timezone.now().date()
+        now = now_in_default_tz()
+        today = now.date()
+
         account = Account.objects.create(id=1, timezone=settings.DEFAULT_TIMEZONE)
         opportunity = Opportunity.objects.create(
             id=1, name="<ExceedOpportunity>",
@@ -240,14 +244,17 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk=1, name="", account=account,
                                 salesforce_placement=placement, **stats)
 
+        now_manila_timezone = now_in_default_tz(tz_str="Asia/Manila")
+        today_manila_timezone = now_manila_timezone.date()
+
         account_2 = Account.objects.create(id=2, timezone="Asia/Manila")
         opportunity_2 = Opportunity.objects.create(
             id=2, name="<ExceedOpportunity>",
             ad_ops_manager=ad_ops,
             account_manager=account_manager,
             sales_manager=sm,
-            start=today - timedelta(days=2),
-            end=today + timedelta(days=2),
+            start=today_manila_timezone - timedelta(days=2),
+            end=today_manila_timezone + timedelta(days=2),
             probability=100,
             aw_cid=account_2.id
         )
@@ -259,14 +266,20 @@ class SendDailyEmailsTestCase(APITestCase):
             tech_fee_cap=0.07, tech_fee_type=OpPlacement.TECH_FEE_CPV_TYPE,
         )
         Flight.objects.create(id=2, name="", placement=placement_2,
-                              start=today.replace(day=1),
-                              end=today.replace(day=28),
+                              start=today_manila_timezone.replace(day=1),
+                              end=today_manila_timezone.replace(day=28),
                               ordered_units=1000)
         stats = dict(video_views=100, cost=7.1)
         Campaign.objects.create(pk=2, name="", account=account_2,
                                 salesforce_placement=placement_2, **stats)
 
-        send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+        with patch_now(now_in_default_tz(tz_str="America/Vancouver")):
+            # check if no mails will be sent for non existence timezone
+            send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False, timezone_name="America/Vancouver")
+            self.assertEqual(len(mail.outbox), 0)
+
+        with patch_now(now):
+            send_daily_email_reports(reports=["TechFeeCapExceeded"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
 
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]

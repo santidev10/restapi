@@ -14,6 +14,7 @@ from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models import User
 from email_reports.tasks import send_daily_email_reports
 from utils.datetime import now_in_default_tz
+from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 
@@ -73,7 +74,8 @@ class SendDailyEmailsTestCase(APITestCase):
         ad_ops = User.objects.create(id=1, name="Paul", email="1@mail.cz")
         sales = User.objects.create(id=2, name="Dave", email="2@mail.cz")
         acc_mng = User.objects.create(id=3, name="John", email="3@mail.cz")
-        today = now_in_default_tz().date()
+        now = now_in_default_tz()
+        today = now.date()
         start, end = today - timedelta(days=2), today + timedelta(days=3)
 
         account = Account.objects.create(id=1, timezone=settings.DEFAULT_TIMEZONE)
@@ -111,6 +113,9 @@ class SendDailyEmailsTestCase(APITestCase):
                                          **stats)
         recalculate_de_norm_fields_for_account(account.id)
 
+        now_manila_timezone = now_in_default_tz(tz_str="Asia/Manila")
+        today_manila_timezone = now_manila_timezone.date()
+
         account_2 = Account.objects.create(id=2, timezone="Asia/Manila")
         opportunity_2 = Opportunity.objects.create(
             id=2, name="Opportunity",
@@ -146,7 +151,13 @@ class SendDailyEmailsTestCase(APITestCase):
                                          **stats)
         recalculate_de_norm_fields_for_account(account_2.id)
 
-        send_daily_email_reports(reports=["CampaignOverPacing"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+        with patch_now(now_in_default_tz(tz_str="America/Vancouver")):
+            # check if no mails will be sent for non existence timezone
+            send_daily_email_reports(reports=["CampaignOverPacing"], debug=False, timezone_name="America/Vancouver")
+            self.assertEqual(len(mail.outbox), 0)
+
+        with patch_now(now):
+            send_daily_email_reports(reports=["CampaignOverPacing"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject,

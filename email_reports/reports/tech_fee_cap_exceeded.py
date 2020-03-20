@@ -44,8 +44,8 @@ class TechFeeCapExceeded(BaseCampaignEmailReport):
             cost=Sum("adwords_campaigns__cost"),
         )
 
-        if self.aw_cid is not None:
-            placements = placements.filter(opportunity__aw_cid__in=self.aw_cid,)
+        if self.timezone_accounts() is not None:
+            placements = placements.filter(opportunity__aw_cid__in=self.timezone_accounts(),)
 
         for placement in placements:
 

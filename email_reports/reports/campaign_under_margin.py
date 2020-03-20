@@ -33,11 +33,11 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
         opportunities = Opportunity.objects.filter(
             probability=100,
             end__gte=today,  # If a campaign is ending within 7 days
-            end__lte=today + timedelta(days=self.days_to_end - 1)
+            end__lte=today + timedelta(days=self.days_to_end - 1),
         ).values("id", "name", "ad_ops_manager__email", "ad_ops_manager__name")
 
-        if self.aw_cid is not None:
-            opportunities = opportunities.filter(aw_cid__in=self.aw_cid)
+        if self.timezone_accounts() is not None:
+            opportunities = opportunities.filter(aw_cid__in=self.timezone_accounts())
 
         messages = dict()
 

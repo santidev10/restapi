@@ -6,7 +6,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import override_settings
-from django.utils import timezone
 from lxml import etree
 
 from aw_reporting.models import Account
@@ -25,12 +24,14 @@ from email_reports.reports.daily_campaign_report import OpportunityManager
 from email_reports.tasks import send_daily_email_reports
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
+from utils.datetime import now_in_default_tz
 
 
 class SendDailyEmailsTestCase(APITestCase):
     def test_send_minimum_email(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
-        today = timezone.now().date()
+        now = now_in_default_tz()
+        today = now.date()
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
             ad_ops_manager=ad_ops,
@@ -52,7 +53,8 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="",
                                 salesforce_placement=placement)
 
-        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
@@ -63,52 +65,61 @@ class SendDailyEmailsTestCase(APITestCase):
 
     def test_send_to_account_by_timezone(self):
         ad_ops = User.objects.create(id="1", name="Paul", email="1@mail.cz")
-        today = timezone.now().date()
+        now = now_in_default_tz()
+
+        today_default_timezone = now.date()
         account = Account.objects.create(id=1, timezone=settings.DEFAULT_TIMEZONE)
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
             ad_ops_manager=ad_ops,
-            start=today - timedelta(days=2),
-            end=today + timedelta(days=2),
+            start=today_default_timezone - timedelta(days=2),
+            end=today_default_timezone + timedelta(days=2),
             probability=100, aw_cid=account.id
         )
         placement = OpPlacement.objects.create(
             id="1",
             name="Placement",
-            start=today - timedelta(days=2),
-            end=today + timedelta(days=2),
+            start=today_default_timezone - timedelta(days=2),
+            end=today_default_timezone + timedelta(days=2),
             opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
         )
         Flight.objects.create(id="1", name="", placement=placement,
-                              start=today.replace(day=1),
-                              end=today.replace(day=28), ordered_units=1000)
+                              start=today_default_timezone.replace(day=1),
+                              end=today_default_timezone.replace(day=28), ordered_units=1000)
         Campaign.objects.create(pk="1", name="",
                                 salesforce_placement=placement)
 
+        today_manila_timezone = now_in_default_tz(tz_str="Asia/Manila").date()
         account_2 = Account.objects.create(id=2, timezone="Asia/Manila")
         opportunity_2 = Opportunity.objects.create(
             id="solo2", name="Opportunity",
             ad_ops_manager=ad_ops,
-            start=today - timedelta(days=2),
-            end=today + timedelta(days=2),
+            start=today_manila_timezone - timedelta(days=2),
+            end=today_manila_timezone + timedelta(days=2),
             probability=100, aw_cid=account_2.id
         )
         placement_2 = OpPlacement.objects.create(
             id=2,
             name="Placement",
-            start=today - timedelta(days=2),
-            end=today + timedelta(days=2),
+            start=today_manila_timezone - timedelta(days=2),
+            end=today_manila_timezone + timedelta(days=2),
             opportunity=opportunity_2,
             goal_type_id=SalesForceGoalType.CPV,
         )
         Flight.objects.create(id=2, name="", placement=placement_2,
-                              start=today.replace(day=1),
-                              end=today.replace(day=28), ordered_units=1000)
+                              start=today_manila_timezone.replace(day=1),
+                              end=today_manila_timezone.replace(day=28), ordered_units=1000)
         Campaign.objects.create(pk=2, name="",
                                 salesforce_placement=placement_2)
 
-        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
+        with patch_now(now):
+
+            # check if no mails will be sent for non existence timezone
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False, timezone_name="America/Vancouver")
+            self.assertEqual(len(mail.outbox), 0)
+
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False, timezone_name=settings.DEFAULT_TIMEZONE)
 
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].subject, "Daily Update for Opportunity")
@@ -122,7 +133,8 @@ class SendDailyEmailsTestCase(APITestCase):
         get_user_model().objects.create(
             email=ad_ops.email,
             is_subscribed_to_campaign_notifications=False)
-        today = timezone.now().date()
+        now = now_in_default_tz()
+        today = now.date()
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
             ad_ops_manager=ad_ops,
@@ -145,7 +157,8 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="", account=account,
                                 salesforce_placement=placement)
 
-        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 0)
         self.assertEqual(SavedEmail.objects.count(), 0)
@@ -648,7 +661,9 @@ class SendDailyEmailsTestCase(APITestCase):
         ad_ops = User.objects.create(id=1, email="AdOps@channelfactory.com")
         sm = User.objects.create(id=2, email="SM@channelfactory.com")
 
-        today = timezone.now().date()
+        now = now_in_default_tz()
+
+        today = now.date()
         opportunity = Opportunity.objects.create(
             id="solo", name="Opportunity",
             ad_ops_manager=ad_ops,
@@ -671,7 +686,8 @@ class SendDailyEmailsTestCase(APITestCase):
         Campaign.objects.create(pk="1", name="",
                                 salesforce_placement=placement)
 
-        send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
+        with patch_now(now):
+            send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]

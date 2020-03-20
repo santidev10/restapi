@@ -21,11 +21,16 @@ class BaseCampaignEmailReport(BaseEmailReport):
         super(BaseCampaignEmailReport, self).__init__(*args, **kwargs)
 
         self.today = now_in_default_tz(tz_str=timezone_name).date()
-        self.aw_cid = self.__get_aw_cid(timezone_name)
+        self.timezone_name = timezone_name
+        self.__timezone_accounts = None
 
-    def __get_aw_cid(self, timezone_name):
-        if timezone_name is not None:
-            return list(Account.objects.filter(timezone=timezone_name).values_list("id", flat=True).distinct())
+
+    def timezone_accounts(self):
+        if self.__timezone_accounts is None and self.timezone_name is not None:
+            self.__timezone_accounts = list(
+                Account.objects.filter(timezone=self.timezone_name).values_list("id", flat=True).distinct()
+            )
+        return self.__timezone_accounts
 
 class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
     _problem_str = None
@@ -44,8 +49,8 @@ class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
             probability=100,
             end__gte=self.date_end,
         )
-        if self.aw_cid is not None:
-            opportunities = opportunities.filter(aw_cid__in=self.aw_cid)
+        if self.timezone_accounts() is not None:
+            opportunities = opportunities.filter(aw_cid__in=self.timezone_accounts())
         messages = dict()
 
         for opp in opportunities:
