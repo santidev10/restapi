@@ -31,11 +31,10 @@ class PersistentSegmentVideoExportSerializer(Serializer):
         return f"https://www.youtube.com/video/{obj.main.id}/"
 
     def get_language(self, obj):
-        brand_safety_language = (getattr(obj.brand_safety, "language", "") or "")
-        if brand_safety_language == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        if not lang_code:
+            lang_code = getattr(obj.general_data, "lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -74,11 +73,10 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         return f"https://www.youtube.com/channel/{obj.main.id}/"
 
     def get_language(self, obj):
-        brand_safety_language = (getattr(obj.brand_safety, "language", "") or "").lower()
-        if brand_safety_language == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        if not lang_code:
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):

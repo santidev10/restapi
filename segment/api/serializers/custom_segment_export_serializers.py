@@ -36,10 +36,7 @@ class CustomSegmentChannelExportSerializer(Serializer):
         lang_code = getattr(obj.task_us_data, "lang_code", "")
         if not lang_code:
             lang_code = getattr(obj.general_data, "top_lang_code", "")
-        if lang_code == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(lang_code, lang_code)
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -88,10 +85,7 @@ class CustomSegmentVideoExportSerializer(Serializer):
         lang_code = getattr(obj.task_us_data, "lang_code", "")
         if not lang_code:
             lang_code = getattr(obj.general_data, "lang_code", "")
-        if lang_code == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(lang_code, lang_code)
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
