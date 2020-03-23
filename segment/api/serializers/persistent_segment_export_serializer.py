@@ -31,9 +31,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
         return f"https://www.youtube.com/video/{obj.main.id}/"
 
     def get_language(self, obj):
-        lang_code = getattr(obj.task_us_data, "lang_code", "")
-        if not lang_code:
-            lang_code = getattr(obj.general_data, "lang_code", "")
+        lang_code = getattr(obj.general_data, "lang_code", "")
         language = LANGUAGES.get(lang_code, lang_code)
         return language
 
@@ -73,9 +71,7 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         return f"https://www.youtube.com/channel/{obj.main.id}/"
 
     def get_language(self, obj):
-        lang_code = getattr(obj.task_us_data, "lang_code", "")
-        if not lang_code:
-            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        lang_code = getattr(obj.general_data, "top_lang_code", "")
         language = LANGUAGES.get(lang_code, lang_code)
         return language
 
