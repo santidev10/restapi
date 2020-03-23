@@ -11,6 +11,7 @@ from brand_safety.auditors.utils import AuditUtils as BrandSafetyUtils
 from segment.models import CustomSegment
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
+from utils.youtube_api import YoutubeAPIConnectorException
 from utils.db.get_exists import get_exists
 from utils.db.functions import safe_bulk_create
 
@@ -39,6 +40,7 @@ class SegmentAuditGenerator(object):
         # video_id, channel_id
         self.id_field = data_field + "_id"
         self.CREATE_BATCH_SIZE = self.BATCH_SIZE // 2
+        self.youtube = YoutubeAPIConnector(max_retries=0)
         try:
             self.segment = CustomSegment.objects.get(id=segment_id)
             self.audit_model = self.segment.audit_utils.model
@@ -51,14 +53,14 @@ class SegmentAuditGenerator(object):
         self.language_mapping = AuditUtils.get_audit_language_mapping()
         if data_field == "video":
             self.audit_processor_type = 1
-            self.youtube_connector = YoutubeAPIConnector().obtain_videos
+            self.youtube_connector = self.youtube.obtain_videos
             self.meta_model_instantiator = self.instantiate_video_meta_model
             self.select_fields = "id,video_id"
             self.table_name = "audit_tool_auditvideo"
             self.vetting_table_name = "audit_tool_auditvideovet"
         elif data_field == "channel":
             self.audit_processor_type = 2
-            self.youtube_connector = YoutubeAPIConnector().obtain_channels
+            self.youtube_connector = self.youtube.obtain_channels
             self.meta_model_instantiator = self.instantiate_channel_meta_model
             self.select_fields = "id,channel_id"
             self.table_name = "audit_tool_auditchannel"
@@ -93,13 +95,18 @@ class SegmentAuditGenerator(object):
                                   select_fields=self.select_fields, where_id_field=self.id_field)
                 try:
                     existing_audit_ids, existing_item_ids = list(zip(*rows))
-                except ValueError:
+                except (ValueError, TypeError):
                     # No rows returned
                     existing_audit_ids, existing_item_ids = [], []
 
                 # Generate only new audit / audit meta items with video / channel id
                 to_create_ids = set(batch) - set(existing_item_ids)
-                data = self.retrieve_youtube(self.youtube_connector, to_create_ids)
+                try:
+                    # YoutubeAPIConnector instantiated with 0 retries since only exception that
+                    # would raise is QuotaExceeded. Continue to at least create vetting items we have data for
+                    data = self.retrieve_youtube(self.youtube_connector, to_create_ids)
+                except YoutubeAPIConnectorException:
+                    data = []
 
                 audit_model_to_create = [self.instantiate_audit_model(item, self.id_field, self.audit_model) for item in data]
                 safe_bulk_create(self.audit_model, audit_model_to_create, batch_size=self.CREATE_BATCH_SIZE)
@@ -223,3 +230,7 @@ class SegmentAuditGenerator(object):
             response = func(ids_term)["items"]
             data.extend(response)
         return data
+
+
+class QuotaExceededException(Exception):
+    pass
