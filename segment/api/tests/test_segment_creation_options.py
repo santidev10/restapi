@@ -153,7 +153,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
                 {"key": "IN", "doc_count": 33589},
                 {"key": "GB", "doc_count": 18372},
             ]},
-            "general_data.lang_code": {"buckets": [
+            "general_data.top_lang_code": {"buckets": [
                 {"key": "en", "doc_count": 344633},
                 {"key": "es", "doc_count": 48062},
                 {"key": "ar", "doc_count": 29714},
