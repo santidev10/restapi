@@ -188,7 +188,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         protocol = "http://"
         if request.is_secure():
             protocol = "https://"
-        host = self.domain_name or request.get_host()
+        host = self.domain_name or f"{DEFAULT_DOMAIN}.com"
         host_address = f"{protocol}{host}"
         link = f"{host_address}/login"
         subject = "Access to ViewIQ"
