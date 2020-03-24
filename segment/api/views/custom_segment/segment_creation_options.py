@@ -62,7 +62,7 @@ class SegmentCreationOptionsApiView(APIView):
                 }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
 
             languages = []
             for code in lang_codes:
