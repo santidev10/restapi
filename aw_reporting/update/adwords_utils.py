@@ -1,5 +1,9 @@
 from collections import defaultdict
 
+from es_components.utils import safe_div
+
+QUARTILES = (25, 50, 75, 100,)
+
 
 def format_click_types_report(report, unique_field_name, ref_id_name="AdGroupId"):
     """
@@ -42,10 +46,15 @@ def prepare_click_type_key(row, ref_id_name, unique_field_name):
     return "{}{}{}".format(getattr(row, ref_id_name), getattr(row, unique_field_name), row.Date)
 
 
-def quart_views(row, n):
-    per = getattr(row, "VideoQuartile%dRate" % n)
+def quart_views(row):
+    result = {}
     impressions = int(row.Impressions)
-    return float(per.rstrip("%")) / 100 * impressions
+
+    for quartile in QUARTILES:
+        percentage = getattr(row, f"VideoQuartile{quartile}Rate")
+        result[f"video_views_{quartile}_quartile"] = float(percentage.rstrip("%")) / 100 * impressions
+
+    return result
 
 
 def get_base_stats(row, quartiles=False):
@@ -59,13 +68,9 @@ def get_base_stats(row, quartiles=False):
         if hasattr(row, "AllConversions") else 0,
         view_through=int(row.ViewThroughConversions),
     )
-    if quartiles:
-        stats.update(
-            video_views_25_quartile=quart_views(row, 25),
-            video_views_50_quartile=quart_views(row, 50),
-            video_views_75_quartile=quart_views(row, 75),
-            video_views_100_quartile=quart_views(row, 100),
-        )
+    if quartiles is True:
+        stats.update(**quart_views(row))
+
     return stats
 
 

@@ -10,7 +10,6 @@ from aw_reporting.models import Ad
 from aw_reporting.models import AdStatistic
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 
 
@@ -90,13 +89,9 @@ class AdUpdater(UpdateMixin):
                     "date": row_obj.Date,
                     "ad_id": ad_id,
                     "average_position": 0,
-                    "video_views_25_quartile": quart_views(row_obj, 25),
-                    "video_views_50_quartile": quart_views(row_obj, 50),
-                    "video_views_75_quartile": quart_views(row_obj, 75),
-                    "video_views_100_quartile": quart_views(row_obj, 100),
                 }
                 stats.update(
-                    get_base_stats(row_obj)
+                    get_base_stats(row_obj, quartiles=True)
                 )
                 update_stats_with_click_type_data(stats, click_type_data, row_obj, report_unique_field_name)
                 create_stat.append(AdStatistic(**stats))

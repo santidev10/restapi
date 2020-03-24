@@ -9,7 +9,6 @@ from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
 from aw_reporting.adwords_reports import placement_performance_report
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 
 
@@ -78,11 +77,7 @@ class PlacementUpdater(UpdateMixin):
                 "date": row_obj.Date,
                 "ad_group_id": int(row_obj.AdGroupId),
                 "device_id": get_device_id_by_name(row_obj.Device),
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
             }
-            stats.update(get_base_stats(row_obj))
+            stats.update(get_base_stats(row_obj, quartiles=True))
 
             yield model(**stats)
