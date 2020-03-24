@@ -62,7 +62,7 @@ class SegmentCreationOptionsApiView(APIView):
                 }
                 for item in agg_cache.value["general_data.country_code"]["buckets"]
             ]
-            lang_codes = [item["key"] for item in agg_cache.value['general_data.lang_code']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
 
             languages = []
             for code in lang_codes:
@@ -71,10 +71,9 @@ class SegmentCreationOptionsApiView(APIView):
                 except KeyError:
                     lang = code
                 languages.append({"id": code, "title": lang})
-            if "yue" not in lang_codes:
-                languages.append({"id": "yue", "title": "Chinese - Cantonese"})
-            if "cmn" not in lang_codes:
-                languages.append({"id": "cmn", "title": "Chinese - Mandarin"})
+            for code, lang in LANGUAGES.items():
+                if code not in lang_codes:
+                    languages.append({"id": code, "value": lang})
         except (CacheItem.DoesNotExist, KeyError):
             countries = CountryListApiView().get().data
             languages = [

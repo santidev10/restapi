@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-from es_components.countries import COUNTRY_CODES
+from es_components.countries import COUNTRIES
 
 
 class CountryListApiView(APIView):
@@ -13,8 +13,8 @@ class CountryListApiView(APIView):
             [
                 {
                     "id": code,
-                    "common": country
+                    "common": country[0]
                 }
-                for country, code in COUNTRY_CODES.items()
+                for code, country in COUNTRIES.items()
             ]
         )
