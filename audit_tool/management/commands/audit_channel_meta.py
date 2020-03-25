@@ -36,7 +36,7 @@ class Command(BaseCommand):
     inclusion_list = None
     exclusion_list = None
     max_pages = 10
-    MAX_SOURCE_CHANNELS = 50000
+    MAX_SOURCE_CHANNELS = 100000
     audit = None
     num_clones = 0
     original_audit_name = None
