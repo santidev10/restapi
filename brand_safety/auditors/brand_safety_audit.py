@@ -306,9 +306,18 @@ class BrandSafetyAudit(object):
         :param channel_audits: list -> BrandSafetyChannel audits
         :return:
         """
-        videos = [audit.instantiate_es() for audit in video_audits]
-        channels = [audit.instantiate_es() for audit in channel_audits]
+        videos_audit_map = {audit.pk: audit for audit in video_audits}
+        videos = self.video_manager.get_or_create(list(videos_audit_map.keys()))
+        for video in videos:
+            audit = videos_audit_map.get(video.main.id)
+            audit.instantiate_es(video)
         self.video_manager.upsert(videos)
+
+        channels_audit_map = {audit.pk: audit for audit in channel_audits}
+        channels = self.channel_manager.get_or_create(list(channels_audit_map.keys()))
+        for channel in channels:
+            audit = channels_audit_map.get(channel.main.id)
+            audit.instantiate_es(channel)
         self.channel_manager.upsert(channels)
 
     def _get_channel_batch_data(self, channel_batch):
