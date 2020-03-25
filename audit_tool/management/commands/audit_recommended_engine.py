@@ -14,6 +14,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
+from audit_tool.utils.audit_utils import AuditUtils
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
@@ -188,7 +189,7 @@ class Command(BaseCommand):
         reader = csv.reader(f)
         vids = []
         for row in reader:
-            avp = self.get_avp_from_url(row[0])
+            avp = AuditUtils.get_avp_from_url(row[0], self.audit)
             if avp:
                 vids.append(avp)
         if len(vids) == 0:
@@ -212,27 +213,10 @@ class Command(BaseCommand):
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            avp = self.get_avp_from_url(seed)
+            avp = AuditUtils.get_avp_from_url(seed, self.audit)
             if avp:
                 vids.append(avp)
         return vids
-
-    def get_avp_from_url(self, seed):
-        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
-            return
-        v_id = seed.replace(",", "").split("/")[-1]
-        if '?v=' in v_id:
-            v_id = v_id.split("v=")[-1]
-        if '?t=' in v_id:
-            v_id = v_id.split("?t")[0]
-        if v_id and len(v_id) < 51:
-            v_id = v_id.strip()
-            video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=video,
-            )
-            return avp
 
     def do_recommended_api_call(self, avp):
         video = avp.video
