@@ -413,10 +413,9 @@ class DashboardPerformanceWeeklyReport:
         Filling overview section
         :return: None
         """
-        if not self.hide_logo:
-            logo_path = "{}/{}".format(settings.BASE_DIR, "static/CF_logo.png")
-            self.worksheet.insert_image(
-                'B2', logo_path, {'x_scale': 0.6, 'y_scale': 0.5})
+        logo_path = "{}/{}".format(settings.BASE_DIR, "static/viewiq_logo.png")
+        self.worksheet.insert_image(
+            'B0', logo_path, {'x_scale': 0.4, 'y_scale': 0.3})
 
         opportunity = Opportunity.objects.filter(placements__adwords_campaigns__account=self.account).first()
         # TODO replace N/A

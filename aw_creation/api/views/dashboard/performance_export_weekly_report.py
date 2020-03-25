@@ -42,13 +42,8 @@ class DashboardPerformanceExportWeeklyReportApiView(APIView):
         filters = self.get_filters()
         show_conversions = request.user.get_aw_settings().get(UserSettingsKey.SHOW_CONVERSIONS)
         report = DashboardPerformanceWeeklyReport(item.account, show_conversions, **filters)
-        hide_brand_name = settings.CUSTOM_AUTH_FLAGS \
-            .get(request.user.email.lower(), {}) \
-            .get("hide_brand_name", False)
-        report.hide_logo = hide_brand_name
-        brand_name = "" if hide_brand_name else "Channel Factory"
         title = " ".join([f for f in [
-            brand_name,
+            "ViewIQ",
             item.name,
             "Weekly Report",
             datetime.now().date().strftime("%m.%d.%y")
