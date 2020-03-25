@@ -12,6 +12,7 @@ from audit_tool.models import AuditLanguage
 from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
+from audit_tool.models import AuditVideoProcessor
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
@@ -191,6 +192,24 @@ class AuditUtils(object):
             pause=audit.pause,
             audit_type=audit.audit_type,
         )
+
+    @staticmethod
+    def get_avp_from_url(seed, audit):
+        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
+            return
+        v_id = seed.replace(",", "").split("/")[-1]
+        if '?v=' in v_id:
+            v_id = v_id.split("v=")[-1]
+        if '?t=' in v_id:
+            v_id = v_id.split("?t")[0]
+        if v_id and len(v_id) < 51:
+            v_id = v_id.strip()
+            video = AuditVideo.get_or_create(v_id)
+            avp, _ = AuditVideoProcessor.objects.get_or_create(
+                audit=audit,
+                video=video,
+            )
+            return avp
 
     @staticmethod
     def get_vetting_data(vetting_model, audit_id, item_ids, data_field):
