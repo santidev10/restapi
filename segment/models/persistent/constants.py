@@ -270,10 +270,10 @@ SHARED_SOURCE_FIELDS = ("main.id", "general_data.title",  "stats.views", "stats.
                         "task_us_data.content_type", "task_us_data.gender", "task_us_data.iab_categories",
                         "task_us_data.lang_code", "monetization.is_monetizable",)
 CHANNEL_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.top_category", "general_data.iab_categories", "brand_safety.videos_scored", "stats.observed_videos_dislikes",
-                                                "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "task_us_data.created_at"
-                                                "brand_safety.language")
+                                                "stats.last_30day_subscribers", "stats.subscribers", "stats.observed_videos_likes", "task_us_data.created_at",
+                                                "general_data.top_lang_code")
 VIDEO_SOURCE_FIELDS = SHARED_SOURCE_FIELDS + ("general_data.language", "general_data.iab_categories", "stats.likes", "stats.dislikes", "general_data.category",
-                                              "brand_safety.transcript_language")
+                                              "general_data.lang_code")
 
 YT_GENRE_CHANNELS = {
     "UC-9-kyTW8ZkZNDHQJ6FgpwQ",

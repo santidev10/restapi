@@ -83,7 +83,8 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         CampaignStatistic.objects.create(date=today, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        ad_group = AdGroup.objects.create(id=1, campaign=campaign)
+        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign)
+        ad_group_2 = AdGroup.objects.create(id=2, campaign=campaign)
 
         creative = VideoCreative.objects.create(id=1)
 
@@ -91,10 +92,15 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         video.populate_general_data(title="video_creative_1")
         VideoManager(Sections.GENERAL_DATA).upsert([video])
 
-        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group, creative=creative, video_views=102,
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_1, creative=creative, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
-        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group, creative=creative, video_views=102,
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
+
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_2, creative=creative, video_views=25,
+                                              video_views_100_quartile=5, video_views_50_quartile=20)
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_2, creative=creative, video_views=30,
+                                              video_views_100_quartile=15, video_views_50_quartile=25)
 
         with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)

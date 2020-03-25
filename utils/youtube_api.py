@@ -37,7 +37,7 @@ class YoutubeAPIConnector(object):
     RETRY_DELAY = 30
 
     def __init__(self, developer_key=settings.YOUTUBE_API_DEVELOPER_KEY, service_name="youtube",
-                 api_version="v3", access_token=None, refresh_token=None, token_expiry=0):
+                 api_version="v3", access_token=None, refresh_token=None, token_expiry=0, max_retries=5):
         """
         Make default setting
         """
@@ -46,7 +46,7 @@ class YoutubeAPIConnector(object):
 
         self.service_name = service_name
         self.api_version = api_version
-        self.max_connect_retries = 5
+        self.max_connect_retries = max_retries
         self.retry_sleep_coefficient = 4
         self.token_revoked = False
         self.token_expiry = token_expiry
