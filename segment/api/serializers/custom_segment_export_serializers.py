@@ -33,13 +33,13 @@ class CustomSegmentChannelExportSerializer(Serializer):
         return f"https://www.youtube.com/channel/{obj.main.id}"
 
     def get_language(self, obj):
-        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        try:
+            lang_code = getattr(obj.task_us_data, "lang_code", "")
+        except Exception:
+            lang_code = None
         if not lang_code:
-            lang_code = getattr(obj.brand_safety, "language", "")
-        if lang_code == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(lang_code, lang_code)
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -85,13 +85,13 @@ class CustomSegmentVideoExportSerializer(Serializer):
         return f"https://www.youtube.com/watch?v={obj.main.id}"
 
     def get_language(self, obj):
-        lang_code = getattr(obj.task_us_data, "lang_code", "")
+        try:
+            lang_code = getattr(obj.task_us_data, "lang_code", "")
+        except Exception:
+            lang_code = None
         if not lang_code:
-            lang_code = getattr(obj.brand_safety, "language", "")
-        if lang_code == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(lang_code, lang_code)
+            lang_code = getattr(obj.general_data, "lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):

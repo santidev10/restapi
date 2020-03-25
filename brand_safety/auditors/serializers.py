@@ -87,10 +87,11 @@ class BrandSafetyVideoSerializer(Serializer):
         return captions_items[0].language_code
 
     def get_best_available_transcript(self, lang_code_priorities, captions_items):
+        text = ""
         # Trim lang_codes to first 2 characters because custom_captions often have lang_codes like "en-US" or "en-UK"
         best_lang_code = self.get_best_available_language(lang_code_priorities, captions_items)
         for item in captions_items:
-            if item.language_code[:2].lower() == best_lang_code:
+            if item.language_code[:2].lower() == best_lang_code or item.language_code == best_lang_code:
                 text = item.text
                 break
         return text

@@ -277,7 +277,7 @@ class SegmentListCreateApiViewV2TestCase(ExtendedAPITestCase):
         s3_params["params"]["languages"] = ["ga"]
         CustomSegmentFileUpload.objects.create(segment=s3, query=s3_params)
 
-        query_params = QueryDict("general_data.top_language=ga,ru").urlencode()
+        query_params = QueryDict("general_data.top_lang_code=ga,ru").urlencode()
         response = self.client.get(f"{self._get_url('channel')}?{query_params}")
         self.assertEqual({s2.id, s3.id}, set([int(item["id"]) for item in response.data["items"]]))
 
