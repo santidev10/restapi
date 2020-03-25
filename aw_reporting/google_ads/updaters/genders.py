@@ -9,7 +9,6 @@ from aw_reporting.models import Genders
 from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_FIELDS
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
@@ -60,12 +59,8 @@ class GenderUpdater(UpdateMixin):
                 "gender_id": gender_model.index(row_obj.Criteria),
                 "date": row_obj.Date,
                 "ad_group_id": int(row_obj.AdGroupId),
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
             }
-            stats.update(get_base_stats(row_obj))
+            stats.update(get_base_stats(row_obj, quartiles=True))
             update_stats_with_click_type_data(
                 stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
             yield stats_model(**stats)
