@@ -45,7 +45,6 @@ def get_default_settings():
 
 def get_default_accesses(via_google=False):
     default_accesses_group_names = [
-        PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,
         PermissionGroupNames.MEDIA_PLANNING,
         PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
