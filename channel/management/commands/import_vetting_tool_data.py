@@ -67,12 +67,6 @@ class Command(BaseCommand):
                     continue
                 self.channel_ids.append(channel_id)
 
-                # title
-                # channel_title = None
-                # channel_title = self.get_channel_title(row)
-                # if channel_title:
-                #     general_data['title'] = channel_title
-
                 # language
                 channel_lang_code = None
                 channel_language = None
@@ -80,9 +74,9 @@ class Command(BaseCommand):
                 if channel_lang_code:
                     task_us_data['lang_code'] = channel_lang_code
                     general_data['lang_codes'] = [channel_lang_code]
+                    general_data['top_lang_code'] = channel_lang_code
                     # set language field
                     channel_language = self.get_channel_language(channel_lang_code)
-                    task_us_data['language'] = channel_language
                     general_data['top_language'] = channel_language
 
                 # category
@@ -143,16 +137,24 @@ class Command(BaseCommand):
 
         print('Attempting upsert of {} channel records from ES...'.format(len(self.channel_ids)))
 
-        channels = self.channel_manager.get(self.channel_ids)
+        channels = self.channel_manager.get(self.channel_ids, skip_none=True)
         upsert_count = 0
         for channel in channels:
-            if not channel:
-                continue
-
             upsert_count += 1
             channel_id = channel['main']['id']
+
+            # handle general data
+            general_data = self.general_data_map[channel_id]
+            # append to existing lang codes
+            if channel.general_data.lang_codes:
+                lang_codes = general_data.setdefault('lang_codes', [])
+                lang_codes = lang_codes + list(channel.general_data.lang_codes)
+                lang_codes = list(set(lang_codes))
+                general_data['lang_codes'] = lang_codes
+            channel.populate_general_data(**general_data)
+
+            # handle task us data
             channel.populate_task_us_data(**self.task_us_data_map[channel_id])
-            channel.populate_general_data(**self.general_data_map[channel_id])
 
         self.channel_manager.upsert(channels)
 
@@ -281,8 +283,11 @@ class Command(BaseCommand):
         header_row = next(self.reader)
         trimmed = list(filter(None, header_row))
         if trimmed != format:
-            msg = 'Bad structure. Column order should be: {}' \
-                .format(', '.join(format))
+            msg = ('Bad structure. Column order should be: {}. Detected order:'
+                   ' {}').format(
+                ', '.join(format),
+                ', '.join(trimmed)
+            )
             raise ValidationError(msg)
 
     def init_channel_manager(self):
@@ -291,14 +296,10 @@ class Command(BaseCommand):
             sections=(
                 Sections.TASK_US_DATA,
                 Sections.GENERAL_DATA,
-                # Sections.MONETIZATION,
-                # Sections.CUSTOM_PROPERTIES
             ),
              upsert_sections=(
                  Sections.TASK_US_DATA,
                  Sections.GENERAL_DATA,
-                 # Sections.MONETIZATION,
-                 # Sections.CUSTOM_PROPERTIES
              )
         )
 
