@@ -87,7 +87,6 @@ class PermissionHandler:
 
 
 class PermissionGroupNames:
-    HIGHLIGHTS = "Highlights"
     RESEARCH = "Research"
     MEDIA_PLANNING = "Media Planning"
     MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
@@ -121,10 +120,6 @@ class PermissionGroupNames:
 
 class Permissions:
     PERMISSION_SETS = (
-        (PermissionGroupNames.HIGHLIGHTS, (
-            "view_highlights",
-            "settings_my_yt_channels",
-        )),
         (PermissionGroupNames.RESEARCH, (
             "channel_list",
             "channel_details",
@@ -224,7 +219,6 @@ class Permissions:
 
     PERM_LIST = (
         # view section
-        "view_highlights",
         "view_media_buying",
         "view_pre_baked_segments",
         "view_audit_segments",

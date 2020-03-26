@@ -46,12 +46,19 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="*", minute="0"),
         "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
-    "daily_email_notifications": {
+    "schedule_daily_email_notifications": {
+        "task": "email_reports.tasks.schedule_daily_reports",
+        "schedule": crontab(hour="0", minute="0"),
+        "kwargs": dict(
+            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
+                     "CampaignOverPacing"],
+        ),
+    },
+    "daily_es_monitoring_report": {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
-                     "CampaignOverPacing", "ESMonitoringEmailReport"],
+            reports=["ESMonitoringEmailReport"],
         ),
     },
     "daily_apex_notifications": {
@@ -61,17 +68,9 @@ CELERY_BEAT_SCHEDULE = {
             reports=["DailyApexCampaignEmailReport"],
         ),
     },
-    "weekday-campaign-reports": {
-        "task": "email_reports.tasks.send_daily_email_reports",
-        "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
-        "kwargs": dict(
-            reports=["DailyCampaignReport"],
-            roles="Ad Ops Manager",
-        ),
-    },
-    "weekend-campaign-reports": {
-        "task": "email_reports.tasks.send_daily_email_reports",
-        "schedule": crontab(hour="13", minute="30", day_of_week="Sun,Sat"),
+    "schedule-daily-campaign-reports": {
+        "task": "email_reports.tasks.schedule_daily_reports",
+        "schedule": crontab(hour="0", minute="0"),
         "kwargs": dict(
             reports=["DailyCampaignReport"],
             roles="Ad Ops Manager",
