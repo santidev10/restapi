@@ -1,6 +1,7 @@
 from datetime import date
 from datetime import datetime
 from datetime import time
+from datetime import timedelta
 
 import pytz
 from django.conf import settings
@@ -144,3 +145,14 @@ def strftime_extended(dt: datetime, strftime_format):
         if persented_template in strftime_format:
             strftime_format = strftime_format.replace(persented_template, str(fn(dt)))
     return dt.strftime(strftime_format)
+
+
+def from_local_to_utc(utc_now, timezone_name, local_time, future=True):
+    tz = pytz.timezone(timezone_name)
+    tz_dt = tz.localize(local_time)
+    time_to_execute = tz_dt.astimezone(pytz.utc)
+
+    if future is True and time_to_execute < utc_now:
+        time_to_execute = time_to_execute + timedelta(days=1)
+
+    return time_to_execute

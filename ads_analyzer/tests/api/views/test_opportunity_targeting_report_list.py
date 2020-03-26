@@ -1,5 +1,6 @@
 from datetime import date
 from unittest.mock import patch
+from unittest.mock import ANY
 
 from django.db.models.signals import post_save
 from django.contrib.auth import get_user_model
@@ -107,6 +108,8 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
         response = self._request()
 
         self.assertEqual(1, response.json()["items_count"])
+
+        response_json_item = response.json()["items"][0]
         self.assertEqual(
             {
                 "id": report.id,
@@ -115,11 +118,16 @@ class OpportunityTargetingReportBehaviourAPIViewTestCase(OpportunityTargetingRep
                 "date_from": report.date_from.isoformat(),
                 "date_to": report.date_to.isoformat(),
                 "created_at": report.created_at.isoformat().replace("+00:00", "Z"),
-                "download_link": OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key),
+                "download_link": ANY,
                 "recipients": ["TestUser1 TestUser1", "TestUser TestUser"],
                 "status": report.status
             },
-            response.json()["items"][0]
+            response_json_item
+        )
+
+        self.assertEqual(
+            OpportunityTargetingReportS3Exporter.generate_temporary_url(report.s3_file_key).split("?X-Amz-Algorithm")[0],
+            response_json_item.get("download_link").split("?X-Amz-Algorithm")[0]
         )
 
     def test_empty_report_list(self):
