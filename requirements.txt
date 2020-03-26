@@ -21,7 +21,7 @@ django-filter==2.0.0
 django-ses==0.8.12
 Django==2.2.4
 djangorestframework-csv==2.1.0
-djangorestframework==3.11.0
+djangorestframework==3.8.2
 docutils==0.14
 drf-yasg==1.11.1
 elastic-apm==5.4.3
