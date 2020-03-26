@@ -22,6 +22,7 @@ class AuditListApiView(APIView):
             running = strtobool(running.lower())
         audit_type = query_params["audit_type"] if "audit_type" in query_params else None
         search = query_params["search"] if "search" in query_params else None
+        audit_id = query_params["audit_id"] if "audit_id" in query_params else None
         source = int(query_params["source"]) if "source" in query_params else 0
         try:
             cursor = int(query_params["cursor"]) if "cursor" in query_params else None
@@ -38,7 +39,13 @@ class AuditListApiView(APIView):
         except ValueError:
             raise ValidationError("Expected num_days ({}) to be <int> type object. Received object of type {}."
                                   .format(query_params["num_days"], type(query_params["num_days"])))
-        if search:
+        if audit_id:
+            audit_res = AuditProcessor.objects.get(id=int(audit_id))
+            return Response({
+                'audits': [audit_res.to_dict(get_details=True)],
+                'audit_types': AuditProcessor.AUDIT_TYPES,
+            })
+        elif search:
             return Response({
                 'audits': AuditProcessor.get(running=False, audit_type=audit_type, search=search, source=source, cursor=cursor, limit=limit),
                 'audit_types': AuditProcessor.AUDIT_TYPES,
