@@ -11,7 +11,7 @@ from io import StringIO
 import isodate
 from apiclient.discovery import build
 from django.conf import settings
-from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.templatetags.static import static
 from django.db import transaction
 from django.db.models import Case, Q
 from django.db.models import F

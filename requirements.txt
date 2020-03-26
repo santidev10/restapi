@@ -2,6 +2,7 @@ aiohttp==3.6.2
 amqp==2.5.2
 anyjson==0.3.3
 appdirs==1.4.3
+asgiref==3.2.7
 attrs==19.1.0
 beautifulsoup4==4.8.0
 billiard==3.6.3.0
@@ -19,11 +20,11 @@ cryptography==2.7
 defusedxml==0.6.0
 django-filter==2.0.0
 django-ses==0.8.12
-Django==2.2.4
+Django==3.0.4
 djangorestframework-csv==2.1.0
-djangorestframework==3.8.2
+djangorestframework==3.11.0
 docutils==0.14
-drf-yasg==1.11.1
+drf-yasg==1.17.1
 elastic-apm==5.4.3
 elasticsearch==7.1.0
 emoji==0.5.4
@@ -34,7 +35,7 @@ google-ads==3.2.0
 google-api-python-client==1.6.2
 google-auth-oauthlib==0.4.0
 google-auth==1.6.3
-googleads==15.0.1
+googleads==23.0.1
 httplib2==0.10.3
 idna==2.7
 inflection==0.3.1
