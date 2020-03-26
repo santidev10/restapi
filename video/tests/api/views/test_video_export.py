@@ -205,6 +205,28 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
+    @mock.patch("utils.es_components_api_utils.settings.RESEARCH_EXPORT_LIMIT", 2)
+    def test_export_limitation(self, *args):
+        self.create_admin_user()
+        filter_count = 2
+        videos = [Video(next(int_iterator)) for _ in range(filter_count + 5)]
+        VideoManager(sections=Sections.GENERAL_DATA).upsert(videos)
+
+        self._request_collect_file()
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+
+    @mock_s3
+    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
     def test_filter_ids_deprecated(self, *args):
         self.create_admin_user()
         filter_count = 2

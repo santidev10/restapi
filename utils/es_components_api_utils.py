@@ -3,6 +3,7 @@ import json
 import logging
 from urllib.parse import unquote
 
+from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
@@ -555,5 +556,10 @@ class ExportDataGenerator:
         self.queryset.filter(
             self._get_query_generator().get_search_filters()
         )
+        counter = 0
         for item in self.queryset:
             yield self.serializer_class(item).data
+            counter += 1
+
+            if counter >= settings.RESEARCH_EXPORT_LIMIT:
+                break
