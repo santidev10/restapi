@@ -49,7 +49,7 @@ class KeywordAWStatsPermissionsApiViewTestCase(KeywordBaseAWStatsTestCase):
     def test_success_permissions(self):
         keyword = "keyword"
         self.create_aw_stats(keyword)
-        required_permissions = ("keyword_details", "settings_my_yt_channels", "view_highlights")
+        required_permissions = ("keyword_details", "settings_my_yt_channels")
         for permission in required_permissions:
             with self.subTest(permission):
                 user = self.create_test_user()
