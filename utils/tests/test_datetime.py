@@ -24,7 +24,7 @@ class FromLocalToUtcCase(TestCase):
                 tz = pytz.timezone(timezone_name)
                 exec_time = from_local_to_utc(self.utc_now, timezone_name, self.local_time, future=False)
                 self.assertEqual(exec_time.astimezone(tz).hour, 6,)
-                self.assertTrue(timedelta(days=-1) <= (exec_time - self.utc_now) < timedelta())
+                self.assertTrue(-1 <= (exec_time - self.utc_now).days <= 0)
 
     def test_future_time(self):
         for timezone_name in self.timezone_names:
