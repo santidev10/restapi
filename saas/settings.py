@@ -54,7 +54,6 @@ PROJECT_APPS = (
     "channel",
     "email_reports",
     "healthcheck",
-    "highlights",
     "keyword_tool",
     "related_tool",
     "segment",

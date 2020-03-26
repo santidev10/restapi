@@ -35,7 +35,7 @@ API_QUOTA = settings.WATSON_API_QUOTA
 WATSON_APITRACKER_KEY = 'watson_transcripts'
 batch_size = settings.WATSON_BATCH_SIZE
 sandbox_mode = settings.WATSON_SANDBOX_MODE
-youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY)
+youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY, cache_discovery=False)
 watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
 

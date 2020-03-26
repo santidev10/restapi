@@ -21,7 +21,7 @@ class ConcatAggregate(Aggregate):
             *args, **kwargs
         )
 
-    def convert_value(self, value, expression, connection, context):
+    def convert_value(self, value, *args, **kwargs):
         if value is None:
             return ""
         if type(value) is str:

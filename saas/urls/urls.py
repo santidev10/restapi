@@ -13,7 +13,6 @@ from brand_safety.api import urls as brand_safety_api_urls
 from channel.api import urls as channel_api_urls
 from email_reports import urls as email_reports_api_urls
 from healthcheck.api.urls import urls as healthcheck_api_urls
-from highlights.api import urls as highlights_api_urls
 from keywords.api import urls as keyword_api_urls
 from saas.urls.namespaces import Namespace
 from segment.api.urls import urlpatterns as segment_v1_url_patterns
@@ -28,8 +27,6 @@ from video.api import urls as video_api_urls
 urlpatterns = [
     # Admin api urls
     url(r'^api/v1/admin/', include((admin_api_urls, APP_NAME), namespace=Namespace.ADMIN)),
-
-    url(r'^api/v1/highlights/', include((highlights_api_urls, APP_NAME), namespace=Namespace.HIGHLIGHTS)),
 
     # AdWords creation api urls
     url(r'^api/v1/', include((aw_creation_urls, APP_NAME), namespace=Namespace.AW_CREATION)),
