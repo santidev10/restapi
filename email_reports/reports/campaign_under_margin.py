@@ -8,13 +8,13 @@ from django.core.mail import EmailMultiAlternatives
 
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
-from email_reports.reports.base import BaseEmailReport
+from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
 
-class CampaignUnderMargin(BaseEmailReport):
+class CampaignUnderMargin(BaseCampaignEmailReport):
 
     def __init__(self, *args, **kwargs):
         super(CampaignUnderMargin, self).__init__(*args, **kwargs)
@@ -35,6 +35,9 @@ class CampaignUnderMargin(BaseEmailReport):
             end__gte=today,  # If a campaign is ending within 7 days
             end__lte=today + timedelta(days=self.days_to_end - 1),
         ).values("id", "name", "ad_ops_manager__email", "ad_ops_manager__name")
+
+        if self.timezone_accounts() is not None:
+            opportunities = opportunities.filter(aw_cid__in=self.timezone_accounts())
 
         messages = dict()
 
