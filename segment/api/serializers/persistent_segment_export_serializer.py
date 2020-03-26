@@ -28,7 +28,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
         super().__init__(*args, **kwargs)
 
     def get_url(self, obj):
-        return f"https://www.youtube.com/video/{obj.main.id}/"
+        return f"https://www.youtube.com/video/{obj.main.id}"
 
     def get_language(self, obj):
         lang_code = getattr(obj.general_data, "lang_code", "")
@@ -68,7 +68,7 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         super().__init__(*args, **kwargs)
 
     def get_url(self, obj):
-        return f"https://www.youtube.com/channel/{obj.main.id}/"
+        return f"https://www.youtube.com/channel/{obj.main.id}"
 
     def get_language(self, obj):
         lang_code = getattr(obj.general_data, "top_lang_code", "")

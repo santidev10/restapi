@@ -446,8 +446,8 @@ class PacingReport:
         )
 
     # ## OPPORTUNITIES ## #
-    def get_opportunities(self, get, user=None):
-        queryset = self.get_opportunities_queryset(get, user)
+    def get_opportunities(self, get, user=None, aw_cid=None):
+        queryset = self.get_opportunities_queryset(get, user, aw_cid)
 
         # get raw opportunity data
         opportunities = queryset.values(
@@ -564,7 +564,7 @@ class PacingReport:
                 o["cpv_buffer"] = (self.goal_factor - 1) * 100 if o["cpv_buffer"] is None else o["cpv_buffer"]
         return opportunities
 
-    def get_opportunities_queryset(self, get, user):
+    def get_opportunities_queryset(self, get, user, aw_cid):
         if not isinstance(get, QueryDict):
             query_dict_get = QueryDict("", mutable=True)
             query_dict_get.update(get)
@@ -572,6 +572,9 @@ class PacingReport:
 
         queryset = Opportunity.objects.get_queryset_for_user(user) \
             .filter(probability=100)
+
+        if aw_cid is not None:
+            queryset = queryset.filter(aw_cid__in=aw_cid)
 
         start, end = self.get_period_dates(get.get("period"), get.get("start"),
                                            get.get("end"))
