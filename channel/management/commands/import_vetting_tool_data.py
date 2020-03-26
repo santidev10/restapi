@@ -140,11 +140,17 @@ class Command(BaseCommand):
         channels = self.channel_manager.get(self.channel_ids, skip_none=True)
         upsert_count = 0
         for channel in channels:
+            if not channel.main.id:
+                print('channel missing id: {}'.format(channel))
+                continue
             upsert_count += 1
-            channel_id = channel['main']['id']
+            channel_id = channel.main.id
 
             # handle general data
-            general_data = self.general_data_map[channel_id]
+            general_data = self.general_data_map.get(channel_id, None)
+            if not general_data:
+                print('channel data missing in general_data map')
+                continue
             # append to existing lang codes
             if channel.general_data.lang_codes:
                 lang_codes = general_data.setdefault('lang_codes', [])
@@ -154,7 +160,11 @@ class Command(BaseCommand):
             channel.populate_general_data(**general_data)
 
             # handle task us data
-            channel.populate_task_us_data(**self.task_us_data_map[channel_id])
+            task_us_data = self.task_us_data_map.get(channel_id, None)
+            if not task_us_data:
+                print('channel data missing in task_us_data map')
+                continue
+            channel.populate_task_us_data(**task_us_data)
 
         self.channel_manager.upsert(channels)
 
