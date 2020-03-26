@@ -195,12 +195,14 @@ class AuditProcessor(models.Model):
         if not output:
             return ret
 
-    def to_dict(self):
+    def to_dict(self, get_details=False):
         audit_type = self.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit_type
         lang = self.params.get('language')
-        if lang and type(lang) == str:
+        if not lang:
+            lang = ['en']
+        elif type(lang) == str:
             lang = [lang]
         d = {
             'id': self.id,
@@ -215,7 +217,6 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.get_related_audits(),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -225,10 +226,8 @@ class AuditProcessor(models.Model):
             'stopped': self.params.get('stopped'),
             'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
-            'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
-            'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
@@ -236,12 +235,15 @@ class AuditProcessor(models.Model):
             'include_unknown_likes': self.params.get('include_unknown_likes'),
             'include_unknown_views': self.params.get('include_unknown_views'),
         }
-        #d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
-        files = self.params.get('files')
-        if files:
-            d['source_file'] = files.get('source')
-            d['exclusion_file'] = files.get('exclusion')
-            d['inclusion_file'] = files.get('inclusion')
+        if get_details:
+            d['related_audits'] = self.get_related_audits()
+            d['has_history'] = self.has_history()
+            d['export_status'] = self.get_export_status()
+            files = self.params.get('files')
+            if files:
+                d['source_file'] = files.get('source')
+                d['exclusion_file'] = files.get('exclusion')
+                d['inclusion_file'] = files.get('inclusion')
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
