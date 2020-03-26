@@ -22,9 +22,9 @@ from aw_reporting.models import UserRole
 from email_reports.models import SavedEmail
 from email_reports.reports.daily_campaign_report import OpportunityManager
 from email_reports.tasks import send_daily_email_reports
+from utils.datetime import now_in_default_tz
 from utils.unittests.patch_now import patch_now
 from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
-from utils.datetime import now_in_default_tz
 
 
 class SendDailyEmailsTestCase(APITestCase):
@@ -741,7 +741,8 @@ class SendDailyEmailsTestCase(APITestCase):
                                          video_views=test_views_2,
                                          cost=test_cost_2)
 
-        with patch_now(now):
+        with patch_now(now), \
+             override_settings(PACING_NOTIFICATIONS=['80']):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 2)
@@ -794,7 +795,8 @@ class SendDailyEmailsTestCase(APITestCase):
                                          video_views=test_views_2,
                                          cost=test_cost_2)
 
-        with patch_now(now):
+        with patch_now(now), \
+             override_settings(PACING_NOTIFICATIONS=['80']):
             send_daily_email_reports(reports=["DailyCampaignReport"], debug=False)
 
         self.assertEqual(len(mail.outbox), 2)

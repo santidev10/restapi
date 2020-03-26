@@ -1,8 +1,9 @@
 import logging
+import time
 from datetime import datetime
 from datetime import timedelta
-import time
 
+import pytz
 from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import F
@@ -10,7 +11,6 @@ from django.db.models import OuterRef
 from django.db.models import Q
 from django.db.models import Subquery
 from django.db.models.signals import pre_save
-import pytz
 
 from aw_reporting.models.ad_words import Campaign
 from aw_reporting.models.salesforce import Activity
@@ -166,8 +166,7 @@ def perform_update(sc, today, opportunity_ids, force_update, skip_placements, sk
 
 def update_opportunities(sc, opportunity_ids, debug_update):
     opp_filter = Q(number__in=opportunity_ids) if opportunity_ids else Q()
-    opportunities = Opportunity.objects.filter(opp_filter) \
-        .difference(Opportunity.demo_items())
+    opportunities = Opportunity.not_demo_items().filter(opp_filter)
     for opportunity in opportunities:
         update = {}
         ids = Campaign.objects.filter(
@@ -209,9 +208,9 @@ def update_opportunities(sc, opportunity_ids, debug_update):
 
 def update_placements(sc, opportunity_ids, debug_update):
     opp_filter = Q(opportunity__number__in=opportunity_ids) if opportunity_ids else Q()
-    placements = OpPlacement.objects.filter(opp_filter) \
+    placements = OpPlacement.not_demo_items() \
+        .filter(opp_filter) \
         .filter(adwords_campaigns__isnull=False) \
-        .difference(OpPlacement.demo_items()) \
         .distinct()
     for placement in placements:
 
@@ -332,14 +331,14 @@ def flights_to_update_qs(force_update, today):
     dynamic_placement = Q(placement__dynamic_placement__in=(DynamicPlacementType.BUDGET,
                                                             DynamicPlacementType.RATE_AND_TECH_FEE))
     type_filters = regular_placement | dynamic_placement
-    flights = Flight.objects.filter(
-        start__gte=WRITE_START,
-        placement__adwords_campaigns__isnull=False,
+    flights = Flight.not_demo_items() \
+        .filter(
+            start__gte=WRITE_START,
+            placement__adwords_campaigns__isnull=False,
     ) \
         .exclude(placement__dynamic_placement=DynamicPlacementType.SERVICE_FEE) \
         .filter(type_filters) \
         .filter(date_filters) \
-        .difference(Flight.demo_items()) \
         .prefetch_related("placement") \
         .distinct()
     return flights
