@@ -96,19 +96,19 @@ class Command(BaseCommand):
                 # age group
                 age_group_id = None
                 age_group_id = self.get_channel_age_group_id(row)
-                if age_group_id:
+                if age_group_id is not None:
                     task_us_data['age_group'] = age_group_id
 
                 # gender
                 channel_gender_id = None
                 channel_gender_id = self.get_channel_gender_id(row)
-                if channel_gender_id:
+                if channel_gender_id is not None:
                     task_us_data['gender'] = channel_gender_id
 
                 # content type
                 content_type_id = None
                 content_type_id = self.get_content_type_id(row)
-                if content_type_id:
+                if content_type_id is not None:
                     task_us_data['content_type'] = content_type_id
                     if content_type_id in [1, 2]:
                         task_us_data['is_user_generated_content'] = True
@@ -149,7 +149,7 @@ class Command(BaseCommand):
             # handle general data
             general_data = self.general_data_map.get(channel_id, None)
             if not general_data:
-                print('channel data missing in general_data map')
+                print(f'channel data missing in general_data map. id: {channel_id}')
                 continue
             # append to existing lang codes
             if channel.general_data.lang_codes:
@@ -162,7 +162,7 @@ class Command(BaseCommand):
             # handle task us data
             task_us_data = self.task_us_data_map.get(channel_id, None)
             if not task_us_data:
-                print('channel data missing in task_us_data map')
+                print(f'channel data missing in task_us_data map. id: {channel_id}')
                 continue
             channel.populate_task_us_data(**task_us_data)
 
