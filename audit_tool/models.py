@@ -200,9 +200,7 @@ class AuditProcessor(models.Model):
         if not audit_type:
             audit_type = self.audit_type
         lang = self.params.get('language')
-        if not lang:
-            lang = ['en']
-        elif type(lang) == str:
+        if lang and type(lang) == str:
             lang = [lang]
         d = {
             'id': self.id,
