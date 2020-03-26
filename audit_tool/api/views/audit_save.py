@@ -81,7 +81,7 @@ class AuditSaveApiView(APIView):
         except ValueError:
             raise ValidationError("Expected max_recommended ({}) to be <int> type object. Received object of type {}."
                                   .format(query_params["max_recommended"], type(query_params["max_recommended"])))
-        language = query_params["language"] if "language" in query_params else 'en'
+        language = query_params["language"] if "language" in query_params else None
 
         # Audit Name Validation
         if not audit_id and name is None:

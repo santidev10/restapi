@@ -13,7 +13,6 @@ from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT
 from aw_reporting.update.adwords_utils import DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
@@ -80,11 +79,7 @@ class InterestUpdater(UpdateMixin):
                 stats = dict(
                     date=row_obj.Date,
                     ad_group_id=int(row_obj.AdGroupId),
-                    video_views_25_quartile=quart_views(row_obj, 25),
-                    video_views_50_quartile=quart_views(row_obj, 50),
-                    video_views_75_quartile=quart_views(row_obj, 75),
-                    video_views_100_quartile=quart_views(row_obj, 100),
-                    **get_base_stats(row_obj)
+                    **get_base_stats(row_obj, quartiles=True)
                 )
                 update_stats_with_click_type_data(
                     stats, click_type_data, row_obj, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)

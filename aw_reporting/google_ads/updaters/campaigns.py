@@ -20,7 +20,6 @@ from aw_reporting.models.ad_words.constants import BudgetType
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
 from utils.datetime import now_in_default_tz
 
@@ -118,13 +117,8 @@ class CampaignUpdater(UpdateMixin):
                 "date": row_obj.Date,
                 "campaign_id": campaign_id,
                 "device_id": get_device_id_by_name(row_obj.Device),
-
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
             }
-            statistic_data.update(get_base_stats(row_obj))
+            statistic_data.update(get_base_stats(row_obj, quartiles=True))
             update_stats_with_click_type_data(
                 statistic_data, click_type_data, row_obj, unique_field_name="CampaignId", ref_id_name="CampaignId")
 
