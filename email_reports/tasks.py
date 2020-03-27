@@ -41,6 +41,9 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
         timezone_name=timezone_name,
     )
 
+    if not reports:
+        return
+
     for report_class in EMAIL_REPORT_CLASSES:
         if reports and report_class.__name__ not in reports:
             continue
