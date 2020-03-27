@@ -92,4 +92,4 @@ def schedule_daily_reports(**kwargs):
     for timezone_name in timezones:
         time_to_execute = from_local_to_utc(utc_now, timezone_name, local_execution_time)
 
-        send_daily_email_reports.apply_async(eta=time_to_execute, timezone_name=timezone_name, **kwargs)
+        send_daily_email_reports.apply_async(eta=time_to_execute, kwargs=dict(timezone_name=timezone_name, **kwargs))
