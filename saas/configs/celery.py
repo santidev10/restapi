@@ -96,10 +96,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 90
     },
-    "submit-watson-transcripts": {
-        "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
-        "schedule": 15*60
-    },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
         "schedule": crontab(hour="*", minute="*/30"),
