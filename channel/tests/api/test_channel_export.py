@@ -268,6 +268,29 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
+    @mock.patch("utils.es_components_api_utils.ExportDataGenerator.export_limit", 2)
+    def test_export_limitation(self, *args):
+        self.create_admin_user()
+        filter_count = 2
+        channels = [Channel(next(int_iterator)) for _ in range(filter_count + 5)]
+        for channel in channels:
+            channel.populate_stats(total_videos_count=10)
+        ChannelManager(sections=(Sections.GENERAL_DATA, Sections.STATS)).upsert(channels)
+
+        self._request_collect_file()
+        response = self._request()
+
+        csv_data = get_data_from_csv_response(response)
+        data = list(csv_data)[1:]
+
+        self.assertEqual(
+            filter_count,
+            len(data)
+        )
+
+    @mock_s3
+    @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
+                return_value=EXPORT_FILE_HASH)
     def test_filter_ids_in_payload(self, *args):
         self.create_admin_user()
         filter_count = 2

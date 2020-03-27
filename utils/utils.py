@@ -78,3 +78,13 @@ def prune_iab_categories(iab_categories):
 def remove_tags_punctuation(s):
     return s.translate(str.maketrans('', '', string.punctuation.replace("@", "").replace("$", "").replace("#", "")
                                      .replace("*", "")))
+
+
+def slice_generator(data_generator, limit):
+    counter = 0
+    for item in data_generator:
+        if counter >= limit:
+            break
+
+        yield item
+        counter += 1
