@@ -15,6 +15,7 @@ from utils.es_components_cache import CACHE_KEY_PREFIX
 from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
+from utils.utils import slice_generator
 from elasticsearch_dsl import Q
 
 import brand_safety.constants as constants
@@ -533,6 +534,7 @@ class ExportDataGenerator:
     exists_filter = ()
     params_adapters = ()
     queryset = None
+    export_limit = settings.RESEARCH_EXPORT_LIMIT
 
     def __init__(self, query_params):
         self.query_params = query_params
@@ -556,10 +558,5 @@ class ExportDataGenerator:
         self.queryset.filter(
             self._get_query_generator().get_search_filters()
         )
-        counter = 0
-        for item in self.queryset:
+        for item in slice_generator(self.queryset, limit=self.export_limit):
             yield self.serializer_class(item).data
-            counter += 1
-
-            if counter >= settings.RESEARCH_EXPORT_LIMIT:
-                break

@@ -223,7 +223,7 @@ class KeywordListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("keywords.api.views.keyword_export.KeywordListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
-    @mock.patch("utils.es_components_api_utils.settings.RESEARCH_EXPORT_LIMIT", 2)
+    @mock.patch("utils.es_components_api_utils.ExportDataGenerator.export_limit", 2)
     def test_export_limitation(self, *args):
         self.create_admin_user()
         filter_count = 2
