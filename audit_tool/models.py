@@ -233,10 +233,10 @@ class AuditProcessor(models.Model):
             'include_unknown_likes': self.params.get('include_unknown_likes'),
             'include_unknown_views': self.params.get('include_unknown_views'),
         }
+        d['export_status'] = self.get_export_status()
+        d['has_history'] = self.has_history()
         if get_details:
             d['related_audits'] = self.get_related_audits()
-            d['has_history'] = self.has_history()
-            d['export_status'] = self.get_export_status()
             files = self.params.get('files')
             if files:
                 d['source_file'] = files.get('source')
