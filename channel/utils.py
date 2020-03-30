@@ -1,3 +1,7 @@
+from es_components.managers.channel import ChannelManager
+from es_components.constants import Sections
+
+
 class ChannelGroupParamAdapter:
     parameter_full_name = "stats.channel_group"
 
@@ -9,3 +13,18 @@ class ChannelGroupParamAdapter:
 
         return query_params
     
+
+def track_channels(channel_ids):
+    max_upsert_channels = 10000
+    manager = ChannelManager(sections=(Sections.MAIN, Sections.CUSTOM_PROPERTIES),
+                             upsert_sections=(Sections.MAIN, Sections.CUSTOM_PROPERTIES))
+    offset = 0
+    channels_to_update = channel_ids[:max_upsert_channels]
+    while channels_to_update:
+        channels = manager.get_or_create(channels_to_update)
+        for channel in channels:
+            channel.populate_custom_properties(is_tracked=True)
+        manager.upsert(channels)
+        offset += max_upsert_channels
+        channels_to_update = channel_ids[offset:offset+max_upsert_channels]
+    return len(channel_ids)
