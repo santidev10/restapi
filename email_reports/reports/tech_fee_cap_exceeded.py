@@ -24,11 +24,9 @@ class TechFeeCapExceeded(BaseCampaignEmailReport):
         self.fake_tech_fee_cap = kwargs.get("fake_tech_fee_cap")
 
     def send(self):
-        today = now_in_default_tz().date()
-
         placements = OpPlacement.objects.filter(
             opportunity__probability=100,
-            start__lte=today, end__gte=today,
+            start__lte=self.today, end__gte=self.today,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap__isnull=False,
             tech_fee_type__isnull=False,
