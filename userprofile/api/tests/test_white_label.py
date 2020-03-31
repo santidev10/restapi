@@ -104,6 +104,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         white_label = WhiteLabel.objects.get(domain=DEFAULT_DOMAIN)
         payload = {
             "id": white_label.id,
+            "domain": white_label.domain,
             "config": {
                 "logo": "test_url",
                 "favicon": "test_favicon",
@@ -129,6 +130,7 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
         white_label.save()
         payload = {
             "id": white_label.id,
+            "domain": white_label.domain,
             "config": {
                 "logo": "test_url",
             }
@@ -241,4 +243,20 @@ class WhiteLabelAPITestCase(ExtendedAPITestCase):
             image = BytesIO(b'mybinarydata')
             url = self._url + f"?id={white_label.id}&image_type=invalid_image_field"
             response = self.client.post(url, image, content_type="image/png")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_save_empty_domain_fail(self):
+        self.create_admin_user()
+        payload = {
+            "domain": "",
+        }
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+        payload = {
+            "domain": " ",
+        }
+        with override_settings(ALLOWED_HOSTS=['*']):
+            response = self.client.post(self._url, json.dumps(payload), content_type="application/json; charset=utf-8")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)

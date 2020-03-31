@@ -1,3 +1,4 @@
+from django.db.utils import IntegrityError
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import JSONField
@@ -7,7 +8,7 @@ from userprofile.models import WhiteLabel
 
 
 class WhiteLabelSerializer(ModelSerializer):
-    domain = CharField(max_length=255, required=False)
+    domain = CharField(max_length=255)
     config = JSONField(required=False)
 
     class Meta:
@@ -24,8 +25,6 @@ class WhiteLabelSerializer(ModelSerializer):
 
     def validate_domain(self, domain):
         errs = []
-        if WhiteLabel.objects.filter(domain=domain).exists():
-            raise ValidationError("Domain already exists.")
         try:
             if " " in domain:
                 errs.append("Domain may not contain spaces.")
@@ -40,3 +39,18 @@ class WhiteLabelSerializer(ModelSerializer):
         if errs:
             raise ValidationError(errs)
         return domain
+
+    def create(self, validated_data):
+        try:
+            return WhiteLabel.objects.create(**validated_data)
+        except IntegrityError:
+            raise ValidationError(f"Domain: {validated_data['domain']} already exists.")
+
+    def update(self, instance, validated_data):
+        instance.domain = validated_data["domain"]
+        instance.config = validated_data.get("config", instance.config)
+        try:
+            instance.save()
+        except IntegrityError:
+            raise ValidationError(f"Domain: {validated_data['domain']} already exists.")
+        return instance
