@@ -64,7 +64,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         with open(self.test_file_name, "r") as f:
             response = self.client.post(self.url, data={'channel_ids_file': f})
         self.assertEqual(f"Added {len(new_channel_ids)} manually tracked channels.", response.data)
-        old_channel = self.manager.get([self.channel_id_1])
+        old_channel = self.manager.get([self.channel_id_1])[0]
         new_channels = self.manager.get([new_channel_ids])
         self.assertEqual(old_channel.custom_properties.is_tracked, None)
         for new_channel in new_channels:
