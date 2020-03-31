@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 import logging
+from channel.utils import track_channels
 from audit_tool.models import AuditChannelMeta
 logger = logging.getLogger(__name__)
 from pid import PidFile
@@ -21,18 +22,18 @@ class Command(BaseCommand):
         if not self.thread_id:
             self.num_channels = 100000
         with PidFile(piddir='.', pidname='audit_sync_channels_with_viewiq.pid') as p:
-            count = 0
             pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gt=5000)
             total_pending = pending_channels.count()
             if total_pending == 0:
                 logger.info("No channels to sync.")
                 raise Exception("No channels to sync.")
+            channel_ids = []
             for channel_meta in pending_channels[:self.num_channels]:
-                channel_id = channel_meta.channel.channel_id
-                # CHECK HERE FOR ES DOCUMENT FOR THIS CHANNEL_ID
-                # CREATE IF DOESN'T EXIST WITH MANUAL TRACKED=TRUE
-                channel_meta.synced_with_viewiq = True
-                channel_meta.save(update_fields=['synced_with_viewiq'])
-                count+=1
-            logger.info("Done {} channels".format(count))
-            raise Exception("Done {} channels: {} total pending.".format(count, total_pending))
+                channel_ids.append(channel_meta.channel.channel_id)
+            try:
+                track_channels(channel_ids)
+            except Exception as e:
+                raise Exception(e)
+            AuditChannelMeta.objects.filter(channel__channel_id__in=channel_ids).update(synced_with_viewiq=True)
+            logger.info("Done {} channels".format(len(channel_ids)))
+            raise Exception("Done {} channels: {} total pending.".format(len(channel_ids), total_pending))
