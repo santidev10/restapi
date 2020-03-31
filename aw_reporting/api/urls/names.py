@@ -36,6 +36,7 @@ class Name:
 
     class Admin:
         VISIBLE_ACCOUNTS = "visible_accounts"
+        USER_AW_SETTINGS = "user_aw_settings"
 
     class AWAccounts:
         LIST = "connect_aw_account_list"
