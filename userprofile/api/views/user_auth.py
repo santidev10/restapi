@@ -279,10 +279,8 @@ class UserAuthApiView(APIView):
             user = get_user_model().objects.get(email=email)
             if not user.check_password(password):
                 raise ValueError
-        except get_user_model().DoesNotExist:
-            raise LoginException(f"User with email does not exist: {email}.")
-        except ValueError:
-            raise LoginException("Invalid password.")
+        except Exception:
+            raise LoginException("That username and password combination does not exist.")
 
         # send back mfa options
         response = {
