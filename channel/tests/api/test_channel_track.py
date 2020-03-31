@@ -28,7 +28,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         })
 
     def test_channel_track_simple(self):
-        user = self.create_test_user
+        user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET)
         user.add_custom_user_permission("vet_audit")
         user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
@@ -40,14 +40,14 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
             writer = csv.writer(f)
             for cid in channel_ids:
                 writer.writerow([cid])
-            response = self.client.post(self.url, files={'channel_ids': f})
+            response = self.client.post(self.url, data={'channel_ids_file': f})
         self.assertEqual(response.data, f"Added {len(channel_ids)} manually tracked channels.")
         channels = self.manager.get(channel_ids)
         for channel in channels:
             self.assertEqual(channel.custom_properties.is_tracked, True)
 
     def test_channel_track_duplicate(self):
-        user = self.create_test_user
+        user = self.create_test_user()
         Group.objects.get_or_create(name=PermissionGroupNames.AUDIT_VET)
         user.add_custom_user_permission("vet_audit")
         user.add_custom_user_group(PermissionGroupNames.AUDIT_VET)
@@ -59,7 +59,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
             writer.writerow([self.channel_id_1])
             for cid in new_channel_ids:
                 writer.writerow([cid])
-            response = self.client.post(self.url, files={'channel_ids': f})
+            response = self.client.post(self.url, data={'channel_ids_file': f})
         self.assertEqual(response.data, f"Added {len(new_channel_ids)} manually tracked channels.")
         old_channel = self.manager.get([self.channel_id_1])
         new_channels = self.manager.get([new_channel_ids])
