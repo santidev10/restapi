@@ -20,11 +20,13 @@ def track_channels(channel_ids):
                              upsert_sections=(Sections.MAIN, Sections.CUSTOM_PROPERTIES))
     offset = 0
     channels_to_update = channel_ids[:max_upsert_channels]
+    new_channels_counter = 0
     while channels_to_update:
-        channels = manager.get_or_create(channels_to_update)
+        channels = manager.get_or_create(channels_to_update, only_new=True)
+        new_channels_counter += len(channels)
         for channel in channels:
             channel.populate_custom_properties(is_tracked=True)
         manager.upsert(channels)
         offset += max_upsert_channels
         channels_to_update = channel_ids[offset:offset+max_upsert_channels]
-    return len(channel_ids)
+    return new_channels_counter
