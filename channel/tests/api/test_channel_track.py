@@ -40,8 +40,9 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
             writer = csv.writer(f)
             for cid in channel_ids:
                 writer.writerow([cid])
+        with open(self.test_file_name, "r") as f:
             response = self.client.post(self.url, data={'channel_ids_file': f})
-        self.assertEqual(response.data, f"Added {len(channel_ids)} manually tracked channels.")
+        self.assertEqual(f"Added {len(channel_ids)} manually tracked channels.", response.data)
         channels = self.manager.get(channel_ids)
         for channel in channels:
             self.assertEqual(channel.custom_properties.is_tracked, True)
@@ -59,8 +60,9 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
             writer.writerow([self.channel_id_1])
             for cid in new_channel_ids:
                 writer.writerow([cid])
+        with open(self.test_file_name, "r") as f:
             response = self.client.post(self.url, data={'channel_ids_file': f})
-        self.assertEqual(response.data, f"Added {len(new_channel_ids)} manually tracked channels.")
+        self.assertEqual(f"Added {len(new_channel_ids)} manually tracked channels.", response.data)
         old_channel = self.manager.get([self.channel_id_1])
         new_channels = self.manager.get([new_channel_ids])
         self.assertEqual(old_channel.custom_properties.is_tracked, None)
