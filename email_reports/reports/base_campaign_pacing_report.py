@@ -88,7 +88,7 @@ class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
         return f"{ad_ops_manager_name} Opportunities {self._problem_str.upper()} Pacing Report"
 
     def _get_risky_flights(self, opportunity):
-        pacing_report = PacingReport()
+        pacing_report = PacingReport(self.today)
         flights_data = pacing_report.get_flights_data(
             placement__opportunity_id=opportunity.id,
             end=self.date_end,
