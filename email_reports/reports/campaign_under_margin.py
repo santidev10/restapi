@@ -28,12 +28,10 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
             self.days_to_end = kwargs.get('days_to_end')
 
     def send(self):
-        today = now_in_default_tz().date()
-
         opportunities = Opportunity.objects.filter(
             probability=100,
-            end__gte=today,  # If a campaign is ending within 7 days
-            end__lte=today + timedelta(days=self.days_to_end - 1),
+            end__gte=self.today,  # If a campaign is ending within 7 days
+            end__lte=self.today + timedelta(days=self.days_to_end - 1),
         ).values("id", "name", "ad_ops_manager__email", "ad_ops_manager__name")
 
         if self.timezone_accounts() is not None:
@@ -41,7 +39,7 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
 
         messages = dict()
 
-        pacing_report = PacingReport()
+        pacing_report = PacingReport(self.today)
         for opp in opportunities:
             flights_data = pacing_report.get_flights_data(
                 placement__opportunity_id=opp["id"])
@@ -51,10 +49,6 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
 
             if margin is not None and margin < self.margin_bound:
                 ad_ops_manager = (opp['ad_ops_manager__name'], opp["ad_ops_manager__email"])
-
-                # body = "{} is under margin at {:.2f}%. " \
-                #        "Please adjust IMMEDIATELY.".format(opp["name"],
-                #                                            margin * 100, )
 
                 messages[ad_ops_manager] = messages.get(ad_ops_manager, "") + \
                                      "{} is under margin at {:.2f}%.\n".format(opp["name"], margin * 100)
