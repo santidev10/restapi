@@ -51,7 +51,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="0", minute="0"),
         "kwargs": dict(
             reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
-                     "CampaignOverPacing"],
+                     "CampaignOverPacing", "FlightDeliveredReport"],
         ),
     },
     "daily_es_monitoring_report": {
@@ -66,14 +66,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
             reports=["DailyApexCampaignEmailReport"],
-        ),
-    },
-    "schedule-daily-campaign-reports": {
-        "task": "email_reports.tasks.schedule_daily_reports",
-        "schedule": crontab(hour="0", minute="0"),
-        "kwargs": dict(
-            reports=["DailyCampaignReport"],
-            roles="Ad Ops Manager",
         ),
     },
     "recreate-demo-data": {
@@ -95,10 +87,6 @@ CELERY_BEAT_SCHEDULE = {
     "pull-custom-transcripts": {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
         "schedule": 90
-    },
-    "submit-watson-transcripts": {
-        "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
-        "schedule": 15*60
     },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",

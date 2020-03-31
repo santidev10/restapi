@@ -27,7 +27,7 @@ class Command(BaseCommand):
             '--roles',
             dest='roles',
             help='Pass the only roles which will receive reports '
-                 '(report=DailyCampaignReport)',
+                 '(report=FlightDeliveredReport)',
             type=str,
             default="",
         )

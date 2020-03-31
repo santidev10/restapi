@@ -11,7 +11,7 @@ urlpatterns = [
         name=Name.Admin.VISIBLE_ACCOUNTS),
     url(r'^aw_user_settings/$',
         views.UserAWSettingsApiView.as_view(),
-        name='aw_user_settings'),
+        name=Name.Admin.USER_AW_SETTINGS),
 
     # track
     url(r'^track_filters/$',

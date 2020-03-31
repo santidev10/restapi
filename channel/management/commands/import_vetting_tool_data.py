@@ -225,7 +225,7 @@ class Command(BaseCommand):
         self.invalid_categories.append(category)
 
     def is_valid_category(self, category):
-        return category.lower() in self.iab_categories
+        return category in self.iab_categories
 
     def get_channel_lang_code(self, row: list) -> str:
         raw_lang_code = row[2]
@@ -264,9 +264,9 @@ class Command(BaseCommand):
             print('initializing IAB categories list...')
         for key, value in categories.items():
             if isinstance(key, str):
-                self.iab_categories.append(key.lower())
+                self.iab_categories.append(key)
             if isinstance(value, str):
-                self.iab_categories.append(value.lower())
+                self.iab_categories.append(value)
             if isinstance(value, list) and len(value):
                 self.iab_categories += value
             if isinstance(value, dict):
