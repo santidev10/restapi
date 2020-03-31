@@ -62,6 +62,8 @@ class UserSerializer(ModelSerializer):
             "google_account_id",
             "logo_url",
             "is_active",
+            "aw_settings",
+            "user_type",
         )
 
 
