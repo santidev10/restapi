@@ -35,6 +35,7 @@ class Command(BaseCommand):
             try:
                 track_channels(channel_ids)
             except Exception as e:
+                print((str(e)))
                 raise Exception(e)
             AuditChannelMeta.objects.filter(id__in=meta_ids).update(synced_with_viewiq=True)
             logger.info("Done {} channels".format(len(channel_ids)))
