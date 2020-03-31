@@ -11,10 +11,10 @@ from aw_reporting.models import Account
 from email_reports.reports import CampaignOverPacing
 from email_reports.reports import CampaignUnderMargin
 from email_reports.reports import CampaignUnderPacing
-from email_reports.reports import DailyCampaignReport
 from email_reports.reports import ESMonitoringEmailReport
 from email_reports.reports import TechFeeCapExceeded
 from email_reports.reports import DailyApexCampaignEmailReport
+from email_reports.reports import FlightDeliveredReport
 from utils.datetime import from_local_to_utc
 from saas import celery_app
 
@@ -56,9 +56,9 @@ def send_daily_email_reports(reports=None, margin_bound=None, days_to_end=None, 
 
 
 EMAIL_REPORT_CLASSES = (
-    DailyCampaignReport,
     DailyApexCampaignEmailReport,
     CampaignUnderMargin,
+    FlightDeliveredReport,
     TechFeeCapExceeded,
     CampaignUnderPacing,
     CampaignOverPacing,
