@@ -26,6 +26,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
                 "id": self.channel_id_1
             }
         })
+        self.manager.upsert([channel_1])
 
     def test_channel_track_simple(self):
         user = self.create_test_user()
