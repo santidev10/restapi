@@ -10,6 +10,7 @@ from unittest.mock import patch
 from django.db import Error
 from django.db.backends.utils import CursorWrapper
 from django.test import TransactionTestCase
+from google.auth.exceptions import RefreshError
 from googleads.errors import AdWordsReportBadRequestError
 from requests import HTTPError
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -985,7 +986,6 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
         downloader_mock.side_effect = exception
 
         with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
-            # setup_update_campaigns()
             GoogleAdsUpdater(account).update_campaigns()
 
         account.refresh_from_db()
@@ -1230,6 +1230,42 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
 
         to_update = GoogleAdsUpdater.get_accounts_to_update()
         self.assertIn(acc.id, to_update)
+
+    def test_revoked_oauth(self):
+        account = self._create_account(is_active=True)
+
+        exception = RefreshError("invalid_grant")
+        aw_client_mock = MagicMock()
+        downloader_mock = aw_client_mock.GetReportDownloader().DownloadReportAsStream
+        downloader_mock.side_effect = exception
+
+        self.assertTrue(AWAccountPermission.objects.filter(
+            account=account.managers.first(), aw_connection__revoked_access=False).exists())
+
+        with patch("aw_reporting.google_ads.google_ads_updater.get_web_app_client", return_value=aw_client_mock):
+            GoogleAdsUpdater(account).update_campaigns()
+
+        account.refresh_from_db()
+        self.assertFalse(AWAccountPermission.objects.filter(
+            account=account.managers.first(), aw_connection__revoked_access=False).exists())
+
+    def test_get_accounts_to_update_multiple_aw_cid(self):
+        now = datetime.now(utc)
+        today = now.date()
+        will_end = today + timedelta(days=31)
+        acc_1 = Account.objects.create(id=next(int_iterator), name="account_1", is_active=True)
+        acc_2 = Account.objects.create(id=next(int_iterator), name="account_2", is_active=True)
+
+        aw_cid = f"{acc_1.id}, {acc_2.id}"
+        op_1 = Opportunity.objects.create(id=next(int_iterator), name="test_1", aw_cid=aw_cid, end=will_end)
+
+        pl = OpPlacement.objects.create(id=next(int_iterator), name="1", opportunity=op_1, number="test_pl", end=today)
+        camp = Campaign.objects.create(id=next(int_iterator), name="camp_1 PLtest_pl", salesforce_placement=pl,
+                                       account=acc_1)
+
+        to_update = GoogleAdsUpdater.get_accounts_to_update()
+        self.assertIn(acc_1.id, to_update)
+        self.assertIn(acc_2.id, to_update)
 
 
 class FakeExceptionWithArgs:

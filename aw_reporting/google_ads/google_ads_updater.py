@@ -89,7 +89,7 @@ class GoogleAdsUpdater(object):
 
     def update_campaigns(self):
         """
-        Update / Save campaigns for all accounts managed by
+        Update / Save campaigns for account
             Run in separate process on a more frequent interval than other reporting data
         :return:
         """
@@ -154,7 +154,13 @@ class GoogleAdsUpdater(object):
         active_accounts_from_placements = Account.objects.filter(id__in=active_ids_from_placements, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
         active_opportunities = Opportunity.objects.filter(end__gte=end_date_threshold)
-        active_ids_from_opportunities = [opp.aw_cid for opp in active_opportunities if opp.aw_cid is not None and opp.aw_cid not in active_ids_from_placements]
+        active_ids_from_opportunities = []
+        for opp in active_opportunities:
+            try:
+                aw_cid = opp.aw_cid.split(",")
+                active_ids_from_opportunities.extend([_id.strip() for _id in aw_cid if _id and _id not in active_ids_from_placements])
+            except AttributeError:
+                continue
         active_accounts_from_opportunities = Account.objects.filter(id__in=active_ids_from_opportunities, can_manage_clients=False, is_active=True).order_by(F(order_by_field).asc(nulls_first=True))
 
         for account in active_accounts_from_placements | active_accounts_from_opportunities:
@@ -209,17 +215,15 @@ class GoogleAdsUpdater(object):
                 )
                 self.execute(updater, client)
 
-            except RefreshError:
-                continue
-
             except AccountInactiveError:
                 self.account.is_active = False
                 self.account.save()
 
-            except HttpAccessTokenRefreshError as e:
+            except (RefreshError, HttpAccessTokenRefreshError) as e:
                 logger.warning((permission, e))
                 aw_connection.revoked_access = True
                 aw_connection.save()
+                continue
 
             except WebFault as e:
                 if "AuthorizationError.USER_PERMISSION_DENIED" in \
