@@ -28,12 +28,14 @@ class Command(BaseCommand):
                 logger.info("No channels to sync.")
                 raise Exception("No channels to sync.")
             channel_ids = []
+            meta_ids = []
             for channel_meta in pending_channels[:self.num_channels]:
                 channel_ids.append(channel_meta.channel.channel_id)
+                meta_ids.append(channel_meta.id)
             try:
                 track_channels(channel_ids)
             except Exception as e:
                 raise Exception(e)
-            AuditChannelMeta.objects.filter(channel__channel_id__in=channel_ids).update(synced_with_viewiq=True)
+            AuditChannelMeta.objects.filter(id__in=meta_ids).update(synced_with_viewiq=True)
             logger.info("Done {} channels".format(len(channel_ids)))
             raise Exception("Done {} channels: {} total pending.".format(len(channel_ids), total_pending))
