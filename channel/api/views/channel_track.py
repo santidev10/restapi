@@ -23,8 +23,7 @@ class ChannelTrackApiView(APIView, PermissionRequiredMixin):
         channel_ids = request.data['channel_ids'] if "channel_ids" in request.data else None
         if not channel_ids:
             raise ValidationError("'channel_ids' field is required in POST Body.")
-        channel_ids = channel_ids.split(",")
-        channel_ids = [channel_id.strip() for channel_id in channel_ids]
+        channel_ids = [channel_id.strip() for channel_id in channel_ids.split(",")]
         try:
             num_tracked = track_channels(channel_ids)
         except Exception as e:
