@@ -10,3 +10,4 @@ class ChannelPathName:
     CHANNEL_LIST_EXPORT = "channel_list_export"
     CHANNEL = "channel"
     CHANNEL_SET = "channel_set"
+    CHANNEL_TRACK = "channel_track"
