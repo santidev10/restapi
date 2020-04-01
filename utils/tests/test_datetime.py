@@ -14,7 +14,7 @@ class FromLocalToUtcCase(TestCase):
             "Atlantic/Canary", "Asia/Bangkok", "Europe/Rome", "America/Vancouver", "America/New_York",
             "Europe/Helsinki", "Asia/Hong_Kong", "Australia/Perth", "Asia/Jakarta"
         )
-        self.utc_now = datetime.now(pytz.utc)
+        self.utc_now = pytz.utc.localize(datetime(day=31, month=3, year=2020, hour=0))
         self.local_time = datetime(day=self.utc_now.day, month=self.utc_now.month, year=self.utc_now.year, hour=6)
 
     def test_not_future_time(self):
