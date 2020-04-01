@@ -201,3 +201,34 @@ class AuthAPITestCase(AwReportingAPITestCase):
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_user_enumeration_protection(self):
+        email = 'test_user@email.com'
+        password = 'Test_password123!'
+        error_message = "That username and password combination does not exist."
+        user = get_user_model().objects.create(email=email)
+        user.set_password(password)
+        user.save()
+
+        bad_email_response = self.client.post(
+            self._url,
+            data=json.dumps({
+                'username': 'a' + email,
+                'password': password,
+            }),
+            content_type='application/json'
+        )
+
+        self.assertEqual(bad_email_response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(bad_email_response.data['message'], error_message)
+
+        bad_pass_response = self.client.post(
+            self._url,
+            data=json.dumps({
+                'username': email,
+                'password': 'a' + password,
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(bad_pass_response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(bad_pass_response.data['message'], error_message)
