@@ -37,7 +37,7 @@ class ChannelTrackTestCase(ExtendedAPITestCase, ESTestCase):
         channel_id_4 = str(next(int_iterator))
         channel_ids = ",".join([channel_id_2, channel_id_3, channel_id_4])
         response = self.client.post(self.url, data={'channel_ids': channel_ids})
-        self.assertEqual(f"Added {len(channel_ids)} manually tracked channels.", response.data)
+        self.assertEqual("Added 3 manually tracked channels.", response.data)
         channels = self.manager.get(channel_ids)
         for channel in channels:
             self.assertEqual(channel.custom_properties.is_tracked, True)
