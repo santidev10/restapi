@@ -9,6 +9,7 @@ from channel.api.views import ChannelListApiView
 from channel.api.views import ChannelListExportApiView
 from channel.api.views import ChannelRetrieveUpdateDeleteApiView
 from channel.api.views import ChannelSetApiView
+from channel.api.views import ChannelTrackApiView
 from .names import ChannelPathName
 
 urlpatterns = [
@@ -20,4 +21,5 @@ urlpatterns = [
     url(r"^channels/export/(?P<export_name>.+)/$", ChannelListExportApiView.as_view(), name=ChannelPathName.CHANNEL_LIST_EXPORT),
     url(r"^channels/(?P<pk>[\w-]+)/$", ChannelRetrieveUpdateDeleteApiView.as_view(), name=ChannelPathName.CHANNEL),
     url(r"^channel_set/$", ChannelSetApiView.as_view(), name=ChannelPathName.CHANNEL_SET),
+    url(r"^channel_track/$", ChannelTrackApiView.as_view(), name=ChannelPathName.CHANNEL_TRACK)
 ]

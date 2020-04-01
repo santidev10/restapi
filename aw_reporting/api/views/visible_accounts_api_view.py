@@ -122,7 +122,7 @@ class UserAWSettingsApiView(APIView, GetUserMixin):
     """
     Visible account list view/edit
     """
-    permission_classes = tuple()
+    permission_classes = (IsAdminUser,)
 
     def get(self, request):
         user_id = self.request.query_params.get('user_id')
