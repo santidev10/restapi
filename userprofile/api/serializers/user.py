@@ -1,5 +1,9 @@
+import boto3
+from botocore.exceptions import ClientError
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import PermissionsMixin
+from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import CharField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
@@ -84,3 +88,18 @@ class UserSerializer(ModelSerializer):
     def validate_sub_domain(self, sub_domain):
         sub_domain_obj = WhiteLabel.get(sub_domain)
         return sub_domain_obj
+
+    def validate_phone_number(self, phone_number):
+        client = boto3.client("cognito-idp")
+        user = self.context["request"].user
+        user_attributes = [{"Name": "phone_number", "Value": phone_number}]
+        try:
+            client.admin_update_user_attributes(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                Username=user.email,
+                UserAttributes=user_attributes
+            )
+        except ClientError as err:
+            error = err.response["Error"]["Message"]
+            raise ValidationError(error)
+        return phone_number

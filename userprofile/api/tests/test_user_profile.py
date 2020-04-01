@@ -1,7 +1,11 @@
 import json
+from mock import patch
 
+from botocore.exceptions import ClientError
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from saas.urls.namespaces import Namespace
 from userprofile.constants import DEFAULT_DOMAIN
@@ -78,3 +82,12 @@ class UserProfileTestCase(ExtendedAPITestCase):
         })
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data['aw_settings']['visible_all_accounts'], False)
+
+    def test_handle_invalid_phone_number(self):
+        self.create_test_user()
+        with patch("userprofile.api.serializers.user.boto3.client", side_effect=ClientError) as mock_client:
+            mock_client.admin_update_user_attributes.side_effect = ClientError
+            response = self._update({
+                "phone_number": "+99999999"
+            })
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
