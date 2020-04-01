@@ -69,7 +69,8 @@ class UserProfileTestCase(ExtendedAPITestCase):
         data = {
             "phone_number": "+1123456789"
         }
-        response = self._update(data)
+        with patch("userprofile.api.serializers.user.boto3.client"):
+            response = self._update(data)
         self.assertEqual(response.status_code, HTTP_200_OK)
         self.assertEqual(response.data["phone_number_verified"], True)
 
