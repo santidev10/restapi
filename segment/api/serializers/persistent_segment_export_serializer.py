@@ -49,7 +49,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
 
 
 class PersistentSegmentChannelExportSerializer(Serializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score")
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score", "Vetted")
 
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
@@ -62,6 +62,7 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     Views = IntegerField(source="stats.views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
+    Vetted = SerializerMethodField('get_vetted')
 
     def __init__(self, *args, **kwargs):
         kwargs.pop("extra_data", None)
@@ -86,3 +87,11 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         except Exception as e:
             iab_category = ""
         return iab_category
+
+    def get_vetted(self, obj):
+        """
+        Indicate that a channel is vetted with a 'Y' when it has a non-empty task_us_data node
+        """
+        if getattr(obj, 'task_us_data', {}):
+            return 'Y'
+        return ''
