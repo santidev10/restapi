@@ -25,7 +25,7 @@ class UserPasswordSetApiView(APIView):
         def get_generic_invalid_response():
             return Response(
                 status=HTTP_400_BAD_REQUEST,
-                data={'error': 'that username and token combination does not exist'}
+                data={'error': 'That username / token is not valid.'}
             )
 
         serializer = self.serializer_class(data=request.data)

@@ -207,7 +207,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
     def test_user_enumeration_protection(self):
         email = 'test_user@email.com'
         password = 'Test_password123!'
-        error_message = "That username and password combination does not exist."
+        error_message = "That username / password is not valid."
         user = get_user_model().objects.create(email=email)
         user.set_password(password)
         user.save()
