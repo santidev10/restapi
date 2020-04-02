@@ -180,7 +180,7 @@ class AuditProcessor(models.Model):
                 start = (cursor - 1) * limit
                 all = all[start:start+limit]
             for a in all:
-                if date_gte and a.completed and a.completed < date_gte:
+                if not search and date_gte and a.completed and a.completed < date_gte:
                     break
                 audits.append(a)
         for a in audits:
