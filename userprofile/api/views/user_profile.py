@@ -26,7 +26,7 @@ class UserProfileApiView(UserFinalizeResponse, APIView):
         if "phone_number" in data:
             data["phone_number_verified"] = True
         serializer = self.serializer_class(
-            instance=request.user, data=request.data, partial=True)
+            instance=request.user, data=request.data, partial=True, context=dict(request=request))
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
