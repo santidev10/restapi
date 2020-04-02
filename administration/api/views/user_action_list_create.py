@@ -12,6 +12,7 @@ from administration.api.serializers import UserActionRetrieveSerializer
 from administration.models import UserAction
 from userprofile.api.views.user_finalize_response import UserFinalizeResponse
 from utils.api_paginator import CustomPageNumberPaginator
+from rest_framework.permissions import IsAdminUser
 
 
 class UserActionPaginator(CustomPageNumberPaginator):
@@ -28,7 +29,7 @@ class UserActionListCreateApiView(UserFinalizeResponse, ListCreateAPIView):
     pagination_class = UserActionPaginator
     serializer_class = UserActionRetrieveSerializer
     create_serializer_class = UserActionCreateSerializer
-    permission_classes = tuple()
+    permission_classes = (IsAdminUser,)
 
     def post(self, request, *args, **kwargs):
         """

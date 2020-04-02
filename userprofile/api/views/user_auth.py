@@ -99,7 +99,10 @@ class UserAuthApiView(APIView):
         """
         if not request.user.is_authenticated:
             return Response(status=HTTP_401_UNAUTHORIZED)
-        Token.objects.get(user=request.user).delete()
+        try:
+            request.auth.delete()
+        except AttributeError:
+            pass
         return Response()
 
     def get_google_user(self, token: str):

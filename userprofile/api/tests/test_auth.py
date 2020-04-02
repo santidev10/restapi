@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AWAccountPermission
 from aw_reporting.api.tests.base import AWConnection
@@ -17,6 +18,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
+from userprofile.models import UserDeviceToken
 from utils.unittests.reverse import reverse
 
 
@@ -218,7 +220,6 @@ class AuthAPITestCase(AwReportingAPITestCase):
             }),
             content_type='application/json'
         )
-
         self.assertEqual(bad_email_response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(bad_email_response.data['message'], error_message)
 
@@ -232,3 +233,14 @@ class AuthAPITestCase(AwReportingAPITestCase):
         )
         self.assertEqual(bad_pass_response.status_code, HTTP_400_BAD_REQUEST)
         self.assertEqual(bad_pass_response.data['message'], error_message)
+
+    def test_logout_unauthenticated_fail(self):
+        response = self.client.delete(self._url)
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+
+    def test_logout_success(self):
+        user = self.create_test_user()
+        token = UserDeviceToken.objects.filter(user=user).last()
+        response = self.client.delete(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertFalse(UserDeviceToken.objects.filter(key=token.key).exists())
