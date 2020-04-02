@@ -180,7 +180,7 @@ class AuditProcessor(models.Model):
                 start = (cursor - 1) * limit
                 all = all[start:start+limit]
             for a in all:
-                if date_gte and a.completed and a.completed < date_gte:
+                if not search and date_gte and a.completed and a.completed < date_gte:
                     break
                 audits.append(a)
         for a in audits:
@@ -377,6 +377,7 @@ class AuditChannelMeta(models.Model):
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
+    synced_with_viewiq = models.NullBooleanField(db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)

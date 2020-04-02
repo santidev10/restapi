@@ -19,7 +19,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
         response = self.client.post(
             self.password_reset_url,
             data={"email": "notexistsemail@example.com"})
-        self.assertEqual(HTTP_404_NOT_FOUND, response.status_code)
+        self.assertEqual(HTTP_202_ACCEPTED, response.status_code)
 
     def test_obtain_reset_link_fail_user_is_admin(self):
         user = self.create_test_user()
@@ -28,7 +28,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
         response = self.client.post(
             self.password_reset_url,
             data={"email": user.email})
-        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
+        self.assertEqual(HTTP_202_ACCEPTED, response.status_code)
 
     def test_success_obtain_reset_link(self):
         user = self.create_test_user(False)
@@ -55,7 +55,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
                   "email": "test@example.com",
                   "token": "123"},
             headers={"content-type": "application/json"})
-        self.assertEqual(HTTP_404_NOT_FOUND, response.status_code)
+        self.assertEqual(HTTP_400_BAD_REQUEST, response.status_code)
 
     def test_set_password_fail_invalid_token(self):
         user = self.create_test_user(False)
