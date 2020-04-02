@@ -23,9 +23,11 @@ class UserPasswordResetApiView(APIView):
         try:
             user = get_user_model().objects.get(email=email)
         except get_user_model().DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
+            # for both cases below, we do not want to reveal whether or not a user exists, to protect against
+            # brute-force attacks
+            return Response(status=HTTP_202_ACCEPTED)
         if user.is_superuser:
-            return Response(status=HTTP_403_FORBIDDEN)
+            return Response(status=HTTP_202_ACCEPTED)
         token = PasswordResetTokenGenerator().make_token(user)
         host = request.build_absolute_uri("/")
         reset_uri = "{host}password_reset/?email={email}&token={token}".format(

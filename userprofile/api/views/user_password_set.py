@@ -22,6 +22,12 @@ class UserPasswordSetApiView(APIView):
         """
         Update user password
         """
+        def get_generic_invalid_response():
+            return Response(
+                status=HTTP_400_BAD_REQUEST,
+                data={'error': 'That username / token is not valid.'}
+            )
+
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -30,9 +36,9 @@ class UserPasswordSetApiView(APIView):
         try:
             user = get_user_model().objects.get(email=email)
         except get_user_model().DoesNotExist:
-            return Response(status=HTTP_404_NOT_FOUND)
+            return get_generic_invalid_response()
         if not PasswordResetTokenGenerator().check_token(user, token):
-            return Response({"error": "Invalid link"}, HTTP_400_BAD_REQUEST)
+            return get_generic_invalid_response()
         if user.is_superuser:
             return Response(status=HTTP_406_NOT_ACCEPTABLE)
         user.set_password(serializer.data.get("new_password"))
