@@ -19,7 +19,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.num_channels = options.get('num_channels')
-        if not self.thread_id:
+        if not self.num_channels:
             self.num_channels = 100000
         with PidFile(piddir='.', pidname='audit_sync_channels_with_viewiq.pid') as p:
             pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=5000)
