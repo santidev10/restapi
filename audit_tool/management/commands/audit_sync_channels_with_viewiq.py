@@ -22,7 +22,7 @@ class Command(BaseCommand):
         if not self.num_channels:
             self.num_channels = 100000
         with PidFile(piddir='.', pidname='audit_sync_channels_with_viewiq.pid') as p:
-            pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=5000)
+            pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=5000).order_by("-subscribers")
             total_pending = pending_channels.count()
             if total_pending == 0:
                 logger.info("No channels to sync.")
