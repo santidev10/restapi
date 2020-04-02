@@ -43,14 +43,14 @@ class Command(BaseCommand):
         with PidFile(piddir='.', pidname='audit_fill_channels{}.pid'.format(self.thread_id)) as p:
             count = 0
             pending_channels = AuditChannelMeta.objects.filter(channel__processed_time__isnull=True)
-            if pending_channels.count() == 0:
+            total_to_go = pending_channels.count()
+            if total_to_go == 0:
                 logger.info("No channels to fill.")
                 self.fill_recent_video_timestamp()
                 raise Exception("No channels to fill.")
             channels = {}
             num = 500
             start = self.thread_id * num
-            total_to_go = pending_channels.count()
             for channel in pending_channels[start:start+num]:
                 channels[channel.channel.channel_id] = channel
                 count+=1
