@@ -157,8 +157,8 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(new_channel_vet.processed, None)
         self.assertEqual(new_channel_vet.checked_out_at, None)
-        iab_categories = ['Video Gaming', 'PC Games', 'MMOs']
-        invalid_iab_categories = ['MMOs']
+        iab_categories = ['Video Gaming', 'PC Games', 'MMOs', 'asdf']
+        invalid_iab_categories = ['asdf']
         valid_iab_categories = list(set(iab_categories) - set(invalid_iab_categories))
         task_us = dict(
             lang_code="ko",
