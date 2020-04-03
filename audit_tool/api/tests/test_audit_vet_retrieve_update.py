@@ -157,12 +157,15 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
 
         self.assertEqual(new_channel_vet.processed, None)
         self.assertEqual(new_channel_vet.checked_out_at, None)
+        iab_categories = ['Video Gaming', 'PC Games', 'MMOs']
+        invalid_iab_categories = ['MMOs']
+        valid_iab_categories = list(set(iab_categories) - set(invalid_iab_categories))
         task_us = dict(
             lang_code="ko",
             age_group="0",
             gender="2",
             brand_safety=["1", "2"],
-            iab_categories=["Hiking"],
+            iab_categories=iab_categories,
             content_type="2"
         )
         monetization = dict(is_monetizable=False)
@@ -177,7 +180,7 @@ class AuditVetRetrieveUpdateTestCase(ExtendedAPITestCase):
         self.assertEqual(data["age_group"], serialized.data["age_group"])
         self.assertEqual(data["gender"], serialized.data["gender"])
         self.assertEqual(data["brand_safety"], serialized.data["brand_safety"])
-        self.assertEqual(data["iab_categories"], serialized.data["iab_categories"])
+        self.assertCountEqual(data["iab_categories"], valid_iab_categories)
         self.assertEqual(data["content_type"], serialized.data["content_type"])
         self.assertEqual(data["is_monetizable"], monetization["is_monetizable"])
         self.assertEqual(data["segment_title"], segment_3.title)

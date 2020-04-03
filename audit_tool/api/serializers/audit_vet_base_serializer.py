@@ -236,34 +236,3 @@ class AuditVetBaseSerializer(Serializer):
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])
 
-    @property
-    def data(self):
-        """
-        we want to remove invalid iab categories from the return, this will
-        help us self-clean these invalid-iab categories. when the categories
-        list is PATCHed back in, the new list will be missing the invalid
-        categories.
-        """
-        ret = super(AuditVetBaseSerializer, self).data
-        try:
-            categories = ret['iab_categories']
-        except KeyError:
-            categories = None
-        if categories:
-            valid_categories = self.filter_invalid_iab_categories(categories)
-            ret['iab_categories'] = valid_categories
-
-        return ret
-
-    def filter_invalid_iab_categories(self, categories: list) -> list:
-        """
-        remove invalid iab categories from the passed list of categories
-        """
-        valid_categories = []
-        for category in categories:
-            try:
-                category_as_list = self.validate_iab_categories([category])
-            except ValidationError:
-                continue
-            valid_categories = valid_categories + category_as_list
-        return valid_categories
