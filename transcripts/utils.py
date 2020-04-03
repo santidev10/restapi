@@ -223,6 +223,7 @@ class YTTranscriptsScraper(object):
         for vid_id in self.vid_ids:
             try:
                 yt_vid = YTVideo(vid_id)
+                self.vids.append(yt_vid)
                 if yt_vid.vid_url_status != 200:
                     raise Exception(f"Failed to get response from Youtube for Video: '{vid_id}'. "
                                     f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'")
@@ -230,9 +231,8 @@ class YTTranscriptsScraper(object):
                     raise Exception(f"No TTS_URL for Video: '{vid_id}'.")
                 elif not yt_vid.subtitles_list_url:
                     raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
-                elif not yt_vid.tracks and not yt_vid.targets:
+                elif not yt_vid.tracks_meta and not yt_vid.targets_meta:
                     raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
-                self.vids.append(yt_vid)
             except Exception as e:
                 failed_vid_reasons[vid_id] = e
                 continue
