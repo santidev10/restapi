@@ -2,11 +2,6 @@ import requests
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
 from bs4 import BeautifulSoup as bs
-import json
-import re
-import csv
-from datetime import datetime
-import sys
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 
