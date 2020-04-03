@@ -64,7 +64,8 @@ class ChannelAuthenticationApiView(APIView):
                             access_token=credentials.access_token,
                             client_id=settings.GOOGLE_APP_AUD,
                             client_secret=settings.GOOGLE_APP_SECRET,
-                            access_token_expire_at=credentials.token_expiry)
+                            access_token_expire_at=credentials.token_expiry,
+                            token_revocation=None)
         except AuthChannel.DoesNotExist:
             if not credentials.refresh_token:
                 return Response(status=HTTP_400_BAD_REQUEST, data={"detail": "No auth token"})
