@@ -6,6 +6,7 @@ from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
+from rest_framework.utils.serializer_helpers import ReturnDict
 
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
@@ -118,13 +119,13 @@ class AuditVetBaseSerializer(Serializer):
             raise ValidationError(f"Invalid language: {value}")
         return value
 
-    def validate_iab_categories(self, value):
+    def validate_iab_categories(self, values: list):
         """
         Retrieve AuditCategory iab_category values. Raises ValidationError if not found
-        :param value: str
+        :param values: list
         :return: AuditCategory
         """
-        iab_categories = AuditToolValidator.validate_iab_categories(value)
+        iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
     def validate_gender(self, value):
@@ -234,3 +235,4 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_general_data(**general_data)
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])
+
