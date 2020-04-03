@@ -133,19 +133,16 @@ class YTVideo(object):
         if not list_url_response:
             return [], []
         soup = bs(list_url_response.text, 'xml')
-        try:
-            transcript_list = soup.transcript_list
-            docid = transcript_list.attrs.get('docid')
-            if not docid:
-                raise ValidationError("list_url has no 'docid' attribute.")
-            tracks = self.get_tracks(soup)
-            targets = self.get_targets(soup)
-            num_tracks = len(tracks) + len(targets)
-            if num_tracks < 1:
-                raise ValidationError("list_url has no tracks.")
-            return tracks, targets
-        except Exception as e:
-            raise e
+        transcript_list = soup.transcript_list
+        docid = transcript_list.attrs.get('docid')
+        if not docid:
+            raise ValidationError("list_url has no 'docid' attribute.")
+        tracks = self.get_tracks(soup)
+        targets = self.get_targets(soup)
+        num_tracks = len(tracks) + len(targets)
+        if num_tracks < 1:
+            raise ValidationError("list_url has no tracks.")
+        return tracks, targets
 
     @staticmethod
     def get_tracks(soup: bs):
@@ -222,6 +219,7 @@ class YTTranscriptsScraper(object):
 
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
+        self.vids = []
         self.num_failed_vids = None
         self.failure_reasons = None
 
@@ -239,6 +237,7 @@ class YTTranscriptsScraper(object):
                     raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
                 elif not yt_vid.tracks and not yt_vid.targets:
                     raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
+                self.vids.append(yt_vid)
             except Exception as e:
                 failed_vid_reasons[vid_id] = e
                 continue
