@@ -94,7 +94,7 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
-        if pending_channels.count() == 0:
+        if not self.audit.params.get('done_source_list'):
             if self.thread_id == 0:
                 self.process_seed_list()
                 if self.num_clones > 0:
@@ -182,6 +182,9 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Channel URL's in seed file {}".format(seed_file))
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
 
     def clone_audit(self):
@@ -239,6 +242,9 @@ class Command(BaseCommand):
                         channel=channel,
                 )
                 channels.append(avp)
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return channels
 
     def do_check_channel(self, acp):
