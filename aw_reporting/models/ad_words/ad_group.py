@@ -1,6 +1,7 @@
 from django.db import models
 
 from aw_reporting.models.ad_words.campaign import Campaign
+from aw_reporting.models.ad_words.common import CriterionType
 from aw_reporting.models.ad_words.statistic import ModelPlusDeNormFields, BaseClicksTypesStatisticsModel
 from userprofile.managers import UserRelatedManagerMixin
 
@@ -21,6 +22,7 @@ class AdGroup(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
     cpv_bid = models.PositiveIntegerField(null=True, db_index=True)
     cpm_bid = models.PositiveIntegerField(null=True, db_index=True)
     cpc_bid = models.PositiveIntegerField(null=True, db_index=True)
+    criterion_type = models.ForeignKey(CriterionType, null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return "%s %s" % (self.campaign.name, self.name)
