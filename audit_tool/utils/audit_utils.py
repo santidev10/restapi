@@ -63,10 +63,12 @@ class AuditUtils(object):
             'public figure',
             'military conflict',
         ]
-        return [{
+        all_categories = [{
             "id": category.id,
             "value": category.name
-        } for category in BadWordCategory.objects.exclude(name__in=excluded_category_names)]
+        } for category in BadWordCategory.objects.all() if category.name not in excluded_category_names]
+
+        return all_categories
 
     @staticmethod
     def get_channel_types():
