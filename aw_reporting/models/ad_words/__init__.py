@@ -23,5 +23,6 @@ from .campaign import Campaign
 from .connection import AWAccountPermission
 from .connection import AWConnection
 from .connection import AWConnectionToUserRelation
+from .common import CriterionType
 from .constants import *
 
