@@ -19,13 +19,11 @@ logger = logging.getLogger(__name__)
 class AdGroupUpdater(UpdateMixin):
     RESOURCE_NAME = "ad_group"
 
-    def __init__(self, account, start_date=None, end_date=None):
+    def __init__(self, account):
         self.account = account
-        self.start_date = start_date
-        self.end_date = end_date
         self.criterion_mapping = CriterionType.get_mapping_to_id()
 
-    def update(self, client):
+    def update(self, client, start_date=None, end_date=None):
         click_type_report_fields = (
             "AdGroupId",
             "Date",
@@ -37,8 +35,6 @@ class AdGroupUpdater(UpdateMixin):
         now = now_in_default_tz()
         max_available_date = self.max_ready_date(now, tz_str=self.account.timezone)
         today = now.date()
-        start_date = self.start_date
-        end_date = self.end_date
         stats_queryset = AdGroupStatistic.objects.filter(
             ad_group__campaign__account=self.account
         )
@@ -92,7 +88,7 @@ class AdGroupUpdater(UpdateMixin):
                         "status": row_obj.AdGroupStatus,
                         "type": row_obj.AdGroupType,
                         "campaign_id": campaign_id,
-                        "criterion_type_id": self.criterion_mapping[row_obj.ContentBidCriterionTypeGroup],
+                        "criterion_type_id": self.criterion_mapping.get(row_obj.ContentBidCriterionTypeGroup),
                     }
 
                     if ad_group_id in ad_group_ids:
