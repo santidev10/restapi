@@ -6,7 +6,6 @@ from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
-from aw_reporting.models import CriterionType
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
 from aw_reporting.update.adwords_utils import update_stats_with_click_type_data
@@ -21,7 +20,6 @@ class AdGroupUpdater(UpdateMixin):
 
     def __init__(self, account):
         self.account = account
-        self.criterion_mapping = CriterionType.get_mapping_to_id()
 
     def update(self, client, start_date=None, end_date=None):
         click_type_report_fields = (
@@ -32,6 +30,7 @@ class AdGroupUpdater(UpdateMixin):
             "ClickType",
         )
         report_unique_field_name = "Device"
+
         now = now_in_default_tz()
         max_available_date = self.max_ready_date(now, tz_str=self.account.timezone)
         today = now.date()
@@ -88,7 +87,6 @@ class AdGroupUpdater(UpdateMixin):
                         "status": row_obj.AdGroupStatus,
                         "type": row_obj.AdGroupType,
                         "campaign_id": campaign_id,
-                        "criterion_type_id": self.criterion_mapping.get(row_obj.ContentBidCriterionTypeGroup),
                     }
 
                     if ad_group_id in ad_group_ids:
