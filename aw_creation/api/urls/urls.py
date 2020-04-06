@@ -7,6 +7,7 @@ from aw_creation.api.urls.namespace import Namespace
 from utils.api.urls import APP_NAME
 from .urls_analytics import urlpatterns as analytics_urls
 from .urls_dashboard import urlpatterns as dashboard_urls
+from .urls_media_buying import urlpatterns as media_buying_uls
 
 urlpatterns = [
     url(r'^geo_target_list/$',
@@ -29,6 +30,7 @@ urlpatterns = [
 
     url(r'analytics/', include((analytics_urls, APP_NAME), namespace=Namespace.ANALYTICS)),
     url(r'dashboard/', include((dashboard_urls, APP_NAME), namespace=Namespace.DASHBOARD)),
+    url(r'media_buying/', include((media_buying_uls, APP_NAME), namespace="media_buying")),
 
     # these endpoints are closed for users who don't have Media Buying add-on
     url(r'^account_creation_setup/(?P<pk>\w+)/$',
