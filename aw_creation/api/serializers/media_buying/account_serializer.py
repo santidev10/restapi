@@ -3,8 +3,8 @@ from rest_framework import serializers
 from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
 from aw_reporting.reports.pacing_report import PacingReport
-from aw_reporting.models import Campaign
 from aw_reporting.models import Account
+from aw_reporting.models import Campaign
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypeStr
 
 
@@ -55,11 +55,15 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
         return margin
 
     def get_projected_margin(self, _):
-        spend = self._get_stats_value("cost")
-        plan_units, delivered_units, average_rate = self._get_plan_config()
-        units_remaining = plan_units - delivered_units
-        client_cost = self._get_salesforce_value("plan_cost")
-        projected_margin = (spend + average_rate * units_remaining) / client_cost
+        projected_margin = None
+        try:
+            spend = self._get_stats_value("cost")
+            plan_units, delivered_units, average_rate = self._get_plan_config()
+            units_remaining = plan_units - delivered_units
+            client_cost = self._get_salesforce_value("plan_cost")
+            projected_margin = (spend + average_rate * units_remaining) / client_cost
+        except TypeError:
+            pass
         return projected_margin
 
     def get_clicks(self, _):
