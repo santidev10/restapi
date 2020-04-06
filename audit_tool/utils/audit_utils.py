@@ -54,10 +54,20 @@ class AuditUtils(object):
 
     @staticmethod
     def get_brand_safety_categories():
+        excluded_category_names = [
+            'kids content',
+            'news politics religion',
+            'gaming',
+            'music/hip-hop',
+            'fighting & contact sports',
+            'public figure',
+            'military conflict',
+        ]
         all_categories = [{
             "id": category.id,
             "value": category.name
-        } for category in BadWordCategory.objects.all()]
+        } for category in BadWordCategory.objects.all() if category.name not in excluded_category_names]
+
         return all_categories
 
     @staticmethod
