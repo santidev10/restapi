@@ -19,6 +19,16 @@ BASE_SERIALIZER_FIELDS = (
     "margin",
 )
 
+KPI_FILTERS = (
+    "average_cpv",
+    "average_cpm",
+    "margin",
+    "cost",
+    "video_views_share", # Percentage of video_views of total
+    "impressions_share", # Percentage of impressions of total
+    "view_rate",
+)
+
 CAMPAIGN_ID = "campaign_id"
 CAMPAIGN_NAME = "campaign_name"
 AD_GROUP_NAME = "ad_group_name"
