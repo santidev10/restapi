@@ -46,7 +46,7 @@ class AccountTargetingReport:
         self.account = account
         self.now = timezone.now()
 
-    def get_stats(self, criterion_types=None, sort_key="campaign_id", statistics_filters=None, kpi_params=None):
+    def get_stats(self, criterion_types=None, sort_key="campaign_id", statistics_filters=None, kpi_filters=None):
         """
         Retrieve statistics for provided criterion_types values
         :param criterion_types: list [str, str, ...] -> List of aw_reporting.models.Criterion types to retrieve statistics for
@@ -64,7 +64,7 @@ class AccountTargetingReport:
         filters = self._build_filters(statistics_filters or {})
         all_data = []
         for config in targeting_configs:
-            data = self._get_stats(config, filters, kpi_params=kpi_params)
+            data = self._get_stats(config, filters, kpi_filters=kpi_filters)
             all_data.extend(data)
         final = self._sort_data(all_data, sort_key)
         return final
@@ -93,12 +93,12 @@ class AccountTargetingReport:
         sorted_data = sorted(data, key=lambda x: x[sort_value], reverse=reverse)
         return sorted_data
 
-    def _get_stats(self, config, filters, kpi_params=None):
+    def _get_stats(self, config, filters, kpi_filters=None):
         """
         Retrieve stats with provided CriterionConfig named tuple config
         Handles config containing multiple model / serializer pairs
         :param config: namedtuple: Criterion
-        :param kpi_params: dict[filters: str, sorts: str] -> Dictionary with kpi filters / sorts to apply in serializers
+        :param kpi_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters / sorts to apply in serializers
         :return:
         """
         if type(config.model) is list:
@@ -112,7 +112,7 @@ class AccountTargetingReport:
         for model, serializer_class in config:
             queryset = model.objects.filter(filters)
             # Pass kpi_params kwarg to filter / sort for aggregated targeting statistics
-            data = serializer_class(queryset, many=True, context=dict(now=self.now, params=kpi_params)).data
+            data = serializer_class(queryset, many=True, context=dict(now=self.now, params=kpi_filters)).data
             self.update_kpi_filters(base_kpi_filters, KPI_FILTERS, data)
             all_data.extend(data)
         return all_data

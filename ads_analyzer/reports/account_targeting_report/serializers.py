@@ -1,25 +1,8 @@
-from django.db.models import Subquery
-from rest_framework.serializers import CharField
-from rest_framework.serializers import IntegerField
-from rest_framework.serializers import ReadOnlyField
-
-from django.db.models import Case
-from django.db.models import F
-from django.db.models import Q
-from django.db.models import FloatField as DBFloatField
-from django.db.models import OuterRef
-from django.db.models import QuerySet
-from django.db.models import Subquery
-from django.db.models import Sum
-from django.db.models import When
-from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
-from rest_framework.fields import DateField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
-from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
@@ -35,7 +18,6 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
 
 
@@ -48,7 +30,7 @@ class AgeTargetingSerializer(BaseSerializer):
         model = AgeRangeStatistic
         group_by = ("ad_group__id", "age_range_id")
 
-    def get_name(self, obj):
+    def get_target_name(self, obj):
         age_range = age_range_str(obj["age_range_id"])
         return age_range
 
@@ -72,7 +54,7 @@ class DeviceSerializer(BaseSerializer):
         model = AdGroupStatistic
         group_by = ("ad_group__id", "device_id")
 
-    def get_name(self, obj):
+    def get_target_name(self, obj):
         device = device_str(obj["device_id"])
         return device
 
@@ -86,7 +68,7 @@ class GenderTargetingSerializer(BaseSerializer):
         model = GenderStatistic
         group_by = ("ad_group__id", "gender_id")
 
-    def get_name(self, obj):
+    def get_target_name(self, obj):
         gender = gender_str(obj["gender_id"])
         return gender
 
