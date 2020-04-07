@@ -1,18 +1,12 @@
 from django.db.models import Case
 from django.db.models import F
-from django.db.models import Q
 from django.db.models import ExpressionWrapper
 from django.db.models import FloatField as DBFloatField
-from django.db.models import OuterRef
 from django.db.models import QuerySet
-from django.db.models import Subquery
-from django.db.models import Value
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions.comparison import NullIf
-from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
-from rest_framework.fields import DateField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
@@ -20,9 +14,6 @@ from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from aw_reporting.models import get_ctr
-from aw_reporting.models import get_ctr_v
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
 from aw_reporting.models import CriterionType
 
 CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
@@ -30,42 +21,45 @@ CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
 
 class BaseSerializer(ModelSerializer):
     """
-    Serializer base class for AccountTargeting
-    Inherits from TargetTableSerializer as many field / values are shared
+    Serializer base class for AccountTargetingReport statistics models
     """
+    # Values should be set by children
     criterion_name = ReadOnlyField(default="N/A")
-    name = ReadOnlyField(default="N/A")
+    target_name = ReadOnlyField(default="N/A")
     type = ReadOnlyField(default="N/A")
-    campaign_name = CharField(source="ad_group__campaign__name")
-    ad_group_name = CharField(source="ad_group__name")
 
+    criterion_id = SerializerMethodField()
+
+    # cls.Meta.values_shared
+    ad_group_name = CharField(source="ad_group__name")
+    ad_group_id = IntegerField(source="ad_group__id")
+    campaign_name = CharField(source="ad_group__campaign__name")
+    campaign_id = IntegerField(source="ad_group__campaign__id")
+    rate_type = IntegerField(source="ad_group__campaign__salesforce_placement__goal_type_id")
+    contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
+
+    # Added in second annotation of _build_queryset
     impressions = IntegerField(source="sum_impressions")
     video_views = IntegerField(source="sum_video_views")
     clicks = IntegerField(source="sum_clicks")
     cost = FloatField(source="sum_cost")
 
-    criterion_id = SerializerMethodField()
-    ctr_i = SerializerMethodField()
-    ctr_v = SerializerMethodField()
-
-    average_cpm = SerializerMethodField()
-    average_cpv = SerializerMethodField()
-
-    campaign_id = IntegerField(source="ad_group__campaign__id")
-    ad_group_id = IntegerField(source="ad_group__id")
-    rate_type = IntegerField(source="ad_group__campaign__salesforce_placement__goal_type_id")
-
-    sum_type_delivery = FloatField(source="sum_type_cost")
-    sum_type_cost = FloatField(source="sum_type_delivery")
-
-    cost_share = SerializerMethodField()
-    impressions_share = SerializerMethodField()
-    video_views_share = SerializerMethodField()
+    # Added during last annotation of _build_queryset
+    average_cpm = FloatField()
+    average_cpv = FloatField()
+    cost_share = FloatField()
+    ctr_i = FloatField()
+    ctr_v = FloatField()
+    impressions_share = FloatField()
+    margin = FloatField()
+    profit = FloatField()
+    video_views_share = FloatField()
+    view_rate = FloatField()
 
     class Meta:
         model = None
         fields = (
-            "name",
+            "target_name",
             "type",
             "campaign_id",
             "campaign_name",
@@ -73,6 +67,7 @@ class BaseSerializer(ModelSerializer):
             "ad_group_id",
             "ad_group_name",
             "impressions",
+            "contracted_rate",
 
             "impressions_share",
             "video_views_share",
@@ -86,7 +81,6 @@ class BaseSerializer(ModelSerializer):
             "ctr_i",
             "ctr_v",
             "view_rate",
-            "revenue",
             "profit",
             "margin",
         )
@@ -110,68 +104,21 @@ class BaseSerializer(ModelSerializer):
         criterion = CRITERION_ID_MAPPING[self.criterion_name]
         return criterion
 
-    def get_ctr_i(self, obj):
-        try:
-            return get_ctr(impressions=obj["sum_impressions"], clicks=obj["sum_clicks"])
-        except (TypeError, ZeroDivisionError):
-            value = None
-        return value
-
-    def get_ctr_v(self, obj):
-        try:
-            value = get_ctr_v(impressions=obj["sum_video_views"], clicks=obj["sum_clicks"])
-        except (TypeError, ZeroDivisionError):
-            value = None
-        return value
-
-    def get_average_cpm(self, obj):
-        try:
-            value = obj["sum_cost"] / (obj["sum_impressions"] / 1000)
-        except (TypeError, ZeroDivisionError):
-            value = None
-        return value
-
-    def get_average_cpv(self, obj):
-        try:
-            value = obj["sum_cost"] / (obj["sum_video_views"])
-        except (TypeError, ZeroDivisionError):
-            value = None
-        return value
-
-    def get_cost_share(self, obj):
-        try:
-            cost_share = obj["sum_cost"] / obj["ad_group__cost"]
-        except (KeyError, ZeroDivisionError):
-            cost_share = None
-        return cost_share
-
-    def get_video_views_share(self, obj):
-        try:
-            views_share = obj["sum_video_views"] / obj["ad_group__video_views"]
-        except (KeyError, ZeroDivisionError):
-            views_share = None
-        return views_share
-
-    def get_impressions_share(self, obj):
-        try:
-            impressions_share = obj["sum_impressions"] / obj["ad_group__impressions"]
-        except (KeyError, ZeroDivisionError):
-            impressions_share = None
-        return impressions_share
-
     def __new__(cls, *args, **kwargs):
         if args and isinstance(args[0], QuerySet):
-            kpi_filters = kwargs.get("context", {}).get("kpi_params", {}).get("filters")
-            queryset = cls._build_queryset(args[0], kpi_filters=kpi_filters)
+            params = kwargs.get("context", {}).get("params")
+            queryset = cls._build_queryset(args[0], params=params)
             args = (queryset,) + args[1:]
         return super().__new__(cls, *args, **kwargs)
 
     @classmethod
-    def _build_queryset(cls, queryset, kpi_filters):
+    def _build_queryset(cls, queryset, params=None):
         """
-        Overrides TargetTableSerializer class method
-        Annotate without unneeded fields used in TargetTableSerializer
-        :param queryset:
+        Construct queryset
+        Assign values for aggregation of original queryset statistics, and apply additional
+            annotations for calculated kpi values
+        :param queryset: Queryset
+        :param params: dict[filters, ...]
         :return:
         """
         goal_type_ref = "ad_group__campaign__salesforce_placement__goal_type_id"
@@ -197,6 +144,10 @@ class BaseSerializer(ModelSerializer):
                 )
             ) \
             .annotate(
+                view_rate=ExpressionWrapper(
+                    F("sum_video_views") * 1.0 / NullIf(F("sum_video_impressions"), 0),
+                    output_field=DBFloatField(),
+                ),
                 impressions_share=ExpressionWrapper(
                     F("sum_impressions") * 1.0 / NullIf(F("ad_group__impressions"), 0),
                     output_field=DBFloatField(),
@@ -228,7 +179,17 @@ class BaseSerializer(ModelSerializer):
                 profit=F("revenue") - F("sum_cost"),
                 margin=(F("revenue") - F("sum_cost")) / NullIf(F("revenue"), 0)
             )
-        if kpi_filters:
-            queryset = queryset.filter(**kpi_filters)
-        queryset.query.clear_ordering(force_empty=True)
+        queryset = cls._filter_queryset(queryset, params.get("filters"))
+        return queryset
+
+    @classmethod
+    def _filter_queryset(cls, queryset, filters):
+        """
+        Apply filters to aggregated statistics queryset
+        :param queryset: Queryset
+        :param filters: ddict
+        :return:
+        """
+        if filters is not None:
+            queryset = queryset.filter(**filters)
         return queryset
