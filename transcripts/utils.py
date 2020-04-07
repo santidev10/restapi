@@ -41,8 +41,6 @@ class YTVideo(object):
                 "params": self.params,
                 "subtitle_meta": subtitle_meta
             }
-            if self.asr_track_meta:
-                subtitle_options["asr_track_meta"] = self.asr_track_meta
             subtitle = YTVideoSubtitles(**subtitle_options)
             top_subtitles.append(subtitle)
         return top_subtitles
@@ -52,7 +50,6 @@ class YTVideo(object):
         best_lang_codes_meta = []
         available_lang_codes = set()
         available_lang_codes.update(self.tracks_lang_codes_dict)
-        available_lang_codes.update(self.targets_lang_codes_dict)
         if self.asr_track_meta and self.asr_lang_code:
             best_lang_codes.append(self.asr_lang_code)
             best_lang_codes_meta.append(self.asr_track_meta)
@@ -73,8 +70,7 @@ class YTVideo(object):
 
     def update_lang_code_and_meta(self, lang_code, lang_codes, lang_codes_meta):
         lang_codes.append(lang_code)
-        lang_codes_meta.append(self.tracks_lang_codes_dict.get(lang_code) or
-                               self.targets_lang_codes_dict.get(lang_code))
+        lang_codes_meta.append(self.tracks_lang_codes_dict.get(lang_code))
         return lang_codes, lang_codes_meta
 
     @staticmethod
@@ -164,7 +160,6 @@ class YTVideoSubtitles(object):
         self.vid_id = vid_id
         self.params = params
         self.subtitle_meta = subtitle_meta
-        self.asr_track_meta = asr_track_meta
         self.subtitle_id = None
         self.name = None
         self.is_asr = None
@@ -180,11 +175,8 @@ class YTVideoSubtitles(object):
 
     def set_meta_data(self):
         self.subtitle_id = self.subtitle_meta.get('id')
-        self.name = self.asr_track_meta.get('name')
+        self.name = self.subtitle_meta.get('name')
         self.is_asr = True if self.subtitle_meta.get('kind') == 'asr' else False
-        self.asr_lang_code = self.asr_track_meta.get('lang_code')
-        self.asr_lang_original = self.asr_track_meta.get('lang_original')
-        self.asr_lang_translated = self.asr_track_meta.get('lang_translated')
         self.lang_code = self.subtitle_meta.get('lang_code')
         self.lang_original = self.subtitle_meta.get('lang_original')
         self.lang_translated = self.subtitle_meta.get('lang_translated')
@@ -202,10 +194,8 @@ class YTVideoSubtitles(object):
         for key, value in self.params.items():
             subtitle_url += f"{key}={value}&"
         subtitle_url += f"name={self.name}&lang={self.asr_lang_code}&type=track"
-        if self.asr_track_meta:
+        if self.is_asr:
             subtitle_url += "&kind=asr"
-        if self.is_target():
-            subtitle_url += f"&tlang={self.lang_code}"
         return subtitle_url
 
 
@@ -231,7 +221,7 @@ class YTTranscriptsScraper(object):
                     raise Exception(f"No TTS_URL for Video: '{vid_id}'.")
                 elif not yt_vid.subtitles_list_url:
                     raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
-                elif not yt_vid.tracks_meta and not yt_vid.targets_meta:
+                elif not yt_vid.tracks_meta:
                     raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
             except Exception as e:
                 failed_vid_reasons[vid_id] = e
