@@ -18,7 +18,7 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
         try:
             account = self.instance.account
             self.salesforce = pacing_report.get_opportunities({}, user=self.user, aw_cid=[account.id])[0]
-            self.ads_report = AccountTargetingReport(account).get_stats(kpi_params=self.context.get("targeting_params", {}))
+            self.ads_report = AccountTargetingReport(account)
         except (Account.DoesNotExist, IndexError) as e:
             self.salesforce = {}
 
@@ -26,6 +26,7 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
     margin = serializers.SerializerMethodField()
     projected_margin = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    targeting = serializers.SerializerMethodField()
 
     class Meta(DashboardAccountCreationListSerializer.Meta):
         fields = DashboardAccountCreationListSerializer.Meta.fields + (
@@ -33,7 +34,18 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
             "margin",
             "projected_margin",
             "status",
+            "targeting",
         )
+
+    def get_targeting(self, _):
+        criterion = "Vertical"
+        targeting = self.ads_report.get_stats(
+            criterion_types=criterion,
+            sort_key=self.context.get("kpi_params", {}).get("sort"),
+            statistics_filters=self.context.get("statistics_filters"),
+            kpi_params=self.context.get("kpi_params", {})
+        )
+        return targeting
 
     def get_status(self, obj):
         status = "Not Running"

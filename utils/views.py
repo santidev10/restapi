@@ -1,3 +1,5 @@
+import datetime
+
 from django.http import HttpResponse
 from rest_framework.exceptions import APIException
 from rest_framework.exceptions import ValidationError
@@ -57,6 +59,19 @@ def validate_fields(expected, received, should_raise=True, message="Missing fiel
     else:
         validated = True
     return validated
+
+
+def validate_date(date_str, should_raise=True):
+    validated = None
+    try:
+        datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        validated = date_str
+    except ValueError:
+        if should_raise:
+            raise ValidationError("Incorrect data format, should be YYYY-MM-DD")
+    return validated
+
+
 
 
 class CustomAPIException(APIException):

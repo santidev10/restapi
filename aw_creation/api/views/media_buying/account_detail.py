@@ -11,28 +11,36 @@ from aw_creation.models import AccountCreation
 from aw_creation.api.serializers.analytics.account_creation_details_serializer import \
     AnalyticsAccountCreationDetailsSerializer
 from aw_creation.api.serializers.media_buying.account_serializer import AccountMediaBuyingSerializer
+from utils.views import validate_date
 
 
 ScalarFilter = namedtuple("ScalarFilter", "name type")
+SORT_MAPPING = {
+    "campaign": "campaign_name",
+    "ad_group": "ad_group_name",
+    "target": "target_name",
+}
 
 
 class AccountDetailAPIView(APIView):
     RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "views_share", "video_view_rate")
-    SCALAR_FILTERS = (ScalarFilter("ad_group__campaign__name", "str"), ScalarFilter("impressions", "int"), ScalarFilter("views", "int"))
-    SORTS = ("ad_group__campaign__name", "ad_group__name", "target")
+    SCALAR_FILTERS = (ScalarFilter("impressions", "int"), ScalarFilter("video_views", "int"))
+    SORTS = ("campaign_name", "ad_group_name", "target_name")
     serializer_class = AnalyticsAccountCreationDetailsSerializer
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]
         params = self.request.query_params
-        filters = self._get_all_filters(params)
-        sorts = self._get_sorts(params)
+        statistics_filters = self._get_statistics_filters(params)
+        kpi_filters = self._get_all_filters(params)
+        kpi_sort = self._validate_sort(params)
         account_creation = self._get_account_creation(request, pk)
         serializer_context = {
-            "targeting_params": {
-                "filters": filters,
-                "sorts": sorts,
+            "kpi_params": {
+                "filters": kpi_filters,
+                "sort": kpi_sort,
             },
+            "statistics_filters": statistics_filters,
             "request": request
         }
         data = AccountMediaBuyingSerializer(account_creation, context=serializer_context).data
@@ -45,20 +53,37 @@ class AccountDetailAPIView(APIView):
         except AccountCreation.DoesNotExist:
             raise Http404
 
+    def _get_statistics_filters(self, params):
+        """
+        Get filters for statistics before aggregation
+        :param params:
+        :return:
+        """
+        statistics_filters = {}
+        try:
+            from_date, to_date = [validate_date(value) for value in params["date"].split(",")]
+            statistics_filters.update({
+                "date__gte": from_date,
+                "date__lte": to_date,
+            })
+        except KeyError:
+            pass
+        return statistics_filters
+
     def _get_all_filters(self, params):
         """
         Extract all query param filters
         :return: dict
         """
         filters = {
-            **self._get_range_filters(params),
-            **self._get_scalar_filters(params),
+            **self._get_kpi_range_filters(params),
+            **self._get_kpi_scalar_filters(params),
         }
         return filters
 
-    def _get_range_filters(self, params):
+    def _get_kpi_range_filters(self, params):
         """
-        Get all range filters
+        Get all range filters for aggregated targeting statistics
         Expects values to be comma separated min, max range values
         :param params: request query_params
         :return:
@@ -75,7 +100,7 @@ class AccountDetailAPIView(APIView):
                 pass
         return range_filters
 
-    def _get_scalar_filters(self, params):
+    def _get_kpi_scalar_filters(self, params):
         """
         Get all scalar filters
         Uses ScalarFilter namedtuple's filter type to determine filter suffix
@@ -94,38 +119,13 @@ class AccountDetailAPIView(APIView):
                 pass
         return scalar_filters
 
-    def _get_sorts(self, params):
+    def _validate_sort(self, params):
         """
-        Extract all sort params
+        Extract sort param for aggregated targeting statistics
         Default is to sort by campaign id
         :return: dict
         """
-        sort_by = ["ad_group__campaign__name"]
-        try:
-            # Strip "-" for reverse ordering to check if valid sort
-            sort_by = [sort for sort in params["sort_by"].split(",") if sort.strip("-") in self.SORTS]
-        except KeyError:
-            pass
-        return sort_by
-
-    def get_aggregate_total(self, queryset):
-        """
-        Add aggregate data to response
-        :param request:
-        :param response:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        aggregate_data = queryset \
-            .aggreegate(
-                impressions=Sum("impressions"),
-                views=Sum("views"),
-                view_rate=Avg("view_rate"),
-                contracted_rate=Avg("contracted_rate"),
-                avg_cpm=Avg("avg_cpm"),
-                cost=Avg("cost"),
-                revenue=Avg("revenue"),
-
-            )
-        return aggregate_data
+        sort_param = params.get("sort_by", "campaign")
+        if sort_param.strip("-") not in self.SORTS:
+            raise ValueError(f"Invalid sort_by: {sort_param}. Valid sort_by values: {self.SORTS}")
+        return sort_param
