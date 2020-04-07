@@ -1,9 +1,73 @@
 import requests
+import socks
+from time import sleep
+from proxyscrape import create_collector
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
 from bs4 import BeautifulSoup as bs
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from utils.lang import replace_apostrophes
+
+
+class YTTranscriptsScraper(object):
+    BATCH_SIZE = 100
+
+    def __init__(self, vid_ids):
+        self.vid_ids = vid_ids
+        self.vids = []
+        self.num_failed_vids = None
+        self.failure_reasons = None
+        self.socks_proxies_collector = None
+        self.http_proxies_collector = None
+        self.collect_proxies()
+
+    def collect_proxies(self):
+        self.socks_proxies_collector = create_collector('my-collector', ['socks4', 'socks5'])
+        self.http_proxies_collector = create_collector('http-collector', ['http', 'https'])
+
+    def get_proxy(self):
+        proxy = self.http_proxies_collector.get_proxy() or self.socks_proxies_collector.get_proxy()
+        return {proxy.type: f"{proxy.host}:{proxy.port}"}
+
+    def blacklist_proxy(self, proxy):
+        if 'http' or 'https' in proxy:
+            proxy_url = proxy.get('http') or proxy.get('https')
+            host, port = self.get_proxy_host_and_port(proxy_url)
+            self.http_proxies_collector.blacklist_proxy(host=host, port=port)
+        else:
+            proxy_url = proxy.get('socks4') or proxy.get('socks5')
+            host, port = self.get_proxy_host_and_port(proxy_url)
+            self.socks_proxies_collector.blacklist_proxy(host=host, port=port)
+
+    @staticmethod
+    def get_proxy_host_and_port(proxy_url):
+        proxy_string = proxy_url.split(":")
+        host = proxy_string[0]
+        port = proxy_string[1]
+        return host, port
+
+    def generate_transcript_urls(self):
+        failed_vid_reasons = {}
+        for vid_id in self.vid_ids:
+            try:
+                yt_vid = YTVideo(vid_id, self)
+                self.vids.append(yt_vid)
+                if yt_vid.vid_url_status != 200:
+                    raise Exception(f"Failed to get response from Youtube for Video: '{vid_id}'. "
+                                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'")
+                elif not yt_vid.tts_url:
+                    raise Exception(f"No TTS_URL for Video: '{vid_id}'.")
+                elif not yt_vid.subtitles_list_url:
+                    raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
+                elif not yt_vid.tracks_meta:
+                    raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
+            except Exception as e:
+                failed_vid_reasons[vid_id] = e
+                continue
+        if len(failed_vid_reasons) > 0:
+            self.num_failed_vids = len(failed_vid_reasons)
+            self.failure_reasons = failed_vid_reasons
 
 
 class YTVideo(object):
@@ -14,8 +78,9 @@ class YTVideo(object):
     }
     NUM_SUBTITLES_TO_PULL = 5
 
-    def __init__(self, vid_id):
+    def __init__(self, vid_id, scraper):
         self.vid_id = vid_id
+        self.scraper = scraper
         self.vid_url = self.get_vid_url(vid_id)
         self.vid_url_response = self.get_vid_url_response(self.vid_url)
         self.vid_url_status = self.vid_url_response.status_code
@@ -31,13 +96,23 @@ class YTVideo(object):
         self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
         self.subtitles = self.get_top_subtitles()
 
+    @staticmethod
+    def get_response_through_proxy(scraper, url, headers=None):
+        proxy = scraper.get_proxy()
+        response = requests.get(url, headers=headers, proxies=proxy)
+        while response.status_code == 429:
+            scraper.blacklist_proxy(proxy)
+            proxy = scraper.get_proxy()
+            response = requests.get(url, headers=headers, proxies=proxy)
+        return response
+
     def get_top_subtitles(self):
         if not self.top_subtitles_meta:
             return None
         top_subtitles = []
         for subtitle_meta in self.top_subtitles_meta:
             subtitle_options = {
-                "vid_id": self.vid_id,
+                "video": self,
                 "params": self.params,
                 "subtitle_meta": subtitle_meta
             }
@@ -78,7 +153,8 @@ class YTVideo(object):
         return f"https://www.youtube.com/watch?v={vid_id}"
 
     def get_vid_url_response(self, vid_url):
-        return requests.get(vid_url, headers=self.YT_HEADERS)
+        response = self.get_response_through_proxy(self.scraper, vid_url, headers=self.YT_HEADERS)
+        return response
 
     @staticmethod
     def get_tts_url(yt_response):
@@ -118,7 +194,8 @@ class YTVideo(object):
     def get_list_url_response(self, list_url):
         if not list_url:
             return None
-        return requests.get(list_url, headers=self.YT_HEADERS)
+        response = self.get_response_through_proxy(self.scraper, list_url, headers=self.YT_HEADERS)
+        return response
 
     def parse_list_url(self, list_url_response):
         if not list_url_response:
@@ -156,21 +233,19 @@ class YTVideo(object):
 
 
 class YTVideoSubtitles(object):
-    def __init__(self, vid_id, params=None, subtitle_meta=None, asr_track_meta=None):
-        self.vid_id = vid_id
+    def __init__(self, video, params=None, subtitle_meta=None):
+        self.video = video
         self.params = params
         self.subtitle_meta = subtitle_meta
         self.subtitle_id = None
         self.name = None
         self.is_asr = None
-        self.asr_lang_code = None
-        self.asr_lang_original = None
-        self.asr_lang_translated = None
         self.lang_code = None
         self.lang_original = None
         self.lang_translated = None
         self.type = None
         self.subtitle_url = None
+        self.subtitles = None
         self.set_meta_data()
 
     def set_meta_data(self):
@@ -193,39 +268,14 @@ class YTVideoSubtitles(object):
         subtitle_url = "https://www.youtube.com/api/timedtext?"
         for key, value in self.params.items():
             subtitle_url += f"{key}={value}&"
-        subtitle_url += f"name={self.name}&lang={self.asr_lang_code}&type=track"
+        subtitle_url += f"name={self.name}&lang={self.lang_code}&type=track"
         if self.is_asr:
             subtitle_url += "&kind=asr"
         return subtitle_url
 
-
-class YTTranscriptsScraper(object):
-    BATCH_SIZE = 100
-
-    def __init__(self, vid_ids):
-        self.vid_ids = vid_ids
-        self.vids = []
-        self.num_failed_vids = None
-        self.failure_reasons = None
-
-    def retrieve_transcripts(self):
-        failed_vid_reasons = {}
-        for vid_id in self.vid_ids:
-            try:
-                yt_vid = YTVideo(vid_id)
-                self.vids.append(yt_vid)
-                if yt_vid.vid_url_status != 200:
-                    raise Exception(f"Failed to get response from Youtube for Video: '{vid_id}'. "
-                                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'")
-                elif not yt_vid.tts_url:
-                    raise Exception(f"No TTS_URL for Video: '{vid_id}'.")
-                elif not yt_vid.subtitles_list_url:
-                    raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
-                elif not yt_vid.tracks_meta:
-                    raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
-            except Exception as e:
-                failed_vid_reasons[vid_id] = e
-                continue
-        if len(failed_vid_reasons) > 0:
-            self.num_failed_vids = len(failed_vid_reasons)
-            self.failure_reasons = failed_vid_reasons
+    def get_subtitles(self):
+        response = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
+        soup = bs(response.text, "xml")
+        subtitles = replace_apostrophes(soup.text).strip() if soup else ""
+        subtitles = subtitles.replace(".", ". ").replace("?", "? ").replace("!", "! ")
+        self.subtitles = subtitles
