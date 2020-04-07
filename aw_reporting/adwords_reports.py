@@ -33,7 +33,7 @@ AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "AdGroupStatus", "AdGroupType",
                                          "Date", "Device", "AdNetworkType1",
                                          "AveragePosition",
-                                         "ActiveViewImpressions", "Engagements"
+                                         "ActiveViewImpressions", "Engagements", "ContentBidCriterionTypeGroup"
                                      ) + MAIN_STATISTICS_FILEDS \
                                      + COMPLETED_FIELDS
 GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",

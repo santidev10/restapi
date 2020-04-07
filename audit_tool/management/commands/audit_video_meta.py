@@ -102,7 +102,7 @@ class Command(BaseCommand):
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if pending_videos.count() == 0:
+        if not self.audit.params.get('done_source_list'):
             if self.thread_id == 0:
                 self.process_seed_list()
                 pending_videos = AuditVideoProcessor.objects.filter(
@@ -183,6 +183,9 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
 
     def clone_audit(self):
@@ -214,6 +217,9 @@ class Command(BaseCommand):
                     video=video,
                 )
                 vids.append(avp)
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
 
     def do_check_video(self, videos):
