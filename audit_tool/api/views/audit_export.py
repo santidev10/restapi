@@ -552,7 +552,7 @@ class AuditExportApiView(APIView):
                 v.view_count if v.view_count else "",
                 v.subscribers,
                 video_count.get(channel.channel_id) if video_count.get(channel.channel_id) else 0,
-                v.video_count,
+                v.video_count if v.video_count else "",
                 country,
                 language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
