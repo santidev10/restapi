@@ -267,13 +267,14 @@ def update_flights(sc, force_update, opportunity_ids, today, debug_update):
             try:
                 r = 204 if debug_update else sc.sf.Flight__c.update(flight.id, update)
             except Exception as e:
+                stack_trace = str(e)
                 if getattr(e, "status", 0) == 404:
-                    logger.info(str(e))
+                    logger.info(stack_trace)
                 else:
                     try:
-                        message = f"{flight.name}: {flight.placement.opportunity.ad_ops_manager}\n"
+                        message = f"{flight.name}: {flight.placement.opportunity.ad_ops_manager}\n{stack_trace}"
                     except (AttributeError, OpPlacement.DoesNotExist, Opportunity.DoesNotExist):
-                        message = str(e)
+                        message = stack_trace
                     logger.critical("Unhandled exception: %s" % message)
             else:
                 if r == 204:
