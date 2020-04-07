@@ -21,41 +21,40 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AdGroupStatistic
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import CriterionType
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import age_range_str
+from aw_reporting.models import device_str
+from aw_reporting.models import gender_str
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import AdGroup
-from aw_reporting.models import GenderStatistic
-from aw_reporting.models import KeywordStatistic
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableTopicSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoGenderTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableAudienceSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoAgeRangeTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DevicesTableSerializer
-from aw_reporting.models import TopicStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from aw_reporting.models import get_ctr_v
-from utils.db.get_exists import get_exists
-from ads_analyzer.reports.account_targeting_report.constants import BASE_SERIALIZER_FIELDS
 from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
-from aw_reporting.models import CriterionType
 
 
 class AgeTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.AGE
 
+    name = SerializerMethodField()
+    type = ReadOnlyField(default="AgeRange")
+
     class Meta(BaseSerializer.Meta):
         model = AgeRangeStatistic
         group_by = ("ad_group__id", "age_range_id")
 
+    def get_name(self, obj):
+        age_range = age_range_str(obj["age_range_id"])
+        return age_range
+
 
 class VideoCreativeTableSerializer(BaseSerializer):
-    
     name = CharField(source="ad__creative_name")
     id = CharField(source="creative__id")
     # rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
@@ -67,23 +66,34 @@ class VideoCreativeTableSerializer(BaseSerializer):
 
 
 class DeviceSerializer(BaseSerializer):
+    name = SerializerMethodField()
+    type = ReadOnlyField(default="Device")
 
     class Meta(BaseSerializer.Meta):
         model = AdGroupStatistic
         group_by = ("ad_group__id", "device_id")
 
+    def get_name(self, obj):
+        device = device_str(obj["device_id"])
+        return device
 
-class GenderSerializer(BaseSerializer):
+
+class GenderTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.GENDER
+    name = SerializerMethodField()
+    type = ReadOnlyField(default="Gender")
     
     class Meta(BaseSerializer.Meta):
         model = GenderStatistic
         group_by = ("ad_group__id", "gender_id")
 
+    def get_name(self, obj):
+        gender = gender_str(obj["gender_id"])
+        return gender
+
 
 class KeywordTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.KEYWORD
-    
     name = CharField(source="keyword")
     type = ReadOnlyField(default="Keyword")
 
@@ -94,7 +104,6 @@ class KeywordTargetingSerializer(BaseSerializer):
 
 class TopicTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.VERTICAL
-    
     name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
     type = ReadOnlyField(default="Topic")
@@ -107,7 +116,6 @@ class TopicTargetingSerializer(BaseSerializer):
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.PLACEMENT
-    
     name = CharField(source="yt_id")
     type = ReadOnlyField(default="Channel")
 
@@ -118,7 +126,6 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.PLACEMENT
-    
     name = CharField(source="yt_id")
     type = ReadOnlyField(default="Video")
 
@@ -129,7 +136,6 @@ class PlacementVideoTargetingSerializer(BaseSerializer):
 
 class AudienceTargetingSerializer(BaseSerializer):
     criterion_name = CriterionType.USER_INTEREST_LIST
-
     name = CharField(source="audience__name")
     type = ReadOnlyField(default="Audience")
 
