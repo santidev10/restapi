@@ -1,17 +1,15 @@
-from django.db.models import Subquery
-from rest_framework.serializers import CharField
-from rest_framework.serializers import IntegerField
-from rest_framework.serializers import ReadOnlyField
-
 from django.db.models import Case
 from django.db.models import F
 from django.db.models import Q
+from django.db.models import ExpressionWrapper
 from django.db.models import FloatField as DBFloatField
 from django.db.models import OuterRef
 from django.db.models import QuerySet
 from django.db.models import Subquery
+from django.db.models import Value
 from django.db.models import Sum
 from django.db.models import When
+from django.db.models.functions.comparison import NullIf
 from rest_framework.fields import BooleanField
 from rest_framework.fields import CharField
 from rest_framework.fields import DateField
@@ -21,35 +19,31 @@ from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import AdGroup
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableTopicSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableKeywordSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoGenderTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableAudienceSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DemoAgeRangeTableSerializer
-from ads_analyzer.reports.opportunity_targeting_report.serializers import DevicesTableSerializer
-from aw_reporting.models import TopicStatistic
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models import get_ctr
 from aw_reporting.models import get_ctr_v
-from utils.db.get_exists import get_exists
-from ads_analyzer.reports.account_targeting_report.constants import BASE_SERIALIZER_FIELDS
 from ads_analyzer.reports.opportunity_targeting_report.serializers import TargetTableSerializer
 from aw_reporting.models import CriterionType
 
 CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
 
 
-class BaseSerializer(TargetTableSerializer):
+class BaseSerializer(ModelSerializer):
     """
     Serializer base class for AccountTargeting
     Inherits from TargetTableSerializer as many field / values are shared
     """
-    criterion_name = None
+    criterion_name = ReadOnlyField(default="N/A")
+    name = ReadOnlyField(default="N/A")
+    type = ReadOnlyField(default="N/A")
+    campaign_name = CharField(source="ad_group__campaign__name")
+    ad_group_name = CharField(source="ad_group__name")
+
+    impressions = IntegerField(source="sum_impressions")
+    video_views = IntegerField(source="sum_video_views")
+    clicks = IntegerField(source="sum_clicks")
+    cost = FloatField(source="sum_cost")
+
     criterion_id = SerializerMethodField()
     ctr_i = SerializerMethodField()
     ctr_v = SerializerMethodField()
@@ -68,7 +62,8 @@ class BaseSerializer(TargetTableSerializer):
     impressions_share = SerializerMethodField()
     video_views_share = SerializerMethodField()
 
-    class Meta(TargetTableSerializer.Meta):
+    class Meta:
+        model = None
         fields = (
             "name",
             "type",
@@ -77,14 +72,13 @@ class BaseSerializer(TargetTableSerializer):
             "criterion_id",
             "ad_group_id",
             "ad_group_name",
-            "max_bid",
-            "rate_type",
-            "contracted_rate",
             "impressions",
 
             "impressions_share",
             "video_views_share",
             "cost_share",
+            "average_cpm",
+            "average_cpv",
 
             "video_views",
             "clicks",
@@ -92,12 +86,11 @@ class BaseSerializer(TargetTableSerializer):
             "ctr_i",
             "ctr_v",
             "view_rate",
-            "average_cpm",
-            "average_cpv",
             "revenue",
             "profit",
             "margin",
         )
+        group_by = ("id",)
         values_shared = (
             "ad_group__impressions",
             "ad_group__cost",
@@ -111,6 +104,7 @@ class BaseSerializer(TargetTableSerializer):
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
+        ad_group_ref = "ad_group"
 
     def get_criterion_id(self, *_, **__):
         criterion = CRITERION_ID_MAPPING[self.criterion_name]
@@ -165,8 +159,15 @@ class BaseSerializer(TargetTableSerializer):
             impressions_share = None
         return impressions_share
 
+    def __new__(cls, *args, **kwargs):
+        if args and isinstance(args[0], QuerySet):
+            kpi_filters = kwargs.get("context", {}).get("kpi_params", {}).get("filters")
+            queryset = cls._build_queryset(args[0], kpi_filters=kpi_filters)
+            args = (queryset,) + args[1:]
+        return super().__new__(cls, *args, **kwargs)
+
     @classmethod
-    def _build_queryset(cls, queryset):
+    def _build_queryset(cls, queryset, kpi_filters):
         """
         Overrides TargetTableSerializer class method
         Annotate without unneeded fields used in TargetTableSerializer
@@ -186,6 +187,48 @@ class BaseSerializer(TargetTableSerializer):
                     **{goal_type_ref: SalesForceGoalType.CPV},
                     then=F("impressions")
                 ))),
+                revenue=Case(
+                    When(
+                        ad_group__campaign__salesforce_placement__goal_type_id=0,
+                        then=F("sum_impressions") * F("ad_group__campaign__salesforce_placement__ordered_rate") / 1000,
+                    ),
+                    default=F("sum_video_views") * F("ad_group__campaign__salesforce_placement__ordered_rate"),
+                    output_field=DBFloatField()
+                )
+            ) \
+            .annotate(
+                impressions_share=ExpressionWrapper(
+                    F("sum_impressions") * 1.0 / NullIf(F("ad_group__impressions"), 0),
+                    output_field=DBFloatField(),
+                ),
+                video_views_share=ExpressionWrapper(
+                    F("sum_video_views") * 1.0 / NullIf(F("ad_group__video_views"), 0),
+                    output_field=DBFloatField(),
+                ),
+                cost_share=ExpressionWrapper(
+                    F("sum_cost") * 1.0 / NullIf(F("ad_group__cost"), 0),
+                    output_field=DBFloatField(),
+                ),
+                ctr_i=ExpressionWrapper(
+                    F("sum_clicks") * 1.0 / NullIf(F("sum_impressions"), 0),
+                    output_field=DBFloatField(),
+                ),
+                ctr_v=ExpressionWrapper(
+                    F("sum_clicks") * 1.0 / NullIf(F("sum_video_views"), 0),
+                    output_field=DBFloatField(),
+                ),
+                average_cpm=ExpressionWrapper(
+                    F("sum_cost") * 1.0 / NullIf(F("sum_impressions"), 0) / 1000,
+                    output_field=DBFloatField(),
+                ),
+                average_cpv=ExpressionWrapper(
+                    F("sum_cost") * 1.0 / NullIf(F("sum_video_views"), 0),
+                    output_field=DBFloatField(),
+                ),
+                profit=F("revenue") - F("sum_cost"),
+                margin=(F("revenue") - F("sum_cost")) / NullIf(F("revenue"), 0)
             )
+        if kpi_filters:
+            queryset = queryset.filter(**kpi_filters)
         queryset.query.clear_ordering(force_empty=True)
         return queryset

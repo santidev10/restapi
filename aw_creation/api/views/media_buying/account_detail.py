@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from django.db.models import Sum
 from django.db.models import Avg
+
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,7 +17,7 @@ ScalarFilter = namedtuple("ScalarFilter", "name type")
 
 
 class AccountDetailAPIView(APIView):
-    RANGE_FILTERS = ("avg_cpv", "avg_cpm", "margin", "impressions_share", "views_share", "view_rate")
+    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "views_share", "video_view_rate")
     SCALAR_FILTERS = (ScalarFilter("ad_group__campaign__name", "str"), ScalarFilter("impressions", "int"), ScalarFilter("views", "int"))
     SORTS = ("ad_group__campaign__name", "ad_group__name", "target")
     serializer_class = AnalyticsAccountCreationDetailsSerializer

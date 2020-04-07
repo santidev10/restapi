@@ -1,11 +1,12 @@
 from rest_framework import serializers
 
+from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
 from aw_creation.api.serializers.common.stats_aggregator import stats_aggregator
 from aw_creation.api.serializers import DashboardAccountCreationListSerializer
-from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models.salesforce_constants import SalesForceGoalTypeStr
+from aw_reporting.reports.pacing_report import PacingReport
 
 
 class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
@@ -15,9 +16,10 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
         super().__init__(*args, **kwargs)
         pacing_report = PacingReport()
         try:
-            account_id = self.instance.account.id
-            self.salesforce = pacing_report.get_opportunities({}, user=self.user, aw_cid=[account_id])[0]
-        except (Account.DoesNotExist, IndexError):
+            account = self.instance.account
+            self.salesforce = pacing_report.get_opportunities({}, user=self.user, aw_cid=[account.id])[0]
+            self.ads_report = AccountTargetingReport(account).get_stats(kpi_params=self.context.get("targeting_params", {}))
+        except (Account.DoesNotExist, IndexError) as e:
             self.salesforce = {}
 
     cid = serializers.SerializerMethodField()
@@ -51,6 +53,7 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
         return cid
 
     def get_margin(self, _):
+
         margin = self._get_salesforce_value("margin")
         return margin
 
@@ -85,18 +88,12 @@ class AccountMediaBuyingSerializer(DashboardAccountCreationListSerializer):
         return value
 
     def _get_plan_config(self):
-        plan_units = None
-        delivered_units = None
-        average_rate = None
-        try:
-            if self.salesforce["goal_type"] == SalesForceGoalTypeStr.CPM:
-                plan_units = self._get_salesforce_value("plan_impressions")
-                delivered_units = self._get_stats_value("impressions")
-                average_rate = self._get_stats_value("average_cpm")
-            else:
-                plan_units = self._get_salesforce_value("plan_video_views")
-                delivered_units = self._get_stats_value("video_views")
-                average_rate = self._get_stats_value("average_cpv")
-        except KeyError:
-            pass
+        if self._get_salesforce_value("goal_type") == SalesForceGoalTypeStr.CPM:
+            plan_units = self._get_salesforce_value("plan_impressions")
+            delivered_units = self._get_stats_value("impressions")
+            average_rate = self._get_stats_value("average_cpm")
+        else:
+            plan_units = self._get_salesforce_value("plan_video_views")
+            delivered_units = self._get_stats_value("video_views")
+            average_rate = self._get_stats_value("average_cpv")
         return plan_units, delivered_units, average_rate

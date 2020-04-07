@@ -48,7 +48,7 @@ class AccountTargetingReport:
         self.now = timezone.now()
         self.sort_key = sort_key
 
-    def get_stats(self, criterion_types=None):
+    def get_stats(self, criterion_types=None, kpi_params=None, sorts=None):
         """
         Retrieve statistics for provided criterion_types values
         :param criterion_types: list [str, str, ...] -> List of Adgroup criterion types to retrieve
@@ -64,20 +64,20 @@ class AccountTargetingReport:
         filters = self._build_filters()
         all_data = []
         for config in targeting_configs:
-            data = self._get_stats(config, filters)
+            data = self._get_stats(config, filters, kpi_params=kpi_params)
             all_data.extend(data)
         all_data.sort(key=lambda row: row[self.sort_key])
         return all_data
 
     def _build_filters(self, date_from=None, date_to=None):
-        filters = Q(**{"ad_group__campaign__account_id": self.account.id})
+        base_filter = Q(**{"ad_group__campaign__account_id": self.account.id})
         if date_from:
-            filters = filters & Q(date__gte=date_from)
+            base_filter &= Q(date__gte=date_from)
         if date_to:
-            filters = filters & Q(date__lte=date_to)
-        return filters
+            base_filter &= Q(date__lte=date_to)
+        return base_filter
 
-    def _get_stats(self, config, filters):
+    def _get_stats(self, config, filters, kpi_params=None):
         """
         Retrieve stats with provided Criterion named tuple config
         Handles config containing multiple model / serializer pairs
@@ -95,7 +95,7 @@ class AccountTargetingReport:
         # Retrieve all data
         for model, serializer_class in config:
             queryset = model.objects.filter(filters)
-            data = serializer_class(queryset, many=True, context=dict(now=self.now)).data
+            data = serializer_class(queryset, many=True, context=dict(now=self.now, kpi_params=kpi_params)).data
             self.update_kpi_filters(base_kpi_filters, KPI_FILTERS, data)
             all_data.extend(data)
         return all_data
