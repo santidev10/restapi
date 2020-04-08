@@ -40,3 +40,14 @@ COST = "cost"
 VIEWS_DELIVERY = "views_delivery"
 IMPRESSIONS_DELIVERY = "impressions_delivery"
 VIEW_RATE = "view_rate"
+
+STATS_REPORT = "stats"
+KPI_FILTERS_REPORT = "kpi_filters"
+SUMMARY_REPORT = "summary"
+
+
+class ReportType:
+    ALL = {STATS_REPORT, KPI_FILTERS_REPORT, SUMMARY_REPORT}
+    STATS = STATS_REPORT
+    KPI_FILTERS = KPI_FILTERS_REPORT
+    SUMMARY = SUMMARY_REPORT

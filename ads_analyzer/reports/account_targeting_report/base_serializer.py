@@ -68,13 +68,11 @@ class BaseSerializer(ModelSerializer):
             "ad_group_name",
             "impressions",
             "contracted_rate",
-
             "impressions_share",
             "video_views_share",
             "cost_share",
             "average_cpm",
             "average_cpv",
-
             "video_views",
             "clicks",
             "cost",
@@ -89,7 +87,6 @@ class BaseSerializer(ModelSerializer):
             "ad_group__impressions",
             "ad_group__cost",
             "ad_group__video_views",
-
             "ad_group__id",
             "ad_group__campaign__name",
             "ad_group__campaign__id",
@@ -124,6 +121,7 @@ class BaseSerializer(ModelSerializer):
         :param params: dict[filters, ...]
         :return:
         """
+        params = params or {}
         goal_type_ref = "ad_group__campaign__salesforce_placement__goal_type_id"
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
@@ -173,7 +171,7 @@ class BaseSerializer(ModelSerializer):
                     output_field=DBFloatField(),
                 ),
                 average_cpm=ExpressionWrapper(
-                    F("sum_cost") * 1.0 / NullIf(F("sum_impressions"), 0) / 1000,
+                    F("sum_cost") * 1.0 / NullIf(F("sum_impressions"), 0) * 1000,
                     output_field=DBFloatField(),
                 ),
                 average_cpv=ExpressionWrapper(

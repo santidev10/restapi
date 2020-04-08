@@ -8,18 +8,6 @@ from django.db.models import Min
 from django.db.models import Sum
 from django.utils import timezone
 
-from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import GenderStatistic
-from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import TopicStatistic
-from aw_reporting.models import CriterionType
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models import VideoCreativeStatistic
-from aw_reporting.models import AdGroup
-
-
 from ads_analyzer.reports.account_targeting_report.serializers import AgeTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import GenderTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import KeywordTargetingSerializer
@@ -28,6 +16,15 @@ from ads_analyzer.reports.account_targeting_report.serializers import PlacementV
 from ads_analyzer.reports.account_targeting_report.serializers import TopicTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AudienceTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.constants import KPI_FILTERS
+from ads_analyzer.reports.account_targeting_report.constants import ReportType
+from aw_reporting.models import AgeRangeStatistic
+from aw_reporting.models import AudienceStatistic
+from aw_reporting.models import GenderStatistic
+from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import TopicStatistic
+from aw_reporting.models import CriterionType
+from aw_reporting.models import YTChannelStatistic
+from aw_reporting.models import YTVideoStatistic
 
 CriterionConfig = namedtuple("CriterionConfig", "model serializer")
 CostDelivery = namedtuple("CostDelivery", "cost impressions views")
@@ -74,9 +71,13 @@ class AccountTargetingReport:
     TOTAL_SUMMARY_COLUMNS = ("impressions", "video_views", "view_rate", "average_cpm", "average_cpv", "cost", "revenue", "margin", "clicks", "ctr_i", "ctr_v")
 
     def __init__(self, account, reporting_type=None):
-        self.account = account
-        self.reporting_type = reporting_type if reporting_type is not None else {"stats", "kpi_filters", "summary"}
+        if reporting_type is None:
+            reporting_type = ReportType.ALL
+        elif isinstance(reporting_type, str):
+            reporting_type = [reporting_type]
 
+        self.reporting_type = reporting_type
+        self.account = account
         # Objects to be mutated by _update methods
         self._all_aggregated_data = []
         # {"average_cpv": {"min": 0.0, "max": 0.5}, ... }
@@ -84,7 +85,8 @@ class AccountTargetingReport:
         # {"impressions": 100, "video_views": 200, ... }
         self._base_overall_summary = defaultdict(int)
 
-    def get_report(self, criterion_types=None, sort_key="campaign_id", statistics_filters=None, aggregation_filters=None):
+    def get_report(self, criterion_types=None, sort_key="campaign_id",
+                   statistics_filters=None, aggregation_filters=None):
         """
         Retrieve statistics for provided criterion_types values
 
@@ -92,8 +94,8 @@ class AccountTargetingReport:
             types to retrieve statistics for
         :param sort_key: key to sort aggregated statistics
         :param statistics_filters: dict -> Filters to apply to statistics before aggregation
-        :param kpi_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters to apply
-            in aggregated serializer querysets
+        :param aggregation_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters to apply
+            in aggregated serializer queryset's
         :return: tuple(list, dict, dict)
         """
         if criterion_types is None:
@@ -114,6 +116,13 @@ class AccountTargetingReport:
 
     @staticmethod
     def get_aggregated_serializer(config, filters, aggregation_filters=None):
+        """
+        Instantiate serializer to apply aggregations
+        :param config: CriterionConfig
+        :param filters: filters to apply to non-aggregated statistics
+        :param aggregation_filters: filters to apply to aggregated statistics
+        :return: Serializer
+        """
         now = timezone.now()
         model, serializer_class = config
         queryset = model.objects.filter(filters)
@@ -122,10 +131,10 @@ class AccountTargetingReport:
 
     def _process_report(self, aggregated_serializer, aggregations):
         """
-        Method to hold update invocations
-        :param aggregated_serializer:
+        Method to hold update method invocations
+        :param aggregated_serializer: serializer instantiation
         :param aggregations: dict
-        :return:
+        :return: None
         """
         self._update_aggregated_data(aggregated_serializer)
         self._update_kpi_filters(KPI_FILTERS, aggregations)
@@ -135,7 +144,7 @@ class AccountTargetingReport:
         """
         Method to invoke all report finalization logic
         :param sort_key: str
-        :return:
+        :return: None
         """
         self._update_overall_summary(finalize=len(self._all_aggregated_data))
         self._sort_data(sort_key)
@@ -168,7 +177,7 @@ class AccountTargetingReport:
         :param aggregated_serializer: CriterionConfig serializer instantiation
         :return: None
         """
-        if "stats" in self.reporting_type:
+        if ReportType.STATS in self.reporting_type:
             data = aggregated_serializer.data
             self._all_aggregated_data.extend(data)
 
@@ -190,7 +199,7 @@ class AccountTargetingReport:
                 pass
             return result
 
-        if "kpi_filters" in self.reporting_type:
+        if ReportType.KPI_FILTERS in self.reporting_type:
             for kpi in kpi_filter_keys:
                 curr_min = safe_compare(min, self._base_kpi_filters[kpi]["min"], aggregations.get(f"{kpi}__min"))
                 curr_max = safe_compare(max, self._base_kpi_filters[kpi]["max"], aggregations.get(f"{kpi}__max"))
@@ -208,7 +217,7 @@ class AccountTargetingReport:
             for Avg calculated aggregations
         :return:
         """
-        if "summary" in self.reporting_type:
+        if ReportType.SUMMARY in self.reporting_type:
             for key, aggregations_key in TOTAL_SUMMARY_COLUMNS.items():
                 # Calculate average values for Avg aggregations using finalize = len(all statistics from all serializers)
                 if finalize != 0:
