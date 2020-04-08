@@ -105,11 +105,14 @@ class BaseSerializer(ModelSerializer):
         return criterion
 
     def __new__(cls, *args, **kwargs):
+        aggregated = None
         if args and isinstance(args[0], QuerySet):
             params = kwargs.get("context", {}).get("params")
-            queryset = cls._build_queryset(args[0], params=params)
+            aggregated = queryset = cls._build_queryset(args[0], params=params)
             args = (queryset,) + args[1:]
-        return super().__new__(cls, *args, **kwargs)
+        instance = super().__new__(cls, *args, **kwargs)
+        instance.aggregated_queryset = aggregated
+        return instance
 
     @classmethod
     def _build_queryset(cls, queryset, params=None):
@@ -125,6 +128,7 @@ class BaseSerializer(ModelSerializer):
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
             .annotate(
+                contracted_rate=F("ad_group__campaign__salesforce_placement__ordered_rate"),
                 sum_impressions=Sum("impressions"),
                 sum_video_views=Sum("video_views"),
                 sum_clicks=Sum("clicks"),
@@ -180,6 +184,7 @@ class BaseSerializer(ModelSerializer):
                 margin=(F("revenue") - F("sum_cost")) / NullIf(F("revenue"), 0)
             )
         queryset = cls._filter_queryset(queryset, params.get("filters"))
+        queryset.order_by()
         return queryset
 
     @classmethod
@@ -187,7 +192,7 @@ class BaseSerializer(ModelSerializer):
         """
         Apply filters to aggregated statistics queryset
         :param queryset: Queryset
-        :param filters: ddict
+        :param filters: dict
         :return:
         """
         if filters is not None:

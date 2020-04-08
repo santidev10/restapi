@@ -42,14 +42,14 @@ class AccountTargetingAPIView(APIView):
         params = self.request.query_params
         account_creation = self._get_account_creation(request, pk)
         report = AccountTargetingReport(account_creation.account)
-        data = self._get_data(report, params)
+        data, kpi_filters, summary = self._get_report(report, params)
 
         page_size = params.get("size", 25)
         paginator = Paginator(data, page_size)
         res = self._get_paginated_response(paginator, 1)
         return Response(data=res)
 
-    def _get_data(self, report, params):
+    def _get_report(self, report, params):
         """
         Validate and extract parameters
         :param report:
@@ -62,13 +62,13 @@ class AccountTargetingAPIView(APIView):
         kpi_sort = self._validate_sort(params)
         targeting = self._validate_targeting(params.get("targeting"), list(TARGETING_MAPPING.keys()))
 
-        data = report.get_stats(
+        data, kpi_filters, summary = report.get_report(
             criterion_types=targeting,
             sort_key=kpi_sort,
             statistics_filters=statistics_filters,
-            kpi_filters=kpi_filters
+            aggregation_filters=kpi_filters
         )
-        return data
+        return data, kpi_filters, summary
 
     def _get_account_creation(self, request, pk):
         user = request.user
