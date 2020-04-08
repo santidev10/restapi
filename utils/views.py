@@ -61,17 +61,15 @@ def validate_fields(expected, received, should_raise=True, message="Missing fiel
     return validated
 
 
-def validate_date(date_str, should_raise=True):
+def validate_date(date_str, date_format="%Y-%m-%d", message="Accepted format: YYYY-MM-DD", should_raise=True):
     validated = None
     try:
-        datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        datetime.datetime.strptime(date_str, date_format)
         validated = date_str
     except ValueError:
         if should_raise:
-            raise ValidationError("Incorrect data format, should be YYYY-MM-DD")
+            raise ValidationError(message)
     return validated
-
-
 
 
 class CustomAPIException(APIException):
