@@ -30,9 +30,10 @@ class AccountTargetingAPIView(APIView):
         report = AccountTargetingReport(account_creation.account, reporting_type={ReportType.STATS, ReportType.SUMMARY})
         data, _, summary = self._get_report(report, params)
 
+        page = params.get("page", 1)
         page_size = params.get("size", 25)
         paginator = Paginator(data, page_size)
-        res = self._get_paginated_response(paginator, 1, summary)
+        res = self._get_paginated_response(paginator, page, summary)
         return Response(data=res)
 
     def _get_report(self, report, params):
@@ -56,15 +57,19 @@ class AccountTargetingAPIView(APIView):
         )
         return data, kpi_filters, summary
 
-    def _get_statistics_filters(self, params):
+    def _get_statistics_filters(self, params, search_key="ad_group__campaign__name"):
         """
         Get filters for statistics before aggregation
         :param params:
         :return:
         """
         statistics_filters = {}
+        if "search" in params:
+            statistics_filters[f"{search_key}__icontains"] = params["search"]
         try:
             from_date, to_date = [validate_date(value) for value in params["date"].split(",")]
+            if from_date > to_date:
+                raise ValidationError(f"Invalid date range: from: {from_date}, to: {to_date}")
             statistics_filters.update({
                 "date__gte": from_date,
                 "date__lte": to_date,
@@ -95,10 +100,14 @@ class AccountTargetingAPIView(APIView):
         for filter_type in self.RANGE_FILTERS:
             try:
                 _min, _max = params[filter_type].split(",")
+                if float(_min) > float(_max):
+                    raise ValidationError(f"Invalid range: min: {_min}, max: {_max}")
                 range_filters.update({
                     f"{filter_type}__gte": _min,
                     f"{filter_type}__lte": _max,
                 })
+            except TypeError:
+                raise ValidationError(f"Invalid decimal values: {params[filter_type]}")
             except KeyError:
                 pass
         return range_filters
