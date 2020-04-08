@@ -15,7 +15,7 @@ class UserActionsTestCase(ExtendedAPITestCase):
         AdministrationPathName.USER_ACTION_LIST
     ))
 
-    def test_forbidden_access(self):
+    def test_is_authenticated_access(self):
         """
         normal users should not have access
         """
@@ -23,10 +23,14 @@ class UserActionsTestCase(ExtendedAPITestCase):
         get_response = self.client.get(self.url)
         self.assertEqual(get_response.status_code, HTTP_403_FORBIDDEN)
 
-        post_response = self.client.post(self.url)
-        self.assertEqual(post_response.status_code, HTTP_403_FORBIDDEN)
+        post_response = self.client.post(
+            self.url,
+            data=self.get_post_data(),
+            content_type='application/json'
+        )
+        self.assertEqual(post_response.status_code, HTTP_201_CREATED)
 
-    def test_admin_access(self):
+    def test_is_admin_access(self):
         """
         user admin should have access
         """
@@ -36,10 +40,13 @@ class UserActionsTestCase(ExtendedAPITestCase):
 
         post_response = self.client.post(
             self.url,
-             data=json.dumps({
-                'url': 'https://saas.channelfactory.com/',
-                'slug': 'home page'
-            }),
-             content_type='application/json'
+            data=self.get_post_data(),
+            content_type='application/json'
         )
         self.assertEqual(post_response.status_code, HTTP_201_CREATED)
+
+    def get_post_data(self):
+        return json.dumps({
+                'url': 'https://saas.channelfactory.com/',
+                'slug': 'home page'
+            })

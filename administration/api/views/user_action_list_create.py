@@ -18,16 +18,17 @@ from rest_framework.permissions import (
 )
 from rest_framework import permissions
 
+
 class UserActionPermission(permissions.BasePermission):
     """
     require admin access for GET requests (to see who's taken what actions)
     and authenticated access for POST requests (to tell us what actions they've taken)
     """
     def has_permission(self, request, view):
-         if request.method == 'GET':
-             return IsAdminUser.has_permission(self, request, view)
-         else:
-             return IsAuthenticated.has_permission(self, request, view)
+        if request.method == 'GET':
+            return IsAdminUser.has_permission(self, request, view)
+        else:
+            return IsAuthenticated.has_permission(self, request, view)
 
 
 class UserActionPaginator(CustomPageNumberPaginator):
