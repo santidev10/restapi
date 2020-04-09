@@ -82,14 +82,20 @@ class AdGroupUpdater(UpdateMixin):
                 # update ad groups
                 if ad_group_id not in updated_ad_groups:
                     updated_ad_groups.append(ad_group_id)
-
+                    criterion_type = row_obj.ContentBidCriterionTypeGroup
+                    criterion_id = self.criterion_mapping.get(criterion_type)
+                    if criterion_id is None:
+                        logger.info(f"Missing AdGroup.ContentBidCriterionTypeGroup: {criterion_type}")
                     stats = {
                         "de_norm_fields_are_recalculated": False,
                         "name": row_obj.AdGroupName,
                         "status": row_obj.AdGroupStatus,
                         "type": row_obj.AdGroupType,
                         "campaign_id": campaign_id,
-                        "criterion_type_id": self.criterion_mapping[row_obj.ContentBidCriterionTypeGroup],
+                        "criterion_type_id": criterion_id,
+                        "cpv_bid": row_obj.CpvBid if row_obj.CpvBid != " --" else None,
+                        "cpm_bid": row_obj.CpmBid if row_obj.CpmBid != " --" else None,
+                        "cpc_bid": row_obj.CpcBid if row_obj.CpcBid != " --" else None,
                     }
 
                     if ad_group_id in ad_group_ids:
