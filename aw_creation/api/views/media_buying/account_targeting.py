@@ -101,7 +101,7 @@ class AccountTargetingAPIView(APIView):
             try:
                 _min, _max = params[filter_type].split(",")
                 if float(_min) > float(_max):
-                    raise ValidationError(f"Invalid range: min: {_min}, max: {_max}")
+                    raise ValidationError(f"Invalid {filter_type} range: min: {_min}, max: {_max}")
                 range_filters.update({
                     f"{filter_type}__gte": _min,
                     f"{filter_type}__lte": _max,
