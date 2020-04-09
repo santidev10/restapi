@@ -10,15 +10,12 @@ from rest_framework.fields import CharField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
-from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ModelSerializer
 
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from aw_reporting.models import CriterionType
 
 
 class BaseSerializer(ModelSerializer):
-    CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
     """
     Serializer base class for AccountTargetingReport statistics models
     """
@@ -26,8 +23,6 @@ class BaseSerializer(ModelSerializer):
     criterion_name = ReadOnlyField(default="N/A")
     target_name = ReadOnlyField(default="N/A")
     type = ReadOnlyField(default="N/A")
-
-    criterion_id = SerializerMethodField()
 
     # cls.Meta.values_shared
     ad_group_name = CharField(source="ad_group__name")
@@ -62,7 +57,6 @@ class BaseSerializer(ModelSerializer):
             "type",
             "campaign_id",
             "campaign_name",
-            "criterion_id",
             "ad_group_id",
             "ad_group_name",
             "impressions",
@@ -95,10 +89,6 @@ class BaseSerializer(ModelSerializer):
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
         ad_group_ref = "ad_group"
-
-    def get_criterion_id(self, *_, **__):
-        criterion = self.CRITERION_ID_MAPPING[self.criterion_name]
-        return criterion
 
     def __new__(cls, *args, **kwargs):
         aggregated = None
