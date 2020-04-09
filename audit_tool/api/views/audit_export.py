@@ -415,6 +415,8 @@ class AuditExportApiView(APIView):
         )
         if exports.count() > 0:
             return exports[0].file_name, None
+        if AuditChannelProcessor.objects.filter(audit_id=audit_id, channel__processed_time__isnull=True).exists():
+            raise Exception("Some channels still not processed, can't export yet {}".format(audit_id))
         do_inclusion = False
         if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
             do_inclusion = True
@@ -552,7 +554,7 @@ class AuditExportApiView(APIView):
                 v.view_count if v.view_count else "",
                 v.subscribers,
                 video_count.get(channel.channel_id) if video_count.get(channel.channel_id) else 0,
-                v.video_count,
+                v.video_count if v.video_count is not None else "",
                 country,
                 language,
                 v.last_uploaded.strftime("%Y/%m/%d") if v.last_uploaded else "",
