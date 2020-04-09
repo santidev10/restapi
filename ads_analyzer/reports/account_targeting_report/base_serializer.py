@@ -16,10 +16,9 @@ from rest_framework.serializers import ModelSerializer
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 from aw_reporting.models import CriterionType
 
-CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
-
 
 class BaseSerializer(ModelSerializer):
+    CRITERION_ID_MAPPING = CriterionType.get_mapping_to_id()
     """
     Serializer base class for AccountTargetingReport statistics models
     """
@@ -98,7 +97,7 @@ class BaseSerializer(ModelSerializer):
         ad_group_ref = "ad_group"
 
     def get_criterion_id(self, *_, **__):
-        criterion = CRITERION_ID_MAPPING[self.criterion_name]
+        criterion = self.CRITERION_ID_MAPPING[self.criterion_name]
         return criterion
 
     def __new__(cls, *args, **kwargs):
