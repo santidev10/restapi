@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def cache_keyword_aggregations():
     try:
         lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.RESEARCH_CACHING)
-        logger.debug("Starting keyword aggregations caching.")
+        logger.info("Starting keyword aggregations caching.")
         sections = (Sections.MAIN, Sections.STATS,)
 
         manager = KeywordManager(sections)
@@ -30,15 +30,15 @@ def cache_keyword_aggregations():
 
         cached_keyword_aggregations, _ = CacheItem.objects.get_or_create(key=KEYWORD_AGGREGATIONS_KEY)
 
-        logger.debug("Collecting keyword aggregations.")
+        logger.info("Collecting keyword aggregations.")
         aggregations = manager.get_aggregation(
             search=manager.search(filters=manager.forced_filters()),
             properties=aggregation_params
         )
-        logger.debug("Saving keyword aggregations.")
+        logger.info("Saving keyword aggregations.")
         cached_keyword_aggregations.value = aggregations
         cached_keyword_aggregations.save()
-        logger.debug("Finished keyword aggregations caching.")
+        logger.info("Finished keyword aggregations caching.")
         unlock(LOCK_NAME)
     except Exception as e:
         pass

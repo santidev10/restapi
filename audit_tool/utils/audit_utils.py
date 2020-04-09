@@ -9,15 +9,17 @@ from audit_tool.models import AuditChannelVet
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditGender
 from audit_tool.models import AuditLanguage
+from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
-from brand_safety.languages import LANG_CODES
+from audit_tool.models import AuditVideoProcessor
+from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
 from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from es_components.iab_categories import IAB_TIER2_CATEGORIES_MAPPING
 from segment.models.constants import VETTED_MAPPING
-
+from django.utils import timezone
 
 class AuditUtils(object):
     video_config = {
@@ -52,10 +54,20 @@ class AuditUtils(object):
 
     @staticmethod
     def get_brand_safety_categories():
+        excluded_category_names = [
+            'kids content',
+            'news politics religion',
+            'gaming',
+            'music/hip-hop',
+            'fighting & contact sports',
+            'public figure',
+            'military conflict',
+        ]
         all_categories = [{
             "id": category.id,
             "value": category.name
-        } for category in BadWordCategory.objects.all()]
+        } for category in BadWordCategory.objects.all() if category.name not in excluded_category_names]
+
         return all_categories
 
     @staticmethod
@@ -104,18 +116,21 @@ class AuditUtils(object):
     def get_languages():
         try:
             agg_cache = CacheItem.objects.get(key=CHANNEL_AGGREGATIONS_KEY)
-            lang_str = [item["key"] for item in agg_cache.value['general_data.top_language']['buckets']]
+            lang_codes = [item["key"] for item in agg_cache.value['general_data.top_lang_code']['buckets']]
             languages = []
-            for lang in lang_str:
+            for code in lang_codes:
                 try:
-                    code = LANG_CODES[lang]
+                    lang = LANGUAGES[code]
                 except KeyError:
-                    code = lang
+                    lang = code
                 languages.append({"id": code, "value": lang})
+            for code, lang in LANGUAGES.items():
+                if code not in lang_codes:
+                    languages.append({"id": code, "value": lang})
         except (CacheItem.DoesNotExist, KeyError):
             languages = [
-                {"id": code, "title": lang}
-                for lang, code in LANG_CODES.items()
+                {"id": code, "value": lang}
+                for code, lang in LANGUAGES.items()
             ]
         return languages
 
@@ -172,6 +187,39 @@ class AuditUtils(object):
             key = 3
         vetted_value = VETTED_MAPPING[key]
         return vetted_value
+
+    @staticmethod
+    def clone_audit(audit, clone_number=1, name=None):
+        params = audit.params
+        if not name:
+            params['name'] = "{}: Part {}".format(params['name'], clone_number + 1)
+        else:
+            params['name'] = "{}: Part {}".format(name, clone_number + 1)
+        return AuditProcessor.objects.create(
+            started=timezone.now(),
+            name=params['name'].lower(),
+            params=params,
+            pause=audit.pause,
+            audit_type=audit.audit_type,
+        )
+
+    @staticmethod
+    def get_avp_from_url(seed, audit):
+        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
+            return
+        v_id = seed.replace(",", "").split("/")[-1]
+        if '?v=' in v_id:
+            v_id = v_id.split("v=")[-1]
+        if '?t=' in v_id:
+            v_id = v_id.split("?t")[0]
+        if v_id and len(v_id) < 51:
+            v_id = v_id.strip()
+            video = AuditVideo.get_or_create(v_id)
+            avp, _ = AuditVideoProcessor.objects.get_or_create(
+                audit=audit,
+                video=video,
+            )
+            return avp
 
     @staticmethod
     def get_vetting_data(vetting_model, audit_id, item_ids, data_field):

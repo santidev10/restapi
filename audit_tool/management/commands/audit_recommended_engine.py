@@ -14,6 +14,7 @@ from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import BlacklistItem
+from audit_tool.utils.audit_utils import AuditUtils
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
@@ -119,8 +120,7 @@ class Command(BaseCommand):
         if not self.audit.started:
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
-        pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if pending_videos.count() == 0:
+        if not self.audit.params.get('done_source_list'):
             if self.thread_id == 0:
                 pending_videos = self.process_seed_list()
             else:
@@ -164,10 +164,15 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['completed', 'pause'])
             print("Audit completed, all videos processed")
+            max_recommended_type = self.audit.params.get('max_recommended_type')
+            export_as_channels = False
+            if max_recommended_type and max_recommended_type=='channel':
+                export_as_channels = True
             a = AuditExporter.objects.create(
                 audit=self.audit,
                 owner_id=None,
                 clean=True,
+                export_as_channels=export_as_channels,
             )
         raise Exception("Audit completed, all videos processed")
 
@@ -183,7 +188,7 @@ class Command(BaseCommand):
         reader = csv.reader(f)
         vids = []
         for row in reader:
-            avp = self.get_avp_from_url(row[0])
+            avp = AuditUtils.get_avp_from_url(row[0], self.audit)
             if avp:
                 vids.append(avp)
         if len(vids) == 0:
@@ -192,6 +197,9 @@ class Command(BaseCommand):
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
 
     def process_seed_list(self):
@@ -207,27 +215,13 @@ class Command(BaseCommand):
             raise Exception("seed list is empty for this audit. {}".format(self.audit.id))
         vids = []
         for seed in seed_list:
-            avp = self.get_avp_from_url(seed)
+            avp = AuditUtils.get_avp_from_url(seed, self.audit)
             if avp:
                 vids.append(avp)
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
-
-    def get_avp_from_url(self, seed):
-        if 'youtube.com' not in seed or ('?v=' not in seed and '/v/' not in seed and '/video/' not in seed):
-            return
-        v_id = seed.replace(",", "").split("/")[-1]
-        if '?v=' in v_id:
-            v_id = v_id.split("v=")[-1]
-        if '?t=' in v_id:
-            v_id = v_id.split("?t")[0]
-        if v_id and len(v_id) < 51:
-            v_id = v_id.strip()
-            video = AuditVideo.get_or_create(v_id)
-            avp, _ = AuditVideoProcessor.objects.get_or_create(
-                audit=self.audit,
-                video=video,
-            )
-            return avp
 
     def do_recommended_api_call(self, avp):
         video = avp.video
@@ -262,7 +256,7 @@ class Command(BaseCommand):
         except Exception as e:
             print(str(data))
             raise Exception("problem with API response {}".format(str(data)))
-        for i in data['items']:
+        for i in d:
             db_video = AuditVideo.get_or_create(i['id']['videoId'])
             db_video_meta, _ = AuditVideoMeta.objects.get_or_create(video=db_video)
             db_video_meta.name = i['snippet']['title']
@@ -297,6 +291,9 @@ class Command(BaseCommand):
                     if not v.video_source:
                         v.video_source = video
                         update_fields.append("video_source")
+                    if not v.channel and channel:
+                        v.channel = channel
+                        update_fields.append("channel")
                     v.clean = self.check_video_matches_minimums(db_video_meta)
                     v.save(update_fields=update_fields)
                     if v.clean:
@@ -305,8 +302,11 @@ class Command(BaseCommand):
                             channel=channel
                         )
         avp.processed = timezone.now()
-        avp.channel = channel
-        avp.save(update_fields=['processed', 'channel'])
+        update_fields = ['processed']
+        if not avp.channel:
+            avp.channel = video.channel
+            update_fields.append("channel")
+        avp.save(update_fields=update_fields)
 
     def check_video_matches_criteria(self, db_video_meta, db_video):
         if self.language:

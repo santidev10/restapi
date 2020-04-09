@@ -19,7 +19,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
         response = self.client.post(
             self.password_reset_url,
             data={"email": "notexistsemail@example.com"})
-        self.assertEqual(HTTP_404_NOT_FOUND, response.status_code)
+        self.assertEqual(HTTP_202_ACCEPTED, response.status_code)
 
     def test_obtain_reset_link_fail_user_is_admin(self):
         user = self.create_test_user()
@@ -28,7 +28,7 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
         response = self.client.post(
             self.password_reset_url,
             data={"email": user.email})
-        self.assertEqual(HTTP_403_FORBIDDEN, response.status_code)
+        self.assertEqual(HTTP_202_ACCEPTED, response.status_code)
 
     def test_success_obtain_reset_link(self):
         user = self.create_test_user(False)
@@ -51,25 +51,46 @@ class UserPasswordResetProcedureTestCase(ExtendedAPITestCase):
     def test_set_password_fail_invalid_email(self):
         response = self.client.post(
             self.password_set_url,
-            data={"new_password": "test",
+            data={"new_password": "Testing1!",
                   "email": "test@example.com",
                   "token": "123"},
             headers={"content-type": "application/json"})
-        self.assertEqual(HTTP_404_NOT_FOUND, response.status_code)
+        self.assertEqual(HTTP_400_BAD_REQUEST, response.status_code)
 
     def test_set_password_fail_invalid_token(self):
         user = self.create_test_user(False)
         response = self.client.post(
             self.password_set_url,
-            data={"new_password": "test",
+            data={"new_password": "Testing1!",
                   "email": user.email,
                   "token": "123"},
             headers={"content-type": "application/json"})
         self.assertEqual(HTTP_400_BAD_REQUEST, response.status_code)
 
+    def test_set_password_validation(self):
+        user = self.create_test_user(False)
+        bad_passwords = [
+            'Short1!',
+            'no_capitalization1!',
+            'Nospecialchars1',
+            'No_numbers!'
+        ]
+        for bad_password in bad_passwords:
+            response = self.client.post(
+                self.password_set_url,
+                data={
+                    "new_password": bad_password,
+                    "email": user.email,
+                    "token": "123"
+                },
+                headers={"content-type": "application/json"}
+            )
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertIsNotNone(response.data.get('new_password', None))
+
     def test_set_password_success(self):
         user = self.create_test_user(False)
-        new_passwords = ["test", "test2", "test3"]
+        new_passwords = ["Testing1!", "Testing2!", "Testing3!"]
         for i in range(3):
             self.client.post(
                 self.password_reset_url,

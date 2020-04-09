@@ -99,7 +99,10 @@ class UserAuthApiView(APIView):
         """
         if not request.user.is_authenticated:
             return Response(status=HTTP_401_UNAUTHORIZED)
-        Token.objects.get(user=request.user).delete()
+        try:
+            request.auth.delete()
+        except AttributeError:
+            pass
         return Response()
 
     def get_google_user(self, token: str):
@@ -279,10 +282,8 @@ class UserAuthApiView(APIView):
             user = get_user_model().objects.get(email=email)
             if not user.check_password(password):
                 raise ValueError
-        except get_user_model().DoesNotExist:
-            raise LoginException(f"User with email does not exist: {email}.")
-        except ValueError:
-            raise LoginException("Invalid password.")
+        except (get_user_model().DoesNotExist, ValueError):
+            raise LoginException("That username / password is not valid.")
 
         # send back mfa options
         response = {

@@ -7,7 +7,7 @@ from django.db.models import Q, Min, When, Case, Max, \
     IntegerField
 from django.db.models.expressions import CombinedExpression, Value, Combinable
 
-from aw_reporting.models import AdGroup, ParentStatuses, AudienceStatistic, \
+from aw_reporting.models import AdGroup, Campaign, ParentStatuses, AudienceStatistic, \
     TopicStatistic, Topic, Audience, AgeRanges, \
     Genders, Devices
 from aw_reporting.tools.forecast_tool.constants import GENDER_FIELDS, \
@@ -44,8 +44,8 @@ class ForecastToolFiltering:
         filters = dict(
             quarters=[dict(id=c, name=c) for c in list(sorted(quarter_days.keys()))],
             quarters_condition=CONDITIONS,
-            start=start,
-            end=end,
+            start=str(start),
+            end=str(end),
             compare_yoy=False,
             product_types=product_types,
             product_types_condition=CONDITIONS,
@@ -102,24 +102,23 @@ class ForecastToolFiltering:
             self._filter_by_creative_length,
             self._filter_by_devices,
         )
-        queryset = split_request(queryset, filters, 1)
+        for filter in filters:
+            queryset, _ = filter(queryset)
+
         if self.filter_item_ids is not None:
             queryset = queryset.filter(id__in=self.filter_item_ids)
-        return queryset.distinct()
+        return queryset
 
     def _filter_by_periods(self, queryset):
         periods = self.kwargs["periods"]
         if len(periods) == 0:
             return queryset, False
-        queryset = queryset.annotate(
-            min_start=Min("placements__adwords_campaigns__start_date"),
-            max_end=Max("placements__adwords_campaigns__end_date"),
-        )
-        filters = [Q(min_start__lte=end, max_end__gte=start) for start, end in periods]
+
+        filters = [Q(start_date__lte=end, end_date__gte=start) for start, end in periods]
         query = reduce(
             lambda res, f: res | f,
             filters,
-            Q(min_start__isnull=True) | Q(max_end__isnull=True)
+            Q(start_date__isnull=True) | Q(end_date__isnull=True)
         )
         return queryset.filter(query), True
 
@@ -129,11 +128,11 @@ class ForecastToolFiltering:
             return queryset, False
         product_types_condition = self.kwargs.get("product_types_condition", self.default_condition)
         if product_types_condition == "or":
-            queryset = queryset.filter(placements__adwords_campaigns__ad_groups__type__in=product_types)
+            queryset = queryset.filter(ad_groups__type__in=product_types)
         elif product_types_condition == "and":
             queryset = reduce(
                 lambda qs, pt: qs.filter(
-                    placements__adwords_campaigns__ad_groups__type=pt),
+                    ad_groups__type=pt),
                 product_types,
                 queryset
             )
@@ -144,16 +143,8 @@ class ForecastToolFiltering:
         if targeting_types is None:
             return queryset, False
         condition = self.kwargs.get("targeting_types_condition", self.default_condition)
-        true_value = Value(1)
-        annotation = {
-            "has_" + t: Max(Case(
-                When(**{"placements__adwords_campaigns__has_" + t: Value(True), "then": true_value}),
-                output_field=BooleanField(),
-                default=Value(0)))
-            for t in TARGETING_TYPES}
-        queryset = queryset.annotate(**annotation)
         fields = ["has_{}".format(t) for t in targeting_types]
-        return queryset.filter(build_query_bool(fields, condition, true_value)), True
+        return queryset.filter(build_query_bool(fields, condition, True)), True
 
     def _filter_by_demographic(self):
         return [
@@ -168,8 +159,7 @@ class ForecastToolFiltering:
             return queryset, False
         condition = self.kwargs.get("demographic_condition", self.default_condition)
         campaign_fields = [GENDER_FIELDS[g] for g in genders]
-        fields = ["placements__adwords_campaigns__{}".format(f) for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+        return queryset.filter(build_query_bool(campaign_fields, condition)), True
 
     def _filter_by_age(self, queryset):
         ages = self.kwargs.get("ages")
@@ -177,8 +167,7 @@ class ForecastToolFiltering:
             return queryset, False
         condition = self.kwargs.get("demographic_condition", self.default_condition)
         campaign_fields = [AGE_FIELDS[g] for g in ages]
-        fields = ["placements__adwords_campaigns__{}".format(f) for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+        return queryset.filter(build_query_bool(campaign_fields, condition)), True
 
     def _filter_parent_status(self, queryset):
         parents = self.kwargs.get("parents")
@@ -186,15 +175,14 @@ class ForecastToolFiltering:
             return queryset, False
         condition = self.kwargs.get("demographic_condition", self.default_condition)
         campaign_fields = [PARENT_FIELDS[g] for g in parents]
-        fields = ["placements__adwords_campaigns__{}".format(f) for f in campaign_fields]
-        return queryset.filter(build_query_bool(fields, condition)), True
+        return queryset.filter(build_query_bool(campaign_fields, condition)), True
 
     def _filter_by_geo_targeting(self, queryset):
         geo_targets = self.kwargs.get("geo_locations", [])
         if len(geo_targets) == 0:
             return queryset, False
         condition = self.kwargs.get("geo_locations_condition", self.default_condition).lower()
-        geo_field = "placements__adwords_campaigns__geo_performance__geo_target"
+        geo_field = "geo_performance__geo_target"
         if condition == "or":
             queryset = queryset.filter(**{geo_field + "__id__in": geo_targets})
         elif condition == "and":
@@ -208,35 +196,34 @@ class ForecastToolFiltering:
         topics = self.kwargs.get("topics", [])
         if len(topics) == 0:
             return queryset, False
-        return self._filter_topics(queryset, topics, "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_topics(queryset, topics, "ad_groups__"), True
 
     def _filter_by_interests(self, queryset):
         interests = self.kwargs.get("interests", [])
         if len(interests) == 0:
             return queryset, False
-        return self._filter_interests(queryset, interests, "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_interests(queryset, interests, "ad_groups__"), True
 
     def _filter_by_creative_length(self, queryset):
         lengths = self.kwargs.get("creative_lengths", [])
         if len(lengths) == 0:
             return queryset, False
-        return self._filter_creative_lengths(queryset, lengths, "placements__adwords_campaigns__ad_groups__"), True
+        return self._filter_creative_lengths(queryset, lengths, "ad_groups__"), True
 
     def _filter_by_devices(self, queryset):
         devices = self.kwargs.get("devices", [])
         if len(devices) == 0:
             return queryset, False
         devices_condition = self.kwargs.get("devices_condition", self.default_condition)
-        prefix = "placements__adwords_campaigns__"
         if devices_condition == "or":
             query_exclude = dict(
-                (prefix + field, False) for i, field
+                (field, False) for i, field
                 in enumerate(DEVICE_FIELDS)
                 if i in devices)
             queryset = queryset.exclude(**query_exclude)
         elif devices_condition == "and":
             query_filter = dict(
-                (prefix + field, True) for i, field
+                (field, True) for i, field
                 in enumerate(DEVICE_FIELDS)
                 if i in devices)
             queryset = queryset.filter(**query_filter)

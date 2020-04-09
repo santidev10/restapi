@@ -1,6 +1,6 @@
-TERMS_FILTER = ("general_data.country", "general_data.top_language", "general_data.top_category",
-                "custom_properties.preferred", "analytics.verified", "cms.cms_title",
-                "stats.channel_group", "main.id", "general_data.iab_categories")
+TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_data.top_language",
+                "general_data.top_lang_code", "general_data.top_category", "custom_properties.preferred",
+                "analytics.verified", "cms.cms_title", "stats.channel_group", "main.id", "general_data.iab_categories")
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
@@ -22,7 +22,10 @@ CHANNEL_CSV_HEADERS = [
     "emails",
     "subscribers",
     "thirty_days_subscribers",
-    "thirty_days_views",
+    "views",
+    "monthly_views",
+    "weekly_views",
+    "daily_views",
     "views_per_video",
     "sentiment",
     "engage_rate",

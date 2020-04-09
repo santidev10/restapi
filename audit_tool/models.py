@@ -1,6 +1,5 @@
 from datetime import datetime
 from datetime import timedelta
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import JSONField
 from django.db import IntegrityError
@@ -124,6 +123,7 @@ class AuditProcessor(models.Model):
     updated = models.DateTimeField(auto_now_add=False, default=None, null=True)
     completed = models.DateTimeField(auto_now_add=False, default=None, null=True, db_index=True)
     max_recommended = models.IntegerField(default=100000)
+    # this name field is LOWERCASED for searching, use params['name'] for proper capitalization
     name = models.CharField(max_length=255, db_index=True, default=None, null=True)
     params = JSONField(default=dict)
     cached_data = JSONField(default=dict)
@@ -147,7 +147,7 @@ class AuditProcessor(models.Model):
         self.save()
 
     @staticmethod
-    def get(running=None, audit_type=None, num_days=60, output=None, search=None, export=None, source=0):
+    def get(running=None, audit_type=None, num_days=15, output=None, search=None, export=None, source=0, cursor=None, limit=None):
         # if export:
         #     exports = AuditExporter.objects.filter(completed__isnull=True).values_list('audit_id', flat=True)
         #     all = AuditProcessor.objects.filter(id__in=exports)
@@ -157,8 +157,9 @@ class AuditProcessor(models.Model):
             all = all.filter(audit_type=audit_type)
         if running is not None:
             all = all.filter(completed__isnull=running)
+        date_gte = None
         if num_days > 0:
-            all = all.filter(Q(completed__isnull=True) | Q(completed__gte=timezone.now() - timedelta(days=num_days)))
+            date_gte = timezone.now() - timedelta(days=num_days)
         if search:
             all = all.filter(name__icontains=search.lower())
         ret = {
@@ -171,8 +172,16 @@ class AuditProcessor(models.Model):
             for e in exports:
                 if e.audit not in audits:
                     audits.append(e.audit)
+            ret['items_count'] = len(audits)
         else:
-            for a in all.order_by("pause", "-completed", "id"):
+            ret['items_count'] = all.count()
+            all = all.order_by("pause", "-completed", "id")
+            if limit:
+                start = (cursor - 1) * limit
+                all = all[start:start+limit]
+            for a in all:
+                if not search and date_gte and a.completed and a.completed < date_gte:
+                    break
                 audits.append(a)
         for a in audits:
             d = a.to_dict()
@@ -186,14 +195,12 @@ class AuditProcessor(models.Model):
         if not output:
             return ret
 
-    def to_dict(self):
+    def to_dict(self, get_details=False):
         audit_type = self.params.get('audit_type_original')
         if not audit_type:
             audit_type = self.audit_type
         lang = self.params.get('language')
-        if not lang:
-            lang = ['en']
-        elif type(lang) == str:
+        if lang and type(lang) == str:
             lang = [lang]
         d = {
             'id': self.id,
@@ -208,7 +215,6 @@ class AuditProcessor(models.Model):
             'percent_done': 0,
             'language': lang,
             'category': self.params.get('category'),
-            'related_audits': self.params.get('related_audits'),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
             'max_dislikes': self.params.get('max_dislikes'),
@@ -218,10 +224,8 @@ class AuditProcessor(models.Model):
             'stopped': self.params.get('stopped'),
             'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
-            'has_history': self.has_history(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
-            'export_status': self.get_export_status(),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
@@ -229,12 +233,15 @@ class AuditProcessor(models.Model):
             'include_unknown_likes': self.params.get('include_unknown_likes'),
             'include_unknown_views': self.params.get('include_unknown_views'),
         }
-        #d['name'] = "{}: {}".format(self.id, d['name'] if d['name'] else "")
-        files = self.params.get('files')
-        if files:
-            d['source_file'] = files.get('source')
-            d['exclusion_file'] = files.get('exclusion')
-            d['inclusion_file'] = files.get('inclusion')
+        d['export_status'] = self.get_export_status()
+        d['has_history'] = self.has_history()
+        if get_details:
+            d['related_audits'] = self.get_related_audits()
+            files = self.params.get('files')
+            if files:
+                d['source_file'] = files.get('source')
+                d['exclusion_file'] = files.get('exclusion')
+                d['inclusion_file'] = files.get('inclusion')
         if self.params.get('error'):
             d['error'] = self.params['error']
         if d['data'].get('total') and d['data']['total'] > 0:
@@ -268,14 +275,20 @@ class AuditProcessor(models.Model):
         if r:
             for related in r:
                 try:
+                    a = AuditProcessor.objects.get(id=related)
+                    if not a.name:
+                        a.name = a.params['name'].lower()
+                        a.save(update_fields=['name'])
                     d.append({
                         'id': related,
-                        'name': AuditProcessor.objects.get(id=related).name
+                        'name': a.params['name']
                     })
                 except Exception as e:
-                    pass
+                    d.append({
+                        'id': related,
+                        'name': 'deleted audit',
+                    })
         return d
-
 
 class AuditLanguage(models.Model):
     language = models.CharField(max_length=64, unique=True)
@@ -364,6 +377,7 @@ class AuditChannelMeta(models.Model):
     last_uploaded_view_count = models.BigIntegerField(default=None, null=True, db_index=True)
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
+    synced_with_viewiq = models.NullBooleanField(db_index=True)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -474,7 +488,9 @@ class AuditExporter(models.Model):
     file_name = models.TextField(default=None, null=True)
     final = models.BooleanField(default=False, db_index=True)
     owner_id = IntegerField(null=True, blank=True)
-    export_as_videos = models.BooleanField(default=False)
+    export_as_videos = models.BooleanField(default=False, db_index=True)
+    export_as_channels = models.BooleanField(default=False, db_index=True)
+    export_as_keywords = models.BooleanField(default=False, db_index=True)
     started = models.DateTimeField(auto_now_add=False, null=True, default=None, db_index=True)
     percent_done = models.IntegerField(default=0)
     machine = models.IntegerField(null=True, db_index=True)

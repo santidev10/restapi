@@ -20,6 +20,7 @@ from uuid import uuid4
 from administration.notifications import send_html_email
 from aw_reporting.demo.data import DEMO_ACCOUNT_ID
 from aw_reporting.models.ad_words.connection import AWConnectionToUserRelation
+from userprofile.constants import DEFAULT_DOMAIN
 from userprofile.constants import UserSettingsKey
 from userprofile.permissions import PermissionGroupNames
 from userprofile.permissions import PermissionHandler
@@ -44,7 +45,6 @@ def get_default_settings():
 
 def get_default_accesses(via_google=False):
     default_accesses_group_names = [
-        PermissionGroupNames.HIGHLIGHTS,
         PermissionGroupNames.RESEARCH,
         PermissionGroupNames.MEDIA_PLANNING,
         PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY,
@@ -136,6 +136,7 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     user_type = models.CharField(max_length=255, blank=True, null=True)
     annual_ad_spend = models.CharField(max_length=255, blank=True, null=True)
     synced_with_email_campaign = models.BooleanField(default=False, db_index=True)
+    domain = models.ForeignKey("WhiteLabel", on_delete=models.SET_NULL, null=True)
 
     # GDPR Cookie Compliance
     has_accepted_GDPR = models.NullBooleanField(default=None)
@@ -183,17 +184,18 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
         """
         Send email to user when admin makes it active
         """
-        host = request.get_host()
         protocol = "http://"
         if request.is_secure():
             protocol = "https://"
-        link = "{}{}/login".format(protocol, host)
+        host = self.domain_name or f"{DEFAULT_DOMAIN}.com"
+        host_address = f"{protocol}{host}"
+        link = f"{host_address}/login"
         subject = "Access to ViewIQ"
         text_header = "Dear {} \n".format(self.get_full_name())
         text_content = "Congratulations! You now have access to ViewIQ!\n" \
                        " Click <a href='{link}'>here</a> to access your account." \
             .format(link=link)
-        send_html_email(subject, self.email, text_header, text_content)
+        send_html_email(subject, self.email, text_header, text_content, host=host_address)
 
     @property
     def access(self):
@@ -206,6 +208,17 @@ class UserProfile(AbstractBaseUser, PermissionsMixin, PermissionHandler):
     def logo_url(self):
         logo_name = settings.USER_DEFAULT_LOGO if not self.logo else self.logo
         return settings.AMAZON_S3_LOGO_STORAGE_URL_FORMAT.format(logo_name)
+
+    @property
+    def domain_name(self):
+        try:
+            if self.domain.domain == DEFAULT_DOMAIN:
+                domain_name = f"{DEFAULT_DOMAIN}.com"
+            else:
+                domain_name = f"{self.domain.domain}.{DEFAULT_DOMAIN}.com"
+        except (WhiteLabel.DoesNotExist, AttributeError):
+            domain_name = None
+        return domain_name
 
 
 class UserChannel(Timestampable):
@@ -238,3 +251,28 @@ class UserDeviceToken(models.Model):
         if not self.key:
             self.key = self.generate_key()
         return super().save(*args, **kwargs)
+
+
+class WhiteLabel(models.Model):
+    domain = models.CharField(max_length=255, unique=True)
+    config = JSONField(default=dict)
+
+    def __str__(self):
+        return self.domain
+
+    @staticmethod
+    def get(domain):
+        try:
+            white_label = WhiteLabel.objects.get(domain=domain)
+        except WhiteLabel.DoesNotExist:
+            white_label, _ = WhiteLabel.objects.get_or_create(domain=DEFAULT_DOMAIN)
+        return white_label
+
+    @staticmethod
+    def extract_sub_domain(host):
+        try:
+            domain = host.lower().split('viewiq')[0]
+            sub_domain = domain.strip(".") or DEFAULT_DOMAIN
+        except (IndexError, AttributeError):
+            sub_domain = DEFAULT_DOMAIN
+        return sub_domain

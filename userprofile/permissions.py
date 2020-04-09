@@ -87,7 +87,6 @@ class PermissionHandler:
 
 
 class PermissionGroupNames:
-    HIGHLIGHTS = "Highlights"
     RESEARCH = "Research"
     MEDIA_PLANNING = "Media Planning"
     MEDIA_PLANNING_PRE_BAKES = "Media Planning - pre-baked segments"
@@ -116,14 +115,11 @@ class PermissionGroupNames:
     AUDIT_VET_ADMIN = "Vetting Tool Admin"
     AUDIT_VET = "Vetting Tool"
     CUSTOM_SEGMENTS = "custom_segments"
+    DOMAIN_MANAGEMENT = "Domain Management"
 
 
 class Permissions:
     PERMISSION_SETS = (
-        (PermissionGroupNames.HIGHLIGHTS, (
-            "view_highlights",
-            "settings_my_yt_channels",
-        )),
         (PermissionGroupNames.RESEARCH, (
             "channel_list",
             "channel_details",
@@ -216,11 +212,13 @@ class Permissions:
         (PermissionGroupNames.AUDIT_VET, (
             "vet_audit",
         )),
+        (PermissionGroupNames.DOMAIN_MANAGEMENT, (
+            "domain_management",
+        ))
     )
 
     PERM_LIST = (
         # view section
-        "view_highlights",
         "view_media_buying",
         "view_pre_baked_segments",
         "view_audit_segments",
@@ -262,6 +260,7 @@ class Permissions:
         "transcripts_filter",
         # Monetization
         "monetization_filter",
+        "domain_management"
     )
 
     @staticmethod

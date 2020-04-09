@@ -94,7 +94,7 @@ class ModelPlusDeNormFields(BaseStatisticModel):
 
 
 def _field_name_dict(pairs):
-    return {key: field.field_name for key, field in pairs}
+    return {key: field.field.name for key, field in pairs}
 
 
 class ModelDenormalizedFields:

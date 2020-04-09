@@ -1,17 +1,39 @@
 from functools import reduce
 
-from django.db.models import FloatField
-from django.db.models import Q, F, Min, Value, When, Case, Max, \
-    BooleanField, Sum, IntegerField
 from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import BooleanField
+from django.db.models import Case
+from django.db.models import ExpressionWrapper
+from django.db.models import F
+from django.db.models import FloatField
+from django.db.models import IntegerField
+from django.db.models import Max
+from django.db.models import Min
+from django.db.models import Q
+from django.db.models import Sum
+from django.db.models import Value
+from django.db.models import When
 
-from aw_reporting.models import Campaign, Opportunity, AgeRanges, Genders, \
-    SalesForceGoalType, VideoCreative, get_margin, GeoTarget, \
-    CampaignStatistic, AdGroup, device_str
-from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES, \
-    AGE_FIELDS, GENDER_FIELDS, DEVICE_FIELDS, OPPORTUNITY_VALUES_LIST
-from utils.datetime import as_date, now_in_default_tz
-from utils.query import merge_when, OR
+from aw_reporting.models import AdGroup
+from aw_reporting.models import AgeRanges
+from aw_reporting.models import Campaign
+from aw_reporting.models import CampaignStatistic
+from aw_reporting.models import Genders
+from aw_reporting.models import GeoTarget
+from aw_reporting.models import Opportunity
+from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import device_str
+from aw_reporting.models import get_margin
+from aw_reporting.tools.pricing_tool.constants import AGE_FIELDS
+from aw_reporting.tools.pricing_tool.constants import DEVICE_FIELDS
+from aw_reporting.tools.pricing_tool.constants import GENDER_FIELDS
+from aw_reporting.tools.pricing_tool.constants import OPPORTUNITY_VALUES_LIST
+from aw_reporting.tools.pricing_tool.constants import TARGETING_TYPES
+from utils.datetime import as_date
+from utils.datetime import now_in_default_tz
+from utils.query import OR
+from utils.query import merge_when
 
 
 class PricingToolSerializer:
@@ -174,7 +196,7 @@ class PricingToolCampaignSerializer(PricingToolSerializarBase):
 
     def __prepare_campaigns(self):
         opp_id_key = "salesforce_placement__opportunity_id"
-        campaigns = Campaign.objects.filter(id__in=self.campaigns_ids)\
+        campaigns = Campaign.objects.filter(id__in=self.campaigns_ids) \
             .values("id", opp_id_key, "cost", "impressions", "video_views",
                     "start_date", "end_date", "name",
                     "salesforce_placement__goal_type_id",
@@ -294,19 +316,26 @@ class PricingToolOpportunitySerializer(PricingToolSerializarBase):
         )
 
         cpv_stats = stats_queryset \
-            .filter(
-            campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV) \
-            .annotate(cpv_client_cost=F("video_views") * F("ordered_rate")) \
+            .filter(campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPV) \
+            .annotate(
+                cpv_client_cost=ExpressionWrapper(
+                        F("video_views") * F("ordered_rate"),
+                        output_field=FloatField()
+                )
+        ) \
             .aggregate(aw_impressions=Sum("impressions"),
                        aw_video_views=Sum("video_views"),
                        cpv_client_cost_sum=Sum("cpv_client_cost",
                                                output_field=FloatField()),
                        aw_cpv_cost=Sum("cost"))
         cpm_stats = stats_queryset \
-            .filter(
-            campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM) \
+            .filter(campaign__salesforce_placement__goal_type_id=SalesForceGoalType.CPM) \
             .annotate(
-            cpm_client_cost=F("impressions") / Value(1000.) * F("ordered_rate")) \
+                cpm_client_cost=ExpressionWrapper(
+                        F("impressions") / Value(1000.) * F("ordered_rate"),
+                        output_field=FloatField()
+                )
+        ) \
             .aggregate(aw_impressions=Sum("impressions"),
                        cpm_client_cost_sum=Sum("cpm_client_cost",
                                                output_field=FloatField()),

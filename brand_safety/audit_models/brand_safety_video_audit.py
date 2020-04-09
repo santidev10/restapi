@@ -36,12 +36,15 @@ class BrandSafetyVideoAudit(object):
             data.get("title", "") or "",
             data.get("description", "") or "",
             data.get("tags", "") or "",
-            data.get("transcript", "") or "",
         ])
+        transcript_text = data.get("transcript", "") or ""
         detected = {
-            "has_emoji": self.audit_utils.has_emoji(text),
-            "language": self.audit_utils.get_language(text)
+            "has_emoji": self.audit_utils.has_emoji(text + ", " + transcript_text)
         }
+        if not data.get("language"):
+            detected["language"] = self.audit_utils.get_language(text)
+        if transcript_text and not data.get("transcript_language"):
+            detected["transcript_language"] = self.audit_utils.get_language(transcript_text)
         data.update(detected)
         self.metadata = data
         
@@ -62,10 +65,14 @@ class BrandSafetyVideoAudit(object):
             self.metadata["language"] = "all"
             keyword_processor = self.language_processors["all"]
             universal_processor = False
+        try:
+            transcript_processor = self.language_processors[self.metadata["transcript_language"]]
+        except KeyError:
+            transcript_processor = keyword_processor
         tag_hits = self.audit_utils.audit(self.metadata.get("tags", ""), constants.TAGS, keyword_processor)
         title_hits = self.audit_utils.audit(self.metadata.get("title", ""), constants.TITLE, keyword_processor)
         description_hits = self.audit_utils.audit(self.metadata.get("description", ""), constants.DESCRIPTION, keyword_processor)
-        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, keyword_processor)
+        transcript_hits = self.audit_utils.audit(self.metadata.get("transcript", ""), constants.TRANSCRIPT, transcript_processor)
         all_hits = tag_hits + title_hits + description_hits + transcript_hits
         # Calculate Universal keywords hits, if not all processor
         if universal_processor:
@@ -105,41 +112,34 @@ class BrandSafetyVideoAudit(object):
 
         return brand_safety_score
 
-    def instantiate_es(self):
+    def instantiate_es(self, video):
         """
         Instantiate Elasticsearch video model with brand safety data
-        :return:
         """
         brand_safety_score = getattr(self, constants.BRAND_SAFETY_SCORE)
-        es_data = {
-            "id": self.metadata["id"],
-            "brand_safety": {
-                "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
-                "language": self.metadata["language"],
-                "categories": {
-                    category: {
-                        "category_score": category_score,
-                        "keywords": [],
-                        "severity_counts": self.audit_utils.default_severity_counts
-                    }
-                    for category, category_score in brand_safety_score.category_scores.items()
+        brand_safety_data = {
+            "overall_score": brand_safety_score.overall_score if brand_safety_score.overall_score >= 0 else 0,
+            "transcript_language": self.metadata.get("transcript_language"),
+            "categories": {
+                category: {
+                    "category_score": category_score,
+                    "keywords": [],
+                    "severity_counts": self.audit_utils.default_severity_counts
                 }
-            },
-            "channel": {
-                "id": self.metadata["channel_id"],
-                "title": self.metadata["channel_title"]
+                for category, category_score in brand_safety_score.category_scores.items()
             }
         }
         for word, keyword_data in brand_safety_score.keyword_scores.items():
             try:
                 # Pop category as we do not need to store in categories section, only needed for key access
                 category = keyword_data.pop("category")
-                es_data["brand_safety"]["categories"][category]["keywords"].append(keyword_data)
+                brand_safety_data["categories"][category]["keywords"].append(keyword_data)
 
                 # Increment category severity hit counts
                 severity = str(self.score_mapping[word]["score"])
-                es_data["brand_safety"]["categories"][category]["severity_counts"][severity] += 1
+                brand_safety_data["categories"][category]["severity_counts"][severity] += 1
             except KeyError:
                 continue
-        video = Video(**es_data)
-        return video
+
+        video.brand_safety = brand_safety_data
+        video.populate_channel(id=self.metadata["channel_id"], title=self.metadata["channel_title"])

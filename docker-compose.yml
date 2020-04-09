@@ -19,8 +19,8 @@ services:
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
       DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
-      APM_ENABLED: 0
-      ELASTIC_APM_SERVER_URL: http://apm-server:8200
+      APM_ENABLED: ${APM_ENABLED:-False}
+      APM_SERVER_URL: ${APM_SERVER_URL:-http://apm-server:8200}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -34,9 +34,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl --silent localhost:5000/api/healthcheck/status/ || exit 1"]
-      interval: 30s
+      interval: 15s
       timeout: 3s
-      retries: 30
+      retries: 3
+      start_period: 2m
 
   celery_worker:
     image: viewiq-restapi
@@ -128,26 +129,15 @@ services:
     environment:
       ELASTICSEARCH_HOSTS: http://es:9200
 
-  logstash:
-    image: viewiq/logstash
-    build:
-      context: ./.docker/logstash
-    environment:
-      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
-      LOGSTASH_ES_HOST: es
-    depends_on:
-      es:
-        condition: service_healthy
-
   # APM
   apm-es:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-6.6.1}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-7.6.0}
     environment:
       - cluster.name=docker-cluster
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-6.6.1}
+      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-7.6.0}
       - discovery.type=single-node
     ulimits:
       memlock:
@@ -159,7 +149,7 @@ services:
       interval: 20s
 
   apm-server:
-    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-6.6.1}
+    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-7.6.0}
     command: >
       apm-server -e
         -E apm-server.frontend.enabled=true
@@ -187,10 +177,10 @@ services:
       retries: 10
       interval: 10s
   apm-kibana:
-    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-6.6.1}
+    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-7.6.0}
     environment:
       SERVER_NAME: kibana.example.org
-      ELASTICSEARCH_URL: http://apm-es:9200
+      ELASTICSEARCH_HOSTS: http://apm-es:9200
     healthcheck:
       test: ["CMD", "curl", "--write-out", "'HTTP %{http_code}'", "--silent", "--output", "/dev/null", "http://apm-kibana:5601/"]
       retries: 10

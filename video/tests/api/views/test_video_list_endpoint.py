@@ -16,6 +16,8 @@ from utils.unittests.segment_functionality_mixin import SegmentFunctionalityMixi
 from utils.unittests.test_case import ExtendedAPITestCase
 from video.api.urls.names import Name
 
+import urllib
+
 
 class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCase):
     def get_url(self, **kwargs):
@@ -66,3 +68,59 @@ class VideoListTestCase(ExtendedAPITestCase, SegmentFunctionalityMixin, ESTestCa
         response = self.client.get(url)
 
         self.assertEqual(items_to_filter, len(response.data["items"]))
+
+    def test_relevancy_score_sorting(self):
+        """
+        test that results are returned in the correct order when sorting by _score
+        """
+        self.create_admin_user()
+        video_ids = [str(next(int_iterator)) for i in range(2)]
+        most_relevant_video_title = \
+            "Herp derpsum herp derp sherper herp derp derpus herpus derpus"
+        most_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[0],
+            },
+            "general_data": {
+                "title": most_relevant_video_title,
+                "description": "herp derper repper herpus"
+            },
+        })
+        least_relevant_video = Video(**{
+            "meta": {
+                "id": video_ids[1],
+            },
+            "general_data": {
+                "title": "Derp sherper perper tee. Derperker zerpus herpy derpus",
+                "description": "reeper sherpus lurpy derps herp derp",
+            },
+        })
+        VideoManager(sections=[Sections.GENERAL_DATA]).upsert([
+            most_relevant_video,
+            least_relevant_video
+        ])
+
+        search_term = "herp derp"
+        desc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
+            "sort": "_score:desc",
+        })
+        desc_response = self.client.get(desc_url)
+        desc_items = desc_response.data['items']
+        self.assertEqual(
+            desc_items[0]['general_data']['title'],
+            most_relevant_video_title
+        )
+
+        asc_url = self.get_url() + urllib.parse.urlencode({
+            "general_data.title": search_term,
+            "general_data.description": search_term,
+            "sort": "_score:asc",
+        })
+        asc_response = self.client.get(asc_url)
+        asc_items = asc_response.data['items']
+        self.assertEqual(
+            asc_items[-1]['general_data']['title'],
+            most_relevant_video_title
+        )

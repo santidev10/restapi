@@ -7,6 +7,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from django.db.models import Max
 
 from aw_reporting.models import device_str
 from aw_reporting.models import Campaign
@@ -23,7 +25,7 @@ from utils.youtube_api import resolve_videos_info
 logger = logging.getLogger(__name__)
 
 
-CAMPAIGNS_FIELDS = ("name", "id", "account__currency_code", "salesforce_placement__ordered_rate",
+CAMPAIGNS_FIELDS = ("id", "account__name", "account__currency_code", "salesforce_placement__ordered_rate",
                     "salesforce_placement__goal_type_id")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
@@ -105,6 +107,9 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             return round(ordered_rate * obj.impressions / 1000, 2)
 
 
+    def get_campaign_name(self, account_name):
+        return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name)
+
     def __get_campaign_statistics(self, campaign_ids):
         return CampaignStatistic.objects\
             .filter(campaign_id__in=campaign_ids, date=self.yesterday) \
@@ -121,7 +126,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
-                stats.campaign__name,
+                self.get_campaign_name(stats.campaign__account__name),
                 None,
                 None,
                 None,
@@ -132,10 +137,20 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
 
     def __get_video_creative_statistics(self, campaign_ids):
-        return VideoCreativeStatistic.objects\
-            .filter(ad_group__campaign_id__in=campaign_ids, date=self.yesterday)\
-            .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS]
-                    + list(STATS_FIELDS), "creative_id", named=True)
+        return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
+            .filter(ad_group__campaign__id__in=campaign_ids, date=self.yesterday) \
+            .annotate(impressions=Sum("impressions"), clicks=Sum("clicks"), video_views=Sum("video_views"),
+                      date=Max("date"), video_views_50_quartile=Sum("video_views_50_quartile"),
+                      video_views_100_quartile=Sum("video_views_100_quartile"),
+                      ad_group__campaign__salesforce_placement__goal_type_id=Max(
+                          "ad_group__campaign__salesforce_placement__goal_type_id"),
+                      ad_group__campaign__salesforce_placement__ordered_rate=Max(
+                          "ad_group__campaign__salesforce_placement__ordered_rate"),
+                      ad_group__campaign__account__name=Max("ad_group__campaign__account__name"),
+                      ad_group__campaign__account__currency_code=Max("ad_group__campaign__account__currency_code")) \
+            .order_by("date")\
+            .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS),
+                         "creative_id", named=True)
 
     def __get_creative_statistics_rows(self, creative_statistics):
         rows = []
@@ -149,7 +164,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,
-                stats.ad_group__campaign__name,
+                self.get_campaign_name(stats.ad_group__campaign__account__name),
                 stats.creative_id,
                 creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
                 YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),

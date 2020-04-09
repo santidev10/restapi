@@ -23,15 +23,16 @@ class PersistentSegmentVideoExportSerializer(Serializer):
     Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
 
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("extra_data", None)
+        super().__init__(*args, **kwargs)
+
     def get_url(self, obj):
-        return f"https://www.youtube.com/video/{obj.main.id}/"
+        return f"https://www.youtube.com/video/{obj.main.id}"
 
     def get_language(self, obj):
-        brand_safety_language = (getattr(obj.brand_safety, "language", "") or "")
-        if brand_safety_language == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+        lang_code = getattr(obj.general_data, "lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -48,7 +49,7 @@ class PersistentSegmentVideoExportSerializer(Serializer):
 
 
 class PersistentSegmentChannelExportSerializer(Serializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score")
+    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes", "Dislikes", "Views", "Audited_Videos", "Overall_Score", "Vetted")
 
     # Fields map to segment export rows
     URL = SerializerMethodField("get_url")
@@ -61,16 +62,18 @@ class PersistentSegmentChannelExportSerializer(Serializer):
     Views = IntegerField(source="stats.views")
     Audited_Videos = IntegerField(source="brand_safety.videos_scored")
     Overall_Score = SerializerMethodField("get_overall_score")
+    Vetted = SerializerMethodField('get_vetted')
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("extra_data", None)
+        super().__init__(*args, **kwargs)
 
     def get_url(self, obj):
-        return f"https://www.youtube.com/channel/{obj.main.id}/"
+        return f"https://www.youtube.com/channel/{obj.main.id}"
 
     def get_language(self, obj):
-        brand_safety_language = (getattr(obj.brand_safety, "language", "") or "").lower()
-        if brand_safety_language == "all":
-            language = "All"
-        else:
-            language = LANGUAGES.get(brand_safety_language, brand_safety_language)
+        lang_code = getattr(obj.general_data, "top_lang_code", "")
+        language = LANGUAGES.get(lang_code, lang_code)
         return language
 
     def get_overall_score(self, obj):
@@ -84,3 +87,11 @@ class PersistentSegmentChannelExportSerializer(Serializer):
         except Exception as e:
             iab_category = ""
         return iab_category
+
+    def get_vetted(self, obj):
+        """
+        Indicate that a channel is vetted with a 'Y' when it has a non-empty task_us_data node
+        """
+        if getattr(obj, 'task_us_data', {}):
+            return 'Y'
+        return ''

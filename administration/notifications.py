@@ -11,6 +11,7 @@ import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import get_template
+from utils.es_components_exporter import ESDataS3ExportApiView
 
 from utils.lang import get_request_prefix
 
@@ -81,11 +82,12 @@ def send_admin_notification(channel_id):
     send_mail(subject, message, sender, to, fail_silently=False)
 
 
-def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False):
+def send_html_email(subject, to, text_header, text_content, from_email=None, fail_silently=False, host=None):
     """
     Send email with html
     """
-    html_email = generate_html_email(text_header, text_content)
+    host = host or settings.HOST
+    html_email = generate_html_email(text_header, text_content, host)
     send_email(
         subject=subject,
         recipient_list=[to] if type(to) is str else to,
@@ -111,24 +113,25 @@ def send_welcome_email(user, request):
     """
     if user.email in IGNORE_EMAILS_TEMPLATE:
         return
+    host_address = ESDataS3ExportApiView.get_host_link(request)
     subject = "Welcome to {}".format(request.get_host())
     to = user.email
     text_header = "Dear {},\n\n".format(user.get_full_name())
     text_content = "Thank you for registering on ViewIQ! \n" \
                    "We will review your account and send you an update " \
                    "by email as soon as access is granted."
-    send_html_email(subject, to, text_header, text_content, fail_silently=True)
+    send_html_email(subject, to, text_header, text_content, fail_silently=True, host=host_address)
 
 
-def generate_html_email(text_header, text_content):
+def generate_html_email(text_header, text_content, host):
     """
     Generate email html with ChannelFactory template
     :param text_header:
     :param text_content:
+    :param host:
     :return:
     """
-    host = settings.HOST
-    html = get_template("main_v2.html")
+    html = get_template("main_v3.html")
     context = {"text_header": text_header,
                "text_content": text_content,
                "host": host}

@@ -24,6 +24,7 @@ from pid import PidFile
 from utils.lang import remove_mentions_hashes_urls
 from utils.lang import fasttext_lang
 from utils.utils import remove_tags_punctuation
+from audit_tool.utils.audit_utils import AuditUtils
 
 logger = logging.getLogger(__name__)
 """
@@ -39,9 +40,12 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
+    MAX_SOURCE_VIDEOS = 750000
     categories = {}
     audit = None
     acps = {}
+    num_clones = 0
+    original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
     DATA_VIDEO_API_URL =    "https://www.googleapis.com/youtube/v3/videos" \
                             "?key={key}&part=id,status,snippet,statistics,contentDetails&id={id}"
@@ -98,7 +102,7 @@ class Command(BaseCommand):
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if pending_videos.count() == 0:
+        if not self.audit.params.get('done_source_list'):
             if self.thread_id == 0:
                 self.process_seed_list()
                 pending_videos = AuditVideoProcessor.objects.filter(
@@ -151,6 +155,8 @@ class Command(BaseCommand):
             raise Exception("can not open seed file {}".format(seed_file))
         reader = csv.reader(f)
         vids = []
+        counter = 0
+        processed_ids = []
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
@@ -159,20 +165,34 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
-                if v_id and len(v_id) < 51:
+                if v_id and len(v_id) < 51 and not v_id in processed_ids:
+                    processed_ids.append(v_id)
+                    if len(vids) >= self.MAX_SOURCE_VIDEOS:
+                        self.clone_audit()
+                        vids = []
                     video = AuditVideo.get_or_create(v_id)
                     avp, _ = AuditVideoProcessor.objects.get_or_create(
                             audit=self.audit,
                             video=video,
                     )
                     vids.append(avp)
-        if len(vids) == 0:
+                    counter+=1
+        if counter == 0:
             self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
             self.audit.save(update_fields=['params', 'completed', 'pause'])
             raise Exception("no valid YouTube Video URL's in seed file {}".format(seed_file))
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
+
+    def clone_audit(self):
+        self.num_clones+=1
+        if not self.original_audit_name:
+            self.original_audit_name = self.audit.params['name']
+        self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def process_seed_list(self):
         seed_list = self.audit.params.get('videos')
@@ -197,6 +217,9 @@ class Command(BaseCommand):
                     video=video,
                 )
                 vids.append(avp)
+        audit = self.audit
+        audit.params['done_source_list'] = True
+        audit.save(update_fields=['params'])
         return vids
 
     def do_check_video(self, videos):

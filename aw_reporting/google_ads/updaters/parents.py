@@ -8,7 +8,6 @@ from aw_reporting.google_ads.update_mixin import UpdateMixin
 from aw_reporting.models import ParentStatistic
 from aw_reporting.models import ParentStatuses
 from aw_reporting.update.adwords_utils import get_base_stats
-from aw_reporting.update.adwords_utils import quart_views
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -58,10 +57,6 @@ class ParentUpdater(UpdateMixin):
                 "parent_status_id": statuses.index(row_obj.Criteria),
                 "date": row_obj.Date,
                 "ad_group_id": ad_group_id,
-                "video_views_25_quartile": quart_views(row_obj, 25),
-                "video_views_50_quartile": quart_views(row_obj, 50),
-                "video_views_75_quartile": quart_views(row_obj, 75),
-                "video_views_100_quartile": quart_views(row_obj, 100),
             }
-            stats.update(get_base_stats(row_obj))
+            stats.update(get_base_stats(row_obj, quartiles=True))
             yield model(**stats)

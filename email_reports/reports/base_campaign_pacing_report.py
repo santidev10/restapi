@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
+from aw_reporting.models import Account
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
 from aw_reporting.reports.pacing_report import get_pacing_from_flights
@@ -15,14 +16,29 @@ from utils.datetime import now_in_default_tz
 logger = logging.getLogger(__name__)
 
 
-class BaseCampaignPacingEmailReport(BaseEmailReport):
+class BaseCampaignEmailReport(BaseEmailReport):
+    def __init__(self, *args, timezone_name=None, **kwargs):
+        super(BaseCampaignEmailReport, self).__init__(*args, **kwargs)
+
+        self.today = now_in_default_tz(tz_str=timezone_name).date()
+        self.timezone_name = timezone_name
+        self.__timezone_accounts = None
+
+
+    def timezone_accounts(self):
+        if self.__timezone_accounts is None and self.timezone_name is not None:
+            self.__timezone_accounts = list(
+                Account.objects.filter(timezone=self.timezone_name).values_list("id", flat=True).distinct()
+            )
+        return self.__timezone_accounts
+
+class BaseCampaignPacingEmailReport(BaseCampaignEmailReport):
     _problem_str = None
 
     def __init__(self, *args, **kwargs):
         super(BaseCampaignPacingEmailReport, self).__init__(*args, **kwargs)
         self.pacing_bound = kwargs.get("pacing_bound", .25)
         self.days_to_end = kwargs.get("pacing_bound", 3)
-        self.today = now_in_default_tz().date()
         self.date_end = self.today + timedelta(days=self.days_to_end)
 
     def _is_risky_pacing(self, pacing):
@@ -33,6 +49,8 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
             probability=100,
             end__gte=self.date_end,
         )
+        if self.timezone_accounts() is not None:
+            opportunities = opportunities.filter(aw_cid__in=self.timezone_accounts())
         messages = dict()
 
         for opp in opportunities:
@@ -70,7 +88,7 @@ class BaseCampaignPacingEmailReport(BaseEmailReport):
         return f"{ad_ops_manager_name} Opportunities {self._problem_str.upper()} Pacing Report"
 
     def _get_risky_flights(self, opportunity):
-        pacing_report = PacingReport()
+        pacing_report = PacingReport(self.today)
         flights_data = pacing_report.get_flights_data(
             placement__opportunity_id=opportunity.id,
             end=self.date_end,

@@ -46,12 +46,19 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="*", minute="0"),
         "kwargs": dict(do_update=os.getenv("DO_SALESFORCE_UPDATE", "0") == "1")
     },
-    "daily_email_notifications": {
+    "schedule_daily_email_notifications": {
+        "task": "email_reports.tasks.schedule_daily_reports",
+        "schedule": crontab(hour="0", minute="0"),
+        "kwargs": dict(
+            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
+                     "CampaignOverPacing", "FlightDeliveredReport"],
+        ),
+    },
+    "daily_es_monitoring_report": {
         "task": "email_reports.tasks.send_daily_email_reports",
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
-            reports=["CampaignUnderMargin", "TechFeeCapExceeded", "CampaignUnderPacing",
-                     "CampaignOverPacing", "ESMonitoringEmailReport"],
+            reports=["ESMonitoringEmailReport"],
         ),
     },
     "daily_apex_notifications": {
@@ -59,22 +66,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="13", minute="30"),
         "kwargs": dict(
             reports=["DailyApexCampaignEmailReport"],
-        ),
-    },
-    "weekday-campaign-reports": {
-        "task": "email_reports.tasks.send_daily_email_reports",
-        "schedule": crontab(hour="13", minute="30", day_of_week="Mon,Tue,Wed,Thu,Fri"),
-        "kwargs": dict(
-            reports=["DailyCampaignReport"],
-            roles="Ad Ops Manager",
-        ),
-    },
-    "weekend-campaign-reports": {
-        "task": "email_reports.tasks.send_daily_email_reports",
-        "schedule": crontab(hour="13", minute="30", day_of_week="Sun,Sat"),
-        "kwargs": dict(
-            reports=["DailyCampaignReport"],
-            roles="Ad Ops Manager",
         ),
     },
     "recreate-demo-data": {
@@ -95,11 +86,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "pull-custom-transcripts": {
         "task": "transcripts.tasks.pull_custom_transcripts.pull_custom_transcripts",
-        "schedule": 60
-    },
-    "submit-watson-transcripts": {
-        "task": "transcripts.tasks.submit_watson_transcripts.submit_watson_transcripts",
-        "schedule": 15*60
+        "schedule": 90
     },
     "cache-video-aggregations": {
         "task": "cache.tasks.cache_video_aggregations.cache_video_aggregations",
@@ -133,6 +120,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_global_trends_filters.cache_global_trends_filters",
         "schedule": crontab(minute=0, hour='*/6'),
     },
+    "cache_forecast_tool_filters": {
+        "task": "cache.tasks.cache_forecast_tool_filters.cache_forecast_tool_filters",
+        "schedule": crontab(minute=0, hour='*/6'),
+    },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
         "schedule": crontab(minute="*/10"),
@@ -162,10 +153,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/10"),
     }
 }
-
-
-# Suggestion from this thread https://github.com/celery/celery/issues/4226
-CELERY_BROKER_POOL_LIMIT = None
 
 
 class Queue:
@@ -215,6 +202,7 @@ class TaskExpiration:
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    FORECAST_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
 
 
 class TaskTimeout:
@@ -229,3 +217,4 @@ class TaskTimeout:
     RESEARCH_CACHING = timedelta(minutes=30).total_seconds()
     PRICING_TOOL_FILTERS_CACHING = timedelta(hours=3).total_seconds()
     GLOBAL_TRENDS_FILTERS_CACHING = timedelta(hours=3).total_seconds()
+    FORECAST_TOOL_FILTERS_CACHING = timedelta(minutes=30).total_seconds()

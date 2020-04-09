@@ -10,12 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
+import importlib
 import os
 import socket
 from datetime import date
-import importlib
-
-APM_ENABLED = os.getenv("APM_ENABLED", "0") == "1"
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,7 +54,6 @@ PROJECT_APPS = (
     "channel",
     "email_reports",
     "healthcheck",
-    "highlights",
     "keyword_tool",
     "related_tool",
     "segment",
@@ -273,10 +270,10 @@ LOGGING = {
 }
 
 SERVER_EMAIL = "viewiq-notifications@channelfactory.com"
-SENDER_EMAIL_ADDRESS = SERVER_EMAIL
+SENDER_EMAIL_ADDRESS = "viewiq@viewiq.com"
 EMERGENCY_SENDER_EMAIL_ADDRESS = "emergency-viewiq@channelfactory.com"
 EMAIL_BACKEND = "django_ses.SESBackend"
-EXPORTS_EMAIL_ADDRESS = "export-notify@channelfactory.com"
+EXPORTS_EMAIL_ADDRESS = "notify@viewiq.com"
 ADMIN_EMAIL_LIMIT = 10000
 
 PASSWORD_RESET_TIMEOUT_DAYS = 1
@@ -405,7 +402,7 @@ CACHE_PAGES_LIMIT = 500
 CACHE_BASE_URL = 'http://localhost:8000'
 CACHE_AUTH_TOKEN = 'put_auth_token_here'
 
-HOST = "https://viewiq.channelfactory.com"
+HOST = "https://viewiq.com"
 APEX_HOST = "https://apex.viewiq.com"
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
@@ -431,6 +428,7 @@ AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME = "viewiq-dev-custom-segments"
 AMAZON_S3_ACCESS_KEY_ID = None
 AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
+AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 
 MAX_AVATAR_SIZE_MB = 10.
 
@@ -469,6 +467,7 @@ BRAND_SAFETY_CHANNEL_INDEX = ""
 BRAND_SAFETY_VIDEO_INDEX = ""
 BRAND_SAFETY_TYPE = ""
 ELASTIC_SEARCH_REQUEST_TIMEOUT = 600
+RESEARCH_EXPORT_LIMIT = 750000
 
 REPORT_EXPIRATION_PERIOD = 24
 REPORT_VISIBLE_PERIOD = 90  # in days
@@ -491,16 +490,41 @@ TRANSCRIPTS_API_TOKEN = "f013fce59e6eecb09c19706f04da906173f5bc1d"
 
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
+APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
+    apm_env = os.getenv("APM_ENV", "dev")
+    # ref: https://www.elastic.co/guide/en/apm/agent/python/current/configuration.html
     ELASTIC_APM = {
-        "SERVICE_NAME": "viewiq-api",
+        "SERVICE_NAME": "restapi",
+        "ENVIRONMENT": apm_env,
+        "SERVICE_VERSION": os.getenv("APP_VERSION", "dev"),
         # Use if APM Server requires a token
         "SECRET_TOKEN": "",
-        "SERVER_URL": "http://apm-server:8200",
+        "SERVER_URL": os.getenv("APM_SERVER_URL"),
         "DEBUG": True,
     }
     MIDDLEWARE = ['elasticapm.contrib.django.middleware.TracingMiddleware'] + MIDDLEWARE
     INSTALLED_APPS = INSTALLED_APPS + ('elasticapm.contrib.django',)
+
+
+APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
+    "VISA Spain APEX UK Contactless Q1'20 OP004244":
+        "MK~ES_CN~Contactless_MN~VCM_YQ~20Q1Q2_CP~P20020_SP~NA_AC~CC",
+
+    "VISA Italy APEX UK I Pay Visa Q2'20 OP004362":
+        "MK~IT_CN~IPAYVISA_MN~VBR_YQ~20Q2Q3_CP~POP20658_SP~NA_AC~CC_OB~RVB_U1~Global",
+
+    "VISA Poland APEX UK Pay Visa Ecom Aliexpress Q1'20 OP004245":
+        "MK~PL_CN~IPV-Ecomm AliExpress_MN~ALT_YQ~20Q2_CP~P19610_SP~NA_AC~DOE_OB~RVB",
+
+    "VISA Poland APEX UK I Pay Visa Q1'20 OP004138":
+        "MK~PL_CN~IPV2 Jan Mar_MN~NONE_YQ~20Q1Q2_CP~PO#TBC_SP~NA_AC~CC_OB~RVB",
+
+    "VISA Poland APEX UK XB US Corridor Q1-Q2'20 OP004344":
+        "MK~PL_CN~Crossborder US corridor_MN~NONE_YQ~20Q2Q3_CP~P19664_SP~NA_AC~CB_OB~RVB"
+}
+
+DOMAIN_MANAGEMENT_PERMISSIONS = ()
 
 try:
     from .local_settings import *

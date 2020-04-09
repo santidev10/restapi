@@ -35,7 +35,7 @@ API_QUOTA = settings.WATSON_API_QUOTA
 WATSON_APITRACKER_KEY = 'watson_transcripts'
 batch_size = settings.WATSON_BATCH_SIZE
 sandbox_mode = settings.WATSON_SANDBOX_MODE
-youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY)
+youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY, cache_discovery=False)
 watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
 
@@ -57,11 +57,10 @@ def submit_watson_transcripts():
     vids_submitted = 0
     offset = 0
     try:
-        lock(lock_name=LOCK_NAME, max_retries=60, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         logger.info("Starting submit_watson_transcripts task.")
         api_tracker = APIScriptTracker.objects.get_or_create(name=WATSON_APITRACKER_KEY)[0]
         # Get Videos in Elastic Search that have been parsed for Custom Captions but don't have any
-        videos_to_upsert = []
         videos_request_batch = []
         videos_watson_transcripts = []
         manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, ),
@@ -109,8 +108,6 @@ def submit_watson_transcripts():
                                 else:
                                     videos_watson_transcripts.append(watson_transcript)
                                     videos_request_batch.append(vid_id)
-                                    if not sandbox_mode:
-                                        videos_to_upsert.append(vid)
                             except Exception as e:
                                 logger.error(e)
                                 continue
@@ -151,6 +148,7 @@ def submit_watson_transcripts():
                         watson_transcript.save(update_fields=['submitted', 'job_id', 'job_id_hash'])
                     videos_watson_transcripts = []
                     if not sandbox_mode:
+                        videos_to_upsert = manager.get(videos_request_batch, skip_none=True)
                         for video in videos_to_upsert:
                             video.populate_custom_captions(watson_job_id=job_id)
                         manager.upsert(videos_to_upsert)

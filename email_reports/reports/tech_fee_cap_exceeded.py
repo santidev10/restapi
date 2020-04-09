@@ -7,7 +7,7 @@ from django.db.models import Sum
 
 from aw_reporting.models import OpPlacement, dict_add_calculated_stats
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from email_reports.reports.base import BaseEmailReport
+from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
 from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
@@ -17,18 +17,16 @@ _body_template = "{ad_ops_name},\n{opportunity_name} is exceeding" \
                  " placement. Please adjust immediately."
 
 
-class TechFeeCapExceeded(BaseEmailReport):
+class TechFeeCapExceeded(BaseCampaignEmailReport):
 
     def __init__(self, *args, **kwargs):
         super(TechFeeCapExceeded, self).__init__(*args, **kwargs)
         self.fake_tech_fee_cap = kwargs.get("fake_tech_fee_cap")
 
     def send(self):
-        today = now_in_default_tz().date()
-
         placements = OpPlacement.objects.filter(
             opportunity__probability=100,
-            start__lte=today, end__gte=today,
+            start__lte=self.today, end__gte=self.today,
             dynamic_placement=DynamicPlacementType.RATE_AND_TECH_FEE,
             tech_fee_cap__isnull=False,
             tech_fee_type__isnull=False,
@@ -43,6 +41,9 @@ class TechFeeCapExceeded(BaseEmailReport):
             impressions=Sum("adwords_campaigns__impressions"),
             cost=Sum("adwords_campaigns__cost"),
         )
+
+        if self.timezone_accounts() is not None:
+            placements = placements.filter(opportunity__aw_cid__in=self.timezone_accounts(),)
 
         for placement in placements:
 

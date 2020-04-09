@@ -380,20 +380,19 @@ class PricingToolFiltering:
                                  in enumerate(DEVICE_FIELDS)
                                  if i in devices)
 
-            query_exclude_invalid_types = dict((model_options.prefix + field, True) for i, field
-                                 in enumerate(DEVICE_FIELDS)
-                                 if i not in devices)
-            queryset = queryset.exclude(**query_exclude).exclude(**query_exclude_invalid_types)
+            queries_exclude_invalid_types = [Q(**{model_options.prefix + field: True}) for i, field in enumerate(DEVICE_FIELDS)
+                                     if i not in devices]
+
+            queryset = queryset.exclude(**query_exclude).exclude(reduce(or_, queries_exclude_invalid_types, Q()))
 
         elif devices_condition == "and" and model_options.filtering_and:
             query_filter = dict((model_options.prefix + field, True) for i, field
                                 in enumerate(DEVICE_FIELDS)
                                 if i in devices)
-
-            query_exclude = dict((model_options.prefix + field, True) for i, field
-                                in enumerate(DEVICE_FIELDS)
-                                if i not in devices)
-            queryset = queryset.filter(**query_filter).exclude(**query_exclude)
+            queries_exclude_invalid_types = [Q(**{model_options.prefix + field: True}) for i, field in
+                                             enumerate(DEVICE_FIELDS)
+                                             if i not in devices]
+            queryset = queryset.filter(**query_filter).exclude(reduce(or_, queries_exclude_invalid_types, Q()))
 
         return queryset.distinct(), True
 

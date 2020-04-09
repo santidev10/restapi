@@ -11,6 +11,8 @@ from cache.models import CacheItem
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from utils.unittests.test_case import ExtendedAPITestCase
+from es_components.countries import COUNTRIES
+from brand_safety.languages import LANGUAGES
 
 
 @patch("brand_safety.utils.BrandSafetyQueryBuilder.execute")
@@ -146,15 +148,15 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         self.create_test_user()
         cache, _ = CacheItem.objects.get_or_create(key="channel_aggregations")
         cache.value = {
-            "general_data.country": {"buckets": [
-                {"key": "United States", "doc_count": 96894},
-                {"key": "India", "doc_count": 33589},
-                {"key": "United Kingdom", "doc_count": 18372},
+            "general_data.country_code": {"buckets": [
+                {"key": "US", "doc_count": 96894},
+                {"key": "IN", "doc_count": 33589},
+                {"key": "GB", "doc_count": 18372},
             ]},
-            "general_data.top_language": {"buckets": [
-                {"key": "English", "doc_count": 344633},
-                {"key": "Spanish", "doc_count": 48062},
-                {"key": "Arabic", "doc_count": 29714},
+            "general_data.top_lang_code": {"buckets": [
+                {"key": "en", "doc_count": 344633},
+                {"key": "es", "doc_count": 48062},
+                {"key": "ar", "doc_count": 29714},
             ]}
         }
         cache.save()
@@ -162,7 +164,9 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             self._get_url(), {}, content_type="application/json"
         )
         self.assertEqual(response.status_code, HTTP_200_OK)
-        for i, country in enumerate(cache.value["general_data.country"]["buckets"]):
-            self.assertEqual(response.data["options"]["countries"][i]["common"], country["key"])
-        for i, lang in enumerate(cache.value["general_data.top_language"]["buckets"]):
-            self.assertEqual(response.data["options"]["languages"][i]["title"], lang["key"])
+        for i, country_code in enumerate(cache.value["general_data.country_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["countries"][i]["id"], country_code["key"])
+            self.assertEqual(response.data["options"]["countries"][i]["common"], COUNTRIES[country_code["key"]][0])
+        for i, lang_code in enumerate(cache.value["general_data.top_lang_code"]["buckets"]):
+            self.assertEqual(response.data["options"]["languages"][i]["id"], lang_code["key"])
+            self.assertEqual(response.data["options"]["languages"][i]["title"], LANGUAGES[lang_code["key"]])

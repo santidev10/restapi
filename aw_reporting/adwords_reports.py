@@ -33,7 +33,7 @@ AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "AdGroupStatus", "AdGroupType",
                                          "Date", "Device", "AdNetworkType1",
                                          "AveragePosition",
-                                         "ActiveViewImpressions", "Engagements"
+                                         "ActiveViewImpressions", "Engagements", "ContentBidCriterionTypeGroup"
                                      ) + MAIN_STATISTICS_FILEDS \
                                      + COMPLETED_FIELDS
 GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",
@@ -129,7 +129,7 @@ def _get_report(client, name, selector, date_range_type=None,
                 raise
             if "invalid_grant" in error_str:
                 logger.debug("(Error) Invalid grant faced. Skipping. Msg: {}".format(error_str))
-                return
+                raise e
             logger.debug("Error: %s" % error_str)
             if try_num < MAX_ACCESS_AD_WORDS_TRIES:
                 try_num += 1

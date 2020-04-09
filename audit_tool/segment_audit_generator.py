@@ -11,13 +11,16 @@ from brand_safety.auditors.utils import AuditUtils as BrandSafetyUtils
 from segment.models import CustomSegment
 from utils.utils import chunks_generator
 from utils.youtube_api import YoutubeAPIConnector
+from utils.youtube_api import YoutubeAPIConnectorException
 from utils.db.get_exists import get_exists
+from utils.db.functions import safe_bulk_create
 
 logger = logging.getLogger(__name__)
 
 
 class SegmentAuditGenerator(object):
     BATCH_SIZE = 1000
+    CREATE_BATCH_SIZE = None
     segment = None
     audit_processor_type = None
     audit_model = None
@@ -36,6 +39,8 @@ class SegmentAuditGenerator(object):
     def __init__(self, segment_id, data_field="video"):
         # video_id, channel_id
         self.id_field = data_field + "_id"
+        self.CREATE_BATCH_SIZE = self.BATCH_SIZE // 2
+        self.youtube = YoutubeAPIConnector(max_retries=0)
         try:
             self.segment = CustomSegment.objects.get(id=segment_id)
             self.audit_model = self.segment.audit_utils.model
@@ -48,16 +53,18 @@ class SegmentAuditGenerator(object):
         self.language_mapping = AuditUtils.get_audit_language_mapping()
         if data_field == "video":
             self.audit_processor_type = 1
-            self.youtube_connector = YoutubeAPIConnector().obtain_videos
+            self.youtube_connector = self.youtube.obtain_videos
             self.meta_model_instantiator = self.instantiate_video_meta_model
             self.select_fields = "id,video_id"
             self.table_name = "audit_tool_auditvideo"
+            self.vetting_table_name = "audit_tool_auditvideovet"
         elif data_field == "channel":
             self.audit_processor_type = 2
-            self.youtube_connector = YoutubeAPIConnector().obtain_channels
+            self.youtube_connector = self.youtube.obtain_channels
             self.meta_model_instantiator = self.instantiate_channel_meta_model
             self.select_fields = "id,channel_id"
             self.table_name = "audit_tool_auditchannel"
+            self.vetting_table_name = "audit_tool_auditchannelvet"
         else:
             raise ValueError(f"Unsupported data field: {data_field}")
 
@@ -88,34 +95,48 @@ class SegmentAuditGenerator(object):
                                   select_fields=self.select_fields, where_id_field=self.id_field)
                 try:
                     existing_audit_ids, existing_item_ids = list(zip(*rows))
-                except ValueError:
+                except (ValueError, TypeError):
                     # No rows returned
                     existing_audit_ids, existing_item_ids = [], []
 
                 # Generate only new audit / audit meta items with video / channel id
                 to_create_ids = set(batch) - set(existing_item_ids)
-                data = self.retrieve_youtube(self.youtube_connector, to_create_ids)
+                try:
+                    # YoutubeAPIConnector instantiated with 0 retries since only exception that
+                    # would raise is QuotaExceeded. Continue to at least create vetting items we have data for
+                    data = self.retrieve_youtube(self.youtube_connector, to_create_ids)
+                except YoutubeAPIConnectorException:
+                    data = []
 
                 audit_model_to_create = [self.instantiate_audit_model(item, self.id_field, self.audit_model) for item in data]
-                self.audit_model.objects.bulk_create(audit_model_to_create)
+                safe_bulk_create(self.audit_model, audit_model_to_create, batch_size=self.CREATE_BATCH_SIZE)
 
                 # meta_data is tuple of created audit item
                 # and api response data (AuditChannel, {"snippet": ..., "statistics": ...})
                 # Must create first to assign FK to meta model
                 meta_data = zip(audit_model_to_create, data)
                 meta_to_create = [
-                    self.meta_model_instantiator(audit, data, language_mapping=self.language_mapping, country_mapping=self.country_mapping, category_mapping=self.category_mapping)
+                    self.meta_model_instantiator(audit, data, language_mapping=self.language_mapping,
+                                                 country_mapping=self.country_mapping,
+                                                 category_mapping=self.category_mapping)
                     for audit, data in meta_data if audit
                 ]
-                self.audit_meta_model.objects.bulk_create(meta_to_create)
+                safe_bulk_create(self.audit_meta_model, meta_to_create, batch_size=self.CREATE_BATCH_SIZE)
 
-                # Create vetting items for all items retrieved in list
+                # Create vetting items
                 all_audit_ids = list(existing_audit_ids) + [audit.id for audit in audit_model_to_create]
+                fields = f"audit_id,{self.id_field}"
+                # Check exists with (audit_processor_id, audit_id)
+                parameters = ", ".join([f"({audit_processor.id}, %s)" for _ in range(len(all_audit_ids))])
+                existing_vet_audit_ids = get_exists(all_audit_ids, select_fields=self.id_field,
+                                                    where_id_field=f"({fields})", model_name=self.vetting_table_name,
+                                                    parameters=parameters)
+                vetting_to_create_ids = set(all_audit_ids) - set([row[0] for row in existing_vet_audit_ids])
                 audit_vetting_to_create = [
                     self.audit_vetting_model(**{"audit": audit_processor, self.id_field: _id})
-                    for _id in all_audit_ids
+                    for _id in vetting_to_create_ids
                 ]
-                self.audit_vetting_model.objects.bulk_create(audit_vetting_to_create)
+                safe_bulk_create(self.audit_vetting_model, audit_vetting_to_create, batch_size=self.CREATE_BATCH_SIZE)
             except Exception:
                 logger.exception("Error generating audit items")
 
@@ -209,3 +230,7 @@ class SegmentAuditGenerator(object):
             response = func(ids_term)["items"]
             data.extend(response)
         return data
+
+
+class QuotaExceededException(Exception):
+    pass

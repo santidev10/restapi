@@ -23,7 +23,7 @@ class UserRegistrationTestCase(APITestCase):
     auth_url = reverse(UserprofilePathName.AUTH, [Namespace.USER_PROFILE])
 
     def _user_data(self, **kwargs):
-        password = kwargs.get("password", "empty")
+        password = kwargs.get("password", "EmptyPassword1!")
         default_data = {
             "first_name": "Test",
             "last_name": "Test",
@@ -37,8 +37,27 @@ class UserRegistrationTestCase(APITestCase):
         }
         return {**default_data, **kwargs}
 
+    def test_password_validation(self):
+        """
+        ensure password validators are working properly. See
+        settings.PASSWORD_POLICY and serializer's passwords to
+        change validation rules
+        """
+        bad_passwords = [
+            'Short1!',
+            'no_capitalization1!',
+            'Nospecialchars1',
+            'No_numbers!'
+        ]
+        for bad_password in bad_passwords:
+            user_data = self._user_data(password=bad_password)
+            response = None
+            response = self.client.post(self.registration_url, data=user_data)
+            self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+            self.assertIsNotNone(response.data.get('verify_password', None))
+
     def test_registration_procedure_success(self):
-        password = "test"
+        password = "Testing1!"
         email = "test@example.com"
         user_data = self._user_data(password=password)
         response = self.client.post(self.registration_url, data=user_data)

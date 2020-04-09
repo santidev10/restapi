@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.test import override_settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_401_UNAUTHORIZED
 
 from aw_reporting.api.tests.base import AWAccountPermission
 from aw_reporting.api.tests.base import AWConnection
@@ -17,6 +18,7 @@ from aw_reporting.api.tests.base import AwReportingAPITestCase
 from aw_reporting.api.tests.base import Campaign
 from saas.urls.namespaces import Namespace
 from userprofile.api.urls.names import UserprofilePathName
+from userprofile.models import UserDeviceToken
 from utils.unittests.reverse import reverse
 
 
@@ -59,6 +61,7 @@ class AuthAPITestCase(AwReportingAPITestCase):
                 "company",
                 "date_joined",
                 "device_id",
+                "domain",
                 "email",
                 "first_name",
                 "google_account_id",
@@ -200,3 +203,44 @@ class AuthAPITestCase(AwReportingAPITestCase):
             content_type="application/json", HTTP_ORIGIN="http://localhost:8000"
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_user_enumeration_protection(self):
+        email = 'test_user@email.com'
+        password = 'Test_password123!'
+        error_message = "That username / password is not valid."
+        user = get_user_model().objects.create(email=email)
+        user.set_password(password)
+        user.save()
+
+        bad_email_response = self.client.post(
+            self._url,
+            data=json.dumps({
+                'username': 'a' + email,
+                'password': password,
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(bad_email_response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(bad_email_response.data['message'], error_message)
+
+        bad_pass_response = self.client.post(
+            self._url,
+            data=json.dumps({
+                'username': email,
+                'password': 'a' + password,
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(bad_pass_response.status_code, HTTP_400_BAD_REQUEST)
+        self.assertEqual(bad_pass_response.data['message'], error_message)
+
+    def test_logout_unauthenticated_fail(self):
+        response = self.client.delete(self._url)
+        self.assertEqual(response.status_code, HTTP_401_UNAUTHORIZED)
+
+    def test_logout_success(self):
+        user = self.create_test_user()
+        token = UserDeviceToken.objects.filter(user=user).last()
+        response = self.client.delete(self._url)
+        self.assertEqual(response.status_code, HTTP_200_OK)
+        self.assertFalse(UserDeviceToken.objects.filter(key=token.key).exists())

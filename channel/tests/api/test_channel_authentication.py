@@ -6,6 +6,7 @@ from rest_framework.status import HTTP_202_ACCEPTED
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from channel.api.urls.names import ChannelPathName
+from channel.models import AuthChannel
 from es_components.datetime_service import datetime_service
 from es_components.models.channel import Channel
 from saas.urls.namespaces import Namespace
@@ -57,6 +58,53 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         self.assertIn('auth_token', data)
         self.assertEqual(len(mail.outbox), 2)
 
+    @mock_send_task()
+    @patch("channel.api.views.channel_authentication.ChannelManager.get_or_create",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.get",
+           return_value=[Channel("channel_id")])
+    @patch("channel.api.views.channel_authentication.ChannelManager.upsert")
+    @patch("channel.api.views.channel_authentication.requests")
+    @patch("channel.api.views.channel_authentication.OAuth2WebServerFlow")
+    @patch("channel.api.views.channel_authentication.YoutubeAPIConnector")
+    def test_reauthentification(self, mock_youtube, flow, requests_mock, *args):
+        """
+        Bug: https://channelfactory.atlassian.net/browse/SAAS-1602
+        On sign in server return server error 500.
+        Message:
+        NotImplementedError:
+        Django doesn't provide a DB representation for AnonymousUser.
+        """
+
+        user = self.create_test_user(True)
+        AuthChannel.objects.create(
+            channel_id="channel_id",
+            refresh_token="^test_refresh_token$",
+            access_token="^test_access_token$",
+            access_token_expire_at=datetime_service.now(),
+            token_revocation=datetime_service.now()
+        )
+
+        youtube_own_channel_test_value = {"items": [{"id": "channel_id"}]}
+        requests_mock.get.return_value = MockResponse(
+            json=dict(email=user.email, image=dict(isDefault=False)))
+
+        flow().step2_exchange().refresh_token = "^test_refresh_token$"
+        flow().step2_exchange().access_token = "^test_access_token$"
+        flow().step2_exchange().token_expiry = datetime_service.now()
+
+        mock_youtube().own_channels.return_value = youtube_own_channel_test_value
+
+        response = self.client.post(self.url, dict(code="code"))
+
+        self.assertEqual(response.status_code, HTTP_202_ACCEPTED)
+        data = response.data
+        self.assertIn('auth_token', data)
+        self.assertEqual(len(mail.outbox), 1)
+
+        auth_channel = AuthChannel.objects.filter(channel_id="channel_id").first()
+        self.assertIsNone(auth_channel.token_revocation)
+
     def test_error_no_code(self):
         response = self.client.post(self.url, dict())
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
@@ -76,7 +124,7 @@ class ChannelAuthenticationTestCase(ExtendedAPITestCase):
         """
         test_error = {
             "detail": "This account doesn't include any channels. "
-                      "Please try to authorize other YT channel"
+                      "Please try to authorize another YouTube account with channels."
         }
 
         flow().step2_exchange().refresh_token = "^test_refresh_token$"
