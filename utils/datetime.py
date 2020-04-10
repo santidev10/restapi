@@ -156,3 +156,7 @@ def from_local_to_utc(utc_now, timezone_name, local_time, future=True):
         time_to_execute = time_to_execute + timedelta(days=1)
 
     return time_to_execute
+
+
+def date_to_chart_data_str(date):
+    return f"{date} 23:59:59.999999Z"

@@ -97,6 +97,45 @@ class ChannelRetrieveUpdateTestCase(ExtendedAPITestCase, ESTestCase):
     @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
     @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
     @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
+    def test_enterprise_user_should_be_able_to_see_chart_data(self, *args):
+        user = self.create_test_user(True)
+        self.fill_all_groups(user)
+        channel_id = "test_channel_id"
+        stats = {
+            "subscribers_raw_history": {
+                "2020-01-02": 300,
+                "2020-01-09": 780
+            },
+            "views_raw_history": {
+                "2020-01-02": 10300,
+                "2020-01-09": 30300,
+            }
+        }
+        expected_data = [
+            {
+                "created_at": "2020-01-02 23:59:59.999999Z",
+                "subscribers": 300,
+                "views": 10300
+            },
+            {
+                "created_at": "2020-01-09 23:59:59.999999Z",
+                "subscribers": 780,
+                "views": 30300
+            },
+        ]
+
+
+        with patch("es_components.managers.channel.ChannelManager.model.get",
+                   return_value=Channel(id=channel_id, stats=stats)):
+            url = self._get_url(channel_id)
+            response = self.client.get(url)
+
+            self.assertEqual(response.status_code, HTTP_200_OK)
+            self.assertEqual(response.data.get("chart_data"), expected_data)
+
+    @patch("es_components.managers.channel.ChannelManager.search", return_value=SearchDSLPatcher())
+    @patch("es_components.managers.channel.ChannelManager.upsert", return_value=None)
+    @patch("es_components.managers.video.VideoManager.search", return_value=SearchDSLPatcher())
     def test_professional_user_should_see_channel_aw_data(self, *args):
         """
         Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
