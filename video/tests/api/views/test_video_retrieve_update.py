@@ -49,9 +49,6 @@ class VideoRetrieveUpdateTestSpec(ExtendedAPITestCase, ESTestCase):
 
     @patch("brand_safety.auditors.utils.AuditUtils.get_items", return_value=[])
     def test_user_should_see_chart_data(self, mock_get_items):
-        """
-        Ticket https://channelfactory.atlassian.net/browse/SAAS-1695
-        """
         mock_get_items.return_value = []
         user = self.create_test_user(True)
 
