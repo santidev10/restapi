@@ -109,7 +109,7 @@ class YTVideo(object):
             print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
             response = requests.get(url, headers=headers, proxies=proxy)
             print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-        except Exception as e:
+        except (ConnectionError, TimeoutError) as e:
             print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
         while not response or response.status_code != 200:
             try:
@@ -118,7 +118,7 @@ class YTVideo(object):
                 print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
                 response = requests.get(url, headers=headers, proxies=proxy)
                 print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-            except Exception as e:
+            except (ConnectionError, TimeoutError) as e:
                 print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
                 continue
         return response
