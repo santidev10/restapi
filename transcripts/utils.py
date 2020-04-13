@@ -1,6 +1,7 @@
 import requests
-import socks
-from time import sleep
+import asyncio
+from aiohttp import ClientSession
+from aiohttp.web import HTTPTooManyRequests
 from proxyscrape import create_collector
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
@@ -47,7 +48,7 @@ class YTTranscriptsScraper(object):
         port = proxy_string[1]
         return host, port
 
-    def generate_transcript_urls(self):
+    async def generate_transcript_urls(self):
         failed_vid_reasons = {}
         for vid_id in self.vid_ids:
             try:
@@ -69,6 +70,11 @@ class YTTranscriptsScraper(object):
             self.num_failed_vids = len(failed_vid_reasons)
             self.failure_reasons = failed_vid_reasons
 
+    def retrieve_transcripts(self):
+        for vid in self.vids:
+            for subtitle in vid.subtitles:
+                subtitle.get_subtitles()
+
 
 class YTVideo(object):
     YT_HEADERS = {
@@ -88,22 +94,33 @@ class YTVideo(object):
         self.params = self.parse_tts_url_params(self.tts_url)
         self.subtitles_list_url = self.get_list_url(self.params)
         self.subtitles_list_url_response = self.get_list_url_response(self.subtitles_list_url)
-        self.tracks_meta, self.targets_meta = self.parse_list_url(self.subtitles_list_url_response)
+        self.tracks_meta = self.parse_list_url(self.subtitles_list_url_response)
         self.asr_track_meta = self.get_asr_track(self.tracks_meta)
         self.asr_lang_code = self.asr_track_meta.get("lang_code")
         self.tracks_lang_codes_dict = self.get_lang_codes_dict(self.tracks_meta)
-        self.targets_lang_codes_dict = self.get_lang_codes_dict(self.targets_meta)
         self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
         self.subtitles = self.get_top_subtitles()
 
     @staticmethod
     def get_response_through_proxy(scraper, url, headers=None):
         proxy = scraper.get_proxy()
-        response = requests.get(url, headers=headers, proxies=proxy)
-        while response.status_code == 429:
-            scraper.blacklist_proxy(proxy)
-            proxy = scraper.get_proxy()
+        response = None
+        try:
+            print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
             response = requests.get(url, headers=headers, proxies=proxy)
+            print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
+        except Exception as e:
+            print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
+        while not response or response.status_code != 200:
+            try:
+                scraper.blacklist_proxy(proxy)
+                proxy = scraper.get_proxy()
+                print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
+                response = requests.get(url, headers=headers, proxies=proxy)
+                print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
+            except Exception as e:
+                print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
+                continue
         return response
 
     def get_top_subtitles(self):
@@ -206,19 +223,14 @@ class YTVideo(object):
         if not docid:
             raise ValidationError("list_url has no 'docid' attribute.")
         tracks = self.get_tracks(soup)
-        targets = self.get_targets(soup)
-        num_tracks = len(tracks) + len(targets)
+        num_tracks = len(tracks)
         if num_tracks < 1:
             raise ValidationError("list_url has no tracks.")
-        return tracks, targets
+        return tracks
 
     @staticmethod
     def get_tracks(soup: bs):
         return [track for track in soup.find_all("track")]
-
-    @staticmethod
-    def get_targets(soup: bs):
-        return [target for target in soup.find_all("target")]
 
     @staticmethod
     def get_asr_track(tracks):
@@ -260,9 +272,6 @@ class YTVideoSubtitles(object):
 
     def is_track(self):
         return self.type == "track"
-
-    def is_target(self):
-        return self.type == "target"
 
     def get_subtitle_url(self):
         subtitle_url = "https://www.youtube.com/api/timedtext?"
