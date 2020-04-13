@@ -48,24 +48,26 @@ class YTTranscriptsScraper(object):
         port = proxy_string[1]
         return host, port
 
+    def create_yt_vids(self):
+        for vid_id in self.vid_ids:
+            yt_vid = YTVideo(vid_id, self)
+            self.vids.append(yt_vid)
+
     async def generate_transcript_urls(self):
         failed_vid_reasons = {}
-        for vid_id in self.vid_ids:
-            try:
-                yt_vid = YTVideo(vid_id, self)
-                self.vids.append(yt_vid)
-                if yt_vid.vid_url_status != 200:
-                    raise Exception(f"Failed to get response from Youtube for Video: '{vid_id}'. "
-                                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'")
-                elif not yt_vid.tts_url:
-                    raise Exception(f"No TTS_URL for Video: '{vid_id}'.")
-                elif not yt_vid.subtitles_list_url:
-                    raise Exception(f"No TRACKS_LIST_URL found for Video: '{vid_id}'.")
-                elif not yt_vid.tracks_meta:
-                    raise Exception(f"Video: '{vid_id}' has no TTS_URL captions available.")
-            except Exception as e:
-                failed_vid_reasons[vid_id] = e
-                continue
+        async with ClientSession() as session:
+            await asyncio.gather(*[yt_vid.get_meta_data] for yt_vid in self.vids)
+        for yt_vid in self.vids:
+            vid_id = yt_vid.vid_id
+            if yt_vid.vid_url_status != 200:
+                failed_vid_reasons[vid_id] = f"Failed to get response from Youtube for Video: '{vid_id}'. " \
+                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'"
+            elif not yt_vid.tts_url:
+                failed_vid_reasons[vid_id] = f"No TTS_URL for Video: '{vid_id}'."
+            elif not yt_vid.subtitles_list_url:
+                failed_vid_reasons[vid_id] = f"No TRACKS_LIST_URL found for Video: '{vid_id}'."
+            elif not yt_vid.tracks_meta:
+                failed_vid_reasons[vid_id] = f"Video: '{vid_id}' has no TTS_URL captions available."
         if len(failed_vid_reasons) > 0:
             self.num_failed_vids = len(failed_vid_reasons)
             self.failure_reasons = failed_vid_reasons
@@ -87,7 +89,22 @@ class YTVideo(object):
     def __init__(self, vid_id, scraper):
         self.vid_id = vid_id
         self.scraper = scraper
-        self.vid_url = self.get_vid_url(vid_id)
+        self.vid_url = None
+        self.vid_url_response = None
+        self.vid_url_status = None
+        self.tts_url = None
+        self.params = None
+        self.subtitles_list_url = None
+        self.subtitles_list_url_response = None
+        self.tracks_meta = None
+        self.asr_track_meta = None
+        self.asr_lang_code = None
+        self.tracks_lang_codes_dict = None
+        self.top_lang_codes, self.top_subtitles_meta = None
+        self.subtitles = None
+
+    async def get_meta_data(self):
+        self.vid_url = self.get_vid_url(self.vid_id)
         self.vid_url_response = self.get_vid_url_response(self.vid_url)
         self.vid_url_status = self.vid_url_response.status_code
         self.tts_url = self.get_tts_url(self.vid_url_response)
@@ -285,6 +302,6 @@ class YTVideoSubtitles(object):
     def get_subtitles(self):
         response = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
         soup = bs(response.text, "xml")
-        subtitles = replace_apostrophes(soup.text).strip() if soup else ""
+        subtitles = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
         subtitles = subtitles.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         self.subtitles = subtitles
