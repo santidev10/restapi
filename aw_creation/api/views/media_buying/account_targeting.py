@@ -19,6 +19,10 @@ ScalarFilter = namedtuple("ScalarFilter", "name type")
 
 
 class AccountTargetingAPIView(APIView):
+    """
+    GET: Retrieve aggregated targeting statistics
+
+    """
     RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "views_share", "video_view_rate")
     SCALAR_FILTERS = (ScalarFilter("impressions", "int"), ScalarFilter("video_views", "int"))
     SORTS = ("campaign_name", "ad_group_name", "target_name")
