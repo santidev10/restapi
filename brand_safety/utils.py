@@ -38,7 +38,7 @@ class BrandSafetyQueryBuilder(object):
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
         self.age_groups = data.get("age_groups", [])
-        self.genders = data.get("genders", [])
+        self.gender = data.get("gender", None)
         self.is_vetted = data.get("is_vetted", None)
 
         self.options = self._get_segment_options()
@@ -113,6 +113,9 @@ class BrandSafetyQueryBuilder(object):
         if self.sentiment:
             must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
+        if self.gender:
+            must_queries.append(QueryBuilder().build().must().term().field("task_us_data.gender").value(self.gender).get())
+
         if self.languages:
             lang_code_field = "lang_code" if self.segment_type == 0 else "top_lang_code"
             lang_queries = Q("bool")
@@ -138,12 +141,6 @@ class BrandSafetyQueryBuilder(object):
             for age_group_id in self.age_groups:
                 age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
             must_queries.append(age_queries)
-
-        if self.genders:
-            gender_queries = Q("bool")
-            for gender_id in self.genders:
-                gender_queries |= QueryBuilder().build().should().term().field("task_us_data.gender").value(gender_id).get()
-            must_queries.append(gender_queries)
 
         if self.severity_filters:
             severity_queries = Q("bool")
