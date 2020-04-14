@@ -13,11 +13,14 @@ from channel.api.country_view import CountryListApiView
 from segment.api.views.custom_segment.segment_create_v3 import SegmentCreateApiViewV3
 from segment.models import CustomSegment
 from es_components.countries import COUNTRIES
+from audit_tool.models import AuditAgeGroup
+from audit_tool.models import AuditGender
 
 
 class SegmentCreationOptionsApiView(APIView):
     OPTIONAL_FIELDS = ["countries", "languages", "list_type", "severity_filters", "last_upload_date",
-                       "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold", "content_categories"]
+                       "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold",
+                       "content_categories", "age_groups", "genders", "minimum_videos", "is_vetted"]
 
     def post(self, request, *args, **kwargs):
         """
@@ -81,14 +84,25 @@ class SegmentCreationOptionsApiView(APIView):
                 for code, lang in LANGUAGES.items()
             ]
         options = {
+            "age_groups": [
+                {"id": age_group_id, "name": age_group_name} for age_group_id, age_group_name in AuditAgeGroup.ID_CHOICES
+            ],
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
             "content_categories": [
                 {"id": _id, "name": category} for _id, category in AuditCategory.get_all(iab=True, unique=True).items()
             ],
+            "genders": [
+                {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
+            ],
             "countries": countries,
             "languages": languages,
+            "is_vetted": [
+                {"id": 0, "name": "Include Only Non-Vetted"},
+                {"id": 1, "name": "Include Only Vetted"},
+                {"id": None, "name": "Include All"}
+            ],
         }
         return options
 

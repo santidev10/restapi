@@ -1,12 +1,12 @@
-from elasticsearch_dsl import Q
-
-import brand_safety.constants as constants
 from audit_tool.models import AuditCategory
+from distutils.util import strtobool
+from elasticsearch_dsl import Q
 from es_components.constants import Sections
+from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
-from es_components.countries import COUNTRY_CODES
+import brand_safety.constants as constants
 
 
 class BrandSafetyQueryBuilder(object):
@@ -30,12 +30,16 @@ class BrandSafetyQueryBuilder(object):
         self.last_upload_date = data.get("last_upload_date")
         self.minimum_views = data.get("minimum_views")
         self.minimum_subscribers = data.get("minimum_subscribers")
+        self.minimum_videos = data.get("minimum_videos")
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
         self.languages = data.get("languages", [])
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
+        self.age_groups = data.get("age_groups", [])
+        self.genders = data.get("genders", [])
+        self.is_vetted = data.get("is_vetted", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
@@ -97,6 +101,9 @@ class BrandSafetyQueryBuilder(object):
         if self.segment_type == 1 and self.minimum_subscribers:
             must_queries.append(QueryBuilder().build().must().range().field("stats.subscribers").gte(self.minimum_subscribers).get())
 
+        if self.segment_type == 1 and self.minimum_videos:
+            must_queries.append(QueryBuilder().build().must().range().field("stats.total_videos_count").gte(self.minimum_videos).get())
+
         if self.video_ids:
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
 
@@ -126,6 +133,18 @@ class BrandSafetyQueryBuilder(object):
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(country_code).get()
             must_queries.append(country_queries)
 
+        if self.age_groups:
+            age_queries = Q("bool")
+            for age_group_id in self.age_groups:
+                age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
+            must_queries.append(age_queries)
+
+        if self.genders:
+            gender_queries = Q("bool")
+            for gender_id in self.genders:
+                gender_queries |= QueryBuilder().build().should().term().field("task_us_data.gender").value(gender_id).get()
+            must_queries.append(gender_queries)
+
         if self.severity_filters:
             severity_queries = Q("bool")
             for category, scores in self.severity_filters.items():
@@ -143,6 +162,12 @@ class BrandSafetyQueryBuilder(object):
                 for category in self.brand_safety_categories:
                     safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
                 must_queries.append(safety_queries)
+
+        if self.is_vetted is not None:
+            vetted_query = QueryBuilder().build().must().exists().field("task_us_data").get() \
+                if bool(strtobool(self.is_vetted)) \
+                else QueryBuilder().build().must_not().exists().field("task_us_data").get()
+            must_queries.append(vetted_query)
 
         query = Q(
             "bool",
