@@ -5,6 +5,7 @@ from itertools import zip_longest
 
 from rest_framework.fields import SerializerMethodField
 
+from utils.datetime import date_to_chart_data_str
 from utils.brand_safety import get_brand_safety_data
 from utils.es_components_api_utils import ESDictSerializer
 from brand_safety.languages import LANG_CODES
@@ -20,26 +21,23 @@ class VideoSerializer(ESDictSerializer):
             return []
 
         chart_data = []
-        items_count = 0
-        history = zip_longest(
-            reversed(video.stats.views_history or []),
-            reversed(video.stats.likes_history or []),
-            reversed(video.stats.dislikes_history or []),
-            reversed(video.stats.comments_history or [])
-        )
-        for views, likes, dislikes, comments in history:
-            timestamp = video.stats.historydate - timedelta(
-                days=len(video.stats.views_history) - items_count - 1)
-            timestamp = datetime.combine(timestamp, datetime.max.time())
-            items_count += 1
-            if any((views, likes, dislikes, comments)):
-                chart_data.append(
-                    {"created_at": "{}{}".format(str(timestamp), "Z"),
-                     "views": views,
-                     "likes": likes,
-                     "dislikes": dislikes,
-                     "comments": comments}
-                )
+        views_raw_history = video.stats.views_raw_history.to_dict()
+        likes_raw_history = video.stats.likes_raw_history.to_dict()
+        dislikes_raw_history = video.stats.dislikes_raw_history.to_dict()
+        comments_raw_history = video.stats.comments_raw_history.to_dict()
+
+        history_dates = set(list(views_raw_history.keys()) + list(likes_raw_history.keys()) +
+                            list(dislikes_raw_history.keys()) + list(comments_raw_history.keys()))
+
+        for history_date in sorted(list(history_dates)):
+            chart_data.append({
+                "created_at": date_to_chart_data_str(history_date),
+                "views": views_raw_history.get(history_date),
+                "likes": likes_raw_history.get(history_date),
+                "dislikes": dislikes_raw_history.get(history_date),
+                "comments": comments_raw_history.get(history_date)
+            })
+
         return chart_data
 
     def get_transcript(self, video):
