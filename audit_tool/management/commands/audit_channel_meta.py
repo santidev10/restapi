@@ -38,6 +38,7 @@ class Command(BaseCommand):
     max_pages = 10
     MAX_SOURCE_CHANNELS = 100000
     audit = None
+    split_audits = []
     num_clones = 0
     original_audit_name = None
     DATA_API_KEY = settings.YOUTUBE_API_DEVELOPER_KEY
@@ -99,6 +100,10 @@ class Command(BaseCommand):
                 self.process_seed_list()
                 if self.num_clones > 0:
                     raise Exception("Done processing seed list, split audit into {} parts".format(self.num_clones+1))
+                if len(self.split_audits) > 0:
+                    for a in self.split_audits:
+                        a.temp_stop = False
+                        a.save(update_fields=['temp_stop'])
                 pending_channels = AuditChannelProcessor.objects.filter(
                         audit=self.audit,
                         processed__isnull=True
@@ -191,6 +196,9 @@ class Command(BaseCommand):
         self.num_clones+=1
         if not self.original_audit_name:
             self.original_audit_name = self.audit.params['name']
+        self.split_audits.append(self.audit)
+        self.audit.temp_stop = True
+        self.audit.save(update_fields=['temp_stop'])
         self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def get_channel_id(self, seed):
