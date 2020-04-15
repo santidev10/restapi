@@ -99,8 +99,8 @@ class SegmentCreationOptionsApiView(APIView):
             "countries": countries,
             "languages": languages,
             "is_vetted": [
-                {"id": 0, "name": "Include Only Non-Vetted"},
-                {"id": 1, "name": "Include Only Vetted"},
+                {"id": False, "name": "Include Only Non-Vetted"},
+                {"id": True, "name": "Include Only Vetted"},
                 {"id": None, "name": "Include All"}
             ],
         }
