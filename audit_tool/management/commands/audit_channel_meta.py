@@ -94,7 +94,7 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get('done_source_list'):
+        if not self.audit.params.get('done_source_list') and pending_channels.count() < self.MAX_SOURCE_CHANNELS:
             if self.thread_id == 0:
                 self.process_seed_list()
                 if self.num_clones > 0:
