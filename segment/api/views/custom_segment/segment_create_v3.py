@@ -122,6 +122,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["countries"] = opts.get("countries", []) or []
         opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
         opts["last_upload_date"] = validate_date(opts.get("last_upload_date") or "")
+        opts["age_groups"] = opts.get("age_groups", []) or []
+        if opts.get("gender", None) is not None:
+            opts["gender"] = validate_numeric(opts.get("gender"))
+        if opts.get("is_vetted", None) is not None:
+            opts["is_vetted"] = validate_boolean(opts.get('is_vetted'))
         # validate all minimum_xyz, "include n/a" fields
         for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos"]:
             opts = validate_include_na_fields(field_name, opts)
