@@ -124,7 +124,7 @@ class BrandSafetyQueryBuilder(object):
         if self.sentiment:
             must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
 
-        if self.gender:
+        if self.gender is not None:
             must_queries.append(QueryBuilder().build().must().term().field("task_us_data.gender").value(self.gender).get())
 
         if self.languages:
