@@ -1,5 +1,4 @@
 from audit_tool.models import AuditCategory
-from distutils.util import strtobool
 from elasticsearch_dsl import Q
 from es_components.constants import Sections
 from es_components.countries import COUNTRY_CODES
@@ -28,9 +27,9 @@ class BrandSafetyQueryBuilder(object):
         self.score_threshold = self._map_score_threshold(data.get("score_threshold", 0))
         self.sentiment = self._map_sentiment(data.get("sentiment", 0))
         self.last_upload_date = data.get("last_upload_date")
-        self.minimum_views = data.get("minimum_views")
-        self.minimum_subscribers = data.get("minimum_subscribers")
-        self.minimum_videos = data.get("minimum_videos")
+        self.minimum_views = data.get("minimum_views", {})
+        self.minimum_subscribers = data.get("minimum_subscribers", {})
+        self.minimum_videos = data.get("minimum_videos", {})
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
@@ -96,13 +95,25 @@ class BrandSafetyQueryBuilder(object):
         must_queries = []
 
         if self.minimum_views:
-            must_queries.append(QueryBuilder().build().must().range().field("stats.views").gte(self.minimum_views).get())
+            min_views_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_views",
+                field_name="stats.views"
+            )
+            must_queries.append(min_views_ct_queries)
 
         if self.segment_type == 1 and self.minimum_subscribers:
-            must_queries.append(QueryBuilder().build().must().range().field("stats.subscribers").gte(self.minimum_subscribers).get())
+            min_subs_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_subscribers",
+                field_name="stats.subscribers"
+            )
+            must_queries.append(min_subs_ct_queries)
 
         if self.segment_type == 1 and self.minimum_videos:
-            must_queries.append(QueryBuilder().build().must().range().field("stats.total_videos_count").gte(self.minimum_videos).get())
+            min_vid_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_videos",
+                field_name="stats.total_videos_count"
+            )
+            must_queries.append(min_vid_ct_queries)
 
         if self.video_ids:
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
@@ -162,20 +173,31 @@ class BrandSafetyQueryBuilder(object):
 
         if self.is_vetted is not None:
             vetted_query = QueryBuilder().build().must().exists().field("task_us_data").get() \
-                if bool(strtobool(self.is_vetted)) \
+                if self.is_vetted \
                 else QueryBuilder().build().must_not().exists().field("task_us_data").get()
             must_queries.append(vetted_query)
 
-        query = Q(
-            "bool",
-            must=must_queries,
-        )
+        query = Q("bool", must=must_queries)
 
         if self.with_forced_filters is True:
             forced_filters = self.es_manager.forced_filters()
             query &= forced_filters
 
         return query
+
+    def get_include_na_queries(self, attr_name: str, field_name: str):
+        """
+        get the combined queries for a gte field that supports the "include n/a" option
+        :param attr_name: str, name of the attribute for this class
+        :param field_name: str, name of the dot-notated field in ES
+        :return Q: the constructed Q query
+        """
+        queries = Q("bool")
+        if getattr(self, attr_name)["include_not_available"]:
+            queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
+        queries |= QueryBuilder().build().should().range().field(field_name) \
+            .gte(getattr(self, attr_name)["count"]).get()
+        return queries
 
     def _map_blacklist_severity(self, score_threshold: int):
         """
