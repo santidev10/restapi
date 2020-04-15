@@ -421,49 +421,9 @@ class CampaignCreation(UniqueCreationItem):
         return schedules
 
     def get_aws_code(self, request):
-
-        start_for_creation, start, end = self.get_creation_dates()
-
         lines = [
             "var campaign = createOrUpdateCampaign({});".format(
-                json.dumps(dict(
-                    id=self.id,
-                    is_deleted=self.is_deleted or self.account_creation.is_deleted,
-                    name=self.unique_name,
-                    budget=str(self.budget),
-                    budget_type=self.budget_type,
-                    start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
-                    bid_strategy_type=self.bid_strategy_type.lower(),
-                    campaign_type=self.type,
-                    target_cpa=self.target_cpa,
-                    is_paused=self.campaign_is_paused,
-                    start=start.strftime("%Y%m%d") if start else None,
-                    end=end.strftime("%Y%m%d") if end else None,
-                    video_networks=self.video_networks,
-                    lang_ids=list(self.languages.values_list('id', flat=True)),
-                    devices=self.devices,
-                    schedules=self.get_aw_schedulers(),
-                    freq_caps={
-                        f["event_type"]: f
-                        for f in self.frequency_capping.all(
-                    ).values("event_type", "level", "time_unit", "limit")
-                    },
-                    locations=list(
-                        self.location_rules.filter(
-                            geo_target_id__isnull=False
-                        ).values_list("geo_target_id", flat=True)
-                    ),
-                    proximities=[
-                        " ".join(
-                            ("{}".format(l.latitude).rstrip('0'),
-                             "{}".format(l.longitude).rstrip('0'),
-                             str(l.radius), l.radius_units)
-                        ) for l in self.location_rules.filter(radius__gte=0,
-                                                              latitude__isnull=False,
-                                                              longitude__isnull=False)
-                    ],
-                    content_exclusions=self.content_exclusions,
-                ))
+                json.dumps(self.get_sync_data())
             )
         ]
         for ag in self.ad_group_creations.not_empty().changed():
@@ -471,6 +431,48 @@ class CampaignCreation(UniqueCreationItem):
             if code:
                 lines.append(code)
         return "\n".join(lines)
+
+    def get_sync_data(self):
+        start_for_creation, start, end = self.get_creation_dates()
+        data = dict(
+            id=self.id,
+            is_deleted=self.is_deleted or self.account_creation.is_deleted,
+            name=self.unique_name,
+            budget=str(self.budget),
+            budget_type=self.budget_type,
+            start_for_creation=start_for_creation.strftime("%Y-%m-%d") if start_for_creation else None,
+            bid_strategy_type=self.bid_strategy_type.lower(),
+            campaign_type=self.type,
+            target_cpa=self.target_cpa,
+            is_paused=self.campaign_is_paused,
+            start=start.strftime("%Y%m%d") if start else None,
+            end=end.strftime("%Y%m%d") if end else None,
+            video_networks=self.video_networks,
+            lang_ids=list(self.languages.values_list('id', flat=True)),
+            devices=self.devices,
+            schedules=self.get_aw_schedulers(),
+            freq_caps={
+                f["event_type"]: f
+                for f in self.frequency_capping.all(
+                ).values("event_type", "level", "time_unit", "limit")
+            },
+            locations=list(
+                self.location_rules.filter(
+                    geo_target_id__isnull=False
+                ).values_list("geo_target_id", flat=True)
+            ),
+            proximities=[
+                " ".join(
+                    ("{}".format(l.latitude).rstrip('0'),
+                     "{}".format(l.longitude).rstrip('0'),
+                     str(l.radius), l.radius_units)
+                ) for l in self.location_rules.filter(radius__gte=0,
+                                                      latitude__isnull=False,
+                                                      longitude__isnull=False)
+            ],
+            content_exclusions=self.content_exclusions,
+        )
+        return data
 
 
 @receiver(post_save, sender=CampaignCreation,
@@ -624,6 +626,20 @@ class AdGroupCreation(UniqueCreationItem):
         "campaign" variable have to be defined above
         :return:
         """
+        params = self.get_sync_data()
+        lines = [
+            "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
+                json.dumps(params)
+            ),
+        ]
+        for ad in self.ad_creations.not_empty().changed():
+            code = ad.get_aws_code(request)
+            if code:
+                lines.append(code)
+
+        return "\n".join(lines)
+
+    def get_sync_data(self):
         from .targeting import TargetingItem
         targeting = self.targeting_items.all()
         channels = targeting.filter(type=TargetingItem.CHANNEL_TYPE)
@@ -661,19 +677,7 @@ class AdGroupCreation(UniqueCreationItem):
             bid_strategy_type=campaign.bid_strategy_type.lower(),
             target_cpa=campaign.target_cpa,
         )
-        lines = [
-            "var ad_group = createOrUpdateAdGroup(campaign, {});".format(
-                json.dumps(params)
-            ),
-        ]
-
-        for ad in self.ad_creations.not_empty().changed():
-            code = ad.get_aws_code(request)
-            if code:
-                lines.append(code)
-
-        return "\n".join(lines)
-
+        return params
 
 @receiver(post_save, sender=AdGroupCreation,
           dispatch_uid="save_group_receiver")
@@ -822,34 +826,36 @@ class AdCreation(UniqueCreationItem):
                 image.save(self.companion_banner.path)
 
     def get_aws_code(self, request):
-        campaign = self.ad_group_creation.campaign_creation
-        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
+        params = self.get_sync_data(request)
         code = "createOrUpdateVideoAd(ad_group, {});".format(
-            json.dumps(
-                dict(
-                    id=self.id,
-                    is_deleted=self.is_deleted,
-                    name=self.unique_name,
-                    ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
-                    video_url=self.video_url,
-                    video_thumbnail=request.build_absolute_uri(self.companion_banner.url)
-                    if self.companion_banner else None,
-                    display_url=self.display_url,
-                    final_url=self.final_url,
-                    tracking_template=self.tracking_template,
-                    custom_params={p['name']: p['value'] for p in self.custom_params},
-                    headline=self.headline,
-                    description_1=self.description_1,
-                    description_2=self.description_2,
-                    long_headline=self.long_headline,
-                    short_headline=self.short_headline,
-                    business_name=self.business_name,
-                    ad_type=ad_type
-                )
-            )
+            json.dumps(params)
         )
         return code
 
+    def get_sync_data(self, request):
+        campaign = self.ad_group_creation.campaign_creation
+        ad_type = 'display' if campaign.bid_strategy_type == campaign.TARGET_CPA_STRATEGY else 'video'
+        params = dict(
+            id=self.id,
+            is_deleted=self.is_deleted,
+            name=self.unique_name,
+            ad_format="VIDEO_{}".format(self.ad_group_creation.video_ad_format),
+            video_url=self.video_url,
+            video_thumbnail=request.build_absolute_uri(self.companion_banner.url)
+            if self.companion_banner else None,
+            display_url=self.display_url,
+            final_url=self.final_url,
+            tracking_template=self.tracking_template,
+            custom_params={p['name']: p['value'] for p in self.custom_params},
+            headline=self.headline,
+            description_1=self.description_1,
+            description_2=self.description_2,
+            long_headline=self.long_headline,
+            short_headline=self.short_headline,
+            business_name=self.business_name,
+            ad_type=ad_type
+        )
+        return params
 
 @receiver(post_save, sender=AdCreation,
           dispatch_uid="save_group_receiver")
