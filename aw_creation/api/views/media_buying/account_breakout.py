@@ -70,15 +70,13 @@ class AccountCampaignBreakoutAPIView(APIView):
         settings = data["settings"]
 
         # Handles creation of all creation items
-        serializer = CampaignBreakoutSerializer(data=settings)
+        serializer = CampaignBreakoutSerializer(data=settings, context={"account_creation": account_creation})
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
         # account = account_creation.id
         self._process_campaigns(account_creation, data)
         self._process_ad_groups(account_creation, data)
-
-
 
     def _process_campaigns(self, account_creation, data):
         """
