@@ -13,13 +13,13 @@ from aw_creation.api.serializers.serializers import AdCreationSetupSerializer
 
 
 class CampaignBreakoutSerializer(serializers.Serializer):
-    CAMPAIGN_FIELDS = ("name", "budget", "start_date", "end_date")
+    CAMPAIGN_FIELDS = ("name", "budget", "start", "end")
     AD_GROUP_FIELDS = ("name", "max_rate", "video_ad_format")
     AD_FIELDS = ("name", "display_url", "final_url", "video_url", "tracking_template")
 
     name = serializers.CharField(max_length=255)
-    end_date = serializers.DateField()
-    start_date = serializers.DateField()
+    start = serializers.DateField()
+    end = serializers.DateField()
     budget = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     video_ad_format = serializers.CharField(max_length=20)
@@ -49,10 +49,6 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         return validated
 
     def create(self, validated_data):
-        # For campaign FK, should create here or push to google ads only link when created on google ads?
-        # campaign_data = {key: validated_data[key] for key in self.CAMPAIGN_FIELDS}
-        # ad_group_data = {key: validated_data[key] for key in self.AD_GROUP_FIELDS}
-        # ad_data = {key: validated_data[key] for key in self.AD_FIELDS}
         campaign_data = validated_data["campaign_data"]
         ad_group_data = validated_data["ad_group_data"]
         ad_data = validated_data["ad_data"]

@@ -73,59 +73,53 @@ class AccountCampaignBreakoutAPIView(APIView):
         serializer = CampaignBreakoutSerializer(data=settings, context={"account_creation": account_creation})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        self._process(account_creation, data)
+        return Response()
 
-        # account = account_creation.id
-        self._process_campaigns(account_creation, data)
-        self._process_ad_groups(account_creation, data)
-
-    def _process_campaigns(self, account_creation, data):
-        """
-        Update campaigns of breakout items
-        Creates CampaignCreation objects if needed
-        If updated_campaign_budget is provided, will update campaign budgets of breakout items
-        :param account:
-        :param data:
-        :return:
-        """
-        ad_group_ids = data.get("ad_group_ids", [])
+    def _process(self, account_creation, data):
+        should_pause_non_breakout_ad_groups = data.get("should_pause")
+        breakout_ad_group_ids = data.get("breakout_ad_group_ids", [])
         updated_campaign_budget = data.get("updated_campaign_budget", None)
-        excluded_campaign_ids = Campaign.objects \
-            .filter(account=account_creation.account) \
-            .exclude(ad_groups__id__in=ad_group_ids) \
-            .distinct()
-        # set daily budgets of campaigns
+
+        if should_pause_non_breakout_ad_groups:
+            # Pause all break out ad groups since they are being added to new campaign
+            # params = {"status": "paused"}
+            params = {}
+            breakout_ad_groups = AdGroup.objects.filter(id__in=breakout_ad_group_ids).annotate(campaign_creation=F("campaign__campaign_creation"))
+            breakout_campaigns = Campaign.objects.filter(id__in=breakout_ad_groups.values_list("campaign_id", flat=True).distinct())
+            self._create_campaign_creations(breakout_campaigns.values(), account_creation)
+            breakout_creations = self._create_ad_group_creations(breakout_ad_groups.values(), **params)
+
+        if updated_campaign_budget:
+            # Get campaigns of non broken out ad groups and set their budgets
+            params = {"budget": updated_campaign_budget}
+            non_breakout_campaigns = Campaign.objects.filter(account=account_creation.account).exclude(ad_groups__id__in=breakout_ad_group_ids).distinct()
+            non_breakout_campaign_creations = self._create_campaign_creations(non_breakout_campaigns.values(), account_creation, **params)
+
+    def _create_campaign_creations(self, campaigns, account_creation, **params):
+        """ Create related CampaignCreation for Campaigns """
         campaign_creations = []
-        for campaign in excluded_campaign_ids:
+        for campaign in campaigns:
             defaults = {
                 "account_creation": account_creation,
-                "name": campaign.name,
-                "budget": updated_campaign_budget if updated_campaign_budget is not None else campaign.budget,
-                "start": campaign.start_date,
-                "end": campaign.end_date,
+                "name": campaign["name"],
+                "budget": campaign["budget"],
+                "start": campaign["start_date"],
+                "end": campaign["end_date"],
             }
-            creation, _ = CampaignCreation.objects.update_or_create(campaign=campaign, defaults=defaults)
+            defaults.update(params or {})
+            creation, _ = CampaignCreation.objects.update_or_create(campaign_id=campaign["id"], defaults=defaults)
             campaign_creations.append(creation)
         return campaign_creations
 
-    def _process_ad_groups(self, account, data):
-        """
-        Update AdGroups of breakout items
-        Creates AdGroupCreation items if needed
-        If , will set AdGroups to pause during next sync with Google Ads
-        :param account:
-        :param data:
-        :return:
-        """
-        # pause ad groups in ad_group_ids
-        ad_group_ids = data.get("ad_group_ids", [])
-        ad_groups = AdGroup.objects.filter(id__in=ad_group_ids).select_related("campaign")
+    def _create_ad_group_creations(self, ad_groups, params=None):
         creations = []
-        for ad_group in ad_groups:
+        for ag in ad_groups:
             defaults = {
-                "campaign_creation": ad_group.campaign.campaign_creation,
-                "name": ad_group.name,
-                # "status": "paused",
+                "campaign_creation_id": ag["campaign_creation"],
+                "name": ag["name"],
             }
-            creation, _ = AdGroupCreation.objects.update_or_create(ad_group=ad_group, defaults=defaults)
+            defaults.update(params or {})
+            creation, _ = AdGroupCreation.objects.update_or_create(ad_group_id=ag["id"], defaults=defaults)
             creations.append(creation)
         return creations
