@@ -59,7 +59,11 @@ class BrandSafetyQueryBuilder(object):
             "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
             "minimum_subscribers": self.minimum_subscribers,
-            "last_upload_date": self.last_upload_date
+            "minimum_videos": self.minimum_videos,
+            "last_upload_date": self.last_upload_date,
+            "age_groups": self.age_groups,
+            "gender": self.gender,
+            "is_vetted": self.is_vetted,
         }
         return query_params
 
