@@ -23,10 +23,11 @@ class YTTranscriptsScraper(object):
 
     def run_scraper(self):
         self.create_yt_vids()
-        self.generate_tts_urls()
+        asyncio.run(self.generate_tts_urls())
         self.gather_yt_vids_meta()
-        self.generate_list_urls()
-        self.retrieve_transcripts()
+        asyncio.run(self.generate_list_urls())
+        self.gather_tts_urls_meta()
+        asyncio.run(self.retrieve_transcripts())
         self.gather_failed_vid_reasons()
 
     def create_yt_vids(self):

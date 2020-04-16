@@ -39,6 +39,29 @@ class Command(BaseCommand):
                                                   yt_categories=yt_categories, brand_safety_score=brand_safety_score,
                                                   num_vids=num_vids)
 
+    # def pull_and_update_transcripts(self, unparsed_vids):
+    #     video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
+    #                                  upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+    #     transcripts_counter = 0
+    #     vid_counter = 0
+    #     vid_ids = set([vid.main.id for vid in unparsed_vids])
+    #     start = time.perf_counter()
+    #     # all_videos_lang_soups_dict = asyncio.run(create_video_soups_dict(vid_ids))
+    #     all_videos = video_manager.get(list(vid_ids))
+    #     for vid_obj in all_videos:
+    #         vid_id = vid_obj.main.id
+    #         transcripts_counter = parse_and_store_transcript_soups(vid_obj=vid_obj,
+    #                                                                lang_codes_soups_dict=all_videos_lang_soups_dict[
+    #                                                                    vid_id],
+    #                                                                transcripts_counter=transcripts_counter)
+    #         vid_counter += 1
+    #         # logger.info(f"Parsed video with id: {vid_id}")
+    #         # logger.info(f"Number of videos parsed: {vid_counter}")
+    #         # logger.info(f"Number of transcripts retrieved: {transcripts_counter}")
+    #     video_manager.upsert(all_videos)
+    #     elapsed = time.perf_counter() - start
+    #     logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
+    #     rescore_brand_safety_videos.delay(vid_ids=list(vid_ids))
 
     @staticmethod
     def get_no_transcripts_vids(lang_codes=None, country_codes=None, yt_categories=None, brand_safety_score=None,
