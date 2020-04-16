@@ -319,10 +319,6 @@ class YTVideo(object):
         return {item.get("lang_code"): item for item in items if item.get("lang_code")}
 
 
-
-
-
-
 class YTVideoSubtitles(object):
     def __init__(self, video, params=None, subtitle_meta=None):
         self.video = video
