@@ -3,6 +3,7 @@ import time
 
 from segment.models.persistent.base import BasePersistentSegment
 import brand_safety.constants as constants
+from distutils.util import strtobool
 
 
 class ModelDoesNotExist(Exception):
@@ -93,3 +94,8 @@ def validate_numeric(value):
     except ValueError:
         raise ValueError("The number: {} is not valid.".format(value))
     return to_num
+
+def validate_boolean(value):
+    if isinstance(value, bool) or (isinstance(value, int) and value in [0, 1]):
+        return bool(value)
+    raise ValueError(f"The value: {value} must be a boolean")
