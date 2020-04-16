@@ -94,14 +94,14 @@ class Command(BaseCommand):
             self.audit.started = timezone.now()
             self.audit.save(update_fields=['started'])
         pending_channels = AuditChannelProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get('done_source_list'):
+        if not self.audit.params.get('done_source_list') and pending_channels.count() < self.MAX_SOURCE_CHANNELS:
             if self.thread_id == 0:
                 self.process_seed_list()
                 if self.num_clones > 0:
                     raise Exception("Done processing seed list, split audit into {} parts".format(self.num_clones+1))
                 pending_channels = AuditChannelProcessor.objects.filter(
-                        audit=self.audit,
-                        processed__isnull=True
+                    audit=self.audit,
+                    processed__isnull=True
                 )
             else:
                 raise Exception("waiting to process seed list on thread 0")
@@ -191,6 +191,8 @@ class Command(BaseCommand):
         self.num_clones+=1
         if not self.original_audit_name:
             self.original_audit_name = self.audit.params['name']
+        self.audit.params['done_source_list'] = True
+        self.audit.save(update_fields=['params'])
         self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def get_channel_id(self, seed):
