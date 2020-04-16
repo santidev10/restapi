@@ -43,10 +43,14 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         ad_data = [validated_data[key] for key in self.AD_FIELDS]
 
         campaign_serializer = CampaignCreationSetupSerializer(data=campaign_data)
-        campaign_serializer.is_valid()
+        campaign_serializer.is_valid(raise_exception=True)
+        campaign_creation = campaign_serializer.save()
 
         ad_group_serializer = AdGroupCreationSetupSerializer(data=ad_group_data)
-        ad_group_serializer.is_valid()
+        ad_group_serializer.is_valid(raise_exception=True)
+        ad_group_serializer.save()
 
         ad_serializer = AdCreationSetupSerializer(data=ad_data)
-        ad_serializer.is_valid()
+        ad_serializer.is_valid(raise_exception=True)
+        ad_serializer.save()
+        return campaign_creation

@@ -10,10 +10,14 @@ from ads_analyzer.reports.account_targeting_report.create_report import AccountT
 from aw_creation.api.views.media_buying.constants import TARGETING_MAPPING
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
-from aw_creation.api.serializers.media_buying.campaign_setting_serialzier import CampaignSettingSerializer
+from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
+from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
+from aw_creation.models import CampaignCreation
+from aw_creation.models import AdGroupCreation
 from aw_reporting.models import Campaign
 from aw_reporting.models import AdGroup
 from utils.views import validate_fields
+
 
 
 class AccountCampaignBreakoutAPIView(APIView):
@@ -24,61 +28,106 @@ class AccountCampaignBreakoutAPIView(APIView):
     REQUIRED_AD_FIELDS = ("video_url", "display_url", "final_url", "tracking_template", "companion_banner", "video_ad_format")
 
     def get(self, request, *args, **kwargs):
+        """
+        Retrieve Campaign settings
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pk = kwargs["pk"]
         params = request.query_params
-        ad_group_ids = params["ad_group_ids"]
-        if isinstance(ad_group_ids, str):
-            ad_group_ids = [ad_group_ids]
+        ad_group_ids = params["ad_group_ids"].split(",")
+        # Get AdGroup settings
         ad_groups = AdGroup.objects\
             .filter(id__in=ad_group_ids)\
             .values("id", "campaign_id", "cpv_bid", "cpm_bid", "cpc_bid")
+        # Get Campaign settings
         campaigns = Campaign.objects.filter(id__in=[item["campaign_id"] for item in ad_groups])\
             .annotate(salesforce_goal_id=F("salesforce_placement__goal_type_id"))
-        # Mapping of campaign_ids and ad_group bidding values
+        # Mapping of Campaign to AdGroup bidding values
         campaign_ad_group_bid_mapping = {
             ad_group["campaign_id"]: ad_group
             for ad_group in ad_groups
         }
-        serializer = CampaignSettingSerializer(campaigns, many=True, context={"bid_mapping": campaign_ad_group_bid_mapping})
+        serializer = CampaignSettingSerializer(campaigns,
+                                               many=True, context={"bid_mapping": campaign_ad_group_bid_mapping}
+                                               )
         data = serializer.data
         return Response(data=data)
 
-    def _get_filters(self, campaign_id):
-        filters = {
-            "ad_group__campaign_id": campaign_id
-        }
-        return filters
-
-    def _get_account_creation(self, request, pk):
-        user = request.user
-        try:
-            return AccountCreation.objects.user_related(user).get(pk=pk)
-        except AccountCreation.DoesNotExist:
-            raise Http404
-
     def post(self, request, *args, **kwargs):
+        """
+        Create new breakout campaigns
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pk = kwargs["pk"]
-        body = request.body
-        account_creation = self._get_account_creation(request, pk)
-        account = account_creation.id
-        settings = body["settings"]
-        campaign_ids = body["campaign_ids"]
-        should_pause = body["pause_campaigns"]
-        updated_budget_value = body["updated_budget"]
+        data = request.data
+        account_creation = get_account_creation(request.user, pk)
+        settings = data["settings"]
 
-        # If should pause, then pause the campaign_ids
+        # Handles creation of all creation items
+        serializer = CampaignBreakoutSerializer(data=settings)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        # If updated budget value, update campaigns budgets not in campaign_ids
+        # account = account_creation.id
+        self._process_campaigns(account_creation, data)
+        self._process_ad_groups(account_creation, data)
 
-        # Create campaign under the current cid
-        campaign_creation = CampaignCreation
 
-        # create ad group
 
-        # create ad
+    def _process_campaigns(self, account_creation, data):
+        """
+        Update campaigns of breakout items
+        Creates CampaignCreation objects if needed
+        If updated_campaign_budget is provided, will update campaign budgets of breakout items
+        :param account:
+        :param data:
+        :return:
+        """
+        ad_group_ids = data.get("ad_group_ids", [])
+        updated_campaign_budget = data.get("updated_campaign_budget", None)
+        excluded_campaign_ids = Campaign.objects \
+            .filter(account=account_creation.account) \
+            .exclude(ad_groups__id__in=ad_group_ids) \
+            .distinct()
+        # set daily budgets of campaigns
+        campaign_creations = []
+        for campaign in excluded_campaign_ids:
+            defaults = {
+                "account_creation": account_creation,
+                "name": campaign.name,
+                "budget": updated_campaign_budget if updated_campaign_budget is not None else campaign.budget,
+                "start": campaign.start_date,
+                "end": campaign.end_date,
+            }
+            creation, _ = CampaignCreation.objects.update_or_create(campaign=campaign, defaults=defaults)
+            campaign_creations.append(creation)
+        return campaign_creations
 
-    def _pause_campaigns(self, campaign_ids):
-        pass
-
-    def _update_budgets(self, campaign_ids):
-        pass
+    def _process_ad_groups(self, account, data):
+        """
+        Update AdGroups of breakout items
+        Creates AdGroupCreation items if needed
+        If , will set AdGroups to pause during next sync with Google Ads
+        :param account:
+        :param data:
+        :return:
+        """
+        # pause ad groups in ad_group_ids
+        ad_group_ids = data.get("ad_group_ids", [])
+        ad_groups = AdGroup.objects.filter(id__in=ad_group_ids).select_related("campaign")
+        creations = []
+        for ad_group in ad_groups:
+            defaults = {
+                "campaign_creation": ad_group.campaign.campaign_creation,
+                "name": ad_group.name,
+                # "status": "paused",
+            }
+            creation, _ = AdGroupCreation.objects.update_or_create(ad_group=ad_group, defaults=defaults)
+            creations.append(creation)
+        return creations

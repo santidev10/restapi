@@ -12,6 +12,7 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
         model = Campaign
         fields = (
             "id",
+            "ad",
             "name",
             "start_date",
             "end_date",
@@ -42,5 +43,8 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
         :param obj:
         :return:
         """
-        ad_creation = obj.ads.all().first().ad_creation.values().first()
+        try:
+            ad_creation = obj.ads.all().first().ad_creation.values().first()
+        except AttributeError:
+            ad_creation = None
         return ad_creation
