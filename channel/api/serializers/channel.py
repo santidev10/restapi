@@ -1,9 +1,6 @@
-from datetime import datetime
-from datetime import timedelta
-from itertools import zip_longest
-
 from rest_framework.fields import SerializerMethodField
 
+from utils.datetime import date_to_chart_data_str
 from utils.brand_safety import get_brand_safety_data
 from utils.es_components_api_utils import ESDictSerializer
 
@@ -24,20 +21,14 @@ def get_chart_data(channel):
         return None
 
     items = []
-    items_count = 0
-    history = zip_longest(
-        reversed(channel.stats.subscribers_history or []),
-        reversed(channel.stats.views_history or [])
-    )
-    for subscribers, views in history:
-        timestamp = channel.stats.historydate - timedelta(
-            days=len(channel.stats.subscribers_history) - items_count - 1)
-        timestamp = datetime.combine(timestamp, datetime.max.time())
-        items_count += 1
-        if any((subscribers, views)):
-            items.append(
-                {"created_at": str(timestamp) + "Z",
-                 "subscribers": subscribers,
-                 "views": views}
-            )
+    subscribers_raw_history = channel.stats.subscribers_raw_history.to_dict()
+    views_raw_history = channel.stats.views_raw_history.to_dict()
+    history_dates = set(list(subscribers_raw_history.keys()) + list(views_raw_history.keys()))
+
+    for history_date in sorted(list(history_dates)):
+        items.append({
+            "created_at": date_to_chart_data_str(history_date),
+            "subscribers": subscribers_raw_history.get(history_date),
+            "views": views_raw_history.get(history_date)
+        })
     return items

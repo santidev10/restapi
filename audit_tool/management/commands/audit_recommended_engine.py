@@ -422,7 +422,7 @@ class Command(BaseCommand):
             db_video_meta.description = i['snippet'].get('description')
             keywords = i['snippet'].get('tags')
             if keywords:
-                db_video_meta.keywords = ','.join(keywords)
+                db_video_meta.keywords = ' '.join(keywords)
             category_id = i['snippet'].get('categoryId')
             if category_id:
                 if not category_id in self.categories:

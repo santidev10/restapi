@@ -102,7 +102,7 @@ class Command(BaseCommand):
         else:
             self.inclusion_hit_count = int(self.inclusion_hit_count)
         pending_videos = AuditVideoProcessor.objects.filter(audit=self.audit)
-        if not self.audit.params.get('done_source_list'):
+        if not self.audit.params.get('done_source_list') and pending_videos.count() < self.MAX_SOURCE_VIDEOS:
             if self.thread_id == 0:
                 self.process_seed_list()
                 pending_videos = AuditVideoProcessor.objects.filter(
@@ -192,6 +192,8 @@ class Command(BaseCommand):
         self.num_clones+=1
         if not self.original_audit_name:
             self.original_audit_name = self.audit.params['name']
+        self.audit.params['done_source_list'] = True
+        self.audit.save(update_fields=['params'])
         self.audit = AuditUtils.clone_audit(self.audit, self.num_clones, name=self.original_audit_name)
 
     def process_seed_list(self):
@@ -375,7 +377,7 @@ class Command(BaseCommand):
             channel_id = i['snippet']['channelId']
             keywords = i['snippet'].get('tags')
             if keywords:
-                db_video_meta.keywords = ','.join(keywords)
+                db_video_meta.keywords = ' '.join(keywords)
             category_id = i['snippet'].get('categoryId')
             if category_id:
                 if not category_id in self.categories:
