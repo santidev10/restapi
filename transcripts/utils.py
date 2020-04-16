@@ -54,9 +54,6 @@ class YTTranscriptsScraper(object):
     async def retrieve_transcripts(self):
         async with ClientSession() as session:
             await asyncio.gather(*[yt_vid.generate_subtitles(session) for yt_vid in self.vids])
-        # for vid in self.vids:
-        #     for subtitle in vid.subtitles:
-        #         subtitle.get_subtitles()
 
     def gather_failed_vid_reasons(self):
         for yt_vid in self.vids:
