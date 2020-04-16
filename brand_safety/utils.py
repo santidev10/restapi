@@ -153,7 +153,9 @@ class BrandSafetyQueryBuilder(object):
 
         if self.age_groups:
             age_queries = Q("bool")
-            for age_group_id in self.age_groups:
+            if self.age_groups["include_not_available"]:
+                age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
+            for age_group_id in self.age_groups["ids"]:
                 age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
             must_queries.append(age_queries)
 
