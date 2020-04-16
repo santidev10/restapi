@@ -1,7 +1,5 @@
-import requests
 import asyncio
 from aiohttp import ClientSession
-from aiohttp.web import HTTPTooManyRequests
 from proxyscrape import create_collector
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
@@ -22,6 +20,59 @@ class YTTranscriptsScraper(object):
         self.socks_proxies_collector = None
         self.http_proxies_collector = None
         self.collect_proxies()
+
+    def run_scraper(self):
+        self.create_yt_vids()
+        self.generate_tts_urls()
+        self.gather_yt_vids_meta()
+        self.generate_list_urls()
+        self.retrieve_transcripts()
+        self.gather_failed_vid_reasons()
+
+    def create_yt_vids(self):
+        for vid_id in self.vid_ids:
+            yt_vid = YTVideo(vid_id, self)
+            self.vids.append(yt_vid)
+
+    async def generate_tts_urls(self):
+        async with ClientSession() as session:
+            await asyncio.gather(*[yt_vid.generate_tts_url(session) for yt_vid in self.vids])
+
+    def gather_yt_vids_meta(self):
+        for vid in self.vids:
+            vid.parse_yt_vid_meta()
+
+    async def generate_list_urls(self):
+        async with ClientSession() as session:
+            await asyncio.gather(*[yt_vid.generate_list_url(session) for yt_vid in self.vids])
+
+    def gather_tts_urls_meta(self):
+        for vid in self.vids:
+            vid.parse_tts_url_meta()
+
+    async def retrieve_transcripts(self):
+        async with ClientSession() as session:
+            await asyncio.gather(*[yt_vid.generate_subtitles(session) for yt_vid in self.vids])
+        # for vid in self.vids:
+        #     for subtitle in vid.subtitles:
+        #         subtitle.get_subtitles()
+
+    def gather_failed_vid_reasons(self):
+        for yt_vid in self.vids:
+            if yt_vid.failure_reason is not None:
+                continue
+            vid_id = yt_vid.vid_id
+            if yt_vid.vid_url_status != 200:
+                yt_vid.failure_reason = f"Failed to get response from Youtube for Video: '{vid_id}'. " \
+                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'"
+            elif not yt_vid.tts_url:
+                yt_vid.failure_reason = f"No TTS_URL for Video: '{vid_id}'."
+            elif not yt_vid.subtitles_list_url:
+                yt_vid.failure_reason = f"No TRACKS_LIST_URL found for Video: '{vid_id}'."
+            elif not yt_vid.tracks_meta:
+                yt_vid.failure_reason = f"Video: '{vid_id}' has no TTS_URL captions available."
+        self.failure_reasons = {vid.vid_id: vid.failure_reason for vid in self.vids}
+        self.num_failed_vids = len(self.failure_reasons)
 
     def collect_proxies(self):
         self.socks_proxies_collector = create_collector('my-collector', ['socks4', 'socks5'])
@@ -48,35 +99,6 @@ class YTTranscriptsScraper(object):
         port = proxy_string[1]
         return host, port
 
-    def create_yt_vids(self):
-        for vid_id in self.vid_ids:
-            yt_vid = YTVideo(vid_id, self)
-            self.vids.append(yt_vid)
-
-    async def generate_transcript_urls(self):
-        failed_vid_reasons = {}
-        async with ClientSession() as session:
-            await asyncio.gather(*[yt_vid.get_meta_data] for yt_vid in self.vids)
-        for yt_vid in self.vids:
-            vid_id = yt_vid.vid_id
-            if yt_vid.vid_url_status != 200:
-                failed_vid_reasons[vid_id] = f"Failed to get response from Youtube for Video: '{vid_id}'. " \
-                    f"Received status code: '{yt_vid.vid_url_status}' from URL '{yt_vid.vid_url}'"
-            elif not yt_vid.tts_url:
-                failed_vid_reasons[vid_id] = f"No TTS_URL for Video: '{vid_id}'."
-            elif not yt_vid.subtitles_list_url:
-                failed_vid_reasons[vid_id] = f"No TRACKS_LIST_URL found for Video: '{vid_id}'."
-            elif not yt_vid.tracks_meta:
-                failed_vid_reasons[vid_id] = f"Video: '{vid_id}' has no TTS_URL captions available."
-        if len(failed_vid_reasons) > 0:
-            self.num_failed_vids = len(failed_vid_reasons)
-            self.failure_reasons = failed_vid_reasons
-
-    def retrieve_transcripts(self):
-        for vid in self.vids:
-            for subtitle in vid.subtitles:
-                subtitle.get_subtitles()
-
 
 class YTVideo(object):
     YT_HEADERS = {
@@ -89,7 +111,7 @@ class YTVideo(object):
     def __init__(self, vid_id, scraper):
         self.vid_id = vid_id
         self.scraper = scraper
-        self.vid_url = None
+        self.vid_url = self.get_vid_url(self.vid_id)
         self.vid_url_response = None
         self.vid_url_status = None
         self.tts_url = None
@@ -100,17 +122,41 @@ class YTVideo(object):
         self.asr_track_meta = None
         self.asr_lang_code = None
         self.tracks_lang_codes_dict = None
-        self.top_lang_codes, self.top_subtitles_meta = None
+        self.top_lang_codes = None
+        self.top_subtitles_meta = None
         self.subtitles = None
+        self.failure_reason = None
 
-    async def get_meta_data(self):
-        self.vid_url = self.get_vid_url(self.vid_id)
-        self.vid_url_response = self.get_vid_url_response(self.vid_url)
-        self.vid_url_status = self.vid_url_response.status_code
-        self.tts_url = self.get_tts_url(self.vid_url_response)
-        self.params = self.parse_tts_url_params(self.tts_url)
-        self.subtitles_list_url = self.get_list_url(self.params)
-        self.subtitles_list_url_response = self.get_list_url_response(self.subtitles_list_url)
+    def update_failure_reason(self, e):
+        if not self.failure_reason:
+            self.failure_reason = e
+
+    # Step 1 (Asynchronous)
+    async def generate_tts_url(self, session):
+        try:
+            self.vid_url_response = self.get_vid_url_response(session, self.vid_url)
+        except Exception as e:
+            self.update_failure_reason(e)
+
+    # Step 2 (Synchronous)
+    def parse_yt_vid_meta(self):
+        try:
+            self.vid_url_status = self.vid_url_response.status_code
+            self.tts_url = self.get_tts_url(self.vid_url_response)
+            self.params = self.parse_tts_url_params(self.tts_url)
+            self.subtitles_list_url = self.get_list_url(self.params)
+        except Exception as e:
+            self.update_failure_reason(e)
+
+    # Step 3 (Asynchronous)
+    async def generate_list_url(self, session):
+        try:
+            self.subtitles_list_url_response = self.get_list_url_response(session, self.subtitles_list_url)
+        except Exception as e:
+            self.update_failure_reason(e)
+
+    # Step 4 (Synchronous)
+    def parse_tts_url_meta(self):
         self.tracks_meta = self.parse_list_url(self.subtitles_list_url_response)
         self.asr_track_meta = self.get_asr_track(self.tracks_meta)
         self.asr_lang_code = self.asr_track_meta.get("lang_code")
@@ -118,13 +164,37 @@ class YTVideo(object):
         self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
         self.subtitles = self.get_top_subtitles()
 
+    # Step 5 (Asynchronous)
+    async def generate_subtitles(self, session):
+        try:
+            for subtitle in self.subtitles:
+                subtitle.get_subtitles(session)
+        except Exception as e:
+            self.update_failure_reason(e)
+
+    async def get_vid_url_response(self, session, vid_url):
+        try:
+            response = self.get_response_through_proxy(session, self.scraper, vid_url, headers=self.YT_HEADERS)
+            return response
+        except Exception as e:
+            self.update_failure_reason(e)
+
+    async def get_list_url_response(self, session, list_url):
+        if not list_url:
+            return None
+        try:
+            response = self.get_response_through_proxy(session, self.scraper, list_url, headers=self.YT_HEADERS)
+            return response
+        except Exception as e:
+            self.update_failure_reason(e)
+
     @staticmethod
-    def get_response_through_proxy(scraper, url, headers=None):
+    async def get_response_through_proxy(session, scraper, url, headers=None):
         proxy = scraper.get_proxy()
         response = None
         try:
             print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
-            response = requests.get(url, headers=headers, proxies=proxy)
+            response = await session.request(method="GET", url=url, proxy=proxy)
             print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
         except (ConnectionError, TimeoutError) as e:
             print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
@@ -133,7 +203,7 @@ class YTVideo(object):
                 scraper.blacklist_proxy(proxy)
                 proxy = scraper.get_proxy()
                 print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
-                response = requests.get(url, headers=headers, proxies=proxy)
+                response = await session.request(method="GET", url=url, proxy=proxy)
                 print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except (ConnectionError, TimeoutError) as e:
                 print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
@@ -186,16 +256,12 @@ class YTVideo(object):
     def get_vid_url(vid_id: str):
         return f"https://www.youtube.com/watch?v={vid_id}"
 
-    def get_vid_url_response(self, vid_url):
-        response = self.get_response_through_proxy(self.scraper, vid_url, headers=self.YT_HEADERS)
-        return response
-
     @staticmethod
     def get_tts_url(yt_response):
         if yt_response.status_code != 200:
             return None
         else:
-            yt_response_html = yt_response.text
+            yt_response_html = yt_response.text()
         if "TTS_URL" not in yt_response_html:
             raise ValidationError("No TTS_URL in Youtube Response.")
         strings = yt_response_html.split("TTS_URL")
@@ -225,16 +291,10 @@ class YTVideo(object):
         s += "asrs=1&type=list&tlangs=1"
         return s
 
-    def get_list_url_response(self, list_url):
-        if not list_url:
-            return None
-        response = self.get_response_through_proxy(self.scraper, list_url, headers=self.YT_HEADERS)
-        return response
-
     def parse_list_url(self, list_url_response):
         if not list_url_response:
             return [], []
-        soup = bs(list_url_response.text, 'xml')
+        soup = bs(list_url_response.text(), 'xml')
         transcript_list = soup.transcript_list
         docid = transcript_list.attrs.get('docid')
         if not docid:
@@ -257,6 +317,8 @@ class YTVideo(object):
     @staticmethod
     def get_lang_codes_dict(items):
         return {item.get("lang_code"): item for item in items if item.get("lang_code")}
+
+
 
 
 
@@ -299,9 +361,9 @@ class YTVideoSubtitles(object):
             subtitle_url += "&kind=asr"
         return subtitle_url
 
-    def get_subtitles(self):
-        response = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
-        soup = bs(response.text, "xml")
+    async def get_subtitles(self, session):
+        response = self.video.get_response_through_proxy(session, self.video.scraper, self.subtitle_url)
+        soup = bs(response.text(), "xml")
         subtitles = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
         subtitles = subtitles.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         self.subtitles = subtitles
