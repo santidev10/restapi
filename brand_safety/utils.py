@@ -1,12 +1,11 @@
-from elasticsearch_dsl import Q
-
-import brand_safety.constants as constants
 from audit_tool.models import AuditCategory
+from elasticsearch_dsl import Q
 from es_components.constants import Sections
+from es_components.countries import COUNTRY_CODES
 from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
-from es_components.countries import COUNTRY_CODES
+import brand_safety.constants as constants
 
 
 class BrandSafetyQueryBuilder(object):
@@ -28,14 +27,18 @@ class BrandSafetyQueryBuilder(object):
         self.score_threshold = self._map_score_threshold(data.get("score_threshold", 0))
         self.sentiment = self._map_sentiment(data.get("sentiment", 0))
         self.last_upload_date = data.get("last_upload_date")
-        self.minimum_views = data.get("minimum_views")
-        self.minimum_subscribers = data.get("minimum_subscribers")
+        self.minimum_views = data.get("minimum_views", {})
+        self.minimum_subscribers = data.get("minimum_subscribers", {})
+        self.minimum_videos = data.get("minimum_videos", {})
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
         self.languages = data.get("languages", [])
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
+        self.age_groups = data.get("age_groups", [])
+        self.gender = data.get("gender", None)
+        self.is_vetted = data.get("is_vetted", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
@@ -56,7 +59,11 @@ class BrandSafetyQueryBuilder(object):
             "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
             "minimum_subscribers": self.minimum_subscribers,
-            "last_upload_date": self.last_upload_date
+            "minimum_videos": self.minimum_videos,
+            "last_upload_date": self.last_upload_date,
+            "age_groups": self.age_groups,
+            "gender": self.gender,
+            "is_vetted": self.is_vetted,
         }
         return query_params
 
@@ -92,10 +99,25 @@ class BrandSafetyQueryBuilder(object):
         must_queries = []
 
         if self.minimum_views:
-            must_queries.append(QueryBuilder().build().must().range().field("stats.views").gte(self.minimum_views).get())
+            min_views_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_views",
+                field_name="stats.views"
+            )
+            must_queries.append(min_views_ct_queries)
 
         if self.segment_type == 1 and self.minimum_subscribers:
-            must_queries.append(QueryBuilder().build().must().range().field("stats.subscribers").gte(self.minimum_subscribers).get())
+            min_subs_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_subscribers",
+                field_name="stats.subscribers"
+            )
+            must_queries.append(min_subs_ct_queries)
+
+        if self.segment_type == 1 and self.minimum_videos:
+            min_vid_ct_queries = self.get_include_na_queries(
+                attr_name="minimum_videos",
+                field_name="stats.total_videos_count"
+            )
+            must_queries.append(min_vid_ct_queries)
 
         if self.video_ids:
             must_queries.append(QueryBuilder().build().must().terms().field("main.id").value(self.video_ids).get())
@@ -105,6 +127,9 @@ class BrandSafetyQueryBuilder(object):
 
         if self.sentiment:
             must_queries.append(QueryBuilder().build().must().range().field(f"{Sections.STATS}.sentiment").gte(self.sentiment).get())
+
+        if self.gender is not None:
+            must_queries.append(QueryBuilder().build().must().term().field("task_us_data.gender").value(self.gender).get())
 
         if self.languages:
             lang_code_field = "lang_code" if self.segment_type == 0 else "top_lang_code"
@@ -126,6 +151,14 @@ class BrandSafetyQueryBuilder(object):
                 country_queries |= QueryBuilder().build().should().term().field("general_data.country_code").value(country_code).get()
             must_queries.append(country_queries)
 
+        if self.age_groups:
+            age_queries = Q("bool")
+            if self.age_groups["include_not_available"]:
+                age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
+            for age_group_id in self.age_groups["ids"]:
+                age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
+            must_queries.append(age_queries)
+
         if self.severity_filters:
             severity_queries = Q("bool")
             for category, scores in self.severity_filters.items():
@@ -144,16 +177,33 @@ class BrandSafetyQueryBuilder(object):
                     safety_queries &= QueryBuilder().build().must().range().field(f"brand_safety.categories.{category}.category_score").gte(self.score_threshold).get()
                 must_queries.append(safety_queries)
 
-        query = Q(
-            "bool",
-            must=must_queries,
-        )
+        if self.is_vetted is not None:
+            vetted_query = QueryBuilder().build().must().exists().field("task_us_data").get() \
+                if self.is_vetted \
+                else QueryBuilder().build().must_not().exists().field("task_us_data").get()
+            must_queries.append(vetted_query)
+
+        query = Q("bool", must=must_queries)
 
         if self.with_forced_filters is True:
             forced_filters = self.es_manager.forced_filters()
             query &= forced_filters
 
         return query
+
+    def get_include_na_queries(self, attr_name: str, field_name: str):
+        """
+        get the combined queries for a gte field that supports the "include n/a" option
+        :param attr_name: str, name of the attribute for this class
+        :param field_name: str, name of the dot-notated field in ES
+        :return Q: the constructed Q query
+        """
+        queries = Q("bool")
+        if getattr(self, attr_name)["include_not_available"]:
+            queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
+        queries |= QueryBuilder().build().should().range().field(field_name) \
+            .gte(getattr(self, attr_name)["count"]).get()
+        return queries
 
     def _map_blacklist_severity(self, score_threshold: int):
         """

@@ -1,22 +1,24 @@
+from audit_tool.models import get_hash_name
+from brand_safety.utils import BrandSafetyQueryBuilder
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
-
-from audit_tool.models import get_hash_name
-from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
+from typing import Callable
 from utils.permissions import user_has_permission
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
     response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
-                       "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending")
+                       "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending",
+                       "minimum_videos", "age_groups", "gender", "is_vetted")
     serializer_class = CustomSegmentSerializer
     permission_classes = (
         user_has_permission("userprofile.vet_audit_admin"),
@@ -98,6 +100,55 @@ class SegmentCreateApiViewV3(CreateAPIView):
         :param options: dict
         :return:
         """
+        def validate_numeric_include_na_fields(field_name: str, opts: dict):
+            """
+            validate all fields that accept an "include n/a" option and
+            whose value is numeric
+            """
+            if opts.get(field_name, {}):
+                # validate count
+                opts[field_name]["count"] = validate_numeric(
+                    opts.get(field_name, {}).get("count", 0)
+                )
+
+                # validate include n/a option
+                opts[field_name]["include_not_available"] = validate_boolean(
+                    opts.get(field_name, {}).get("include_not_available", False)
+                )
+            return opts
+
+        def validate_list_include_na_fields(
+                field_name: str,
+                opts: dict,
+                value_index_name: str,
+                value_index_item_validator: Callable
+        ):
+            """
+            validate all fields that accept an "include n/a" option and whose
+            value is a list (of ids, etc)
+            :field_name: str the name of the field to validate
+            :opts: dict the options dictionary which the field is in
+            :value_index_name: str the name of the value index to check, which should be a list
+            :value_index_item_validator: Callable the validator for each item within the list
+            """
+            if opts.get(field_name, {}):
+                # validate list
+                value_index = opts.get(field_name, {}).get(value_index_name, [])
+                if not isinstance(value_index, list):
+                    raise ValueError(f"The 'include n/a' field, '{field_name} must be a list!")
+
+                # validate items in list
+                validated_list = []
+                for item in value_index:
+                    validated_list.append(value_index_item_validator(item))
+                opts[field_name][value_index_name] = validated_list
+
+                # validate include n/a option
+                opts[field_name]["include_not_available"] = validate_boolean(
+                    opts.get(field_name, {}).get("include_not_available", False)
+                )
+            return opts
+
         opts = options.copy()
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
@@ -105,9 +156,21 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts["languages"] = opts.get("languages", []) or []
         opts["countries"] = opts.get("countries", []) or []
         opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
-        opts["minimum_views"] = validate_numeric(opts.get("minimum_views", 0) or 0)
-        opts["minimum_subscribers"] = validate_numeric(opts.get("minimum_subscribers", 0) or 0)
         opts["last_upload_date"] = validate_date(opts.get("last_upload_date") or "")
+        # opts["age_groups"] = opts.get("age_groups", []) or []
+        opts = validate_list_include_na_fields(
+            field_name="age_groups",
+            opts=opts,
+            value_index_name="ids",
+            value_index_item_validator=validate_numeric
+        )
+        if opts.get("gender", None) is not None:
+            opts["gender"] = validate_numeric(opts.get("gender"))
+        if opts.get("is_vetted", None) is not None:
+            opts["is_vetted"] = validate_boolean(opts.get('is_vetted'))
+        # validate all minimum_xyz, "include n/a" fields
+        for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos"]:
+            opts = validate_numeric_include_na_fields(field_name, opts)
         return opts
 
     def _create(self, data: dict):
