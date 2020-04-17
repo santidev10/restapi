@@ -1,5 +1,7 @@
 import asyncio
 from aiohttp import ClientSession
+from aiohttp_proxy import ProxyConnector, ProxyType
+from aiohttp.client_exceptions import ClientHttpProxyError, ServerDisconnectedError, ClientProxyConnectionError
 from proxyscrape import create_collector
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
@@ -36,24 +38,21 @@ class YTTranscriptsScraper(object):
             self.vids.append(yt_vid)
 
     async def generate_tts_urls(self):
-        async with ClientSession() as session:
-            await asyncio.gather(*[yt_vid.generate_tts_url(session) for yt_vid in self.vids])
+        await asyncio.gather(*[yt_vid.generate_tts_url() for yt_vid in self.vids])
 
     def gather_yt_vids_meta(self):
         for vid in self.vids:
             vid.parse_yt_vid_meta()
 
     async def generate_list_urls(self):
-        async with ClientSession() as session:
-            await asyncio.gather(*[yt_vid.generate_list_url(session) for yt_vid in self.vids])
+        await asyncio.gather(*[yt_vid.generate_list_url() for yt_vid in self.vids])
 
     def gather_tts_urls_meta(self):
         for vid in self.vids:
             vid.parse_tts_url_meta()
 
     async def retrieve_transcripts(self):
-        async with ClientSession() as session:
-            await asyncio.gather(*[yt_vid.generate_subtitles(session) for yt_vid in self.vids])
+        await asyncio.gather(*[yt_vid.generate_subtitles() for yt_vid in self.vids])
 
     def gather_failed_vid_reasons(self):
         for yt_vid in self.vids:
@@ -73,22 +72,31 @@ class YTTranscriptsScraper(object):
         self.num_failed_vids = len(self.failure_reasons)
 
     def collect_proxies(self):
-        self.socks_proxies_collector = create_collector('my-collector', ['socks4', 'socks5'])
-        self.http_proxies_collector = create_collector('http-collector', ['http', 'https'])
+        # self.socks_proxies_collector = create_collector('my-collector', ['socks4', 'socks5'])
+        self.http_proxies_collector = create_collector('http-collector', ['http'])
+        # self.http_proxies_collector = create_collector('http-collector', ['http'])
 
     def get_proxy(self):
-        proxy = self.http_proxies_collector.get_proxy() or self.socks_proxies_collector.get_proxy()
-        return {proxy.type: f"{proxy.host}:{proxy.port}"}
+        proxy = self.http_proxies_collector.get_proxy()
+        return f"{proxy.type}://{proxy.host}:{proxy.port}"
+        # return {proxy.type: f"{proxy.host}:{proxy.port}"}
 
     def blacklist_proxy(self, proxy):
-        if 'http' or 'https' in proxy:
-            proxy_url = proxy.get('http') or proxy.get('https')
-            host, port = self.get_proxy_host_and_port(proxy_url)
-            self.http_proxies_collector.blacklist_proxy(host=host, port=port)
-        else:
-            proxy_url = proxy.get('socks4') or proxy.get('socks5')
-            host, port = self.get_proxy_host_and_port(proxy_url)
-            self.socks_proxies_collector.blacklist_proxy(host=host, port=port)
+        proxy = proxy.replace("/", "")
+        proxy_type, proxy_host, proxy_port = proxy.split(':')
+        self.http_proxies_collector.blacklist_proxy(host=proxy_host, port=proxy_port)
+        # if proxy_type in ['http', 'https']:
+        #     self.http_proxies_collector.blacklist_proxy(host=proxy_host, port=proxy_port)
+        # else:
+        #     self.socks_proxies_collector.blacklist_proxy(host=proxy_host, port=proxy_port)
+        # if 'http' or 'https' in proxy:
+        #     proxy_url = proxy.get('http') or proxy.get('https')
+        #     host, port = self.get_proxy_host_and_port(proxy_url)
+        #     self.http_proxies_collector.blacklist_proxy(host=host, port=port)
+        # else:
+        #     proxy_url = proxy.get('socks4') or proxy.get('socks5')
+        #     host, port = self.get_proxy_host_and_port(proxy_url)
+        #     self.socks_proxies_collector.blacklist_proxy(host=host, port=port)
 
     @staticmethod
     def get_proxy_host_and_port(proxy_url):
@@ -130,16 +138,16 @@ class YTVideo(object):
             self.failure_reason = e
 
     # Step 1 (Asynchronous)
-    async def generate_tts_url(self, session):
+    async def generate_tts_url(self):
         try:
-            self.vid_url_response = self.get_vid_url_response(session, self.vid_url)
+            self.vid_url_response, self.vid_url_status = await self.get_vid_url_response(self.vid_url)
         except Exception as e:
             self.update_failure_reason(e)
 
     # Step 2 (Synchronous)
     def parse_yt_vid_meta(self):
         try:
-            self.vid_url_status = self.vid_url_response.status_code
+            self.vid_url_status = self.vid_url_response.status
             self.tts_url = self.get_tts_url(self.vid_url_response)
             self.params = self.parse_tts_url_params(self.tts_url)
             self.subtitles_list_url = self.get_list_url(self.params)
@@ -147,9 +155,9 @@ class YTVideo(object):
             self.update_failure_reason(e)
 
     # Step 3 (Asynchronous)
-    async def generate_list_url(self, session):
+    async def generate_list_url(self):
         try:
-            self.subtitles_list_url_response = self.get_list_url_response(session, self.subtitles_list_url)
+            self.subtitles_list_url_response, status = await self.get_list_url_response(self.subtitles_list_url)
         except Exception as e:
             self.update_failure_reason(e)
 
@@ -163,50 +171,75 @@ class YTVideo(object):
         self.subtitles = self.get_top_subtitles()
 
     # Step 5 (Asynchronous)
-    async def generate_subtitles(self, session):
+    async def generate_subtitles(self):
         try:
             for subtitle in self.subtitles:
-                subtitle.get_subtitles(session)
+                subtitle.get_subtitles()
         except Exception as e:
             self.update_failure_reason(e)
 
-    async def get_vid_url_response(self, session, vid_url):
+    async def get_vid_url_response(self, vid_url):
         try:
-            response = self.get_response_through_proxy(session, self.scraper, vid_url, headers=self.YT_HEADERS)
-            return response
+            response, status = await self.get_response_through_proxy(self.scraper, vid_url, headers=self.YT_HEADERS)
+            return response, status
         except Exception as e:
             self.update_failure_reason(e)
 
-    async def get_list_url_response(self, session, list_url):
+    async def get_list_url_response(self, list_url):
         if not list_url:
             return None
         try:
-            response = self.get_response_through_proxy(session, self.scraper, list_url, headers=self.YT_HEADERS)
-            return response
+            response, status = self.get_response_through_proxy(self.scraper, list_url, headers=self.YT_HEADERS)
+            return response, status
         except Exception as e:
             self.update_failure_reason(e)
 
     @staticmethod
-    async def get_response_through_proxy(session, scraper, url, headers=None):
+    async def get_response_through_proxy(scraper, url, headers=None):
         proxy = scraper.get_proxy()
+        connector = ProxyConnector.from_url(proxy)
         response = None
+        session = ClientSession(connector=connector)
+        counter = 1
         try:
-            print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
-            response = await session.request(method="GET", url=url, proxy=proxy)
-            print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-        except (ConnectionError, TimeoutError) as e:
+            print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+            response = await session.get(url=url)
+            print(f"Received Response with Status Code: '{response.status}' from Proxy: '{proxy}'")
+        except (ClientHttpProxyError, ServerDisconnectedError, ClientProxyConnectionError, TimeoutError) as e:
             print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
-        while not response or response.status_code != 200:
+        except Exception as e:
+            connector.close()
+            session.close()
+            raise e
+        while not response or response.status != 200:
+            connector.close()
+            session.close()
+            counter += 1
             try:
+                print(f"Blacklisting proxy: {proxy}")
                 scraper.blacklist_proxy(proxy)
                 proxy = scraper.get_proxy()
-                print(f"Sending Request to URL: '{url}' through Proxy: '{proxy}'")
-                response = await session.request(method="GET", url=url, proxy=proxy)
-                print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-            except (ConnectionError, TimeoutError) as e:
+                print(f"New proxy: {proxy}")
+                connector = ProxyConnector.from_url(proxy)
+                session = ClientSession(connector=connector)
+                # print(f"Session is using proxy: {session.connector.proxy_type}://{session.connector.host}:"
+                #       f"{session.connector.port}; New proxy: {proxy}")
+                print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+                response = await session.get(url=url, proxy=proxy, ssl=False)
+                # response = await session.request(method="GET", url=url, proxy=proxy)
+                print(f"Received Response with Status Code: '{response.status}' from Proxy: '{proxy}'")
+            except (ClientHttpProxyError, ServerDisconnectedError, ClientProxyConnectionError, ValueError) as e:
                 print(f"Encountered error: '{e}' while sending request to '{url}' through Proxy: '{proxy}'")
                 continue
-        return response
+            except Exception as e:
+                connector.close()
+                session.close()
+                raise e
+        response_text = response.text()
+        response_status = response.status
+        connector.close()
+        session.close()
+        return response_text, response_status
 
     def get_top_subtitles(self):
         if not self.top_subtitles_meta:
@@ -256,7 +289,7 @@ class YTVideo(object):
 
     @staticmethod
     def get_tts_url(yt_response):
-        if yt_response.status_code != 200:
+        if yt_response.status != 200:
             return None
         else:
             yt_response_html = yt_response.text()
@@ -355,9 +388,9 @@ class YTVideoSubtitles(object):
             subtitle_url += "&kind=asr"
         return subtitle_url
 
-    async def get_subtitles(self, session):
-        response = self.video.get_response_through_proxy(session, self.video.scraper, self.subtitle_url)
-        soup = bs(response.text(), "xml")
+    async def get_subtitles(self):
+        response, status = await self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
+        soup = bs(response, "xml")
         subtitles = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
         subtitles = subtitles.replace(".", ". ").replace("?", "? ").replace("!", "! ")
         self.subtitles = subtitles
