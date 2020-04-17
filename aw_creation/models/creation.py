@@ -109,7 +109,7 @@ class AccountCreation(UniqueCreationItem):
     def get_aws_code(self, request):
         if self.account_id:
             lines = []
-            for c in self.campaign_creations.not_empty().changed().filter(is_draft=False):
+            for c in self.campaign_creations.not_empty().changed().filter(creation_type=CampaignCreation.SELF_SERVICE, is_draft=False):
                 lines.append(c.get_aws_code(request))
             lines.append(
                 "sendChangesStatus('{}', '{}');".format(self.account_id, self.updated_at)
@@ -193,6 +193,13 @@ class CampaignCreation(UniqueCreationItem):
     )
 
     # fields
+    SELF_SERVICE = 0
+    OPTIMIZATION = 1
+    CREATION_TYPE_CHOICES = (
+        SELF_SERVICE, "Created from self service flow",
+        OPTIMIZATION, "Created from Media Buying Optimization breakout flow"
+    )
+    # creation_type = models.IntegerField(default=0)
     start = models.DateField(null=True, blank=True)
     end = models.DateField(null=True, blank=True)
     goal_units = models.PositiveIntegerField(
@@ -518,6 +525,21 @@ class AdGroupCreation(UniqueCreationItem):
         choices=VIDEO_AD_FORMATS,
         default=IN_STREAM_TYPE,
     )
+    UNKNOWN = "unknown"
+    ENABLED = "enabled"
+    PAUSED = "paused"
+    REMOVED = "removed"
+    STATUS_CHOICES = (
+        (UNKNOWN, "unknown"),
+        (ENABLED, "enabled"),
+        (PAUSED, "paused"),
+        (REMOVED, "removed"),
+    )
+    # status = models.CharField(
+    #     max_length=20,
+    #     choices=STATUS_CHOICES,
+    #     null=True,
+    # )
 
     def get_available_ad_formats(self):
 

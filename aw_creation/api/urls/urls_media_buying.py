@@ -5,6 +5,7 @@ from aw_creation.api.views.media_buying import AccountDetailAPIView
 from aw_creation.api.views.media_buying.account_targeting import AccountTargetingAPIView
 from aw_creation.api.views.media_buying.account_kpi_filters import AccountKPIFiltersAPIView
 from aw_creation.api.views.media_buying.account_breakout import AccountCampaignBreakoutAPIView
+from aw_creation.api.views.media_buying.account_sync import AccountSyncAPIView
 
 urlpatterns = [
     url(r'^account/(?P<pk>\w+)/$',
@@ -17,6 +18,9 @@ urlpatterns = [
         AccountKPIFiltersAPIView.as_view(),
         name="account_kpi_filters"),
 
+    url(r'^account/(?P<pk>\w+)/google_ads/$',
+        AccountSyncAPIView.as_view(),
+        name="account_sync"),
 
     url(r'^account/(?P<pk>\w+)/campaign/(?P<campaign_id>\w+)/breakout/$',
         AccountCampaignBreakoutAPIView.as_view(),

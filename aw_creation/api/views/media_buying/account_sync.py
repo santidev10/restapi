@@ -10,9 +10,12 @@ from aw_creation.models import CampaignCreation
 
 class AccountSyncAPIView(APIView):
     def get(self, request, *args, **kwargs):
-        account_id = kwargs["account_id"]
+        """ Get data to sync on Google Ads """
+        account_creation_id = kwargs["pk"]
         campaigns_to_sync = CampaignCreation.objects.filter(
-            account_creation__account_id=account_id,
+            account_creation_id=account_creation_id,
+            id=4976,
+            # creation_type=CampaignCreation.OPTIMIZATION,
             sync_at=None
         )
         ad_groups_to_sync = AdGroupCreation.objects\
@@ -21,7 +24,7 @@ class AccountSyncAPIView(APIView):
 
         campaign_data = [campaign.get_sync_data() for campaign in campaigns_to_sync]
         ad_group_data = [ad_group.get_sync_data() for ad_group in ad_groups_to_sync]
-        ads_data = [ad.get_sync_data() for ad in ads_to_sync]
+        ads_data = [ad.get_sync_data(request) for ad in ads_to_sync]
         data = {
             "campaigns": campaign_data,
             "ad_groups": ad_group_data,
@@ -30,6 +33,7 @@ class AccountSyncAPIView(APIView):
         return Response(data)
 
     def post(self, request, *args, **kwargs):
+        """ Set sync times for creation items """
         now = timezone.now()
         data = request.data
         account_id = kwargs["account_id"]
