@@ -153,7 +153,7 @@ class BrandSafetyQueryBuilder(object):
 
         if self.age_groups:
             age_queries = Q("bool")
-            if self.age_groups["include_not_available"]:
+            if self.age_groups.get("include_not_available", None):
                 age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
             for age_group_id in self.age_groups["ids"]:
                 age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
@@ -199,7 +199,7 @@ class BrandSafetyQueryBuilder(object):
         :return Q: the constructed Q query
         """
         queries = Q("bool")
-        if getattr(self, attr_name)["include_not_available"]:
+        if getattr(self, attr_name).get("include_not_available", None):
             queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
         queries |= QueryBuilder().build().should().range().field(field_name) \
             .gte(getattr(self, attr_name)["count"]).get()
