@@ -92,10 +92,10 @@ def validate_numeric(value):
     try:
         to_num = int(formatted)
     except ValueError:
-        raise ValueError("The number: {} is not valid.".format(value))
+        raise ValueError(f"The value: '{value}' is not a valid number.")
     return to_num
 
 def validate_boolean(value):
     if isinstance(value, bool) or (isinstance(value, int) and value in [0, 1]):
         return bool(value)
-    raise ValueError(f"The value: {value} must be a boolean")
+    raise ValueError(f"The value: '{value}' is not a valid boolean.")
