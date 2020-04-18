@@ -114,10 +114,8 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "score_threshold": 1,
             "title": "I am a blacklist",
             "content_categories": [],
-            "minimum_views": {
-                "count": "1,000,000",
-                "include_not_available": False
-            },
+            "minimum_views": "1,000,000",
+            "minimum_views_include_na": False,
             "segment_type": 1
         }
         with patch("brand_safety.utils.BrandSafetyQueryBuilder.map_content_categories", return_value="test_category"):
@@ -127,7 +125,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         data = response.data[0]
         query = CustomSegmentFileUpload.objects.get(segment_id=data["id"]).query
         self.assertEqual(response.status_code, HTTP_201_CREATED)
-        self.assertEqual(query["params"]["minimum_views"]["count"], int(payload["minimum_views"]["count"].replace(",", "")))
+        self.assertEqual(query["params"]["minimum_views"], int(payload["minimum_views"].replace(",", "")))
 
     def test_reject_duplicate_title_create(self, mock_generate):
         self.create_admin_user()

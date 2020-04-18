@@ -27,9 +27,12 @@ class BrandSafetyQueryBuilder(object):
         self.score_threshold = self._map_score_threshold(data.get("score_threshold", 0))
         self.sentiment = self._map_sentiment(data.get("sentiment", 0))
         self.last_upload_date = data.get("last_upload_date")
-        self.minimum_views = data.get("minimum_views", {})
-        self.minimum_subscribers = data.get("minimum_subscribers", {})
-        self.minimum_videos = data.get("minimum_videos", {})
+        self.minimum_views = data.get("minimum_views", 0)
+        self.minimum_views_include_na = data.get("minimum_views_include_na", None)
+        self.minimum_subscribers = data.get("minimum_subscribers", 0)
+        self.minimum_subscribers_include_na = data.get("minimum_subscribers_include_na", None)
+        self.minimum_videos = data.get("minimum_videos", 0)
+        self.minimum_videos_include_na = data.get("minimum_videos_include_na", None)
 
         self.content_categories = data.get("content_categories", [])
         self.countries = data.get("countries", [])
@@ -37,6 +40,7 @@ class BrandSafetyQueryBuilder(object):
         self.severity_filters = data.get("severity_filters", {})
         self.brand_safety_categories = data.get("brand_safety_categories", [])
         self.age_groups = data.get("age_groups", [])
+        self.age_groups_include_na = data.get("age_groups_include_na", None)
         self.gender = data.get("gender", None)
         self.is_vetted = data.get("is_vetted", None)
 
@@ -58,10 +62,14 @@ class BrandSafetyQueryBuilder(object):
             "countries": self.countries,
             "sentiment": self.sentiment,
             "minimum_views": self.minimum_views,
+            "minimum_views_include_na": self.minimum_views_include_na,
             "minimum_subscribers": self.minimum_subscribers,
+            "minimum_subscribers_include_na": self.minimum_subscribers_include_na,
             "minimum_videos": self.minimum_videos,
+            "minimum_videos_include_na": self.minimum_videos_include_na,
             "last_upload_date": self.last_upload_date,
             "age_groups": self.age_groups,
+            "age_groups_include_na": self.age_groups_include_na,
             "gender": self.gender,
             "is_vetted": self.is_vetted,
         }
@@ -99,22 +107,25 @@ class BrandSafetyQueryBuilder(object):
         must_queries = []
 
         if self.minimum_views:
-            min_views_ct_queries = self.get_include_na_queries(
+            min_views_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_views",
+                flag_name="minimum_views_include_na",
                 field_name="stats.views"
             )
             must_queries.append(min_views_ct_queries)
 
         if self.segment_type == 1 and self.minimum_subscribers:
-            min_subs_ct_queries = self.get_include_na_queries(
+            min_subs_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_subscribers",
+                flag_name="minimum_subscribers_include_na",
                 field_name="stats.subscribers"
             )
             must_queries.append(min_subs_ct_queries)
 
         if self.segment_type == 1 and self.minimum_videos:
-            min_vid_ct_queries = self.get_include_na_queries(
+            min_vid_ct_queries = self.get_numeric_include_na_queries(
                 attr_name="minimum_videos",
+                flag_name="minimum_videos_include_na",
                 field_name="stats.total_videos_count"
             )
             must_queries.append(min_vid_ct_queries)
@@ -153,9 +164,9 @@ class BrandSafetyQueryBuilder(object):
 
         if self.age_groups:
             age_queries = Q("bool")
-            if self.age_groups.get("include_not_available", None):
+            if self.age_groups_include_na:
                 age_queries |= QueryBuilder().build().must_not().exists().field("task_us_data.age_group").get()
-            for age_group_id in self.age_groups["ids"]:
+            for age_group_id in self.age_groups:
                 age_queries |= QueryBuilder().build().should().term().field("task_us_data.age_group").value(age_group_id).get()
             must_queries.append(age_queries)
 
@@ -191,18 +202,19 @@ class BrandSafetyQueryBuilder(object):
 
         return query
 
-    def get_include_na_queries(self, attr_name: str, field_name: str):
+    def get_numeric_include_na_queries(self, attr_name: str, flag_name: str, field_name: str):
         """
         get the combined queries for a gte field that supports the "include n/a" option
         :param attr_name: str, name of the attribute for this class
+        :param flag_name: str, name of the include n/a flag attribute
         :param field_name: str, name of the dot-notated field in ES
         :return Q: the constructed Q query
         """
         queries = Q("bool")
-        if getattr(self, attr_name).get("include_not_available", None):
+        if getattr(self, flag_name):
             queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
         queries |= QueryBuilder().build().should().range().field(field_name) \
-            .gte(getattr(self, attr_name)["count"]).get()
+            .gte(getattr(self, attr_name)).get()
         return queries
 
     def _map_blacklist_severity(self, score_threshold: int):
