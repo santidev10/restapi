@@ -125,7 +125,10 @@ class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, S
 
 
 class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted", "Monetizable")
+    columns = (
+        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
+        "Age_Group", "Gender", "Content_Type"
+    )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
 
