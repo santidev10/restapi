@@ -378,10 +378,7 @@ TESTIMONIALS = {
     "UCZG-C5esGZyVfxO2qXa1Zmw": "IBEvDNaWGYY",
 }
 
-DAILY_APEX_REPORT_EMAIL_ADDRESSES = [
-    "62E6332FA4E74AAAA0F647EAEABEFD85@dbx.datorama.com",
-    "visadatacentral@starcomww.com"
-]
+DAILY_APEX_REPORT_EMAIL_ADDRESSES = []
 
 DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
