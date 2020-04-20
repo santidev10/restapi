@@ -20,7 +20,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None, vetted=False):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -62,11 +62,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
             for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
                 extra_data = {}
                 # Retrieve Postgres vetting data for vetting exports
-                if vetted is True:
-                    item_ids = [item.main.id for item in batch]
-                    extra_data = AuditUtils.get_vetting_data(
-                        segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
-                    )
+                # no longer need to check if vetted for this, as this data is being used on all exports
+                item_ids = [item.main.id for item in batch]
+                extra_data = AuditUtils.get_vetting_data(
+                    segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
+                )
 
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
