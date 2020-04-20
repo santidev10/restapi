@@ -87,7 +87,7 @@ class AuditUtils(object):
         """
         iab_categories = []
         bad_tier_1s = ["Content Channel", "Content Type", "Content Media Format", "Content Language",
-                       "Content Source", "Content Source Geo"]
+                       "Content Source", "Content Source Geo", "Video Game Genres"]
         for tier_1, tier_2_values in IAB_TIER2_CATEGORIES_MAPPING.items():
             if tier_1 not in bad_tier_1s:
                 category = {
