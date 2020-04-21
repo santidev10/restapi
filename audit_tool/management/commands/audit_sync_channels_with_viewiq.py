@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+from django.conf import settings
 import logging
 from channel.utils import track_channels
 from audit_tool.models import AuditChannelMeta
@@ -21,8 +22,12 @@ class Command(BaseCommand):
         self.num_channels = options.get('num_channels')
         if not self.num_channels:
             self.num_channels = 100000
+        try:
+            sync_threshold = settings.AUDIT_SUBSCRIBER_SYNC_THRESHOLD
+        except Exception as e:
+            sync_threshold = 4500
         with PidFile(piddir='.', pidname='audit_sync_channels_with_viewiq.pid') as p:
-            pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=5000).order_by("-subscribers")
+            pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=sync_threshold).order_by("-subscribers")
             total_pending = pending_channels.count()
             if total_pending == 0:
                 logger.info("No channels to sync.")
