@@ -106,13 +106,14 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts = options.copy()
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
-        opts["content_categories"] = list(set(opts.get("content_categories", [])))
         # validate content categories
-        unique_content_categories = list(set(opts.get("content_categories", [])))
-        bad_content_categories = list(set(unique_content_categories) - IAB_TIER2_SET)
-        if bad_content_categories:
-            comma_separated = ", ".join(bad_content_categories)
-            raise(ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'"))
+        opts["content_categories"] = opts.get("content_categories", [])
+        if opts["content_categories"]:
+            unique_content_categories = set(opts.get("content_categories"))
+            bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
+            if bad_content_categories:
+                comma_separated = ", ".join(bad_content_categories)
+                raise(ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'"))
         opts["languages"] = opts.get("languages", []) or []
         opts["countries"] = opts.get("countries", []) or []
         opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
