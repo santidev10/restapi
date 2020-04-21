@@ -149,7 +149,7 @@ class CustomSegmentVideoExportSerializer(CustomSegmentExportSerializerMixin, Ser
     Views = IntegerField(source="stats.views")
     Overall_Score = SerializerMethodField("get_overall_score")
     Vetted = SerializerMethodField("get_vetted")
-    Brand_safety = SerializerMethodField("get_brand_safety")
+    Brand_Safety = SerializerMethodField("get_brand_safety")
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
