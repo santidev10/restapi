@@ -89,6 +89,28 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
+    def test_reject_bad_iab_categories(self, mock_generate):
+        """
+        content categories should only accept T2 IAB categories
+        """
+        self.create_admin_user()
+        content_categories = ["asdf", "zxcv", "qwer", "herp", "derp"]
+        payload = {
+            "languages": ["es"],
+            "score_threshold": 1,
+            "title": "test whitelist",
+            "content_categories": content_categories,
+            "segment_type": 0,
+            "last_upload_date": "2000/01/01"
+        }
+        response = self.client.post(
+            self._get_url(), json.dumps(payload), content_type="application/json"
+        )
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+        response_json = response.json()
+        for category in content_categories:
+            self.assertIn(category, response_json[0])
+
     def test_success_response_create(self, mock_generate):
         self.create_admin_user()
         payload = {
