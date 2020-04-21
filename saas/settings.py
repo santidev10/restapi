@@ -491,6 +491,12 @@ TRANSCRIPTS_CATEGORIES = []
 TRANSCRIPTS_SCORE_THRESHOLD = 70
 TRANSCRIPTS_NUM_VIDEOS = 100
 
+TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES = [
+    "george.su@channelfactory.com",
+    "andrew.vonpelt@channelfactory.com",
+    "alex.peace@channelfactory.com"
+]
+
 PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
 APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
