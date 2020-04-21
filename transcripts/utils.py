@@ -179,15 +179,11 @@ class YTVideo(object):
     async def get_response_async(self, session, url, headers=None):
         response = None
         counter = 0
-        print(f"Sending Request #{counter} to URL: '{url}'")
         response = await session.get(url=url, headers=headers)
-        print(f"Received Response with Status Code: '{response.status}'")
         while (not response or response.status != 200) and counter < 5:
             counter += 1
             try:
-                print(f"Sending Request #{counter} to URL: '{url}")
                 response = await session.get(url=url, headers=headers)
-                print(f"Received Response with Status Code: '{response.status}'")
             except HTTPTooManyRequests:
                 await asyncio.sleep(30)
                 logger.debug(f"Transcript request for url: {url} Attempt #{counter} of {TASK_RETRY_COUNTS} failed."

@@ -6,8 +6,11 @@ def populate_video_custom_captions(video, transcript_texts=[], transcript_langua
             text=text,
             language_code=language_code,
             source=source,
-            is_asr=True if language_code == asr_lang else None
+            is_asr=True if language_code == asr_lang else False
         )
         for text, language_code in zip(transcript_texts, transcript_languages) if text != ""
     ]
-    video.populate_custom_captions(transcripts_checked_v2=True, items=transcripts)
+    if source == "tts_url":
+        video.populate_custom_captions(transcripts_checked_tts_url=True, items=transcripts)
+    else:
+        video.populate_custom_captions(transcripts_checked_v2=True, items=transcripts)

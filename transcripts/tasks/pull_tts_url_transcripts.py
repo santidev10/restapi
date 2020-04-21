@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
-def pull_asr_transcripts():
+def pull_tts_url_transcripts():
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
@@ -55,7 +55,7 @@ def pull_asr_transcripts():
             vid_lang_codes = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles]
             asr_lang = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles
                         if subtitle.is_asr]
-            asr_lang = asr_lang if asr_lang else None
+            asr_lang = asr_lang[0] if asr_lang else None
             for i in range(len(vid_transcripts)):
                 if vid_transcripts[i]:
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_codes[i],
@@ -65,7 +65,7 @@ def pull_asr_transcripts():
         elapsed = time.perf_counter() - start
         logger.info(f"Upserted {len(successful_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
-        logger.info("Finished pulling ASR transcripts task.")
+        logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
         pass
 
