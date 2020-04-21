@@ -23,12 +23,12 @@ def pull_tts_url_transcripts():
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
-        yt_categories = settings.TRANSCRIPTS_CATEGORIES
+        iab_categories = settings.TRANSCRIPTS_CATEGORIES
         brand_safety_score = settings.TRANSCRIPTS_SCORE_THRESHOLD
         num_vids = settings.TRANSCRIPTS_NUM_VIDEOS
         logger.info(f"lang_codes: {lang_codes}")
         logger.info(f"country_codes: {country_codes}")
-        logger.info(f"yt_categories: {yt_categories}")
+        logger.info(f"iab_categories: {iab_categories}")
         logger.info(f"brand_safety_score: {brand_safety_score}")
         logger.info(f"num_vids: {num_vids}")
     except Exception as e:
@@ -37,7 +37,7 @@ def pull_tts_url_transcripts():
     try:
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         unparsed_vids = get_no_transcripts_vids(lang_codes=lang_codes, country_codes=country_codes,
-                                         yt_categories=yt_categories, brand_safety_score=brand_safety_score,
+                                         iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
         video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS,))
@@ -77,7 +77,7 @@ def pull_tts_url_transcripts():
 
 
 
-def get_no_transcripts_vids(lang_codes=None, country_codes=None, yt_categories=None, brand_safety_score=None,
+def get_no_transcripts_vids(lang_codes=None, country_codes=None, iab_categories=None, brand_safety_score=None,
                             num_vids=10000):
     forced_filters = VideoManager().forced_filters()
     s = Search(using='default')
@@ -106,11 +106,11 @@ def get_no_transcripts_vids(lang_codes=None, country_codes=None, yt_categories=N
     else:
         country_query = None
     # Get Videos Query for Specified Category
-    if yt_categories:
+    if iab_categories:
         category_query = Q(
             {
                 "terms": {
-                    "general_data.category": yt_categories
+                    "general_data.iab_categories": iab_categories
                 }
             }
         )
