@@ -30,7 +30,7 @@ def generate_vetted_segment(segment_id, recipient=None):
         # may rapidly change
         s3_key_suffix = str(timezone.now()) if recipient else None
         s3_key = segment.get_vetted_s3_key(suffix=s3_key_suffix)
-        results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key, vetted=True)
+        results = generate_segment(segment, query, segment.LIST_SIZE, add_uuid=False, s3_key=s3_key)
         if recipient:
             send_export_email(recipient, segment.title, results["download_url"])
         else:
