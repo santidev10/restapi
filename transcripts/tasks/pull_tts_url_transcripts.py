@@ -66,7 +66,7 @@ def pull_tts_url_transcripts():
             populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url", asr_lang=asr_lang)
         video_manager.upsert(all_videos)
         elapsed = time.perf_counter() - start
-        logger.info(f"Upserted {len(successful_videos)} videos in {elapsed} seconds.")
+        logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
