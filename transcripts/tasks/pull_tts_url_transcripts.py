@@ -48,9 +48,12 @@ def pull_tts_url_transcripts():
         successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
         logger.info(f"Of {len(vid_ids)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                     f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
-        successful_videos = video_manager.get(successful_vid_ids)
-        for vid_obj in successful_videos:
+        all_videos = video_manager.get(vid_ids, skip_none=True)
+        for vid_obj in all_videos:
             vid_id = vid_obj.main.id
+            if vid_id not in successful_vid_ids:
+                vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
+                continue
             vid_transcripts = [subtitle.captions for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles]
             vid_lang_codes = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles]
             asr_lang = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles
@@ -61,9 +64,9 @@ def pull_tts_url_transcripts():
                     AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_codes[i],
                                                        transcript=vid_transcripts[i])
             populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url", asr_lang=asr_lang)
-        video_manager.upsert(successful_videos)
+        video_manager.upsert(all_videos)
         elapsed = time.perf_counter() - start
-        logger.info(f"Upserted {len(successful_videos)} videos in {elapsed} seconds.")
+        logger.info(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
