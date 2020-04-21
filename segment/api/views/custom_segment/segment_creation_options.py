@@ -1,5 +1,6 @@
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditGender
+from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from brand_safety.utils import BrandSafetyQueryBuilder
@@ -7,7 +8,6 @@ from cache.constants import CHANNEL_AGGREGATIONS_KEY
 from cache.models import CacheItem
 from channel.api.country_view import CountryListApiView
 from es_components.countries import COUNTRIES
-from es_components.iab_categories import IAB_TIER2_SET
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK
@@ -91,7 +91,7 @@ class SegmentCreationOptionsApiView(APIView):
             "brand_safety_categories": [
                 {"id": _id, "name": category} for _id, category in BadWordCategory.get_category_mapping().items()
             ],
-            "content_categories": [{"id": name, "name": name} for name in IAB_TIER2_SET],
+            "content_categories": AuditUtils.get_iab_categories(),
             "gender": [
                 {"id": gender_id, "name": gender_name} for gender_id, gender_name in AuditGender.ID_CHOICES
             ],
