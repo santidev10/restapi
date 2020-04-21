@@ -21,12 +21,12 @@ from segment.utils.utils import validate_threshold
 
 class SegmentListCreateApiViewV2(ListCreateAPIView):
     REQUIRED_FIELDS = ["brand_safety_categories", "languages", "list_type", "minimum_option", "score_threshold", "title", "youtube_categories"]
-    ALLOWED_SORTS = {
+    ALLOWED_SORTS = [
         "items",
         "created_at",
         "updated_at",
         "title"
-    }
+    ]
     serializer_class = CustomSegmentSerializer
     pagination_class = SegmentPaginator
     queryset = CustomSegment.objects.all().select_related("export").order_by("created_at")
