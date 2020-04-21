@@ -1,10 +1,8 @@
 import logging
 import time
-import asyncio
 from saas import celery_app
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
-from django.core.management import BaseCommand
 from django.conf import settings
 from audit_tool.models import AuditVideoTranscript
 from es_components.managers.video import VideoManager
