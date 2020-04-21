@@ -5,6 +5,7 @@ from channel.utils import track_channels
 from audit_tool.models import AuditChannelMeta
 logger = logging.getLogger(__name__)
 from pid import PidFile
+from audit_tool.management.commands.audit_fill_monetisation_data import Command as MonetizationCommand
 
 """
 requirements:
@@ -33,9 +34,13 @@ class Command(BaseCommand):
                 logger.info("No channels to sync.")
                 raise Exception("No channels to sync.")
             channel_ids = []
+            monetized_channels = []
             meta_ids = []
             for channel_meta in pending_channels[:self.num_channels]:
-                channel_ids.append(channel_meta.channel.channel_id)
+                channel_id = channel_meta.channel.channel_id
+                if channel_meta.monetised:
+                    monetized_channels.append(channel_id)
+                channel_ids.append(channel_id)
                 meta_ids.append(channel_meta.id)
             try:
                 track_channels(channel_ids)
@@ -43,5 +48,8 @@ class Command(BaseCommand):
                 print((str(e)))
                 raise Exception(e)
             AuditChannelMeta.objects.filter(id__in=meta_ids).update(synced_with_viewiq=True)
-            logger.info("Done {} channels".format(len(channel_ids)))
+            logger.info("Done {} channels, setting monetised channels".format(len(channel_ids)))
+            if len(monetized_channels) > 0:
+                monetise = MonetizationCommand()
+                monetise.update_es_monetisation(monetized_channels)
             raise Exception("Done {} channels: {} total pending.".format(len(channel_ids), total_pending))
