@@ -35,7 +35,6 @@ API_QUOTA = settings.WATSON_API_QUOTA
 WATSON_APITRACKER_KEY = 'watson_transcripts'
 batch_size = settings.WATSON_BATCH_SIZE
 sandbox_mode = settings.WATSON_SANDBOX_MODE
-youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY, cache_discovery=False)
 watson_api_url = "https://api.essepi.io/transcribe/v1/prod"
 
 
@@ -54,6 +53,7 @@ def submit_watson_transcripts():
         logger.info(f"num_vids: {num_vids}")
     except Exception as e:
         raise e
+    youtube = build('youtube', 'v3', developerKey=settings.YOUTUBE_API_DEVELOPER_KEY, cache_discovery=False)
     vids_submitted = 0
     offset = 0
     try:
