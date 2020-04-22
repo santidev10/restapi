@@ -93,9 +93,9 @@ class AdGroupUpdater(UpdateMixin):
                         "type": row_obj.AdGroupType,
                         "campaign_id": campaign_id,
                         "criterion_type_id": criterion_id,
-                        "cpv_bid": row_obj.CpvBid if row_obj.CpvBid != " --" else None,
-                        "cpm_bid": row_obj.CpmBid if row_obj.CpmBid != " --" else None,
-                        "cpc_bid": row_obj.CpcBid if row_obj.CpcBid != " --" else None,
+                        "cpv_bid": self._validate_integer(row_obj.CpvBid),
+                        "cpm_bid": self._validate_integer(row_obj.CpmBid),
+                        "cpc_bid": self._validate_integer(row_obj.CpcBid),
                     }
 
                     if ad_group_id in ad_group_ids:
@@ -126,3 +126,11 @@ class AdGroupUpdater(UpdateMixin):
 
             if create_stats:
                 AdGroupStatistic.objects.safe_bulk_create(create_stats)
+
+    def _validate_integer(self, value):
+        validated = None
+        try:
+            validated = int(value)
+        except (ValueError, TypeError):
+            pass
+        return validated
