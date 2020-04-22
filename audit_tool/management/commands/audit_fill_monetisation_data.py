@@ -21,6 +21,9 @@ process:
 """
 
 class Command(BaseCommand):
+    upsert_batch_size = 1000
+    manager = None
+
     def add_arguments(self, parser):
         parser.add_argument('days', type=int)
 
@@ -40,7 +43,7 @@ class Command(BaseCommand):
             self.manager = ChannelManager(sections=(Sections.MONETIZATION,),
                                           upsert_sections=(Sections.MONETIZATION,))
             self.process_audits()
-            self.update_es_monetisation()
+            self.update_es_monetisation(self.channel_ids)
 
     def process_audits(self):
         count = 0
@@ -80,10 +83,15 @@ class Command(BaseCommand):
             except Exception as e:
                 pass
 
-    def update_es_monetisation(self):
-        channel_ids = list(self.channel_ids)
+    def update_es_monetisation(self, channel_ids):
+        channel_ids = list(channel_ids)
         print("Updating {} channels in ES.".format(len(channel_ids)))
         upsert_index = 0
+        if not self.upsert_batch_size:
+            self.upsert_batch_size = 1000
+        if not self.manager:
+            self.manager = ChannelManager(sections=(Sections.MONETIZATION,),
+                                          upsert_sections=(Sections.MONETIZATION,))
         while upsert_index < len(channel_ids):
             try:
                 not_monetized_query = QueryBuilder().build().must_not().term().field("monetization.is_monetizable")\
