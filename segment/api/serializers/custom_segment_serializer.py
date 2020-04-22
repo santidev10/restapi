@@ -104,7 +104,7 @@ class CustomSegmentSerializer(ModelSerializer):
     @staticmethod
     def map_to_id(value, item_type="segment"):
         config = {
-            "segment": CustomSegment.segment_type_to_id ,
+            "segment": CustomSegment.segment_type_to_id,
             "list": CustomSegment.list_type_to_id
         }
         to_id = config[item_type][value]
