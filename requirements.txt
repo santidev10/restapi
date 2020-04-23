@@ -32,7 +32,7 @@ et-xmlfile==1.0.1
 fasttext==0.9.1
 flashtext==2.7
 google-ads==3.2.0
-google-api-python-client==1.6.2
+google-api-python-client==1.8.2
 google-auth-oauthlib==0.4.0
 google-auth==1.6.3
 googleads==23.0.1
