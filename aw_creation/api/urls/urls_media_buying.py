@@ -18,13 +18,17 @@ urlpatterns = [
         AccountKPIFiltersAPIView.as_view(),
         name="account_kpi_filters"),
 
-    url(r'^account/(?P<pk>\w+)/google_ads/$',
+    url(r'^account/(?P<account_id>\w+)/google_ads/$',
         AccountSyncAPIView.as_view(),
         name="account_sync"),
 
     url(r'^account/(?P<pk>\w+)/campaign/(?P<campaign_id>\w+)/breakout/$',
         AccountCampaignBreakoutAPIView.as_view(),
         name="account_campaign_breakout"),
+
+    url(r'^account/(?P<pk>\w+)/ad_groups/breakout/$',
+        AccountCampaignBreakoutAPIView.as_view(),
+        name="account_ad_group_breakout"),
 
     url(r'^account/(?P<pk>\w+)/ad_groups/breakout/$',
         AccountCampaignBreakoutAPIView.as_view(),

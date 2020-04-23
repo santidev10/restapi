@@ -220,12 +220,15 @@ class AccountTargetingReport:
         if ReportType.SUMMARY in self.reporting_type:
             for key, aggregations_key in TOTAL_SUMMARY_COLUMNS.items():
                 # Calculate average values for Avg aggregations using finalize = len(all statistics from all serializers)
-                if finalize != 0:
-                    if "avg" in aggregations_key:
-                        self._base_overall_summary[key] /= finalize
-                else:
-                    # Sum all aggregation values for all serializers before calculating averages
-                    self._base_overall_summary[key] += aggregations[aggregations_key]
+                try:
+                    if finalize != 0:
+                        if "avg" in aggregations_key:
+                            self._base_overall_summary[key] /= finalize
+                    else:
+                        # Sum all aggregation values for all serializers before calculating averages
+                        self._base_overall_summary[key] += aggregations[aggregations_key]
+                except TypeError:
+                    continue
 
     def _get_stats(self, config, filters, kpi_filters=None):
         """

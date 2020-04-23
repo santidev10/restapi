@@ -21,6 +21,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
     start = serializers.DateField()
     end = serializers.DateField()
     budget = serializers.DecimalField(max_digits=10, decimal_places=2)
+    ad_group_ids = serializers.ListField()
 
     video_ad_format = serializers.CharField(max_length=20)
     max_rate = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -37,11 +38,20 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         return value
 
     def validate(self, data, raise_exception=True):
-        validated = {}
+        validated = {
+            "campaign_data": {},
+            "ad_group_data": [],
+            "ad_data": {},
+        }
         try:
             validated["campaign_data"] = {key: data[key] for key in self.CAMPAIGN_FIELDS}
             validated["campaign_data"]["account_creation"] = self.context["account_creation"]
-            validated["ad_group_data"] = {key: data[key] for key in self.AD_GROUP_FIELDS}
+
+            for ad_group_id in data["ad_group_ids"]:
+                ag_data = {key: data[key] for key in self.AD_GROUP_FIELDS}
+                ag_data["ad_group_id"] = ad_group_id
+                validated["ad_group_data"].append(ag_data)
+
             validated["ad_data"] = {key: data[key] for key in self.AD_FIELDS}
         except KeyError as e:
             if raise_exception:
@@ -54,8 +64,9 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         ad_data = validated_data["ad_data"]
 
         campaign_creation = CampaignCreation.objects.create(**campaign_data)
-        ad_group_data.update({"campaign_creation": campaign_creation})
-        ad_group_creation = AdGroupCreation.objects.create(**ad_group_data)
-        ad_data.update({"ad_group_creation": ad_group_creation})
-        ad_creation = AdCreation.objects.create(**ad_data)
+        ad_group_creation = AdGroupCreation.objects\
+            .bulk_create([AdGroupCreation(campaign_creation=campaign_creation, **data) for data in ad_group_data])
+
+        ad_creation = AdCreation.objects\
+            .bulk_create([AdCreation(ad_group_creation=ag_creation, **ad_data) for ag_creation in ad_group_creation])
         return campaign_creation

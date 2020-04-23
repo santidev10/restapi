@@ -14,8 +14,9 @@ from aw_creation.api.serializers.media_buying.campaign_setting_serializer import
 from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
 from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
-from aw_reporting.models import Campaign
+from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
+from aw_reporting.models import Campaign
 from utils.views import validate_fields
 
 
@@ -70,10 +71,9 @@ class AccountCampaignBreakoutAPIView(APIView):
         pk = kwargs["pk"]
         data = request.data
         account_creation = get_account_creation(request.user, pk)
-        settings = data["settings"]
 
         # Handles creation of all creation items
-        serializer = CampaignBreakoutSerializer(data=settings, context={"account_creation": account_creation})
+        serializer = CampaignBreakoutSerializer(data=data, context={"account_creation": account_creation})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self._process(account_creation, data)
@@ -87,7 +87,7 @@ class AccountCampaignBreakoutAPIView(APIView):
         :return:
         """
         should_pause_non_breakout_ad_groups = data.get("should_pause")
-        breakout_ad_group_ids = data.get("breakout_ad_group_ids", [])
+        breakout_ad_group_ids = data.get("ad_group_ids", [])
         updated_campaign_budget = data.get("updated_campaign_budget", None)
 
         if should_pause_non_breakout_ad_groups:
@@ -98,7 +98,7 @@ class AccountCampaignBreakoutAPIView(APIView):
             self._create_campaign_creations(breakout_campaigns.values(), account_creation)
             self._create_ad_group_creations(breakout_ad_groups.values(), **params)
 
-        if updated_campaign_budget:
+        if updated_campaign_budget is not None:
             # Get campaigns of non breakout ad groups and update their budgets
             params = {"budget": updated_campaign_budget}
             non_breakout_campaigns = Campaign.objects.filter(account=account_creation.account).exclude(ad_groups__id__in=breakout_ad_group_ids).distinct()
@@ -143,3 +143,4 @@ class AccountCampaignBreakoutAPIView(APIView):
             creation, _ = AdGroupCreation.objects.update_or_create(ad_group_id=ag["id"], defaults=defaults)
             creations.append(creation)
         return creations
+
