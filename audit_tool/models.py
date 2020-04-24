@@ -214,6 +214,8 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': lang,
+            'exclusion_size': self.params.get('exclusion_size'),
+            'inclusion_size': self.params.get('inclusion_size'),
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
