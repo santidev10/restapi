@@ -66,7 +66,7 @@ class BrandSafetyAudit(object):
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
         """
-        self.ignore_vetted = True
+        self.ignore_vetted = ignore_vetted
         self.audit_utils = AuditUtils()
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
