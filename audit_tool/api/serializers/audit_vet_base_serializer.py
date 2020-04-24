@@ -220,7 +220,7 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data["brand_safety"] = blacklist_categories
 
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
-        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(blacklist_categories)
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
         brand_safety_category_overall_scores = {
             str(category_id): {
                 "category_score": 100 if category_id in reset_brand_safety else 0
