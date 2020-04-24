@@ -6,12 +6,10 @@ from rest_framework.serializers import IntegerField
 from rest_framework.serializers import ListField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
-from rest_framework.utils.serializer_helpers import ReturnDict
 
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
-from brand_safety.languages import LANG_CODES
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
@@ -25,7 +23,7 @@ class AuditVetBaseSerializer(Serializer):
     general_data_language_field = None
     general_data_lang_code_field = None
 
-    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA)
+    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
@@ -43,6 +41,7 @@ class AuditVetBaseSerializer(Serializer):
     language_code = CharField(required=False) # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
+        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
         try:
             self.segment = kwargs.pop("segment", None)
         except KeyError:
@@ -88,7 +87,7 @@ class AuditVetBaseSerializer(Serializer):
     def get_language(self, doc):
         """
         Elasticsearch document language
-        If item is has no task_us_data langauge (not vetted before), serialize general_data.language
+        If item is has no task_us_data language (not vetted before), serialize general_data.language
         Else if has been vetted, use vetting task_us_data section language
         :param doc: es_components.model
         :return: str
@@ -219,6 +218,15 @@ class AuditVetBaseSerializer(Serializer):
         task_us_data = self.validated_data["task_us_data"]
         # Serialize validated data objects
         task_us_data["brand_safety"] = blacklist_categories
+
+        # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set(blacklist_categories)
+        brand_safety_category_overall_scores = {
+            str(category_id): {
+                "category_score": 100 if category_id in reset_brand_safety else 0
+            }
+            for category_id in self.all_brand_safety_category_ids
+        }
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = {}
         lang_code = task_us_data.get("lang_code")
@@ -233,6 +241,7 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
         doc.populate_general_data(**general_data)
+        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])
 

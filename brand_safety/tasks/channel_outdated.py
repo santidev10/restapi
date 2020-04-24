@@ -13,6 +13,7 @@ from utils.celery.tasks import celery_lock
 def channel_outdated_scheduler():
     channel_manager = ChannelManager()
     query = channel_manager.forced_filters() \
+            & QueryBuilder().build().must_not().exists().field("task_us_data").get() \
             & QueryBuilder().build().must().range().field("brand_safety.updated_at").lte(Schedulers.ChannelOutdated.UPDATE_TIME_THRESHOLD).get()
     sorts = ("brand_safety.updated_at", "-stats.subscribers")
     channel_update_helper(Schedulers.ChannelOutdated, query, Queue.BRAND_SAFETY_CHANNEL_LIGHT, sort=sorts)
