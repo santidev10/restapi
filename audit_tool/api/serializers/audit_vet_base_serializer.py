@@ -48,6 +48,12 @@ class AuditVetBaseSerializer(Serializer):
             pass
         super().__init__(*args, **kwargs)
 
+    def get_iab_categories(self, obj):
+        """ Remove None values """
+        print('in get', obj)
+        iab_categories = [val for val in obj.task_us_data.get("iab_categories", []) if val is not None]
+        return iab_categories
+
     def validate(self, data):
         """
         Validate SerializerMethodFields
@@ -79,7 +85,7 @@ class AuditVetBaseSerializer(Serializer):
         :return: list -> [int, int, ...]
         """
         try:
-            brand_safety = [int(item) for item in doc.task_us_data.brand_safety]
+            brand_safety = [int(item) for item in doc.task_us_data.brand_safety if item is not None]
         except AttributeError:
             brand_safety = []
         return brand_safety
@@ -190,9 +196,10 @@ class AuditVetBaseSerializer(Serializer):
         :param channel_id: str
         :return: list -> Brand safety category ids
         """
+        blacklist_categories = set(self.validated_data["task_us_data"].get("brand_safety", []))
         new_blacklist_scores = {
             str(item): 100
-            for item in self.validated_data["task_us_data"].get("brand_safety", [])
+            for item in blacklist_categories
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
             item_id=channel_id,
@@ -204,6 +211,13 @@ class AuditVetBaseSerializer(Serializer):
         # Update existing categories with new blacklist categories
         if created is False:
             blacklist_item.blacklist_category.update(new_blacklist_scores)
+            for category in self.all_brand_safety_category_ids:
+                # Remove all blacklist categories not in vetted data
+                if category not in blacklist_categories:
+                    try:
+                        del blacklist_item.blacklist_category[str(category)]
+                    except KeyError:
+                        pass
             blacklist_item.save()
         data = list(blacklist_item.blacklist_category.keys())
         return data
@@ -216,9 +230,6 @@ class AuditVetBaseSerializer(Serializer):
         :return: None
         """
         task_us_data = self.validated_data["task_us_data"]
-        # Serialize validated data objects
-        task_us_data["brand_safety"] = blacklist_categories
-
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
         reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
         brand_safety_category_overall_scores = {
@@ -234,14 +245,18 @@ class AuditVetBaseSerializer(Serializer):
             language = LANGUAGES[lang_code]
             general_data[self.general_data_language_field] = language
             general_data[self.general_data_lang_code_field] = lang_code
-        if task_us_data.get("iab_categories"):
+        # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
+        # https://github.com/elastic/elasticsearch-dsl-py/issues/460
+        if not task_us_data.get("iab_categories"):
+            general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
+        else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
+        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
-        doc.populate_general_data(**general_data)
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
+        doc.populate_general_data(**general_data)
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])
-
