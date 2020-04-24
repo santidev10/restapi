@@ -15,7 +15,20 @@ from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 
-AD_WORDS_STABILITY_STATS_DAYS_COUNT = 7
+AD_WORDS_STABILITY_STATS_DAYS_COUNT = 10
+"""int: Number of days, when Ads data can be changed by Google Ads.
+
+Syncronization of Campaign stats, AdGroup stats, and other stats
+is processed during this number of days, until data is stabilized.
+VIQ-3255 shows difference between Campaign stats and AdGroups stats,
+while this parameter was set to 7.
+Similar problem: https://support.google.com/searchads/answer/1344072?hl=en
+Most commonly, search engines may remove spam clicks or spam impressions.
+As the engines make these changes, it will take time for us to reflect
+the new data in Search Ads 360 reporting, as described in How fresh is
+the reporting data on Search Ads 360? The data on the engines and
+Search Ads 360 should be more stable after 10 days.
+"""
 
 logger = logging.getLogger(__name__)
 
