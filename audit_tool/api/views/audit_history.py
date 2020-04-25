@@ -36,7 +36,7 @@ class AuditHistoryApiView(APIView):
             history = history.order_by("id")
             res = {
                 'results': [],
-                'elapsed_time': None
+                'elapsed_time': 'N/A'
             }
             previous = None
             every_other = 1
