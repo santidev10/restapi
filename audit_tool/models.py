@@ -214,8 +214,8 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': lang,
-            'exclusion_size': self.params.get('exclusion_size'),
-            'inclusion_size': self.params.get('inclusion_size'),
+            'exclusion_size': self.get_exclusion_size(),
+            'inclusion_size': self.get_inclusion_size(),
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
@@ -251,6 +251,30 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def get_exclusion_size(self):
+        exclusion_size = self.params.get('exclusion_size')
+        if exclusion_size is None:
+            exclusion = self.params.get("exclusion")
+            if exclusion:
+                exclusion_size = len(exclusion)
+            else:
+                exclusion_size = 0
+            self.params['exclusion_size'] = exclusion_size
+            self.save(update_fields=['params'])
+        return exclusion_size
+
+    def get_inclusion_size(self):
+        inclusion_size = self.params.get('inclusion_size')
+        if inclusion_size is None:
+            inclusion = self.params.get("inclusion")
+            if inclusion:
+                inclusion_size = len(inclusion)
+            else:
+                inclusion_size = 0
+            self.params['inclusion_size'] = inclusion_size
+            self.save(update_fields=['params'])
+        return inclusion_size
 
     def get_export_status(self):
         res = {}
