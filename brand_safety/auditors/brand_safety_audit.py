@@ -56,17 +56,13 @@ class BrandSafetyAudit(object):
     THREAD_BATCH_SIZE = 5
     batch_counter = 0
 
-    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
-                      "brand_safety.updated_at")
-    VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
-                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
-
-    def __init__(self, *_, check_rescore=False, ignore_vetted=True, **kwargs):
+    def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
         """
-        self.ignore_vetted = ignore_vetted
+        self.ignore_vetted_channels = ignore_vetted_channels
+        self.ignore_vetted_videos = ignore_vetted_videos
         self.audit_utils = AuditUtils()
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
@@ -91,8 +87,6 @@ class BrandSafetyAudit(object):
         :return:
         """
         query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(ids).get()
-        if self.ignore_vetted is True:
-            query = self._add_ignore_vetted_query(query)
         results = manager.search(query, limit=10000).execute()
         return results
 
@@ -303,9 +297,7 @@ class BrandSafetyAudit(object):
         :return:
         """
         query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
-        if self.ignore_vetted is True:
-            query = self._add_ignore_vetted_query(query)
-        results = self.video_manager.search(query, limit=self.ES_LIMIT).source(self.VIDEO_FIELDS).execute().hits
+        results = self.video_manager.search(query, limit=self.ES_LIMIT).execute().hits
         return results
 
     def _extract_results(self, results: list):
@@ -324,18 +316,29 @@ class BrandSafetyAudit(object):
     def _index_results(self, video_audits, channel_audits):
         """
         Upsert documents with brand safety data
+        Check if each document should be upserted and prepare audits for Elasticsearch upsert operation
         :param video_audits: list -> BrandSafetyVideo audits
         :param channel_audits: list -> BrandSafetyChannel audits
         :return:
         """
-        videos_audit_map = {audit.pk: audit for audit in video_audits}
+        videos_audit_map = {}
+        # Check if vetted videos should be upserted
+        for audit in video_audits:
+            if self.ignore_vetted_videos is True and audit.is_vetted is True:
+                continue
+            videos_audit_map[audit.pk] = audit
+        # Prepare and instantiate Elasticsearch documents
         videos = self.video_manager.get_or_create(list(videos_audit_map.keys()))
         for video in videos:
             audit = videos_audit_map.get(video.main.id)
             audit.instantiate_es(video)
         self.video_manager.upsert(videos)
 
-        channels_audit_map = {audit.pk: audit for audit in channel_audits}
+        channels_audit_map = {}
+        for audit in channel_audits:
+            if self.ignore_vetted_channels is True and audit.is_vetted is True:
+                continue
+            channels_audit_map[audit.pk] = audit
         channels = self.channel_manager.get_or_create(list(channels_audit_map.keys()))
         for channel in channels:
             audit = channels_audit_map.get(channel.main.id)

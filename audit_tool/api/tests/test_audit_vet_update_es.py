@@ -11,6 +11,8 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoVet
+from audit_tool.models import BlacklistItem
+from audit_tool.models import get_hash_name
 from brand_safety.models import BadWordCategory
 from es_components.models import Channel
 from es_components.models import Video
@@ -72,9 +74,12 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                     "4": 3
                 },
                 "keywords": ["another"],
-                "category_score": 0
+                "category_score": 5
             },
         }
+        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
+        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=1, item_id_hash=get_hash_name(audit_item_yt_id),
+                                     blacklist_category={"2": 100})
         channel = Channel(audit_item_yt_id)
         channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
         channel.populate_task_us_data(iab_categories=["more", "wrong"])
@@ -103,8 +108,10 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
         BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-
+        with patch("audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        # Vetted brand safety changes should trigger rescore
+        mock_update_brand_safety.assert_called_once()
         updated_channel = self.channel_manager.get([channel.main.id])[0]
         channel_brand_safety = channel.brand_safety.categories
         updated_channel_brand_safety = updated_channel.brand_safety.categories
@@ -130,6 +137,10 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
                                      list_type=1, statistics={"items_count": 1}, uuid=uuid4())
         audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
+        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
+        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=0,
+                                     item_id_hash=get_hash_name(audit_item_yt_id),
+                                     blacklist_category={"3": 100})
         bs_category_data = {
             "3": {
                 "severity_counts": {
@@ -147,7 +158,7 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
                     "4": 3
                 },
                 "keywords": ["another"],
-                "category_score": 100
+                "category_score": 56
             },
         }
         video = Video(audit_item_yt_id)
@@ -173,8 +184,10 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_1"))
         BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_2"))
         url = self._get_url(kwargs=dict(pk=audit.id))
-        self.client.patch(url, data=json.dumps(payload), content_type="application/json")
-
+        with patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            res = self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        # Vetted brand safety changes should trigger rescore
+        mock_update_brand_safety.assert_called_once()
         updated_video = self.video_manager.get([video.main.id])[0]
         video_brand_safety = video.brand_safety.categories
         updated_video_brand_safety = updated_video.brand_safety.categories
