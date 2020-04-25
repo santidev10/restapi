@@ -59,15 +59,15 @@ class AuditHistoryApiView(APIView):
                     })
                 previous = h.count
                 position += 1
+            if audit.completed:
+                first_time = audit.started
+                last_time = audit.completed
+                last_count = audit.cached_data.get('total', 0)
+                first_count = 0
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
             except Exception as e:
-                pass
-            if not res['elapsed_time']:
-                try:
-                    res['elapsed_time'] = str(audit.completed - audit.started).replace(",", "").split(".")[0]
-                except Exception as e:
-                    res['elapsed_time'] = 'N/A'
+                res['elapsed_time'] = 'N/A'
             try:
                 diff = (last_time - first_time)
                 minutes = (diff.total_seconds() / 60)
