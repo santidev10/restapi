@@ -262,6 +262,7 @@ class AuditProcessor(models.Model):
                 res['started'] = e[0].started
                 res['machine'] = e[0].machine
                 res['thread'] = e[0].thread
+                res['elapsed_time'] = str(timezone.now() - e[0].started).replace(",", "").split(".")[0]
             else:
                 res['status'] = "Export Queued"
         return res
