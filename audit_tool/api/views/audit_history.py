@@ -36,7 +36,7 @@ class AuditHistoryApiView(APIView):
             history = history.order_by("id")
             res = {
                 'results': [],
-                'elapsed_time': 'N/A'
+                'elapsed_time': None
             }
             previous = None
             every_other = 1
@@ -63,6 +63,11 @@ class AuditHistoryApiView(APIView):
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
             except Exception as e:
                 pass
+            if not res['elapsed_time']:
+                try:
+                    res['elapsed_time'] = str(audit.completed - audit.started).replace(",", "").split(".")[0]
+                except Exception as e:
+                    res['elapsed_time'] = 'N/A'
             try:
                 diff = (last_time - first_time)
                 minutes = (diff.total_seconds() / 60)
