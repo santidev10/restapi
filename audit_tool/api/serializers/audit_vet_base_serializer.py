@@ -213,8 +213,8 @@ class AuditVetBaseSerializer(Serializer):
                 "item_id_hash": get_hash_name(item_id),
                 "blacklist_category": new_blacklist_scores,
             })
-        # Trigger celery brand safety update task if any blacklist categories change
-        if created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys():
+        # Trigger celery brand safety update task if any blacklist categories created or changed
+        if (created is True and new_blacklist_scores) or (created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
             blacklist_item.blacklist_category = new_blacklist_scores
             blacklist_item.save()
             self.update_brand_safety(item_id)
