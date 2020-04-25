@@ -201,24 +201,13 @@ class AuditVetBaseSerializer(Serializer):
             str(item): 100
             for item in blacklist_categories
         }
-        blacklist_item, created = BlacklistItem.objects.get_or_create(
+        blacklist_item, _ = BlacklistItem.objects.update_or_create(
             item_id=channel_id,
             item_type=1,
             defaults={
                 "item_id_hash": get_hash_name(channel_id),
                 "blacklist_category": new_blacklist_scores,
             })
-        # Update existing categories with new blacklist categories
-        if created is False:
-            blacklist_item.blacklist_category.update(new_blacklist_scores)
-            for category in self.all_brand_safety_category_ids:
-                # Remove all blacklist categories not in vetted data
-                if category not in blacklist_categories:
-                    try:
-                        del blacklist_item.blacklist_category[str(category)]
-                    except KeyError:
-                        pass
-            blacklist_item.save()
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
