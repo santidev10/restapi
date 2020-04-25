@@ -214,6 +214,8 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': lang,
+            'exclusion_size': self.params.get('exclusion_size'),
+            'inclusion_size': self.params.get('inclusion_size'),
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
@@ -260,6 +262,10 @@ class AuditProcessor(models.Model):
                 res['started'] = e[0].started
                 res['machine'] = e[0].machine
                 res['thread'] = e[0].thread
+                try:
+                    res['elapsed_time'] = str(timezone.now() - e[0].started).replace(",", "").split(".")[0]
+                except Exception as e:
+                    pass
             else:
                 res['status'] = "Export Queued"
         return res
