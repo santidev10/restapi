@@ -4,6 +4,7 @@ from rest_framework.serializers import SerializerMethodField
 from audit_tool.models import AuditChannelMeta
 from audit_tool.models import AuditChannelVet
 from audit_tool.models import get_hash_name
+from brand_safety.tasks.channel_update import channel_update
 from es_components.models import Channel
 from es_components.managers import VideoManager
 from es_components.query_builder import QueryBuilder
@@ -15,6 +16,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
     """
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
+    data_type = "channel"
     general_data_language_field = "top_language"
     general_data_lang_code_field = "top_lang_code"
     document_model = Channel
@@ -99,3 +101,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
             # Update all channel videos monetization
             query = QueryBuilder().build().must().term().field(f"{Sections.CHANNEL}.id").value(channel_id).get()
             VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True)
+
+    def update_brand_safety(self, item_id):
+        """ Initiate brand safety update task """
+        channel_update.delay(item_id, ignore_vetted_channels=False)

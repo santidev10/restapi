@@ -19,6 +19,8 @@ class AuditVetBaseSerializer(Serializer):
     """
     Base serializer for vetting models
     """
+    # None values defined on child classes
+    data_type = None
     document_model = None
     general_data_language_field = None
     general_data_lang_code_field = None
@@ -50,7 +52,6 @@ class AuditVetBaseSerializer(Serializer):
 
     def get_iab_categories(self, obj):
         """ Remove None values """
-        print('in get', obj)
         iab_categories = [val for val in obj.task_us_data.get("iab_categories", []) if val is not None]
         return iab_categories
 
@@ -65,6 +66,10 @@ class AuditVetBaseSerializer(Serializer):
             "language": self.validate_language_code(self.initial_data.get("lang_code", ""))
         })
         return data
+
+    def update_brand_safety(self, *args, **kwargs):
+        """ Initiate brand safety update task """
+        raise NotImplementedError
 
     def get_url(self, *args, **kwargs):
         raise NotImplementedError
@@ -190,10 +195,10 @@ class AuditVetBaseSerializer(Serializer):
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
 
-    def save_brand_safety(self, channel_id):
+    def save_brand_safety(self, item_id):
         """
         Save brand safety categories in BlacklistItem table
-        :param channel_id: str
+        :param item_id: str -> channel or video id
         :return: list -> Brand safety category ids
         """
         blacklist_categories = set(self.validated_data["task_us_data"].get("brand_safety", []))
@@ -201,13 +206,18 @@ class AuditVetBaseSerializer(Serializer):
             str(item): 100
             for item in blacklist_categories
         }
-        blacklist_item, _ = BlacklistItem.objects.update_or_create(
-            item_id=channel_id,
-            item_type=1,
+        blacklist_item, created = BlacklistItem.objects.get_or_create(
+            item_id=item_id,
+            item_type=0 if self.data_type == "video" else 1,
             defaults={
-                "item_id_hash": get_hash_name(channel_id),
+                "item_id_hash": get_hash_name(item_id),
                 "blacklist_category": new_blacklist_scores,
             })
+        # Trigger celery brand safety update task if any blacklist categories change
+        if created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys():
+            blacklist_item.blacklist_category = new_blacklist_scores
+            blacklist_item.save()
+            self.update_brand_safety(item_id)
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
