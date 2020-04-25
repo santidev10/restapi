@@ -10,6 +10,7 @@ from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoA
 from brand_safety.auditors.serializers import BrandSafetyChannelSerializer
 from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
 from brand_safety.auditors.utils import AuditUtils
+from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
@@ -60,26 +61,44 @@ class BrandSafetyAudit(object):
     VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
                     "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
-    def __init__(self, *_, check_rescore=False, **kwargs):
+    def __init__(self, *_, check_rescore=False, ignore_vetted=True, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
         """
+        self.ignore_vetted = ignore_vetted
         self.audit_utils = AuditUtils()
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
         self.blacklist_data_ref = {}
         self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
+            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
             upsert_sections=(Sections.BRAND_SAFETY,)
         )
         self.video_manager = VideoManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
-                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
+                      Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA),
             upsert_sections=(Sections.BRAND_SAFETY, Sections.CHANNEL)
         )
         self.check_rescore = check_rescore
         self.channels_to_rescore = []
+
+    def _get_by_ids(self, manager, ids):
+        """
+        Method to add additional conditions for retrieving documents by id
+        :param manager:
+        :param ids:
+        :return:
+        """
+        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(ids).get()
+        if self.ignore_vetted is True:
+            query = self._add_ignore_vetted_query(query)
+        results = manager.search(query, limit=10000).execute()
+        return results
+
+    def _add_ignore_vetted_query(self, query):
+        query &= QueryBuilder().build().must_not().exists().field("task_us_data").get()
+        return query
 
     def process_channels(self, channel_ids, index=True):
         """
@@ -93,7 +112,7 @@ class BrandSafetyAudit(object):
         for batch in self.audit_utils.batch(channel_ids, self.CHANNEL_BATCH_SIZE):
             curr_batch_channel_audits = []
             curr_batch_video_audits = []
-            channels = self.channel_manager.get(batch)
+            channels = self._get_by_ids(self.channel_manager, batch)
             serialized = BrandSafetyChannelSerializer(channels, many=True).data
             data = self._get_channel_batch_data(serialized)
             for channel in data:
@@ -123,7 +142,7 @@ class BrandSafetyAudit(object):
         """
         video_results = []
         for batch in self.audit_utils.batch(video_ids, self.VIDEO_BATCH_SIZE):
-            videos = self.video_manager.get(batch)
+            videos = self._get_by_ids(self.video_manager, batch)
             serialized = BrandSafetyVideoSerializer(videos, many=True).data
             video_audits = self.audit_videos(videos=serialized, get_blacklist_data=True)
             video_results.extend(video_audits)
@@ -142,7 +161,8 @@ class BrandSafetyAudit(object):
         :return:
         """
         if type(video_data) is str:
-            video_data = BrandSafetyVideoSerializer(self.video_manager.get([video_data])[0]).data
+            video_doc = self._get_by_ids(self.video_manager, [video_data])[0]
+            video_data = BrandSafetyVideoSerializer(video_doc).data
         if blacklist_data is None:
             try:
                 blacklist_data = BlacklistItem.get(video_data["id"], 0)[0].categories
@@ -177,7 +197,7 @@ class BrandSafetyAudit(object):
         elif channel_ids:
             video_data = self._get_channel_videos_executor(channel_ids)
         elif videos and type(videos[0]) is str:
-            video_data = self.video_manager.get(videos)
+            video_data = self._get_by_ids(self.video_manager, videos)
         else:
             video_data = videos
 
@@ -225,7 +245,7 @@ class BrandSafetyAudit(object):
         if not rescore:
             try:
                 # Retrieve existing data from Elasticsearch
-                response = self.audit_utils.get_items([channel_data], self.channel_manager)[0]
+                response = self._get_by_ids(self.channel_manager, [channel_data])[0]
                 audit = response.brand_safety.overall_score
             except (IndexError, AttributeError):
                 # Channel not scored
@@ -283,6 +303,8 @@ class BrandSafetyAudit(object):
         :return:
         """
         query = QueryBuilder().build().must().terms().field(VIDEO_CHANNEL_ID_FIELD).value(channel_ids).get()
+        if self.ignore_vetted is True:
+            query = self._add_ignore_vetted_query(query)
         results = self.video_manager.search(query, limit=self.ES_LIMIT).source(self.VIDEO_FIELDS).execute().hits
         return results
 
