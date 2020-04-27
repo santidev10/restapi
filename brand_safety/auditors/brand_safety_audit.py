@@ -56,7 +56,7 @@ class BrandSafetyAudit(object):
     THREAD_BATCH_SIZE = 5
     batch_counter = 0
 
-    def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True, **kwargs):
+    def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True, score_only=False, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
@@ -67,10 +67,16 @@ class BrandSafetyAudit(object):
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
         self.blacklist_data_ref = {}
-        self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
-            upsert_sections=(Sections.BRAND_SAFETY,)
-        )
+        if score_only:
+            self.channel_manager = ChannelManager(
+                sections=(Sections.BRAND_SAFETY),
+                upsert_sections=(Sections.BRAND_SAFETY,)
+            )
+        else:
+            self.channel_manager = ChannelManager(
+                sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY, Sections.TASK_US_DATA),
+                upsert_sections=(Sections.BRAND_SAFETY,)
+            )
         self.video_manager = VideoManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
                       Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS, Sections.TASK_US_DATA),
