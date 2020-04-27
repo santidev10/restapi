@@ -302,8 +302,8 @@ class YTVideo(object):
 
     @staticmethod
     def get_response_through_proxy(scraper, url, headers=None):
-        print(f"Sleeping {scraper.DELAY} seconds.")
-        time.sleep(scraper.DELAY)
+        print(f"Sleeping {scraper.REQUESTS_DELAY} seconds.")
+        time.sleep(scraper.REQUESTS_DELAY)
         proxy = scraper.get_proxy()
         host = scraper.host
         port = scraper.port
