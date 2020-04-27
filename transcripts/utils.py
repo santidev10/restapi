@@ -1,7 +1,8 @@
 import requests
 import time
 import socket
-from multiprocessing import Process
+# from multiprocessing import Process
+from threading import Thread
 # from pathos.multiprocessing import ProcessingPool as Pool
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
@@ -16,6 +17,7 @@ class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
     NUM_THREADS = 50
     NUM_PORTS = 65535
+    REQUESTS_DELAY = 1
 
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
@@ -79,8 +81,7 @@ class YTTranscriptsScraper(object):
         self.host = None
         self.port = None
         self.proxy_counter = 0
-        self.update_host()
-        self.update_port()
+        self.update_proxy()
 
     def run_scraper(self):
         self.create_yt_vids()
@@ -103,13 +104,13 @@ class YTTranscriptsScraper(object):
 
     # todo: Multithread
     def generate_tts_urls(self):
-        processes = []
+        threads = []
         for vid in self.vids:
-            p = Process(target=vid.generate_tts_url)
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+            t = Thread(target=vid.generate_tts_url)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
 
     def gather_yt_vids_meta(self):
         for vid in self.vids:
@@ -117,13 +118,20 @@ class YTTranscriptsScraper(object):
 
     # todo: Multithread
     def generate_list_urls(self):
-        processes = []
+        threads = []
         for vid in self.vids:
-            p = Process(target=vid.generate_list_url)
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+            t = Thread(target=vid.generate_list_url)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        # processes = []
+        # for vid in self.vids:
+        #     p = Process(target=vid.generate_list_url)
+        #     p.start()
+        #     processes.append(p)
+        # for p in processes:
+        #     p.join()
 
     def gather_tts_urls_meta(self):
         for vid in self.vids:
@@ -131,13 +139,20 @@ class YTTranscriptsScraper(object):
 
     # todo: Multithread
     def retrieve_transcripts(self):
-        processes = []
+        threads = []
         for vid in self.vids:
-            p = Process(target=vid.generate_subtitles)
-            p.start()
-            processes.append(p)
-        for p in processes:
-            p.join()
+            t = Thread(target=vid.generate_subtitles)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        # processes = []
+        # for vid in self.vids:
+        #     p = Process(target=vid.generate_subtitles)
+        #     p.start()
+        #     processes.append(p)
+        # for p in processes:
+        #     p.join()
 
     def gather_failed_vid_reasons(self):
         for yt_vid in self.vids:
@@ -195,14 +210,15 @@ class YTTranscriptsScraper(object):
     def increment_port(self):
         self.port = (self.port % self.NUM_PORTS) + 1
 
-    def blacklist_proxy(self, host, port):
+    def blacklist_and_update_proxy(self, host, port):
         proxy = {
             "host": host,
             "port": port
         }
         if proxy in self.available_proxies:
             self.available_proxies.remove(proxy)
-            self.increment_proxy_counter()
+            self.proxy_counter = self.proxy_counter % len(self.available_proxies)
+            self.update_proxy()
 
 
 class YTVideo(object):
@@ -236,14 +252,14 @@ class YTVideo(object):
         if not self.failure_reason:
             self.failure_reason = e
 
-    # Step 1 (Asynchronous)
+    # Step 1 (Multithreaded)
     def generate_tts_url(self):
         try:
             self.vid_url_response, self.vid_url_status = self.get_vid_url_response(self.vid_url)
         except Exception as e:
             self.update_failure_reason(e)
 
-    # Step 2 (Synchronous)
+    # Step 2 (Single-threaded)
     def parse_yt_vid_meta(self):
         try:
             self.tts_url = self.get_tts_url()
@@ -252,23 +268,26 @@ class YTVideo(object):
         except Exception as e:
             self.update_failure_reason(e)
 
-    # Step 3 (Asynchronous)
+    # Step 3 (Multithreaded)
     def generate_list_url(self):
         try:
             self.subtitles_list_url_response, status = self.get_list_url_response(self.subtitles_list_url)
         except Exception as e:
             self.update_failure_reason(e)
 
-    # Step 4 (Synchronous)
+    # Step 4 (Single-threaded)
     def parse_tts_url_meta(self):
-        self.tracks_meta = self.parse_list_url(self.subtitles_list_url_response)
-        self.asr_track_meta = self.get_asr_track(self.tracks_meta)
-        self.asr_lang_code = self.asr_track_meta.get("lang_code")
-        self.tracks_lang_codes_dict = self.get_lang_codes_dict(self.tracks_meta)
-        self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
-        self.subtitles = self.get_top_subtitles()
+        try:
+            self.tracks_meta = self.parse_list_url(self.subtitles_list_url_response)
+            self.asr_track_meta = self.get_asr_track(self.tracks_meta)
+            self.asr_lang_code = self.asr_track_meta.get("lang_code")
+            self.tracks_lang_codes_dict = self.get_lang_codes_dict(self.tracks_meta)
+            self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
+            self.subtitles = self.get_top_subtitles()
+        except Exception as e:
+            self.update_failure_reason(e)
 
-    # Step 5 (Asynchronous)
+    # Step 5 (Multithreaded)
     def generate_subtitles(self):
         try:
             for subtitle in self.subtitles:
@@ -294,41 +313,33 @@ class YTVideo(object):
 
     @staticmethod
     def get_response_through_proxy(scraper, url, headers=None):
-        # proxy = scraper.get_proxy()
+        proxy = scraper.get_proxy()
+        host = scraper.host
+        port = scraper.port
+        scraper.update_proxy()
         # scraper.update_port()
         response = None
         counter = 0
         try:
-            # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-            # response = requests.get(url=url, proxies=proxy)
-            # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-            print(f"Sending Request #{counter} to URL: '{url}' through port: '{scraper.port}'")
-            response = requests.get(url=f"{url}:{scraper.port}")
-            print(f"Received Response with Status Code: '{response.status_code}' from port: '{scraper.port}'")
-            scraper.update_port()
+            print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+            response = requests.get(url=url, proxies=proxy)
+            print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
         except Exception as e:
             print(e)
         while (not response or response.status_code != 200) and counter < 5:
             counter += 1
             try:
-                # print(f"Blacklisting proxy: {proxy}")
-                # scraper.blacklist_proxy(proxy)
+                print(f"Blacklisting proxy: {proxy}")
+                scraper.blacklist_and_update_proxy(host=host, port=port)
+                proxy = scraper.get_proxy()
+                host = scraper.host
                 port = scraper.port
-                scraper.update_port()
-                print(f"New port: {port}")
-                print(f"Sending Request #{counter} to URL: '{url}' through port: '{port}'")
-                response = requests.get(url=f"{url}:{port}")
-                print(f"Received Response with Status Code: '{response.status_code}' from port: '{port}'")
-                # scraper.update_port()
-                # proxy = scraper.get_proxy()
-                # print(f"New proxy: {proxy}")
-                # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-                # response = requests.get(url=url, proxies=scraper.get_proxy())
-                # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
+                print(f"New proxy: {proxy}")
+                print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+                response = requests.get(url=url, proxies=proxy)
+                print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except requests.exceptions.ConnectionError as e:
-                # print(f"Encountered ConnectionError while sending request to '{url}' through Proxy: '{proxy}'."
-                #       f"Error message: '{e}'")
-                print(f"Encountered ConnectionError while sending request to '{url}' through port: '{scraper.port}'."
+                print(f"Encountered ConnectionError while sending request to '{url}' through Proxy: '{proxy}'."
                       f"Error message: '{e}'")
                 continue
             except Exception as e:
