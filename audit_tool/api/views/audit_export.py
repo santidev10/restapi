@@ -507,7 +507,7 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[full_channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        auditor = BrandSafetyAudit()
+        auditor = BrandSafetyAudit(score_only=True)
         rows = [cols]
         count = channels.count()
         num_done = 0

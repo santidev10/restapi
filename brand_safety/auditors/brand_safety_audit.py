@@ -60,7 +60,7 @@ class BrandSafetyAudit(object):
     VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
                     "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
 
-    def __init__(self, *_, check_rescore=False, **kwargs):
+    def __init__(self, *_, check_rescore=False, score_only=False, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
             Determined if a video's overall score falls below a threshold
@@ -69,10 +69,16 @@ class BrandSafetyAudit(object):
 
         # Blacklist data for current batch being processed, set by _get_channel_batch_data
         self.blacklist_data_ref = {}
-        self.channel_manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
-            upsert_sections=(Sections.BRAND_SAFETY,)
-        )
+        if score_only:
+            self.channel_manager = ChannelManager(
+                sections=(Sections.BRAND_SAFETY),
+                upsert_sections=(Sections.BRAND_SAFETY,)
+            )
+        else:
+            self.channel_manager = ChannelManager(
+                sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.BRAND_SAFETY),
+                upsert_sections=(Sections.BRAND_SAFETY,)
+            )
         self.video_manager = VideoManager(
             sections=(Sections.GENERAL_DATA, Sections.MAIN, Sections.STATS, Sections.CHANNEL, Sections.BRAND_SAFETY,
                       Sections.CAPTIONS, Sections.CUSTOM_CAPTIONS),
@@ -225,7 +231,9 @@ class BrandSafetyAudit(object):
         if not rescore:
             try:
                 # Retrieve existing data from Elasticsearch
-                response = self.audit_utils.get_items([channel_data], self.channel_manager)[0]
+                if type(channel_data) != list:
+                    channel_data = [channel_data]
+                response = self.audit_utils.get_items(channel_data, self.channel_manager)[0]
                 audit = response.brand_safety.overall_score
             except (IndexError, AttributeError):
                 # Channel not scored

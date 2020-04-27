@@ -251,7 +251,7 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
-    
+
     def get_completed_rate(self):
         first_time = self.started
         last_time = self.completed
