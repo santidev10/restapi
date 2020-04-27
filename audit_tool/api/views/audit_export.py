@@ -512,7 +512,7 @@ class AuditExportApiView(APIView):
         count = channels.count()
         num_done = 0
         sections = (Sections.MONETIZATION,)
-        channel_manager = ChannelManager(sections)
+        #channel_manager = ChannelManager(sections)
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta
@@ -533,15 +533,15 @@ class AuditExportApiView(APIView):
                 mapped_score = map_brand_safety_score(channel_brand_safety_score)
             except Exception as e:
                 print(str(e))
-            if not v.monetised:
-                try:
-                    cid = channel.channel_id
-                    cm_channel = channel_manager.get([cid])[0]
-                    if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
-                        v.monetised = True
-                        v.save(update_fields=['monetised'])
-                except Exception as e:
-                    pass
+            # if not v.monetised:
+            #     try:
+            #         cid = channel.channel_id
+            #         cm_channel = channel_manager.get([cid])[0]
+            #         if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
+            #             v.monetised = True
+            #             v.save(update_fields=['monetised'])
+            #     except Exception as e:
+            #         pass
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:
