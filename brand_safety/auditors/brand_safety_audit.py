@@ -56,12 +56,6 @@ class BrandSafetyAudit(object):
     THREAD_BATCH_SIZE = 5
     batch_counter = 0
 
-<<<<<<< HEAD
-    CHANNEL_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.video_tags",
-                      "brand_safety.updated_at")
-    VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "general_data.tags",
-                    "general_data.language", "channel.id", "channel.title", "captions", "custom_captions")
-
     def __init__(self, *_, check_rescore=False, ignore_vetted_channels=True, ignore_vetted_videos=True, score_only=False, **kwargs):
         """
         :param check_rescore: bool -> Check if a channel should be rescored
@@ -251,13 +245,7 @@ class BrandSafetyAudit(object):
         if not rescore:
             try:
                 # Retrieve existing data from Elasticsearch
-<<<<<<< HEAD
-                if type(channel_data) != list:
-                    channel_data = [channel_data]
-                response = self.audit_utils.get_items(channel_data, self.channel_manager)[0]
-=======
                 response = self._get_by_ids(self.channel_manager, [channel_data])[0]
->>>>>>> 5b992bc80846ff5054a75256cf1486a56109a104
                 audit = response.brand_safety.overall_score
             except (IndexError, AttributeError):
                 # Channel not scored
