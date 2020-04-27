@@ -1,4 +1,5 @@
 import requests
+import re
 import time
 import socket
 # from multiprocessing import Process
@@ -17,11 +18,13 @@ class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
     NUM_THREADS = 50
     NUM_PORTS = 65535
-    REQUESTS_DELAY = 1
+    REQUESTS_DELAY = 0
+    BATCH_DELAY = BATCH_SIZE
 
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
         self.vids = []
+        self.successful_vids = {}
         self.num_failed_vids = None
         self.failure_reasons = None
         self.available_proxies = [
@@ -66,18 +69,6 @@ class YTTranscriptsScraper(object):
                 "port": "3128"
             }
         ]
-        # self.available_proxies = [
-        #     "192.126.166.176:3128",
-        #     "193.107.200.35:3128",
-        #     "192.126.160.168:3128",
-        #     "193.107.200.185:3128",
-        #     "192.126.166.65:3128",
-        #     "193.107.200.127:3128",
-        #     "193.107.200.148:3128",
-        #     "192.126.160.150:3128",
-        #     "192.126.159.143:3128",
-        #     "192.126.159.173:3128"
-        # ]
         self.host = None
         self.port = None
         self.proxy_counter = 0
@@ -95,66 +86,61 @@ class YTTranscriptsScraper(object):
         # time.sleep(2)
         # Multithreaded requests
         self.retrieve_transcripts()
-        self.gather_failed_vid_reasons()
+        self.gather_success_and_failures()
 
     def create_yt_vids(self):
         for vid_id in self.vid_ids:
             yt_vid = YTVideo(vid_id, self)
             self.vids.append(yt_vid)
 
-    # todo: Multithread
     def generate_tts_urls(self):
         threads = []
         for vid in self.vids:
             t = Thread(target=vid.generate_tts_url)
             t.start()
             threads.append(t)
-        for t in threads:
-            t.join()
+            if len(threads) >= self.BATCH_SIZE:
+                for t in threads:
+                    t.join()
+                threads = []
+                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
+                time.sleep(self.BATCH_DELAY)
 
     def gather_yt_vids_meta(self):
         for vid in self.vids:
             vid.parse_yt_vid_meta()
 
-    # todo: Multithread
     def generate_list_urls(self):
         threads = []
         for vid in self.vids:
-            t = Thread(target=vid.generate_list_url)
+            t = Thread(target=vid.generate_tts_url)
             t.start()
             threads.append(t)
-        for t in threads:
-            t.join()
-        # processes = []
-        # for vid in self.vids:
-        #     p = Process(target=vid.generate_list_url)
-        #     p.start()
-        #     processes.append(p)
-        # for p in processes:
-        #     p.join()
+            if len(threads) >= self.BATCH_SIZE:
+                for t in threads:
+                    t.join()
+                threads = []
+                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
+                time.sleep(self.BATCH_DELAY)
 
     def gather_tts_urls_meta(self):
         for vid in self.vids:
             vid.parse_tts_url_meta()
 
-    # todo: Multithread
     def retrieve_transcripts(self):
         threads = []
         for vid in self.vids:
-            t = Thread(target=vid.generate_subtitles)
+            t = Thread(target=vid.generate_tts_url)
             t.start()
             threads.append(t)
-        for t in threads:
-            t.join()
-        # processes = []
-        # for vid in self.vids:
-        #     p = Process(target=vid.generate_subtitles)
-        #     p.start()
-        #     processes.append(p)
-        # for p in processes:
-        #     p.join()
+            if len(threads) >= self.BATCH_SIZE:
+                for t in threads:
+                    t.join()
+                threads = []
+                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
+                time.sleep(self.BATCH_DELAY)
 
-    def gather_failed_vid_reasons(self):
+    def gather_success_and_failures(self):
         for yt_vid in self.vids:
             if yt_vid.failure_reason is not None:
                 continue
@@ -168,7 +154,10 @@ class YTTranscriptsScraper(object):
                 yt_vid.failure_reason = f"No TRACKS_LIST_URL found for Video: '{vid_id}'."
             elif not yt_vid.tracks_meta:
                 yt_vid.failure_reason = f"Video: '{vid_id}' has no TTS_URL captions available."
-        self.failure_reasons = {vid.vid_id: vid.failure_reason for vid in self.vids}
+
+            if yt_vid.failure_reason is None:
+                self.successful_vids[vid_id] = yt_vid
+        self.failure_reasons = {vid.vid_id: vid.failure_reason for vid in self.vids if vid.failure_reason}
         self.num_failed_vids = len(self.failure_reasons)
 
     def get_proxy(self):
@@ -313,6 +302,8 @@ class YTVideo(object):
 
     @staticmethod
     def get_response_through_proxy(scraper, url, headers=None):
+        print(f"Sleeping {scraper.DELAY} seconds.")
+        time.sleep(scraper.DELAY)
         proxy = scraper.get_proxy()
         host = scraper.host
         port = scraper.port
@@ -474,7 +465,7 @@ class YTVideoSubtitles(object):
         self.lang_translated = None
         self.type = None
         self.subtitle_url = None
-        self.subtitles = None
+        self.captions = None
         self.set_meta_data()
 
     def set_meta_data(self):
@@ -501,8 +492,10 @@ class YTVideoSubtitles(object):
 
     def get_subtitles(self):
         response, status = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url,
-                                                                 headers=self.YT_HEADERS)
+                                                                 headers=self.video.YT_HEADERS)
         soup = bs(response, "xml")
-        subtitles = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
-        subtitles = subtitles.replace(".", ". ").replace("?", "? ").replace("!", "! ")
-        self.subtitles = subtitles
+        captions = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
+        captions = re.sub(r'<font.+?>', '', captions)
+        captions = re.sub(r'<\/font>', '', captions)
+        captions = captions.replace(".", ". ").replace("?", "? ").replace("!", "! ")
+        self.captions = captions
