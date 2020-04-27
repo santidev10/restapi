@@ -2,9 +2,7 @@ import requests
 import re
 import time
 import socket
-# from multiprocessing import Process
 from threading import Thread
-# from pathos.multiprocessing import ProcessingPool as Pool
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
 from bs4 import BeautifulSoup as bs
@@ -18,7 +16,6 @@ class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
     NUM_THREADS = 50
     NUM_PORTS = 65535
-    REQUESTS_DELAY = 0
     BATCH_DELAY = BATCH_SIZE
 
     def __init__(self, vid_ids):
@@ -302,8 +299,6 @@ class YTVideo(object):
 
     @staticmethod
     def get_response_through_proxy(scraper, url, headers=None):
-        print(f"Sleeping {scraper.REQUESTS_DELAY} seconds.")
-        time.sleep(scraper.REQUESTS_DELAY)
         proxy = scraper.get_proxy()
         host = scraper.host
         port = scraper.port
