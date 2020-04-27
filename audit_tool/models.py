@@ -227,7 +227,7 @@ class AuditProcessor(models.Model):
             'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
-            'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
+            'avg_rate_per_minute': self.get_completed_rate() if self.completed else self.params.get('avg_rate_per_minute'),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
@@ -251,6 +251,19 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+    
+    def get_completed_rate(self):
+        first_time = self.started
+        last_time = self.completed
+        last_count = self.cached_data.get('total', 0)
+        first_count = 0
+        try:
+            diff = (last_time - first_time)
+            minutes = (diff.total_seconds() / 60)
+            avg_rate_per_minute = (last_count - first_count) / minutes
+        except Exception as e:
+            avg_rate_per_minute = 'N/A'
+        return avg_rate_per_minute
 
     def get_exclusion_size(self):
         exclusion_size = self.params.get('exclusion_size')
