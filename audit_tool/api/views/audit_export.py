@@ -14,8 +14,8 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-from es_components.managers import ChannelManager
-from es_components.constants import Sections
+# from es_components.managers import ChannelManager
+# from es_components.constants import Sections
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -507,11 +507,11 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[full_channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        auditor = BrandSafetyAudit(score_only=True)
+        #auditor = BrandSafetyAudit(score_only=True)
         rows = [cols]
         count = channels.count()
         num_done = 0
-        sections = (Sections.MONETIZATION,)
+        #sections = (Sections.MONETIZATION,)
         #channel_manager = ChannelManager(sections)
         for db_channel in channels:
             channel = db_channel.channel
@@ -528,11 +528,12 @@ class AuditExportApiView(APIView):
                 last_category = self.get_category(v.last_uploaded_category_id)
             except Exception as e:
                 last_category = ""
-            try:
-                channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
-                mapped_score = map_brand_safety_score(channel_brand_safety_score)
-            except Exception as e:
-                print(str(e))
+            mapped_score = None
+            # try:
+            #     channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
+            #     mapped_score = map_brand_safety_score(channel_brand_safety_score)
+            # except Exception as e:
+            #     mapped_score = None
             # if not v.monetised:
             #     try:
             #         cid = channel.channel_id

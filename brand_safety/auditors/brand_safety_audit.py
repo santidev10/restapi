@@ -69,7 +69,7 @@ class BrandSafetyAudit(object):
         self.blacklist_data_ref = {}
         if score_only:
             self.channel_manager = ChannelManager(
-                sections=(Sections.BRAND_SAFETY),
+                sections=(Sections.MAIN, Sections.BRAND_SAFETY),
                 upsert_sections=(Sections.BRAND_SAFETY,)
             )
         else:
