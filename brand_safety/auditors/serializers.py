@@ -12,8 +12,15 @@ class BrandSafetyChannelSerializer(Serializer):
     id = CharField(source="main.id")
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
+    is_vetted = SerializerMethodField()
     video_tags = SerializerMethodField()
     updated_at = SerializerMethodField()
+
+    def get_is_vetted(self, obj):
+        is_vetted = False
+        if obj.task_us_data:
+            is_vetted = True
+        return is_vetted
 
     def get_video_tags(self, obj):
         tags = " ".join(getattr(obj.general_data, "video_tags", []))
@@ -35,9 +42,16 @@ class BrandSafetyVideoSerializer(Serializer):
     title = CharField(source="general_data.title", default="")
     description = CharField(source="general_data.description", default="")
     language = CharField(source="general_data.lang_code", default="")
+    is_vetted = SerializerMethodField()
     tags = SerializerMethodField()
     transcript = SerializerMethodField()
     transcript_language = SerializerMethodField()
+
+    def get_is_vetted(self, obj):
+        is_vetted = False
+        if obj.task_us_data:
+            is_vetted = True
+        return is_vetted
 
     def get_tags(self, obj):
         tags = " ".join(getattr(obj.general_data, "tags", []))

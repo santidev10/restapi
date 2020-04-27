@@ -4,6 +4,7 @@ from rest_framework.serializers import SerializerMethodField
 from audit_tool.models import AuditChannel
 from audit_tool.models import AuditVideoVet
 from audit_tool.models import get_hash_name
+from brand_safety.tasks.video_discovery import video_update
 from es_components.models import Channel
 from es_components.models import Video
 from es_components.constants import Sections
@@ -15,6 +16,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
     """
     age_group, channel_type, gender, and brand_safety values are stored as id values
     """
+    data_type = "video"
     general_data_language_field = "language"
     general_data_lang_code_field = "lang_code"
     document_model = Video
@@ -100,3 +102,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             channel_doc = Channel(channel_id)
             channel_doc.populate_monetization(is_monetizable=True)
             manager.upsert([channel_doc])
+
+    def update_brand_safety(self, item_id):
+        """ Initiate brand safety update task """
+        video_update.delay(item_id, ignore_vetted_videos=False)
