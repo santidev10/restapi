@@ -76,11 +76,11 @@ class YTTranscriptsScraper(object):
         # Multithreaded requests
         self.generate_tts_urls()
         self.gather_yt_vids_meta()
-        time.sleep(3)
+        # time.sleep(3)
         # Multithreaded requests
         self.generate_list_urls()
         self.gather_tts_urls_meta()
-        time.sleep(3)
+        # time.sleep(3)
         # Multithreaded requests
         self.retrieve_transcripts()
         self.gather_success_and_failures()
@@ -112,7 +112,7 @@ class YTTranscriptsScraper(object):
     def generate_list_urls(self):
         threads = []
         for vid in self.vids:
-            t = Thread(target=vid.generate_tts_url)
+            t = Thread(target=vid.generate_list_url)
             t.start()
             threads.append(t)
             if len(threads) >= self.BATCH_SIZE:
@@ -131,7 +131,7 @@ class YTTranscriptsScraper(object):
     def retrieve_transcripts(self):
         threads = []
         for vid in self.vids:
-            t = Thread(target=vid.generate_tts_url)
+            t = Thread(target=vid.generate_subtitles)
             t.start()
             threads.append(t)
             if len(threads) >= self.BATCH_SIZE:
