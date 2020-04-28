@@ -76,11 +76,11 @@ class YTTranscriptsScraper(object):
         # Multithreaded requests
         self.generate_tts_urls()
         self.gather_yt_vids_meta()
-        # time.sleep(2)
+        time.sleep(3)
         # Multithreaded requests
         self.generate_list_urls()
         self.gather_tts_urls_meta()
-        # time.sleep(2)
+        time.sleep(3)
         # Multithreaded requests
         self.retrieve_transcripts()
         self.gather_success_and_failures()
@@ -102,6 +102,8 @@ class YTTranscriptsScraper(object):
                 threads = []
                 print(f"Sleeping for {self.BATCH_DELAY} seconds.")
                 time.sleep(self.BATCH_DELAY)
+        for t in threads:
+            t.join()
 
     def gather_yt_vids_meta(self):
         for vid in self.vids:
@@ -119,6 +121,8 @@ class YTTranscriptsScraper(object):
                 threads = []
                 print(f"Sleeping for {self.BATCH_DELAY} seconds.")
                 time.sleep(self.BATCH_DELAY)
+        for t in threads:
+            t.join()
 
     def gather_tts_urls_meta(self):
         for vid in self.vids:
@@ -136,6 +140,8 @@ class YTTranscriptsScraper(object):
                 threads = []
                 print(f"Sleeping for {self.BATCH_DELAY} seconds.")
                 time.sleep(self.BATCH_DELAY)
+        for t in threads:
+            t.join()
 
     def gather_success_and_failures(self):
         for yt_vid in self.vids:
@@ -243,15 +249,17 @@ class YTVideo(object):
         try:
             self.vid_url_response, self.vid_url_status = self.get_vid_url_response(self.vid_url)
         except Exception as e:
+            print('here1')
             self.update_failure_reason(e)
 
     # Step 2 (Single-threaded)
     def parse_yt_vid_meta(self):
         try:
-            self.tts_url = self.get_tts_url()
+            self.set_tts_url()
             self.params = self.parse_tts_url_params(self.tts_url)
             self.subtitles_list_url = self.get_list_url(self.params)
         except Exception as e:
+            print('here2')
             self.update_failure_reason(e)
 
     # Step 3 (Multithreaded)
@@ -259,6 +267,7 @@ class YTVideo(object):
         try:
             self.subtitles_list_url_response, status = self.get_list_url_response(self.subtitles_list_url)
         except Exception as e:
+            print('here3')
             self.update_failure_reason(e)
 
     # Step 4 (Single-threaded)
@@ -271,6 +280,7 @@ class YTVideo(object):
             self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
             self.subtitles = self.get_top_subtitles()
         except Exception as e:
+            print('here4')
             self.update_failure_reason(e)
 
     # Step 5 (Multithreaded)
@@ -279,6 +289,7 @@ class YTVideo(object):
             for subtitle in self.subtitles:
                 subtitle.get_subtitles()
         except Exception as e:
+            print('here5')
             self.update_failure_reason(e)
 
     def get_vid_url_response(self, vid_url):
@@ -384,7 +395,7 @@ class YTVideo(object):
     def get_vid_url(vid_id: str):
         return f"http://www.youtube.com/watch?v={vid_id}"
 
-    def get_tts_url(self):
+    def set_tts_url(self):
         if self.vid_url_status != 200:
             return None
         else:
@@ -398,7 +409,7 @@ class YTVideo(object):
         s = strings[1]
         s = s.replace("\\/", "/")
         s = s.replace("\\u0026", "&")
-        return s
+        self.tts_url = s
 
     @staticmethod
     def parse_tts_url_params(tts_url: str):
