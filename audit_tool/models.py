@@ -225,7 +225,7 @@ class AuditProcessor(models.Model):
             'resumed': self.params.get('resumed'),
             'stopped': self.params.get('stopped'),
             'paused': self.temp_stop,
-            'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
+            'num_videos': self.get_num_videos(),
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
             'avg_rate_per_minute': self.get_completed_rate() if self.completed else self.params.get('avg_rate_per_minute'),
             'source': self.SOURCE_TYPES[str(self.source)],
@@ -251,6 +251,12 @@ class AuditProcessor(models.Model):
             if d['percent_done'] > 100:
                 d['percent_done'] = 100
         return d
+
+    def get_num_videos(self):
+        num_videos = self.params.get('num_videos')
+        if not num_videos:
+            return 1
+        return num_videos 
 
     def get_completed_rate(self):
         first_time = self.started
