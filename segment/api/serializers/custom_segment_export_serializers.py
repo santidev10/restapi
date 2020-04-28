@@ -116,6 +116,7 @@ class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, S
         categories = getattr(obj.task_us_data, "iab_categories", [])
         if not categories:
             categories = getattr(obj.general_data, "iab_categories", [])
+        categories = [value for value in categories if value is not None]
         joined = ", ".join(categories)
         return joined
 

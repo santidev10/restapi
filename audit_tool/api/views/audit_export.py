@@ -14,8 +14,8 @@ from audit_tool.models import AuditVideoProcessor
 from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
 from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-from es_components.managers import ChannelManager
-from es_components.constants import Sections
+# from es_components.managers import ChannelManager
+# from es_components.constants import Sections
 
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
@@ -507,12 +507,12 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[full_channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        auditor = BrandSafetyAudit()
+        #auditor = BrandSafetyAudit(score_only=True)
         rows = [cols]
         count = channels.count()
         num_done = 0
-        sections = (Sections.MONETIZATION,)
-        channel_manager = ChannelManager(sections)
+        #sections = (Sections.MONETIZATION,)
+        #channel_manager = ChannelManager(sections)
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta
@@ -528,20 +528,21 @@ class AuditExportApiView(APIView):
                 last_category = self.get_category(v.last_uploaded_category_id)
             except Exception as e:
                 last_category = ""
-            try:
-                channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
-                mapped_score = map_brand_safety_score(channel_brand_safety_score)
-            except Exception as e:
-                print(str(e))
-            if not v.monetised:
-                try:
-                    cid = channel.channel_id
-                    cm_channel = channel_manager.get([cid])[0]
-                    if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
-                        v.monetised = True
-                        v.save(update_fields=['monetised'])
-                except Exception as e:
-                    pass
+            mapped_score = None
+            # try:
+            #     channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
+            #     mapped_score = map_brand_safety_score(channel_brand_safety_score)
+            # except Exception as e:
+            #     mapped_score = None
+            # if not v.monetised:
+            #     try:
+            #         cid = channel.channel_id
+            #         cm_channel = channel_manager.get([cid])[0]
+            #         if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
+            #             v.monetised = True
+            #             v.save(update_fields=['monetised'])
+            #     except Exception as e:
+            #         pass
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:

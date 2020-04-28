@@ -214,6 +214,8 @@ class AuditProcessor(models.Model):
             'audit_type': audit_type,
             'percent_done': 0,
             'language': lang,
+            'exclusion_size': self.get_exclusion_size(),
+            'inclusion_size': self.get_inclusion_size(),
             'category': self.params.get('category'),
             'max_recommended': self.max_recommended,
             'min_likes': self.params.get('min_likes'),
@@ -225,7 +227,7 @@ class AuditProcessor(models.Model):
             'paused': self.temp_stop,
             'num_videos': self.params.get('num_videos') if self.params.get('num_videos') else 50,
             'projected_completion': 'Done' if self.completed else self.params.get('projected_completion'),
-            'avg_rate_per_minute': None if self.completed else self.params.get('avg_rate_per_minute'),
+            'avg_rate_per_minute': self.get_completed_rate() if self.completed else self.params.get('avg_rate_per_minute'),
             'source': self.SOURCE_TYPES[str(self.source)],
             'max_recommended_type': self.params.get('max_recommended_type'),
             'inclusion_hit_count': self.params.get('inclusion_hit_count'),
@@ -250,6 +252,43 @@ class AuditProcessor(models.Model):
                 d['percent_done'] = 100
         return d
 
+    def get_completed_rate(self):
+        first_time = self.started
+        last_time = self.completed
+        last_count = self.cached_data.get('total', 0)
+        first_count = 0
+        try:
+            diff = (last_time - first_time)
+            minutes = (diff.total_seconds() / 60)
+            avg_rate_per_minute = (last_count - first_count) / minutes
+        except Exception as e:
+            avg_rate_per_minute = 'N/A'
+        return avg_rate_per_minute
+
+    def get_exclusion_size(self):
+        exclusion_size = self.params.get('exclusion_size')
+        if exclusion_size is None:
+            exclusion = self.params.get("exclusion")
+            if exclusion:
+                exclusion_size = len(exclusion)
+            else:
+                exclusion_size = 0
+            self.params['exclusion_size'] = exclusion_size
+            self.save(update_fields=['params'])
+        return exclusion_size
+
+    def get_inclusion_size(self):
+        inclusion_size = self.params.get('inclusion_size')
+        if inclusion_size is None:
+            inclusion = self.params.get("inclusion")
+            if inclusion:
+                inclusion_size = len(inclusion)
+            else:
+                inclusion_size = 0
+            self.params['inclusion_size'] = inclusion_size
+            self.save(update_fields=['params'])
+        return inclusion_size
+
     def get_export_status(self):
         res = {}
         e = AuditExporter.objects.filter(audit=self, completed__isnull=True).order_by("started")
@@ -260,6 +299,10 @@ class AuditProcessor(models.Model):
                 res['started'] = e[0].started
                 res['machine'] = e[0].machine
                 res['thread'] = e[0].thread
+                try:
+                    res['elapsed_time'] = str(timezone.now() - e[0].started).replace(",", "").split(".")[0]
+                except Exception as e:
+                    pass
             else:
                 res['status'] = "Export Queued"
         return res

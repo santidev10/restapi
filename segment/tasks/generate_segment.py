@@ -60,13 +60,16 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                 ]
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
-                extra_data = {}
                 # Retrieve Postgres vetting data for vetting exports
                 # no longer need to check if vetted for this, as this data is being used on all exports
                 item_ids = [item.main.id for item in batch]
-                extra_data = AuditUtils.get_vetting_data(
-                    segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
-                )
+                try:
+                    extra_data = AuditUtils.get_vetting_data(
+                        segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
+                    )
+                except Exception as e:
+                    logger.warning(f"Error getting segment extra data: {e}")
+                    extra_data = {}
 
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
