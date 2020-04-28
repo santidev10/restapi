@@ -10,7 +10,6 @@ from brand_safety.audit_models.brand_safety_video_audit import BrandSafetyVideoA
 from brand_safety.auditors.serializers import BrandSafetyChannelSerializer
 from brand_safety.auditors.serializers import BrandSafetyVideoSerializer
 from brand_safety.auditors.utils import AuditUtils
-from es_components.constants import MAIN_ID_FIELD
 from es_components.constants import Sections
 from es_components.constants import VIDEO_CHANNEL_ID_FIELD
 from es_components.managers import ChannelManager
@@ -92,9 +91,7 @@ class BrandSafetyAudit(object):
         :param ids:
         :return:
         """
-        query = QueryBuilder().build().must().terms().field(MAIN_ID_FIELD).value(ids).get()
-        results = manager.search(query, limit=10000).execute()
-        return results
+        return manager.get(ids)
 
     def _add_ignore_vetted_query(self, query):
         query &= QueryBuilder().build().must_not().exists().field("task_us_data").get()
