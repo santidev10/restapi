@@ -31,5 +31,7 @@ def generate_custom_segment(segment_id, results=None, tries=0):
             default_connection = connections['default']
             default_connection.connect()
             generate_custom_segment(segment_id, results=results, tries=tries)
+        else:
+            raise e
     except Exception as e:
         logger.exception("Error in generate_custom_segment task")
