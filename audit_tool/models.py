@@ -254,9 +254,9 @@ class AuditProcessor(models.Model):
 
     def get_num_videos(self):
         num_videos = self.params.get('num_videos')
-        if not num_videos:
+        if not self.params.get('do_videos'):
             return 1
-        return num_videos 
+        return num_videos
 
     def get_completed_rate(self):
         first_time = self.started
