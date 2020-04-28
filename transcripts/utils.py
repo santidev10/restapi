@@ -9,14 +9,23 @@ from bs4 import BeautifulSoup as bs
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
+from utils.celery.tasks import lock
+from utils.celery.tasks import unlock
 
+LOCK_NAME = "pull_tts_url_transcripts"
 
 class YTTranscriptsScraper(object):
-    BATCH_SIZE = 100
+    BATCH_SIZE = 165
     proxies_file_name = "good_proxies.json"
     NUM_THREADS = 50
     NUM_PORTS = 65535
-    BATCH_DELAY = BATCH_SIZE
+    BATCH_DELAY = 0
+
+    PROXY_SERVICE = "backconnect"
+    PROXY_MEMBERSHIP = "qe9m"
+    PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
+        f"{PROXY_MEMBERSHIP}/"
+    PROXY_API_TOKEN = "AJQiDwM3rZLRwZXweVRZxo5bXMfLs7wlvNXsn6lPQJTnaIMYMsu1gYt8mgsG8cOZ"
 
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
@@ -24,52 +33,50 @@ class YTTranscriptsScraper(object):
         self.successful_vids = {}
         self.num_failed_vids = None
         self.failure_reasons = None
-        self.available_proxies = [
-            {
-                "host": "192.126.166.176",
-                "port": "3128"
-            },
-            {
-                "host": "193.107.200.35",
-                "port": "3128"
-            },
-            {
-                "host": "192.126.160.168",
-                "port": "3128"
-            },
-            {
-                "host": "193.107.200.185",
-                "port": "3128"
-            },
-            {
-                "host": "192.126.166.65",
-                "port": "3128"
-            },
-            {
-                "host": "193.107.200.127",
-                "port": "3128"
-            },
-            {
-                "host": "193.107.200.148",
-                "port": "3128"
-            },
-            {
-                "host": "192.126.160.150",
-                "port": "3128"
-            },
-            {
-                "host": "192.126.159.143",
-                "port": "3128"
-            },
-            {
-                "host": "192.126.159.17",
-                "port": "3128"
-            }
-        ]
+        self.available_proxies = []
+        self.get_available_proxies()
         self.host = None
         self.port = None
         self.proxy_counter = 0
         self.update_proxy()
+
+    def request_proxy_api(self, endpoint, method="GET", data=None):
+        if method == "GET":
+            response = requests.get(f"{self.PROXY_API_URL}{endpoint}?api_token={self.PROXY_API_TOKEN}")
+            return response
+        elif method == "PUT":
+            response = requests.put(f"{self.PROXY_API_URL}{endpoint}?api_token={self.PROXY_API_TOKEN}",
+                                    data=data)
+            return response
+
+    def authorize_ip_with_proxy(self):
+        ip = requests.get('https://api.ipify.org').text
+        endpoint = "authorized-ips"
+        method = "PUT"
+        response = self.request_proxy_api(endpoint=endpoint, method=method, data={"ips": [ip]})
+        return response
+
+    def get_authorized_ips(self):
+        endpoint = "authorized-ips"
+        response = self.request_proxy_api(endpoint=endpoint)
+        return response
+
+    def get_available_proxies(self):
+        endpoint = "proxies"
+        response = self.request_proxy_api(endpoint=endpoint)
+        proxies = response.json()['data']
+        self.available_proxies = [
+            {
+                "host": proxy.split(":")[0],
+                "port": proxy.split(":")[1]
+            }
+            for proxy in proxies
+        ]
+
+    def get_geo(self):
+        endpoint = "geo"
+        response = self.request_proxy_api(endpoint=endpoint)
+        return response
 
     def run_scraper(self):
         self.create_yt_vids()
@@ -174,8 +181,8 @@ class YTTranscriptsScraper(object):
             self.update_port(port=self.available_proxies[self.proxy_counter]["port"])
             self.increment_proxy_counter()
         else:
-            self.update_host()
-            self.update_port()
+            # lock(LOCK_NAME)
+            raise Exception("No more proxies available.")
 
     def increment_proxy_counter(self):
         if len(self.available_proxies) > 0:
@@ -249,7 +256,6 @@ class YTVideo(object):
         try:
             self.vid_url_response, self.vid_url_status = self.get_vid_url_response(self.vid_url)
         except Exception as e:
-            print('here1')
             self.update_failure_reason(e)
 
     # Step 2 (Single-threaded)
@@ -259,7 +265,6 @@ class YTVideo(object):
             self.params = self.parse_tts_url_params(self.tts_url)
             self.subtitles_list_url = self.get_list_url(self.params)
         except Exception as e:
-            print('here2')
             self.update_failure_reason(e)
 
     # Step 3 (Multithreaded)
@@ -267,7 +272,6 @@ class YTVideo(object):
         try:
             self.subtitles_list_url_response, status = self.get_list_url_response(self.subtitles_list_url)
         except Exception as e:
-            print('here3')
             self.update_failure_reason(e)
 
     # Step 4 (Single-threaded)
@@ -280,7 +284,6 @@ class YTVideo(object):
             self.top_lang_codes, self.top_subtitles_meta = self.get_top_subtitles_meta()
             self.subtitles = self.get_top_subtitles()
         except Exception as e:
-            print('here4')
             self.update_failure_reason(e)
 
     # Step 5 (Multithreaded)
@@ -289,7 +292,6 @@ class YTVideo(object):
             for subtitle in self.subtitles:
                 subtitle.get_subtitles()
         except Exception as e:
-            print('here5')
             self.update_failure_reason(e)
 
     def get_vid_url_response(self, vid_url):
