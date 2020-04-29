@@ -7,6 +7,7 @@ from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 
 from audit_tool.models import AuditCategory
+from audit_tool.utils.audit_utils import AuditUtils
 from cache.models import CacheItem
 from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
@@ -56,20 +57,13 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         )
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_unique_content_categories(self, es_mock):
+    def test_that_content_categories_are_iab_categories(self, es_mock):
         self.create_test_user()
-        content_category = "Test Category"
-        AuditCategory.objects.create(
-            category=1, category_display_iab=content_category
+        response = self.client.post(self._get_url(), None, content_type="application/json")
+        self.assertEqual(
+            response.data["options"]["content_categories"],
+            AuditUtils.get_iab_categories()
         )
-        AuditCategory.objects.create(
-            category=2, category_display_iab=content_category
-        )
-        response = self.client.post(
-            self._get_url(), None, content_type="application/json"
-        )
-        self.assertEqual(len(response.data["options"]["content_categories"]), 1)
-
 
     def test_success_video_items(self, es_mock):
         self.create_test_user()
