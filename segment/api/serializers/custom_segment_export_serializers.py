@@ -63,7 +63,7 @@ class CustomSegmentExportSerializerMixin():
             content_type = None
         return content_type
 
-    def get_vetted(self, obj):
+    def get_vetting_result(self, obj):
         """
         context provided by base class
         :param obj:
@@ -120,6 +120,10 @@ class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, S
         joined = ", ".join(categories)
         return joined
 
+    def get_vetted(self, obj):
+        vetted = "Y" if getattr(obj.task_us_data, "created_at", None) is not None else None
+        return vetted
+
 
 class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
     columns = (
@@ -174,3 +178,7 @@ class CustomSegmentVideoExportSerializer(CustomSegmentExportSerializerMixin, Ser
             categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join(categories)
         return joined
+
+    def get_vetted(self, obj):
+        vetted = "Y" if getattr(obj.task_us_data, "created_at", None) is not None else None
+        return vetted

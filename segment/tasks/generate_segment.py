@@ -40,7 +40,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = prepare_context()
     try:
-        segment.set_vetting()
         sort = sort or [segment.SORT_KEY]
         seen = 0
         item_ids = []
