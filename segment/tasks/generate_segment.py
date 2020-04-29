@@ -7,6 +7,10 @@ import tempfile
 from django.conf import settings
 
 from audit_tool.utils.audit_utils import AuditUtils
+from audit_tool.models import AuditAgeGroup
+from audit_tool.models import AuditContentType
+from audit_tool.models import AuditGender
+from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
@@ -34,7 +38,9 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
     :return:
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    context = prepare_context()
     try:
+        segment.set_vetting()
         sort = sort or [segment.SORT_KEY]
         seen = 0
         item_ids = []
@@ -64,13 +70,14 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                 # no longer need to check if vetted for this, as this data is being used on all exports
                 item_ids = [item.main.id for item in batch]
                 try:
-                    extra_data = AuditUtils.get_vetting_data(
+                    vetting = AuditUtils.get_vetting_data(
                         segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
                     )
                 except Exception as e:
                     logger.warning(f"Error getting segment extra data: {e}")
-                    extra_data = {}
+                    vetting = {}
 
+                context["vetting"] = vetting
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
                     writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -91,8 +98,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             })
 
                         item_ids.append(item.main.id)
-                        # Most serializers do not use extra_data
-                        row = segment.serializer(item, extra_data=extra_data).data
+                        row = segment.serializer(item, context=context).data
                         writer.writerow(row)
 
                         # Calculating aggregations with each items already retrieved is much more efficient than
@@ -157,3 +163,17 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
 class MaxItemsException(Exception):
     pass
+
+
+def prepare_context():
+    brand_safety_categories = {
+        category.id: category.name
+        for category in BadWordCategory.objects.all()
+    }
+    context = {
+        "brand_safety_categories": brand_safety_categories,
+        "age_groups": AuditAgeGroup.to_str,
+        "genders": AuditGender.to_str,
+        "content_types": AuditContentType.to_str,
+    }
+    return context
