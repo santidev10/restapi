@@ -138,10 +138,18 @@ class AuditSaveApiView(APIView):
         if inclusion_file:
             params['inclusion'] = self.load_keywords(inclusion_file)
             params['files']['inclusion'] = inclusion_file.name
+            try:
+                params['inclusion_size'] = len(params['inclusion'])
+            except Exception as e:
+                pass
         # Load Keywords from Exclusion File
         if exclusion_file:
             params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
             params['files']['exclusion'] = exclusion_file.name
+            try:
+                params['exclusion_size'] = len(params['exclusion'])
+            except Exception as e:
+                pass
         if category:
             c = []
             for a in json.loads(category):
