@@ -10,6 +10,8 @@ from rest_framework.status import HTTP_200_OK
 
 from audit_tool.models import AuditProcessor
 from datetime import timedelta
+
+from audit_tool.validators import AuditToolValidator
 from es_components.constants import Sections
 from segment.models import CustomSegment
 from segment.tasks.generate_vetted_segment import generate_vetted_segment
@@ -143,6 +145,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             data["suitable"] = next_item.clean
             data["checked_out_at"] = next_item.checked_out_at = timezone.now()
             data["instructions"] = audit.params.get("instructions")
+            data['iab_categories'] = self.filter_invalid_iab_categories(data['iab_categories'])
             try:
                 o = getattr(next_item, segment.data_field)
                 data['YT_id'] = getattr(o, "{}_id".format(segment.data_field))
@@ -154,6 +157,19 @@ class AuditVetRetrieveUpdateAPIView(APIView):
                 "message": "All items are checked out. Please request from a different list."
             }
         return data
+
+    def filter_invalid_iab_categories(self, categories: list) -> list:
+        """
+        remove invalid iab categories from the passed list of categories
+        """
+        valid_categories = []
+        for category in categories:
+            try:
+                category_as_list = AuditToolValidator.validate_iab_categories([category])
+            except ValidationError:
+                continue
+            valid_categories = valid_categories + category_as_list
+        return valid_categories
 
     def _processs_skipped(self, skipped_type, vetting_item):
         """
@@ -179,7 +195,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
     def _get_document(self, es_manager, item_id):
         """
         Handle retrieving Elasticsearch document
-        In some cases an item was avaiable during list creation was deleted before vetting could take place or
+        In some cases an item was available during list creation was deleted before vetting could take place or
             has invalid item_id
         Respond with prompt to save item as skipped
         :param es_manager: es_components ChannelManager, VideoManager

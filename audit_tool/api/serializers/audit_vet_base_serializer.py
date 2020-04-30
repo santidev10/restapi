@@ -10,7 +10,6 @@ from rest_framework.serializers import SerializerMethodField
 from audit_tool.models import BlacklistItem
 from audit_tool.models import get_hash_name
 from audit_tool.validators import AuditToolValidator
-from brand_safety.languages import LANG_CODES
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from es_components.constants import Sections
@@ -20,11 +19,13 @@ class AuditVetBaseSerializer(Serializer):
     """
     Base serializer for vetting models
     """
+    # None values defined on child classes
+    data_type = None
     document_model = None
     general_data_language_field = None
     general_data_lang_code_field = None
 
-    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA)
+    SECTIONS = (Sections.MAIN, Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA, Sections.BRAND_SAFETY)
 
     # Elasticsearch fields
     age_group = IntegerField(source="task_us_data.age_group", default=None)
@@ -42,11 +43,17 @@ class AuditVetBaseSerializer(Serializer):
     language_code = CharField(required=False) # Field for saving vetting item
 
     def __init__(self, *args, **kwargs):
+        self.all_brand_safety_category_ids = BadWordCategory.objects.values_list("id", flat=True)
         try:
             self.segment = kwargs.pop("segment", None)
         except KeyError:
             pass
         super().__init__(*args, **kwargs)
+
+    def get_iab_categories(self, obj):
+        """ Remove None values """
+        iab_categories = [val for val in obj.task_us_data.get("iab_categories", []) if val is not None]
+        return iab_categories
 
     def validate(self, data):
         """
@@ -59,6 +66,10 @@ class AuditVetBaseSerializer(Serializer):
             "language": self.validate_language_code(self.initial_data.get("lang_code", ""))
         })
         return data
+
+    def update_brand_safety(self, *args, **kwargs):
+        """ Initiate brand safety update task """
+        raise NotImplementedError
 
     def get_url(self, *args, **kwargs):
         raise NotImplementedError
@@ -79,7 +90,7 @@ class AuditVetBaseSerializer(Serializer):
         :return: list -> [int, int, ...]
         """
         try:
-            brand_safety = [int(item) for item in doc.task_us_data.brand_safety]
+            brand_safety = [int(item) for item in doc.task_us_data.brand_safety if item is not None]
         except AttributeError:
             brand_safety = []
         return brand_safety
@@ -87,7 +98,7 @@ class AuditVetBaseSerializer(Serializer):
     def get_language(self, doc):
         """
         Elasticsearch document language
-        If item is has no task_us_data langauge (not vetted before), serialize general_data.language
+        If item is has no task_us_data language (not vetted before), serialize general_data.language
         Else if has been vetted, use vetting task_us_data section language
         :param doc: es_components.model
         :return: str
@@ -118,13 +129,13 @@ class AuditVetBaseSerializer(Serializer):
             raise ValidationError(f"Invalid language: {value}")
         return value
 
-    def validate_iab_categories(self, value):
+    def validate_iab_categories(self, values: list):
         """
         Retrieve AuditCategory iab_category values. Raises ValidationError if not found
-        :param value: str
+        :param values: list
         :return: AuditCategory
         """
-        iab_categories = AuditToolValidator.validate_iab_categories(value)
+        iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
     def validate_gender(self, value):
@@ -184,27 +195,29 @@ class AuditVetBaseSerializer(Serializer):
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
 
-    def save_brand_safety(self, channel_id):
+    def save_brand_safety(self, item_id):
         """
         Save brand safety categories in BlacklistItem table
-        :param channel_id: str
+        :param item_id: str -> channel or video id
         :return: list -> Brand safety category ids
         """
+        blacklist_categories = set(self.validated_data["task_us_data"].get("brand_safety", []))
         new_blacklist_scores = {
             str(item): 100
-            for item in self.validated_data["task_us_data"].get("brand_safety", [])
+            for item in blacklist_categories
         }
         blacklist_item, created = BlacklistItem.objects.get_or_create(
-            item_id=channel_id,
-            item_type=1,
+            item_id=item_id,
+            item_type=0 if self.data_type == "video" else 1,
             defaults={
-                "item_id_hash": get_hash_name(channel_id),
+                "item_id_hash": get_hash_name(item_id),
                 "blacklist_category": new_blacklist_scores,
             })
-        # Update existing categories with new blacklist categories
-        if created is False:
-            blacklist_item.blacklist_category.update(new_blacklist_scores)
+        # Trigger celery brand safety update task if any blacklist categories created or changed
+        if (created is True and new_blacklist_scores) or (created is False and blacklist_item.blacklist_category.keys() != new_blacklist_scores.keys()):
+            blacklist_item.blacklist_category = new_blacklist_scores
             blacklist_item.save()
+            self.update_brand_safety(item_id)
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
@@ -216,8 +229,14 @@ class AuditVetBaseSerializer(Serializer):
         :return: None
         """
         task_us_data = self.validated_data["task_us_data"]
-        # Serialize validated data objects
-        task_us_data["brand_safety"] = blacklist_categories
+        # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
+        reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
+        brand_safety_category_overall_scores = {
+            str(category_id): {
+                "category_score": 100 if category_id in reset_brand_safety else 0
+            }
+            for category_id in self.all_brand_safety_category_ids
+        }
         task_us_data["lang_code"] = self.validated_data["task_us_data"].pop("language", None)
         general_data = {}
         lang_code = task_us_data.get("lang_code")
@@ -225,12 +244,18 @@ class AuditVetBaseSerializer(Serializer):
             language = LANGUAGES[lang_code]
             general_data[self.general_data_language_field] = language
             general_data[self.general_data_lang_code_field] = lang_code
-        if task_us_data.get("iab_categories"):
+        # Elasticsearch DSL does not serialize and will not save empty values: [], {}, None
+        # https://github.com/elastic/elasticsearch-dsl-py/issues/460
+        if not task_us_data.get("iab_categories"):
+            general_data["iab_categories"] = task_us_data["iab_categories"] = [None]
+        else:
             general_data["iab_categories"] = task_us_data["iab_categories"]
+        task_us_data["brand_safety"] = blacklist_categories if blacklist_categories else [None]
         # Update Elasticsearch document
         doc = self.document_model(item_id)
         doc.populate_monetization(**self.validated_data["monetization"])
         doc.populate_task_us_data(**task_us_data)
+        doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         doc.populate_general_data(**general_data)
         self.segment.es_manager.upsert_sections = self.SECTIONS
         self.segment.es_manager.upsert([doc])

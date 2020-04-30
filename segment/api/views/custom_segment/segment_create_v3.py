@@ -1,22 +1,27 @@
+from audit_tool.models import get_hash_name
+from brand_safety.utils import BrandSafetyQueryBuilder
 from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
-
-from audit_tool.models import get_hash_name
-from brand_safety.utils import BrandSafetyQueryBuilder
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
+from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
 from utils.permissions import user_has_permission
+from es_components.iab_categories import IAB_TIER2_SET
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
-    response_fields = ("id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
-                       "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending")
+    response_fields = (
+        "id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
+        "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
+        "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
+        "minimum_subscribers_include_na", "minimum_videos_include_na",
+    )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
         user_has_permission("userprofile.vet_audit_admin"),
@@ -101,13 +106,29 @@ class SegmentCreateApiViewV3(CreateAPIView):
         opts = options.copy()
         opts["score_threshold"] = int(opts.get("score_threshold", 0) or 0)
         opts["severity_filters"] = opts.get("severity_filters", {}) or {}
-        opts["content_categories"] = BrandSafetyQueryBuilder.map_content_categories(opts.get("content_categories", []) or [])
+        # validate content categories
+        opts["content_categories"] = opts.get("content_categories", [])
+        if opts["content_categories"]:
+            unique_content_categories = set(opts.get("content_categories"))
+            bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
+            if bad_content_categories:
+                comma_separated = ", ".join(bad_content_categories)
+                raise(ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'"))
         opts["languages"] = opts.get("languages", []) or []
         opts["countries"] = opts.get("countries", []) or []
         opts["sentiment"] = int(opts.get("sentiment", 0) or 0)
-        opts["minimum_views"] = validate_numeric(opts.get("minimum_views", 0) or 0)
-        opts["minimum_subscribers"] = validate_numeric(opts.get("minimum_subscribers", 0) or 0)
         opts["last_upload_date"] = validate_date(opts.get("last_upload_date") or "")
+        opts["age_groups"] = [validate_numeric(value) for value in opts.get("age_groups", [])]
+        # validate boolean fields
+        for field_name in ["minimum_views_include_na", "minimum_videos_include_na", "minimum_subscribers_include_na",
+                           "age_groups_include_na", "is_vetted"]:
+            value = opts.get(field_name, None)
+            opts[field_name] = validate_boolean(value) if value is not None else None
+        # validate all numeric fields
+        for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos", "gender"]:
+            value = opts.get(field_name, None)
+            opts[field_name] = validate_numeric(value) if value is not None else None
+
         return opts
 
     def _create(self, data: dict):

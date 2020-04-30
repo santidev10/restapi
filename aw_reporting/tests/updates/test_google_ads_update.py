@@ -267,6 +267,9 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
                 VideoQuartile100Rate=0,
                 Engagements=engs,
                 ActiveViewImpressions=avi,
+                CpvBid="--",
+                CpmBid=None,
+                CpcBid=1,
             )
             for dt, cost, impressions, views, clicks, engs, avi in statistic
         ]
