@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from saas import celery_app
 from elasticsearch_dsl import Search
@@ -11,6 +11,7 @@ from es_components.managers.video import VideoManager
 from es_components.models.video import Video
 from es_components.constants import Sections
 from utils.transform import populate_video_custom_captions
+from django.core.exceptions import ValidationError
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
@@ -49,7 +50,7 @@ def pull_tts_url_transcripts():
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
         retrieval_end = time.perf_counter()
         retrieval_time = retrieval_end - retrieval_start
-        logger.info(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
+        print(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
         offset = 0
         batch_size = settings.TRANSCRIPTS_BATCH_SIZE
         while offset < len(all_videos):
@@ -60,6 +61,7 @@ def pull_tts_url_transcripts():
             transcripts_scraper.run_scraper()
             scraper_end = time.perf_counter()
             scraper_time = scraper_end - scraper_start
+            print(f"Scraped {len(videos_batch)} Video Transcripts in {scraper_time} seconds.")
             successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
             print(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
@@ -67,7 +69,13 @@ def pull_tts_url_transcripts():
                 vid_id = vid_obj.main.id
                 if vid_id not in successful_vid_ids:
                     failure = transcripts_scraper.failure_reasons[vid_id]
-                    if isinstance(failure, ConnectionError) or failure.message == 'No more proxies available.':
+                    print(failure)
+                    if isinstance(failure, ValidationError) and failure.message == 'No more proxies available.':
+                        print(failure.message)
+                        print("Locking pull_tts_url_transcripts task for 5 minutes.")
+                        lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
+                        raise Exception("No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.")
+                    if isinstance(failure, ConnectionError):
                         continue
                     else:
                         vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
@@ -85,42 +93,13 @@ def pull_tts_url_transcripts():
                                                            transcript=vid_transcripts[i])
                 populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
                                                asr_lang=asr_lang)
-
+                print(f"Retrieved transcript for Video with id: {vid_id}")
+            upsert_start = time.perf_counter()
+            video_manager.upsert(videos_batch)
+            upsert_end = time.perf_counter()
+            upsert_time = upsert_end - upsert_start
+            print(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
             offset += batch_size
-        successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
-        print(f"Of {len(vid_ids)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
-              f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
-        # scraper_start = time.perf_counter()
-        # transcripts_scraper.run_scraper(batch_size=100, offset=offset)
-        # scraper_end = time.perf_counter()
-        # scraper_time = scraper_end - scraper_start
-        # successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
-        # print(f"Of {len(vid_ids)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
-        #             f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
-        upsert_start = time.perf_counter()
-        for vid_obj in all_videos:
-            vid_id = vid_obj.main.id
-            if vid_id not in successful_vid_ids:
-                vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
-                continue
-            vid_transcripts = [subtitle.captions for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles]
-            vid_lang_codes = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles]
-            asr_lang = [subtitle.lang_code for subtitle in transcripts_scraper.successful_vids[vid_id].subtitles
-                        if subtitle.is_asr]
-            asr_lang = asr_lang[0] if asr_lang else None
-            for i in range(len(vid_transcripts)):
-                if vid_transcripts[i]:
-                    AuditVideoTranscript.get_or_create(video_id=vid_id, language=vid_lang_codes[i],
-                                                       transcript=vid_transcripts[i])
-            populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url", asr_lang=asr_lang)
-        upsert_start = time.perf_counter()
-        video_manager.upsert(all_videos)
-        upsert_end = time.perf_counter()
-        upsert_time = upsert_end - upsert_start
-
-        # todo: Gather Time Metrics
-
-        print(f"Upserted {len(all_videos)} videos in {elapsed} seconds.")
         unlock(LOCK_NAME)
         print("Finished pulling TTS_URL transcripts task.")
 

@@ -1,6 +1,5 @@
 import requests
 import re
-import time
 import socket
 from threading import Thread
 import urllib.parse as urlparse
@@ -12,7 +11,6 @@ from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
 from utils.celery.tasks import lock
-from utils.celery.tasks import unlock
 
 LOCK_NAME = "pull_tts_url_transcripts"
 
@@ -83,11 +81,9 @@ class YTTranscriptsScraper(object):
         # Multithreaded requests
         self.generate_tts_urls()
         self.gather_yt_vids_meta()
-        # time.sleep(3)
         # Multithreaded requests
         self.generate_list_urls()
         self.gather_tts_urls_meta()
-        # time.sleep(3)
         # Multithreaded requests
         self.retrieve_transcripts()
         self.gather_success_and_failures()
@@ -175,7 +171,6 @@ class YTTranscriptsScraper(object):
             self.update_port(port=self.available_proxies[self.proxy_counter]["port"])
             self.increment_proxy_counter()
         else:
-            # lock(LOCK_NAME)
             raise ValidationError("No more proxies available.")
 
     def increment_proxy_counter(self):
@@ -314,36 +309,36 @@ class YTVideo(object):
         response = None
         counter = 0
         try:
-            print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+            # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
             response = requests.get(url=url, proxies=proxy)
-            print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-        except Exception as e:
-            print(e)
+            # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
+        except ConnectionError:
+            pass
         while (not response or response.status_code != 200) and counter < 5:
             counter += 1
             try:
-                print(f"Blacklisting proxy: {proxy}")
+                # print(f"Blacklisting proxy: {proxy}")
                 scraper.blacklist_and_update_proxy(host=host, port=port)
                 proxy = scraper.get_proxy()
                 host = scraper.host
                 port = scraper.port
-                print(f"New proxy: {proxy}")
-                print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
+                # print(f"New proxy: {proxy}")
+                # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
                 response = requests.get(url=url, proxies=proxy)
-                print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
+                # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except ConnectionError as e:
-                print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
-                      f"Error message: '{e}'")
+                # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
+                #       f"Error message: '{e}'")
                 continue
             except ValidationError as e:
                 if e.message == "No more proxies available.":
                     lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                     raise e
             except Exception as e:
-                print(e)
+                # print(e)
                 raise e
         if counter >= 5:
-            print(f"Exceeded 5 connection attempts to URL: {url}")
+            # print(f"Exceeded 5 connection attempts to URL: {url}")
             raise Exception("Exceeded 5 connection attempts to URL.")
         response_text = response.text
         response_status = response.status_code
