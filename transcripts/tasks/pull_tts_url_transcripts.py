@@ -30,6 +30,11 @@ def pull_tts_url_transcripts():
         iab_categories = settings.TRANSCRIPTS_CATEGORIES
         brand_safety_score = settings.TRANSCRIPTS_SCORE_THRESHOLD
         num_vids = settings.TRANSCRIPTS_NUM_VIDEOS
+        logger.info(f"lang_codes: {lang_codes}")
+        logger.info(f"country_codes: {country_codes}")
+        logger.info(f"iab_categories: {iab_categories}")
+        logger.info(f"brand_safety_score: {brand_safety_score}")
+        logger.info(f"num_vids: {num_vids}")
     except Exception as e:
         logger.error(e)
         raise e
