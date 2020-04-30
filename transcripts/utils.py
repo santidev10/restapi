@@ -25,7 +25,6 @@ class YTTranscriptsScraper(object):
     PROXY_MEMBERSHIP = "qe9m"
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
         f"{PROXY_MEMBERSHIP}/"
-    PROXY_API_TOKEN = "AJQiDwM3rZLRwZXweVRZxo5bXMfLs7wlvNXsn6lPQJTnaIMYMsu1gYt8mgsG8cOZ"
 
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
@@ -43,10 +42,10 @@ class YTTranscriptsScraper(object):
 
     def request_proxy_api(self, endpoint, method="GET", data=None):
         if method == "GET":
-            response = requests.get(f"{self.PROXY_API_URL}{endpoint}?api_token={self.PROXY_API_TOKEN}")
+            response = requests.get(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}")
             return response
         elif method == "PUT":
-            response = requests.put(f"{self.PROXY_API_URL}{endpoint}?api_token={self.PROXY_API_TOKEN}",
+            response = requests.put(f"{self.PROXY_API_URL}{endpoint}?api_token={settings.PROXY_API_TOKEN}",
                                     data=data)
             return response
 
