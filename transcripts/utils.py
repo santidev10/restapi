@@ -2,17 +2,20 @@ import requests
 import re
 import socket
 from threading import Thread
+from django.utils import timezone
+from datetime import timedelta
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
-from datetime import timedelta
 from bs4 import BeautifulSoup as bs
 from requests.exceptions import ConnectionError
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
 from utils.celery.tasks import lock
+from administration.notifications import send_email
 
-LOCK_NAME = "pull_tts_url_transcripts"
+LOCK_NAME = "asr_transcripts"
 
 class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
@@ -171,7 +174,7 @@ class YTTranscriptsScraper(object):
             self.update_port(port=self.available_proxies[self.proxy_counter]["port"])
             self.increment_proxy_counter()
         else:
-            raise ValidationError("No more proxies available.")
+            raise ValidationError("All proxies have been blocked.")
 
     def increment_proxy_counter(self):
         if len(self.available_proxies) > 0:
@@ -299,8 +302,7 @@ class YTVideo(object):
         except Exception as e:
             self.update_failure_reason(e)
 
-    @staticmethod
-    def get_response_through_proxy(scraper, url, headers=None):
+    def get_response_through_proxy(self, scraper, url, headers=None):
         proxy = scraper.get_proxy()
         host = scraper.host
         port = scraper.port
@@ -331,18 +333,29 @@ class YTVideo(object):
                 #       f"Error message: '{e}'")
                 continue
             except ValidationError as e:
-                if e.message == "No more proxies available.":
+                if e.message == "All proxies have been blocked.":
+                    self.send_yt_blocked_email()
                     lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                     raise e
             except Exception as e:
-                # print(e)
                 raise e
         if counter >= 5:
-            # print(f"Exceeded 5 connection attempts to URL: {url}")
             raise Exception("Exceeded 5 connection attempts to URL.")
         response_text = response.text
         response_status = response.status_code
         return response_text, response_status
+
+    @staticmethod
+    def send_yt_blocked_email():
+        subject = "TTS_URL Transcripts Task Proxies Have Been Blocked by Youtube"
+        body = f"All TTS_URL Transcripts Proxies have been blocked by Youtube at {timezone.now()}." \
+            f"Locking Task for 5 minutes."
+        send_email(
+            subject=subject,
+            from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
+            recipient_list=settings.TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES,
+            html_message=body
+        )
 
     def get_top_subtitles(self):
         if not self.top_subtitles_meta:
