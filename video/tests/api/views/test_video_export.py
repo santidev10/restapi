@@ -66,6 +66,7 @@ class VideoListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_success_allowed_user(self):
         user = self.create_test_user()
         user.add_custom_user_permission("video_list")
+        user.add_custom_user_permission("research_exports")
 
         response = self._request()
 
@@ -153,6 +154,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_success_allowed_user(self, *args):
         user = self.create_test_user()
         user.add_custom_user_permission("video_list")
+        user.add_custom_user_permission("research_exports")
         self._request_collect_file()
 
         user.remove_custom_user_permission("video_list")
@@ -324,6 +326,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_filter_brand_safety_not_allowed(self, *args):
         user = self.create_test_user()
         user.add_custom_user_permission("video_list")
+        user.add_custom_user_permission("research_exports")
 
         videos = [Video(next(int_iterator)) for _ in range(2)]
 
@@ -346,6 +349,7 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     def test_brand_safety_score_mapped(self, *args):
         user = self.create_test_user()
         user.add_custom_user_permission("video_list")
+        user.add_custom_user_permission("research_exports")
 
         manager = VideoManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY))
         videos = [Video(next(int_iterator)) for _ in range(2)]
