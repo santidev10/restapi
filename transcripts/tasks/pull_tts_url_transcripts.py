@@ -30,11 +30,6 @@ def pull_tts_url_transcripts():
         iab_categories = settings.TRANSCRIPTS_CATEGORIES
         brand_safety_score = settings.TRANSCRIPTS_SCORE_THRESHOLD
         num_vids = settings.TRANSCRIPTS_NUM_VIDEOS
-        print(f"lang_codes: {lang_codes}")
-        print(f"country_codes: {country_codes}")
-        print(f"iab_categories: {iab_categories}")
-        print(f"brand_safety_score: {brand_safety_score}")
-        print(f"num_vids: {num_vids}")
     except Exception as e:
         logger.error(e)
         raise e
@@ -50,7 +45,7 @@ def pull_tts_url_transcripts():
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
         retrieval_end = time.perf_counter()
         retrieval_time = retrieval_end - retrieval_start
-        print(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
+        logger.info(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
         offset = 0
         batch_size = settings.TRANSCRIPTS_BATCH_SIZE
         while offset < len(all_videos):
@@ -61,18 +56,17 @@ def pull_tts_url_transcripts():
             transcripts_scraper.run_scraper()
             scraper_end = time.perf_counter()
             scraper_time = scraper_end - scraper_start
-            print(f"Scraped {len(videos_batch)} Video Transcripts in {scraper_time} seconds.")
+            logger.info(f"Scraped {len(videos_batch)} Video Transcripts in {scraper_time} seconds.")
             successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
-            print(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
+            logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
             for vid_obj in videos_batch:
                 vid_id = vid_obj.main.id
                 if vid_id not in successful_vid_ids:
                     failure = transcripts_scraper.failure_reasons[vid_id]
-                    print(failure)
                     if isinstance(failure, ValidationError) and failure.message == 'No more proxies available.':
-                        print(failure.message)
-                        print("Locking pull_tts_url_transcripts task for 5 minutes.")
+                        logger.info(failure.message)
+                        logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                         raise Exception("No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.")
                     if isinstance(failure, ConnectionError):
@@ -93,15 +87,14 @@ def pull_tts_url_transcripts():
                                                            transcript=vid_transcripts[i])
                 populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
                                                asr_lang=asr_lang)
-                print(f"Retrieved transcript for Video with id: {vid_id}")
             upsert_start = time.perf_counter()
             video_manager.upsert(videos_batch)
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
-            print(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
+            logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
             offset += batch_size
         unlock(LOCK_NAME)
-        print("Finished pulling TTS_URL transcripts task.")
+        logger.info("Finished pulling TTS_URL transcripts task.")
 
     except Exception as e:
         pass
