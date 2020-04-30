@@ -15,7 +15,7 @@ from utils.lang import replace_apostrophes
 from utils.celery.tasks import lock
 from administration.notifications import send_email
 
-LOCK_NAME = "asr_transcripts"
+LOCK_NAME = "tts_url_transcripts"
 
 class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
