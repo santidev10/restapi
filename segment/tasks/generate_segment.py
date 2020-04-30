@@ -64,7 +64,8 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                     QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                 ]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
+            for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options,
+                                     batch_size=5000, source=segment.SOURCE_FIELDS, include_sort_exclusions=True):
                 # Retrieve Postgres vetting data for vetting exports
                 # no longer need to check if vetted for this, as this data is being used on all exports
                 item_ids = [item.main.id for item in batch]
