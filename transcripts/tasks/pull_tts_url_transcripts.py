@@ -28,6 +28,7 @@ LOCK_NAME = "tts_url_transcripts"
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_tts_url_transcripts():
+    total_start = time.perf_counter()
     logger.info(f"Running pull_tts_url_transcripts...")
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
@@ -104,6 +105,9 @@ def pull_tts_url_transcripts():
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
             offset += batch_size
+        total_end = time.perf_counter()
+        total_time = total_end - total_start
+        logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
