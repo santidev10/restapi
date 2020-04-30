@@ -74,7 +74,6 @@ class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     def test_success_allowed_user(self):
         user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
         user.add_custom_user_permission("research_exports")
 
         response = self._request()
@@ -110,7 +109,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
                 return_value=EXPORT_FILE_HASH)
     def test_success_allowed_user(self, *args):
         user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
         user.add_custom_user_permission("research_exports")
         self._request_collect_file()
 
@@ -358,7 +356,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
                 return_value=EXPORT_FILE_HASH)
     def test_filter_brand_safety_not_allowed(self, *args):
         user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
         user.add_custom_user_permission("research_exports")
 
         channels = [Channel(next(int_iterator)) for _ in range(2)]
@@ -381,7 +378,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
                 return_value=EXPORT_FILE_HASH)
     def test_filter_channel_group(self, *args):
         user = self.create_test_user()
-        user.add_custom_user_permission("channel_list")
         user.add_custom_user_permission("research_exports")
 
         channels = [Channel(next(int_iterator)) for _ in range(2)]
