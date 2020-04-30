@@ -1,22 +1,25 @@
+from datetime import timedelta
 import logging
 import time
-from datetime import datetime, timedelta
-from requests.exceptions import ConnectionError
-from saas import celery_app
+
+from celery.exceptions import Retry
+from django.core.exceptions import ValidationError
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q
-from django.conf import settings
+from requests.exceptions import ConnectionError
+
 from audit_tool.models import AuditVideoTranscript
+from django.conf import settings
+from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from es_components.models.video import Video
-from es_components.constants import Sections
-from utils.transform import populate_video_custom_captions
-from django.core.exceptions import ValidationError
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
+from saas import celery_app
+from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from transcripts.utils import YTTranscriptsScraper
+from utils.transform import populate_video_custom_captions
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +106,11 @@ def pull_tts_url_transcripts():
             offset += batch_size
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
-
     except Exception as e:
+        if not isinstance(e, Retry):
+            logger.error(e)
+            if str(e) != "No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.":
+                unlock(LOCK_NAME)
         pass
 
 

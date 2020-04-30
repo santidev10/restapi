@@ -1,18 +1,19 @@
-import requests
 import re
 import socket
-from threading import Thread
-from django.utils import timezone
-from datetime import timedelta
-import urllib.parse as urlparse
-from urllib.parse import parse_qs
+
 from bs4 import BeautifulSoup as bs
-from requests.exceptions import ConnectionError
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+import requests
+from requests.exceptions import ConnectionError
+from threading import Thread
+import urllib.parse as urlparse
+from urllib.parse import parse_qs
+
+from administration.notifications import send_email
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
-from administration.notifications import send_email
 
 
 class YTTranscriptsScraper(object):
