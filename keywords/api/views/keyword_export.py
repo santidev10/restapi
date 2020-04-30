@@ -17,8 +17,7 @@ from saas.urls.namespaces import Namespace
 class KeywordListExportApiView(ESDataS3ExportApiView, APIView):
     permission_classes = (
         or_permission_classes(
-            ExportDataAllowed,
-            user_has_permission("userprofile.keyword_list"),
+            user_has_permission("userprofile.research_exports"),
             IsAdminUser
         ),
     )
