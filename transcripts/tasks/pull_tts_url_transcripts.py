@@ -226,11 +226,11 @@ def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categ
             & no_tts_url_checked_query
 
     if language_query:
-        query = query & language_query
+        query &= language_query
     if country_query:
-        query = query & country_query
+        query &= country_query
     if category_query:
-        query = query & category_query
+        query &= category_query
     if brand_safety_query:
-        query = query & brand_safety_query
+        query &= brand_safety_query
     return query
