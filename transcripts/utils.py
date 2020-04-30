@@ -5,7 +5,9 @@ import socket
 from threading import Thread
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
+from datetime import timedelta
 from bs4 import BeautifulSoup as bs
+from requests.exceptions import ConnectionError
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
@@ -15,11 +17,9 @@ from utils.celery.tasks import unlock
 LOCK_NAME = "pull_tts_url_transcripts"
 
 class YTTranscriptsScraper(object):
-    BATCH_SIZE = 165
     proxies_file_name = "good_proxies.json"
-    NUM_THREADS = 50
     NUM_PORTS = 65535
-    BATCH_DELAY = 0
+    NUM_THREADS = 100
 
     PROXY_SERVICE = "backconnect"
     PROXY_MEMBERSHIP = "qe9m"
@@ -39,6 +39,7 @@ class YTTranscriptsScraper(object):
         self.port = None
         self.proxy_counter = 0
         self.update_proxy()
+        self.create_yt_vids()
 
     def request_proxy_api(self, endpoint, method="GET", data=None):
         if method == "GET":
@@ -79,7 +80,6 @@ class YTTranscriptsScraper(object):
         return response
 
     def run_scraper(self):
-        self.create_yt_vids()
         # Multithreaded requests
         self.generate_tts_urls()
         self.gather_yt_vids_meta()
@@ -103,12 +103,10 @@ class YTTranscriptsScraper(object):
             t = Thread(target=vid.generate_tts_url)
             t.start()
             threads.append(t)
-            if len(threads) >= self.BATCH_SIZE:
+            if len(threads) >= self.NUM_THREADS:
                 for t in threads:
                     t.join()
                 threads = []
-                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
-                time.sleep(self.BATCH_DELAY)
         for t in threads:
             t.join()
 
@@ -122,12 +120,10 @@ class YTTranscriptsScraper(object):
             t = Thread(target=vid.generate_list_url)
             t.start()
             threads.append(t)
-            if len(threads) >= self.BATCH_SIZE:
+            if len(threads) >= self.NUM_THREADS:
                 for t in threads:
                     t.join()
                 threads = []
-                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
-                time.sleep(self.BATCH_DELAY)
         for t in threads:
             t.join()
 
@@ -141,12 +137,10 @@ class YTTranscriptsScraper(object):
             t = Thread(target=vid.generate_subtitles)
             t.start()
             threads.append(t)
-            if len(threads) >= self.BATCH_SIZE:
+            if len(threads) >= self.NUM_THREADS:
                 for t in threads:
                     t.join()
                 threads = []
-                print(f"Sleeping for {self.BATCH_DELAY} seconds.")
-                time.sleep(self.BATCH_DELAY)
         for t in threads:
             t.join()
 
@@ -182,7 +176,7 @@ class YTTranscriptsScraper(object):
             self.increment_proxy_counter()
         else:
             # lock(LOCK_NAME)
-            raise Exception("No more proxies available.")
+            raise ValidationError("No more proxies available.")
 
     def increment_proxy_counter(self):
         if len(self.available_proxies) > 0:
@@ -337,16 +331,20 @@ class YTVideo(object):
                 print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
                 response = requests.get(url=url, proxies=proxy)
                 print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
-            except requests.exceptions.ConnectionError as e:
-                print(f"Encountered ConnectionError while sending request to '{url}' through Proxy: '{proxy}'."
+            except ConnectionError as e:
+                print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
                       f"Error message: '{e}'")
                 continue
+            except ValidationError as e:
+                if e.message == "No more proxies available.":
+                    lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
+                    raise e
             except Exception as e:
                 print(e)
                 raise e
         if counter >= 5:
             print(f"Exceeded 5 connection attempts to URL: {url}")
-            raise requests.exceptions.ConnectionError
+            raise Exception("Exceeded 5 connection attempts to URL.")
         response_text = response.text
         response_status = response.status_code
         return response_text, response_status
