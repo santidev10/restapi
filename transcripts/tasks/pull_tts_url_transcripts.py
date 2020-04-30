@@ -20,6 +20,7 @@ from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
 from utils.transform import populate_video_custom_captions
+from utils.utils import chunks_generator
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +58,9 @@ def pull_tts_url_transcripts():
         retrieval_end = time.perf_counter()
         retrieval_time = retrieval_end - retrieval_start
         logger.info(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
-        offset = 0
         batch_size = settings.TRANSCRIPTS_BATCH_SIZE
-        while offset < len(all_videos):
-            videos_batch = all_videos[offset:offset+batch_size]
+        for chunk in chunks_generator(all_videos, size=batch_size):
+            videos_batch = list(chunk)
             vid_ids = list(set([vid.main.id for vid in videos_batch]))
             transcripts_scraper = YTTranscriptsScraper(vid_ids=vid_ids)
             scraper_start = time.perf_counter()
@@ -104,7 +104,6 @@ def pull_tts_url_transcripts():
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
-            offset += batch_size
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
