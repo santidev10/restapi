@@ -24,6 +24,7 @@ DMP_CELERY_RESULT_EXTENDED = True
 
 CELERY_TIMEZONE = "UTC"
 
+
 CELERY_BEAT_SCHEDULE = {
     "google_ads_campaign_update": {
         "task": "aw_reporting.google_ads.tasks.update_campaigns.setup_update_campaigns",

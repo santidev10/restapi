@@ -12,10 +12,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
 from utils.lang import replace_apostrophes
-from utils.celery.tasks import lock
 from administration.notifications import send_email
 
-LOCK_NAME = "tts_url_transcripts"
 
 class YTTranscriptsScraper(object):
     proxies_file_name = "good_proxies.json"
@@ -335,7 +333,6 @@ class YTVideo(object):
             except ValidationError as e:
                 if e.message == "All proxies have been blocked.":
                     self.send_yt_blocked_email()
-                    lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                     raise e
             except Exception as e:
                 raise e

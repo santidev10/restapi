@@ -16,14 +16,16 @@ from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
-from transcripts.utils import YTTranscriptsScraper, LOCK_NAME
+from transcripts.utils import YTTranscriptsScraper
 
 logger = logging.getLogger(__name__)
+
+LOCK_NAME = "tts_url_transcripts"
 
 
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_tts_url_transcripts():
-    print(f"Running pull_tts_url_transcripts...")
+    logger.info(f"Running pull_tts_url_transcripts...")
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
@@ -72,6 +74,7 @@ def pull_tts_url_transcripts():
                     if isinstance(failure, ValidationError) and failure.message == 'No more proxies available.':
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
+                        unlock(LOCK_NAME)
                         lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                         raise Exception("No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.")
                     if isinstance(failure, ConnectionError):
