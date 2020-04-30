@@ -43,7 +43,7 @@ def pull_tts_url_transcripts():
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
-        sort = {"stats.views": {"order": "desc"}}
+        sort = [{"stats.views": {"order": "desc"}}]
         video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS,))
         retrieval_start = time.perf_counter()
