@@ -105,7 +105,7 @@ def pull_tts_url_transcripts():
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
-            rescore_brand_safety_videos.delay(vid_ids=successful_vid_ids)
+        rescore_brand_safety_videos.delay(vid_ids=list(set([vid.main.id for vid in all_videos])))
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
