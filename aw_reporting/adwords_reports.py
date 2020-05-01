@@ -24,7 +24,7 @@ CAMPAIGN_PERFORMANCE_REPORT_FIELDS = (
                                          "CampaignId", "CampaignName",
                                          "ServingStatus", "CampaignStatus",
                                          "StartDate", "EndDate", "Amount", "TotalAmount",
-                                         "AdvertisingChannelType",
+                                         "AdvertisingChannelType", "BiddingStrategyType",
                                      ) + COMPLETED_FIELDS \
                                      + MAIN_STATISTICS_FILEDS
 AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
@@ -34,7 +34,7 @@ AD_GROUP_PERFORMANCE_REPORT_FIELDS = (
                                          "Date", "Device", "AdNetworkType1",
                                          "AveragePosition",
                                          "ActiveViewImpressions", "Engagements", "ContentBidCriterionTypeGroup",
-                                         "CpvBid", "CpmBid", "CpcBid",
+                                         "CpvBid", "CpmBid", "CpcBid", "BiddingStrategyType",
                                      ) + MAIN_STATISTICS_FILEDS \
                                      + COMPLETED_FIELDS
 GEO_LOCATION_REPORT_FIELDS = ("Id", "CampaignId", "CampaignName",

@@ -16,6 +16,7 @@ from aw_reporting.models import ACTION_STATUSES
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignHourlyStatistic
 from aw_reporting.models import CampaignStatistic
+from aw_reporting.models.ad_words.constants import CAMPAIGN_BIDDING_STRATEGY_TYPES
 from aw_reporting.models.ad_words.constants import BudgetType
 from aw_reporting.models.ad_words.constants import get_device_id_by_name
 from aw_reporting.update.adwords_utils import format_click_types_report
@@ -110,7 +111,8 @@ class CampaignUpdater(UpdateMixin):
                 "budget": budget,
                 "budget_type": budget_type.value,
                 "status": status,
-                "placement_code": placement_code
+                "placement_code": placement_code,
+                "bidding_strategy_type": CAMPAIGN_BIDDING_STRATEGY_TYPES.get(row_obj.BiddingStrategyType),
             }
 
             statistic_data = {

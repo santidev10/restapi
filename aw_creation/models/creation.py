@@ -192,14 +192,6 @@ class CampaignCreation(UniqueCreationItem):
         null=True, blank=True, on_delete=models.CASCADE,
     )
 
-    # fields
-    SELF_SERVICE = 0
-    OPTIMIZATION = 1
-    CREATION_TYPE_CHOICES = (
-        SELF_SERVICE, "Created from self service flow",
-        OPTIMIZATION, "Created from Media Buying Optimization breakout flow"
-    )
-    # creation_type = models.IntegerField(default=0)
     start = models.DateField(null=True, blank=True)
     end = models.DateField(null=True, blank=True)
     goal_units = models.PositiveIntegerField(
@@ -302,6 +294,12 @@ class CampaignCreation(UniqueCreationItem):
         default=BudgetType.DAILY.value,
     )
     is_draft = models.BooleanField(default=False)
+
+    CREATION_TYPE_CHOICES = [
+        (0, "Media Buying v1"),
+        (1, "Media Buying Optimization Breakout v2"),
+    ]
+    creation_type = models.IntegerField(default=0, choices=CREATION_TYPE_CHOICES, db_index=True)
 
     def get_video_networks(self):
         return json.loads(self.video_networks_raw)
@@ -535,11 +533,12 @@ class AdGroupCreation(UniqueCreationItem):
         (PAUSED, "paused"),
         (REMOVED, "removed"),
     )
-    # status = models.CharField(
-    #     max_length=20,
-    #     choices=STATUS_CHOICES,
-    #     null=True,
-    # )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        null=True,
+        default=None,
+    )
 
     def get_available_ad_formats(self):
 

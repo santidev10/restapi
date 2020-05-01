@@ -7,9 +7,7 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models.creation import VideoUrlValidator
 from aw_creation.models.creation import TrackingTemplateValidator
-from aw_creation.api.serializers.serializers import CampaignCreationSetupSerializer
-from aw_creation.api.serializers.serializers import AdGroupCreationSetupSerializer
-from aw_creation.api.serializers.serializers import AdCreationSetupSerializer
+from aw_reporting.models import AdGroup
 
 
 class CampaignBreakoutSerializer(serializers.Serializer):
@@ -43,6 +41,9 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_group_data": [],
             "ad_data": {},
         }
+        ag_types = set(AdGroup.objects.filter(id__in=data["ad_group_ids"]).values_list("campaign__type", flat=True))
+        if len(ag_types) > 1:
+            raise ValidationError(f"AdGroups to break out must all be of the same Campaign type. Received: {', '.join(ag_types)}")
         try:
             validated["campaign_data"] = {key: data[key] for key in self.CAMPAIGN_FIELDS}
             validated["campaign_data"]["account_creation"] = self.context["account_creation"]
@@ -51,7 +52,6 @@ class CampaignBreakoutSerializer(serializers.Serializer):
                 ag_data = {key: data[key] for key in self.AD_GROUP_FIELDS}
                 ag_data["ad_group_id"] = ad_group_id
                 validated["ad_group_data"].append(ag_data)
-
             validated["ad_data"] = {key: data[key] for key in self.AD_FIELDS}
         except KeyError as e:
             if raise_exception:

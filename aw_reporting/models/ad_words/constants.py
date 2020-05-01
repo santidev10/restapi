@@ -157,3 +157,13 @@ def get_device_id_by_name(device_repr):
 class BudgetType(ExtendedEnum):
     DAILY = "daily"
     TOTAL = "total"
+
+
+CAMPAIGN_BIDDING_STRATEGY_TYPES = {
+    "cpc": "MANUAL_CPC",
+    "cpv": "MANUAL_CPV",
+    "cpm": "MANUAL_CPM",
+    "Target CPA": "TARGET_CPA",
+    "None": "NONE",
+    "unknown": "UNKNOWN",
+}
