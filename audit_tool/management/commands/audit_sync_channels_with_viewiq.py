@@ -26,7 +26,7 @@ class Command(BaseCommand):
         try:
             sync_threshold = settings.AUDIT_SUBSCRIBER_SYNC_THRESHOLD
         except Exception as e:
-            sync_threshold = 4500
+            sync_threshold = 4000
         with PidFile(piddir='.', pidname='audit_sync_channels_with_viewiq.pid') as p:
             pending_channels = AuditChannelMeta.objects.filter(synced_with_viewiq__isnull=True, subscribers__gte=sync_threshold).order_by("-subscribers")
             total_pending = pending_channels.count()
