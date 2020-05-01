@@ -157,7 +157,8 @@ class Command(BaseCommand):
         vids = []
         counter = 0
         processed_ids = []
-        for row in reader:
+        resume_val = AuditVideoProcessor.objects.filter(audit=self.audit).count()
+        for row in reader[resume_val:]:
             seed = row[0]
             if 'youtube.' in seed:
                 #if seed[-1] == '/':
@@ -177,7 +178,7 @@ class Command(BaseCommand):
                     )
                     vids.append(avp)
                     counter+=1
-        if counter == 0:
+        if counter == 0 and resume_val==0:
             self.audit.params['error'] = "no valid YouTube Video URL's in seed file"
             self.audit.completed = timezone.now()
             self.audit.pause = 0
