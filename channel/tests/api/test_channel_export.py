@@ -168,7 +168,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             last_30day_views=321,
             last_7day_views=101,
             last_day_views=20,
-            views = 3000,
+            views=3000,
             views_per_video=123.4,
             sentiment=0.23,
             total_videos_count=10,
