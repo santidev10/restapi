@@ -16,6 +16,7 @@ from es_components.models.video import Video
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from saas import celery_app
+from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -104,6 +105,7 @@ def pull_tts_url_transcripts():
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
+            rescore_brand_safety_videos.delay(vid_ids=successful_vid_ids)
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
