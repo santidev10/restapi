@@ -1,21 +1,21 @@
-from collections import defaultdict
-import csv
-import logging
-import os
-import tempfile
-
-from django.conf import settings
-
-from audit_tool.utils.audit_utils import AuditUtils
 from audit_tool.models import AuditAgeGroup
 from audit_tool.models import AuditContentType
 from audit_tool.models import AuditGender
+from audit_tool.utils.audit_utils import AuditUtils
 from brand_safety.models import BadWordCategory
+from collections import defaultdict
+from django.conf import settings
+from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
+from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
+import csv
+import logging
+import os
+import tempfile
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -48,14 +48,14 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
-            cursor_field = "stats.views"
+            cursor_field = VIEWS_FIELD
             # Exclude all age_restricted items
             if options is None:
                 options = [
                     QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
                 ]
         else:
-            cursor_field = "stats.subscribers"
+            cursor_field = SUBSCRIBERS_FIELD
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
             # for is_monetizable channel items to appear first on export
             if options is None:
