@@ -5,7 +5,8 @@ from elasticsearch_dsl import Q
 from es_components.query_builder import QueryBuilder
 
 
-def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None, options=None, direction=0):
+def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None, options=None, direction=0,
+                include_cursor_exclusions=False):
     """
     Util function to retrieve items greater than Elasticsearch limit by using cursor
     :param model: Elasticsearch model
@@ -24,6 +25,8 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
     :param direction:
         0 -> Retrieve items descending
         1 -> Retrieve items ascending
+    :param include_cursor_exclusions: tells the search generator to include results which were excluded as a result of
+        the cursor_field option
     :return:
     """
     base_search = model.search().sort(*sort)
@@ -34,7 +37,8 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
         options = [None]
     # Create generator for each option to yield all results from
     generators = [
-        search_generator(base_search, query, cursor_field, size=batch_size, option=option, direction=direction)
+        search_generator(base_search, query, cursor_field, size=batch_size, option=option, direction=direction,
+                         include_cursor_exclusions=include_cursor_exclusions)
         for option in options
     ]
     # Yield all results from each generator sequentially
@@ -42,7 +46,7 @@ def bulk_search(model, query, sort, cursor_field, batch_size=10000, source=None,
         yield from gen
 
 
-def search_generator(search, query, cursor_field, size=1000, option=None, direction=0):
+def search_generator(search, query, cursor_field, size=1000, option=None, direction=0, include_cursor_exclusions=False):
     """
     Helper function to encapsulate batch cursor queries
         Search object should have all options except query applied
@@ -56,6 +60,7 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
     :param size: int
     :param option: QueryBuilder object
     :param direction: int
+    :param include_cursor_exclusions: include/exclude results which were excluded as a result of the cursor_field option
     :return:
     """
     try:
@@ -88,3 +93,20 @@ def search_generator(search, query, cursor_field, size=1000, option=None, direct
             first = None
         else:
             break
+
+    # add in results as part of the option but for whom the sort field does not exist
+    if include_cursor_exclusions:
+        cursor_exclusion_query = QueryBuilder().build().must_not().exists().field(cursor_field).get()
+        full_cursor_exclusion_query = query & cursor_exclusion_query & option \
+            if option is not None \
+            else query & cursor_exclusion_query
+        search.query = full_cursor_exclusion_query
+
+        results = []
+        for hit in search.scan():
+            results.append(hit)
+            if len(results) >= size:
+                yield results
+                results = []
+
+        yield results
