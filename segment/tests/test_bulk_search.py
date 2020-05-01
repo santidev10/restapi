@@ -2,14 +2,20 @@ from datetime import datetime
 from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
 from es_components.constants import SortDirections
+from es_components.constants import VIEWS_FIELD
 from es_components.managers import ChannelManager
+from es_components.managers import VideoManager
 from es_components.models import Channel
+from es_components.models import Video
 from es_components.models.channel import ChannelSectionBrandSafety
+from es_components.models.video import VideoSectionBrandSafety
 from es_components.query_builder import QueryBuilder
 from es_components.tests.utils import ESTestCase
 from random import randint
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
+from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
 from segment.utils.bulk_search import bulk_search
+from typing import Union
 from utils.unittests.int_iterator import int_iterator
 from utils.unittests.test_case import ExtendedAPITestCase
 import pytz
@@ -25,10 +31,11 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
         should include results whose values are null, while a False value
         should exclude these results (which was default behavior before)
         """
-        channels_count = 5
-        channels_no_subs_count = 5
 
-        def make_populated_channel(channel_id, has_subscribers=True):
+        def make_populated_channel(channel_id, has_cursor_field=True):
+            """
+            create a Channel and populate it, ready for upsert
+            """
             channel = Channel(channel_id)
             channel.populate_general_data(
                 title=f"channel title {channel_id}",
@@ -36,7 +43,7 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
                 iab_categories="category",
                 emails=[f"channel_{channel_id}@mail.com", ],
             )
-            subscribers = randint(1, 999999) if has_subscribers else None
+            subscribers = randint(1, 999999) if has_cursor_field else None
             channel.populate_stats(
                 subscribers=subscribers,
                 last_30day_subscribers=12,
@@ -56,53 +63,126 @@ class BulkSearchTestCase(ExtendedAPITestCase, ESTestCase):
             )
             return channel
 
-        channels = []
-        for i in range(channels_count):
-            channel_id = next(int_iterator)
-            channel = make_populated_channel(channel_id)
-            channels.append(channel)
+        def make_populated_video(video_id, has_cursor_field=True):
+            """
+            create a Video and populate it, ready for upsert
+            """
+            video = Video(video_id)
+            video.populate_general_data(
+                title=f"video title {video_id}",
+                youtube_published_at=datetime(2018, 2, 3, 4, 5, 6,
+                                              tzinfo=pytz.utc),
+            )
+            views = randint(1, 999999) if has_cursor_field else None
+            video.populate_stats(
+                views=views,
+                likes=123,
+                dislikes=234,
+                comments=345,
+            )
+            video.brand_safety = VideoSectionBrandSafety(
+                overall_score=randint(5, 10),
+            )
+            return video
 
-        channels_without_subscribers = []
-        for i in range(channels_no_subs_count):
-            channel_id = next(int_iterator)
-            channel = make_populated_channel(channel_id, has_subscribers=False)
-            channels_without_subscribers.append(channel)
-
-        manager = ChannelManager(
-            sections=(Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY)
-        )
-        all_channels = channels + channels_without_subscribers
-        manager.upsert(all_channels)
-
-        query = QueryBuilder().build().must().range().field("stats.views") \
-            .gte(50).get()
-        with_exclusions = []
-        for batch in bulk_search(
-            model=Channel,
-            query=query,
-            sort=[{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}],
-            cursor_field=SUBSCRIBERS_FIELD,
-            options=None,
-            batch_size=1000,
-            source=CHANNEL_SOURCE_FIELDS,
-            include_cursor_exclusions=True
+        def test_model(
+                model_class: Union[Channel, Video],
+                populate: callable,
+                manager_class: Union[ChannelManager, VideoManager],
+                sort: list,
+                cursor_field: str,
+                source: list
         ):
-            for item in batch:
-                with_exclusions.append(item)
+            """
+            Test the bulk_search method with the specified model class
+            (currently Channels or Videos)
+            """
+            instances = []
+            for i in range(instances_count):
+                instance_id = next(int_iterator)
+                instance = populate(instance_id)
+                instances.append(instance)
 
-        without_exclusions = []
-        for batch in bulk_search(
-                model=Channel,
-                query=query,
-                sort=[{SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}}],
-                cursor_field=SUBSCRIBERS_FIELD,
-                options=None,
-                batch_size=1000,
-                source=CHANNEL_SOURCE_FIELDS,
-                include_cursor_exclusions=False
-        ):
-            for item in batch:
-                without_exclusions.append(item)
+            instances_without_cursor_field = []
+            for i in range(instances_no_cursor_field_count):
+                instance_id = next(int_iterator)
+                instance = populate(instance_id, has_cursor_field=False)
+                instances_without_cursor_field.append(instance)
 
-        self.assertEqual(len(with_exclusions), channels_count + channels_no_subs_count)
-        self.assertEqual(len(without_exclusions), channels_no_subs_count)
+            manager = manager_class(
+                sections=(Sections.GENERAL_DATA, Sections.STATS,
+                          Sections.BRAND_SAFETY)
+            )
+            all_instances = instances + instances_without_cursor_field
+            manager.upsert(all_instances)
+
+            query = QueryBuilder().build().must().range() \
+                .field("brand_safety.overall_score").gte(5).get()
+            with_exclusions = []
+            for batch in bulk_search(
+                    model=model_class,
+                    query=query,
+                    sort=sort,
+                    cursor_field=cursor_field,
+                    options=None,
+                    batch_size=1000,
+                    source=source,
+                    include_cursor_exclusions=True
+            ):
+                for item in batch:
+                    with_exclusions.append(item)
+
+            without_exclusions = []
+            for batch in bulk_search(
+                    model=model_class,
+                    query=query,
+                    sort=sort,
+                    cursor_field=cursor_field,
+                    options=None,
+                    batch_size=1000,
+                    source=source,
+                    include_cursor_exclusions=False
+            ):
+                for item in batch:
+                    without_exclusions.append(item)
+
+            self.assertEqual(
+                len(with_exclusions),
+                instances_count + instances_no_cursor_field_count
+            )
+            self.assertEqual(
+                len(without_exclusions),
+                instances_no_cursor_field_count
+            )
+
+        # main
+        instances_count = 5
+        instances_no_cursor_field_count = 5
+        model_map = {
+            Channel: {
+                "populate": make_populated_channel,
+                "manager": ChannelManager,
+                "sort": [{
+                    SUBSCRIBERS_FIELD: {"order": SortDirections.DESCENDING}
+                }],
+                "cursor_field": SUBSCRIBERS_FIELD,
+                "source": CHANNEL_SOURCE_FIELDS,
+            },
+            Video: {
+                "populate": make_populated_video,
+                "manager": VideoManager,
+                "sort": [{VIEWS_FIELD: {"order": SortDirections.DESCENDING}}],
+                "cursor_field": VIEWS_FIELD,
+                "source": VIDEO_SOURCE_FIELDS,
+            }
+        }
+
+        for model in [Channel, Video]:
+            test_model(
+                model_class=model,
+                manager_class=model_map[model]["manager"],
+                populate=model_map[model]["populate"],
+                sort=model_map[model]["sort"],
+                cursor_field=model_map[model]["cursor_field"],
+                source=model_map[model]["source"]
+            )
