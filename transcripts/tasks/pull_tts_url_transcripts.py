@@ -60,6 +60,7 @@ def pull_tts_url_transcripts():
         retrieval_time = retrieval_end - retrieval_start
         logger.info(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
         batch_size = settings.TRANSCRIPTS_BATCH_SIZE
+        vid_ids_to_rescore = []
         for chunk in chunks_generator(all_videos, size=batch_size):
             videos_batch = list(chunk)
             vid_ids = list(set([vid.main.id for vid in videos_batch]))
@@ -70,6 +71,7 @@ def pull_tts_url_transcripts():
             scraper_time = scraper_end - scraper_start
             logger.info(f"Scraped {len(videos_batch)} Video Transcripts in {scraper_time} seconds.")
             successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
+            vid_ids_to_rescore.extend(successful_vid_ids)
             logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
             for vid_obj in videos_batch:
@@ -105,7 +107,7 @@ def pull_tts_url_transcripts():
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
-            rescore_brand_safety_videos.delay(vid_ids=successful_vid_ids)
+        rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
