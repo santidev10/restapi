@@ -158,9 +158,13 @@ class Command(BaseCommand):
         counter = 0
         processed_ids = []
         resume_val = AuditVideoProcessor.objects.filter(audit=self.audit).count()
-        if resume_val > 0:
-            reader = list(csv.reader(reader))[resume_val:]
         print("processing seed file starting at position {}".format(resume_val))
+        skipper = 0
+        if resume_val > 0:
+            for row in reader:
+                if skipper >= resume_val:
+                    break
+                skipper+=1
         for row in reader:
             seed = row[0]
             if 'youtube.' in seed:
