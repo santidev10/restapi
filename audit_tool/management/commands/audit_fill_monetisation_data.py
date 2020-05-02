@@ -98,7 +98,7 @@ class Command(BaseCommand):
                     .value(True).get()
                 channel_ids_query = QueryBuilder().build().must().terms().field("main.id")\
                     .value(channel_ids[upsert_index:upsert_index+self.upsert_batch_size]).get()
-                self.manager.update_monetization(not_monetized_query+channel_ids_query, is_monetizable=True)
+                self.manager.update_monetization(not_monetized_query+channel_ids_query, is_monetizable=True, conflicts="proceed", wait_for_completion=False)
             except Exception as e:
                 pass
             upsert_index += self.upsert_batch_size
