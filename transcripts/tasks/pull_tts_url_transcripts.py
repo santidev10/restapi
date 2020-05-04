@@ -80,9 +80,10 @@ def pull_tts_url_transcripts():
                 vid_id = vid_obj.main.id
                 if vid_id not in successful_vid_ids:
                     failure = transcripts_scraper.failure_reasons[vid_id]
-                    if isinstance(failure, ValidationError) and failure.message == 'No more proxies available.':
+                    if isinstance(failure, ValidationError) and failure.message == 'All proxies have been blocked.':
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
+                        transcripts_scraper.send_yt_blocked_email()
                         unlock(LOCK_NAME)
                         lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                         raise Exception("No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.")

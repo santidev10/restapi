@@ -209,6 +209,18 @@ class YTTranscriptsScraper(object):
             self.proxy_counter = self.proxy_counter % len(self.available_proxies)
         self.update_proxy()
 
+    @staticmethod
+    def send_yt_blocked_email():
+        subject = "TTS_URL Transcripts Task Proxies Have Been Blocked by Youtube"
+        body = f"All TTS_URL Transcripts Proxies have been blocked by Youtube at {timezone.now()}." \
+            f"Locking Task for 5 minutes."
+        send_email(
+            subject=subject,
+            from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
+            recipient_list=settings.TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES,
+            html_message=body
+        )
+
 
 class YTVideo(object):
     YT_HEADERS = {
@@ -331,9 +343,7 @@ class YTVideo(object):
                 #       f"Error message: '{e}'")
                 continue
             except ValidationError as e:
-                if e.message == "All proxies have been blocked.":
-                    self.send_yt_blocked_email()
-                    raise e
+                raise e
             except Exception as e:
                 raise e
         if counter >= 5:
@@ -341,18 +351,6 @@ class YTVideo(object):
         response_text = response.text
         response_status = response.status_code
         return response_text, response_status
-
-    @staticmethod
-    def send_yt_blocked_email():
-        subject = "TTS_URL Transcripts Task Proxies Have Been Blocked by Youtube"
-        body = f"All TTS_URL Transcripts Proxies have been blocked by Youtube at {timezone.now()}." \
-            f"Locking Task for 5 minutes."
-        send_email(
-            subject=subject,
-            from_email=settings.EMERGENCY_SENDER_EMAIL_ADDRESS,
-            recipient_list=settings.TTS_URL_TRANSCRIPTS_MONITOR_EMAIL_ADDRESSES,
-            html_message=body
-        )
 
     def get_top_subtitles(self):
         if not self.top_subtitles_meta:
