@@ -207,7 +207,7 @@ class YTTranscriptsScraper(object):
         if proxy in self.available_proxies:
             self.available_proxies.remove(proxy)
             self.proxy_counter = self.proxy_counter % len(self.available_proxies)
-            self.update_proxy()
+        self.update_proxy()
 
 
 class YTVideo(object):
