@@ -47,6 +47,7 @@ def pull_tts_url_transcripts():
         logger.error(e)
         raise e
     try:
+        vid_ids_to_rescore = []
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
@@ -60,7 +61,6 @@ def pull_tts_url_transcripts():
         retrieval_time = retrieval_end - retrieval_start
         logger.info(f"Retrieved {len(all_videos)} Videos from Elastic Search in {retrieval_time} seconds.")
         batch_size = settings.TRANSCRIPTS_BATCH_SIZE
-        vid_ids_to_rescore = []
         for chunk in chunks_generator(all_videos, size=batch_size):
             videos_batch = list(chunk)
             vid_ids = list(set([vid.main.id for vid in videos_batch]))
@@ -114,6 +114,8 @@ def pull_tts_url_transcripts():
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
+        if vid_ids_to_rescore:
+            rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
         if not isinstance(e, Retry):
             logger.error(e)
             if str(e) != "No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.":
