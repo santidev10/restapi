@@ -16,6 +16,7 @@ from es_components.models.video import Video
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from saas import celery_app
+from transcripts.tasks.rescore_brand_safety import RESCORE_LOCK_NAME
 from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
@@ -49,6 +50,7 @@ def pull_tts_url_transcripts():
     try:
         vid_ids_to_rescore = []
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
+        lock(lock_name=RESCORE_LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
