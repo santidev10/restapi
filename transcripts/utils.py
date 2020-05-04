@@ -342,10 +342,6 @@ class YTVideo(object):
                 # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
                 #       f"Error message: '{e}'")
                 continue
-            except ValidationError as e:
-                raise e
-            except Exception as e:
-                raise e
         if counter >= 5:
             raise Exception("Exceeded 5 connection attempts to URL.")
         response_text = response.text
