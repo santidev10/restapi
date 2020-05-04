@@ -100,7 +100,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
         if self.validated_data["monetization"].get("is_monetizable") is True:
             # Update all channel videos monetization
             query = QueryBuilder().build().must().term().field(f"{Sections.CHANNEL}.id").value(channel_id).get()
-            VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True)
+            VideoManager(sections=(Sections.MONETIZATION,)).update_monetization(query, True, conflicts="proceed", wait_for_completion=False)
 
     def update_brand_safety(self, item_id):
         """ Initiate brand safety update task """

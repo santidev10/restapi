@@ -144,7 +144,10 @@ class AuditSaveApiView(APIView):
                 pass
         # Load Keywords from Exclusion File
         if exclusion_file:
-            params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
+            try:
+                params['exclusion'], params['exclusion_category'] = self.load_exclusion_keywords(exclusion_file)
+            except Exception as e:
+                raise ValidationError("Exclusion file includes invalid / unparsable characters.  Please check and try again.")
             params['files']['exclusion'] = exclusion_file.name
             try:
                 params['exclusion_size'] = len(params['exclusion'])
