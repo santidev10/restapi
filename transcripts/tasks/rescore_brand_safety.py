@@ -12,6 +12,13 @@ RESCORE_LOCK_NAME = "rescore_brand_safety_videos"
 
 @celery_app.task
 def rescore_brand_safety_videos(vid_ids=[]):
+    if not vid_ids:
+        logger.info("No video ids to rescore.")
+        try:
+            unlock(RESCORE_LOCK_NAME)
+        except Exception:
+            pass
+        return
     try:
         lock(lock_name=RESCORE_LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
     except Exception as e:
