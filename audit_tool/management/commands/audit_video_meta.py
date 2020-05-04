@@ -173,6 +173,7 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
+                v_id = v_id.replace(".", "").replace(";", "")
                 if v_id and len(v_id) < 51 and not v_id in processed_ids:
                     processed_ids.append(v_id)
                     if len(vids) >= self.MAX_SOURCE_VIDEOS:
