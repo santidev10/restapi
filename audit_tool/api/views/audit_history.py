@@ -64,14 +64,18 @@ class AuditHistoryApiView(APIView):
                 last_time = audit.completed
                 last_count = audit.cached_data.get('total', 0)
                 first_count = 0
+                try:
+                    diff = (last_time - first_time)
+                    minutes = (diff.total_seconds() / 60)
+                    res['rate_average'] = (last_count - first_count) / minutes
+                except Exception as e:
+                    pass
+            else:
+                res['rate_average'] = audit.params.get('avg_rate_per_minute')
+                if not res['rate_average']:
+                    res['rate_average'] = 'N/A'
             try:
                 res['elapsed_time'] = str(last_time - first_time).replace(",", "").split(".")[0]
             except Exception as e:
                 res['elapsed_time'] = 'N/A'
-            try:
-                diff = (last_time - first_time)
-                minutes = (diff.total_seconds() / 60)
-                res['rate_average'] = (last_count - first_count) / minutes
-            except Exception as e:
-                pass
             return Response(res)
