@@ -17,8 +17,7 @@ from utils.permissions import BrandSafetyDataVisible
 class VideoListExportApiView(ESDataS3ExportApiView, APIView):
     permission_classes = (
         or_permission_classes(
-            ExportDataAllowed,
-            user_has_permission("userprofile.video_list"),
+            user_has_permission("userprofile.research_exports"),
             IsAdminUser
         ),
     )

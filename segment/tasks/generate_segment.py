@@ -1,17 +1,21 @@
-from collections import defaultdict
-import csv
-import logging
-import os
-import tempfile
-
-from django.conf import settings
-
+from audit_tool.models import AuditAgeGroup
+from audit_tool.models import AuditContentType
+from audit_tool.models import AuditGender
 from audit_tool.utils.audit_utils import AuditUtils
+from brand_safety.models import BadWordCategory
+from collections import defaultdict
+from django.conf import settings
+from es_components.constants import SUBSCRIBERS_FIELD
 from es_components.constants import Sections
+from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from segment.utils.bulk_search import bulk_search
 from utils.brand_safety import map_brand_safety_score
+import csv
+import logging
+import os
+import tempfile
 
 BATCH_SIZE = 5000
 DOCUMENT_SEGMENT_ITEMS_SIZE = 100
@@ -34,6 +38,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
     :return:
     """
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
+    context = prepare_context()
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0
@@ -43,14 +48,14 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
         # If video, retrieve videos ordered by views
         if segment.segment_type == 0 or segment.segment_type == "video":
-            cursor_field = "stats.views"
+            cursor_field = VIEWS_FIELD
             # Exclude all age_restricted items
             if options is None:
                 options = [
                     QueryBuilder().build().must().term().field("general_data.age_restricted").value(False).get()
                 ]
         else:
-            cursor_field = "stats.subscribers"
+            cursor_field = SUBSCRIBERS_FIELD
             # If channel, retrieve is_monetizable channels first then non-is_monetizable channels
             # for is_monetizable channel items to appear first on export
             if options is None:
@@ -59,18 +64,20 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                     QueryBuilder().build().must_not().term().field(f"{Sections.MONETIZATION}.is_monetizable").value(True).get(),
                 ]
         try:
-            for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options, batch_size=5000, source=segment.SOURCE_FIELDS):
+            for batch in bulk_search(segment.es_manager.model, query, sort, cursor_field, options=options,
+                                     batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
                 # Retrieve Postgres vetting data for vetting exports
                 # no longer need to check if vetted for this, as this data is being used on all exports
                 item_ids = [item.main.id for item in batch]
                 try:
-                    extra_data = AuditUtils.get_vetting_data(
+                    vetting = AuditUtils.get_vetting_data(
                         segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
                     )
                 except Exception as e:
                     logger.warning(f"Error getting segment extra data: {e}")
-                    extra_data = {}
+                    vetting = {}
 
+                context["vetting"] = vetting
                 with open(filename, mode="a", newline="") as file:
                     fieldnames = segment.serializer.columns
                     writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -91,8 +98,7 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                             })
 
                         item_ids.append(item.main.id)
-                        # Most serializers do not use extra_data
-                        row = segment.serializer(item, extra_data=extra_data).data
+                        row = segment.serializer(item, context=context).data
                         writer.writerow(row)
 
                         # Calculating aggregations with each items already retrieved is much more efficient than
@@ -157,3 +163,17 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
 
 class MaxItemsException(Exception):
     pass
+
+
+def prepare_context():
+    brand_safety_categories = {
+        category.id: category.name
+        for category in BadWordCategory.objects.all()
+    }
+    context = {
+        "brand_safety_categories": brand_safety_categories,
+        "age_groups": AuditAgeGroup.to_str,
+        "genders": AuditGender.to_str,
+        "content_types": AuditContentType.to_str,
+    }
+    return context

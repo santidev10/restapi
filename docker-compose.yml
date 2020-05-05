@@ -18,7 +18,7 @@ services:
       AUDIT_DB_PASSWORD: password
       ELASTIC_SEARCH_URLS: es
       ELASTIC_SEARCH_USE_SSL: 0
-      DMP_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
+      CELERY_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
       APM_ENABLED: ${APM_ENABLED:-False}
       APM_SERVER_URL: ${APM_SERVER_URL:-http://apm-server:8200}
     depends_on:
@@ -122,7 +122,7 @@ services:
   flower:
     image: iserko/docker-celery-flower
     environment:
-      CELERY_BROKER_URL: amqp://rabbitmq
+      CELERY_BROKER_URL: amqp://rabbitmq/restapi
 
   kibana:
     image: kibana:7.1.0

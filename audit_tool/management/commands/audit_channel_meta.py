@@ -140,6 +140,14 @@ class Command(BaseCommand):
         reader = csv.reader(f)
         vids = []
         processed_ids = []
+        resume_val = AuditChannelProcessor.objects.filter(audit=self.audit).count()
+        print("processing seed file starting at position {}".format(resume_val))
+        skipper = 0
+        if resume_val > 0:
+            for row in reader:
+                if skipper >= resume_val:
+                    break
+                skipper += 1
         counter = 0
         for row in reader:
             seed = row[0]

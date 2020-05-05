@@ -11,11 +11,14 @@ RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
 
+CELERY_ACCEPT_CONTENT = ["celery_result", "json"]
+CELERY_RESULT_SERIALIZER = "celery_result"
+
 RABBITMQ_API_URL = "{host}:{port}".format(host=RABBITMQ_HOST, port=RABBITMQ_API_PORT)
 DEFAULT_CELERY_BROKER_URL = "amqp://{user}:{password}@{host}:{port}".format(
     user=RABBITMQ_USER, password=RABBITMQ_PASSWORD, host=RABBITMQ_HOST, port=RABBITMQ_AMQP_PORT)
 CELERY_BROKER_URL = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://example.com:9200/celery/task_result")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://es:9200/celery/task_result")
 CELERY_RESULT_EXTENDED = True
 
 DMP_CELERY_BROKER_URL = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)

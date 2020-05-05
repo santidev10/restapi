@@ -27,12 +27,12 @@ class AuditHistoryApiView(APIView):
             except Exception as e:
                 raise ValidationError("invalid audit_id: please check")
             history = AuditProcessorCache.objects.filter(audit=audit)
+            if hours:
+                history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
             try:
                 first_time = history.order_by("id")[0].created
             except Exception as e:
                 pass
-            if hours:
-                history = history.filter(created__gt=timezone.now() - timedelta(hours=hours))
             history = history.order_by("id")
             res = {
                 'results': [],

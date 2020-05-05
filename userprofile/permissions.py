@@ -116,6 +116,7 @@ class PermissionGroupNames:
     AUDIT_VET = "Vetting Tool"
     CUSTOM_SEGMENTS = "custom_segments"
     DOMAIN_MANAGEMENT = "Domain Management"
+    RESEARCH_EXPORTS = "Research Exports"
 
 
 class Permissions:
@@ -214,6 +215,9 @@ class Permissions:
         )),
         (PermissionGroupNames.DOMAIN_MANAGEMENT, (
             "domain_management",
+        )),
+        (PermissionGroupNames.RESEARCH_EXPORTS, (
+            "research_exports",
         ))
     )
 
@@ -260,7 +264,9 @@ class Permissions:
         "transcripts_filter",
         # Monetization
         "monetization_filter",
-        "domain_management"
+        "domain_management",
+        # Exports
+        "research_exports",
     )
 
     @staticmethod
