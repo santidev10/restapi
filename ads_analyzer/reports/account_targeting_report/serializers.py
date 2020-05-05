@@ -4,7 +4,7 @@ from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 
-from aw_reporting.models import AdGroup
+from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
@@ -18,7 +18,20 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
+
+
+class AdGroupSerializer(BaseSerializer):
+    criterion_name = CriterionType.NONE
+    target_name = SerializerMethodField()
+    type = ReadOnlyField(default="AdGroup")
+
+    class Meta(BaseSerializer.Meta):
+        model = AdGroupStatistic
+        group_by = []
+
+    def get_target_name(self, obj):
+        name = obj["ad_group__name"]
+        return name
 
 
 class AgeTargetingSerializer(BaseSerializer):
@@ -37,8 +50,6 @@ class AgeTargetingSerializer(BaseSerializer):
 
 class VideoCreativeTableSerializer(BaseSerializer):
     target_name = CharField(source="ad__creative_name")
-    id = CharField(source="creative__id")
-    # rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad__ad_group__campaign__salesforce_placement__ordered_rate")
 
     class Meta(BaseSerializer.Meta):

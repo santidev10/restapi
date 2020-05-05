@@ -9,6 +9,11 @@ from aw_creation.models import AccountCreation
 
 
 class AccountDetailAPIView(APIView):
+    """
+   GET: Retrieve account details
+
+   """
+
     serializer_class = AnalyticsAccountCreationDetailsSerializer
 
     def get(self, request, *args, **kwargs):
