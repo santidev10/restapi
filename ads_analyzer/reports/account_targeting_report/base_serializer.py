@@ -5,7 +5,7 @@ from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
 
-from .constants import TargetingStatisticsConfigs
+from .constants import STATISTICS_ANNOTATIONS
 from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
 
 
@@ -110,8 +110,7 @@ class BaseSerializer(ModelSerializer):
         :return:
         """
         kpi_filters = kpi_filters or {}
-        statistics_annotations = {column: ANNOTATIONS[column]
-                                  for column in TargetingStatisticsConfigs.STATISTICS_ANNOTATIONS}
+        statistics_annotations = {column: ANNOTATIONS[column] for column in STATISTICS_ANNOTATIONS}
         aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
