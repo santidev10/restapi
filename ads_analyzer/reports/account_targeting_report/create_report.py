@@ -217,7 +217,7 @@ class AccountTargetingReport:
                 pass
             return result
 
-        if ReportType.KPI_FILTERS in self.reporting_type or True:
+        if ReportType.KPI_FILTERS in self.reporting_type:
             for kpi in self.aggregation_keys + self.default_get_aggregations:
                 self._base_kpi_filters[kpi]["title"] = KPI_FILTER_NAME_MAP[kpi]
                 self._base_kpi_filters[kpi]["avg"] = aggregations.get(f"{kpi}__avg")
