@@ -23,6 +23,7 @@ class BaseSerializer(ModelSerializer):
     ad_group_name = CharField(source="ad_group__name")
     ad_group_id = IntegerField(source="ad_group__id")
     campaign_name = CharField(source="ad_group__campaign__name")
+    campaign_status = CharField(source="ad_group__campaign__status")
     campaign_id = IntegerField(source="ad_group__campaign__id")
     rate_type = IntegerField(source="ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
@@ -52,6 +53,7 @@ class BaseSerializer(ModelSerializer):
             "type",
             "campaign_id",
             "campaign_name",
+            "campaign_status",
             "ad_group_id",
             "ad_group_name",
             "impressions",
@@ -72,7 +74,14 @@ class BaseSerializer(ModelSerializer):
         )
         group_by = ("id",)
         values_shared = (
+            "ad_group__impressions",
+            "ad_group__cost",
+            "ad_group__video_views",
+            "ad_group__cpv_bid",
+            "ad_group__id",
+            "ad_group__name",
             "ad_group__campaign__name",
+            "ad_group__campaign__status",
             "ad_group__campaign__id",
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
@@ -84,11 +93,6 @@ class BaseSerializer(ModelSerializer):
         if args and isinstance(args[0], QuerySet):
             kpi_filters = kwargs["context"].get("kpi_filters")
             aggregation_keys = kwargs["context"]["aggregation_keys"]
-            all_targeting = kwargs["context"].get("all_targeting", False)
-            # if all_targeting is False:
-            cls.Meta.group_by += ("ad_group__id",)
-            cls.Meta.values_shared += ("ad_group__impressions", "ad_group__cost", "ad_group__video_views",
-                                       "ad_group__cpv_bid", "ad_group__id", "ad_group__name",)
             aggregated = queryset = cls._build_queryset(args[0], aggregation_keys, kpi_filters=kpi_filters)
             args = (queryset,) + args[1:]
         instance = super().__new__(cls, *args, **kwargs)

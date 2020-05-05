@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from aw_reporting.models import Campaign
+from aw_reporting.models.ad_words import VideoCreative
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 
@@ -43,8 +44,18 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
         :param obj:
         :return:
         """
-        try:
-            ad_creation = obj.ads.all().first().ad_creation.values().first()
-        except AttributeError:
-            ad_creation = None
-        return ad_creation
+        ad = {}
+        for ad_group in obj.ad_groups.all():
+            try:
+                video_id = VideoCreative.objects.filter(statistics__ad_group=ad_group).first().id
+                ad_obj = ad_group.ads.first()
+                ad.update({
+                    "headline": ad_obj.headline,
+                    "creative_name": ad_obj.creative_name,
+                    "display_url": ad_obj.display_url,
+                    "youtube_url": f"https://www.youtube.com/watch?v={video_id}"
+                })
+                break
+            except AttributeError:
+                continue
+        return ad

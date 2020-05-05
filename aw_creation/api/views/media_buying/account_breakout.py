@@ -1,27 +1,17 @@
 from django.db.models import F
-from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
-from aw_creation.models import AccountCreation
-from ads_analyzer.reports.account_targeting_report.constants import ReportType
-from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
-from aw_creation.api.views.media_buying.constants import TARGETING_MAPPING
 from aw_creation.api.views.media_buying.utils import get_account_creation
-from aw_creation.api.views.media_buying.utils import validate_targeting
 from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
 from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
 from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
-from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
-from utils.views import validate_fields
 
 
-
-class AccountCampaignBreakoutAPIView(APIView):
+class AccountBreakoutAPIView(APIView):
     """
     GET: Retrieve campaign breakout details
     POST: Create breakout campaigns
@@ -54,9 +44,7 @@ class AccountCampaignBreakoutAPIView(APIView):
             ad_group["campaign_id"]: ad_group
             for ad_group in ad_groups
         }
-        serializer = CampaignSettingSerializer(campaigns,
-                                               many=True, context={"bid_mapping": campaign_ad_group_bid_mapping}
-                                               )
+        serializer = CampaignSettingSerializer(campaigns, many=True, context={"bid_mapping": campaign_ad_group_bid_mapping})
         data = serializer.data
         return Response(data=data)
 
@@ -86,7 +74,7 @@ class AccountCampaignBreakoutAPIView(APIView):
         :param data: dict: Request body from post method
         :return:
         """
-        should_pause_non_breakout_ad_groups = data.get("should_pause")
+        should_pause_non_breakout_ad_groups = data.get("pause_old_ad_groups")
         breakout_ad_group_ids = data.get("ad_group_ids", [])
         updated_campaign_budget = data.get("updated_campaign_budget", None)
 
@@ -143,4 +131,3 @@ class AccountCampaignBreakoutAPIView(APIView):
             creation, _ = AdGroupCreation.objects.update_or_create(ad_group_id=ag["id"], defaults=defaults)
             creations.append(creation)
         return creations
-

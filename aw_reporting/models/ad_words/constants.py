@@ -160,10 +160,14 @@ class BudgetType(ExtendedEnum):
 
 
 CAMPAIGN_BIDDING_STRATEGY_TYPES = {
-    "cpc": "MANUAL_CPC",
-    "cpv": "MANUAL_CPV",
-    "cpm": "MANUAL_CPM",
-    "Target CPA": "TARGET_CPA",
-    "None": "NONE",
-    "unknown": "UNKNOWN",
+    "Target CPA": "cpa",
+    "None": None,
 }
+
+
+def get_bidding_strategy_type(strategy_type):
+    if strategy_type in CAMPAIGN_BIDDING_STRATEGY_TYPES:
+        value = CAMPAIGN_BIDDING_STRATEGY_TYPES[strategy_type]
+    else:
+        value = strategy_type
+    return value

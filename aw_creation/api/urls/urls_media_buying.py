@@ -4,7 +4,7 @@ from aw_creation.api.urls.names import Name
 from aw_creation.api.views.media_buying import AccountDetailAPIView
 from aw_creation.api.views.media_buying.account_targeting import AccountTargetingAPIView
 from aw_creation.api.views.media_buying.account_kpi_filters import AccountKPIFiltersAPIView
-from aw_creation.api.views.media_buying.account_breakout import AccountCampaignBreakoutAPIView
+from aw_creation.api.views.media_buying.account_breakout import AccountBreakoutAPIView
 from aw_creation.api.views.media_buying.account_sync import AccountSyncAPIView
 
 urlpatterns = [
@@ -22,15 +22,7 @@ urlpatterns = [
         AccountSyncAPIView.as_view(),
         name="account_sync"),
 
-    url(r'^account/(?P<pk>\w+)/campaign/(?P<campaign_id>\w+)/breakout/$',
-        AccountCampaignBreakoutAPIView.as_view(),
-        name="account_campaign_breakout"),
-
-    url(r'^account/(?P<pk>\w+)/ad_groups/breakout/$',
-        AccountCampaignBreakoutAPIView.as_view(),
-        name="account_ad_group_breakout"),
-
-    url(r'^account/(?P<pk>\w+)/ad_groups/breakout/$',
-        AccountCampaignBreakoutAPIView.as_view(),
-        name="account_ad_group_breakout"),
+    url(r'^account/(?P<pk>\w+)/breakout/$',
+        AccountBreakoutAPIView.as_view(),
+        name="account_breakout"),
 ]

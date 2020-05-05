@@ -174,7 +174,6 @@ class AccountTargetingReport:
         :return: Q expression
         """
         base_filter = Q(**{"ad_group__campaign__account_id": self.account.id})
-        base_filter &= Q(**{"ad_group__campaign__id": 9722147987})
         if statistics_filters:
             base_filter &= Q(**statistics_filters)
         return base_filter
@@ -238,7 +237,6 @@ class AccountTargetingReport:
         :return:
         """
         if ReportType.SUMMARY in self.reporting_type:
-            # for key, aggregation_result in aggregations.items():
             for key, val in aggregations.items():
                 overall_summary_key = TOTAL_SUMMARY_COLUMN_AGG_MAPPING.get(key)
                 if overall_summary_key is not None:
