@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='campaign',
             name='bidding_strategy_type',
-            field=models.CharField(max_length=30, null=True),
+            field=models.CharField(default=None, max_length=30, null=True),
         ),
     ]

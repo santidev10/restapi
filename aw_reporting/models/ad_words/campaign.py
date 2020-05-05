@@ -33,7 +33,7 @@ class Campaign(ModelPlusDeNormFields, BaseClicksTypesStatisticsModel):
         db_index=True,
     )
     goal_allocation = models.FloatField(default=0)
-    bidding_strategy_type = models.CharField(null=True, max_length=30)
+    bidding_strategy_type = models.CharField(default=None, null=True, max_length=30)
 
     # setup fields
     targeting_interests = models.BooleanField(default=False)
