@@ -53,8 +53,8 @@ class AccountTargetingReport:
         CriterionType.AGE: CriterionConfig(AgeRangeStatistic, AgeTargetingSerializer),
         CriterionType.GENDER: CriterionConfig(GenderStatistic, GenderTargetingSerializer),
         CriterionType.KEYWORD: CriterionConfig(KeywordStatistic, KeywordTargetingSerializer),
-        # f"{CriterionType.PLACEMENT}_CHANNEL": CriterionConfig(YTChannelStatistic, PlacementChannelTargetingSerializer),
-        # f"{CriterionType.PLACEMENT}_VIDEO": CriterionConfig(YTVideoStatistic, PlacementVideoTargetingSerializer),
+        f"{CriterionType.PLACEMENT}_CHANNEL": CriterionConfig(YTChannelStatistic, PlacementChannelTargetingSerializer),
+        f"{CriterionType.PLACEMENT}_VIDEO": CriterionConfig(YTVideoStatistic, PlacementVideoTargetingSerializer),
         CriterionType.USER_INTEREST_LIST: CriterionConfig(AudienceStatistic, AudienceTargetingSerializer),
         CriterionType.VERTICAL: CriterionConfig(TopicStatistic, TopicTargetingSerializer),
     }
