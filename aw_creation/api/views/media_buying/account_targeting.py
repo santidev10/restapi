@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError
 
 from ads_analyzer.reports.account_targeting_report.constants import ReportType
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
-from aw_creation.api.views.media_buying.constants import TARGETING_MAPPING
+from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
 from utils.views import validate_date
@@ -23,7 +23,7 @@ class AccountTargetingAPIView(APIView):
     GET: Retrieve aggregated targeting statistics
 
     """
-    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "views_share", "video_view_rate")
+    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "video_views_share", "video_view_rate")
     SCALAR_FILTERS = (ScalarFilter("impressions", "int"), ScalarFilter("video_views", "int"))
     SORTS = ("campaign_name", "ad_group_name", "target_name")
 
@@ -31,16 +31,14 @@ class AccountTargetingAPIView(APIView):
         pk = kwargs["pk"]
         params = self.request.query_params
         account_creation = get_account_creation(request.user, pk)
-        report = AccountTargetingReport(account_creation.account, reporting_type={ReportType.STATS, ReportType.SUMMARY})
-        data, _, summary = self._get_report(report, params)
-
+        data, _, summary = self._get_report(account_creation, params)
         page = params.get("page", 1)
         page_size = params.get("size", 25)
         paginator = Paginator(data, page_size)
         res = self._get_paginated_response(paginator, page, summary)
         return Response(data=res)
 
-    def _get_report(self, report, params):
+    def _get_report(self, account_creation, params):
         """
         Validate and extract parameters
         :param report:
@@ -48,18 +46,20 @@ class AccountTargetingAPIView(APIView):
         :param targeting:
         :return:
         """
+        config = validate_targeting(params.get("targeting"), list(REPORT_CONFIG.keys()))
         statistics_filters = self._get_statistics_filters(params)
         kpi_filters = self._get_all_filters(params)
         kpi_sort = self._validate_sort(params)
-        targeting = validate_targeting(params.get("targeting"), list(TARGETING_MAPPING.keys()))
-
-        data, kpi_filters, summary = report.get_report(
-            criterion_types=targeting,
+        all_targeting = True if params["targeting"] == "all" else False
+        report = AccountTargetingReport(account_creation.account, config["aggregations"], config["summary"],
+                                        all_targeting=all_targeting, reporting_type={ReportType.STATS, ReportType.SUMMARY})
+        data, _, summary = report.get_report(
+            criterion_types=config["criteria"],
             sort_key=kpi_sort,
             statistics_filters=statistics_filters,
             aggregation_filters=kpi_filters
         )
-        return data, kpi_filters, summary
+        return data, _, summary
 
     def _get_statistics_filters(self, params, search_key="ad_group__campaign__name"):
         """
@@ -103,7 +103,7 @@ class AccountTargetingAPIView(APIView):
         range_filters = {}
         for filter_type in self.RANGE_FILTERS:
             try:
-                _min, _max = params[filter_type].split(",")
+                _min, _max = params[filter_type].strip("/").split(",")
                 if float(_min) > float(_max):
                     raise ValidationError(f"Invalid {filter_type} range: min: {_min}, max: {_max}")
                 range_filters.update({
@@ -145,23 +145,6 @@ class AccountTargetingAPIView(APIView):
         if sort_param.strip("-") not in self.SORTS:
             raise ValidationError(f"Invalid sort_by: {sort_param}. Valid sort_by values: {self.SORTS}")
         return sort_param
-
-    def _validate_targeting(self, value, valid_targeting):
-        """
-        Validate targeting to retrieve
-        :param value: str
-        :param valid_targeting: list
-        :return:
-        """
-        errs = []
-        if not isinstance(value, str):
-            errs.append(f"Invalid targeting value: {value}. Must be singular string value.")
-        if value not in valid_targeting:
-            errs.append(f"Invalid targeting value: {value}. Valid targeting: {valid_targeting}")
-        if errs:
-            raise ValidationError(errs)
-        targeting = TARGETING_MAPPING[value]
-        return targeting
 
     def _get_paginated_response(self, paginator, page, summary):
         """ Paginate statistics """

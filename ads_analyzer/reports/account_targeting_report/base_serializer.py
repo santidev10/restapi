@@ -1,18 +1,12 @@
-from django.db.models import Case
-from django.db.models import F
-from django.db.models import ExpressionWrapper
-from django.db.models import FloatField as DBFloatField
 from django.db.models import QuerySet
-from django.db.models import Sum
-from django.db.models import When
-from django.db.models.functions.comparison import NullIf
 from rest_framework.fields import CharField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
 
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
+from .constants import TargetingStatisticsConfigs
+from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
 
 
 class BaseSerializer(ModelSerializer):
@@ -20,6 +14,7 @@ class BaseSerializer(ModelSerializer):
     Serializer base class for AccountTargetingReport statistics models
     """
     # Values should be set by children
+    config = None
     criterion_name = ReadOnlyField(default="N/A")
     target_name = ReadOnlyField(default="N/A")
     type = ReadOnlyField(default="N/A")
@@ -48,7 +43,7 @@ class BaseSerializer(ModelSerializer):
     margin = FloatField()
     profit = FloatField()
     video_views_share = FloatField()
-    view_rate = FloatField()
+    video_view_rate = FloatField()
 
     class Meta:
         model = None
@@ -71,20 +66,14 @@ class BaseSerializer(ModelSerializer):
             "cost",
             "ctr_i",
             "ctr_v",
-            "view_rate",
+            "video_view_rate",
             "profit",
             "margin",
         )
         group_by = ("id",)
         values_shared = (
-            "ad_group__impressions",
-            "ad_group__cost",
-            "ad_group__video_views",
-            "ad_group__id",
             "ad_group__campaign__name",
             "ad_group__campaign__id",
-            "ad_group__name",
-            "ad_group__cpv_bid",
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
@@ -93,15 +82,21 @@ class BaseSerializer(ModelSerializer):
     def __new__(cls, *args, **kwargs):
         aggregated = None
         if args and isinstance(args[0], QuerySet):
-            params = kwargs.get("context", {}).get("params")
-            aggregated = queryset = cls._build_queryset(args[0], params=params)
+            kpi_filters = kwargs["context"].get("kpi_filters")
+            aggregation_keys = kwargs["context"]["aggregation_keys"]
+            all_targeting = kwargs["context"].get("all_targeting", False)
+            # if all_targeting is False:
+            cls.Meta.group_by += ("ad_group__id",)
+            cls.Meta.values_shared += ("ad_group__impressions", "ad_group__cost", "ad_group__video_views",
+                                       "ad_group__cpv_bid", "ad_group__id", "ad_group__name",)
+            aggregated = queryset = cls._build_queryset(args[0], aggregation_keys, kpi_filters=kpi_filters)
             args = (queryset,) + args[1:]
         instance = super().__new__(cls, *args, **kwargs)
         instance.aggregated_queryset = aggregated
         return instance
 
     @classmethod
-    def _build_queryset(cls, queryset, params=None):
+    def _build_queryset(cls, queryset, aggregation_keys, kpi_filters=None):
         """
         Construct queryset
         Assign values for aggregation of original queryset statistics, and apply additional
@@ -110,68 +105,19 @@ class BaseSerializer(ModelSerializer):
         :param params: dict[filters, ...]
         :return:
         """
-        params = params or {}
-        goal_type_ref = "ad_group__campaign__salesforce_placement__goal_type_id"
+        kpi_filters = kpi_filters or {}
+        statistics_annotations = {column: ANNOTATIONS[column]
+                                  for column in TargetingStatisticsConfigs.STATISTICS_ANNOTATIONS}
+        aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
             .annotate(
-                contracted_rate=F("ad_group__campaign__salesforce_placement__ordered_rate"),
-                sum_impressions=Sum("impressions"),
-                sum_video_views=Sum("video_views"),
-                sum_clicks=Sum("clicks"),
-                sum_cost=Sum("cost"),
-                sum_video_views_100_quartile=Sum("video_views_100_quartile"),
-                sum_video_impressions=Sum(Case(When(
-                    **{goal_type_ref: SalesForceGoalType.CPV},
-                    then=F("impressions")
-                ))),
-                revenue=Case(
-                    When(
-                        ad_group__campaign__salesforce_placement__goal_type_id=0,
-                        then=F("sum_impressions") * F("ad_group__campaign__salesforce_placement__ordered_rate") / 1000,
-                    ),
-                    default=F("sum_video_views") * F("ad_group__campaign__salesforce_placement__ordered_rate"),
-                    output_field=DBFloatField()
-                )
+                **statistics_annotations,
             ) \
             .annotate(
-                view_rate=ExpressionWrapper(
-                    F("sum_video_views") * 1.0 / NullIf(F("sum_video_impressions"), 0),
-                    output_field=DBFloatField(),
-                ),
-                impressions_share=ExpressionWrapper(
-                    F("sum_impressions") * 1.0 / NullIf(F("ad_group__impressions"), 0),
-                    output_field=DBFloatField(),
-                ),
-                video_views_share=ExpressionWrapper(
-                    F("sum_video_views") * 1.0 / NullIf(F("ad_group__video_views"), 0),
-                    output_field=DBFloatField(),
-                ),
-                cost_share=ExpressionWrapper(
-                    F("sum_cost") * 1.0 / NullIf(F("ad_group__cost"), 0),
-                    output_field=DBFloatField(),
-                ),
-                ctr_i=ExpressionWrapper(
-                    F("sum_clicks") * 1.0 / NullIf(F("sum_impressions"), 0),
-                    output_field=DBFloatField(),
-                ),
-                ctr_v=ExpressionWrapper(
-                    F("sum_clicks") * 1.0 / NullIf(F("sum_video_views"), 0),
-                    output_field=DBFloatField(),
-                ),
-                average_cpm=ExpressionWrapper(
-                    F("sum_cost") * 1.0 / NullIf(F("sum_impressions"), 0) * 1000,
-                    output_field=DBFloatField(),
-                ),
-                average_cpv=ExpressionWrapper(
-                    F("sum_cost") * 1.0 / NullIf(F("sum_video_views"), 0),
-                    output_field=DBFloatField(),
-                ),
-                profit=F("revenue") - F("sum_cost"),
-                margin=(F("revenue") - F("sum_cost")) / NullIf(F("revenue"), 0)
-            )
-        queryset = cls._filter_queryset(queryset, params.get("filters"))
-        queryset.order_by()
+                **aggregate_annotations
+            ).order_by()
+        queryset = cls._filter_queryset(queryset, kpi_filters)
         return queryset
 
     @classmethod
@@ -183,5 +129,5 @@ class BaseSerializer(ModelSerializer):
         :return:
         """
         if filters is not None:
-            queryset = queryset.filter(**filters)
+            queryset = queryset.filter(**filters).order_by()
         return queryset

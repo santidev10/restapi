@@ -4,7 +4,8 @@ from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
 
-from aw_reporting.models import AdGroup
+from ads_analyzer.reports.account_targeting_report.constants import TargetingStatisticsConfigs
+from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
@@ -18,10 +19,27 @@ from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSerializer
+
+
+class AdGroupSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.AdGroup
+
+    criterion_name = CriterionType.NONE
+    target_name = SerializerMethodField()
+    type = ReadOnlyField(default="AdGroup")
+
+    class Meta(BaseSerializer.Meta):
+        model = AdGroupStatistic
+        group_by = []
+
+    def get_target_name(self, obj):
+        name = obj["ad_group__name"]
+        return name
 
 
 class AgeTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Demographics
+
     criterion_name = CriterionType.AGE
     target_name = SerializerMethodField()
     type = ReadOnlyField(default="AgeRange")
@@ -37,8 +55,6 @@ class AgeTargetingSerializer(BaseSerializer):
 
 class VideoCreativeTableSerializer(BaseSerializer):
     target_name = CharField(source="ad__creative_name")
-    id = CharField(source="creative__id")
-    # rate_type = GoalTypeField(source="ad__ad_group__campaign__salesforce_placement__goal_type_id")
     contracted_rate = FloatField(source="ad__ad_group__campaign__salesforce_placement__ordered_rate")
 
     class Meta(BaseSerializer.Meta):
@@ -60,6 +76,8 @@ class DeviceSerializer(BaseSerializer):
 
 
 class GenderTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Demographics
+
     criterion_name = CriterionType.GENDER
     target_name = SerializerMethodField()
     type = ReadOnlyField(default="Gender")
@@ -74,6 +92,8 @@ class GenderTargetingSerializer(BaseSerializer):
 
 
 class KeywordTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Keywords
+
     criterion_name = CriterionType.KEYWORD
     target_name = CharField(source="keyword")
     type = ReadOnlyField(default="Keyword")
@@ -84,6 +104,8 @@ class KeywordTargetingSerializer(BaseSerializer):
 
 
 class TopicTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Topics
+
     criterion_name = CriterionType.VERTICAL
     target_name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
@@ -96,6 +118,8 @@ class TopicTargetingSerializer(BaseSerializer):
 
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Placements
+
     criterion_name = CriterionType.PLACEMENT
     target_name = CharField(source="yt_id")
     type = ReadOnlyField(default="Channel")
@@ -106,6 +130,8 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Placements
+
     criterion_name = CriterionType.PLACEMENT
     target_name = CharField(source="yt_id")
     type = ReadOnlyField(default="Video")
@@ -116,6 +142,8 @@ class PlacementVideoTargetingSerializer(BaseSerializer):
 
 
 class AudienceTargetingSerializer(BaseSerializer):
+    config = TargetingStatisticsConfigs.Audiences
+
     criterion_name = CriterionType.USER_INTEREST_LIST
     target_name = CharField(source="audience__name")
     type = ReadOnlyField(default="Audience")
