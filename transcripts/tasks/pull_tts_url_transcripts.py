@@ -119,6 +119,8 @@ def pull_tts_url_transcripts():
     except Exception as e:
         if vid_ids_to_rescore:
             rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
+        else:
+            unlock(RESCORE_LOCK_NAME)
         if not isinstance(e, Retry):
             logger.error(e)
             if str(e) != "No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.":
