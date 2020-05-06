@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup as bs
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from fake_useragent import UserAgent
 import requests
 from requests.exceptions import ConnectionError
 from threading import Thread
@@ -26,6 +27,12 @@ class YTTranscriptsScraper(object):
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
         f"{PROXY_MEMBERSHIP}/"
 
+    YT_HEADERS = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "User-Agent": None
+    }
+
     def __init__(self, vid_ids):
         self.vid_ids = vid_ids
         self.vids = []
@@ -36,6 +43,7 @@ class YTTranscriptsScraper(object):
         self.get_available_proxies()
         self.host = None
         self.port = None
+        self.ua = UserAgent(fallback='Mozilla/5.0 (compatible; Google2SRT/0.7.8)')
         self.proxy_counter = 0
         self.update_proxy()
         self.create_yt_vids()
@@ -163,8 +171,17 @@ class YTTranscriptsScraper(object):
 
     def get_proxy(self):
         return {
-            "http": f"{self.host}:{self.port}"
+            "http": f"{self.host}:{self.port}",
+            "https": f"{self.host}:{self.port}"
         }
+
+    def get_user_agent(self):
+        return self.ua.random
+
+    def get_headers(self):
+        headers = self.YT_HEADERS
+        headers['User-Agent'] = self.get_user_agent()
+        return headers
 
     def update_proxy(self):
         if self.available_proxies:
@@ -223,11 +240,6 @@ class YTTranscriptsScraper(object):
 
 
 class YTVideo(object):
-    YT_HEADERS = {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
-        "User-Agent": "Mozilla/5.0 (compatible; Google2SRT/0.7.8)"
-    }
     NUM_SUBTITLES_TO_PULL = 5
 
     def __init__(self, vid_id, scraper):
@@ -248,6 +260,10 @@ class YTVideo(object):
         self.top_subtitles_meta = None
         self.subtitles = None
         self.failure_reason = None
+        self.proxy = None
+        self.host = None
+        self.port = None
+        self.headers = None
 
     def update_failure_reason(self, e):
         if not self.failure_reason:
@@ -312,17 +328,20 @@ class YTVideo(object):
         except Exception as e:
             self.update_failure_reason(e)
 
-    def get_response_through_proxy(self, scraper, url, headers=None):
-        proxy = scraper.get_proxy()
-        host = scraper.host
-        port = scraper.port
-        scraper.update_proxy()
+    def get_response_through_proxy(self, scraper, url):
+        proxy = self.proxy or scraper.get_proxy()
+        host = self.host or scraper.host
+        port = self.port or scraper.port
+        headers = self.headers or scraper.get_headers()
+        if not self.proxy:
+            scraper.update_proxy()
+
         # scraper.update_port()
         response = None
         counter = 0
         try:
             # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-            response = requests.get(url=url, proxies=proxy)
+            response = requests.get(url=url, proxies=proxy, headers=headers)
             # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
         except ConnectionError:
             pass
@@ -334,16 +353,26 @@ class YTVideo(object):
                 proxy = scraper.get_proxy()
                 host = scraper.host
                 port = scraper.port
+                headers = scraper.get_headers
                 # print(f"New proxy: {proxy}")
                 # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-                response = requests.get(url=url, proxies=proxy)
+                response = requests.get(url=url, proxies=proxy, headers=headers)
                 # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except ConnectionError as e:
                 # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
                 #       f"Error message: '{e}'")
                 continue
         if counter >= 5:
+            self.proxy = None
+            self.host = None
+            self.port = None
+            self.headers = None
             raise Exception("Exceeded 5 connection attempts to URL.")
+        if response.status_code == 200:
+            self.proxy = proxy
+            self.host = host
+            self.port = port
+            self.headers = headers
         response_text = response.text
         response_status = response.status_code
         return response_text, response_status
