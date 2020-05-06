@@ -77,6 +77,7 @@ def pull_tts_url_transcripts():
             logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
             updated_videos = []
+            update_start = time.perf_counter()
             for vid_obj in videos_batch:
                 vid_id = vid_obj.main.id
                 if vid_id not in successful_vid_ids:
@@ -114,6 +115,9 @@ def pull_tts_url_transcripts():
                 populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
                                                asr_lang=asr_lang)
                 updated_videos.append(vid_obj)
+            update_end = time.perf_counter()
+            update_time = update_end - update_start
+            logger.info(f"Populated Transcripts for {len(updated_videos)} Videos in {update_time} seconds.")
             upsert_start = time.perf_counter()
             video_manager.upsert(updated_videos)
             upsert_end = time.perf_counter()
