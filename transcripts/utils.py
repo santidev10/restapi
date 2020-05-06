@@ -314,7 +314,7 @@ class YTVideo(object):
 
     def get_vid_url_response(self, vid_url):
         try:
-            response, status = self.get_response_through_proxy(self.scraper, vid_url, headers=self.YT_HEADERS)
+            response, status = self.get_response_through_proxy(self.scraper, vid_url)
             return response, status
         except Exception as e:
             self.update_failure_reason(e)
@@ -323,7 +323,7 @@ class YTVideo(object):
         if not list_url:
             return None
         try:
-            response, status = self.get_response_through_proxy(self.scraper, list_url, headers=self.YT_HEADERS)
+            response, status = self.get_response_through_proxy(self.scraper, list_url)
             return response, status
         except Exception as e:
             self.update_failure_reason(e)
@@ -523,8 +523,7 @@ class YTVideoSubtitles(object):
         return subtitle_url
 
     def get_subtitles(self):
-        response, status = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url,
-                                                                 headers=self.video.YT_HEADERS)
+        response, status = self.video.get_response_through_proxy(self.video.scraper, self.subtitle_url)
         soup = bs(response, "xml")
         captions = replace_apostrophes(" ".join([line.strip() for line in soup.find_all(text=True)])) if soup else ""
         captions = re.sub(r'<font.+?>', '', captions)
