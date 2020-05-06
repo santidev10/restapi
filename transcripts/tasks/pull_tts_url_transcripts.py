@@ -76,11 +76,14 @@ def pull_tts_url_transcripts():
             vid_ids_to_rescore.extend(successful_vid_ids)
             logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
+            updated_videos = []
             for vid_obj in videos_batch:
                 vid_id = vid_obj.main.id
                 if vid_id not in successful_vid_ids:
                     failure = transcripts_scraper.failure_reasons[vid_id]
                     if isinstance(failure, ValidationError) and failure.message == 'All proxies have been blocked.':
+                        if updated_videos:
+                            video_manager.upsert(updated_videos)
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         transcripts_scraper.send_yt_blocked_email()
@@ -91,6 +94,7 @@ def pull_tts_url_transcripts():
                         continue
                     else:
                         vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)
+                        updated_videos.append(vid_obj)
                         continue
                 vid_transcripts = [subtitle.captions for subtitle in
                                    transcripts_scraper.successful_vids[vid_id].subtitles]
@@ -105,8 +109,9 @@ def pull_tts_url_transcripts():
                                                            transcript=vid_transcripts[i])
                 populate_video_custom_captions(vid_obj, vid_transcripts, vid_lang_codes, source="tts_url",
                                                asr_lang=asr_lang)
+                updated_videos.append(vid_obj)
             upsert_start = time.perf_counter()
-            video_manager.upsert(videos_batch)
+            video_manager.upsert(updated_videos)
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
