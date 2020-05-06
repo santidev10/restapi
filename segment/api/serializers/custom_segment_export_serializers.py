@@ -90,7 +90,7 @@ class CustomSegmentChannelExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Num Videos",
+        "Num_Videos",
     )
 
     URL = SerializerMethodField("get_url")
