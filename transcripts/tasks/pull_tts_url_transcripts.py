@@ -83,7 +83,11 @@ def pull_tts_url_transcripts():
                     failure = transcripts_scraper.failure_reasons[vid_id]
                     if isinstance(failure, ValidationError) and failure.message == 'All proxies have been blocked.':
                         if updated_videos:
+                            upsert_start = time.perf_counter()
                             video_manager.upsert(updated_videos)
+                            upsert_end = time.perf_counter()
+                            upsert_time = upsert_end - upsert_start
+                            logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         transcripts_scraper.send_yt_blocked_email()
@@ -114,7 +118,7 @@ def pull_tts_url_transcripts():
             video_manager.upsert(updated_videos)
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
-            logger.info(f"Upserted {len(videos_batch)} Videos in {upsert_time} seconds.")
+            logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
         rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
         total_end = time.perf_counter()
         total_time = total_end - total_start
