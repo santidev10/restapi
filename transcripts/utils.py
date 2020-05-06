@@ -351,7 +351,7 @@ class YTVideo(object):
                 proxy = scraper.get_proxy()
                 host = scraper.host
                 port = scraper.port
-                headers = scraper.get_headers
+                headers = scraper.get_headers()
                 # print(f"New proxy: {proxy}")
                 # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
                 response = requests.get(url=url, proxies=proxy, headers=headers)
