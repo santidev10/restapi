@@ -335,8 +335,6 @@ class YTVideo(object):
         headers = self.headers or scraper.get_headers()
         if not self.proxy:
             scraper.update_proxy()
-
-        # scraper.update_port()
         response = None
         counter = 0
         try:
