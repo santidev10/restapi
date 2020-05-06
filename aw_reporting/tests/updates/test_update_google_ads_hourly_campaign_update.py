@@ -66,7 +66,8 @@ class UpdateAwAccountsHourlyStatsTestCase(TransactionTestCase):
                 StartDate=str(today),
                 EndDate=str(today),
                 HourOfDay=0,
-                TotalAmount="--"
+                TotalAmount="--",
+                BiddingStrategyType="cpv"
             ),
         ]
 

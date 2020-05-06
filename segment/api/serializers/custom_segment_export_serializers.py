@@ -76,11 +76,21 @@ class CustomSegmentExportSerializerMixin():
         vetted_value = AuditUtils.get_vetting_value(skipped, suitability)
         return vetted_value
 
+    def get_vetted(self, obj):
+        vetted = "Y" \
+            if getattr(obj.task_us_data, "created_at", None) is not None \
+            else None
+        return vetted
 
-class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, Serializer):
+
+class CustomSegmentChannelExportSerializer(
+    CustomSegmentExportSerializerMixin,
+    Serializer
+):
     columns = (
-        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted",
-        "Brand_Safety", "Age_Group", "Gender", "Content_Type"
+        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Num_Videos",
     )
 
     URL = SerializerMethodField("get_url")
@@ -94,6 +104,7 @@ class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, S
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Num_Videos = IntegerField(source="stats.total_videos_count")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
@@ -120,27 +131,30 @@ class CustomSegmentChannelExportSerializer(CustomSegmentExportSerializerMixin, S
         joined = ", ".join(categories)
         return joined
 
-    def get_vetted(self, obj):
-        vetted = "Y" if getattr(obj.task_us_data, "created_at", None) is not None else None
-        return vetted
 
-
-class CustomSegmentChannelWithMonetizationExportSerializer(CustomSegmentChannelExportSerializer):
+class CustomSegmentChannelWithMonetizationExportSerializer(
+    CustomSegmentChannelExportSerializer
+):
     columns = (
-        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
-        "Age_Group", "Gender", "Content_Type"
+        "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
+        "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
+        "Content_Type", "Num_Videos",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    Num_Videos = IntegerField(source="stats.total_videos_count")
 
     def __init__(self, instance, *args, **kwargs):
         super().__init__(instance, *args, **kwargs)
 
 
-class CustomSegmentVideoExportSerializer(CustomSegmentExportSerializerMixin, Serializer):
+class CustomSegmentVideoExportSerializer(
+    CustomSegmentExportSerializerMixin,
+    Serializer
+):
     columns = (
-        "URL", "Title", "Language", "Category", "Views", "Overall_Score", "Vetted",
-        "Brand_Safety", "Age_Group", "Gender", "Content_Type"
+        "URL", "Title", "Language", "Category", "Views", "Overall_Score",
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
     )
 
     URL = SerializerMethodField("get_url")
@@ -178,7 +192,3 @@ class CustomSegmentVideoExportSerializer(CustomSegmentExportSerializerMixin, Ser
             categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join(categories)
         return joined
-
-    def get_vetted(self, obj):
-        vetted = "Y" if getattr(obj.task_us_data, "created_at", None) is not None else None
-        return vetted

@@ -157,3 +157,17 @@ def get_device_id_by_name(device_repr):
 class BudgetType(ExtendedEnum):
     DAILY = "daily"
     TOTAL = "total"
+
+
+CAMPAIGN_BIDDING_STRATEGY_TYPES = {
+    "Target CPA": "cpa",
+    "None": None,
+}
+
+
+def get_bidding_strategy_type(strategy_type):
+    if strategy_type in CAMPAIGN_BIDDING_STRATEGY_TYPES:
+        value = CAMPAIGN_BIDDING_STRATEGY_TYPES[strategy_type]
+    else:
+        value = strategy_type
+    return value
