@@ -2,44 +2,16 @@ from django.db.models import Case
 from django.db.models import F
 from django.db.models import ExpressionWrapper
 from django.db.models import FloatField as DBFloatField
-from django.db.models import QuerySet
 from django.db.models import Avg
-from django.db.models import Max
-from django.db.models import Min
 from django.db.models import Sum
 from django.db.models import When
 from django.db.models.functions.comparison import NullIf
-from rest_framework.fields import CharField
-from rest_framework.fields import FloatField
-from rest_framework.fields import IntegerField
-from rest_framework.fields import ReadOnlyField
-from rest_framework.serializers import ModelSerializer
 
 import ads_analyzer.reports.account_targeting_report.constants as names
 from aw_reporting.models.salesforce_constants import SalesForceGoalType
 
 
-SUMMARY_ANNOTATIONS = {
-    names.AVERAGE_CONTRACTED_RATE: Avg("contracted_rate"),
-    names.AVERAGE_VIEW_RATE: Avg("video_view_rate"),
-    names.SUM_REVENUE: Sum("revenue"),
-    names.SUM_PROFIT: Sum("profit"),
-    names.SUM_MARGIN: Sum("margin"),
-    names.AVERAGE_CTR_I: Avg("ctr_i"),
-    names.AVERAGE_CTR_V: Avg("ctr_v"),
-    names.AVERAGE_REVENUE: Avg("revenue"),
-    names.AVERAGE_COST: Avg("cost"),
-    names.CONTRACTED_RATE: F("ad_group__campaign__salesforce_placement__ordered_rate"),
-    names.SUM_IMPRESSIONS: Sum("impressions"),
-    names.SUM_VIDEO_VIEWS: Sum("video_views"),
-    names.SUM_CLICKS: Sum("clicks"),
-    names.SUM_COST: Sum("cost"),
-    names.AVERAGE_CPV: Avg("average_cpv"),
-    names.AVERAGE_CPM: Avg("average_cpm"),
-}
-
 goal_type_ref = "ad_group__campaign__salesforce_placement__goal_type_id"
-# SUM_IMPRESSIONS, SUM_VIDEO_VIEWS, SUM_CLICKS, AVERAGE_COST, AVERAGE_REVENUE
 ANNOTATIONS = {
     names.AVERAGE_CONTRACTED_RATE: Avg("contracted_rate"),
     names.AVERAGE_VIEW_RATE: Avg("video_view_rate"),

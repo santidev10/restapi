@@ -59,7 +59,11 @@ BASE_SERIALIZER_FIELDS = (
     "margin",
 )
 
-
+AGGREGATION_COLUMN_NAME_MAP = {
+    SUM_CLICKS: CLICKS,
+    SUM_IMPRESSIONS: IMPRESSIONS,
+    SUM_VIDEO_VIEWS: VIDEO_VIEWS
+}
 KPI_FILTER_NAME_MAP = {
     AVERAGE_CPV: "Avg. CPV ($)",
     AVERAGE_CPM: "Avg. CPM ($)",
@@ -77,34 +81,33 @@ KPI_FILTER_NAME_MAP = {
     CLICKS: "Clicks",
     CTR_I: "CTR(i) (%)",
     CTR_V: "CTR(v) (%)",
+    SUM_IMPRESSIONS: "Impressions",
+    SUM_VIDEO_VIEWS: "Video Views",
+    SUM_COST: "Cost",
+    SUM_CLICKS: "Clicks"
 }
 
 STATISTICS_ANNOTATIONS = (CONTRACTED_RATE, SUM_IMPRESSIONS, SUM_VIDEO_VIEWS, SUM_CLICKS, SUM_COST,
                           SUM_VIDEO_VIEWS_100_QUARTILE, SUM_VIDEO_IMPRESSIONS, REVENUE)
 
 
-class ReportType:
-    STATS_REPORT = "stats"
-    KPI_FILTERS_REPORT = "kpi_filters"
-    SUMMARY_REPORT = "summary"
-    ALL = {STATS_REPORT, KPI_FILTERS_REPORT, SUMMARY_REPORT}
-    STATS = STATS_REPORT
-    KPI_FILTERS = KPI_FILTERS_REPORT
-    SUMMARY = SUMMARY_REPORT
-
-
 TOTAL_SUMMARY_COLUMN_AGG_MAPPING = {
     "impressions__sum": SUM_IMPRESSIONS,
     "video_views__sum": SUM_VIDEO_VIEWS,
     "clicks__sum": SUM_CLICKS,
+
+    "sum_impressions__sum": SUM_IMPRESSIONS,
+    "sum_video_views__sum": SUM_VIDEO_VIEWS,
+    "sum_clicks__sum": SUM_CLICKS,
+
     "video_view_rate__avg": AVERAGE_VIEW_RATE,
     "contracted_rate__avg": AVERAGE_CONTRACTED_RATE,
     "average_cpm__avg": AVERAGE_CPM,
     "average_cpv__avg": AVERAGE_CPV,
-    "cost__sum": SUM_COST,
-    "revenue__sum": SUM_REVENUE,
-    "profit__sum": SUM_PROFIT,
-    "margin__sum": SUM_MARGIN,
+    "cost__sum": COST,
+    "revenue__sum": REVENUE,
+    "profit__sum": PROFIT,
+    "margin__sum": MARGIN,
     "ctr_i__avg": AVERAGE_CTR_I,
     "ctr_v__avg": AVERAGE_CTR_V,
 }
