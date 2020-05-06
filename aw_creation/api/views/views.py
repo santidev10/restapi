@@ -2124,7 +2124,7 @@ class AwCreationCodeRetrieveAPIView(GenericAPIView):
         except AccountCreation.DoesNotExist:
             return Response(status=HTTP_404_NOT_FOUND)
 
-        with open('aw_creation/aws_functions.js') as f:
+        with open('aw_creation/scripts/aws_functions.js') as f:
             functions = f.read()
         code = functions + "\n" + account_management.get_aws_code(request)
         return Response(data={'code': code})

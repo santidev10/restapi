@@ -27,6 +27,8 @@ SECRET_KEY = '%ics*w%224v(ymhbgk4rpsqhs0ss7r(pxel%n(1fko6*5$-1=8'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+APP_ENV = os.getenv("APP_ENV", "dev")
+
 ALLOWED_HOSTS_ENV = os.getenv("ALLOWED_HOSTS")
 if ALLOWED_HOSTS_ENV:
     ALLOWED_HOSTS = ALLOWED_HOSTS_ENV.split(",")
@@ -503,7 +505,7 @@ PACING_NOTIFICATIONS = os.getenv("PACING_NOTIFICATIONS", "100,80").split(",")
 
 APM_ENABLED = os.getenv("APM_ENABLED", "False") == "True"
 if APM_ENABLED:
-    apm_env = os.getenv("APM_ENV", "dev")
+    apm_env = os.getenv("APM_ENV", APP_ENV)
     # ref: https://www.elastic.co/guide/en/apm/agent/python/current/configuration.html
     ELASTIC_APM = {
         "SERVICE_NAME": "restapi",

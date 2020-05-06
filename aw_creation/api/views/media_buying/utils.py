@@ -1,8 +1,8 @@
 from django.http import Http404
 from rest_framework.exceptions import ValidationError
 
-from aw_creation.api.views.media_buying.constants import TARGETING_MAPPING
 from aw_creation.models import AccountCreation
+from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 
 
 def validate_targeting(value, valid_targeting, should_raise=True):
@@ -14,10 +14,10 @@ def validate_targeting(value, valid_targeting, should_raise=True):
     if errs:
         if should_raise:
             raise ValidationError(errs)
-        targeting = None
+        config = None
     else:
-        targeting = TARGETING_MAPPING[value]
-    return targeting
+        config = REPORT_CONFIG[value]
+    return config
 
 
 def get_account_creation(user, pk, should_raise=True):
