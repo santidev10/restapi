@@ -89,7 +89,8 @@ class CustomSegmentChannelExportSerializer(
 ):
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type"
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Num_Videos",
     )
 
     URL = SerializerMethodField("get_url")
@@ -103,6 +104,7 @@ class CustomSegmentChannelExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Num_Videos = IntegerField(source="stats.total_videos_count")
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
@@ -136,10 +138,11 @@ class CustomSegmentChannelWithMonetizationExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
-        "Content_Type"
+        "Content_Type", "Num_Videos",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    Num_Videos = IntegerField(source="stats.total_videos_count")
 
     def __init__(self, instance, *args, **kwargs):
         super().__init__(instance, *args, **kwargs)
@@ -151,7 +154,7 @@ class CustomSegmentVideoExportSerializer(
 ):
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
-        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type"
+        "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
     )
 
     URL = SerializerMethodField("get_url")
