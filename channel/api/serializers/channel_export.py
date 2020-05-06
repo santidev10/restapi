@@ -12,7 +12,7 @@ from utils.brand_safety import map_brand_safety_score
 class YTChannelLinkFromID(CharField):
     def to_representation(self, value):
         str_value = super(YTChannelLinkFromID, self).to_representation(value)
-        return f"https://www.youtube.com/channel/{str_value}/"
+        return f"https://www.youtube.com/channel/{str_value}"
 
 
 class ChannelListExportSerializer(Serializer):
