@@ -1,3 +1,43 @@
+CAMPAIGN_ID = "campaign_id"
+CAMPAIGN_NAME = "campaign_name"
+AD_GROUP_NAME = "ad_group_name"
+TARGET = "target"
+AVERAGE_CPV = "average_cpv"
+AVERAGE_CPM = "average_cpm"
+AVERAGE_COST = "average_cost"
+MARGIN = "margin"
+COST = "cost"
+COST_SHARE = "cost_share"
+VIDEO_VIEWS_SHARE = "video_views_share"
+IMPRESSIONS_SHARE = "impressions_share"
+VIDEO_VIEW_RATE = "video_view_rate"
+IMPRESSIONS = "impressions"
+VIDEO_VIEWS = "video_views"
+CONTRACTED_RATE = "contracted_rate"
+REVENUE = "revenue"
+PROFIT = "profit"
+CLICKS = "clicks"
+CTR_I = "ctr_i"
+CTR_V = "ctr_v"
+MAX_CPV = "max_cpv"
+MAX_CPM = "max_cpm"
+SUM_IMPRESSIONS = "sum_impressions"
+SUM_VIDEO_VIEWS = "sum_video_views"
+SUM_CLICKS = "sum_clicks"
+SUM_COST = "sum_cost"
+SUM_VIDEO_VIEWS_100_QUARTILE = "sum_video_views_100_quartile"
+SUM_VIDEO_IMPRESSIONS = "sum_video_impressions"
+VIDEO_IMPRESSIONS = "video_impressions"
+AVERAGE_REVENUE = "average_revenue"
+AVERAGE_VIEW_RATE = "average_view_rate"
+SUM_REVENUE = "sum_revenue"
+SUM_PROFIT = "sum_profit"
+AVERAGE_CONTRACTED_RATE = "average_contracted_rate"
+SUM_MARGIN = "sum_margin"
+AVERAGE_CTR_I = "average_ctr_i"
+AVERAGE_CTR_V = "average_ctr_v"
+
+
 BASE_SERIALIZER_FIELDS = (
     "name",
     "type",
@@ -19,35 +59,52 @@ BASE_SERIALIZER_FIELDS = (
     "margin",
 )
 
-KPI_FILTERS = (
-    "average_cpv",
-    "average_cpm",
-    "margin",
-    "cost",
-    "video_views_share", # Percentage of video_views of total
-    "impressions_share", # Percentage of impressions of total
-    "view_rate",
-)
 
-CAMPAIGN_ID = "campaign_id"
-CAMPAIGN_NAME = "campaign_name"
-AD_GROUP_NAME = "ad_group_name"
-TARGET = "target"
-AVG_CPV = "margin"
-AVG_CPM = "avg_cpm"
-MARGIN = "margin"
-COST = "cost"
-VIEWS_DELIVERY = "views_delivery"
-IMPRESSIONS_DELIVERY = "impressions_delivery"
-VIEW_RATE = "view_rate"
+KPI_FILTER_NAME_MAP = {
+    AVERAGE_CPV: "Avg. CPV ($)",
+    AVERAGE_CPM: "Avg. CPM ($)",
+    MARGIN: "Margin ($)",
+    COST_SHARE: "Cost Share (%)",
+    COST: "Cost ($)",
+    VIDEO_VIEWS_SHARE: "Views SOV (%)", # Percentage of video_views of total
+    IMPRESSIONS_SHARE: "Impressions SOV (%)", # Percentage of impressions of total
+    VIDEO_VIEW_RATE: "View Rate (%)",
+    IMPRESSIONS: "Impressions",
+    VIDEO_VIEWS: "Video Views",
+    CONTRACTED_RATE: "Contracted Rate ($)",
+    REVENUE: "Revenue ($)",
+    PROFIT: "Profit ($)",
+    CLICKS: "Clicks",
+    CTR_I: "CTR(i) (%)",
+    CTR_V: "CTR(v) (%)",
+}
 
-STATS_REPORT = "stats"
-KPI_FILTERS_REPORT = "kpi_filters"
-SUMMARY_REPORT = "summary"
+STATISTICS_ANNOTATIONS = (CONTRACTED_RATE, SUM_IMPRESSIONS, SUM_VIDEO_VIEWS, SUM_CLICKS, SUM_COST,
+                          SUM_VIDEO_VIEWS_100_QUARTILE, SUM_VIDEO_IMPRESSIONS, REVENUE)
 
 
 class ReportType:
+    STATS_REPORT = "stats"
+    KPI_FILTERS_REPORT = "kpi_filters"
+    SUMMARY_REPORT = "summary"
     ALL = {STATS_REPORT, KPI_FILTERS_REPORT, SUMMARY_REPORT}
     STATS = STATS_REPORT
     KPI_FILTERS = KPI_FILTERS_REPORT
     SUMMARY = SUMMARY_REPORT
+
+
+TOTAL_SUMMARY_COLUMN_AGG_MAPPING = {
+    "impressions__sum": SUM_IMPRESSIONS,
+    "video_views__sum": SUM_VIDEO_VIEWS,
+    "clicks__sum": SUM_CLICKS,
+    "video_view_rate__avg": AVERAGE_VIEW_RATE,
+    "contracted_rate__avg": AVERAGE_CONTRACTED_RATE,
+    "average_cpm__avg": AVERAGE_CPM,
+    "average_cpv__avg": AVERAGE_CPV,
+    "cost__sum": SUM_COST,
+    "revenue__sum": SUM_REVENUE,
+    "profit__sum": SUM_PROFIT,
+    "margin__sum": SUM_MARGIN,
+    "ctr_i__avg": AVERAGE_CTR_I,
+    "ctr_v__avg": AVERAGE_CTR_V,
+}
