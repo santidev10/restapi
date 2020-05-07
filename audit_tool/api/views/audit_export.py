@@ -499,6 +499,8 @@ class AuditExportApiView(APIView):
                 pass
             try:
                 age_restricted_videos_count[full_channel_id] = len(cid.word_hits.get('age_restricted_videos'))
+            except Exception as e:
+                pass
             if do_exclusion:
                 try:
                     bad_videos_count[full_channel_id] = len(cid.word_hits.get('bad_video_ids'))
