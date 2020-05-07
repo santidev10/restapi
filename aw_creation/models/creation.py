@@ -608,6 +608,14 @@ class AdGroupCreation(UniqueCreationItem):
         )
     )
 
+    PAUSED = "paused"
+    ENABLED = "enabled"
+    STATUS_CHOICES = (
+        (PAUSED,  "paused"),
+        (ENABLED, "enabled"),
+    )
+    status = models.CharField(null=True, default=None, max_length=10, choices=STATUS_CHOICES)
+
     def get_age_ranges(self):
         return json.loads(self.age_ranges_raw)
 
