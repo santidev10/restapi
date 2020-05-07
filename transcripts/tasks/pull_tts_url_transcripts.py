@@ -30,7 +30,6 @@ LOCK_NAME = "tts_url_transcripts"
 @celery_app.task(expires=TaskExpiration.CUSTOM_TRANSCRIPTS, soft_time_limit=TaskTimeout.CUSTOM_TRANSCRIPTS)
 def pull_tts_url_transcripts():
     total_start = time.perf_counter()
-    logger.info(f"Running pull_tts_url_transcripts...")
     try:
         lang_codes = settings.TRANSCRIPTS_LANG_CODES
         country_codes = settings.TRANSCRIPTS_COUNTRY_CODES
@@ -42,11 +41,12 @@ def pull_tts_url_transcripts():
         raise e
     try:
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
-        logger.info(f"lang_codes: {lang_codes}")
-        logger.info(f"country_codes: {country_codes}")
-        logger.info(f"iab_categories: {iab_categories}")
-        logger.info(f"brand_safety_score: {brand_safety_score}")
-        logger.info(f"num_vids: {num_vids}")
+        logger.info(f"Running pull_tts_url_transcripts... \n"
+                    f"lang_codes: {lang_codes} \n"
+                    f"country_codes: {country_codes} \n"
+                    f"iab_categories: {iab_categories} \n"
+                    f"brand_safety_score: {brand_safety_score} \n"
+                    f"num_vids: {num_vids}")
         vid_ids_to_rescore = []
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
