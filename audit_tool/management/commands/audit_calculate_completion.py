@@ -19,7 +19,7 @@ class Command(BaseCommand):
             for audit in audits:
                 if not audit.cached_data or not audit.cached_data.get('total'):
                     continue
-                history = AuditProcessorCache.objects.filter(audit=audit, created__gt=timezone.now() - timedelta(hours=1))
+                history = AuditProcessorCache.objects.filter(audit=audit, created__gt=timezone.now() - timedelta(minutes=30))
                 if history.count() < 15:
                     audit.params['projected_completion'] = None
                     audit.save(update_fields=['params'])
