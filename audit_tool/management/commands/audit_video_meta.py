@@ -279,6 +279,7 @@ class Command(BaseCommand):
             self.append_to_channel(avp, [avp.video_id], 'made_for_kids')
         if db_video_meta.age_restricted == True:
             avp.word_hits['exclusion'] = ['ytAgeRestricted']
+            self.append_to_channel(avp, [avp.video_id], 'age_restricted_videos')
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
             return False
         if self.inclusion_list:
