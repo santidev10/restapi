@@ -46,6 +46,7 @@ def pull_tts_url_transcripts():
         logger.error(e)
         raise e
     try:
+        vid_ids_to_rescore = []
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
@@ -69,7 +70,7 @@ def pull_tts_url_transcripts():
             scraper_time = scraper_end - scraper_start
             logger.info(f"Scraped {len(videos_batch)} Video Transcripts in {scraper_time} seconds.")
             successful_vid_ids = list(transcripts_scraper.successful_vids.keys())
-            vid_ids_to_rescore = successful_vid_ids
+            vid_ids_to_rescore.extend(successful_vid_ids)
             logger.info(f"Of {len(videos_batch)} videos, SUCCESSFULLY retrieved {len(successful_vid_ids)} video transcripts, "
                   f"FAILED to retrieve {transcripts_scraper.num_failed_vids} video transcripts.")
             updated_videos = []
@@ -85,6 +86,13 @@ def pull_tts_url_transcripts():
                             upsert_end = time.perf_counter()
                             upsert_time = upsert_end - upsert_start
                             logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
+                        if vid_ids_to_rescore:
+                            rescore_start = time.perf_counter()
+                            rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+                            video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+                            rescore_end = time.perf_counter()
+                            rescore_time = rescore_end - rescore_start
+                            logger.info(f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be rescored.")
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         transcripts_scraper.send_yt_blocked_email()
@@ -122,6 +130,13 @@ def pull_tts_url_transcripts():
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
+        if vid_ids_to_rescore:
+            rescore_start = time.perf_counter()
+            rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+            video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+            rescore_end = time.perf_counter()
+            rescore_time = rescore_end - rescore_start
+            logger.info(f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be rescored.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
