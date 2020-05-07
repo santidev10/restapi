@@ -52,8 +52,8 @@ def pull_tts_url_transcripts():
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
         sort = [{"stats.views": {"order": "desc"}}]
-        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                     upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY),
+                                     upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
         retrieval_start = time.perf_counter()
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
         retrieval_end = time.perf_counter()
