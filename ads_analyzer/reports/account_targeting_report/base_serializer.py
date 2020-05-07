@@ -29,12 +29,13 @@ class BaseSerializer(ModelSerializer):
     contracted_rate = FloatField(source="ad_group__campaign__salesforce_placement__ordered_rate")
 
     # Added in second annotation of _build_queryset
-    impressions = IntegerField(source="sum_impressions")
-    video_views = IntegerField(source="sum_video_views")
-    clicks = IntegerField(source="sum_clicks")
-    cost = FloatField(source="sum_cost")
+    sum_impressions = IntegerField()
+    sum_video_views = IntegerField()
+    sum_clicks = IntegerField()
+    sum_cost = FloatField()
 
     # Added during last annotation of _build_queryset
+    revenue = FloatField()
     average_cpm = FloatField()
     average_cpv = FloatField()
     cost_share = FloatField()
@@ -56,21 +57,22 @@ class BaseSerializer(ModelSerializer):
             "campaign_status",
             "ad_group_id",
             "ad_group_name",
-            "impressions",
             "contracted_rate",
             "impressions_share",
             "video_views_share",
             "cost_share",
             "average_cpm",
             "average_cpv",
-            "video_views",
-            "clicks",
-            "cost",
             "ctr_i",
             "ctr_v",
+            "revenue",
             "video_view_rate",
             "profit",
             "margin",
+            "sum_impressions",
+            "sum_video_views",
+            "sum_clicks",
+            "sum_cost",
         )
         group_by = ("id",)
         values_shared = (
@@ -120,11 +122,11 @@ class BaseSerializer(ModelSerializer):
             .annotate(
                 **aggregate_annotations
             ).order_by()
-        queryset = cls._filter_queryset(queryset, kpi_filters)
+        queryset = cls._filter_aggregated(queryset, kpi_filters)
         return queryset
 
     @classmethod
-    def _filter_queryset(cls, queryset, filters):
+    def _filter_aggregated(cls, queryset, filters):
         """
         Apply filters to aggregated statistics queryset
         :param queryset: Queryset
