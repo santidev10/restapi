@@ -16,8 +16,6 @@ from es_components.models.video import Video
 from saas.configs.celery import TaskExpiration
 from saas.configs.celery import TaskTimeout
 from saas import celery_app
-from transcripts.tasks.rescore_brand_safety import RESCORE_LOCK_NAME
-from transcripts.tasks.rescore_brand_safety import rescore_brand_safety_videos
 from transcripts.utils import YTTranscriptsScraper
 from utils.celery.tasks import lock
 from utils.celery.tasks import unlock
@@ -50,13 +48,12 @@ def pull_tts_url_transcripts():
     try:
         vid_ids_to_rescore = []
         lock(lock_name=LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
-        lock(lock_name=RESCORE_LOCK_NAME, max_retries=1, expire=TaskExpiration.CUSTOM_TRANSCRIPTS)
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
         sort = [{"stats.views": {"order": "desc"}}]
-        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS,),
-                                     upsert_sections=(Sections.CUSTOM_CAPTIONS,))
+        video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY),
+                                     upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
         retrieval_start = time.perf_counter()
         all_videos = video_manager.search(query=no_transcripts_query, sort=sort, limit=num_vids).execute().hits
         retrieval_end = time.perf_counter()
@@ -89,6 +86,14 @@ def pull_tts_url_transcripts():
                             upsert_end = time.perf_counter()
                             upsert_time = upsert_end - upsert_start
                             logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
+                        if vid_ids_to_rescore:
+                            rescore_start = time.perf_counter()
+                            rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+                            video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+                            rescore_end = time.perf_counter()
+                            rescore_time = rescore_end - rescore_start
+                            logger.info(f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be "
+                                        f"rescored in {rescore_time} seconds.")
                         logger.info(failure.message)
                         logger.info("Locking pull_tts_url_transcripts task for 5 minutes.")
                         transcripts_scraper.send_yt_blocked_email()
@@ -123,17 +128,20 @@ def pull_tts_url_transcripts():
             upsert_end = time.perf_counter()
             upsert_time = upsert_end - upsert_start
             logger.info(f"Upserted {len(updated_videos)} Videos in {upsert_time} seconds.")
-        rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
         total_end = time.perf_counter()
         total_time = total_end - total_start
         logger.info(f"Parsed and stored {len(all_videos)} Video Transcripts in {total_time} seconds.")
+        if vid_ids_to_rescore:
+            rescore_start = time.perf_counter()
+            rescore_filter = get_video_ids_query(vid_ids_to_rescore)
+            video_manager.remove_sections(filter_query=rescore_filter, sections=[Sections.BRAND_SAFETY])
+            rescore_end = time.perf_counter()
+            rescore_time = rescore_end - rescore_start
+            logger.info(f"Removed Brand Safety Section for {len(vid_ids_to_rescore)} Video IDs to be rescored "
+                        f"in {rescore_time} seconds.")
         unlock(LOCK_NAME)
         logger.info("Finished pulling TTS_URL transcripts task.")
     except Exception as e:
-        if vid_ids_to_rescore:
-            rescore_brand_safety_videos.delay(vid_ids=vid_ids_to_rescore)
-        else:
-            unlock(RESCORE_LOCK_NAME)
         if not isinstance(e, Retry):
             logger.error(e)
             if str(e) != "No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.":
@@ -141,7 +149,18 @@ def pull_tts_url_transcripts():
         pass
 
 
-
+def get_video_ids_query(vid_ids):
+    return Q(
+        {
+            "bool": {
+                "must": {
+                    "terms": {
+                        "main.id": vid_ids
+                    }
+                }
+            }
+        }
+    )
 
 
 def get_no_transcripts_vids_query(lang_codes=None, country_codes=None, iab_categories=None, brand_safety_score=None,

@@ -6,9 +6,9 @@ from django.db.models import Q
 from django.db.models import Avg
 from django.db.models import Max
 from django.db.models import Min
+from django.db.models import Sum
 from django.utils import timezone
 
-from ads_analyzer.reports.account_targeting_report import constants as names
 from ads_analyzer.reports.account_targeting_report.serializers import AdGroupSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AgeTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import GenderTargetingSerializer
@@ -18,9 +18,7 @@ from ads_analyzer.reports.account_targeting_report.serializers import PlacementV
 from ads_analyzer.reports.account_targeting_report.serializers import TopicTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AudienceTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.constants import KPI_FILTER_NAME_MAP
-from ads_analyzer.reports.account_targeting_report.constants import ReportType
 from ads_analyzer.reports.account_targeting_report.constants import TOTAL_SUMMARY_COLUMN_AGG_MAPPING
-from ads_analyzer.reports.account_targeting_report.annotations import SUMMARY_ANNOTATIONS
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
@@ -59,26 +57,31 @@ class AccountTargetingReport:
         CriterionType.VERTICAL: CriterionConfig(TopicStatistic, TopicTargetingSerializer),
     }
 
-    def __init__(self, account, aggregation_keys, summary_keys, reporting_type=None, all_targeting=False):
+    def __init__(self, account,  criterion_types=None):
         """
         reporting_type determines what data to return from the report
         :param account:
-        :param aggregation_keys: Aggregations to retrieve from grouped statistics
-        :param reporting_type: iter: -> ReportType
+        :param criterion_types: list [str, str, ...] -> List of aw_reporting.models.Criterion
+            types to retrieve statistics for
         """
-        if reporting_type is None:
-            reporting_type = ReportType.ALL
-        elif isinstance(reporting_type, str):
-            reporting_type = [reporting_type]
-
-        self.default_get_aggregations = (names.IMPRESSIONS, names.VIDEO_VIEWS, names.CLICKS, names.COST)
-
-        # Flag to determine if statistics should be grouped by ad_group or campaign level
-        self.all_targeting = all_targeting
-        self.aggregation_keys = aggregation_keys
-        self.summary_keys = summary_keys
-        self.reporting_type = reporting_type
         self.account = account
+        if criterion_types is None:
+            criterion_types = self.TARGETING.keys()
+        elif type(criterion_types) is str:
+            criterion_types = [criterion_types]
+        self.targeting_configs = [self.TARGETING[criterion] for criterion in criterion_types
+                                  if criterion in self.TARGETING]
+
+        # Container to hold un-calculated aggregated querysets
+        self._aggregated_serializers = []
+        # Container to hold calculated aggregations of aggregated querysets
+        self._aggregations = []
+
+        # Values set by prepare_report method
+        self.summary_aggregation_columns = None
+        self.aggregation_columns = None
+        self.aggregation_summary_funcs = None
+
         # Objects to be mutated by _update methods
         self._all_aggregated_data = []
         # {"average_cpv": {"min": 0.0, "max": 0.5}, ... }
@@ -86,40 +89,8 @@ class AccountTargetingReport:
         # {"impressions": 100, "video_views": 200, ... }
         self._base_overall_summary = defaultdict(int)
 
-    def get_report(self, criterion_types=None, sort_key="campaign_id",
-                   statistics_filters=None, aggregation_filters=None):
-        """
-        Retrieve statistics for provided criterion_types values
-
-        :param criterion_types: list [str, str, ...] -> List of aw_reporting.models.Criterion
-            types to retrieve statistics for
-        :param sort_key: key to sort aggregated statistics
-        :param statistics_filters: dict -> Filters to apply to statistics before aggregation
-        :param aggregation_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters to apply
-            in aggregated serializer queryset's
-        :return: tuple(list, dict, dict)
-        """
-        if criterion_types is None:
-            criterion_types = self.TARGETING.keys()
-        elif type(criterion_types) is str:
-            criterion_types = [criterion_types]
-        targeting_configs = [self.TARGETING[criterion] for criterion in criterion_types if criterion in self.TARGETING]
-        # Filter to retrieve non-aggregated statistics
-        statistics_filters = self._build_statistics_filters(statistics_filters or {})
-
-        for config in targeting_configs:
-            aggregated_serializer = self.get_aggregated_serializer(
-                config, statistics_filters, self.aggregation_keys,
-                all_targeting=self.all_targeting, aggregation_filters=aggregation_filters
-            )
-            aggregations = self._get_aggregations(aggregated_serializer.aggregated_queryset)
-            self._process_report(aggregated_serializer, aggregations, config)
-
-        self._finalize_report(sort_key)
-        return self._all_aggregated_data, self._base_kpi_filters, self._base_overall_summary
-
     @staticmethod
-    def get_aggregated_serializer(config, filters, aggregation_keys, aggregation_filters=None, all_targeting=False):
+    def get_aggregated_serializer(config, filters, aggregation_keys, aggregation_filters=None):
         """
         Instantiate serializer to apply aggregations
         :param config: CriterionConfig
@@ -131,45 +102,12 @@ class AccountTargetingReport:
         model, serializer_class = config
         queryset = model.objects.filter(filters)
         serializer = serializer_class(queryset, many=True, context=dict(
-            now=now, aggregation_keys=aggregation_keys, kpi_filters=aggregation_filters, all_targeting=all_targeting))
+            now=now, aggregation_keys=aggregation_keys, kpi_filters=aggregation_filters))
         return serializer
-
-    def _process_report(self, aggregated_serializer, aggregations, config):
-        """
-        Method to hold update method invocations
-        :param aggregated_serializer: serializer instantiation
-        :param aggregations: dict
-        :return: None
-        """
-        self._update_aggregated_data(aggregated_serializer)
-        self._update_kpi_filters(aggregations)
-        self._update_overall_summary(aggregations)
-
-    def _finalize_report(self, sort_key):
-        """
-        Method to invoke all report finalization logic
-        :param sort_key: str
-        :return: None
-        """
-        self._base_overall_summary = self._get_finalized_summary(self._base_overall_summary, len(self._all_aggregated_data))
-        self._sort_data(sort_key)
-
-    def _get_finalized_summary(self, summary, count):
-        finalized = {}
-        for key, val in summary.items():
-            # Rename aggregation keys: sum_impressions -> impressions
-            updated_key = key.split("_", 1)[1]
-            if "average" in key:
-                try:
-                    val = self._base_overall_summary[key] / count
-                except ZeroDivisionError:
-                    pass
-            finalized[updated_key] = val
-        return finalized
 
     def _build_statistics_filters(self, statistics_filters=None):
         """
-        Get filters for individual statistics to aggregate
+        Get filters for individual statistics before grouped aggregations
         :param statistics_filters: dict
         :return: Q expression
         """
@@ -178,28 +116,7 @@ class AccountTargetingReport:
             base_filter &= Q(**statistics_filters)
         return base_filter
 
-    def _sort_data(self, sort_key):
-        """
-        Mutate self._all_aggregated_data by sorting with sort_key
-        Reverse (desc) sorts should be prefixed with "-"
-        :param sort_key: str
-        :return: None
-        """
-        reverse = sort_key[0] == "-"
-        sort_value = sort_key.strip("-")
-        self._all_aggregated_data.sort(key=lambda x: x[sort_value], reverse=reverse)
-
-    def _update_aggregated_data(self, aggregated_serializer):
-        """
-        Mutate self._all_aggregated_data by extending with serialized data
-        :param aggregated_serializer: CriterionConfig serializer instantiation
-        :return: None
-        """
-        if ReportType.STATS in self.reporting_type:
-            data = aggregated_serializer.data
-            self._all_aggregated_data.extend(data)
-
-    def _update_kpi_filters(self, aggregations):
+    def _set_kpi_filters(self):
         """
         Builds and mutates self._base_kpi_filters defaultdict with serialized data for all kpi_filter_keys values
         :param kpi_filter_keys: list[str, ...] -> List of kpi keys to evaluate from aggregations dict
@@ -217,61 +134,114 @@ class AccountTargetingReport:
                 pass
             return result
 
-        if ReportType.KPI_FILTERS in self.reporting_type:
-            for kpi in self.aggregation_keys + self.default_get_aggregations:
-                self._base_kpi_filters[kpi]["title"] = KPI_FILTER_NAME_MAP[kpi]
-                self._base_kpi_filters[kpi]["avg"] = aggregations.get(f"{kpi}__avg")
-                curr_min = safe_compare(min, self._base_kpi_filters[kpi]["min"], aggregations.get(f"{kpi}__min"))
-                curr_max = safe_compare(max, self._base_kpi_filters[kpi]["max"], aggregations.get(f"{kpi}__max"))
+        for aggregation in self._all_aggregations:
+            for kpi_name in self.aggregation_columns:
+                # Get formatted kpi name as some aggs might be prepended with "sum"
+                # sum_impressions must be named this way to not conflict with individual statistics "impressions" column
+                self._base_kpi_filters[kpi_name]["title"] = KPI_FILTER_NAME_MAP[kpi_name]
+                self._base_kpi_filters[kpi_name]["avg"] = aggregation.get(f"{kpi_name}__avg")
+                curr_min = safe_compare(min, self._base_kpi_filters[kpi_name]["min"], aggregation.get(f"{kpi_name}__min"))
+                curr_max = safe_compare(max, self._base_kpi_filters[kpi_name]["max"], aggregation.get(f"{kpi_name}__max"))
                 if curr_min is not None:
-                    self._base_kpi_filters[kpi]["min"] = curr_min
+                    self._base_kpi_filters[kpi_name]["min"] = curr_min
                 if curr_max is not None:
-                    self._base_kpi_filters[kpi]["max"] = curr_max
+                    self._base_kpi_filters[kpi_name]["max"] = curr_max
+        return self._base_kpi_filters
 
-    def _update_overall_summary(self, aggregations):
+    def _set_overall_summary(self):
         """
         Mutate self._base_overall_summary values with aggregations
-        :param aggregations: dict
-        :param finalize: int -> If not 0, then should be length of entire data list to calculate averages
-            for Avg calculated aggregations
         :return:
         """
-        if ReportType.SUMMARY in self.reporting_type:
-            for key, val in aggregations.items():
-                overall_summary_key = TOTAL_SUMMARY_COLUMN_AGG_MAPPING.get(key)
-                if overall_summary_key is not None:
-                    try:
-                        # Sum all aggregation values for all serializers before calculating averages
-                        self._base_overall_summary[overall_summary_key] += val or 0
-                    except TypeError:
-                        pass
+        for aggregation in self._all_aggregations:
+            for agg_key, col_name in TOTAL_SUMMARY_COLUMN_AGG_MAPPING.items():
+                if agg_key not in aggregation:
+                    continue
+                col_value = aggregation[agg_key]
+                try:
+                    # Sum all aggregation values for all serializers before calculating averages
+                    self._base_overall_summary[col_name] += col_value or 0
+                except TypeError:
+                    pass
 
-    def _get_stats(self, config, filters, kpi_filters=None):
+    def _set_aggregations(self):
         """
-        Retrieve stats with provided CriterionConfig named tuple config
-        Handles config containing multiple model / serializer pairs
-        :param config: namedtuple: Criterion
-        :param kpi_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters / sorts to apply in serializers
+        Calculate aggregated values for queryset with applied grouping and annotations with parameters provided
+            to prepare_report method
         :return:
         """
-        now = timezone.now()
-        model, serializer_class = config
-        queryset = model.objects.filter(filters)
-        serializer = serializer_class(queryset, many=True, context=dict(now=now, params=kpi_filters))
-        data = serializer.data
-        return serializer, data
+        all_aggregations = []
+        for serializer in self._aggregated_serializers:
+            queryset = serializer.aggregated_queryset
+            targeting_aggs = chain(
+                [func(col) for func in self.aggregation_summary_funcs for col in self.aggregation_columns]
+            )
+            aggregations = queryset.aggregate(
+                *targeting_aggs,
+            )
+            all_aggregations.append(aggregations)
+        self._all_aggregations = all_aggregations
+        return all_aggregations
 
-    def _get_aggregations(self, queryset):
+    def get_targeting_report(self, sort_key="campaign_id"):
         """
-        Calculate aggregated values for queryset with applied grouping and annotations
-        :param queryset:
+
+        :param sort_key: key to sort aggregated statistics
         :return:
         """
-        db_funcs = [Min, Max, Avg]
-        targeting_aggs = chain([func(col) for func in db_funcs for col in self.aggregation_keys + self.default_get_aggregations])
-        summary_aggs = [SUMMARY_ANNOTATIONS[col] for col in self.summary_keys]
-        aggregations = queryset.aggregate(
-            *targeting_aggs,
-            *summary_aggs,
-        )
-        return aggregations
+        if not self._aggregated_serializers:
+            raise ValueError("You must call prepare report first.")
+        for aggregated_serializer in self._aggregated_serializers:
+            data = aggregated_serializer.data
+            self._all_aggregated_data.extend(data)
+
+        if sort_key:
+            reverse = sort_key[0] == "-"
+            sort_value = sort_key.strip("-")
+            self._all_aggregated_data.sort(key=lambda x: x[sort_value], reverse=reverse)
+        return self._all_aggregated_data
+
+    def get_kpi_filters(self):
+        if not self._aggregated_serializers:
+            raise ValueError("You must call prepare report first.")
+        if not self._aggregations:
+            self._set_aggregations()
+        self._set_kpi_filters()
+        return self._base_kpi_filters
+
+    def get_overall_summary(self):
+        if not self._aggregated_serializers:
+            raise ValueError("You must call prepare report first.")
+        if not self._aggregations:
+            self._set_aggregations()
+        self._set_overall_summary()
+        return self._base_overall_summary
+
+    def prepare_report(self, statistics_filters=None, aggregation_filters=None, aggregation_columns=None,
+                       aggregation_summary_funcs=None):
+        """
+        Retrieve statistics for provided criterion_types values
+            statistics_filters are filters used for specific statistics, such as retrieving
+                all KeywordStatistic rows with impressions > 1
+            aggregation_filters are filters used for grouped statistics, such as retrieving
+                TopicStatistic's grouped by AdGroup with sum video_views > 1
+            aggregation_columns are aggregations calculated using aggregation_column_funcs
+
+        :param statistics_filters: dict -> Filters to apply to individual statistics before grouping
+        :param aggregation_filters: dict[filters: str, sorts: str] -> Dictionary with kpi filters to apply
+            in aggregated serializer queryset's
+        :param aggregation_summary_funcs: Django db funcs
+        :return: tuple(list, dict, dict)
+        """
+        aggregation_summary_funcs = aggregation_summary_funcs or [Avg, Min, Max, Sum]
+        self.aggregation_columns = aggregation_columns
+        self.aggregation_summary_funcs = aggregation_summary_funcs
+
+        # Filter to retrieve non-aggregated statistics
+        statistics_filters = self._build_statistics_filters(statistics_filters or {})
+        for config in self.targeting_configs:
+            # Get grouped statistics for statistic table
+            aggregated_serializer = self.get_aggregated_serializer(
+                config, statistics_filters, self.aggregation_columns, aggregation_filters=aggregation_filters
+            )
+            self._aggregated_serializers.append(aggregated_serializer)

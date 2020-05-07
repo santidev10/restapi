@@ -106,7 +106,10 @@ class Command(BaseCommand):
                 logger.info("problem with api call")
                 return
             for i in data['items']:
-                db_channel_meta = channels[i['id']]
+                try:
+                    db_channel_meta = channels[i['id']]
+                except Exception as e:
+                    db_channel_meta = AuditChannelMeta.objects.get(channel__channel_id=i['id'])
                 if not i.get('brandingSettings'):
                     continue
                 try:

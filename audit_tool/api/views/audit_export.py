@@ -225,6 +225,7 @@ class AuditExportApiView(APIView):
             "Video Count",
             "Brand Safety Score",
             "Made For Kids",
+            "Age Restricted",
         ]
         try:
             bad_word_categories = set(audit.params['exclusion_category'])
@@ -343,6 +344,7 @@ class AuditExportApiView(APIView):
                 video_count if video_count else "",
                 mapped_score,
                 v.made_for_kids if v else "",
+                'Y' if v and v.age_restricted else "",
             ]
             try:
                 if len(bad_word_categories) > 0:
@@ -438,6 +440,7 @@ class AuditExportApiView(APIView):
             "Last Video Category",
             "Num Bad Videos",
             "Num Kids Videos",
+            "Num Age Restricted Videos",
             "Unique Exclusion Words (channel)",
             "Unique Exclusion Words (videos)",
             "Exclusion Words (channel)",
@@ -467,6 +470,7 @@ class AuditExportApiView(APIView):
         good_video_hit_words = {}
         bad_videos_count = {}
         kid_videos_count = {}
+        age_restricted_videos_count = {}
         video_count = {}
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
@@ -491,6 +495,10 @@ class AuditExportApiView(APIView):
                     pass
             try:
                 kid_videos_count[full_channel_id] = len(cid.word_hits.get('made_for_kids'))
+            except Exception as e:
+                pass
+            try:
+                age_restricted_videos_count[full_channel_id] = len(cid.word_hits.get('age_restricted_videos'))
             except Exception as e:
                 pass
             if do_exclusion:
@@ -563,6 +571,7 @@ class AuditExportApiView(APIView):
                 last_category,
                 bad_videos_count.get(channel.channel_id) if bad_videos_count.get(channel.channel_id) else 0,
                 kid_videos_count.get(channel.channel_id) if kid_videos_count.get(channel.channel_id) else 0,
+                age_restricted_videos_count.get(channel.channel_id) if age_restricted_videos_count.get(channel.channel_id) else 0,
                 len(bad_hit_words.get(channel.channel_id)) if bad_hit_words.get(channel.channel_id) else 0,
                 len(bad_video_hit_words.get(channel.channel_id)) if bad_video_hit_words.get(
                     channel.channel_id) else 0,
