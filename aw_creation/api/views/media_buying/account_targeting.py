@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
-from ads_analyzer.reports.account_targeting_report.constants import ReportType
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
@@ -23,15 +22,16 @@ class AccountTargetingAPIView(APIView):
     GET: Retrieve aggregated targeting statistics
 
     """
-    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "video_views_share", "video_view_rate")
-    SCALAR_FILTERS = (ScalarFilter("impressions", "int"), ScalarFilter("video_views", "int"))
-    SORTS = ("campaign_name", "ad_group_name", "target_name")
+    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share",
+                     "video_views_share", "video_view_rate", "sum_impressions", "sum_video_views", "sum_clicks")
+    SCALAR_FILTERS = ()
+    DEFAULT_SORTS = ("campaign_name", "ad_group_name", "target_name")
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]
         params = self.request.query_params
         account_creation = get_account_creation(request.user, pk)
-        data, _, summary = self._get_report(account_creation, params)
+        data, summary = self._get_report(account_creation, params)
         page = params.get("page", 1)
         page_size = params.get("size", 25)
         paginator = Paginator(data, page_size)
@@ -49,17 +49,16 @@ class AccountTargetingAPIView(APIView):
         config = validate_targeting(params.get("targeting"), list(REPORT_CONFIG.keys()))
         statistics_filters = self._get_statistics_filters(params)
         kpi_filters = self._get_all_filters(params)
-        kpi_sort = self._validate_sort(params)
-        all_targeting = True if params["targeting"] == "all" else False
-        report = AccountTargetingReport(account_creation.account, config["aggregations"], config["summary"],
-                                        all_targeting=all_targeting, reporting_type={ReportType.STATS, ReportType.SUMMARY})
-        data, _, summary = report.get_report(
-            criterion_types=config["criteria"],
-            sort_key=kpi_sort,
+        kpi_sort = self._validate_sort(params, config["sorts"])
+        report = AccountTargetingReport(account_creation.account, config["criteria"][:1])
+        report.prepare_report(
             statistics_filters=statistics_filters,
-            aggregation_filters=kpi_filters
+            aggregation_filters=kpi_filters,
+            aggregation_columns=config["aggregations"]
         )
-        return data, _, summary
+        targeting_data = report.get_targeting_report(sort_key=kpi_sort)
+        summary = report.get_overall_summary()
+        return targeting_data, summary
 
     def _get_statistics_filters(self, params, search_key="ad_group__campaign__name"):
         """
@@ -135,15 +134,15 @@ class AccountTargetingAPIView(APIView):
                 pass
         return scalar_filters
 
-    def _validate_sort(self, params):
+    def _validate_sort(self, params, sorts):
         """
         Extract sort param for aggregated targeting statistics
         Default is to sort by campaign id
         :return: dict
         """
         sort_param = params.get("sort_by", "campaign_name")
-        if sort_param.strip("-") not in self.SORTS:
-            raise ValidationError(f"Invalid sort_by: {sort_param}. Valid sort_by values: {self.SORTS}")
+        if sort_param.strip("-") not in sorts:
+            raise ValidationError(f"Invalid sort_by: {sort_param}. Valid sort_by values: {sorts}")
         return sort_param
 
     def _get_paginated_response(self, paginator, page, summary):
