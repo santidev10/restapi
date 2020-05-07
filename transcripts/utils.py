@@ -2,6 +2,7 @@ import re
 import socket
 
 from bs4 import BeautifulSoup as bs
+from datetime import timedelta
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -14,19 +15,18 @@ from urllib.parse import parse_qs
 
 from administration.notifications import send_email
 from brand_safety.languages import TRANSCRIPTS_LANGUAGE_PRIORITY
+from utils.celery.tasks import lock
 from utils.lang import replace_apostrophes
 
 
 class YTTranscriptsScraper(object):
-    proxies_file_name = "good_proxies.json"
+    EMAILER_LOCK_NAME = "transcripts_alert_emailer"
     NUM_PORTS = 65535
     NUM_THREADS = 100
-
     PROXY_SERVICE = "backconnect"
     PROXY_MEMBERSHIP = "qe9m"
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
         f"{PROXY_MEMBERSHIP}/"
-
     YT_HEADERS = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
@@ -226,8 +226,11 @@ class YTTranscriptsScraper(object):
             self.proxy_counter = self.proxy_counter % len(self.available_proxies)
         self.update_proxy()
 
-    @staticmethod
-    def send_yt_blocked_email():
+    def send_yt_blocked_email(self):
+        try:
+            lock(lock_name=self.EMAILER_LOCK_NAME, max_retries=1, expire=timedelta(minutes=60).total_seconds())
+        except Exception as e:
+            return
         subject = "TTS_URL Transcripts Task Proxies Have Been Blocked by Youtube"
         body = f"All TTS_URL Transcripts Proxies have been blocked by Youtube at {timezone.now()}." \
             f"Locking Task for 5 minutes."
