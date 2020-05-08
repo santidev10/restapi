@@ -4,25 +4,24 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 
 
-class CustomSegmentChannelVettedExportSerializer(CustomSegmentChannelWithMonetizationExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Subscribers", "Overall_Score", "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Vetting_Result")
+class CustomSegmentChannelVettedExportSerializer(
+    CustomSegmentChannelWithMonetizationExportSerializer
+):
+    columns = ("URL", "Title", "Language", "Category", "Subscribers",
+               "Overall_Score", "Vetted", "Monetizable", "Brand_Safety",
+               "Age_Group", "Gender", "Content_Type", "Num_Videos",
+               "Vetting_Result")
 
-    Brand_Safety = SerializerMethodField("get_brand_safety")
-    Language = SerializerMethodField("get_language")
-    Content_Type = SerializerMethodField("get_content_type")
-    Gender = SerializerMethodField("get_gender")
-    Age_Group = SerializerMethodField("get_age_group")
     Vetting_Result = SerializerMethodField("get_vetting_result")
 
 
-class CustomSegmentVideoVettedExportSerializer(CustomSegmentVideoExportSerializer):
-    columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score", "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender", "Content_Type", "Vetting_Result")
+class CustomSegmentVideoVettedExportSerializer(
+    CustomSegmentVideoExportSerializer
+):
+    columns = ("URL", "Title", "Language", "Category", "Views", "Overall_Score",
+               "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
+               "Content_Type", "Vetting_Result")
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
-    Brand_Safety = SerializerMethodField("get_brand_safety")
-    Language = SerializerMethodField("get_language")
-    Content_Type = SerializerMethodField("get_content_type")
-    Gender = SerializerMethodField("get_gender")
-    Age_Group = SerializerMethodField("get_age_group")
     Vetting_Result = SerializerMethodField("get_vetting_result")
 
