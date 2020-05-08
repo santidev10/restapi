@@ -18,12 +18,6 @@ class CampaignBreakoutSerializer(serializers.Serializer):
     ad_group_ids = serializers.ListField()
     max_rate = serializers.DecimalField(max_digits=10, decimal_places=2)
 
-    def validate_video_ad_format(self, value):
-        choices = set(dict(AdGroupCreation.VIDEO_AD_FORMATS).keys())
-        if value not in dict(AdGroupCreation.VIDEO_AD_FORMATS):
-            raise ValidationError(f"Invalid video_ad_format: {value}. Choices: {choices}")
-        return value
-
     def validate(self, data, raise_exception=True):
         validated = {
             "campaign_data": {},

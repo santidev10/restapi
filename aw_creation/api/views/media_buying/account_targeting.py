@@ -50,7 +50,7 @@ class AccountTargetingAPIView(APIView):
         statistics_filters = self._get_statistics_filters(params)
         kpi_filters = self._get_all_filters(params)
         kpi_sort = self._validate_sort(params, config["sorts"])
-        report = AccountTargetingReport(account_creation.account, config["criteria"][:1])
+        report = AccountTargetingReport(account_creation.account, config["criteria"])
         report.prepare_report(
             statistics_filters=statistics_filters,
             aggregation_filters=kpi_filters,
