@@ -173,6 +173,7 @@ class Command(BaseCommand):
                 v_id = seed.strip().split("/")[-1]
                 if '?v=' in v_id:
                     v_id = v_id.split("v=")[-1]
+                v_id = v_id.replace(".", "").replace(";", "")
                 if v_id and len(v_id) < 51 and not v_id in processed_ids:
                     processed_ids.append(v_id)
                     if len(vids) >= self.MAX_SOURCE_VIDEOS:
@@ -278,6 +279,7 @@ class Command(BaseCommand):
             self.append_to_channel(avp, [avp.video_id], 'made_for_kids')
         if db_video_meta.age_restricted == True:
             avp.word_hits['exclusion'] = ['ytAgeRestricted']
+            self.append_to_channel(avp, [avp.video_id], 'age_restricted_videos')
             self.append_to_channel(avp, [avp.video_id], 'bad_video_ids')
             return False
         if self.inclusion_list:
