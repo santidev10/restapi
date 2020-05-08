@@ -7,6 +7,8 @@ from aw_creation.api.serializers.media_buying.campaign_breakout_serializer impor
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import update_or_create_campaign_creation
 from aw_creation.api.views.media_buying.utils import update_or_create_ad_group_creation
+from aw_creation.api.views.media_buying.utils import BID_STRATEGY_TYPE_MAPPING
+
 from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
 from aw_reporting.models import AdGroup
@@ -65,7 +67,6 @@ class AccountBreakoutAPIView(APIView):
         serializer = CampaignBreakoutSerializer(data=data, context={"account_creation": account_creation})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return
         self._process(account_creation, data)
         return Response()
 
@@ -82,14 +83,15 @@ class AccountBreakoutAPIView(APIView):
 
         if should_pause_non_breakout_ad_groups:
             # Pause all break out ad groups that are broken out into new campaign
-            params = {}
+            ag_params = {"status": 0}
             breakout_ad_groups = AdGroup.objects\
                 .filter(id__in=breakout_ad_group_ids)\
-                .annotate(campaign_creation=F("campaign__campaign_creation"))
+                .annotate(campaign_creation_id=F("campaign__campaign_creation"))
             breakout_campaigns = Campaign.objects\
                 .filter(id__in=breakout_ad_groups.values_list("campaign_id", flat=True).distinct())
-            self._set_campaign_creations(breakout_campaigns.values(), account_creation)
-            self._set_ad_group_creations(breakout_ad_groups.values(), params)
+            # Need to create CampaignCreation's for AdGroupCreation relations
+            self._set_campaign_creations(breakout_campaigns, account_creation)
+            self._set_ad_group_creations(breakout_ad_groups, ag_params)
 
         if updated_campaign_budget is not None:
             # Get campaigns of non breakout ad groups and update their budgets
@@ -101,7 +103,7 @@ class AccountBreakoutAPIView(APIView):
 
     def _set_campaign_creations(self, campaigns, account_creation, params=None):
         """
-        Create related CampaignCreation for campaigns for Google Ads sync
+        Create or update related CampaignCreation for campaigns for Google Ads sync
         :param campaigns: list: [Campaign, ...]
         :param account_creation: AccountCreation
         :param params: dict: Optional create / update key, values
@@ -109,22 +111,57 @@ class AccountBreakoutAPIView(APIView):
         """
         params = params or {}
         creations = []
-        for campaign in campaigns:
-            campaign_creation = update_or_create_campaign_creation(account_creation, campaign, params=params)
-            creations.append(campaign_creation)
+        id_to_campaign_mapping = {
+            c.id: c for c in campaigns
+        }
+        all_ids = id_to_campaign_mapping.keys()
+        existing_creations = CampaignCreation.objects.filter(campaign_id__in=all_ids)
+        existing_creations.update(**params)
+
+        to_create = []
+        non_exist_ids = set(all_ids) - set([c.campaign_id for c in existing_creations])
+        for _id in non_exist_ids:
+            campaign = id_to_campaign_mapping[_id]
+            creation = CampaignCreation(
+                account_creation=account_creation,
+                campaign=campaign,
+                name=campaign.name,
+                start=campaign.start,
+                end=campaign.end,
+                type=campaign.type.upper() if campaign.type in {"Video", "Display"} else CampaignCreation.VIDEO_TYPE,
+                bid_strategy_type=BID_STRATEGY_TYPE_MAPPING.get(campaign.bidding_strategy_type,
+                                                                CampaignCreation.MAX_CPV_STRATEGY),
+                **params
+            )
+            to_create.append(creation)
+        CampaignCreation.objects.bulk_create(to_create)
         return creations
 
     def _set_ad_group_creations(self, ad_groups, params=None):
         """
-        Create related AdGroupCreation for ad_groups for Google Ads sync
-        Each AdGroup in ad_groups is annotated with its Campaign's CampaignCreation
+        Create or update related AdGroupCreation for ad_groups for Google Ads sync
+        Each AdGroup in ad_groups is annotated with its Campaign's CampaignCreation id
         :param ad_groups: list: [AdGroup, ...]
         :param params: dict: Optional create / update key, values
         :return:
         """
         params = params or {}
-        creations = []
-        for ag in ad_groups:
-            ad_group_creation = update_or_create_ad_group_creation(ag.campaign_creation, ag, params)
-            creations.append(ad_group_creation)
-        return creations
+        id_to_ad_group_mapping = {
+            ag.id: ag for ag in ad_groups
+        }
+        all_ids = id_to_ad_group_mapping.keys()
+        existing_creations = AdGroupCreation.objects.filter(ad_group_id__in=all_ids)
+        existing_creations.update(**params)
+        non_exist_ids = set(all_ids) - set([ag.id for ag in existing_creations])
+        to_create = []
+        for _id in non_exist_ids:
+            ad_group = id_to_ad_group_mapping[_id]
+            creation = AdGroupCreation(
+                campaign_creation_id=ad_group.campaign_creation_id,
+                ad_group=ad_group,
+                name=ad_group.name,
+                **params
+            )
+            to_create.append(creation)
+        AdGroupCreation.objects.bulk_create(to_create)
+        return []

@@ -1,3 +1,6 @@
+from django.db.models import F
+from django.db.models import Value
+from django.db.models.functions import Concat
 from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 
@@ -8,8 +11,6 @@ from aw_reporting.models import AdGroup
 
 class CampaignBreakoutSerializer(serializers.Serializer):
     CAMPAIGN_FIELDS = ("name", "budget", "start", "end")
-    AD_GROUP_FIELDS = ("name", "max_rate")
-
     name = serializers.CharField(max_length=255)
     start = serializers.DateField()
     end = serializers.DateField()
@@ -36,10 +37,15 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         try:
             validated["campaign_data"] = {key: data[key] for key in self.CAMPAIGN_FIELDS}
             validated["campaign_data"]["account_creation"] = self.context["account_creation"]
-
+            ad_group_id_name_mapping = {
+                ag.id: ag.name for ag in AdGroup.objects.filter(id__in=data["ad_group_ids"])
+            }
             for ad_group_id in data["ad_group_ids"]:
-                ag_data = {key: data[key] for key in self.AD_GROUP_FIELDS}
-                ag_data["ad_group_id"] = ad_group_id
+                ag_data = {
+                    "max_rate": data["max_rate"],
+                    "ad_group_id": ad_group_id,
+                    "name": ad_group_id_name_mapping[ad_group_id]
+                }
                 validated["ad_group_data"].append(ag_data)
         except KeyError as e:
             if raise_exception:
@@ -51,6 +57,13 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         ad_group_data = validated_data["ad_group_data"]
 
         campaign_creation = CampaignCreation.objects.create(**campaign_data)
-        ad_group_creations = AdGroupCreation.objects\
+        # Update name with CampaignCreation id suffix
+        campaign_creation.name += f" # {campaign_creation.id}"
+        campaign_creation.save()
+
+        AdGroupCreation.objects\
             .bulk_create([AdGroupCreation(campaign_creation=campaign_creation, **data) for data in ad_group_data])
-        return campaign_creation, ad_group_creations
+        # Update new AdGroupCreation names with id suffix for identification and matching with Google Ads
+        AdGroupCreation.objects.filter(name__in=[item["name"] for item in ad_group_data])\
+            .update(name=Concat(F("name"), Value(" #"), F("id")))
+        return campaign_creation

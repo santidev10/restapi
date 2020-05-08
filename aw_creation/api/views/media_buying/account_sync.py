@@ -8,7 +8,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from aw_creation.models import AccountCreation
-from aw_creation.models import AdCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 
@@ -37,7 +36,7 @@ class AccountSyncAPIView(APIView):
                 campaign_name=F("campaign_creation__name"),
                 campaign_type=F("campaign_creation__type"),
                 source=Case(
-                    When(sync_at=None, then=F("ad_group_id")),
+                    When(name__contains="#", then=F("ad_group_id")),
                     default=0,
                     output_field=IntegerField()
                 )
@@ -57,8 +56,8 @@ class AccountSyncAPIView(APIView):
         account_creation = AccountCreation.objects.get(account_id=account_id)
         campaign_ids = data["campaign_ids"]
         ad_group_ids = data["ad_group_ids"]
-        ad_ids = data["ad_ids"]
-        CampaignCreation.objects.filter(account_creation=account_creation, campaign_id__in=campaign_ids).update(sync_at=now)
-        AdGroupCreation.objects.filter(ad_group_id__in=ad_group_ids).update(sync_at=now)
-        AdCreation.objects.filter(ad_id__in=ad_ids).update(sync_at=now)
-        return Response()
+        CampaignCreation.objects.filter(account_creation=account_creation, campaign_id__in=campaign_ids)\
+            .update(sync_at=now)
+        AdGroupCreation.objects.filter(ad_group_id__in=ad_group_ids)\
+            .update(sync_at=now)
+        return Response(data)

@@ -77,7 +77,7 @@ def update_or_create_ad_group_creation(campaign_creation, ad_group, params=None)
     params = params or {}
     try:
         ad_group_creation = AdGroupCreation.objects.get(ad_group=ad_group, campaign_creation=campaign_creation)
-        {setattr(ad_group_creation, key, val) for key, val in ad_group_data.items()}
+        {setattr(ad_group_creation, key, val) for key, val in params.items()}
         ad_group_creation.save()
     except AdGroupCreation.DoesNotExist:
         ad_group_creation = AdGroupCreation.objects.create(
