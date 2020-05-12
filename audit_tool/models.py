@@ -427,6 +427,7 @@ class AuditChannelMeta(models.Model):
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
     synced_with_viewiq = models.NullBooleanField(db_index=True)
+    hidden_subscriber_count = models.BooleanField(default=False)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
