@@ -557,6 +557,10 @@ class AuditExporter(models.Model):
             print(a.to_dict())
 
     def to_dict(self):
+        try:
+            owner = str(self.owner)
+        except Exception as e:
+            owner = ""
         d = {
             'started': self.started,
             'audit': self.audit_id,
@@ -564,6 +568,7 @@ class AuditExporter(models.Model):
             'machine': self.machine,
             'thread': self.thread,
             'percent_done': self.percent_done,
+            'owner': owner,
         }
         return d
 
