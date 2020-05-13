@@ -154,7 +154,12 @@ CELERY_BEAT_SCHEDULE = {
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
         "schedule": crontab(minute="*/10"),
-    }
+    },
+    # TODO add after CustomSegment.is_regenerating and is_featured are added
+    # "regenerate_custom_segments": {
+    #     "task": "segment.tasks.regenerate_custom_segments.regenerate_custom_segments_with_lock",
+    #     "schedule": crontab(minute="*/10"),
+    # }
 }
 
 
