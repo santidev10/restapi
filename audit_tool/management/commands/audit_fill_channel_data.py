@@ -142,6 +142,10 @@ class Command(BaseCommand):
                     db_channel_meta.country = self.cache['countries'][country]
                 db_channel_meta.subscribers = convert_subscriber_count(i['statistics']['subscriberCount'])
                 try:
+                    db_channel_meta.hidden_subscriber_count = i['statistics']['hiddenSubscriberCount']
+                except Exception as e:
+                    pass
+                try:
                     db_channel_meta.view_count = int(i['statistics']['viewCount'])
                 except Exception as e:
                     pass
