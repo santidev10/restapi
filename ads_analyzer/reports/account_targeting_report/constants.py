@@ -83,7 +83,7 @@ KPI_FILTER_NAME_MAP = {
     CTR_V: "CTR(v) (%)",
     SUM_IMPRESSIONS: "Impressions",
     SUM_VIDEO_VIEWS: "Video Views",
-    SUM_COST: "Cost",
+    SUM_COST: "Cost ($)",
     SUM_CLICKS: "Clicks"
 }
 
