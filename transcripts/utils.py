@@ -23,9 +23,9 @@ class YTTranscriptsScraper(object):
     EMAILER_LOCK_NAME = "transcripts_alert_emailer"
     NUM_PORTS = 65535
     NUM_RETRIES = 4
-    NUM_THREADS = 100
+    NUM_THREADS = 2500
     PROXY_SERVICE = "backconnect"
-    PROXY_MEMBERSHIP = "qe9m"
+    PROXY_MEMBERSHIP = "QBrL"
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
         f"{PROXY_MEMBERSHIP}/"
     YT_HEADERS = {
