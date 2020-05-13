@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from fake_useragent import UserAgent
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, Timeout
 from threading import Thread
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
@@ -22,6 +22,7 @@ from utils.lang import replace_apostrophes
 class YTTranscriptsScraper(object):
     EMAILER_LOCK_NAME = "transcripts_alert_emailer"
     NUM_PORTS = 65535
+    NUM_RETRIES = 4
     NUM_THREADS = 100
     PROXY_SERVICE = "backconnect"
     PROXY_MEMBERSHIP = "qe9m"
@@ -342,11 +343,13 @@ class YTVideo(object):
         counter = 0
         try:
             # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-            response = requests.get(url=url, proxies=proxy, headers=headers)
+            response = requests.get(url=url, proxies=proxy, headers=headers, timeout=5)
             # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
         except ConnectionError:
             pass
-        while (not response or response.status_code != 200) and counter < 5:
+        except Timeout:
+            pass
+        while (not response or response.status_code != 200) and counter < scraper.NUM_RETRIES:
             counter += 1
             try:
                 # print(f"Blacklisting proxy: {proxy}")
@@ -357,13 +360,15 @@ class YTVideo(object):
                 headers = scraper.get_headers()
                 # print(f"New proxy: {proxy}")
                 # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-                response = requests.get(url=url, proxies=proxy, headers=headers)
+                response = requests.get(url=url, proxies=proxy, headers=headers, timeout=5)
                 # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except ConnectionError as e:
                 # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
                 #       f"Error message: '{e}'")
                 continue
-        if counter >= 5:
+            except Timeout:
+                continue
+        if counter >= scraper.NUM_RETRIES:
             self.proxy = None
             self.host = None
             self.port = None
