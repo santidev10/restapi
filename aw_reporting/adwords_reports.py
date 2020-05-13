@@ -91,7 +91,7 @@ def date_formatted(dt):
 
 
 def _get_report(client, name, selector, date_range_type=None,
-                include_zero_impressions=False, skip_column_header=True):
+                include_zero_impressions=False, skip_column_header=True, use_raw_enum_values=False):
     report_downloader = client.GetReportDownloader(version=API_VERSION)
 
     report = {
@@ -111,7 +111,8 @@ def _get_report(client, name, selector, date_range_type=None,
                     skip_report_header=True,
                     skip_column_header=skip_column_header,
                     skip_report_summary=True,
-                    include_zero_impressions=include_zero_impressions
+                    include_zero_impressions=include_zero_impressions,
+                    use_raw_enum_values=use_raw_enum_values,
                 )
             except AdWordsReportBadRequestError as e:
                 logger.warning(client.client_customer_id)
@@ -162,17 +163,17 @@ def _output_to_rows(output, fields):
     return rows
 
 
-def placement_performance_report(client, dates=None):
+def placement_performance_report(client, dates=None, fields=None, predicates=None):
     """
     Used for getting channels and managed videos
     :param client:
     :param dates:
     :return:
     """
-    fields = ("AdGroupId", "Date", "Device", "Criteria", "DisplayName") + \
+    fields = fields or ("AdGroupId", "Date", "Device", "Criteria", "DisplayName") + \
              MAIN_STATISTICS_FILEDS + COMPLETED_FIELDS
 
-    predicates = [
+    predicates = predicates or [
         {
             "field": "AdNetworkType1",
             "operator": "EQUALS",
@@ -196,7 +197,7 @@ def placement_performance_report(client, dates=None):
         client,
         "PLACEMENT_PERFORMANCE_REPORT",
         selector,
-        date_range_type=date_range_type
+        date_range_type=date_range_type,
     )
 
     return _output_to_rows(result, fields)
@@ -257,7 +258,8 @@ def geo_location_report(client):
 
 
 def _daily_statistic_performance_report(
-        client, name, dates=None, additional_fields=None, fields=None):
+        client, name, dates=None, additional_fields=None, fields=None,
+        use_raw_enum_values=False, predicates=None, include_zero_impressions=False):
     if fields is None:
         fields = DAILY_STATISTIC_PERFORMANCE_REPORT_FIELDS
 
@@ -266,7 +268,7 @@ def _daily_statistic_performance_report(
 
     selector = {
         "fields": fields,
-        "predicates": []
+        "predicates": predicates or []
     }
     if dates:
         selector["dateRange"] = {
@@ -275,44 +277,46 @@ def _daily_statistic_performance_report(
         }
     result = _get_report(
         client, name, selector,
-        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME"
+        date_range_type="CUSTOM_DATE" if dates else "ALL_TIME",
+        use_raw_enum_values=use_raw_enum_values,
+        include_zero_impressions=include_zero_impressions,
     )
     return _output_to_rows(result, fields)
 
 
-def gender_performance_report(client, dates, fields=None):
+def gender_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields
+        client, "GENDER_PERFORMANCE_REPORT", dates, fields=fields, predicates=None
     )
 
 
-def parent_performance_report(client, dates):
+def parent_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, 'PARENTAL_STATUS_PERFORMANCE_REPORT', dates
+        client, 'PARENTAL_STATUS_PERFORMANCE_REPORT', dates, fields=fields, predicates=None
     )
 
 
-def age_range_performance_report(client, dates, fields=None):
+def age_range_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields
+        client, "AGE_RANGE_PERFORMANCE_REPORT", dates, fields=fields, predicates=None
     )
 
 
-def keywords_performance_report(client, dates, fields=None):
+def keywords_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields
+        client, "DISPLAY_KEYWORD_PERFORMANCE_REPORT", dates, fields=fields, predicates=None
     )
 
 
-def topics_performance_report(client, dates, fields=None):
+def topics_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields
+        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields, predicates=None
     )
 
 
-def audience_performance_report(client, dates, fields=None):
+def audience_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields,
+        client, "AUDIENCE_PERFORMANCE_REPORT", dates, fields=fields, predicates=predicates,
         additional_fields=("UserListName",)
     )
 
@@ -370,7 +374,7 @@ def campaign_performance_report(client,
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None, fields=None):
+def ad_group_performance_report(client, dates=None, fields=None, include_zero_impressions=False):
     if fields is None:
         fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
@@ -386,7 +390,7 @@ def ad_group_performance_report(client, dates=None, fields=None):
         }
 
     result = _get_report(
-        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector,
+        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector, include_zero_impressions=include_zero_impressions,
         date_range_type=DateRangeType.CUSTOM_DATE if dates else DateRangeType.ALL_TIME,
     )
     return _output_to_rows(result, fields)

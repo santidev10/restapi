@@ -1,5 +1,4 @@
 from rest_framework.fields import CharField
-from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
 from rest_framework.fields import ReadOnlyField
 from rest_framework.fields import SerializerMethodField
@@ -8,22 +7,24 @@ from ads_analyzer.reports.account_targeting_report.base_serializer import BaseSe
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AgeRangeStatistic
 from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import CriterionType
 from aw_reporting.models import GenderStatistic
+from aw_reporting.models import ParentStatistic
 from aw_reporting.models import age_range_str
 from aw_reporting.models import device_str
 from aw_reporting.models import gender_str
+from aw_reporting.models import parent_str
 from aw_reporting.models import KeywordStatistic
+from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import CriteriaTypeEnum
 
 
 class AdGroupSerializer(BaseSerializer):
-    criterion_name = CriterionType.NONE
-    target_name = SerializerMethodField()
     type = ReadOnlyField(default="AdGroup")
+    target_name = SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = AdGroupStatistic
@@ -35,9 +36,9 @@ class AdGroupSerializer(BaseSerializer):
 
 
 class AgeTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.AGE
+    type = IntegerField(default=CriteriaTypeEnum.AGE_RANGE.value)
     target_name = SerializerMethodField()
-    type = ReadOnlyField(default="AgeRange")
+    criteria = IntegerField(source="age_range_id")
 
     class Meta(BaseSerializer.Meta):
         model = AgeRangeStatistic
@@ -47,34 +48,15 @@ class AgeTargetingSerializer(BaseSerializer):
         age_range = age_range_str(obj["age_range_id"])
         return age_range
 
-
-class VideoCreativeTableSerializer(BaseSerializer):
-    target_name = CharField(source="ad__creative_name")
-    contracted_rate = FloatField(source="ad__ad_group__campaign__salesforce_placement__ordered_rate")
-
-    class Meta(BaseSerializer.Meta):
-        model = VideoCreativeStatistic
-        group_by = ("creative__id",)
-
-
-class DeviceSerializer(BaseSerializer):
-    target_name = SerializerMethodField()
-    type = ReadOnlyField(default="Device")
-
-    class Meta(BaseSerializer.Meta):
-        model = AdGroupStatistic
-        group_by = ("ad_group__id", "device_id")
-
-    def get_target_name(self, obj):
-        device = device_str(obj["device_id"])
-        return device
+    def get_criteria(self, obj):
+        pass
 
 
 class GenderTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.GENDER
+    type = IntegerField(default=CriteriaTypeEnum.GENDER.value)
     target_name = SerializerMethodField()
-    type = ReadOnlyField(default="Gender")
-    
+    criteria = IntegerField(source="gender_id")
+
     class Meta(BaseSerializer.Meta):
         model = GenderStatistic
         group_by = ("ad_group__id", "gender_id")
@@ -85,9 +67,9 @@ class GenderTargetingSerializer(BaseSerializer):
 
 
 class KeywordTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.KEYWORD
+    type = IntegerField(default=CriteriaTypeEnum.KEYWORD.value)
     target_name = CharField(source="keyword")
-    type = ReadOnlyField(default="Keyword")
+    criteria = CharField(source="keyword")
 
     class Meta(BaseSerializer.Meta):
         model = KeywordStatistic
@@ -95,10 +77,10 @@ class KeywordTargetingSerializer(BaseSerializer):
 
 
 class TopicTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.VERTICAL
+    type = IntegerField(default=CriteriaTypeEnum.VERTICAL.value)
     target_name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
-    type = ReadOnlyField(default="Topic")
+    criteria = IntegerField(source="topic__id")
 
     class Meta(BaseSerializer.Meta):
         model = TopicStatistic
@@ -107,9 +89,9 @@ class TopicTargetingSerializer(BaseSerializer):
 
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.PLACEMENT
+    type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.value)
     target_name = CharField(source="yt_id")
-    type = ReadOnlyField(default="Channel")
+    criteria = CharField(source="yt_id")
 
     class Meta(BaseSerializer.Meta):
         model = YTChannelStatistic
@@ -117,9 +99,9 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.PLACEMENT
+    type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.value)
     target_name = CharField(source="yt_id")
-    type = ReadOnlyField(default="Video")
+    criteria = CharField(source="yt_id")
 
     class Meta(BaseSerializer.Meta):
         model = YTVideoStatistic
@@ -127,10 +109,59 @@ class PlacementVideoTargetingSerializer(BaseSerializer):
 
 
 class AudienceTargetingSerializer(BaseSerializer):
-    criterion_name = CriterionType.USER_INTEREST_LIST
+    type = IntegerField(default=CriteriaTypeEnum.USER_INTEREST.value)
     target_name = CharField(source="audience__name")
-    type = ReadOnlyField(default="Audience")
+    criteria = IntegerField(source="audience_id")
 
     class Meta(BaseSerializer.Meta):
         model = AudienceStatistic
         group_by = ("ad_group__id", "audience_id", "audience__name", "audience__type")
+
+
+class RemarketTargetingSerializer(BaseSerializer):
+    type = IntegerField(default=CriteriaTypeEnum.USER_LIST.value)
+    target_name = CharField(source="remark__name")
+    criteria = IntegerField(source="remark_id")
+
+    class Meta(BaseSerializer.Meta):
+        model = RemarkStatistic
+        group_by = ("remark__name", "remark_id")
+
+
+class ParentTargetingSerializer(BaseSerializer):
+    type = IntegerField(default=CriteriaTypeEnum.PARENT.value)
+    target_name = SerializerMethodField()
+    criteria = IntegerField(source="parent_status_id")
+
+    class Meta(BaseSerializer.Meta):
+        model = ParentStatistic
+        group_by = ("parent_status_id",)
+
+    def get_target_name(self, obj):
+        parent = parent_str(obj["parent_status_id"])
+        return parent
+
+
+class DeviceTargetingSerializer(BaseSerializer):
+    # type = IntegerField(default="Device")
+    type = IntegerField(default=CriteriaTypeEnum.DEVICE.value)
+    target_name = SerializerMethodField()
+    criteria = IntegerField(source="device_id")
+
+    class Meta(BaseSerializer.Meta):
+        model = AdGroupStatistic
+        group_by = ("device_id",)
+
+    def get_target_name(self, obj):
+        device = device_str(obj["device_id"])
+        return device
+
+
+class VideoCreativeTargetingSerializer(BaseSerializer):
+    type = IntegerField(default=CriteriaTypeEnum.VIDEO_CREATIVE.value)
+    criteria = CharField(source="creative_id")
+    target_name = CharField(source="creative_id")
+
+    class Meta(BaseSerializer.Meta):
+        model = VideoCreativeStatistic
+        group_by = ("creative_id",)

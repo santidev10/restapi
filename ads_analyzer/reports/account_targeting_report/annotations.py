@@ -45,15 +45,15 @@ ANNOTATIONS = {
         output_field=DBFloatField()
     ),
     names.IMPRESSIONS_SHARE: ExpressionWrapper(
-        F("sum_impressions") * 1.0 / NullIf(F("ad_group__impressions"), 0),
+        F("sum_impressions") * 1.0 / NullIf(F("ad_group__campaign__impressions"), 0),
         output_field=DBFloatField()
     ),
     names.VIDEO_VIEWS_SHARE: ExpressionWrapper(
-        F("sum_video_views") * 1.0 / NullIf(F("ad_group__video_views"), 0),
+        F("sum_video_views") * 1.0 / NullIf(F("ad_group__campaign__video_views"), 0),
         output_field=DBFloatField()
     ),
     names.COST_SHARE: ExpressionWrapper(
-        F("sum_cost") * 1.0 / NullIf(F("ad_group__cost"), 0),
+        F("sum_cost") * 1.0 / NullIf(F("ad_group__campaign__cost"), 0),
         output_field=DBFloatField()
     ),
     names.CTR_I: ExpressionWrapper(
