@@ -305,12 +305,9 @@ CHANNEL_AUTHENTICATION_ACTION_EMAIL_ADDRESSES = [
 ]
 
 CHANNEL_AUTHENTICATION_NOTIFY_TO = [
-    "yuriy.matso@channelfactory.com",
-    "aleksandr.yakovenko@sigma.software",
-    "maria.konareva@sigma.software",
-    "alexander.bykov@sigma.software",
-    "sean.maguire@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software"
+    "maria.konareva@sigma.software",
+    "sean.maguire@channelfactory.com",
 ]
 
 CONTACT_FORM_EMAIL_ADDRESSES = [
@@ -320,51 +317,51 @@ CONTACT_FORM_EMAIL_ADDRESSES = [
 
 AUDIT_TOOL_EMAIL_ADDRESSES = [
     "andrii.dobrovolskyi@sigma.software",
+    "sergey.zhiltsov@sigma.software",
 ]
 
 AUDIT_TOOL_EMAIL_RECIPIENTS = [
+    "alex.peace@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "alex.peace@channelfactory.com",
 ]
 
 VETTING_EXPORT_EMAIL_RECIPIENTS = [
+    "alex.peace@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
-    "alex.peace@channelfactory.com",
 ]
 
 EMERGENCY_EMAIL_ADDRESSES = [
+    "alex.peace@channelfactory.com",
+    "alexander.alexandrov@sigma.software",
+    "andrew.vonpelt@channelfactory.com",
     "andrii.dobrovolskyi@sigma.software",
-    "oleksandr.demianyshyn@sigma.software",
-    "yaryna.kimak@sigma.software",
-    "maria.konareva@sigma.software",
-    "vira.horbushko@sigma.software",
-    "kenneth.oh@channelfactory.com",
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
+    "kenneth.oh@channelfactory.com",
+    "maria.konareva@sigma.software",
+    "oleksandr.demianyshyn@sigma.software",
     "sean.maguire@channelfactory.com",
-    "andrew.vonpelt@channelfactory.com",
-    "alex.peace@channelfactory.com",
 ]
 
 ES_MONITORING_EMAIL_ADDRESSES = [
-    "andrii.dobrovolskyi@sigma.software",
-    "oleksandr.demianyshyn@sigma.software",
-    "sergey.zhiltsov@sigma.software",
-    "yaryna.kimak@sigma.software",
+    "alex.peace@channelfactory.com",
+    "alexander.alexandrov@sigma.software",
     "andrew.vonpelt@channelfactory.com",
-    "kenneth.oh@channelfactory.com",
+    "andrii.dobrovolskyi@sigma.software",
     "bryan.ngo@channelfactory.com",
     "george.su@channelfactory.com",
+    "kenneth.oh@channelfactory.com",
+    "oleksandr.demianyshyn@sigma.software",
     "sean.maguire@channelfactory.com",
-    "alex.peace@channelfactory.com",
+    "sergey.zhiltsov@sigma.software",
 ]
 
 UI_ERROR_REPORT_EMAIL_ADDRESSES = [
+    "alex.peace@channelfactory.com",
     "sean.maguire@channelfactory.com",
     "servando.berna@channelfactory.com",
-    "alex.peace@channelfactory.com",
 ]
 
 SALESFORCE_UPDATES_ADDRESSES = []

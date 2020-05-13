@@ -1,17 +1,17 @@
 """
 Segment api serializers module
 """
-from brand_safety.languages import LANGUAGES
 from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
+from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
-from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
-from utils.brand_safety import map_brand_safety_score
+from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
+from segment.api.serializers.segment_export_serializer_mixins import SegmentExportSerializerMixin
 
 
 class PersistentSegmentVideoExportSerializer(
-    CustomSegmentVideoExportSerializer
+    SegmentExportSerializerMixin,
+    Serializer
 ):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
                "Views", "Overall_Score", "Vetted", "Brand_Safety", "Age_Group",
@@ -34,18 +34,11 @@ class PersistentSegmentVideoExportSerializer(
     def get_url(self, obj):
         return f"https://www.youtube.com/video/{obj.main.id}"
 
-    def get_language(self, obj):
-        lang_code = getattr(obj.general_data, "lang_code", "")
-        language = LANGUAGES.get(lang_code, lang_code)
-        return language
-
-    def get_overall_score(self, obj):
-        score = map_brand_safety_score(obj.brand_safety.overall_score)
-        return score
-
 
 class PersistentSegmentChannelExportSerializer(
-    CustomSegmentChannelExportSerializer
+    SegmentChannelExportSerializerMixin,
+    SegmentExportSerializerMixin,
+    Serializer
 ):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",
                "Dislikes", "Views", "Audited_Videos", "Overall_Score", "Vetted",
@@ -67,15 +60,3 @@ class PersistentSegmentChannelExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
-
-    def get_url(self, obj):
-        return f"https://www.youtube.com/channel/{obj.main.id}"
-
-    def get_language(self, obj):
-        lang_code = getattr(obj.general_data, "top_lang_code", "")
-        language = LANGUAGES.get(lang_code, lang_code)
-        return language
-
-    def get_overall_score(self, obj):
-        score = map_brand_safety_score(obj.brand_safety.overall_score)
-        return score

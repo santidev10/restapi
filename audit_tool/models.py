@@ -427,6 +427,7 @@ class AuditChannelMeta(models.Model):
     last_uploaded_category = models.ForeignKey(AuditCategory, default=None, null=True, db_index=True,
                                                on_delete=models.CASCADE)
     synced_with_viewiq = models.NullBooleanField(db_index=True)
+    hidden_subscriber_count = models.BooleanField(default=False)
 
 class AuditVideo(models.Model):
     channel = models.ForeignKey(AuditChannel, db_index=True, default=None, null=True, on_delete=models.CASCADE)
@@ -556,6 +557,10 @@ class AuditExporter(models.Model):
             print(a.to_dict())
 
     def to_dict(self):
+        try:
+            owner = str(self.owner)
+        except Exception as e:
+            owner = ""
         d = {
             'started': self.started,
             'audit': self.audit_id,
@@ -563,6 +568,7 @@ class AuditExporter(models.Model):
             'machine': self.machine,
             'thread': self.thread,
             'percent_done': self.percent_done,
+            'owner': owner,
         }
         return d
 
