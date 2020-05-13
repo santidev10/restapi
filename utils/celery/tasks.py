@@ -1,10 +1,10 @@
 from functools import wraps
-import redis
 
 from celery import chord
 from celery import group
-
 from django.conf import settings
+import redis
+
 from saas import celery_app
 
 REDIS_CLIENT = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
@@ -56,12 +56,9 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
                     result = func(*args, **kwargs)
                 else:
                     result = None
-
             finally:
-
-                if is_acquired:
+                if is_acquired and lock.owned():
                     lock.release()
-
             return result
         return _caller
     return _dec
