@@ -23,7 +23,9 @@ class YTTranscriptsScraper(object):
     EMAILER_LOCK_NAME = "transcripts_alert_emailer"
     NUM_PORTS = 65535
     NUM_RETRIES = 4
-    NUM_THREADS = 2500
+    NUM_THREADS = settings.TRANSCRIPTS_NUM_THREADS
+    TIMEOUT = settings.TRANSCRIPTS_TIMEOUT
+    PROXY_OFFSET = settings.PROXY_OFFSET
     PROXY_SERVICE = "backconnect"
     PROXY_MEMBERSHIP = "QBrL"
     PROXY_API_URL = f"http://shifter.io/api/v1/{PROXY_SERVICE}/" \
@@ -79,7 +81,7 @@ class YTTranscriptsScraper(object):
                 "host": proxy.split(":")[0],
                 "port": proxy.split(":")[1]
             }
-            for proxy in proxies
+            for proxy in proxies[self.PROXY_OFFSET:self.PROXY_OFFSET+self.NUM_THREADS]
         ]
 
     def get_geo(self):
@@ -343,7 +345,7 @@ class YTVideo(object):
         counter = 0
         try:
             # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-            response = requests.get(url=url, proxies=proxy, headers=headers, timeout=5)
+            response = requests.get(url=url, proxies=proxy, headers=headers, timeout=scraper.TIMEOUT)
             # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
         except ConnectionError:
             pass
@@ -360,7 +362,7 @@ class YTVideo(object):
                 headers = scraper.get_headers()
                 # print(f"New proxy: {proxy}")
                 # print(f"Sending Request #{counter} to URL: '{url}' through Proxy: '{proxy}'")
-                response = requests.get(url=url, proxies=proxy, headers=headers, timeout=5)
+                response = requests.get(url=url, proxies=proxy, headers=headers, timeout=scraper.TIMEOUT)
                 # print(f"Received Response with Status Code: '{response.status_code}' from Proxy: '{proxy}'")
             except ConnectionError as e:
                 # print(f"Encountered ConnectionError/ProxyError while sending request to '{url}' through Proxy: '{proxy}'."
