@@ -34,7 +34,7 @@ urlpatterns = [
         AccountCampaignAPIView.as_view(),
         name="account_campaign"),
 
-    url(r'^account/(?P<account_id>\w+)/ad_group/(?P<ad_group_id>\w+)/targeting/(?P<ad_group_targeting_id>\w+)',
+    url(r'^account/(?P<account_id>\w+)/targeting/(?P<ad_group_targeting_id>\w+)/$',
         AccountAdGroupTargetingAPIView.as_view(),
         name="account_ad_group_targeting"),
 ]

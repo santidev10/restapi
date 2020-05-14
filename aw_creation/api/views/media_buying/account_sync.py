@@ -7,15 +7,17 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from aw_creation.api.serializers.media_buying.ad_group_targeting_serializer import AdGroupTargetingSerializer
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
-
+from aw_reporting.models import AdGroupTargeting
 
 class AccountSyncAPIView(APIView):
     NEW_CAMPAIGN_FIELDS = ("id", "name", "bid_strategy_type", "budget", "type", "start", "end", "target_cpa")
     UPDATE_CAMPAIGN_FIELDS = ("name", "budget")
     AD_GROUP_FIELDS = ("id", "campaign_name", "campaign_type", "name", "max_rate", "status", "source")
+    AD_GROUP_TARGETING_FIELDS = ("status", "is_negative", "type__name")
 
     def get(self, request, *args, **kwargs):
         """ Get data to sync on Google Ads """
@@ -39,12 +41,19 @@ class AccountSyncAPIView(APIView):
                     When(name__contains="#", then=F("ad_group_id")),
                     default=0,
                     output_field=IntegerField()
-                )
+                ),
             )\
             .values(*self.AD_GROUP_FIELDS)
+        targeting_queryset = AdGroupTargeting.objects\
+            .filter(ad_group__campaign__account_id=account_id, sync_pending=True) \
+            .values_list("ad_group_id", flat=True)\
+            .distinct()
+
+        ad_group_targeting = AdGroupTargetingSerializer(targeting_queryset, many=True).data
         sync_data = {
             "campaigns": list(to_create) + list(to_update),
             "ad_groups": ad_group_creations,
+            "ad_group_targeting": ad_group_targeting,
         }
         return Response(sync_data)
 

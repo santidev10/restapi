@@ -15,6 +15,7 @@ from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
 from aw_reporting.models import AdGroupTargeting
+from aw_reporting.models import TargetingStatusEnum
 from aw_reporting.google_ads.utils import get_criteria_exists_key
 from utils.views import validate_date
 
@@ -189,9 +190,13 @@ class AccountTargetingAPIView(APIView):
             try:
                 criteria_key = get_criteria_exists_key(res_item["ad_group_id"], res_item["type"], str(res_item["criteria"]))
                 targeting_obj = exists_mapping[criteria_key]
+                if targeting_obj.status == TargetingStatusEnum.ENABLED.value and targeting_obj.is_negative is True:
+                    status = TargetingStatusEnum.EXCLUDED.name
+                else:
+                    status = TargetingStatusEnum(targeting_obj.status).name
                 data = {
                     "targeting_id": targeting_obj.id,
-                    "targeting_status": targeting_obj.status,
+                    "targeting_status": status,
                     "sync_pending": targeting_obj.sync_pending,
                 }
             except KeyError:

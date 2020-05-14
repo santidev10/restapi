@@ -77,7 +77,7 @@ class AdGroupCriteriaUpdater(object):
                     targeting_item = AdGroupTargeting(
                         ad_group_id=row_obj.AdGroupId,
                         type_id=criteria_type_enum.value,
-                        is_negative=True if getattr(row_obj, "IsNegative", None) is "TRUE" else False,
+                        is_negative=True if getattr(row_obj, "IsNegative", None) == "true" else False,
                         criteria=row_obj.Criteria,
                         status=TargetingStatusEnum[row_obj.Status.upper()].value,
                         statistic_criteria=statistic_criteria,
