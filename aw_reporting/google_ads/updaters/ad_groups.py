@@ -50,8 +50,7 @@ class AdGroupUpdater(UpdateMixin):
                 if max_date \
                 else (self.MIN_FETCH_DATE, max_available_date)
 
-        report = ad_group_performance_report(
-            client, dates=dates,include_zero_impressions=True)
+        report = ad_group_performance_report(client, dates=dates)
         if report:
             click_type_report = ad_group_performance_report(client, dates=dates, fields=click_type_report_fields)
             click_type_data = format_click_types_report(click_type_report, report_unique_field_name)
