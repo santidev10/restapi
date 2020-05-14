@@ -374,7 +374,7 @@ def campaign_performance_report(client,
     return _output_to_rows(result, fields)
 
 
-def ad_group_performance_report(client, dates=None, fields=None, include_zero_impressions=False):
+def ad_group_performance_report(client, dates=None, fields=None):
     if fields is None:
         fields = AD_GROUP_PERFORMANCE_REPORT_FIELDS
 
@@ -390,7 +390,7 @@ def ad_group_performance_report(client, dates=None, fields=None, include_zero_im
         }
 
     result = _get_report(
-        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector, include_zero_impressions=include_zero_impressions,
+        client, AWReport.AD_GROUP_PERFORMANCE_REPORT, selector,
         date_range_type=DateRangeType.CUSTOM_DATE if dates else DateRangeType.ALL_TIME,
     )
     return _output_to_rows(result, fields)
