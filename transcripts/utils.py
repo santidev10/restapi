@@ -81,7 +81,7 @@ class YTTranscriptsScraper(object):
                 "host": proxy.split(":")[0],
                 "port": proxy.split(":")[1]
             }
-            for proxy in proxies[self.PROXY_OFFSET:self.PROXY_OFFSET+self.NUM_THREADS]
+            for proxy in proxies[self.PROXY_OFFSET:self.PROXY_OFFSET+self.NUM_THREADS//10]
         ]
 
     def get_geo(self):
