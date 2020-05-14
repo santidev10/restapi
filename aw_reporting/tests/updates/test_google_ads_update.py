@@ -774,6 +774,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             updater.update_all_except_campaigns()
 
         downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       use_raw_enum_values=False,
                                                                        skip_report_header=True,
                                                                        skip_column_header=True,
                                                                        skip_report_summary=True,
@@ -813,11 +814,14 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             updater.main_updaters = (AdGroupUpdater,)
             updater.update_all_except_campaigns()
 
-        downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
-                                                                       skip_report_header=True,
-                                                                       skip_column_header=True,
-                                                                       skip_report_summary=True,
-                                                                       include_zero_impressions=False)
+        downloader_mock.DownloadReportAsStream.assert_called_once_with(
+            ANY,
+            skip_report_header=True,
+            skip_column_header=True,
+            skip_report_summary=True,
+            include_zero_impressions=False,
+            use_raw_enum_values=False,
+        )
         call = downloader_mock.DownloadReportAsStream.mock_calls[0]
         payload = call[1][0]
         selector = payload["selector"]
@@ -855,6 +859,7 @@ class UpdateAwAccountsTestCase(TransactionTestCase):
             updater.update_all_except_campaigns()
 
         downloader_mock.DownloadReportAsStream.assert_called_once_with(ANY,
+                                                                       use_raw_enum_values=False,
                                                                        skip_report_header=True,
                                                                        skip_column_header=True,
                                                                        skip_report_summary=True,

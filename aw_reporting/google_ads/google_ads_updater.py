@@ -15,6 +15,7 @@ from aw_reporting.adwords_reports import AccountInactiveError
 from aw_reporting.google_ads.google_ads_api import get_client
 from aw_reporting.google_ads.updaters.accounts import AccountUpdater
 from aw_reporting.google_ads.updaters.ad_groups import AdGroupUpdater
+from aw_reporting.google_ads.updaters.ad_group_criteria import AdGroupCriteriaUpdater
 from aw_reporting.google_ads.updaters.ads import AdUpdater
 from aw_reporting.google_ads.updaters.audiences import update_audiences
 from aw_reporting.google_ads.updaters.age_range import AgeRangeUpdater
@@ -70,6 +71,7 @@ class GoogleAdsUpdater(object):
         InterestUpdater,
         CityUpdater,
         CampaignLocationTargetUpdater,
+        AdGroupCriteriaUpdater,
     )
 
     def __init__(self, account):

@@ -171,3 +171,17 @@ def detect_success_aw_read_permissions():
             else:
                 permission.can_read = True
                 permission.save()
+
+
+def get_criteria_exists_key(ad_group_id: int, criteria_type_value: int, statistic_criteria: str):
+    """
+    Method to ensure tuple key is consistent with same Adwords row object and CriteriaTypeEnum.name
+    """
+    if not isinstance(ad_group_id, int):
+        raise ValueError("ad_group_id must be int")
+    if not isinstance(criteria_type_value, int):
+        raise ValueError("criteria_type_value must be int")
+    if not isinstance(statistic_criteria, str):
+        raise ValueError("statistic_criteria must be str")
+    exists_key = (ad_group_id, criteria_type_value, statistic_criteria)
+    return exists_key

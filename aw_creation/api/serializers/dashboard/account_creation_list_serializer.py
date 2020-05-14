@@ -136,6 +136,7 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
             "start",
             "statistic_max_date",
             "statistic_min_date",
+            "status",
             "thumbnail",
             "updated_at",
             "video_view_rate",
@@ -398,3 +399,11 @@ class DashboardAccountCreationListSerializer(ModelSerializer, ExcludeFieldsMixin
         if opp_count > 1:
             logger.warning("AccountCreation (id: {}) has more then one opportunity ({})".format(obj.id, opp_count))
         return opportunities.first()
+
+    def get_status(self, obj):
+        exists = Campaign.objects.filter(account=obj.account, status="serving").exists()
+        if exists:
+            status = "Running"
+        else:
+            status = "Not Running"
+        return status

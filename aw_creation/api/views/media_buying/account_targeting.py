@@ -1,8 +1,11 @@
 from collections import namedtuple
+import hashlib
+import json
 
 from django.core.paginator import EmptyPage
 from django.core.paginator import InvalidPage
 from django.core.paginator import Paginator
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
@@ -11,6 +14,9 @@ from ads_analyzer.reports.account_targeting_report.create_report import AccountT
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
+from aw_reporting.models import AdGroupTargeting
+from aw_reporting.models import TargetingStatusEnum
+from aw_reporting.google_ads.utils import get_criteria_exists_key
 from utils.views import validate_date
 
 
@@ -19,10 +25,11 @@ ScalarFilter = namedtuple("ScalarFilter", "name type")
 
 class AccountTargetingAPIView(APIView):
     """
-    GET: Retrieve aggregated targeting statistics
+    GET: Retrieve AdGroup targeting statistics for Account
 
     """
-    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share",
+    CACHE_KEY_PREFIX = "restapi.aw_creation.views.media_buying.account_targeting"
+    RANGE_FILTERS = ("average_cpv", "average_cpm", "margin", "impressions_share", "sum_cost",
                      "video_views_share", "video_view_rate", "sum_impressions", "sum_video_views", "sum_clicks")
     SCALAR_FILTERS = ()
     DEFAULT_SORTS = ("campaign_name", "ad_group_name", "target_name")
@@ -31,14 +38,16 @@ class AccountTargetingAPIView(APIView):
         pk = kwargs["pk"]
         params = self.request.query_params
         account_creation = get_account_creation(request.user, pk)
-        data, summary = self._get_report(account_creation, params)
+        account = account_creation.account
+        data, summary = self._get_report(account, params)
         page = params.get("page", 1)
         page_size = params.get("size", 25)
         paginator = Paginator(data, page_size)
         res = self._get_paginated_response(paginator, page, summary)
+        self._set_targeting_criteria(account, res["items"])
         return Response(data=res)
 
-    def _get_report(self, account_creation, params):
+    def _get_report(self, account, params):
         """
         Validate and extract parameters
         :param report:
@@ -48,9 +57,9 @@ class AccountTargetingAPIView(APIView):
         """
         config = validate_targeting(params.get("targeting"), list(REPORT_CONFIG.keys()))
         statistics_filters = self._get_statistics_filters(params)
-        kpi_filters = self._get_all_filters(params)
+        kpi_filters = self._get_all_filters(params, config)
         kpi_sort = self._validate_sort(params, config["sorts"])
-        report = AccountTargetingReport(account_creation.account, config["criteria"])
+        report = AccountTargetingReport(account, config["criteria"])
         report.prepare_report(
             statistics_filters=statistics_filters,
             aggregation_filters=kpi_filters,
@@ -81,18 +90,18 @@ class AccountTargetingAPIView(APIView):
             pass
         return statistics_filters
 
-    def _get_all_filters(self, params):
+    def _get_all_filters(self, params, config):
         """
         Extract all query param filters
         :return: dict
         """
         filters = {
-            **self._get_kpi_range_filters(params),
-            **self._get_kpi_scalar_filters(params),
+            **self._get_kpi_range_filters(params, config["range_filters"]),
+            **self._get_kpi_scalar_filters(params, config["scalar_filters"]),
         }
         return filters
 
-    def _get_kpi_range_filters(self, params):
+    def _get_kpi_range_filters(self, params, valid_range_filters):
         """
         Get all range filters for aggregated targeting statistics
         Expects values to be comma separated min, max range values
@@ -100,7 +109,7 @@ class AccountTargetingAPIView(APIView):
         :return:
         """
         range_filters = {}
-        for filter_type in self.RANGE_FILTERS:
+        for filter_type in valid_range_filters:
             try:
                 _min, _max = params[filter_type].strip("/").split(",")
                 if float(_min) > float(_max):
@@ -115,7 +124,7 @@ class AccountTargetingAPIView(APIView):
                 pass
         return range_filters
 
-    def _get_kpi_scalar_filters(self, params):
+    def _get_kpi_scalar_filters(self, params, valid_filters):
         """
         Get all scalar filters for aggregated targeting statistics
         Uses ScalarFilter namedtuple's filter type to determine filter suffix
@@ -123,7 +132,7 @@ class AccountTargetingAPIView(APIView):
         :return:
         """
         scalar_filters = {}
-        for _filter in self.SCALAR_FILTERS:
+        for _filter in valid_filters:
             try:
                 value = params[_filter.name]
                 if _filter.type == "str":
@@ -161,3 +170,54 @@ class AccountTargetingAPIView(APIView):
             "max_page": paginator.num_pages,
         }
         return data
+
+    def _set_targeting_criteria(self, account, targeting_items):
+        """
+        Copy AdGroupTargeting values from Criteria Performance report to aggregated statistics
+        :param targeting_items:
+        :return:
+        """
+        statistic_criteria = [item["criteria"] for item in targeting_items]
+        existing_targeting = AdGroupTargeting.objects\
+            .filter(ad_group__campaign__account=account, statistic_criteria__in=statistic_criteria)
+        exists_mapping = {
+            get_criteria_exists_key(
+                targeting_obj.ad_group_id, targeting_obj.type_id, targeting_obj.statistic_criteria
+            ): targeting_obj
+            for targeting_obj in existing_targeting
+        }
+        for res_item in targeting_items:
+            try:
+                criteria_key = get_criteria_exists_key(res_item["ad_group_id"], res_item["type"], str(res_item["criteria"]))
+                targeting_obj = exists_mapping[criteria_key]
+                if targeting_obj.status == TargetingStatusEnum.ENABLED.value and targeting_obj.is_negative is True:
+                    status = TargetingStatusEnum.EXCLUDED.name
+                else:
+                    status = TargetingStatusEnum(targeting_obj.status).name
+                data = {
+                    "targeting_id": targeting_obj.id,
+                    "targeting_status": status,
+                    "sync_pending": targeting_obj.sync_pending,
+                }
+            except KeyError:
+                data = {
+                    "targeting_id": None,
+                    "targeting_status": None,
+                    "sync_pending": None,
+                }
+            res_item.update(data)
+
+    def get_cache_key(self, part, options):
+        params = {}
+        query_params = options[0][1]
+        # Get sorted query params for consistency
+        for key in sorted(query_params.keys()):
+            params[key] = query_params[key]
+        data = dict(
+            account_creation_id=options[0][0].id,
+            query_params=params,
+        )
+        key_json = json.dumps(data, sort_keys=True, cls=DjangoJSONEncoder)
+        key_hash = hashlib.md5(key_json.encode()).hexdigest()
+        key = f"{self.CACHE_KEY_PREFIX}.{part}.{key_hash}"
+        return key, key_json
