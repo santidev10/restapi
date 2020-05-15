@@ -13,6 +13,7 @@ elasticsearch==7.1.0
 emoji==0.5.4
 fasttext==0.9.1
 flashtext==2.7
+google-api-python-client==1.8.2
 googleads==23.0.1
 httplib2==0.12.1
 isodate==0.6.0
