@@ -99,20 +99,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
         "schedule": crontab(hour="*", minute="*/30"),
     },
-    "cache-keyword-aggregations": {
-        "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
     "cache-research-videos-defaults": {
         "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
         "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
-    "cache-research-keywords-defaults": {
-        "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
         "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache_pricing_tool_filters": {
