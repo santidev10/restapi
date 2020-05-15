@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
+from ads_analyzer.reports.account_targeting_report.export_report import account_targeting_export
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
@@ -39,15 +40,33 @@ class AccountTargetingAPIView(APIView):
         params = self.request.query_params
         account_creation = get_account_creation(request.user, pk)
         account = account_creation.account
-        data, summary = self._get_report(account, params)
-        page = params.get("page", 1)
-        page_size = params.get("size", 25)
-        paginator = Paginator(data, page_size)
-        res = self._get_paginated_response(paginator, page, summary)
-        self._set_targeting_criteria(account, res["items"])
-        return Response(data=res)
 
-    def _get_report(self, account, params):
+        config = validate_targeting(params.get("targeting"), list(REPORT_CONFIG.keys()))
+        statistics_filters = self._get_statistics_filters(params)
+        kpi_filters = self._get_all_filters(params, config)
+        kpi_sort = self._validate_sort(params, config["sorts"])
+
+        if params.get("export"):
+            params = {
+                "recipient": request.user.email,
+                "account_id": account.id,
+                "aggregation_columns": config["aggregations"],
+                "aggregation_filters": kpi_filters,
+                "statistics_filters": statistics_filters,
+                "criteria": config["criteria"],
+            }
+            account_targeting_export.delay(params)
+            res = {"message": f"Processing. You will receive an email when your export for: {account.name} is ready."}
+        else:
+            data, summary = self._get_report(account, config, statistics_filters, kpi_filters, kpi_sort)
+            page = params.get("page", 1)
+            page_size = params.get("size", 25)
+            paginator = Paginator(data, page_size)
+            res = self._get_paginated_response(paginator, page, summary)
+            self._set_targeting_criteria(account, res["items"])
+        return Response(res)
+
+    def _get_report(self, account, config, statistics_filters, kpi_filters, kpi_sort):
         """
         Validate and extract parameters
         :param report:
@@ -55,10 +74,6 @@ class AccountTargetingAPIView(APIView):
         :param targeting:
         :return:
         """
-        config = validate_targeting(params.get("targeting"), list(REPORT_CONFIG.keys()))
-        statistics_filters = self._get_statistics_filters(params)
-        kpi_filters = self._get_all_filters(params, config)
-        kpi_sort = self._validate_sort(params, config["sorts"])
         report = AccountTargetingReport(account, config["criteria"])
         report.prepare_report(
             statistics_filters=statistics_filters,

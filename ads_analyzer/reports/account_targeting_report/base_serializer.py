@@ -17,6 +17,7 @@ class BaseSerializer(ModelSerializer):
     criteria = None
     type = None
     target_name = None
+    type_name = None
 
     # cls.Meta.values_shared
     ad_group_name = CharField(source="ad_group__name")
@@ -51,8 +52,10 @@ class BaseSerializer(ModelSerializer):
         fields = (
             "target_name",
             "type",
+            "type_name",
             "campaign_id",
             "campaign_name",
+            "campaign_status",
             "criteria",
             "ad_group_id",
             "ad_group_name",
@@ -65,6 +68,7 @@ class BaseSerializer(ModelSerializer):
             "ctr_i",
             "ctr_v",
             "revenue",
+            "rate_type",
             "video_view_rate",
             "profit",
             "margin",
@@ -82,6 +86,7 @@ class BaseSerializer(ModelSerializer):
             "ad_group__id",
             "ad_group__name",
             "ad_group__campaign__name",
+            "ad_group__campaign__status",
             "ad_group__campaign__id",
             "ad_group__campaign__impressions",
             "ad_group__campaign__video_views",

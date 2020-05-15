@@ -1,4 +1,7 @@
+from enum import Enum
+
 import ads_analyzer.reports.account_targeting_report.constants as names
+from aw_creation.models import CampaignCreation
 from aw_reporting.models import CriteriaTypeEnum
 
 
@@ -25,3 +28,9 @@ REPORT_CONFIG = {
         ]
     },
 }
+
+
+class CampaignBidStrategyTypeEnum(Enum):
+    cpa: CampaignCreation.TARGET_CPA_STRATEGY
+    cpv: CampaignCreation.MAX_CPV_STRATEGY
+    cpm: CampaignCreation.MAX_CPM_STRATEGY
