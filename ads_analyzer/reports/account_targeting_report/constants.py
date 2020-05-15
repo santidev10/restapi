@@ -99,15 +99,18 @@ TOTAL_SUMMARY_COLUMN_AGG_MAPPING = {
     "sum_impressions__sum": SUM_IMPRESSIONS,
     "sum_video_views__sum": SUM_VIDEO_VIEWS,
     "sum_clicks__sum": SUM_CLICKS,
+    "sum_cost__sum": SUM_COST,
 
-    "video_view_rate__avg": AVERAGE_VIEW_RATE,
-    "contracted_rate__avg": AVERAGE_CONTRACTED_RATE,
     "average_cpm__avg": AVERAGE_CPM,
     "average_cpv__avg": AVERAGE_CPV,
-    "cost__sum": COST,
     "revenue__sum": REVENUE,
     "profit__sum": PROFIT,
     "margin__sum": MARGIN,
-    "ctr_i__avg": AVERAGE_CTR_I,
-    "ctr_v__avg": AVERAGE_CTR_V,
+    "ctr_i__avg": CTR_I,
+    "ctr_v__avg": CTR_V,
+
+    "impressions_share__avg": IMPRESSIONS_SHARE,
+    "video_views_share__avg": VIDEO_VIEWS_SHARE,
+    "video_view_rate__avg": VIDEO_VIEW_RATE,
+    "contracted_rate__avg": CONTRACTED_RATE,
 }

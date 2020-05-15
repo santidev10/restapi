@@ -34,3 +34,9 @@ class Name:
         PERFORMANCE_CHART_ITEMS = "analytics_performance_chart_items"
         PERFORMANCE_EXPORT = "analytics_performance_export"
         PERFORMANCE_EXPORT_WEEKLY_REPORT = "analytics_export_weekly_report"
+
+    class MediaBuying:
+        namespace = "media_buying"
+        ACCOUNT_DETAIL = f"{namespace}_account_detail"
+        ACCOUNT_TARGETING = f"{namespace}_account_targeting"
+        ACCOUNT_KPI_FILTERS = f"{namespace}_account_kpi_filters"

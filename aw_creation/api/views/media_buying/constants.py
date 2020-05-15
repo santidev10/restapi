@@ -1,5 +1,5 @@
-from aw_reporting.models import CriterionType
 import ads_analyzer.reports.account_targeting_report.constants as names
+from aw_reporting.models import CriteriaTypeEnum
 
 
 SHARED_AGGREGATIONS = (names.AVERAGE_CPV, names.AVERAGE_CPM, names.CONTRACTED_RATE, names.COST_SHARE, names.CTR_I,
@@ -12,9 +12,16 @@ AGGREGATION_CONFIG = {
 
 REPORT_CONFIG = {
     "all": {
-        "criteria": [CriterionType.AGE, CriterionType.GENDER, CriterionType.USER_INTEREST_LIST, CriterionType.KEYWORD,
-                     CriterionType.PLACEMENT, CriterionType.VERTICAL],
         "aggregations": AGGREGATION_CONFIG["all"],
         "sorts": ("campaign_name", "ad_group_name", "target_name") + AGGREGATION_CONFIG["all"],
+        "scalar_filters": (),
+        "range_filters": AGGREGATION_CONFIG["all"],
+        "criteria": [
+            CriteriaTypeEnum.VIDEO_CREATIVE.name, CriteriaTypeEnum.DEVICE.name,
+            f"{CriteriaTypeEnum.PLACEMENT.name}_CHANNEL", f"{CriteriaTypeEnum.PLACEMENT.name}_VIDEO",
+            CriteriaTypeEnum.KEYWORD.name, CriteriaTypeEnum.VERTICAL.name, CriteriaTypeEnum.AGE_RANGE.name,
+            CriteriaTypeEnum.GENDER.name, CriteriaTypeEnum.PARENT.name,
+            CriteriaTypeEnum.USER_INTEREST.name, CriteriaTypeEnum.USER_LIST.name,
+        ]
     },
 }

@@ -2,7 +2,6 @@ from django.db.models import QuerySet
 from rest_framework.fields import CharField
 from rest_framework.fields import FloatField
 from rest_framework.fields import IntegerField
-from rest_framework.fields import ReadOnlyField
 from rest_framework.serializers import ModelSerializer
 
 from .constants import STATISTICS_ANNOTATIONS
@@ -15,9 +14,9 @@ class BaseSerializer(ModelSerializer):
     """
     # Values should be set by children
     config = None
-    criterion_name = ReadOnlyField(default="N/A")
-    target_name = ReadOnlyField(default="N/A")
-    type = ReadOnlyField(default="N/A")
+    criteria = None
+    type = None
+    target_name = None
 
     # cls.Meta.values_shared
     ad_group_name = CharField(source="ad_group__name")
@@ -54,7 +53,7 @@ class BaseSerializer(ModelSerializer):
             "type",
             "campaign_id",
             "campaign_name",
-            "campaign_status",
+            "criteria",
             "ad_group_id",
             "ad_group_name",
             "contracted_rate",
@@ -83,8 +82,10 @@ class BaseSerializer(ModelSerializer):
             "ad_group__id",
             "ad_group__name",
             "ad_group__campaign__name",
-            "ad_group__campaign__status",
             "ad_group__campaign__id",
+            "ad_group__campaign__impressions",
+            "ad_group__campaign__video_views",
+            "ad_group__campaign__cost",
             "ad_group__campaign__salesforce_placement__goal_type_id",
             "ad_group__campaign__salesforce_placement__ordered_rate",
         )
