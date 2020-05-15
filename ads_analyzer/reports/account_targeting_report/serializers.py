@@ -37,6 +37,7 @@ class AdGroupSerializer(BaseSerializer):
 
 class AgeTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.AGE_RANGE.value)
+    type_name = CharField(default=CriteriaTypeEnum.AGE_RANGE.name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source="age_range_id")
 
@@ -54,6 +55,7 @@ class AgeTargetingSerializer(BaseSerializer):
 
 class GenderTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.GENDER.value)
+    type_name = CharField(default=CriteriaTypeEnum.GENDER.name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source="gender_id")
 
@@ -68,6 +70,7 @@ class GenderTargetingSerializer(BaseSerializer):
 
 class KeywordTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.KEYWORD.value)
+    type_name = CharField(default=CriteriaTypeEnum.KEYWORD.name)
     target_name = CharField(source="keyword")
     criteria = CharField(source="keyword")
 
@@ -78,6 +81,7 @@ class KeywordTargetingSerializer(BaseSerializer):
 
 class TopicTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.VERTICAL.value)
+    type_name = CharField(default=CriteriaTypeEnum.VERTICAL.name)
     target_name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
     criteria = IntegerField(source="topic__id")
@@ -90,6 +94,7 @@ class TopicTargetingSerializer(BaseSerializer):
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.value)
+    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.name)
     target_name = CharField(source="yt_id")
     criteria = CharField(source="yt_id")
 
@@ -100,6 +105,7 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.value)
+    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.name)
     target_name = CharField(source="yt_id")
     criteria = CharField(source="yt_id")
 
@@ -110,6 +116,7 @@ class PlacementVideoTargetingSerializer(BaseSerializer):
 
 class AudienceTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.USER_INTEREST.value)
+    type_name = CharField(default=CriteriaTypeEnum.USER_INTEREST.name)
     target_name = CharField(source="audience__name")
     criteria = IntegerField(source="audience_id")
 
@@ -120,6 +127,7 @@ class AudienceTargetingSerializer(BaseSerializer):
 
 class RemarketTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.USER_LIST.value)
+    type_name = CharField(default=CriteriaTypeEnum.USER_LIST.name)
     target_name = CharField(source="remark__name")
     criteria = IntegerField(source="remark_id")
 
@@ -130,6 +138,7 @@ class RemarketTargetingSerializer(BaseSerializer):
 
 class ParentTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.PARENT.value)
+    type_name = CharField(default=CriteriaTypeEnum.PARENT.name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source="parent_status_id")
 
@@ -143,8 +152,8 @@ class ParentTargetingSerializer(BaseSerializer):
 
 
 class DeviceTargetingSerializer(BaseSerializer):
-    # type = IntegerField(default="Device")
     type = IntegerField(default=CriteriaTypeEnum.DEVICE.value)
+    type_name = CharField(default=CriteriaTypeEnum.DEVICE.name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source="device_id")
 
@@ -159,6 +168,7 @@ class DeviceTargetingSerializer(BaseSerializer):
 
 class VideoCreativeTargetingSerializer(BaseSerializer):
     type = IntegerField(default=CriteriaTypeEnum.VIDEO_CREATIVE.value)
+    type_name = CharField(default=CriteriaTypeEnum.VIDEO_CREATIVE.name)
     criteria = CharField(source="creative_id")
     target_name = CharField(source="creative_id")
 
