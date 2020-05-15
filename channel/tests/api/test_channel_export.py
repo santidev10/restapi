@@ -25,7 +25,7 @@ import brand_safety.constants as constants
 
 from utils.unittests.s3_mock import mock_s3
 
-EXPORT_FILE_HASH = "exported_files/7386e05b6106efe72c2ac0b361552556.csv"
+EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
 
 
 class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
@@ -97,7 +97,6 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             query_params=query_params,
         )
 
-    @mock_s3
     def _request(self, export_name=EXPORT_FILE_HASH):
         url = self._get_url(export_name)
         return self.client.get(url)
@@ -417,4 +416,3 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         rows = sorted(data[1:], key=lambda x: x[15])
         self.assertEqual(4, int(rows[0][15]))
         self.assertEqual(6, int(rows[1][15]))
-
