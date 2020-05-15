@@ -21,16 +21,16 @@ class S3ExportApiView(APIViewMixin):
         query_params = self._get_query_params(request)
         query_params.update(request.data)
 
-        export_name = self.generate_report_hash(query_params, request.user.pk)
+        export_name = self.s3_exporter.get_s3_key(self.generate_report_hash(query_params, request.user.pk))
 
-        if self.s3_exporter.exists(export_name):
+        export_url = self._get_url_to_export(export_name)
+
+        if self.s3_exporter.exists(export_name, get_key=False):
             return Response(
                 data={
-                    "export_url": self._get_url_to_export(export_name),
+                    "export_url": export_url,
                 }
             )
-
-        export_url = self._get_url_to_export(self.s3_exporter.get_s3_key(export_name))
 
         self.generate_export_task.delay(query_params, export_name, [request.user.email], export_url)
 
