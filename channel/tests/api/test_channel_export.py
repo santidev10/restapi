@@ -25,7 +25,7 @@ import brand_safety.constants as constants
 
 from utils.unittests.s3_mock import mock_s3
 
-EXPORT_FILE_HASH = "7386e05b6106efe72c2ac0b361552556"
+EXPORT_FILE_HASH = "exported_files/7386e05b6106efe72c2ac0b361552556.csv"
 
 
 class ChannelListPrepareExportTestCase(ExtendedAPITestCase, ESTestCase):
