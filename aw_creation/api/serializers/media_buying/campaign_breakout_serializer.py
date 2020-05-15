@@ -59,7 +59,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
 
         campaign_creation = CampaignCreation.objects.create(**campaign_data)
         # Update name with CampaignCreation id suffix
-        campaign_creation.name += f" # {campaign_creation.id}"
+        campaign_creation.name += f" #{campaign_creation.id}"
         campaign_creation.save()
 
         ad_group_creations = [AdGroupCreation(campaign_creation=campaign_creation, **data) for data in ad_group_data]
