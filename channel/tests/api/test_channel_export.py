@@ -104,8 +104,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
 
     def _request_collect_file(self, **query_params):
         collect_file_url = self._get_collect_file_url(**query_params)
-        response = self.client.post(collect_file_url)
-        return response
+        self.client.post(collect_file_url)
 
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
@@ -410,9 +409,7 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channels[1].populate_stats(total_videos_count=100)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
-        export_url = self._request_collect_file(brand_safety=constants.HIGH_RISK).data["export_url"]
-        requests.put(export_url, )
-        export_response = requests.get(export_url)
+        self._request_collect_file(brand_safety=constants.HIGH_RISK)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
