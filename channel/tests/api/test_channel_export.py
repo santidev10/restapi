@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+import requests
 from unittest import mock
 
 import pytz
@@ -96,13 +97,15 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
             query_params=query_params,
         )
 
+    @mock_s3
     def _request(self, export_name=EXPORT_FILE_HASH):
         url = self._get_url(export_name)
         return self.client.get(url)
 
     def _request_collect_file(self, **query_params):
         collect_file_url = self._get_collect_file_url(**query_params)
-        self.client.post(collect_file_url)
+        response = self.client.post(collect_file_url)
+        return response
 
     @mock_s3
     @mock.patch("channel.api.views.channel_export.ChannelListExportApiView.generate_report_hash",
@@ -407,7 +410,9 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         channels[1].populate_stats(total_videos_count=100)
         ChannelManager(sections=(Sections.GENERAL_DATA, Sections.BRAND_SAFETY, Sections.STATS)).upsert(channels)
 
-        self._request_collect_file(brand_safety=constants.HIGH_RISK)
+        export_url = self._request_collect_file(brand_safety=constants.HIGH_RISK).data["export_url"]
+        requests.put(export_url, )
+        export_response = requests.get(export_url)
         response = self._request()
 
         csv_data = get_data_from_csv_response(response)
@@ -415,3 +420,4 @@ class ChannelListExportTestCase(ExtendedAPITestCase, ESTestCase):
         rows = sorted(data[1:], key=lambda x: x[15])
         self.assertEqual(4, int(rows[0][15]))
         self.assertEqual(6, int(rows[1][15]))
+

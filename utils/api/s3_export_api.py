@@ -37,7 +37,7 @@ class S3ExportApiView(APIViewMixin):
             data={
                 "message": "File is in queue for preparing. After it is finished exporting, "
                            "you will receive message via email.",
-                "export_name": export_name
+                "export_url": export_url
             },
             status=HTTP_200_OK)
 
