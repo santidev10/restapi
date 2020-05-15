@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-import requests
 from unittest import mock
 
 import pytz
