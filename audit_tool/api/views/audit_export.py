@@ -458,7 +458,7 @@ class AuditExportApiView(APIView):
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
-                cols.extend(bad_word_categories)
+                cols.extend(sorted(bad_word_categories))
                 for i in range(len(audit.params['exclusion'])):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
@@ -601,7 +601,7 @@ class AuditExportApiView(APIView):
                             bad_word_category_dict[word_category].append(word)
                         except Exception as e:
                             pass
-                    for category in bad_word_categories:
+                    for category in sorted(bad_word_categories):
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:
