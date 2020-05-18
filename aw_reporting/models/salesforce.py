@@ -139,7 +139,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     aw_cid = models.CharField(max_length=60, null=True, db_index=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
-    ias_campaign_name = models.CharField(max_length=250, null=True)
+    ias_campaign_name = models.CharField(max_length=250, null=True, default=None)
 
     category = models.ForeignKey(Category, null=True,
                                  related_name="opportunities",
