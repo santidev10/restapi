@@ -6,6 +6,7 @@ from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
+from userprofile.constants import UserSettingsKey
 
 
 def validate_targeting(value, valid_targeting, should_raise=True):
@@ -24,14 +25,19 @@ def validate_targeting(value, valid_targeting, should_raise=True):
 
 
 def get_account_creation(user, pk, should_raise=True):
-    user = user
+    queryset = AccountCreation.objects.all()
+    user_settings = user.get_aw_settings()
+    if not user_settings.get(UserSettingsKey.VISIBLE_ALL_ACCOUNTS):
+        visible_accounts = user_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        queryset = queryset.filter(account__id__in=visible_accounts)
     try:
-        account = AccountCreation.objects.user_related(user).get(pk=pk)
+        account_creation = queryset.get(pk=pk)
     except AccountCreation.DoesNotExist:
-        if should_raise:
+        if should_raise is True:
             raise Http404
-        account = None
-    return account
+        account_creation = None
+    return account_creation
+
 
 
 def update_or_create_campaign_creation(account_creation, campaign, params=None):

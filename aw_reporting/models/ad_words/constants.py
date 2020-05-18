@@ -87,6 +87,12 @@ _DEVICE_REPRESENTATION = {
     Device.CONNECTED_TV: "TV Screens",
 }
 
+_PARENT_REPRESENTATION = {
+    Parent.PARENT: "Parent",
+    Parent.NOT_A_PARENT: "Not a parent",
+    Parent.UNDETERMINED: "Undetermined"
+}
+
 
 def age_range_str(age_range_id: int) -> str:
     return _AGE_RANGE_REPRESENTATION.get(age_range_id)
@@ -98,6 +104,10 @@ def gender_str(gender_id: int) -> str:
 
 def device_str(device_id: int) -> str:
     return _DEVICE_REPRESENTATION.get(device_id, "Undetermined")
+
+
+def parent_str(parent_id):
+    return _PARENT_REPRESENTATION.get(parent_id)
 
 
 class CampaignStatus(ExtendedEnum):

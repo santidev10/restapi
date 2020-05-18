@@ -26,8 +26,8 @@ class AuditSaveApiView(APIView):
 
     def post(self, request):
         query_params = request.query_params
+        user_id = request.user.id
         audit_id = query_params["audit_id"] if "audit_id" in query_params else None
-        user_id = query_params["user_id"] if "user_id" in query_params else None
         do_videos = strtobool(query_params["do_videos"]) if "do_videos" in query_params else None
         move_to_top = strtobool(query_params["move_to_top"]) if "move_to_top" in query_params else None
         name = query_params["name"] if "name" in query_params else None

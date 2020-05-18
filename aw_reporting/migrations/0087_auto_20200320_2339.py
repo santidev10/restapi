@@ -3,14 +3,8 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-from aw_reporting.models import CriterionType as criterion_type
-
-
 def init(apps, schema_editor):
-    choices = [choice[0] for choice in criterion_type.NAME_CHOICES]
-    CriterionType = apps.get_model("aw_reporting", "CriterionType")
-    for choice in choices:
-        CriterionType.objects.create(name=choice)
+    pass
 
 
 def reverse(apps, schema_editor):

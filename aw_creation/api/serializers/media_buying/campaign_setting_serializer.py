@@ -14,6 +14,7 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "ad",
+            "bidding_strategy_type",
             "name",
             "start_date",
             "end_date",

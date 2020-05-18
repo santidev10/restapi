@@ -61,6 +61,7 @@ class DashboardAccountCreationDetailsAPITestCase(ExtendedAPITestCase, ESTestCase
         "plan_cpv",
         "sf_account",
         "start",
+        "status",
         "statistic_max_date",
         "statistic_min_date",
         "thumbnail",
