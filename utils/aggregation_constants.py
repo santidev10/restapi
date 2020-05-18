@@ -32,6 +32,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
         "general_data.emails:exists",
         "general_data.emails:missing",
         "custom_properties.preferred",
+        "custom_properties.is_tracked",
         "general_data.country",
         "general_data.country_code",
         "general_data.top_category",
@@ -52,9 +53,12 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
         "stats.subscribers:min",
         "stats.views_per_video:max",
         "stats.views_per_video:min",
+        "task_us_data.age_group",
+        "task_us_data.content_type",
+        "task_us_data.gender",
         "brand_safety",
         "stats.channel_group",
-        "monetization.is_monetizable:exists"
+        "monetization.is_monetizable:exists",
     )
 
 ALLOWED_VIDEO_AGGREGATIONS = (
@@ -64,9 +68,6 @@ ALLOWED_VIDEO_AGGREGATIONS = (
         "ads_stats.ctr_v:min",
         "ads_stats.video_view_rate:max",
         "ads_stats.video_view_rate:min",
-        "analytics:exists",
-        "analytics:missing",
-        "cms.cms_title",
         "general_data.category",
         "general_data.country",
         "general_data.country_code",
