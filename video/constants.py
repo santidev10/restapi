@@ -1,8 +1,9 @@
 TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_data.language",
                 "general_data.lang_code", "general_data.category",
-                "analytics.verified", "cms.cms_title", "channel.id", "channel.title",
+                "analytics.verified", "channel.id", "channel.title",
                 "monetization.is_monetizable", "monetization.channel_preferred",
-                "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",)
+                "channel.id", "general_data.tags", "main.id", "general_data.iab_categories",
+                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender",)
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
@@ -13,7 +14,7 @@ RANGE_FILTER = ("stats.views", "stats.engage_rate", "stats.sentiment", "stats.vi
                 "analytics.age55_64", "analytics.age65_", "general_data.youtube_published_at",
                 "stats.last_day_views", "brand_safety.overall_score")
 
-EXISTS_FILTER = ("ads_stats", "analytics", "stats.flags", "custom_captions.items", "transcripts")
+EXISTS_FILTER = ("ads_stats", "stats.flags", "custom_captions.items", "transcripts", "task_us_data")
 
 HISTORY_FIELDS = ("stats.views_history", "stats.likes_history", "stats.dislikes_history",
                   "stats.comments_history", "stats.historydate",)
