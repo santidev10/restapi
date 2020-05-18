@@ -1,32 +1,30 @@
-from distutils.util import strtobool
-import csv
-import requests
-import os
-from uuid import uuid4
-from datetime import timedelta
-from collections import defaultdict
-
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
-from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
-from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-# from es_components.managers import ChannelManager
-# from es_components.constants import Sections
-
-from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
-
-from rest_framework.response import Response
-from django.conf import settings
-from utils.aws.s3_exporter import S3Exporter
-import boto3
+from audit_tool.models import AuditVideoProcessor
 from botocore.client import Config
-from utils.permissions import user_has_permission
+from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from collections import defaultdict
+from datetime import timedelta
+from distutils.util import strtobool
+from django.conf import settings
+from es_components.constants import Sections
+from es_components.models import Channel
+from es_components.query_builder import QueryBuilder
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from utils.aws.s3_exporter import S3Exporter
 from utils.brand_safety import map_brand_safety_score
+from utils.permissions import user_has_permission
+from uuid import uuid4
+import boto3
+import csv
+import os
+import requests
 
 
 class AuditExportApiView(APIView):
@@ -398,9 +396,16 @@ class AuditExportApiView(APIView):
                     pass
 
     def get_scores_for_channels(self, channel_ids):
+        """
+        Given a list if Channel ids, return a Channel id -> brand safety score map.
+        """
         channel_scores = {}
-        #go through the channels list, get the scores (if they exist) in batch,
-        #loop through the channels and assign each one to channel_scores[channel_id] = score
+        search = Channel.search()
+        search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
+        search.query = QueryBuilder().build().must().terms().field('main.id').value(channel_ids).get()
+        search_results = search.execute()
+        for channel in search_results.hits:
+            channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
         return channel_scores
 
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
@@ -544,7 +549,7 @@ class AuditExportApiView(APIView):
                 last_category = self.get_category(v.last_uploaded_category_id)
             except Exception as e:
                 last_category = ""
-            mapped_score = channel_scores.get(channel.channel_id)
+            mapped_score = channel_scores.get(channel.channel_id, None)
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:
