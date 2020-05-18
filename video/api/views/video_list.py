@@ -90,12 +90,11 @@ class VideoListApiView(APIViewMixin, ListAPIView):
         "stats.sentiment:percentiles",
     )
 
-    # try:
-    #     cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
-    #     cached_aggregations = cached_aggregations_object.value
-    # except Exception as e:
-    #     cached_aggregations = None
-    cached_aggregations = None
+    try:
+        cached_aggregations_object, _ = CacheItem.objects.get_or_create(key=VIDEO_AGGREGATIONS_KEY)
+        cached_aggregations = cached_aggregations_object.value
+    except Exception as e:
+        cached_aggregations = None
 
     blacklist_data_type = BlacklistItem.VIDEO_ITEM
 
