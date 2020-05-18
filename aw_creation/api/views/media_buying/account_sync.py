@@ -59,8 +59,8 @@ class AccountSyncAPIView(APIView):
         account_creation = AccountCreation.objects.get(account_id=account_id)
         campaign_ids = data["campaign_ids"]
         ad_group_ids = data["ad_group_ids"]
-        CampaignCreation.objects.filter(account_creation=account_creation, campaign_id__in=campaign_ids)\
+        CampaignCreation.objects.filter(account_creation=account_creation, id__in=campaign_ids)\
             .update(sync_at=now)
-        AdGroupCreation.objects.filter(ad_group_id__in=ad_group_ids)\
+        AdGroupCreation.objects.filter(id__in=ad_group_ids)\
             .update(sync_at=now)
         return Response(data)
