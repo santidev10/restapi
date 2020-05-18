@@ -10,6 +10,7 @@ from aw_creation.api.serializers.analytics.account_creation_details_serializer i
     AnalyticsAccountCreationDetailsSerializer
 from aw_creation.api.serializers.media_buying.account_serializer import AccountMediaBuyingSerializer
 from aw_creation.models import AccountCreation
+from aw_creation.api.views.media_buying.utils import get_account_creation
 from utils.api.cache import cache_method
 
 
@@ -23,7 +24,7 @@ class AccountDetailAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]
-        account_creation = self._get_account_creation(request, pk)
+        account_creation = get_account_creation(request.user, pk)
         data = self._get_account_detail(account_creation, request)
         return Response(data=data)
 

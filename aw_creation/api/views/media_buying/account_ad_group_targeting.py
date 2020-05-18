@@ -1,10 +1,7 @@
-from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
-from aw_reporting.models import AdGroup
-from aw_reporting.models import Campaign
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import CriteriaTypeEnum
 from aw_reporting.models import TargetingStatusEnum

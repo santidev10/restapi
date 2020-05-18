@@ -7,17 +7,18 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from aw_creation.api.serializers.media_buying.ad_group_targeting_serializer import AdGroupTargetingSerializer
 from aw_creation.models import AccountCreation
 from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
-from aw_reporting.models import AdGroupTargeting
+
 
 class AccountSyncAPIView(APIView):
     NEW_CAMPAIGN_FIELDS = ("id", "name", "bid_strategy_type", "budget", "type", "start", "end", "target_cpa")
-    UPDATE_CAMPAIGN_FIELDS = ("name", "budget")
+    UPDATE_CAMPAIGN_FIELDS = ("id", "name", "budget")
     AD_GROUP_FIELDS = ("id", "campaign_name", "campaign_type", "name", "max_rate", "status", "source")
     AD_GROUP_TARGETING_FIELDS = ("status", "is_negative", "type__name")
+
+    permission_classes = ()
 
     def get(self, request, *args, **kwargs):
         """ Get data to sync on Google Ads """
@@ -44,16 +45,9 @@ class AccountSyncAPIView(APIView):
                 ),
             )\
             .values(*self.AD_GROUP_FIELDS)
-        targeting_queryset = AdGroupTargeting.objects\
-            .filter(ad_group__campaign__account_id=account_id, sync_pending=True) \
-            .values_list("ad_group_id", flat=True)\
-            .distinct()
-
-        ad_group_targeting = AdGroupTargetingSerializer(targeting_queryset, many=True).data
         sync_data = {
             "campaigns": list(to_create) + list(to_update),
             "ad_groups": ad_group_creations,
-            "ad_group_targeting": ad_group_targeting,
         }
         return Response(sync_data)
 
@@ -65,8 +59,8 @@ class AccountSyncAPIView(APIView):
         account_creation = AccountCreation.objects.get(account_id=account_id)
         campaign_ids = data["campaign_ids"]
         ad_group_ids = data["ad_group_ids"]
-        CampaignCreation.objects.filter(account_creation=account_creation, campaign_id__in=campaign_ids)\
+        CampaignCreation.objects.filter(account_creation=account_creation, id__in=campaign_ids)\
             .update(sync_at=now)
-        AdGroupCreation.objects.filter(ad_group_id__in=ad_group_ids)\
+        AdGroupCreation.objects.filter(id__in=ad_group_ids)\
             .update(sync_at=now)
         return Response(data)
