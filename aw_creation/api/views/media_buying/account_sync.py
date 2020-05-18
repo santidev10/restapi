@@ -18,6 +18,8 @@ class AccountSyncAPIView(APIView):
     AD_GROUP_FIELDS = ("id", "campaign_name", "campaign_type", "name", "max_rate", "status", "source")
     AD_GROUP_TARGETING_FIELDS = ("status", "is_negative", "type__name")
 
+    permission_classes = ()
+
     def get(self, request, *args, **kwargs):
         """ Get data to sync on Google Ads """
         account_id = kwargs["account_id"]
