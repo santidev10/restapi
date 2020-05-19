@@ -7,6 +7,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import BlacklistItem
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -76,7 +77,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 

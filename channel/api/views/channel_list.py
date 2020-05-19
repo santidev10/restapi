@@ -10,13 +10,13 @@ from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import EXISTS_FILTER
 from channel.utils import ChannelGroupParamAdapter
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api.research import ESEmptyResponseAdapter
 from utils.api.research import ResearchPaginator
 from utils.es_components_api_utils import BrandSafetyParamAdapter
-from utils.es_components_api_utils import VettedParamsAdapter
 from utils.es_components_api_utils import APIViewMixin
 from utils.es_components_api_utils import ESFilterBackend
 from utils.es_components_api_utils import ESQuerysetAdapter

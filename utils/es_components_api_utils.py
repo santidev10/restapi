@@ -3,9 +3,6 @@ import json
 import logging
 from urllib.parse import unquote
 
-from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditContentType
-from audit_tool.models import AuditGender
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.filters import BaseFilterBackend
@@ -50,22 +47,6 @@ class BrandSafetyParamAdapter:
                 if score:
                     brand_safety_overall_score.append(score)
             query_params[self.parameter_full_name] = brand_safety_overall_score
-        return query_params
-
-
-class VettedParamsAdapter:
-    parameters = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
-    mappings = {
-        "task_us_data.age_group": AuditAgeGroup.to_id,
-        "task_us_data.content_type": AuditContentType.to_id,
-        "task_us_data.gender": AuditGender.to_id
-    }
-
-    def adapt(self, query_params):
-        for param in self.parameters:
-            parameter = query_params.get(param)
-            if parameter:
-                labels = query_params[parameter].title().split(",")
         return query_params
 
 
