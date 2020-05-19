@@ -429,9 +429,6 @@ class AuditExportApiView(APIView):
             return exports[0].file_name, None
         if AuditChannelProcessor.objects.filter(audit_id=audit_id, channel__processed_time__isnull=True).exists():
             raise Exception("Some channels still not processed, can't export yet {}".format(audit_id))
-        do_inclusion = False
-        if audit.params.get('inclusion') and len(audit.params.get('inclusion')) > 0:
-            do_inclusion = True
         do_exclusion = False
         if audit.params.get('exclusion') and len(audit.params.get('exclusion')) > 0:
             do_exclusion = True
