@@ -98,8 +98,7 @@ ALLOWED_VIDEO_AGGREGATIONS = (
         "task_us_data:missing",
         "transcripts:exists",
         "transcripts:missing",
-        "flags",
-        "custom_properties.is_tracked"
+        "flags"
     )
 
 ALLOWED_KEYWORD_AGGREGATIONS = (
