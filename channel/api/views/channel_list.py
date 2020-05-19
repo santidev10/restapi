@@ -133,6 +133,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
         cached_aggregations = cached_aggregations_object.value
     except Exception as e:
         cached_aggregations = None
+    cached_aggregations = None
 
     def get_serializer_class(self):
         if self.request and self.request.user and (
