@@ -132,8 +132,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params["transcripts"] = None
                 self.request.query_params._mutable = False
 
-        if not self.request.user.has_perm("vet_audit") and not self.request.user.has_perm("vet_audit_admin") and \
-                not self.request.user.is_staff:
+        if not self.request.user.has_perm("vet_audit_admin") and not self.request.user.is_staff:
             vetted_params = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
             self.request.query_params._mutable = True
             for param in vetted_params:
