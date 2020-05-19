@@ -512,7 +512,7 @@ class PaginatorWithAggregationMixin:
             try:
                 item['general_data']['iab_categories'] = prune_iab_categories(item['general_data']['iab_categories'])
             except Exception:
-                pass
+                continue
         response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
         object_list = self.page.paginator.object_list
         if isinstance(object_list, ESQuerysetAdapter):
