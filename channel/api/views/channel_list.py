@@ -10,6 +10,7 @@ from channel.constants import MATCH_PHRASE_FILTER
 from channel.constants import RANGE_FILTER
 from channel.constants import EXISTS_FILTER
 from channel.utils import ChannelGroupParamAdapter
+from channel.utils import IsTrackedParamsAdapter
 from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.channel import ChannelManager
@@ -111,7 +112,7 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter, VettedParamsAdapter)
+    params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter, VettedParamsAdapter, IsTrackedParamsAdapter)
     allowed_aggregations = ALLOWED_CHANNEL_AGGREGATIONS
 
     allowed_percentiles = (

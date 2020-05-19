@@ -35,6 +35,15 @@ class VettedParamsAdapter:
         return query_params
     
 
+class IsTrackedParamsAdapter:
+    parameter_name = "custom_properties.is_tracked"
+
+    def adapt(self, query_params):
+        parameter = query_params.get(self.parameter_name)
+        if parameter == "Tracked Channels":
+            query_params[self.parameter_name] = "1"
+
+
 def track_channels(channel_ids):
     max_upsert_channels = 10000
     manager = ChannelManager(sections=(Sections.MAIN, Sections.CUSTOM_PROPERTIES),
