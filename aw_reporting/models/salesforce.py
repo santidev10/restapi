@@ -357,6 +357,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             apex_deal=data.get(Fields.APEX_DEAL),
             billing_server=data.get(Fields.BILLING_SERVER),
             margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
+            ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
         )
         if sales_email:
             res['sales_email'] = sales_email
