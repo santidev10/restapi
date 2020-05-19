@@ -403,8 +403,7 @@ class AuditExportApiView(APIView):
         search = Channel.search()
         search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
         search.query = QueryBuilder().build().must().terms().field('main.id').value(channel_ids).get()
-        search_results = search.execute()
-        for channel in search_results.hits:
+        for channel in search.scan():
             channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
         return channel_scores
 
