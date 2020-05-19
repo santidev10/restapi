@@ -19,7 +19,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
     budget = serializers.DecimalField(max_digits=10, decimal_places=2)
     ad_group_ids = serializers.ListField(child=serializers.IntegerField())
     max_rate = serializers.DecimalField(max_digits=10, decimal_places=2)
-    bidding_strategy_type = serializers.CharField(max_length=10)
+    bidding_strategy_type = serializers.CharField(max_length=10, default=CampaignCreation.MAX_CPV_STRATEGY)
 
     def validate(self, data, raise_exception=True):
         validated = {
@@ -45,7 +45,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
                 ag_data = {
                     "max_rate": data["max_rate"],
                     "ad_group_id": ad_group_id,
-                    "name": ad_group_id_name_mapping[ad_group_id]
+                    "name": ad_group_id_name_mapping[ad_group_id] + " - BR"
                 }
                 validated["ad_group_data"].append(ag_data)
         except KeyError as e:
