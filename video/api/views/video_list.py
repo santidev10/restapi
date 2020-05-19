@@ -139,15 +139,4 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
         params_sections = set(key.split(".")[0] for key in self.request.query_params)
 
-        if not self.request.user.has_perm("userprofile.video_list"):
-            user_channels_ids = set(self.request.user.channels.values_list("channel_id", flat=True))
-
-            if channel_id and (channel_id in user_channels_ids):
-                if "analytics" in params_sections:
-                    sections += (Sections.ANALYTICS,)
-
-        if self.request.user.is_staff or \
-                self.request.user.has_perm("userprofile.video_audience"):
-            if "analytics" in params_sections:
-                sections += (Sections.ANALYTICS,)
         return ESQuerysetAdapter(VideoManager(sections), cached_aggregations=self.cached_aggregations)

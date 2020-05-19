@@ -169,11 +169,6 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
                 pass
             self.request.query_params._mutable = False
 
-        if self.request.user.is_staff or channels_ids or self.request.user.has_perm("userprofile.channel_audience"):
-            params_sections = set(key.split(".")[0] for key in self.request.query_params)
-            if "analytics" in params_sections:
-                sections += (Sections.ANALYTICS,)
-
         result = ESQuerysetAdapter(ChannelManager(sections), cached_aggregations=self.cached_aggregations)
         return result
 
