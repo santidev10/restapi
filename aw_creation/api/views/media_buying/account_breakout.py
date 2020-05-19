@@ -32,7 +32,7 @@ class AccountBreakoutAPIView(APIView):
         account_creation = get_account_creation(request.user, pk)
         account = account_creation.account
         params = request.query_params
-        ad_group_ids = params["ad_group_ids"].split(",")
+        ad_group_ids = params["ad_group_ids"].split(",") or []
         # Get AdGroup settings
         ad_groups = AdGroup.objects\
             .filter(campaign__account=account, id__in=ad_group_ids)\
@@ -71,7 +71,7 @@ class AccountBreakoutAPIView(APIView):
     def _process(self, account_creation, breakout_campaign, data):
         """
         Update Campaign budgets and AdGroup status
-        pause_old_ad_groups determines if all ad_groups that are not part of breakout should be paused
+        pause_source_ad_groups determines if all ad_groups that are not part of breakout should be paused
         :param account_creation: AccountCreation
         :param data: dict: Request body from post method
         :return:
