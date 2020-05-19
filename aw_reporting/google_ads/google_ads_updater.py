@@ -71,6 +71,7 @@ class GoogleAdsUpdater(object):
         InterestUpdater,
         CityUpdater,
         CampaignLocationTargetUpdater,
+        AdGroupCriteriaUpdater,
     )
 
     def __init__(self, account):
