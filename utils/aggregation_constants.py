@@ -57,6 +57,7 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
         "brand_safety",
         "stats.channel_group",
         "monetization.is_monetizable:exists",
+        "custom_properties.is_tracked"
     )
 
 ALLOWED_VIDEO_AGGREGATIONS = (
@@ -97,7 +98,8 @@ ALLOWED_VIDEO_AGGREGATIONS = (
         "task_us_data:missing",
         "transcripts:exists",
         "transcripts:missing",
-        "flags"
+        "flags",
+        "custom_properties.is_tracked"
     )
 
 ALLOWED_KEYWORD_AGGREGATIONS = (

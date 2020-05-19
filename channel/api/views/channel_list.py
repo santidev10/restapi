@@ -133,6 +133,8 @@ class ChannelListApiView(APIViewMixin, ListAPIView):
     except Exception as e:
         cached_aggregations = None
 
+    cached_aggregations = None
+
     def get_serializer_class(self):
         if self.request and self.request.user and (
                 self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
