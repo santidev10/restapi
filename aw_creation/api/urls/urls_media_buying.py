@@ -10,10 +10,6 @@ from aw_creation.api.views.media_buying.account_sync import AccountSyncAPIView
 
 MediaBuying = Name.MediaBuying
 urlpatterns = [
-    url(r'^accounts/(?P<pk>\w+)/$',
-        AccountDetailAPIView.as_view(),
-        name=MediaBuying.ACCOUNT_DETAIL),
-
     url(r'^account/(?P<pk>\w+)/$',
         AccountDetailAPIView.as_view(),
         name=MediaBuying.ACCOUNT_DETAIL),
