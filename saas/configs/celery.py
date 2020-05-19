@@ -20,10 +20,12 @@ DEFAULT_CELERY_BROKER_URL = "amqp://{user}:{password}@{host}:{port}".format(
 CELERY_BROKER_URL = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://es:9200/celery/task_result")
 CELERY_RESULT_EXTENDED = True
+CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("CELERY_ELASTICSEARCH_TIMEOUT", "600"))
 
 DMP_CELERY_BROKER_URL = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEND)
 DMP_CELERY_RESULT_EXTENDED = True
+DMP_CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("DMP_CELERY_ELASTICSEARCH_TIMEOUT", "600"))
 
 CELERY_TIMEZONE = "UTC"
 
@@ -99,20 +101,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "cache.tasks.cache_channel_aggregations.cache_channel_aggregations",
         "schedule": crontab(hour="*", minute="*/30"),
     },
-    "cache-keyword-aggregations": {
-        "task": "cache.tasks.cache_keyword_aggregations.cache_keyword_aggregations",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
     "cache-research-videos-defaults": {
         "task": "cache.tasks.cache_research_videos_defaults.cache_research_videos_defaults",
         "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache-research-channels-defaults": {
         "task": "cache.tasks.cache_research_channels_defaults.cache_research_channels_defaults",
-        "schedule": crontab(hour="*", minute="*/30"),
-    },
-    "cache-research-keywords-defaults": {
-        "task": "cache.tasks.cache_research_keywords_defaults.cache_research_keywords_defaults",
         "schedule": crontab(hour="*", minute="*/30"),
     },
     "cache_pricing_tool_filters": {

@@ -137,6 +137,11 @@ class AuditProcessor(models.Model):
             ("source", "completed", "audit_type"),
         ]
 
+    @property
+    def owner(self):
+        if self.params.get('user_id'):
+            return get_user_model().objects.get(id=self.params['user_id'])
+
     def remove_exports(self):
         exports = []
         for b, c in self.params.items():
@@ -202,8 +207,13 @@ class AuditProcessor(models.Model):
         lang = self.params.get('language')
         if lang and type(lang) == str:
             lang = [lang]
+        try:
+            owner = str(self.owner)
+        except Exception as e:
+            owner = "N/A"
         d = {
             'id': self.id,
+            'owner': owner,
             'priority': self.pause,
             'completed_time': self.completed,
             'start_time': self.started,
@@ -557,6 +567,10 @@ class AuditExporter(models.Model):
             print(a.to_dict())
 
     def to_dict(self):
+        try:
+            owner = str(self.owner)
+        except Exception as e:
+            owner = ""
         d = {
             'started': self.started,
             'audit': self.audit_id,
@@ -564,6 +578,7 @@ class AuditExporter(models.Model):
             'machine': self.machine,
             'thread': self.thread,
             'percent_done': self.percent_done,
+            'owner': owner,
         }
         return d
 
