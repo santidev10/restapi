@@ -7,6 +7,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
 
 from audit_tool.models import BlacklistItem
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers.video import VideoManager
 from utils.api.filters import FreeFieldOrderingFilter
@@ -76,7 +77,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
 
     allowed_aggregations = ALLOWED_VIDEO_AGGREGATIONS
 
@@ -130,6 +131,14 @@ class VideoListApiView(APIViewMixin, ListAPIView):
                 self.request.query_params._mutable = True
                 self.request.query_params["transcripts"] = None
                 self.request.query_params._mutable = False
+
+        if not self.request.user.has_perm("vet_audit_admin") and not self.request.user.is_staff:
+            vetted_params = ["task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender"]
+            self.request.query_params._mutable = True
+            for param in vetted_params:
+                if param in self.request.query_params:
+                    self.request.query_params[param] = None
+            self.request.query_params._mutable = False
 
         if not BrandSafetyDataVisible().has_permission(self.request):
             if "brand_safety" in self.request.query_params:
