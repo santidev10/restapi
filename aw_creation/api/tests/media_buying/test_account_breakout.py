@@ -86,4 +86,3 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         with self.patch_user_settings(**user_settings):
             response = self.client.get(url)
         self.assertEqual(response.status_code, HTTP_200_OK)
-        print(response.data)

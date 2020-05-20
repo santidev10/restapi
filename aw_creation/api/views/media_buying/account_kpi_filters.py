@@ -7,7 +7,7 @@ from ads_analyzer.reports.account_targeting_report.create_report import AccountT
 from aw_creation.api.views.media_buying.constants import REPORT_CONFIG
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from aw_creation.api.views.media_buying.utils import validate_targeting
-from utils.permissions import user_has_permission
+from utils.permissions import MediaBuyingAddOnPermission
 
 ScalarFilter = namedtuple("ScalarFilter", "name type")
 
@@ -17,7 +17,7 @@ class AccountKPIFiltersAPIView(APIView):
     GET: Retrieve kpi_filters for aggregated targeting statistics
 
     """
-    permission_classes = (user_has_permission("userprofile.media_buying"),)
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]

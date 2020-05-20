@@ -19,6 +19,7 @@ from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import TargetingStatusEnum
 from aw_reporting.google_ads.utils import get_criteria_exists_key
 from utils.views import validate_date
+from utils.permissions import MediaBuyingAddOnPermission
 
 
 ScalarFilter = namedtuple("ScalarFilter", "name type")
@@ -30,6 +31,7 @@ class AccountTargetingAPIView(APIView):
 
     """
     CACHE_KEY_PREFIX = "restapi.aw_creation.views.media_buying.account_targeting"
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]
