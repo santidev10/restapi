@@ -4,7 +4,7 @@ from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
-from segment.api.serializers.segment_export_serializer_mixins import SegmentExportSerializerMixin
+from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 """
 CustomSegment export serializers
@@ -13,7 +13,6 @@ Each columns tuple for all serializers are used as headers for export files
 """
 class CustomSegmentChannelExportSerializer(
     SegmentChannelExportSerializerMixin,
-    SegmentExportSerializerMixin,
     Serializer
 ):
     columns = (
@@ -52,7 +51,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(
 
 
 class CustomSegmentVideoExportSerializer(
-    SegmentExportSerializerMixin,
+    SegmentVideoExportSerializerMixin,
     Serializer
 ):
     columns = (
@@ -71,7 +70,3 @@ class CustomSegmentVideoExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
-
-    def get_url(self, obj):
-        return f"https://www.youtube.com/watch?v={obj.main.id}"
-

@@ -7,13 +7,6 @@ from utils.brand_safety import map_brand_safety_score
 
 
 class SegmentExportSerializerMixin:
-    def get_language(self, obj):
-        try:
-            lang_code = getattr(obj.general_data, "lang_code", "")
-        except Exception:
-            lang_code = None
-        language = LANGUAGES.get(lang_code, lang_code)
-        return language
 
     def get_category(self, obj):
         categories = getattr(obj.task_us_data, "iab_categories", []) or []
@@ -86,7 +79,29 @@ class SegmentExportSerializerMixin:
         return joined
 
 
-class SegmentChannelExportSerializerMixin:
+class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "lang_code", "")
+        except Exception:
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
+
+    def get_url(self, obj):
+        return f"https://www.youtube.com/watch?v={obj.main.id}"
+
+
+class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        except Exception:
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"
