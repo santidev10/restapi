@@ -32,7 +32,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             raise ValidationError(f"AdGroups to break out must all be of the same Campaign type. "
                                   f"Received: {', '.join(ag_types)}")
         try:
-            data["bid_strategy_type"] = CampaignBidStrategyTypeEnum(data["bidding_strategy_type"]).value
+            data["bid_strategy_type"] = CampaignBidStrategyTypeEnum[data["bidding_strategy_type"]].value
         except (KeyError, ValueError):
             data["bid_strategy_type"] = CampaignCreation.MAX_CPV_STRATEGY
         try:
