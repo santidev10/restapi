@@ -135,6 +135,7 @@ class AuditVetBaseSerializer(Serializer):
         :param values: list
         :return: AuditCategory
         """
+        values = list(set(values))
         iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
@@ -190,7 +191,7 @@ class AuditVetBaseSerializer(Serializer):
                 for item in BadWordCategory.objects.all()
             }
             try:
-                categories = [mapping[val] for val in values]
+                categories = [mapping[val] for val in set(values)]
             except KeyError as e:
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
