@@ -8,6 +8,7 @@ from aw_creation.models import AdGroupCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.models import AdGroup
 from aw_creation.api.views.media_buying.constants import CampaignBidStrategyTypeEnum
+from aw_creation.api.views.media_buying.constants import AD_GROUP_TYPE_CAMPAIGN_BID_TYPE
 
 
 class CampaignBreakoutSerializer(serializers.Serializer):
@@ -27,17 +28,11 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_group_data": [],
             "ad_data": {},
         }
-        ag_types = set(AdGroup.objects.filter(id__in=data["ad_group_ids"]).values_list("campaign__type", flat=True))
+        ag_types = set(AdGroup.objects.filter(id__in=data["ad_group_ids"]).values_list("type", flat=True))
         if len(ag_types) > 1:
-            raise ValidationError(f"AdGroups to break out must all be of the same Campaign type. "
+            raise ValidationError(f"AdGroups to break out must all be of the same type. "
                                   f"Received: {', '.join(ag_types)}")
         try:
-            data["bid_strategy_type"] = CampaignBidStrategyTypeEnum[data["bidding_strategy_type"]].value
-        except (KeyError, ValueError):
-            data["bid_strategy_type"] = CampaignCreation.MAX_CPV_STRATEGY
-        try:
-            validated["campaign_data"] = {key: data[key] for key in self.CAMPAIGN_CREATION_FIELDS}
-            validated["campaign_data"]["account_creation"] = self.context["account_creation"]
             ad_group_id_name_mapping = {
                 ag.id: ag.name for ag in AdGroup.objects.filter(id__in=data["ad_group_ids"])
             }
@@ -51,6 +46,19 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         except KeyError as e:
             if raise_exception:
                 raise ValidationError(e)
+
+        # Need to check exactly what bid strategy type to use since the Adwords API does not differentiate from
+        # target cpm or max cpm strategies in Campaign Performance report. Must imply from the source ad groups
+        ag_type = list(ag_types)[0]
+
+        mapping_value = AD_GROUP_TYPE_CAMPAIGN_BID_TYPE[ag_type]
+        campaign_bidding_strategy_type = CampaignBidStrategyTypeEnum[mapping_value].value
+        data["bid_strategy_type"] = campaign_bidding_strategy_type
+
+        validated["campaign_data"] = {key: data[key] for key in self.CAMPAIGN_CREATION_FIELDS}
+        if ag_type == "Standard":
+            validated["campaign_data"]["sub_type"] = "Non-skippable"
+        validated["campaign_data"]["account_creation"] = self.context["account_creation"]
         return validated
 
     def create(self, validated_data):
