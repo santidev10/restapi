@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 CAMPAIGNS_FIELDS = ("id", "account__name", "account__currency_code", "salesforce_placement__ordered_rate",
-                    "salesforce_placement__goal_type_id")
+                    "salesforce_placement__goal_type_id", "salesforce_placement__opportunity__ias_campaign_name")
 
 STATS_FIELDS = ("date", "impressions", "clicks", "video_views_100_quartile", "video_views_50_quartile",
                 "video_views")
@@ -108,10 +108,10 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
 
     def get_campaign_name(self, account_name):
-        return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name)
+        return settings.APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(account_name, None)
 
     def __get_campaign_statistics(self, campaign_ids):
-        return CampaignStatistic.objects\
+        return CampaignStatistic.objects \
             .filter(campaign_id__in=campaign_ids, date=self.yesterday) \
             .values_list(*[f"campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS), "device_id",
                          named=True)
@@ -121,12 +121,13 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         rows = []
 
         for stats in campaigns_statistics:
+            ias_campaign_name = stats.campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
                 stats.campaign__account__currency_code,
                 device_str(stats.device_id),
                 stats.campaign__id,
-                self.get_campaign_name(stats.campaign__account__name),
+                ias_campaign_name or self.get_campaign_name(stats.campaign__account__name),
                 None,
                 None,
                 None,
@@ -159,12 +160,13 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         creatives_info = self.__get_creative_info([stats.creative_id for stats in creative_statistics])
 
         for stats in creative_statistics:
+            ias_campaign_name = stats.ad_group__campaign__salesforce_placement__opportunity__ias_campaign_name
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
                 stats.ad_group__campaign__account__currency_code,
                 None,
                 stats.ad_group__campaign__id,
-                self.get_campaign_name(stats.ad_group__campaign__account__name),
+                ias_campaign_name or self.get_campaign_name(stats.ad_group__campaign__account__name),
                 stats.creative_id,
                 creatives_info.get(stats.creative_id, {}).get(Sections.GENERAL_DATA, {}).get("title"),
                 YOUTUBE_LINK_TEMPLATE.format(stats.creative_id),
