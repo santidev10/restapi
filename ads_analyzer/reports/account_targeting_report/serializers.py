@@ -105,7 +105,7 @@ class TopicTargetingSerializer(BaseSerializer):
 
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
-    type_id = CriteriaTypeEnum.YOUTUBE_CHANNEL.value
+    type_id = CriteriaTypeEnum.PLACEMENT.value
     criteria_field = "yt_id"
 
     type = IntegerField(default=type_id)
@@ -119,7 +119,7 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
-    type_id = CriteriaTypeEnum.YOUTUBE_VIDEO.value
+    type_id = CriteriaTypeEnum.PLACEMENT.value
     criteria_field = "yt_id"
 
     type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.value)
