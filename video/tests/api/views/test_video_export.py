@@ -249,23 +249,6 @@ class VideoListExportTestCase(ExtendedAPITestCase, ESTestCase):
     @mock_s3
     @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
                 return_value=EXPORT_FILE_HASH)
-    def test_filter_verified(self, *args):
-        self.create_admin_user()
-        videos = [Video(next(int_iterator)) for _ in range(2)]
-        VideoManager(sections=Sections.GENERAL_DATA).upsert([videos[0]])
-        VideoManager(sections=(Sections.GENERAL_DATA, Sections.ANALYTICS)).upsert([videos[1]])
-
-        self._request_collect_file(analytics="true")
-
-        response = self._request()
-        csv_data = get_data_from_csv_response(response)
-        data = list(csv_data)[1:]
-
-        self.assertEqual(1, len(data))
-
-    @mock_s3
-    @mock.patch("video.api.views.video_export.VideoListExportApiView.generate_report_hash",
-                return_value=EXPORT_FILE_HASH)
     def test_headers(self, *args):
         self.create_admin_user()
 
