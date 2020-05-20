@@ -1,6 +1,7 @@
 TERMS_FILTER = ("general_data.country", "general_data.country_code", "general_data.top_language",
                 "general_data.top_lang_code", "general_data.top_category", "custom_properties.preferred",
-                "analytics.verified", "cms.cms_title", "stats.channel_group", "main.id", "general_data.iab_categories")
+                "analytics.verified", "stats.channel_group", "main.id", "general_data.iab_categories",
+                "task_us_data.age_group", "task_us_data.content_type", "task_us_data.gender")
 
 MATCH_PHRASE_FILTER = ("general_data.title", "general_data.description")
 
@@ -12,7 +13,8 @@ RANGE_FILTER = ("social.instagram_followers", "social.twitter_followers", "socia
                 "analytics.age55_64", "analytics.age65_", "brand_safety.overall_score",
                 "general_data.youtube_published_at")
 
-EXISTS_FILTER = ("general_data.emails", "ads_stats", "analytics", "monetization.is_monetizable")
+EXISTS_FILTER = ("general_data.emails", "ads_stats", "monetization.is_monetizable", "task_us_data",
+                 "custom_properties.is_tracked")
 
 CHANNEL_CSV_HEADERS = [
     "title",
