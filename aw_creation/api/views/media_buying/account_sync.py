@@ -16,7 +16,7 @@ from aw_reporting.models import Account
 
 
 class AccountSyncAPIView(APIView):
-    NEW_CAMPAIGN_FIELDS = ("id", "name", "bid_strategy_type", "budget", "type", "start", "end", "target_cpa")
+    NEW_CAMPAIGN_FIELDS = ("id", "name", "bid_strategy_type", "budget", "type", "start", "end", "target_cpa", "sub_type")
     UPDATE_CAMPAIGN_FIELDS = ("id", "name", "budget")
     AD_GROUP_FIELDS = ("id", "campaign_name", "campaign_type", "name", "max_rate", "status", "source")
     AD_GROUP_TARGETING_FIELDS = ("status", "is_negative", "type__name")
