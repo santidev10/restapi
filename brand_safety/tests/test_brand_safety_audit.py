@@ -141,7 +141,7 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
         bs_category = BadWordCategory.objects.create(name="test")
         mma_video = Video(**dict(
             main=dict(id=f"channel_{next(int_iterator)}"),
-            general_data=dict(description="mma"),
+            general_data=dict(description="*=@mma."),
         ))
         swedish_video = Video(**dict(
             main=dict(id=f"channel_{next(int_iterator)}"),
