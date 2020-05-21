@@ -93,10 +93,12 @@ class AccountTargetingReport:
         """
         self.account = account
         if criterion_types is None:
-            criterion_types = self.TARGETING.keys()
+            self.criterion_types = self.TARGETING.keys()
         elif type(criterion_types) is str:
-            criterion_types = [criterion_types]
-        self.targeting_configs = [self.TARGETING[criterion] for criterion in criterion_types
+            self.criterion_types = [criterion_types]
+        else:
+            self.criterion_types = criterion_types
+        self.targeting_configs = [self.TARGETING[criterion] for criterion in self.criterion_types
                                   if criterion in self.TARGETING]
 
         # Container to hold un-calculated aggregated querysets
@@ -130,6 +132,7 @@ class AccountTargetingReport:
         statistic_model = serializer_class.Meta.model
         queryset = statistic_model.objects.filter(filters)
         serializer = serializer_class(queryset, many=True, context=dict(
+            report_name=serializer_class.report_name,
             aggregation_keys=aggregation_keys, kpi_filters=aggregation_filters))
         return serializer
 
@@ -162,7 +165,6 @@ class AccountTargetingReport:
             except TypeError:
                 pass
             return result
-
         for aggregation in self._all_aggregations:
             for kpi_name in self.aggregation_columns:
                 # Get formatted kpi name as some aggs might be prepended with "sum"
@@ -238,7 +240,10 @@ class AccountTargetingReport:
         if not self._aggregated_serializers:
             raise ValueError("You must first call prepare_report with valid parameters.")
         for aggregated_serializer in self._aggregated_serializers:
-            # data = aggregated_serializer.data
+            # Other aggregated serializers may be used by other parts of the report that should not be serialized
+            # into targeting data
+            if aggregated_serializer.context["report_name"] not in self.criterion_types:
+                continue
             data = self._serialize(aggregated_serializer)
             self._all_aggregated_data.extend(data)
         if sort_key:
@@ -301,7 +306,10 @@ class AccountTargetingReport:
 
         # Filter to retrieve non-aggregated statistics
         self.statistics_filters = self._build_statistics_filters(statistics_filters or {})
-        for serializer_class in self.targeting_configs:
+
+        # AdGroup serializer is not usually used in targeting data, but should be part of kpi_filters in the case of
+        # results of the overall summary is out of bounds of the targeting data
+        for serializer_class in self.targeting_configs + [AdGroupSerializer]:
             # Get grouped statistics for statistic table
             aggregated_serializer = self.get_aggregated_serializer(
                 serializer_class, self.statistics_filters, self.aggregation_columns, aggregation_filters=self.aggregation_filters
