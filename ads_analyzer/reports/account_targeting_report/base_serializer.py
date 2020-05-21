@@ -167,7 +167,7 @@ class BaseSerializer(ModelSerializer):
         return queryset
 
     def get_targeting_status(self, obj):
-        status = obj["targeting_status"]
+        status = obj.get("targeting_status")
         try:
             status_value = TargetingStatusEnum(int(status)).name
         except (ValueError, TypeError):

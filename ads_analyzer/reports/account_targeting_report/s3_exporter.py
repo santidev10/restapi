@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.conf import settings
 
 from utils.aws.s3_exporter import S3Exporter
@@ -9,5 +11,5 @@ class AccountTargetingReportS3Exporter(S3Exporter):
 
     @staticmethod
     def get_s3_key(account_name):
-        key = f"account_targeting_report/{account_name}_{uuid4()}.csv"
+        key = f"account_targeting_report/{account_name} {datetime.now()}.csv"
         return key
