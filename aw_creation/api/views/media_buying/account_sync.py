@@ -58,12 +58,12 @@ class AccountSyncAPIView(APIView):
         ad_group_creations = AdGroupCreation.objects.filter(campaign_creation__account_creation=account_creation) \
             .filter(Q(sync_at__lte=F("updated_at")) | Q(sync_at=None)) \
             .annotate(
-            campaign_name=F("campaign_creation__name"),
-            campaign_type=F("campaign_creation__type"),
-            source=Case(
-                When(name__contains="#", then=F("ad_group_id")),
-                default=0,
-                output_field=IntegerField()
+                campaign_name=F("campaign_creation__name"),
+                campaign_type=F("campaign_creation__type"),
+                source=Case(
+                    When(name__contains="#", then=F("ad_group_id")),
+                    default=0,
+                    output_field=IntegerField()
             ),
         ) \
             .values(*self.AD_GROUP_FIELDS)
