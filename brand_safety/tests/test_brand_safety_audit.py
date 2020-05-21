@@ -5,6 +5,7 @@ from mock import PropertyMock
 from django.utils import timezone
 
 from audit_tool.models import AuditLanguage
+from brand_safety.auditors.utils import AuditUtils
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
 from brand_safety.tasks.channel_outdated import channel_outdated_scheduler
@@ -134,3 +135,26 @@ class BrandSafetyTestCase(ExtendedAPITestCase, ESTestCase):
 
         for non_vetted, scored in zip(non_vetted_videos, videos_should_update):
             self.assertNotEqual(non_vetted.brand_safety, scored.brand_safety)
+
+    def test_special_characters(self):
+        langs = AuditLanguage.objects.bulk_create([AuditLanguage(language="en"), AuditLanguage(language="sv")])
+        bs_category = BadWordCategory.objects.create(name="test")
+        mma_video = Video(**dict(
+            main=dict(id=f"channel_{next(int_iterator)}"),
+            general_data=dict(description="mma"),
+        ))
+        swedish_video = Video(**dict(
+            main=dict(id=f"channel_{next(int_iterator)}"),
+            general_data=dict(description="tycker jagnär man börjar bestämma sig för att man vill anamma den hela"),
+        ))
+        bad_words = BadWord.objects.bulk_create([
+            BadWord(name="mma", language=langs[0], category=bs_category),
+            BadWord(name="mma", language=langs[1], category=bs_category),
+        ])
+        audit_utils = AuditUtils()
+        english_keywords_processor = audit_utils.bad_word_processors_by_language["en"]
+        swedish_keywords_processor = audit_utils.bad_word_processors_by_language["sv"]
+        english_hits = english_keywords_processor.extract_keywords(mma_video.general_data.description)
+        swedish_hits = swedish_keywords_processor.extract_keywords(swedish_video.general_data.description)
+        self.assertEqual(english_hits, ["mma"])
+        self.assertEqual(swedish_hits, [])
