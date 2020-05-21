@@ -26,7 +26,6 @@ UI_STATS_HISTORY_FIELD_LIMIT = 30
 logger = logging.getLogger(__name__)
 
 
-
 class BrandSafetyParamAdapter:
     scores = {
         constants.HIGH_RISK: "0,69",
