@@ -24,6 +24,7 @@ class BaseSerializer(ModelSerializer):
     targeting_id = SerializerMethodField()
 
     # Values should be set by children
+    report_name = None
     criteria_field = None
     type_id = None
     config = None
@@ -178,7 +179,8 @@ class BaseSerializer(ModelSerializer):
             status_value = None
         return status_value
 
-    def get_targeting_id(self, obj):
-        base = f"{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[self.criteria_field]}"
+    @classmethod
+    def get_targeting_id(cls, obj):
+        base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
         hash_str = hashlib.sha1(str.encode(base)).hexdigest()
         return hash_str
