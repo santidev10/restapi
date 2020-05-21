@@ -11,6 +11,7 @@ from flashtext import KeywordProcessor
 from django.db.models import F
 from emoji import UNICODE_EMOJI
 
+from brand_safety.constants import ENGLISH_CHARACTERS_SET
 from brand_safety.constants import EUROPEAN_CHARACTERS_SET
 from brand_safety.models import BadWord
 from brand_safety.models import BadWordCategory
@@ -220,8 +221,10 @@ class AuditUtils(object):
             bad_words_by_language[language].add_keyword(remove_tags_punctuation(word.name))
         # Cast back to dictionary to avoid creation of new keys
         bad_words_by_language = dict(bad_words_by_language)
+
+        non_word_boundary_chars = ENGLISH_CHARACTERS_SET.union(EUROPEAN_CHARACTERS_SET)
         for language in bad_words_by_language:
-            bad_words_by_language[language].set_non_word_boundaries(EUROPEAN_CHARACTERS_SET)
+            bad_words_by_language[language].set_non_word_boundaries(non_word_boundary_chars)
         return bad_words_by_language
 
     @staticmethod
