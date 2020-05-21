@@ -3,7 +3,6 @@ from collections import namedtuple
 import csv
 from datetime import datetime
 from datetime import timezone
-import string
 import re
 
 import pytz
