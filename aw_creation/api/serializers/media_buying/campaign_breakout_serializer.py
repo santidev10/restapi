@@ -12,7 +12,7 @@ from aw_creation.api.views.media_buying.constants import AD_GROUP_TYPE_CAMPAIGN_
 
 
 class CampaignBreakoutSerializer(serializers.Serializer):
-    CAMPAIGN_CREATION_FIELDS = ("name", "budget", "start", "end", "bid_strategy_type")
+    CAMPAIGN_CREATION_FIELDS = ("name", "budget", "start", "end", "bid_strategy_type", "type")
 
     name = serializers.CharField(max_length=255)
     start = serializers.DateField()
@@ -28,19 +28,28 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_group_data": [],
             "ad_data": {},
         }
-        ag_types = set(AdGroup.objects.filter(id__in=data["ad_group_ids"]).values_list("type", flat=True))
-        if len(ag_types) > 1:
+        ad_groups = AdGroup.objects\
+            .filter(id__in=data["ad_group_ids"])\
+            .annotate(campaign_type=F("campaign__type"))
+        ag_type = set(ad_groups.values_list("type", flat=True))
+        campaign_type = set(ad_groups.values_list("campaign_type", flat=True))
+        if len(ag_type) > 1:
             raise ValidationError(f"AdGroups to break out must all be of the same type. "
-                                  f"Received: {', '.join(ag_types)}")
+                                  f"Received: {', '.join(ag_type)}")
+        if len(campaign_type) > 1:
+            raise ValidationError(f"AdGroup Campaign types must either be all Video or Display.")
+        ag_type = list(ag_type)[0]
+        campaign_type = list(campaign_type)[0]
+        data["type"] = campaign_type.upper()
         try:
             ad_group_id_name_mapping = {
-                ag.id: ag.name for ag in AdGroup.objects.filter(id__in=data["ad_group_ids"])
+                ag.id: ag for ag in AdGroup.objects.filter(id__in=data["ad_group_ids"])
             }
             for ad_group_id in data["ad_group_ids"]:
                 ag_data = {
                     "max_rate": data["max_rate"],
                     "ad_group_id": ad_group_id,
-                    "name": ad_group_id_name_mapping[ad_group_id] + " - BR"
+                    "name": ad_group_id_name_mapping[ad_group_id].name + " - BR"
                 }
                 validated["ad_group_data"].append(ag_data)
         except KeyError as e:
@@ -49,8 +58,6 @@ class CampaignBreakoutSerializer(serializers.Serializer):
 
         # Need to check exactly what bid strategy type to use since the Adwords API does not differentiate from
         # target cpm or max cpm strategies in Campaign Performance report. Must imply from the source ad groups
-        ag_type = list(ag_types)[0]
-
         mapping_value = AD_GROUP_TYPE_CAMPAIGN_BID_TYPE[ag_type]
         campaign_bidding_strategy_type = CampaignBidStrategyTypeEnum[mapping_value].value
         data["bid_strategy_type"] = campaign_bidding_strategy_type

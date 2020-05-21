@@ -20,6 +20,7 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
             "end_date",
             "budget",
             "max_bid",
+            "type",
         )
 
     def get_max_bid(self, obj):
