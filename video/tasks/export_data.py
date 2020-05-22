@@ -48,7 +48,7 @@ def export_videos_data(query_params, export_name, user_emails, export_url):
     # prepare E-mail
     subject = "Export Videos"
     body = f"File is ready for downloading.\n" \
-           f"Please, go to {export_url} to download the report.\n" \
+           f"Please click <a href='{export_url}'>here</a> to download the report.\n" \
            f"NOTE: url to download report is valid during next 2 weeks\n"
 
     # E-mail
