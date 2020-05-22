@@ -1,6 +1,9 @@
+from datetime import datetime
+
 from django.db.models import F
 from django.db.models import Value
 from django.db.models.functions import Concat
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 
@@ -28,9 +31,11 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_group_data": [],
             "ad_data": {},
         }
+        self._validate_dates(data["start"], data["end"])
         ad_groups = AdGroup.objects\
             .filter(id__in=data["ad_group_ids"])\
             .annotate(campaign_type=F("campaign__type"))
+        # Ensure that source Campaign and AdGroups are of the same type to breakout
         ag_type = set(ad_groups.values_list("type", flat=True))
         campaign_type = set(ad_groups.values_list("campaign_type", flat=True))
         if len(ag_type) > 1:
@@ -42,16 +47,11 @@ class CampaignBreakoutSerializer(serializers.Serializer):
         campaign_type = list(campaign_type)[0]
         data["type"] = campaign_type.upper()
         try:
-            ad_group_id_name_mapping = {
-                ag.id: ag for ag in AdGroup.objects.filter(id__in=data["ad_group_ids"])
-            }
-            for ad_group_id in data["ad_group_ids"]:
-                ag_data = {
-                    "max_rate": data["max_rate"],
-                    "ad_group_id": ad_group_id,
-                    "name": ad_group_id_name_mapping[ad_group_id].name + " - BR"
-                }
-                validated["ad_group_data"].append(ag_data)
+            validated["ad_group_data"] = [{
+                "max_rate": data["max_rate"],
+                "ad_group_id": ad_group.id,
+                "name": ad_group.name + " - BR"
+            } for ad_group in ad_groups]
         except KeyError as e:
             if raise_exception:
                 raise ValidationError(e)
@@ -67,6 +67,13 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             validated["campaign_data"]["sub_type"] = "Non-skippable"
         validated["campaign_data"]["account_creation"] = self.context["account_creation"]
         return validated
+
+    def _validate_dates(self, start, end):
+        today = timezone.now().date()
+        if start < today:
+            raise ValidationError("Start date must be greater than or equal to today.")
+        if start > end:
+            raise ValidationError("Start date must be less than end date.")
 
     def create(self, validated_data):
         campaign_data = validated_data["campaign_data"]

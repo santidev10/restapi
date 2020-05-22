@@ -1,22 +1,14 @@
 from datetime import date
 from datetime import timedelta
-from unittest import skip
-from random import randint
-from pprint import pprint
-
-from django.db.models import F
-from django.db.models import Sum
 from django.test import TransactionTestCase
 
 
 from ads_analyzer.reports.account_targeting_report.create_report import AccountTargetingReport
-from aw_reporting.models import CriteriaTypeEnum
 from aw_reporting.models import Account
 from aw_reporting.models import Campaign
 from aw_reporting.models import AdGroup
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
-from aw_reporting.models import Audience
 from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import RemarkStatistic
 from aw_reporting.models import AgeRangeStatistic
@@ -36,15 +28,6 @@ from aw_reporting.models import Topic
 from aw_reporting.models import TopicStatistic
 from aw_reporting.models import YTChannelStatistic
 from aw_reporting.models import YTVideoStatistic
-from aw_reporting.models.salesforce_constants import SalesForceGoalType
-from es_components.constants import Sections
-from es_components.managers import ChannelManager
-from es_components.managers import VideoManager
-from es_components.models import Channel
-from es_components.models import Video
-from es_components.tests.utils import ESTestCase
-from utils.unittests.patch_now import patch_now
-from utils.unittests.str_iterator import str_iterator
 from ads_analyzer.reports.account_targeting_report import constants as names
 from utils.unittests.int_iterator import int_iterator
 
@@ -54,7 +37,7 @@ AGGREGATIONS = (names.AVERAGE_CPV, names.AVERAGE_CPM, names.CONTRACTED_RATE, nam
                 names.SUM_CLICKS, names.SUM_COST)
 
 
-class CreateAccountTargetingReportTargetDaaTestCase(TransactionTestCase):
+class CreateAccountTargetingReportTargetDataTestCase(TransactionTestCase):
     def _create_salesforce(self, pl_params=None):
         op = Opportunity.objects.create(id=f"OPTEST{next(int_iterator)}",
                                         name=f"test_op{next(int_iterator)}")
@@ -243,7 +226,6 @@ class CreateAccountTargetingReportTargetDaaTestCase(TransactionTestCase):
             aggregation_columns=AGGREGATIONS
         )
         targeting_data = report.get_targeting_report()
-        pprint(targeting_data)
         self._assert_statistics(targeting_data[0], [stat_1, stat_2], campaign, pl, targeting)
 
     def test_keyword(self):
@@ -286,7 +268,6 @@ class CreateAccountTargetingReportTargetDaaTestCase(TransactionTestCase):
         report.prepare_report(aggregation_columns=AGGREGATIONS)
         targeting_data = report.get_targeting_report(sort_key="criteria")
         targeting_data.sort(key=lambda x: x["ad_group_name"])
-        pprint(targeting_data)
         self._assert_statistics(targeting_data[0], [stat_1, stat_2], campaign, pl, targeting_1)
         self._assert_statistics(targeting_data[1], [stat_3, stat_4], campaign, pl, targeting_2)
 
@@ -389,6 +370,5 @@ class CreateAccountTargetingReportTargetDaaTestCase(TransactionTestCase):
         report = AccountTargetingReport(account, criterion_types=criteria_types)
         report.prepare_report(aggregation_columns=AGGREGATIONS)
         targeting_data = report.get_targeting_report(sort_key="criteria")
-        pprint(targeting_data)
         self._assert_statistics(targeting_data[0], [stat_1, stat_2], campaign, pl, targeting_channel)
         self._assert_statistics(targeting_data[1], [stat_3, stat_4], campaign, pl, targeting_video)

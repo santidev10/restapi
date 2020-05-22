@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
 from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
 from aw_creation.api.views.media_buying.utils import get_account_creation
-from aw_creation.api.views.media_buying.utils import BID_STRATEGY_TYPE_MAPPING
+from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
 
 from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
