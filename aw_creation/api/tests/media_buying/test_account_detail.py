@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.conf import settings
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_404_NOT_FOUND
 
 from aw_creation.api.urls.names import Name
 from aw_creation.api.urls.namespace import Namespace
@@ -94,6 +95,26 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         "view_through",
     }
 
+    def test_no_permission_fail(self):
+        self.create_test_user()
+        account = Account.objects.create()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self._request(account.account_creation.id)
+        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+
+    def test_fail_non_visible_account(self):
+        user = self.create_admin_user()
+        account = Account.objects.create()
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: []
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.get(self._get_url(account.account_creation.id))
+        self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)
+
     def test_success_get(self):
         user = self.create_admin_user()
         account = Account.objects.create(id=1, name="",
@@ -113,22 +134,15 @@ class MediaBuyingAccountDetailTestCase(ExtendedAPITestCase):
         AdGroupStatistic.objects.create(
             ad_group=ad_group, date=yesterday, average_position=1,
             ad_network=ad_network, **stats)
-        response = self.client.get(self._get_url(account_creation.id))
-        data = response.data
-
-    def test_no_permission_fail(self):
-        user = self.create_test_user()
-        account = Account.objects.create()
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
         }
         with self.patch_user_settings(**user_settings):
-            response = self._request(account.account_creation.id)
-        self.assertEqual(response.status_code, HTTP_403_FORBIDDEN)
+            response = self.client.get(self._get_url(account_creation.id))
+        self.assertEqual(response.status_code, HTTP_200_OK)
 
     def test_visible_account(self):
-        user = self.create_test_user()
-        user.add_custom_user_permission("media_buying")
+        self.create_admin_user()
         account = Account.objects.create()
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]

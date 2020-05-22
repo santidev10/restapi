@@ -1,6 +1,9 @@
+from datetime import datetime
+
 from django.db.models import F
 from django.db.models import Value
 from django.db.models.functions import Concat
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 
@@ -28,6 +31,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             "ad_group_data": [],
             "ad_data": {},
         }
+        self._validate_dates(data["start"], data["end"])
         ad_groups = AdGroup.objects\
             .filter(id__in=data["ad_group_ids"])\
             .annotate(campaign_type=F("campaign__type"))
@@ -63,6 +67,13 @@ class CampaignBreakoutSerializer(serializers.Serializer):
             validated["campaign_data"]["sub_type"] = "Non-skippable"
         validated["campaign_data"]["account_creation"] = self.context["account_creation"]
         return validated
+
+    def _validate_dates(self, start, end):
+        today = timezone.now().date()
+        if start < today:
+            raise ValidationError("Start date must be greater than or equal to today.")
+        if start > end:
+            raise ValidationError("Start date must be less than end date.")
 
     def create(self, validated_data):
         campaign_data = validated_data["campaign_data"]

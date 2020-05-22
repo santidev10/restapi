@@ -1,6 +1,8 @@
 import json
+from datetime import timedelta
 
 from django.http import QueryDict
+from django.utils import timezone
 
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
@@ -115,8 +117,59 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_create_fail_mixed_campaign_types(self):
-        pass
+    def test_create_fail_start_date_less_today(self):
+        """ Start date should be >= todays date """
+        self.create_admin_user()
+        account = Account.objects.create(id=1, name="")
+        campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
+        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5, type="Standard")
+        today = timezone.now().date()
+        start = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        payload = {
+            "ad_group_ids": [
+                ad_group.id,
+            ],
+            "pause_source_ad_groups": False,
+            "updated_campaign_budget": None,
+            "name": "Test Breakout - BR",
+            "budget": 5,
+            "max_rate": 5,
+            "start": start,
+            "end": end,
+        }
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
+
+    def test_create_fail_start_date_greater_end_date(self):
+        """ Start date should be less than end date """
+        self.create_admin_user()
+        account = Account.objects.create(id=1, name="")
+        campaign = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=12.1, type="video")
+        ad_group = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign, cpm_bid=5, type="Standard")
+        payload = {
+            "ad_group_ids": [
+                ad_group.id,
+            ],
+            "pause_source_ad_groups": False,
+            "updated_campaign_budget": None,
+            "name": "Test Breakout - BR",
+            "budget": 5,
+            "max_rate": 5,
+            "start": "2020-01-02",
+            "end": "2020-01-01"
+        }
+        user_settings = {
+            UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
+        }
+        with self.patch_user_settings(**user_settings):
+            response = self.client.post(self._get_url(account.account_creation.id), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_create_success_non_skip(self):
         """ Success create non skip breakout with updating campaign budgets """
@@ -129,6 +182,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="Standard")
 
         campaign_3 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.5, type="video")
+        today = timezone.now().date()
+        start = today.strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         payload = {
             "ad_group_ids": [
                 ad_group_1.id,
@@ -139,8 +195,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             "name": "Test Breakout - BR",
             "budget": 5,
             "max_rate": 5,
-            "start": "2020-01-01",
-            "end": "2020-02-02"
+            "start": start,
+            "end": end,
         }
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -174,7 +230,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=3.4, type="display")
         ad_group_2a = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="Display")
-
+        today = timezone.now().date()
+        start = today.strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         payload = {
             "ad_group_ids": [
                 ad_group_1a.id,
@@ -185,8 +243,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             "name": "Test Display Breakout - BR",
             "budget": 3,
             "max_rate": 5,
-            "start": "2020-01-01",
-            "end": "2020-02-02"
+            "start": start,
+            "end": end,
         }
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -226,6 +284,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
         campaign_3 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=4.5, type="video")
         campaign_4 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=3.3, type="video")
+        today = timezone.now().date()
+        start = today.strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         payload = {
             "ad_group_ids": [
                 ad_group_1.id,
@@ -236,8 +297,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             "name": "Test Bumper Breakout - BR",
             "budget": 3,
             "max_rate": 5,
-            "start": "2020-01-01",
-            "end": "2020-02-02"
+            "start": start,
+            "end": end,
         }
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -271,6 +332,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=5.7, type="video")
         ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=4, type="Video discovery")
+        today = timezone.now().date()
+        start = today.strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         payload = {
             "ad_group_ids": [
                 ad_group_1.id,
@@ -281,8 +345,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             "name": "Test Video discovery Breakout - BR",
             "budget": 3,
             "max_rate": 5,
-            "start": "2020-02-01",
-            "end": "2020-03-02"
+            "start": start,
+            "end": end,
         }
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]
@@ -315,6 +379,9 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
 
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, budget=1.7, type="video")
         ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpm_bid=1, type="In-stream")
+        today = timezone.now().date()
+        start = today.strftime("%Y-%m-%d")
+        end = (today + timedelta(days=1)).strftime("%Y-%m-%d")
         payload = {
             "ad_group_ids": [
                 ad_group_1.id,
@@ -325,8 +392,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
             "name": "Test Video In-stream Breakout - BR",
             "budget": 3,
             "max_rate": 5,
-            "start": "2020-01-01",
-            "end": "2020-02-02"
+            "start": start,
+            "end": end,
         }
         user_settings = {
             UserSettingsKey.VISIBLE_ACCOUNTS: [account.id]

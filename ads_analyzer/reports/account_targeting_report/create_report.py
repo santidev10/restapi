@@ -309,7 +309,9 @@ class AccountTargetingReport:
 
         # AdGroup serializer is not usually used in targeting data, but should be part of kpi_filters in the case of
         # results of the overall summary is out of bounds of the targeting data
-        for serializer_class in self.targeting_configs + [AdGroupSerializer]:
+        if "targeting_status" not in aggregation_filters:
+            self.targeting_configs += [self.TARGETING["AdGroup"]]
+        for serializer_class in self.targeting_configs:
             # Get grouped statistics for statistic table
             aggregated_serializer = self.get_aggregated_serializer(
                 serializer_class, self.statistics_filters, self.aggregation_columns, aggregation_filters=self.aggregation_filters
