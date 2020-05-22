@@ -35,7 +35,8 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
                 max_bid = self.context["bid_mapping"][obj.id]["cpm_bid"]
             else:
                 max_bid = self.context["bid_mapping"][obj.id]["cpv_bid"]
-        except KeyError:
+            max_bid /= 1000000
+        except (KeyError, TypeError):
             pass
         return max_bid
 
