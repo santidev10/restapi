@@ -299,17 +299,16 @@ class AccountTargetingReport:
         :param aggregation_summary_funcs: Django db funcs
         :return: tuple(list, dict, dict)
         """
-        aggregation_summary_funcs = aggregation_summary_funcs or [Avg, Min, Max, Sum]
-        self.aggregation_columns = aggregation_columns
-        self.aggregation_summary_funcs = aggregation_summary_funcs
-        self.aggregation_filters = aggregation_filters
+        self.aggregation_columns = aggregation_columns or []
+        self.aggregation_filters = aggregation_filters or []
+        self.aggregation_summary_funcs = aggregation_summary_funcs or [Avg, Min, Max, Sum]
 
         # Filter to retrieve non-aggregated statistics
         self.statistics_filters = self._build_statistics_filters(statistics_filters or {})
 
         # AdGroup serializer is not usually used in targeting data, but should be part of kpi_filters in the case of
         # results of the overall summary is out of bounds of the targeting data
-        if "targeting_status" not in aggregation_filters:
+        if "targeting_status" not in self.aggregation_filters:
             self.targeting_configs += [self.TARGETING["AdGroup"]]
         for serializer_class in self.targeting_configs:
             # Get grouped statistics for statistic table

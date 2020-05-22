@@ -54,7 +54,7 @@ AGGREGATIONS = (names.AVERAGE_CPV, names.AVERAGE_CPM, names.CONTRACTED_RATE, nam
                 names.SUM_CLICKS, names.SUM_COST)
 
 
-class CreateAccountTargetingReportTargetDaaTestCase(TransactionTestCase):
+class CreateAccountTargetingReportTargetDataTestCase(TransactionTestCase):
     def _create_salesforce(self, pl_params=None):
         op = Opportunity.objects.create(id=f"OPTEST{next(int_iterator)}",
                                         name=f"test_op{next(int_iterator)}")
