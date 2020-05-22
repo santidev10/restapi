@@ -2,12 +2,9 @@ import json
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
-from itertools import product
 
-import pytz
 from django.db.models import Sum
 from django.conf import settings
-from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
 
@@ -16,23 +13,16 @@ from aw_creation.api.urls.namespace import Namespace
 from aw_creation.models import AccountCreation
 from aw_creation.models import CampaignCreation
 from aw_reporting.calculations.cost import get_client_cost
-from aw_reporting.demo.data import DEMO_ACCOUNT_ID
-from aw_reporting.demo.recreate_demo_data import recreate_demo_data
-from aw_reporting.models import AWConnection
-from aw_reporting.models import AWConnectionToUserRelation
 from aw_reporting.models import Account
 from aw_reporting.models import AdGroup
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import CityStatistic
 from aw_reporting.models import Flight
-from aw_reporting.models import GeoTarget
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
 from aw_reporting.models.salesforce_constants import DynamicPlacementType
-from es_components.tests.utils import ESTestCase
 from saas.urls.namespaces import Namespace as RootNamespace
 from userprofile.constants import UserSettingsKey
 from utils.unittests.int_iterator import int_iterator
