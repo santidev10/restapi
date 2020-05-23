@@ -395,16 +395,24 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
 
-    def get_scores_for_channels(self, channel_ids):
+    def get_scores_for_channels(self, channel_ids, chunk_size=10000):
         """
-        Given a list if Channel ids, return a Channel id -> brand safety score map.
+        Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
         """
         channel_scores = {}
         search = Channel.search()
         search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
-        search.query = QueryBuilder().build().must().terms().field('main.id').value(channel_ids).get()
-        for channel in search.scan():
-            channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
+        while True:
+            chunk = channel_ids[:chunk_size]
+            channel_ids = channel_ids[chunk_size:]
+            search.query = QueryBuilder().build().must().terms().field('main.id').value(chunk).get()
+            search = search[0:chunk_size]
+            results = search.execute()
+            for channel in results.hits:
+                channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
+            if not len(channel_ids):
+                break
+
         return channel_scores
 
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
