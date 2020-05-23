@@ -493,7 +493,7 @@ class AuditExportApiView(APIView):
         video_count = {}
         channel_ids = []
         self.check_legacy(audit)
-        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
+        channels = AuditChannelProcessor.objects.filter(audit_id=audit_id).select_related('channel')
         if clean is not None:
             channels = channels.filter(clean=clean)
         for cid in channels:
