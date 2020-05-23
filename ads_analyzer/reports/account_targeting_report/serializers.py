@@ -23,12 +23,15 @@ from aw_reporting.models import CriteriaTypeEnum
 
 
 class AdGroupSerializer(BaseSerializer):
-    type = ReadOnlyField(default="AdGroup")
+    report_name = "AdGroup"
+    type = ReadOnlyField(default=report_name)
     target_name = SerializerMethodField()
+    type_name = CharField(default=report_name)
+    criteria = CharField(default="ad_group__name")
 
     class Meta(BaseSerializer.Meta):
         model = AdGroupStatistic
-        group_by = []
+        group_by = ("ad_group_id", "ad_group__name")
 
     def get_target_name(self, obj):
         name = obj["ad_group__name"]
@@ -36,11 +39,12 @@ class AdGroupSerializer(BaseSerializer):
 
 
 class AgeTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.AGE_RANGE.name
     criteria_field = "age_range_id"
     type_id = CriteriaTypeEnum.AGE_RANGE.value
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.AGE_RANGE.name)
+    type_name = CharField(default=report_name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source=criteria_field)
 
@@ -57,13 +61,14 @@ class AgeTargetingSerializer(BaseSerializer):
 
 
 class GenderTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.GENDER.name
     criteria_field = "gender_id"
     type_id = CriteriaTypeEnum.GENDER.value
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.GENDER.name)
-    target_name = SerializerMethodField()
+    type_name = CharField(default=report_name)
     criteria = IntegerField(source=criteria_field)
+    target_name = SerializerMethodField()
 
     class Meta(BaseSerializer.Meta):
         model = GenderStatistic
@@ -75,11 +80,12 @@ class GenderTargetingSerializer(BaseSerializer):
 
 
 class KeywordTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.KEYWORD.name
     criteria_field = "keyword"
     type_id = CriteriaTypeEnum.KEYWORD.value
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.KEYWORD.name)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="keyword")
     criteria = CharField(source=criteria_field)
 
@@ -89,11 +95,12 @@ class KeywordTargetingSerializer(BaseSerializer):
 
 
 class TopicTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.VERTICAL.name
     criteria_field = "topic__id"
     type_id = CriteriaTypeEnum.VERTICAL.value
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.VERTICAL.name)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
     criteria = IntegerField(source=criteria_field)
@@ -105,11 +112,12 @@ class TopicTargetingSerializer(BaseSerializer):
 
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
-    type_id = CriteriaTypeEnum.YOUTUBE_CHANNEL.value
+    report_name = f"{CriteriaTypeEnum.PLACEMENT.name}_CHANNEL"
+    type_id = CriteriaTypeEnum.PLACEMENT.value
     criteria_field = "yt_id"
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.name)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="yt_id")
     criteria = CharField(source=criteria_field)
 
@@ -119,11 +127,12 @@ class PlacementChannelTargetingSerializer(BaseSerializer):
 
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
-    type_id = CriteriaTypeEnum.YOUTUBE_VIDEO.value
+    report_name = f"{CriteriaTypeEnum.PLACEMENT.name}_VIDEO"
+    type_id = CriteriaTypeEnum.PLACEMENT.value
     criteria_field = "yt_id"
 
-    type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.value)
-    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.name)
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="yt_id")
     criteria = CharField(source=criteria_field)
 
@@ -133,11 +142,12 @@ class PlacementVideoTargetingSerializer(BaseSerializer):
 
 
 class AudienceTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.USER_INTEREST.name
     type_id = CriteriaTypeEnum.USER_INTEREST.value
     criteria_field = "audience_id"
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.USER_INTEREST.name)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="audience__name")
     criteria = IntegerField(source=criteria_field)
 
@@ -147,11 +157,12 @@ class AudienceTargetingSerializer(BaseSerializer):
 
 
 class RemarketTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.USER_LIST.name
     type_id = CriteriaTypeEnum.USER_LIST.value
     criteria_field = "remark_id"
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.USER_LIST.name)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="remark__name")
     criteria = IntegerField(source=criteria_field)
 
@@ -161,6 +172,7 @@ class RemarketTargetingSerializer(BaseSerializer):
 
 
 class ParentTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.PARENT.name
     type_id = CriteriaTypeEnum.PARENT.value
     criteria_field = "parent_status_id"
 
@@ -179,11 +191,12 @@ class ParentTargetingSerializer(BaseSerializer):
 
 
 class DeviceTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.DEVICE.name
     type_id = CriteriaTypeEnum.DEVICE.value
     criteria_field = "device_id"
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.DEVICE.name)
+    type_name = CharField(default=report_name)
     target_name = SerializerMethodField()
     criteria = IntegerField(source=criteria_field)
 
@@ -197,11 +210,12 @@ class DeviceTargetingSerializer(BaseSerializer):
 
 
 class VideoCreativeTargetingSerializer(BaseSerializer):
+    report_name = CriteriaTypeEnum.VIDEO_CREATIVE.name
     type_id = CriteriaTypeEnum.VIDEO_CREATIVE.value
     criteria_field = "creative_id"
 
     type = IntegerField(default=type_id)
-    type_name = CharField(default=CriteriaTypeEnum.VIDEO_CREATIVE.name)
+    type_name = CharField(default=report_name)
     criteria = CharField(source=criteria_field)
     target_name = CharField(source="creative_id")
 

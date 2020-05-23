@@ -40,3 +40,5 @@ class Name:
         ACCOUNT_DETAIL = f"{namespace}_account_detail"
         ACCOUNT_TARGETING = f"{namespace}_account_targeting"
         ACCOUNT_KPI_FILTERS = f"{namespace}_account_kpi_filters"
+        ACCOUNT_SYNC = f"{namespace}_account_sync"
+        ACCOUNT_BREAKOUT = f"{namespace}_account_breakout"

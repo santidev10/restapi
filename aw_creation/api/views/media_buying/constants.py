@@ -35,6 +35,16 @@ REPORT_CONFIG = {
 
 
 class CampaignBidStrategyTypeEnum(Enum):
-    cpa: CampaignCreation.TARGET_CPA_STRATEGY
-    cpv: CampaignCreation.MAX_CPV_STRATEGY
-    cpm: CampaignCreation.MAX_CPM_STRATEGY
+    cpa = CampaignCreation.TARGET_CPA_STRATEGY
+    cpv = CampaignCreation.MAX_CPV_STRATEGY
+    cpm = CampaignCreation.MAX_CPM_STRATEGY
+    target_cpm = CampaignCreation.TARGET_CPM_STRATEGY
+
+
+AD_GROUP_TYPE_CAMPAIGN_BID_TYPE = {
+    "Standard": "target_cpm",
+    "Bumper": "target_cpm",
+    "Display": "cpm",
+    "Video discovery": "cpv",
+    "In-stream": "cpv",
+}

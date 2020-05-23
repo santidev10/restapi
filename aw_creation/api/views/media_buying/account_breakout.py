@@ -5,12 +5,13 @@ from rest_framework.response import Response
 from aw_creation.api.serializers.media_buying.campaign_setting_serializer import CampaignSettingSerializer
 from aw_creation.api.serializers.media_buying.campaign_breakout_serializer import CampaignBreakoutSerializer
 from aw_creation.api.views.media_buying.utils import get_account_creation
-from aw_creation.api.views.media_buying.utils import BID_STRATEGY_TYPE_MAPPING
+from aw_creation.models.utils import BID_STRATEGY_TYPE_MAPPING
 
 from aw_creation.models import CampaignCreation
 from aw_creation.models import AdGroupCreation
 from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
+from utils.permissions import MediaBuyingAddOnPermission
 
 
 class AccountBreakoutAPIView(APIView):
@@ -18,6 +19,7 @@ class AccountBreakoutAPIView(APIView):
     GET: Retrieve campaign breakout details
     POST: Create breakout campaigns
     """
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, *args, **kwargs):
         """
@@ -32,7 +34,7 @@ class AccountBreakoutAPIView(APIView):
         account_creation = get_account_creation(request.user, pk)
         account = account_creation.account
         params = request.query_params
-        ad_group_ids = params["ad_group_ids"].split(",") or []
+        ad_group_ids = params.get("ad_group_ids", "").split(",") or []
         # Get AdGroup settings
         ad_groups = AdGroup.objects\
             .filter(campaign__account=account, id__in=ad_group_ids)\

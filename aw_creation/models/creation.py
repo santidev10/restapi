@@ -219,6 +219,7 @@ class CampaignCreation(UniqueCreationItem):
         choices=CAMPAIGN_TYPES,
         default=VIDEO_TYPE,
     )
+    sub_type = models.CharField(max_length=20, null=True, default=None)
 
     GOAL_IMPRESSIONS = "GOAL_IMPRESSIONS"
     GOAL_VIDEO_VIEWS = "GOAL_VIDEO_VIEWS"

@@ -1,5 +1,6 @@
+import hashlib
+
 from django.db.models import CharField as DBCharField
-from django.db.models import F
 from django.db.models import OuterRef
 from django.db.models import Subquery
 from django.db.models import QuerySet
@@ -20,7 +21,10 @@ class BaseSerializer(ModelSerializer):
     """
     Serializer base class for AccountTargetingReport statistics models
     """
+    targeting_id = SerializerMethodField()
+
     # Values should be set by children
+    report_name = None
     criteria_field = None
     type_id = None
     config = None
@@ -62,6 +66,7 @@ class BaseSerializer(ModelSerializer):
     class Meta:
         model = None
         fields = (
+            "targeting_id",
             "target_name",
             "type",
             "type_name",
@@ -167,9 +172,15 @@ class BaseSerializer(ModelSerializer):
         return queryset
 
     def get_targeting_status(self, obj):
-        status = obj["targeting_status"]
+        status = obj.get("targeting_status")
         try:
             status_value = TargetingStatusEnum(int(status)).name
         except (ValueError, TypeError):
             status_value = None
         return status_value
+
+    @classmethod
+    def get_targeting_id(cls, obj):
+        base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
+        hash_str = hashlib.sha1(str.encode(base)).hexdigest()
+        return hash_str
