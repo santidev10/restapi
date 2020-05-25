@@ -235,9 +235,9 @@ class GoogleAdsUpdater(object):
                     permission.save()
                 else:
                     raise
-
-            except Exception as e:
-                logger.error(f"Unhandled error in execute_with_any_permission: {e}")
+                
+            except Exception:
+                logger.exception(f"Unhandled error in execute_with_any_permission")
             else:
                 return
 

@@ -16,8 +16,8 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
-from .constants import STATISTICS_ANNOTATIONS
 from .constants import IMPRESSIONS_SHARE
+from .constants import STATISTICS_ANNOTATIONS
 from .constants import VIDEO_VIEWS_SHARE
 from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
 from aw_reporting.models import AdGroupTargeting
@@ -169,6 +169,9 @@ class BaseSerializer(ModelSerializer):
 
     @classmethod
     def _clean_annotations(cls, queryset, kpi_filters):
+        """
+        Format annotations that may have irregular values
+        """
         clean_annotations = {}
         if IMPRESSIONS_SHARE in kpi_filters:
             clean_annotations[IMPRESSIONS_SHARE] = Case(
