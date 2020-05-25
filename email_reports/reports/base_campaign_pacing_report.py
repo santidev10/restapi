@@ -1,4 +1,3 @@
-import boto
 import logging
 
 from datetime import timedelta
