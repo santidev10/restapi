@@ -1,9 +1,14 @@
 import hashlib
 
+from django.db.models import Case
 from django.db.models import CharField as DBCharField
+from django.db.models import F
+from django.db.models import FloatField as DBFloatField
 from django.db.models import OuterRef
-from django.db.models import Subquery
 from django.db.models import QuerySet
+from django.db.models import Subquery
+from django.db.models import Value
+from django.db.models import When
 from django.db.models.functions import Cast
 from rest_framework.fields import CharField
 from rest_framework.fields import FloatField
@@ -11,7 +16,9 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
+from .constants import IMPRESSIONS_SHARE
 from .constants import STATISTICS_ANNOTATIONS
+from .constants import VIDEO_VIEWS_SHARE
 from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import TargetingStatusEnum
@@ -156,7 +163,29 @@ class BaseSerializer(ModelSerializer):
             queryset = queryset.annotate(
                 targeting_status=Subquery(targeting_subquery.values("status")[:1]),
             )
+        queryset = cls._clean_annotations(queryset, kpi_filters)
         queryset = cls._filter_aggregated(queryset, kpi_filters)
+        return queryset
+
+    @classmethod
+    def _clean_annotations(cls, queryset, kpi_filters):
+        """
+        Format annotations that may have irregular values
+        """
+        clean_annotations = {}
+        if IMPRESSIONS_SHARE in kpi_filters:
+            clean_annotations[IMPRESSIONS_SHARE] = Case(
+                When(f"{IMPRESSIONS_SHARE}__gt=1.0", then=Value('1.0')),
+                default=F(IMPRESSIONS_SHARE),
+                output_field=DBFloatField()
+            )
+        if VIDEO_VIEWS_SHARE in kpi_filters:
+            clean_annotations[VIDEO_VIEWS_SHARE] = Case(
+                When(f"{VIDEO_VIEWS_SHARE}__gt=1.0", then=Value('1.0')),
+                default=F(VIDEO_VIEWS_SHARE),
+                output_field=DBFloatField()
+            )
+        queryset = queryset.annotate(**clean_annotations)
         return queryset
 
     @classmethod
