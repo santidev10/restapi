@@ -372,3 +372,41 @@ class CreateAccountTargetingReportTargetDataTestCase(TransactionTestCase):
         targeting_data = report.get_targeting_report(sort_key="criteria")
         self._assert_statistics(targeting_data[0], [stat_1, stat_2], campaign, pl, targeting_channel)
         self._assert_statistics(targeting_data[1], [stat_3, stat_4], campaign, pl, targeting_video)
+
+    def test_share_annotation_100_max(self):
+        """ Ensure impressions share, video views share, and cost share annotations do not exceed 100% """
+        account = Account.objects.create()
+        pl_params = dict(
+            ordered_rate=1.2,
+            goal_type_id=1,  # CPV
+        )
+        op, pl = self._create_salesforce(pl_params)
+        campaign = Campaign.objects.create(account=account, salesforce_placement=pl, impressions=100, video_views=100, cost=
+                                           100)
+        ad_group = AdGroup.objects.create(name="topics", campaign=campaign)
+        topic, _ = Topic.objects.get_or_create(name=f"Test topic {next(int_iterator)}")
+        criteria = CriteriaType.objects.create(id=CriteriaTypeEnum.VERTICAL.value, name=CriteriaTypeEnum.VERTICAL.name)
+        AdGroupTargeting.objects.create(
+            ad_group=ad_group,
+            status=TargetingStatusEnum.ENABLED.value,
+            type=criteria,
+            statistic_criteria=topic.id,
+        )
+        stat_1 = TopicStatistic.objects.create(ad_group=ad_group, topic=topic, date=date.today(), impressions=50,
+                                               video_views=50, cost=50)
+        stat_2 = TopicStatistic.objects.create(ad_group=ad_group, topic=topic, date=date.today() + timedelta(days=1),
+                                               impressions=51, video_views=51, cost=51)
+
+        self.assertTrue((stat_1.impressions + stat_2.impressions) / campaign.impressions > 1.0)
+        self.assertTrue((stat_1.video_views + stat_2.video_views) / campaign.video_views > 1.0)
+        self.assertTrue((stat_1.cost + stat_2.cost) / campaign.cost > 1.0)
+
+        report = AccountTargetingReport(account, criterion_types=CriteriaTypeEnum.VERTICAL.name)
+        report.prepare_report(
+            aggregation_columns=AGGREGATIONS
+        )
+        targeting_data = report.get_targeting_report()[0]
+        self.assertEqual(targeting_data["impressions_share"], 1.0)
+        self.assertEqual(targeting_data["video_views_share"], 1.0)
+        self.assertEqual(targeting_data["cost_share"], 1.0)
+

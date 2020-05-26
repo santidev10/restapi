@@ -16,6 +16,7 @@ from rest_framework.fields import IntegerField
 from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 
+from .constants import COST_SHARE
 from .constants import IMPRESSIONS_SHARE
 from .constants import STATISTICS_ANNOTATIONS
 from .constants import VIDEO_VIEWS_SHARE
@@ -143,7 +144,9 @@ class BaseSerializer(ModelSerializer):
         :return:
         """
         kpi_filters = kpi_filters or {}
+        # statistics_annotations are annotations calculated from existing statistics fields, such impressions
         statistics_annotations = {column: ANNOTATIONS[column] for column in STATISTICS_ANNOTATIONS}
+        # aggregate_annotations are annotations calculated using the annotations derived from statistics_annotations
         aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
@@ -163,26 +166,36 @@ class BaseSerializer(ModelSerializer):
             queryset = queryset.annotate(
                 targeting_status=Subquery(targeting_subquery.values("status")[:1]),
             )
-        queryset = cls._clean_annotations(queryset, kpi_filters)
+        queryset = cls._clean_annotations(queryset, aggregate_annotations)
         queryset = cls._filter_aggregated(queryset, kpi_filters)
         return queryset
 
     @classmethod
-    def _clean_annotations(cls, queryset, kpi_filters):
+    def _clean_annotations(cls, queryset, annotations):
         """
         Format annotations that may have irregular values
         """
         clean_annotations = {}
-        if IMPRESSIONS_SHARE in kpi_filters:
+        if IMPRESSIONS_SHARE in annotations:
+            condition = {f"{IMPRESSIONS_SHARE}__gt": 1.0}
+            # When(impressions_share__gt=1.0, ...)
             clean_annotations[IMPRESSIONS_SHARE] = Case(
-                When(f"{IMPRESSIONS_SHARE}__gt=1.0", then=Value('1.0')),
+                When(**condition, then=Value('1.0')),
                 default=F(IMPRESSIONS_SHARE),
                 output_field=DBFloatField()
             )
-        if VIDEO_VIEWS_SHARE in kpi_filters:
+        if VIDEO_VIEWS_SHARE in annotations:
+            condition = {f"{VIDEO_VIEWS_SHARE}__gt": 1.0}
             clean_annotations[VIDEO_VIEWS_SHARE] = Case(
-                When(f"{VIDEO_VIEWS_SHARE}__gt=1.0", then=Value('1.0')),
+                When(**condition, then=Value('1.0')),
                 default=F(VIDEO_VIEWS_SHARE),
+                output_field=DBFloatField()
+            )
+        if COST_SHARE in annotations:
+            condition = {f"{COST_SHARE}__gt": 1.0}
+            clean_annotations[COST_SHARE] = Case(
+                When(**condition, then=Value('1.0')),
+                default=F(COST_SHARE),
                 output_field=DBFloatField()
             )
         queryset = queryset.annotate(**clean_annotations)
@@ -208,7 +221,7 @@ class BaseSerializer(ModelSerializer):
             status_value = None
         return status_value
 
-    @classmethod
+    @ classmethod
     def get_targeting_id(cls, obj):
         base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
         hash_str = hashlib.sha1(str.encode(base)).hexdigest()
