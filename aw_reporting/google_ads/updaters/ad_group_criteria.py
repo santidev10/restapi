@@ -51,7 +51,7 @@ class AdGroupCriteriaUpdater(object):
             (age_range_performance_report, CriteriaTypeEnum.AGE_RANGE, self.WITH_NEGATIVE, None),
             (gender_performance_report, CriteriaTypeEnum.GENDER, self.WITH_NEGATIVE, None),
             (parent_performance_report, CriteriaTypeEnum.PARENT, self.WITH_NEGATIVE, None),
-            (topics_performance_report, CriteriaTypeEnum.VERTICAL, self.WITH_NEGATIVE, None),
+            (topics_performance_report, CriteriaTypeEnum.VERTICAL, self.WITH_NEGATIVE + ["VerticalId"], None),
         ]
 
     def update(self, client):
@@ -70,7 +70,7 @@ class AdGroupCriteriaUpdater(object):
                     ad_group_id = int(row_obj.AdGroupId)
                     if ad_group_id not in self.ad_group_ids:
                         continue
-                    statistic_criteria = self._get_statistic_criteria(row_obj.Criteria, criteria_type_name)
+                    statistic_criteria = self._get_statistic_criteria(row_obj, criteria_type_name)
                     criteria_exists_key = get_criteria_exists_key(ad_group_id, criteria_type_enum.value, statistic_criteria)
                     # statistic_criteria are values aw_reporting.google_ads.updaters use to store statistic criteria
                     # and is used to match aggregated statistics with targeting
@@ -91,7 +91,7 @@ class AdGroupCriteriaUpdater(object):
                 AdGroupTargeting.objects.bulk_update(to_update, fields=self.UPDATE_FIELDS)
                 safe_bulk_create(AdGroupTargeting, to_create, batch_size=self.BATCH_SIZE)
 
-    def _get_statistic_criteria(self, criteria, criteria_type_name):
+    def _get_statistic_criteria(self, row_obj, criteria_type_name):
         """
         Method to get same criteria values that aw_reporting.google_ads.updaters statistics updates use
         These values will be used to easily match internal criteria values such as GenderStatistic.gender_id to
@@ -113,38 +113,38 @@ class AdGroupCriteriaUpdater(object):
             CriteriaTypeEnum.YOUTUBE_VIDEO.name: self._get_placement_criteria,
         }
         method = method_mapping[criteria_type_name]
-        statistics_criteria = str(method(criteria))
+        statistics_criteria = str(method(row_obj))
         return statistics_criteria
 
-    def _get_placement_criteria(self, criteria):
-        value = criteria
+    def _get_placement_criteria(self, row_obj):
+        value = row_obj.Criteria
         # only youtube ids we need in criteria
-        if "youtube.com/" in criteria:
-            value = criteria.split("/")[-1]
+        if "youtube.com/" in value:
+            value = value.split("/")[-1]
         return value
 
-    def _get_keyword_criteria(self, criteria):
-        return criteria
+    def _get_keyword_criteria(self, row_obj):
+        return row_obj.Criteria
 
-    def _get_audience_criteria(self, criteria):
-        au_type, au_id, *_ = criteria.split("::")
+    def _get_audience_criteria(self, row_obj):
+        au_type, au_id, *_ = row_obj.Criteria.split("::")
         return au_id
 
-    def _get_parent_criteria(self, criteria):
-        parent_status = ParentStatuses.index(criteria)
+    def _get_parent_criteria(self, row_obj):
+        parent_status = ParentStatuses.index(row_obj.Criteria)
         return parent_status
 
-    def _get_gender_criteria(self, criteria):
-        gender = Genders.index(criteria)
+    def _get_gender_criteria(self, row_obj):
+        gender = Genders.index(row_obj.Criteria)
         return gender
 
-    def _get_age_range_criteria(self, criteria):
-        age_range = AgeRanges.index(criteria)
+    def _get_age_range_criteria(self, row_obj):
+        age_range = AgeRanges.index(row_obj.Criteria)
         return age_range
 
-    def _get_topic_criteria(self, criteria):
-        topic = self.topics[criteria]
-        return topic
+    def _get_topic_criteria(self, row_obj):
+        topic_id = row_obj.VerticalId
+        return topic_id
 
     def _get_audience_predicate(self, as_user_list=True):
         """
