@@ -53,9 +53,7 @@ class AccountBreakoutAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         """
-        Create new campaign from existing targeting
-        Request body should contain data used by CampaignBreakoutSerializer to create
-            CampaignCreation, AdGroupCreation, and AdCreations to update on GoogleAds
+        Create new campaign from existing settings
         Updates Campaign budgets and pauses AdGroups if required
         :return:
         """

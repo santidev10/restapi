@@ -144,7 +144,9 @@ class BaseSerializer(ModelSerializer):
         :return:
         """
         kpi_filters = kpi_filters or {}
+        # statistics_annotations are annotations calculated from existing statistics fields, such impressions
         statistics_annotations = {column: ANNOTATIONS[column] for column in STATISTICS_ANNOTATIONS}
+        # aggregate_annotations are annotations calculated using the annotations derived from statistics_annotations
         aggregate_annotations = {column: ANNOTATIONS[column] for column in aggregation_keys}
         queryset = queryset \
             .values(*cls.Meta.group_by, *cls.Meta.values_shared) \
@@ -218,9 +220,3 @@ class BaseSerializer(ModelSerializer):
         except (ValueError, TypeError):
             status_value = None
         return status_value
-
-    @classmethod
-    def get_targeting_id(cls, obj):
-        base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
-        hash_str = hashlib.sha1(str.encode(base)).hexdigest()
-        return hash_str

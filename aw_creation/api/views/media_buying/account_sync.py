@@ -64,8 +64,8 @@ class AccountSyncAPIView(APIView):
                     When(name__contains="#", then=F("ad_group_id")),
                     default=0,
                     output_field=IntegerField()
-            ),
-        ) \
+                )
+            ) \
             .values(*self.AD_GROUP_FIELDS)
         sync_data = {
             "campaigns": list(to_create) + list(to_update),
