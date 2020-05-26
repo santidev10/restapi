@@ -5,7 +5,6 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from aw_reporting.models.base import BaseModel
-from .tasks import update_keywords_stats
 
 logger = logging.getLogger(__name__)
 
@@ -31,74 +30,6 @@ class Query(models.Model):
 
     def __str__(self):
         return "%s: %d kws" % (self.text, self.keywords.count())
-
-    @classmethod
-    def create_from_aw_response(cls, query, response):
-        # models
-        interest_relation = KeyWord.interests.through
-        query_relation = KeyWord.queries.through
-
-        # get ids
-        interest_ids = set(
-            Interest.objects.all().values_list("id", flat=True)
-        )
-        keywords_ids = set(
-            KeyWord.objects.filter(
-                text__in=[i["keyword_text"] for i in response]
-            ).values_list("text", flat=True)
-        )
-
-        # create items
-        kws = []
-        update_kws = []
-        interest_relations = []
-        query_relations = []
-        for k in response:
-            keyword_text = k["keyword_text"]
-            if keyword_text in keywords_ids:
-                update_kws.append(k)
-            else:
-                kws.append(
-                    KeyWord(
-                        text=keyword_text,
-                        average_cpc=k.get("average_cpc"),
-                        competition=k.get("competition"),
-                        _monthly_searches=json.dumps(
-                            k.get("monthly_searches", [])
-                        ),
-                        search_volume=k.get("search_volume"),
-                    )
-                )
-                for interest_id in k["interests"]:
-                    if interest_id in interest_ids:
-                        interest_relations.append(
-                            interest_relation(
-                                keyword_id=keyword_text,
-                                interest_id=interest_id,
-                            )
-                        )
-            query_relations.append(
-                query_relation(
-                    keyword_id=k["keyword_text"],
-                    query_id=query,
-                )
-            )
-
-        query_obj = cls.objects.create(text=query)
-
-        if kws:
-            KeyWord.objects.safe_bulk_create(kws)
-        if interest_relations:
-            interest_relation.objects.bulk_create(interest_relations)
-        if query_relations:
-            query_relation.objects.bulk_create(query_relations)
-
-        if update_kws:
-            update_keywords_stats.delay(update_kws)
-
-        logger.debug("Save")
-
-        return query_obj
 
 
 class KeyWord(BaseModel):
@@ -136,7 +67,7 @@ class KeyWord(BaseModel):
         top_kw_interests = {}
         interests_ids = self.interests.all().values_list("id", flat=True)
         for interests_id in interests_ids:
-            keywords = Interest.objects.get(id=interests_id)\
+            keywords = Interest.objects.get(id=interests_id) \
                            .keyword_set.all() \
                            .exclude(text=self.text) \
                            .order_by("-search_volume") \
