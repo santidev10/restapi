@@ -23,7 +23,7 @@ class AuditDBRouter:
             return True
         if all([app_name not in [obj1._meta.app_label, obj2._meta.app_label] for app_name in APP_NAMES]):
             return None
-        return False
+        return None
 
     def allow_migrate(self, db, app_label, *_, **__):
         if app_label in APP_NAMES:
@@ -32,4 +32,4 @@ class AuditDBRouter:
         if db == DB_NAME:
             # ensure that all other apps don"t get migrated on the audit database.
             return False
-        return False
+        return None
