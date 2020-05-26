@@ -40,12 +40,12 @@ class Query(models.Model):
 
         # get ids
         interest_ids = set(
-            Interest.objects.all().values_list('id', flat=True)
+            Interest.objects.all().values_list("id", flat=True)
         )
         keywords_ids = set(
             KeyWord.objects.filter(
-                text__in=[i['keyword_text'] for i in response]
-            ).values_list('text', flat=True)
+                text__in=[i["keyword_text"] for i in response]
+            ).values_list("text", flat=True)
         )
 
         # create items
@@ -54,22 +54,22 @@ class Query(models.Model):
         interest_relations = []
         query_relations = []
         for k in response:
-            keyword_text = k['keyword_text']
+            keyword_text = k["keyword_text"]
             if keyword_text in keywords_ids:
                 update_kws.append(k)
             else:
                 kws.append(
                     KeyWord(
                         text=keyword_text,
-                        average_cpc=k.get('average_cpc'),
-                        competition=k.get('competition'),
+                        average_cpc=k.get("average_cpc"),
+                        competition=k.get("competition"),
                         _monthly_searches=json.dumps(
-                            k.get('monthly_searches', [])
+                            k.get("monthly_searches", [])
                         ),
-                        search_volume=k.get('search_volume'),
+                        search_volume=k.get("search_volume"),
                     )
                 )
-                for interest_id in k['interests']:
+                for interest_id in k["interests"]:
                     if interest_id in interest_ids:
                         interest_relations.append(
                             interest_relation(
@@ -79,7 +79,7 @@ class Query(models.Model):
                         )
             query_relations.append(
                 query_relation(
-                    keyword_id=k['keyword_text'],
+                    keyword_id=k["keyword_text"],
                     query_id=query,
                 )
             )
@@ -121,6 +121,7 @@ class KeyWord(BaseModel):
         raw = self._monthly_searches
         if raw:
             return json.loads(raw)
+        return None
 
     def set_monthly_searches(self, value):
         self._monthly_searches = json.dumps(value)
@@ -133,11 +134,13 @@ class KeyWord(BaseModel):
     @property
     def interests_top_kw(self):
         top_kw_interests = {}
-        interests_ids = self.interests.all().values_list('id', flat=True)
+        interests_ids = self.interests.all().values_list("id", flat=True)
         for interests_id in interests_ids:
-            keywords = Interest.objects.get(id=interests_id).keyword_set.all() \
-                           .exclude(text=self.text).order_by(
-                '-search_volume').values_list('text', flat=True)[:5]
+            keywords = Interest.objects.get(id=interests_id)\
+                           .keyword_set.all() \
+                           .exclude(text=self.text) \
+                           .order_by("-search_volume") \
+                           .values_list("text", flat=True)[:5]
             top_kw_interests[interests_id] = keywords
         return top_kw_interests
 
@@ -148,7 +151,7 @@ class KeyWord(BaseModel):
 class KeywordsList(BaseModel):
     name = models.TextField()
     user_email = models.EmailField(db_index=True)
-    keywords = models.ManyToManyField(KeyWord, related_name='lists')
+    keywords = models.ManyToManyField(KeyWord, related_name="lists")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     category = models.CharField(max_length=255, null=True, blank=True)
@@ -166,7 +169,7 @@ class KeywordsList(BaseModel):
     cum_average_volume_per_kw = JSONField(null=True, blank=True)
 
     class Meta:
-        ordering = ['-updated_at']
+        ordering = ["-updated_at"]
 
     @property
     def top_keywords_data(self):
@@ -182,4 +185,4 @@ class KeywordsList(BaseModel):
 
 
 class ViralKeywords(BaseModel):
-    keyword = models.ForeignKey(KeyWord, related_name='viral_keyword', on_delete=models.CASCADE)
+    keyword = models.ForeignKey(KeyWord, related_name="viral_keyword", on_delete=models.CASCADE)
