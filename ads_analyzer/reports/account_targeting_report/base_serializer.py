@@ -220,3 +220,9 @@ class BaseSerializer(ModelSerializer):
         except (ValueError, TypeError):
             status_value = None
         return status_value
+
+    @ classmethod
+    def get_targeting_id(cls, obj):
+        base = f"{cls.report_name}{obj['ad_group__campaign__name']}{obj['ad_group__name']}{obj[cls.criteria_field]}"
+        hash_str = hashlib.sha1(str.encode(base)).hexdigest()
+        return hash_str
