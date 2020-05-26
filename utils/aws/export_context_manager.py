@@ -6,7 +6,7 @@ import tempfile
 from django.conf import settings
 
 
-class ExportContextManager(object):
+class ExportContextManager:
     def __init__(self, items, fieldnames):
         self.items = items
         self.fieldnames = fieldnames

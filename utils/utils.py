@@ -1,6 +1,7 @@
 import string
 from collections import Counter
-from itertools import groupby, count
+from itertools import count
+from itertools import groupby
 
 from utils.lang import flatten
 
@@ -16,7 +17,7 @@ def safe_exception(logger):
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Exception as err:
+            except BaseException as err:
                 logger.exception(err)
 
         return wrapper
@@ -53,7 +54,7 @@ def convert_subscriber_count(s):
         return None
     try:
         subscribers = int(s)
-    except Exception as e:
+    except BaseException:
         try:
             units = s[-1].lower()
             s = s[:-1]
@@ -64,7 +65,7 @@ def convert_subscriber_count(s):
                 subscribers = int(subs_float * 1000000)
             elif units == "b":
                 subscribers = int(subs_float * 1000000000)
-        except Exception as e:
+        except BaseException:
             return 0
     return subscribers
 
@@ -76,7 +77,7 @@ def prune_iab_categories(iab_categories):
 
 
 def remove_tags_punctuation(s):
-    return s.translate(str.maketrans('', '', string.punctuation.replace("@", "").replace("$", "").replace("#", "")
+    return s.translate(str.maketrans("", "", string.punctuation.replace("@", "").replace("$", "").replace("#", "")
                                      .replace("*", "")))
 
 

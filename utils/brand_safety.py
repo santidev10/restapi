@@ -2,6 +2,7 @@ from math import floor
 
 import brand_safety.constants as constants
 
+
 def get_brand_safety_label(score):
     """
     Helper method to return appropriate brand safety score label
@@ -13,6 +14,7 @@ def get_brand_safety_label(score):
     except (ValueError, TypeError):
         return None
 
+    # pylint: disable=misplaced-comparison-constant
     if 90 <= score:
         label = constants.SAFE
     elif 80 <= score:
@@ -22,6 +24,7 @@ def get_brand_safety_label(score):
     else:
         label = constants.HIGH_RISK
     return label
+    # pylint: enable=misplaced-comparison-constant
 
 
 def get_brand_safety_data(score):
@@ -47,4 +50,3 @@ def map_brand_safety_score(score):
         except ValueError:
             pass
     return mapped
-

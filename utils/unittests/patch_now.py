@@ -1,5 +1,6 @@
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date
+from datetime import datetime
 from unittest.mock import patch
 
 import pytz
@@ -10,7 +11,7 @@ from utils.datetime import Time
 
 @contextmanager
 def patch_now(now):
-    if type(now) == date:
+    if isinstance(now, date):
         now = datetime.combine(now, datetime.min.time())
     if now.tzinfo is None:
         now = now.replace(tzinfo=pytz.timezone(settings.DEFAULT_TIMEZONE))
