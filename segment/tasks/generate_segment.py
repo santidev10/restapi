@@ -24,7 +24,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
