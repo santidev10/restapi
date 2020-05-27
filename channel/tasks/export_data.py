@@ -13,6 +13,8 @@ from channel.constants import EXISTS_FILTER
 from channel.constants import CHANNEL_CSV_HEADERS
 from channel.api.serializers.channel_export import ChannelListExportSerializer
 from channel.utils import ChannelGroupParamAdapter
+from channel.utils import IsTrackedParamsAdapter
+from channel.utils import VettedParamsAdapter
 from utils.es_components_api_utils import BrandSafetyParamAdapter
 from utils.es_components_api_utils import ExportDataGenerator
 from utils.es_components_api_utils import ESQuerysetAdapter
@@ -28,7 +30,7 @@ class ChannelListDataGenerator(ExportDataGenerator):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, ChannelGroupParamAdapter, VettedParamsAdapter, IsTrackedParamsAdapter)
     queryset = ESQuerysetAdapter(ChannelManager((
         Sections.MAIN,
         Sections.GENERAL_DATA,

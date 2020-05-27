@@ -4,6 +4,7 @@ from saas import celery_app
 from django.conf import settings
 from django.core.mail import send_mail
 
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from utils.es_components_api_utils import BrandSafetyParamAdapter
@@ -27,7 +28,7 @@ class VideoListDataGenerator(ExportDataGenerator):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
     queryset = ESQuerysetAdapter(VideoManager((
         Sections.MAIN,
         Sections.GENERAL_DATA,
