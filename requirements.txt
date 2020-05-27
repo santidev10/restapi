@@ -6,9 +6,8 @@ asgiref==3.2.7
 attrs==19.1.0
 beautifulsoup4==4.8.0
 billiard==3.6.3.0
-boto3==1.12.45
-boto==2.49.0
-botocore==1.10.84
+boto3==1.13.16
+botocore==1.16.16
 cached-property==1.5.1
 cachetools==3.1.1
 celery==4.4.1
@@ -43,7 +42,7 @@ isodate==0.6.0
 itypes==1.1.0
 jdcal==1.3
 Jinja2==2.10.1
-jmespath==0.9.3
+jmespath==0.10.0
 kombu==4.6.8
 langid==1.1.6
 lxml==4.4.1
@@ -73,7 +72,7 @@ requests-toolbelt==0.9.1
 requests==2.23.0
 rsa==4.0
 ruamel.yaml==0.15.80
-s3transfer==0.1.13
+s3transfer==0.3.3
 simple-salesforce==0.68.1
 six==1.12.0
 sqlparse==0.3.0
