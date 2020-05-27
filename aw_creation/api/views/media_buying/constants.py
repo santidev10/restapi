@@ -24,10 +24,8 @@ REPORT_CONFIG = {
         "scalar_filters": (ScalarFilter("targeting_status", "", "int"),),
         "range_filters": AGGREGATION_CONFIG["all"],
         "criteria": [
-            CriteriaTypeEnum.VIDEO_CREATIVE.name, CriteriaTypeEnum.DEVICE.name,
             f"{CriteriaTypeEnum.PLACEMENT.name}_CHANNEL", f"{CriteriaTypeEnum.PLACEMENT.name}_VIDEO",
-            CriteriaTypeEnum.KEYWORD.name, CriteriaTypeEnum.VERTICAL.name, CriteriaTypeEnum.AGE_RANGE.name,
-            CriteriaTypeEnum.GENDER.name, CriteriaTypeEnum.PARENT.name,
+            CriteriaTypeEnum.KEYWORD.name, CriteriaTypeEnum.VERTICAL.name,
             CriteriaTypeEnum.USER_INTEREST.name, CriteriaTypeEnum.USER_LIST.name,
         ]
     },
