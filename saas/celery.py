@@ -6,6 +6,7 @@ from celery import Celery
 from utils.celery.logging import init_celery_logging
 
 from kombu import serialization
+from kombu.exceptions import DecodeError
 
 
 def serialize(item):
@@ -13,7 +14,11 @@ def serialize(item):
 
 
 def deserialize(item):
-    return json.loads(item)
+    try:
+        data = json.loads(item)
+    except TypeError:
+        data = item
+    return data
 
 
 serialization.register(
