@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from django.db.models import F
 from django.db.models import Value
 from django.db.models.functions import Concat
@@ -22,7 +20,7 @@ class CampaignBreakoutSerializer(serializers.Serializer):
     end = serializers.DateField()
     budget = serializers.DecimalField(max_digits=10, decimal_places=2)
     ad_group_ids = serializers.ListField(child=serializers.IntegerField())
-    max_rate = serializers.DecimalField(max_digits=10, decimal_places=2)
+    max_rate = serializers.DecimalField(max_digits=6, decimal_places=3)
     bidding_strategy_type = serializers.CharField(max_length=10, default=CampaignCreation.MAX_CPV_STRATEGY)
 
     def validate(self, data, raise_exception=True):
