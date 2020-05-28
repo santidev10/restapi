@@ -22,7 +22,8 @@ def deserialize(item):
             **item,
             "result": json.loads(item["result"]),
         }
-    except (DecodeError, json.JSONDecodeError):
+    except Exception as e:
+        print(e.__class__.__name__)
         data = json.loads(item)
         result = {
             **item,
