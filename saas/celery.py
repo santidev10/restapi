@@ -17,6 +17,8 @@ def serialize(item):
 
 
 def deserialize(item):
+    print(type(item))
+    print(item)
     try:
         result = {
             **item,
