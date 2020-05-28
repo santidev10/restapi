@@ -6,25 +6,24 @@ from celery import Celery
 from utils.celery.logging import init_celery_logging
 
 from kombu import serialization
+from kombu.exceptions import DecodeError
 
 
 def serialize(item):
-    return {
-        **item,
-        "result": json.dumps(item["result"]),
-    }
+    return json.dumps(item)
 
 
 def deserialize(item):
-    return {
-        **item,
-        "result": json.loads(item["result"]),
-    }
+    try:
+        data = json.loads(item)
+    except TypeError:
+        data = item
+    return data
 
 
 serialization.register(
-    'celery_result', serialize, deserialize,
-    content_type='application/celery-result',
+    "celery_result", serialize, deserialize,
+    content_type="application/json",
 )
 
 app = Celery("saas", task_cls="utils.celery.termination_proof_task:TerminationProofTask")
