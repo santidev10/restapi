@@ -1,4 +1,5 @@
 from django.db.models import F
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -53,9 +54,7 @@ class AccountBreakoutAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         """
-        Create new campaign from existing targeting
-        Request body should contain data used by CampaignBreakoutSerializer to create
-            CampaignCreation, AdGroupCreation, and AdCreations to update on GoogleAds
+        Create new campaign from existing settings
         Updates Campaign budgets and pauses AdGroups if required
         :return:
         """
@@ -103,19 +102,17 @@ class AccountBreakoutAPIView(APIView):
             self._create_ad_group_creations(all_campaign_creations, source_ad_groups, params)
 
         if updated_campaign_budget is not None:
-            # Get campaigns of non breakout ad groups and update their budgets
-            params = {"budget": updated_campaign_budget}
-            non_breakout_campaigns = Campaign.objects \
-                .filter(account=account_creation.account) \
-                .exclude(ad_groups__id__in=breakout_ad_group_ids) \
+            # Get campaigns of breakout ad groups and update their budgets
+            params = {"budget": updated_campaign_budget, "updated_at": timezone.now()}
+            breakout_campaigns = Campaign.objects \
+                .filter(account=account_creation.account, ad_groups__id__in=breakout_ad_group_ids)\
                 .distinct()
             existing_creations = CampaignCreation.objects \
-                .filter(campaign__in=non_breakout_campaigns)
+                .filter(campaign__in=breakout_campaigns)
             existing_creations.update(**params)
-            source_campaigns = non_breakout_campaigns \
-                .exclude(id__in=existing_creations
-                         .values_list("campaign_id", flat=True))
-            self._create_campaign_creations(source_campaigns, account_creation, params)
+            to_create = breakout_campaigns \
+                .exclude(id__in=existing_creations.values_list("campaign_id", flat=True))
+            self._create_campaign_creations(to_create, account_creation, params)
 
     def _create_campaign_creations(self, campaigns, account_creation, params=None):
         """

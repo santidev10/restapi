@@ -35,6 +35,7 @@ class CampaignSettingSerializer(serializers.ModelSerializer):
                 max_bid = self.context["bid_mapping"][obj.id]["cpm_bid"]
             else:
                 max_bid = self.context["bid_mapping"][obj.id]["cpv_bid"]
+            # max_bid saved from api as micros, which is dollar amounts multiplied by 10e6
             max_bid /= 1000000
         except (KeyError, TypeError):
             pass
