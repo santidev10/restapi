@@ -9,17 +9,11 @@ from kombu import serialization
 
 
 def serialize(item):
-    return {
-        **item,
-        "result": json.dumps(item["result"]),
-    }
+    return json.dumps(item)
 
 
 def deserialize(item):
-    return {
-        **item,
-        "result": json.loads(item["result"]),
-    }
+    return json.loads(item)
 
 
 serialization.register(
