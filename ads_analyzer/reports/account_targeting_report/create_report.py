@@ -1,33 +1,54 @@
+"""
+Module used to gather aggregated AdGroup level targeting statistics for Account
+Each statistics table has a serializer used to aggregate all statistics for an AdGroup / targeting criteria pair
+
+Before any data can be retrieved from an instantiation, the prepare_report must be invoked to provide the
+report with the required parameters to filter and aggregate statistics
+
+Serializers first group individual statistics segmented by date with the 'statistics_filters' parameter
+Serializers then aggregate filtered statistics with the 'aggregation_columns' parameter, which are string values
+    that map to aggregation expressions defined in ads_analyzer.reports.annotations
+
+Aggregated statistics can then be filtered using the 'aggregation_filters' parameter
+Once prepare_report is called, the methods get_targeting_report, get_kpi_filters, and get_overall_summary methods
+    are available
+
+kpi_filters are characterized as important AdGroup targeting metrics such as sum_cost, sum_revenue, max_cpv, etc. for
+    the account, which are calculated with 'aggregation_columns' and 'aggregation_summary_funcs'
+overall_summary are values from the AdGroupStatistic table segmented by date
+"""
+
 from collections import defaultdict
 from collections import namedtuple
 from itertools import chain
+
+import hashlib
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+from utils.api.cache import cache_method
 
 from django.db.models import Q
 from django.db.models import Avg
 from django.db.models import Max
 from django.db.models import Min
 from django.db.models import Sum
-from django.utils import timezone
 
 from ads_analyzer.reports.account_targeting_report.serializers import AdGroupSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import AgeTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import AudienceTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import DeviceTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import GenderTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import KeywordTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import PlacementChannelTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import PlacementVideoTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import RemarketTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.serializers import TopicTargetingSerializer
-from ads_analyzer.reports.account_targeting_report.serializers import AudienceTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import ParentTargetingSerializer
+from ads_analyzer.reports.account_targeting_report.serializers import VideoCreativeTargetingSerializer
 from ads_analyzer.reports.account_targeting_report.constants import KPI_FILTER_NAME_MAP
 from ads_analyzer.reports.account_targeting_report.constants import TOTAL_SUMMARY_COLUMN_AGG_MAPPING
-from aw_reporting.models import AdGroupStatistic
-from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import AudienceStatistic
-from aw_reporting.models import GenderStatistic
-from aw_reporting.models import KeywordStatistic
-from aw_reporting.models import TopicStatistic
-from aw_reporting.models import CriterionType
-from aw_reporting.models import YTChannelStatistic
-from aw_reporting.models import YTVideoStatistic
+from aw_reporting.models import CriteriaTypeEnum
+
 
 CriterionConfig = namedtuple("CriterionConfig", "model serializer")
 CostDelivery = namedtuple("CostDelivery", "cost impressions views")
@@ -36,25 +57,31 @@ CostDelivery = namedtuple("CostDelivery", "cost impressions views")
 class AccountTargetingReport:
     """
     Description:
-    Retrieves and aggregates targeting statistics for provided account. TARGETING config consists of namedtuple's
-    containing corresponding statistics model and serializer.
+    Retrieves and aggregates targeting statistics for provided account. TARGETING config consists of mapping
+    of report type to serializer
 
-    get_report method drives reporting logic and invokes main update methods which are prefixed with "_update".
-    Each update method checks self.reporting_type to determine if update logic for that method should run. This is
-    designed to only retrieve necessary data / optimize the report as update methods for large accounts may be
-    expensive. If self.reporting_type contains report_type for the update_method, then method will mutate its
-    corresponding instance variable (e.g. self._all_data)
-
+    Usage:
+        1. Init class with account and criterion_types values to retrieve statistics
+        2. Call prepare_report
+        3. Request report info
+            a. get_targeting_report
+            b. get_kpi_filters
+            c. get_overall_summary
     """
+    CACHE_KEY_PREFIX = "ads_analyzer.reports.account_targeting_report.create_report"
     TARGETING = {
-        "AdGroup": CriterionConfig(AdGroupStatistic, AdGroupSerializer),
-        CriterionType.AGE: CriterionConfig(AgeRangeStatistic, AgeTargetingSerializer),
-        CriterionType.GENDER: CriterionConfig(GenderStatistic, GenderTargetingSerializer),
-        CriterionType.KEYWORD: CriterionConfig(KeywordStatistic, KeywordTargetingSerializer),
-        f"{CriterionType.PLACEMENT}_CHANNEL": CriterionConfig(YTChannelStatistic, PlacementChannelTargetingSerializer),
-        f"{CriterionType.PLACEMENT}_VIDEO": CriterionConfig(YTVideoStatistic, PlacementVideoTargetingSerializer),
-        CriterionType.USER_INTEREST_LIST: CriterionConfig(AudienceStatistic, AudienceTargetingSerializer),
-        CriterionType.VERTICAL: CriterionConfig(TopicStatistic, TopicTargetingSerializer),
+        "AdGroup": AdGroupSerializer,
+        CriteriaTypeEnum.DEVICE.name: DeviceTargetingSerializer,
+        CriteriaTypeEnum.VIDEO_CREATIVE.name: VideoCreativeTargetingSerializer,
+        CriteriaTypeEnum.KEYWORD.name: KeywordTargetingSerializer,
+        f"{CriteriaTypeEnum.PLACEMENT.name}_CHANNEL": PlacementChannelTargetingSerializer,
+        f"{CriteriaTypeEnum.PLACEMENT.name}_VIDEO": PlacementVideoTargetingSerializer,
+        CriteriaTypeEnum.VERTICAL.name: TopicTargetingSerializer,
+        CriteriaTypeEnum.USER_LIST.name: RemarketTargetingSerializer,
+        CriteriaTypeEnum.USER_INTEREST.name: AudienceTargetingSerializer,
+        CriteriaTypeEnum.AGE_RANGE.name: AgeTargetingSerializer,
+        CriteriaTypeEnum.GENDER.name: GenderTargetingSerializer,
+        CriteriaTypeEnum.PARENT.name: ParentTargetingSerializer,
     }
 
     def __init__(self, account,  criterion_types=None):
@@ -66,10 +93,12 @@ class AccountTargetingReport:
         """
         self.account = account
         if criterion_types is None:
-            criterion_types = self.TARGETING.keys()
+            self.criterion_types = self.TARGETING.keys()
         elif type(criterion_types) is str:
-            criterion_types = [criterion_types]
-        self.targeting_configs = [self.TARGETING[criterion] for criterion in criterion_types
+            self.criterion_types = [criterion_types]
+        else:
+            self.criterion_types = criterion_types
+        self.targeting_configs = [self.TARGETING[criterion] for criterion in self.criterion_types
                                   if criterion in self.TARGETING]
 
         # Container to hold un-calculated aggregated querysets
@@ -81,6 +110,8 @@ class AccountTargetingReport:
         self.summary_aggregation_columns = None
         self.aggregation_columns = None
         self.aggregation_summary_funcs = None
+        self.statistics_filters = None
+        self.aggregation_filters = None
 
         # Objects to be mutated by _update methods
         self._all_aggregated_data = []
@@ -90,19 +121,20 @@ class AccountTargetingReport:
         self._base_overall_summary = defaultdict(int)
 
     @staticmethod
-    def get_aggregated_serializer(config, filters, aggregation_keys, aggregation_filters=None):
+    def get_aggregated_serializer(serializer_class, filters, aggregation_keys, aggregation_filters=None):
         """
         Instantiate serializer to apply aggregations
-        :param config: CriterionConfig
+        Each instantiation will have an aggregated_queryset attribute
+        :param serializer_class:
         :param filters: filters to apply to non-aggregated statistics
         :param aggregation_filters: filters to apply to aggregated statistics
         :return: Serializer
         """
-        now = timezone.now()
-        model, serializer_class = config
-        queryset = model.objects.filter(filters)
+        statistic_model = serializer_class.Meta.model
+        queryset = statistic_model.objects.filter(filters)
         serializer = serializer_class(queryset, many=True, context=dict(
-            now=now, aggregation_keys=aggregation_keys, kpi_filters=aggregation_filters))
+            report_name=serializer_class.report_name,
+            aggregation_keys=aggregation_keys, kpi_filters=aggregation_filters))
         return serializer
 
     def _build_statistics_filters(self, statistics_filters=None):
@@ -118,8 +150,8 @@ class AccountTargetingReport:
 
     def _set_kpi_filters(self):
         """
-        Builds and mutates self._base_kpi_filters defaultdict with serialized data for all kpi_filter_keys values
-        :param kpi_filter_keys: list[str, ...] -> List of kpi keys to evaluate from aggregations dict
+        Mutates self._base_kpi_filters defaultdict with aggregated serialized data using self._all_aggregations
+        Supports iterating over many serialized aggregations if report was configured with multiple targeting types
         :return: None
         """
         def safe_compare(func, val1, val2):
@@ -133,11 +165,12 @@ class AccountTargetingReport:
             except TypeError:
                 pass
             return result
-
+        # Loop through all aggregations calculated from self._set_aggregations
         for aggregation in self._all_aggregations:
             for kpi_name in self.aggregation_columns:
                 # Get formatted kpi name as some aggs might be prepended with "sum"
-                # sum_impressions must be named this way to not conflict with individual statistics "impressions" column
+                # Some annotations such as sum_impressions must be named this way to not conflict with individual
+                # statistics "impressions" column
                 self._base_kpi_filters[kpi_name]["title"] = KPI_FILTER_NAME_MAP[kpi_name]
                 self._base_kpi_filters[kpi_name]["avg"] = aggregation.get(f"{kpi_name}__avg")
                 curr_min = safe_compare(min, self._base_kpi_filters[kpi_name]["min"], aggregation.get(f"{kpi_name}__min"))
@@ -150,60 +183,97 @@ class AccountTargetingReport:
 
     def _set_overall_summary(self):
         """
-        Mutate self._base_overall_summary values with aggregations
+        Calculate overall summary using AdGroup config with prepare_report method parameters
+        AdGroupStatistics table must be used for overall summary due to nature of Adwords reports single and multiple
+            attribution reports. It is not possible to combine results from many multiple attribution reports into a
+            single summary as statistics may be duplicated across reports
+        Uses TOTAL_SUMMARY_COLUMN_AGG_MAPPING to map Django generated aggregation names
+            e.g. ...aggregate(Avg(impressions)) = impressions__avg=x
         :return:
         """
-        for aggregation in self._all_aggregations:
-            for agg_key, col_name in TOTAL_SUMMARY_COLUMN_AGG_MAPPING.items():
-                if agg_key not in aggregation:
-                    continue
-                col_value = aggregation[agg_key]
-                try:
-                    # Sum all aggregation values for all serializers before calculating averages
-                    self._base_overall_summary[col_name] += col_value or 0
-                except TypeError:
-                    pass
+        serializer_class = self.TARGETING["AdGroup"]
+        aggregated_serializer = self.get_aggregated_serializer(
+            serializer_class, self.statistics_filters, self.aggregation_columns,
+            aggregation_filters=self.aggregation_filters
+        )
+        aggregations = self._get_aggregation(aggregated_serializer.aggregated_queryset)
+        for agg_key, col_name in TOTAL_SUMMARY_COLUMN_AGG_MAPPING.items():
+            if agg_key not in aggregations:
+                continue
+            col_value = aggregations[agg_key]
+            try:
+                # Sum all aggregation values for all serializers before calculating averages
+                self._base_overall_summary[col_name] += col_value or 0
+            except TypeError:
+                pass
 
     def _set_aggregations(self):
         """
-        Calculate aggregated values for queryset with applied grouping and annotations with parameters provided
-            to prepare_report method
+        Calculate aggregated values for each aggregated serializer
         :return:
         """
         all_aggregations = []
         for serializer in self._aggregated_serializers:
             queryset = serializer.aggregated_queryset
-            targeting_aggs = chain(
-                [func(col) for func in self.aggregation_summary_funcs for col in self.aggregation_columns]
-            )
-            aggregations = queryset.aggregate(
-                *targeting_aggs,
-            )
+            aggregations = self._get_aggregation(queryset)
             all_aggregations.append(aggregations)
         self._all_aggregations = all_aggregations
         return all_aggregations
 
+    def _get_aggregation(self, queryset):
+        """
+        Calculate aggregations for queryset
+        targeting_agg_funcs prepares Django aggregation functions to apply to queryset
+        :param queryset:
+        :return:
+        """
+        # Prepare aggregation functions for each self.aggregation_summary_funcs db function and for each
+        # aggregation column
+        targeting_agg_funcs = chain(
+            [func(col) for func in self.aggregation_summary_funcs for col in self.aggregation_columns]
+        )
+        aggregations = queryset.aggregate(*targeting_agg_funcs)
+        return aggregations
+
     def get_targeting_report(self, sort_key="campaign_id"):
         """
-
+        Serialize all aggregated queryset's and sort
         :param sort_key: key to sort aggregated statistics
         :return:
         """
         if not self._aggregated_serializers:
-            raise ValueError("You must call prepare report first.")
+            raise ValueError("You must first call prepare_report with valid parameters.")
         for aggregated_serializer in self._aggregated_serializers:
-            data = aggregated_serializer.data
+            # Other aggregated serializers may be used by other parts of the report that should not be serialized
+            # into targeting data
+            if aggregated_serializer.context["report_name"] not in self.criterion_types:
+                continue
+            data = self._serialize(aggregated_serializer)
             self._all_aggregated_data.extend(data)
-
         if sort_key:
             reverse = sort_key[0] == "-"
             sort_value = sort_key.strip("-")
-            self._all_aggregated_data.sort(key=lambda x: x[sort_value], reverse=reverse)
+            # Ensure that all None values sort to the end of the list depending on reverse
+            if reverse is True:
+                key_expression = lambda x: (x[sort_value] is not None, x[sort_value])
+            else:
+                key_expression = lambda x: (x[sort_value] is None, x[sort_value])
+            self._all_aggregated_data.sort(key=key_expression, reverse=reverse)
         return self._all_aggregated_data
+
+    @cache_method(timeout=3600)
+    def _serialize(self, aggregated_serializer):
+        """
+        Cached serialization method
+        :param aggregated_serializer:
+        :return:
+        """
+        data = aggregated_serializer.data
+        return data
 
     def get_kpi_filters(self):
         if not self._aggregated_serializers:
-            raise ValueError("You must call prepare report first.")
+            raise ValueError("You must first call prepare_report with valid parameters.")
         if not self._aggregations:
             self._set_aggregations()
         self._set_kpi_filters()
@@ -211,7 +281,7 @@ class AccountTargetingReport:
 
     def get_overall_summary(self):
         if not self._aggregated_serializers:
-            raise ValueError("You must call prepare report first.")
+            raise ValueError("You must first call prepare_report with valid parameters.")
         if not self._aggregations:
             self._set_aggregations()
         self._set_overall_summary()
@@ -233,15 +303,27 @@ class AccountTargetingReport:
         :param aggregation_summary_funcs: Django db funcs
         :return: tuple(list, dict, dict)
         """
-        aggregation_summary_funcs = aggregation_summary_funcs or [Avg, Min, Max, Sum]
-        self.aggregation_columns = aggregation_columns
-        self.aggregation_summary_funcs = aggregation_summary_funcs
+        self.aggregation_columns = aggregation_columns or []
+        self.aggregation_filters = aggregation_filters or []
+        self.aggregation_summary_funcs = aggregation_summary_funcs or [Avg, Min, Max, Sum]
 
         # Filter to retrieve non-aggregated statistics
-        statistics_filters = self._build_statistics_filters(statistics_filters or {})
-        for config in self.targeting_configs:
+        self.statistics_filters = self._build_statistics_filters(statistics_filters or {})
+
+        # AdGroup serializer is not usually used in targeting data, but should be part of kpi_filters in the case of
+        # results of the overall summary is out of bounds of the targeting data
+        if "targeting_status" not in self.aggregation_filters:
+            self.targeting_configs += [self.TARGETING["AdGroup"]]
+        for serializer_class in self.targeting_configs:
             # Get grouped statistics for statistic table
             aggregated_serializer = self.get_aggregated_serializer(
-                config, statistics_filters, self.aggregation_columns, aggregation_filters=aggregation_filters
+                serializer_class, self.statistics_filters, self.aggregation_columns, aggregation_filters=self.aggregation_filters
             )
             self._aggregated_serializers.append(aggregated_serializer)
+
+    def get_cache_key(self, part, options):
+        query = str(options[0][0].aggregated_queryset.query)
+        key_json = json.dumps(query, sort_keys=True, cls=DjangoJSONEncoder)
+        key_hash = hashlib.md5(key_json.encode()).hexdigest()
+        key = f"{self.CACHE_KEY_PREFIX}.{part}.{key_hash}"
+        return key, key_json

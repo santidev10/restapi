@@ -274,3 +274,84 @@ class AuditVetESUpdateTestCase(ExtendedAPITestCase, ESTestCase):
         # Parse out None values
         updated_task_us_bs_categories = [val for val in updated_video.task_us_data["brand_safety"] if val is not None]
         self.assertEqual(payload["brand_safety"], updated_task_us_bs_categories)
+
+    def test_update_channel_duplicate_categories(self, mock_generate_vetted):
+        """ Test vetting updates brand safety and iab categories with no duplicates """
+        user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=1 for channels
+        CustomSegment.objects.create(owner=user, title="test", segment_type=1, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_channel_id{next(int_iterator)}"
+        # BlacklistItem blacklist_category will be uploaded by payload brand_safety value
+        BlacklistItem.objects.create(item_id=audit_item_yt_id, item_type=1, item_id_hash=get_hash_name(audit_item_yt_id),
+                                     blacklist_category={"2": 100})
+        channel = Channel(audit_item_yt_id)
+        channel.populate_general_data(iab_categories=["some", "wrong", "categories"])
+        channel.populate_task_us_data(iab_categories=["more", "wrong"])
+        channel.populate_brand_safety(
+            videos_scored=1,
+            language="en",
+        )
+        self.channel_manager.upsert([channel])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("channel", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 2,
+            "brand_safety": [
+                1, 1,
+            ],
+            "content_type": 1,
+            "gender": 2,
+            "iab_categories": [
+                "Auto Rentals", "Scooters", "Auto Rentals",
+            ],
+            "is_monetizable": False,
+            "language": "ja",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=1, defaults=dict(name="test_category_1"))
+        BadWordCategory.objects.get_or_create(id=2, defaults=dict(name="test_category_2"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch("audit_tool.api.serializers.audit_channel_vet_serializer.AuditChannelVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        updated_channel = self.channel_manager.get([channel.main.id])[0]
+        self.assertEqual({"1"}, set(updated_channel.task_us_data.brand_safety))
+        self.assertEqual({"Auto Rentals", "Scooters"}, set(updated_channel.task_us_data.iab_categories))
+
+    def test_update_video_dupliate_categories(self, mock_generate_vetted):
+        """ Test vetting updates brand safety and iab categories with no duplicates """
+        user = self.create_admin_user()
+        audit = AuditProcessor.objects.create(audit_type=1)
+        # CustomSegment segment_type=0 for videos
+        CustomSegment.objects.create(owner=user, title="test", segment_type=0, audit_id=audit.id,
+                                     list_type=1, statistics={"items_count": 1}, uuid=uuid4())
+        audit_item_yt_id = f"test_youtube_video_id{next(int_iterator)}"
+        video = Video(audit_item_yt_id)
+        self.video_manager.upsert([video])
+        audit_item, _, vetting_item = self._create_audit_meta_vet("video", audit_item_yt_id)
+        payload = {
+            "vetting_id": vetting_item.id,
+            "age_group": 1,
+            "brand_safety": [
+                4, 4
+            ],
+            "content_type": 1,
+            "gender": 2,
+            "iab_categories": [
+                "Scooters", "Auto Rentals", "Industries", "Industries"
+            ],
+            "is_monetizable": False,
+            "language": "ko",
+            "suitable": True
+        }
+        BadWordCategory.objects.get_or_create(id=3, defaults=dict(name="test_category_1"))
+        BadWordCategory.objects.get_or_create(id=4, defaults=dict(name="test_category_2"))
+        url = self._get_url(kwargs=dict(pk=audit.id))
+        with patch("audit_tool.api.serializers.audit_video_vet_serializer.AuditVideoVetSerializer.update_brand_safety") as mock_update_brand_safety:
+            self.client.patch(url, data=json.dumps(payload), content_type="application/json")
+        # Vetted brand safety changes should trigger rescore
+        mock_update_brand_safety.assert_called_once()
+        updated_video = self.video_manager.get([video.main.id])[0]
+        self.assertEqual({"4"}, set(updated_video.task_us_data.brand_safety))
+        self.assertEqual({"Scooters", "Auto Rentals", "Industries"}, set(updated_video.task_us_data.iab_categories))

@@ -6,11 +6,11 @@ from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
 from segment.api.serializers.segment_export_serializer_mixins import SegmentChannelExportSerializerMixin
-from segment.api.serializers.segment_export_serializer_mixins import SegmentExportSerializerMixin
+from segment.api.serializers.segment_export_serializer_mixins import SegmentVideoExportSerializerMixin
 
 
 class PersistentSegmentVideoExportSerializer(
-    SegmentExportSerializerMixin,
+    SegmentVideoExportSerializerMixin,
     Serializer
 ):
     columns = ("URL", "Title", "Language", "Category", "Likes", "Dislikes",
@@ -37,7 +37,6 @@ class PersistentSegmentVideoExportSerializer(
 
 class PersistentSegmentChannelExportSerializer(
     SegmentChannelExportSerializerMixin,
-    SegmentExportSerializerMixin,
     Serializer
 ):
     columns = ("URL", "Title", "Language", "Category", "Subscribers", "Likes",

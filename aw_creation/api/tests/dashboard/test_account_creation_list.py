@@ -69,6 +69,7 @@ class DashboardAccountCreationListAPITestCase(AwReportingAPITestCase):
         "video_view_rate",
         "video_views",
         "weekly_chart",
+        "status",
     }
 
     url = reverse(Name.Dashboard.ACCOUNT_LIST, [RootNamespace.AW_CREATION, Namespace.DASHBOARD])

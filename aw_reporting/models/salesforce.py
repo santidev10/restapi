@@ -139,6 +139,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
     aw_cid = models.CharField(max_length=60, null=True, db_index=True)
     number = models.CharField(max_length=10, null=True, db_index=True)
     name = models.CharField(max_length=250, db_index=True)  # Name
+    ias_campaign_name = models.CharField(max_length=250, null=True, default=None)
 
     category = models.ForeignKey(Category, null=True,
                                  related_name="opportunities",
@@ -356,6 +357,7 @@ class Opportunity(models.Model, DemoEntityModelMixin):
             apex_deal=data.get(Fields.APEX_DEAL),
             billing_server=data.get(Fields.BILLING_SERVER),
             margin_cap_required=data.get(Fields.MARGIN_CAP_REQUIRED, False),
+            ias_campaign_name=data.get(Fields.IAS_CAMPAIGN_NAME, None),
         )
         if sales_email:
             res['sales_email'] = sales_email

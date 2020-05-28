@@ -24,3 +24,6 @@ class ESDataS3ExportApiView(S3ExportApiView):
         protocol = "https" if request.is_secure() else "http"
         host_link = f"{protocol}://" + request.get_host()
         return host_link
+
+    def _get_url_to_export(self, export_name):
+        return self.s3_exporter.generate_temporary_url(self.s3_exporter.get_s3_key(export_name))

@@ -2,8 +2,9 @@ import logging
 
 from saas import celery_app
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import send_mail
 
+from channel.utils import VettedParamsAdapter
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from utils.es_components_api_utils import BrandSafetyParamAdapter
@@ -27,7 +28,7 @@ class VideoListDataGenerator(ExportDataGenerator):
     range_filter = RANGE_FILTER
     match_phrase_filter = MATCH_PHRASE_FILTER
     exists_filter = EXISTS_FILTER
-    params_adapters = (BrandSafetyParamAdapter,)
+    params_adapters = (BrandSafetyParamAdapter, VettedParamsAdapter)
     queryset = ESQuerysetAdapter(VideoManager((
         Sections.MAIN,
         Sections.GENERAL_DATA,
@@ -47,23 +48,16 @@ def export_videos_data(query_params, export_name, user_emails, export_url):
 
     # prepare E-mail
     subject = "Export Videos"
-    body = f"File is ready for downloading.\n" \
-           f"Please, go to {export_url} to download the report.\n" \
-           f"NOTE: url to download report is valid during next 2 weeks\n"
+    body = f"Export is ready to download.\n" \
+           f"Please click <a href='{export_url}'>here</a> to download the report.\n" \
+           f"NOTE: Link will expire in 2 weeks.\n"
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
     bcc = []
 
     try:
-        email = EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=from_email,
-            to=user_emails,
-            bcc=bcc,
-        )
-        email.send(fail_silently=False)
+        send_mail(subject=subject, message=None, from_email=from_email, recipient_list=user_emails, html_message=body)
     except Exception as e:
         logger.info(f"RESEARCH EXPORT: Error during sending email to {user_emails}: {e}")
     else:

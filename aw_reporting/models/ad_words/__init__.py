@@ -23,6 +23,8 @@ from .campaign import Campaign
 from .connection import AWAccountPermission
 from .connection import AWConnection
 from .connection import AWConnectionToUserRelation
-from .common import CriterionType
+from .ad_group_targeting import AdGroupTargeting
+from .ad_group_targeting import CriteriaType
+from .ad_group_targeting import CriteriaTypeEnum
+from .ad_group_targeting import TargetingStatusEnum
 from .constants import *
-
