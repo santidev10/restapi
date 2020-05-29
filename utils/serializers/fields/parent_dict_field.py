@@ -1,6 +1,7 @@
 from rest_framework.fields import Field
 
 
+# pylint: disable=abstract-method
 class ParentDictValueField(Field):
     def __init__(self, dict_key, property_key=None, *args, **kwargs):
         if "source" not in kwargs:
@@ -16,3 +17,4 @@ class ParentDictValueField(Field):
 
     def to_representation(self, value):
         return value
+# pylint: enable=abstract-method

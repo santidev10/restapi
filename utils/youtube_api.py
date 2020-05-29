@@ -1,20 +1,18 @@
 """
 Youtube api connector module
 """
-import isodate
 import logging
-import requests
 import time
 from typing import Dict
 from typing import List
 
 import httplib2
-
+import isodate
+import requests
 from apiclient import discovery
-from oauth2client.client import GoogleCredentials
-
 from django.conf import settings
 from django.core.cache import cache
+from oauth2client.client import GoogleCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +24,9 @@ class YoutubeAPIConnectorException(Exception):
     """
     Exception for youtube connector
     """
-    pass
 
 
-class YoutubeAPIConnector(object):
+class YoutubeAPIConnector:
     """
     Connector to youtube api
     """
@@ -82,20 +79,20 @@ class YoutubeAPIConnector(object):
         Get related videos
         """
         options = {
-            'part': 'snippet',
-            'type': 'video',
-            'relatedToVideoId': video_id,
+            "part": "snippet",
+            "type": "video",
+            "relatedToVideoId": video_id,
             "maxResults": max_results,
         }
         if page_token is not None:
-            options['pageToken'] = page_token
+            options["pageToken"] = page_token
 
         return self.youtube.search().list(**options).execute()
 
-    def obtain_video_categories(self, region_code='US'):
+    def obtain_video_categories(self, region_code="US"):
         options = {
-            'part': 'snippet',
-            'regionCode': region_code
+            "part": "snippet",
+            "regionCode": region_code
         }
         return self.__execute_call(self.youtube.videoCategories().list(**options))
 
@@ -124,9 +121,9 @@ class YoutubeAPIConnector(object):
         Obtain channels by ids
         """
         options = {
-            'part': part,
-            'maxResults': max_results,
-            'id': channels_ids
+            "part": part,
+            "maxResults": max_results,
+            "id": channels_ids
         }
         return self.__execute_call(self.youtube.channels().list(**options))
 
@@ -156,7 +153,7 @@ class YoutubeAPIConnector(object):
                               part="id",
                               search_type="video",
                               max_results=50,
-                              safe_search='none',
+                              safe_search="none",
                               order="date",
                               page_token=None,
                               published_after=None):
@@ -164,18 +161,18 @@ class YoutubeAPIConnector(object):
         Obtain videos from channel
         """
         options = {
-            'part': part,
-            'maxResults': max_results,
-            'channelId': channel_id,
-            'type': search_type,
-            'safeSearch': safe_search,
-            'order': order
+            "part": part,
+            "maxResults": max_results,
+            "channelId": channel_id,
+            "type": search_type,
+            "safeSearch": safe_search,
+            "order": order
         }
 
         if page_token:
             options["pageToken"] = page_token
         if published_after:
-            options["publishedAfter"] = '{:%Y-%m-%dT00:00:00Z}'.format(
+            options["publishedAfter"] = "{:%Y-%m-%dT00:00:00Z}".format(
                 published_after)
         return self.__execute_call(self.youtube.search().list(**options))
 
@@ -198,22 +195,22 @@ class YoutubeAPIConnector(object):
 
     def get_video_comments(self, video_id: str, max_results=100, page_token=None):
         options = {
-            'part': 'snippet',
-            'maxResults': max_results,
-            'videoId': video_id,
-            'textFormat': 'plainText',
+            "part": "snippet",
+            "maxResults": max_results,
+            "videoId": video_id,
+            "textFormat": "plainText",
         }
         if page_token:
-            options['pageToken'] = page_token
+            options["pageToken"] = page_token
 
         return self.__execute_call(self.youtube.commentThreads().list(**options))
 
     def get_video_comment_replies(self, parent_id: str, max_results=100):
         options = {
-            'part': 'snippet',
-            'maxResults': max_results,
-            'parentId': parent_id,
-            'textFormat': 'plainText',
+            "part": "snippet",
+            "maxResults": max_results,
+            "parentId": parent_id,
+            "textFormat": "plainText",
         }
         return self.__execute_call(self.youtube.comments().list(**options))
 
@@ -225,7 +222,7 @@ class YoutubeAPIConnector(object):
         while tries_count <= self.max_connect_retries:
             try:
                 result = method.execute()
-            except Exception as e:
+            except BaseException:
                 tries_count += 1
                 if tries_count <= self.max_connect_retries:
                     sleep_seconds_count = self.max_connect_retries \
@@ -238,9 +235,9 @@ class YoutubeAPIConnector(object):
 
 
 def resolve_videos_info(ids: List[int],
-                        cache_timeout: int=86400,
-                        request_timeout: float=2,
-                        api_key: str=settings.YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY) -> Dict[str, Dict[str, str]]:
+                        cache_timeout: int = 86400,
+                        request_timeout: float = 2,
+                        api_key: str = settings.YOUTUBE_API_ALTERNATIVE_DEVELOPER_KEY) -> Dict[str, Dict[str, str]]:
     """
     Non-guaranteed gathering of meta-data for a list of videos.
     Data gathering is immediately ignored in the event of any error or timeout.
@@ -319,7 +316,7 @@ def resolve_videos_info(ids: List[int],
 
                 cache.set(cache_key_template.format(video_id), info, cache_timeout)
                 details[video_id] = info
-    except Exception as e:
+    except BaseException as e:
         logger.error(e)
 
     return details

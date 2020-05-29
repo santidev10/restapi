@@ -26,44 +26,44 @@ from video.api import urls as video_api_urls
 
 urlpatterns = [
     # Admin api urls
-    url(r'^api/v1/admin/', include((admin_api_urls, APP_NAME), namespace=Namespace.ADMIN)),
+    url(r"^api/v1/admin/", include((admin_api_urls, APP_NAME), namespace=Namespace.ADMIN)),
 
     # AdWords creation api urls
-    url(r'^api/v1/', include((aw_creation_urls, APP_NAME), namespace=Namespace.AW_CREATION)),
+    url(r"^api/v1/", include((aw_creation_urls, APP_NAME), namespace=Namespace.AW_CREATION)),
 
     # AdWords reporting api urls
-    url(r'^api/v1/', include((aw_reporting_urls, APP_NAME), namespace=Namespace.AW_REPORTING)),
+    url(r"^api/v1/", include((aw_reporting_urls, APP_NAME), namespace=Namespace.AW_REPORTING)),
 
     # Channel api urls
-    url(r'^api/v1/', include((channel_api_urls, APP_NAME), namespace=Namespace.CHANNEL)),
+    url(r"^api/v1/", include((channel_api_urls, APP_NAME), namespace=Namespace.CHANNEL)),
 
     # Video api urls
-    url(r'^api/v1/', include((video_api_urls, APP_NAME), namespace=Namespace.VIDEO)),
+    url(r"^api/v1/", include((video_api_urls, APP_NAME), namespace=Namespace.VIDEO)),
 
     # Keyword api urls
-    url(r'^api/v1/', include((keyword_api_urls, APP_NAME), namespace=Namespace.KEYWORD)),
+    url(r"^api/v1/", include((keyword_api_urls, APP_NAME), namespace=Namespace.KEYWORD)),
 
     # Segment api urls
-    url(r'^api/v1/', include((segment_v1_url_patterns, APP_NAME), namespace=Namespace.SEGMENT)),
+    url(r"^api/v1/", include((segment_v1_url_patterns, APP_NAME), namespace=Namespace.SEGMENT)),
 
     # Userprofile api urls
-    url(r'^api/v1/', include((userprofile_api_urls, APP_NAME), namespace=Namespace.USER_PROFILE)),
+    url(r"^api/v1/", include((userprofile_api_urls, APP_NAME), namespace=Namespace.USER_PROFILE)),
 
     # Audit api urls
-    url(r'^api/v1/', include((audit_tool_api_urls, APP_NAME), namespace=Namespace.AUDIT_TOOL)),
+    url(r"^api/v1/", include((audit_tool_api_urls, APP_NAME), namespace=Namespace.AUDIT_TOOL)),
 
     # Email reports
-    url(r'^api/v1/', include((email_reports_api_urls, APP_NAME), namespace="email_reports_api_urls")),
+    url(r"^api/v1/", include((email_reports_api_urls, APP_NAME), namespace="email_reports_api_urls")),
 
-    url(r'^api/v1/ads_analyzer/', include((ads_analyzer_urls, APP_NAME), namespace=Namespace.ADS_ANALYZER)),
+    url(r"^api/v1/ads_analyzer/", include((ads_analyzer_urls, APP_NAME), namespace=Namespace.ADS_ANALYZER)),
 
-    url(r'^api/v2/', include((brand_safety_api_urls, APP_NAME), namespace=Namespace.BRAND_SAFETY)),
+    url(r"^api/v2/", include((brand_safety_api_urls, APP_NAME), namespace=Namespace.BRAND_SAFETY)),
 
-    url(r'^api/v2/', include((segment_v2_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V2)),
+    url(r"^api/v2/", include((segment_v2_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V2)),
 
-    url(r'^api/v3/', include((segment_v3_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V3)),
+    url(r"^api/v3/", include((segment_v3_url_patterns, APP_NAME), namespace=Namespace.SEGMENT_V3)),
 
-    url(r'^api/healthcheck/', include((healthcheck_api_urls, APP_NAME), namespace=Namespace.HEALTHCHECK)),
-    url(r'^docs/', include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION)),
-    url(r'api/v1/', include((transcripts_urls, APP_NAME), namespace=Namespace.TRANSCRIPTS)),
+    url(r"^api/healthcheck/", include((healthcheck_api_urls, APP_NAME), namespace=Namespace.HEALTHCHECK)),
+    url(r"^docs/", include((documentation_api_urls, APP_NAME), namespace=Namespace.DOCUMENTATION)),
+    url(r"api/v1/", include((transcripts_urls, APP_NAME), namespace=Namespace.TRANSCRIPTS)),
 ]
