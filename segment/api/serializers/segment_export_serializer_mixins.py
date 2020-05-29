@@ -75,7 +75,7 @@ class SegmentExportSerializerMixin:
         categories = getattr(obj.task_us_data, "iab_categories", [])
         if not categories:
             categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join(categories)
+        joined = ", ".join([category for category in categories if type(category) == str])
         return joined
 
 
