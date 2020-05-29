@@ -1,7 +1,7 @@
 version: "2.4"
 
 services:
-  main:
+  dev:
     image: viewiq/restapi-dev:${BUILD_TAG:-latest}
     build:
       context: .
@@ -24,7 +24,7 @@ services:
   api:
     command: ["python","./manage.py", "runserver", "0.0.0.0:5000"]
     extends:
-      service: main
+      service: dev
     depends_on:
       rabbitmq:
         condition: service_healthy

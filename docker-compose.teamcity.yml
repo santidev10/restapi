@@ -1,19 +1,16 @@
 version: "2.4"
 
 services:
-  main:
-    extends:
-      file: docker-compose.yml
-      service: main
-    environment:
-      TEAMCITY_VERSION: ${TEAMCITY_VERSION}
   dev:
     extends:
-      service: main
+      file: docker-compose.yml
+      service: dev
+    environment:
+      TEAMCITY_VERSION: ${TEAMCITY_VERSION}
   pylint:
     command: ["pylint", "/app", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
     extends:
-      service: main
+      service: dev
   unittests:
     command: >
       bash -c "
@@ -23,7 +20,7 @@ services:
         python utils/unittests/tc_coverage_output.py -f ./dist/coverage.xml
       "
     extends:
-      service: main
+      service: dev
     environment:
       CELERY_ALWAYS_EAGER: 1
     volumes:
@@ -42,7 +39,7 @@ services:
   migraions:
     command: ["./manage.py", "migrate"]
     extends:
-      service: main
+      service: dev
     environment:
       CELERY_ALWAYS_EAGER: 1
     depends_on:
