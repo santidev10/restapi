@@ -1,7 +1,8 @@
 """
 Utils models module
 """
-from django.db.models import Model, DateTimeField
+from django.db.models import DateTimeField
+from django.db.models import Model
 
 
 class Timestampable(Model):

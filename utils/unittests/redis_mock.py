@@ -11,7 +11,7 @@ class MockRedisLock:
         self.timeout = timeout
         self.sleep = sleep
 
-    def acquire(self, blocking=True):
+    def acquire(self, *args, **kwargs):
         MockRedis().set(self.name, self.name)
         return True
 
@@ -41,5 +41,5 @@ class MockRedis:
         result = None if key not in MockRedis.redis else MockRedis.redis[key]
         return result
 
-    def lock(self, key, timeout=0, sleep=0):
+    def lock(self, key, timeout=0, *args, **kwargs):
         return MockRedisLock(self, key, timeout)

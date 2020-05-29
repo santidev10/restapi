@@ -15,13 +15,13 @@ class Command(BaseCommand):
 
         bulk_data = []
 
-        with open('keyword_tool/fixtures/productsservices.csv') as f:
+        with open("keyword_tool/fixtures/productsservices.csv") as f:
             content = f.read()
-            reader = csv.reader(content.split('\n'), delimiter=',')
+            reader = csv.reader(content.split("\n"), delimiter=",")
             header = next(reader)
-            row = namedtuple('Row', header)
+            row = namedtuple("Row", header)
 
-            ids = Interest.objects.values_list('id', flat=True)
+            ids = Interest.objects.values_list("id", flat=True)
 
             for row_data in reader:
                 if row_data:

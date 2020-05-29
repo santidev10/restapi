@@ -32,6 +32,7 @@ def as_datetime(dt):
         return dt
     if isinstance(dt, date):
         return datetime.combine(dt, time.min)
+    return None
 
 
 class Time:
@@ -57,10 +58,10 @@ def build_periods(quarters=None, start=None, end=None, compare_yoy=False,
     today = today or now_in_default_tz().date()
     if isinstance(quarters, list):
         return _build_periods_by_quarters(quarters, today, compare_yoy)
-    elif compare_yoy:
+    if compare_yoy:
         year = today.year
         return [(date(year - 1, 1, 1), date(year, 12, 31))]
-    elif start is not None and end is not None:
+    if start is not None and end is not None:
         return [(start, end)]
     return []
 
@@ -158,5 +159,5 @@ def from_local_to_utc(utc_now, timezone_name, local_time, future=True):
     return time_to_execute
 
 
-def date_to_chart_data_str(date):
-    return f"{date} 23:59:59.999999Z"
+def date_to_chart_data_str(date_value):
+    return f"{date_value} 23:59:59.999999Z"

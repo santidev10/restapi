@@ -1,9 +1,9 @@
 import logging
 from abc import ABC
 
-logger = logging.getLogger(__name__)
-
 from celery.app.task import BaseTask
+
+logger = logging.getLogger(__name__)
 
 LOGGER_TEMPLATE = "Retry task due to termination. " \
                   "Task: {task}, task id: {task_id}, args: {args}, kwargs: {kwargs}"
