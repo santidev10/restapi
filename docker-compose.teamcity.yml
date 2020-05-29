@@ -1,12 +1,70 @@
 version: "2.4"
 
 services:
-  api:
+  main:
+    extends:
+      file: docker-compose.yml
+      service: main
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+  pylint:
+    command: ["pylint", "/app", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
+    extends:
+      service: main
+  unittests:
+    command: >
+      bash -c "
+        set -ex
+        coverage run -m teamcity.unittestpy
+        coverage xml -o ./dist/coverage.xml
+        python utils/unittests/tc_coverage_output.py -f ./dist/coverage.xml
+      "
+    extends:
+      service: main
+    environment:
+      CELERY_ALWAYS_EAGER: 1
     volumes:
-      - code:/app
       - ./dist:/app/dist:rw
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+      pg_audit:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  migraions:
+    command: ["./manage.py", "migrate"]
+    extends:
+      service: main
+    environment:
+      CELERY_ALWAYS_EAGER: 1
+    depends_on:
+      pg:
+        condition: service_healthy
+      pg_audit:
+        condition: service_healthy
 
-volumes:
-  code: {}
+  rabbitmq:
+    extends:
+      file: docker-compose.yml
+      service: rabbitmq
+  pg:
+    extends:
+      file: docker-compose.yml
+      service: pg
+  pg_audit:
+    extends:
+      file: docker-compose.yml
+      service: pg_audit
+  es:
+    extends:
+      file: docker-compose.yml
+      service: es
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis

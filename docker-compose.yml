@@ -1,12 +1,12 @@
 version: "2.4"
 
 services:
-  api:
+  main:
+    image: viewiq/restapi-dev:${BUILD_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    image: viewiq-restapi
     environment:
       ALLOWED_HOSTS: api
       RABBITMQ_HOST: rabbitmq
@@ -21,6 +21,10 @@ services:
       CELERY_RESULT_BACKEND: elasticsearch://es:9200/celery/task_result
       APM_ENABLED: ${APM_ENABLED:-False}
       APM_SERVER_URL: ${APM_SERVER_URL:-http://apm-server:8200}
+  api:
+    command: ["python","./manage.py", "runserver", "0.0.0.0:5000"]
+    extends:
+      service: main
     depends_on:
       rabbitmq:
         condition: service_healthy
