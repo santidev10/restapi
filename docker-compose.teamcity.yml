@@ -8,7 +8,7 @@ services:
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
   pylint:
-    command: ["pylint", "*", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
+    command: bash -c "pylint * --output-format=teamcity.pylint_reporter.TeamCityReporter"
     extends:
       service: dev
   unittests:
