@@ -8,14 +8,14 @@ services:
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
   pylint:
-    command: ["pylint", "/app", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
+    command: ["pylint", "*", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
     extends:
       service: dev
   unittests:
     command: >
       bash -c "
         set -ex
-        coverage run -m teamcity.unittestpy
+        coverage run --source='.' ./manage.py test --settings=saas.test_settings --no-input --parallel
         coverage xml -o ./dist/coverage.xml
         python utils/unittests/tc_coverage_output.py -f ./dist/coverage.xml
       "
