@@ -6,7 +6,6 @@ from celery import Celery
 from utils.celery.logging import init_celery_logging
 
 from kombu import serialization
-from kombu.exceptions import DecodeError
 
 
 def serialize(item):
@@ -17,26 +16,15 @@ def serialize(item):
 
 
 def deserialize(item):
-    print(type(item))
-    print(item)
-    try:
-        result = {
-            **item,
-            "result": json.loads(item["result"]),
-        }
-    except Exception as e:
-        print(e.__class__.__name__)
-        data = json.loads(item)
-        result = {
-            **item,
-            "result": data["result"]
-        }
-    return result
+    return {
+        **item,
+        "result": json.loads(item["result"]),
+    }
 
 
 serialization.register(
     "celery_result", serialize, deserialize,
-    content_type="application/json",
+    content_type="application/celery-result",
 )
 
 app = Celery("saas", task_cls="utils.celery.termination_proof_task:TerminationProofTask")
