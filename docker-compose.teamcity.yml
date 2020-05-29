@@ -7,6 +7,9 @@ services:
       service: main
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+  dev:
+    extends:
+      service: main
   pylint:
     command: ["pylint", "/app", "--output-format=teamcity.pylint_reporter.TeamCityReporter"]
     extends:
