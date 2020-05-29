@@ -9,8 +9,10 @@ from utils.brand_safety import map_brand_safety_score
 class SegmentExportSerializerMixin:
 
     def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", []) or []
-        joined = ", ".join(categories)
+        categories = getattr(obj.task_us_data, "iab_categories", [])
+        if not categories:
+            categories = getattr(obj.general_data, "iab_categories", [])
+        joined = ", ".join([category for category in categories if type(category) == str])
         return joined
 
     def get_brand_safety(self,  obj):
@@ -70,13 +72,6 @@ class SegmentExportSerializerMixin:
     def get_overall_score(self, obj):
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
-
-    def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", [])
-        if not categories:
-            categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join([category for category in categories if type(category) == str])
-        return joined
 
 
 class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
