@@ -9,9 +9,9 @@ VIDEO_FIELDS = ("main.id", "general_data.title", "general_data.description", "ge
 
 class BaseScheduler:
     NAME = None
-    TASK_EXPIRATION = dict(hours=1)
+    TASK_EXPIRATION = dict(hours=2)
     TASK_BATCH_SIZE = 100
-    MAX_QUEUE_SIZE = 10
+    MAX_QUEUE_SIZE = 50
 
     @classmethod
     def get_expiration(cls):

@@ -43,7 +43,7 @@ class BrandSafetyAudit(object):
     """
     Interface for reading source data and providing it to services
     """
-    CHANNEL_BATCH_SIZE = 10
+    CHANNEL_BATCH_SIZE = 1
     VIDEO_BATCH_SIZE = 2000
     ES_LIMIT = 10000
     VIDEO_CHANNEL_RESCORE_THRESHOLD = 60
@@ -91,7 +91,7 @@ class BrandSafetyAudit(object):
         :param ids:
         :return:
         """
-        return manager.get(ids)
+        return manager.get(ids, skip_none=True)
 
     def _add_ignore_vetted_query(self, query):
         query &= QueryBuilder().build().must_not().exists().field("task_us_data").get()
@@ -204,6 +204,11 @@ class BrandSafetyAudit(object):
                 item.item_id: item.blacklist_category
                 for item in BlacklistItem.get(video_ids, 0)
             }
+
+        channel_mapping = {
+            channel.main.id: channel
+            for channel in self.channel_manager.get(set([video["channel_id"] for video in video_data]), skip_none=True)
+        }
         for video in video_data:
             try:
                 video = video.to_dict()
@@ -218,7 +223,8 @@ class BrandSafetyAudit(object):
                 video_audits.append(audit)
 
                 if self.check_rescore:
-                    self._check_rescore_channel(audit)
+                    channel = channel_mapping[video["channel_id"]]
+                    self._check_rescore_channel(channel, audit)
             except KeyError as e:
                 # Ignore videos without full data in accessed audit
                 continue
@@ -395,7 +401,7 @@ class BrandSafetyAudit(object):
         for item in items:
             item[BLACKLIST_DATA] = blacklist_items.get(item["id"], None)
 
-    def _check_rescore_channel(self, video_audit):
+    def _check_rescore_channel(self, channel, video_audit):
         """
         Checks whether a new video's channel should be rescored
         If the video has a negative score, then it may have a large impact on its channels score
@@ -403,8 +409,9 @@ class BrandSafetyAudit(object):
         :param video_audit: BrandSafetyVideoAudit
         :return:
         """
-        overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
-        if overall_score < self.VIDEO_CHANNEL_RESCORE_THRESHOLD:
+        video_overall_score = getattr(video_audit, BRAND_SAFETY_SCORE).overall_score
+        channel_overall_score = getattr(channel.brand_safety, "overall_score", None)
+        if channel_overall_score and channel_overall_score > 0 and video_overall_score < self.VIDEO_CHANNEL_RESCORE_THRESHOLD:
             try:
                 channel_id = video_audit.metadata["channel_id"]
                 self.channels_to_rescore.append(channel_id)
