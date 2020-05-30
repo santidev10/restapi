@@ -23,12 +23,15 @@ from aw_reporting.models import CriteriaTypeEnum
 
 
 class AdGroupSerializer(BaseSerializer):
-    type = ReadOnlyField(default="AdGroup")
+    report_name = "AdGroup"
+    type = ReadOnlyField(default=report_name)
     target_name = SerializerMethodField()
+    type_name = CharField(default=report_name)
+    criteria = CharField(default="ad_group__name")
 
     class Meta(BaseSerializer.Meta):
         model = AdGroupStatistic
-        group_by = []
+        group_by = ("ad_group_id", "ad_group__name")
 
     def get_target_name(self, obj):
         name = obj["ad_group__name"]
@@ -36,14 +39,18 @@ class AdGroupSerializer(BaseSerializer):
 
 
 class AgeTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.AGE_RANGE.value)
-    type_name = CharField(default=CriteriaTypeEnum.AGE_RANGE.name)
+    report_name = CriteriaTypeEnum.AGE_RANGE.name
+    criteria_field = "age_range_id"
+    type_id = CriteriaTypeEnum.AGE_RANGE.value
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = SerializerMethodField()
-    criteria = IntegerField(source="age_range_id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = AgeRangeStatistic
-        group_by = ("ad_group__id", "age_range_id")
+        group_by = ("ad_group_id", "age_range_id")
 
     def get_target_name(self, obj):
         age_range = age_range_str(obj["age_range_id"])
@@ -54,14 +61,18 @@ class AgeTargetingSerializer(BaseSerializer):
 
 
 class GenderTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.GENDER.value)
-    type_name = CharField(default=CriteriaTypeEnum.GENDER.name)
+    report_name = CriteriaTypeEnum.GENDER.name
+    criteria_field = "gender_id"
+    type_id = CriteriaTypeEnum.GENDER.value
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
+    criteria = IntegerField(source=criteria_field)
     target_name = SerializerMethodField()
-    criteria = IntegerField(source="gender_id")
 
     class Meta(BaseSerializer.Meta):
         model = GenderStatistic
-        group_by = ("ad_group__id", "gender_id")
+        group_by = ("ad_group_id", "gender_id")
 
     def get_target_name(self, obj):
         gender = gender_str(obj["gender_id"])
@@ -69,22 +80,30 @@ class GenderTargetingSerializer(BaseSerializer):
 
 
 class KeywordTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.KEYWORD.value)
-    type_name = CharField(default=CriteriaTypeEnum.KEYWORD.name)
+    report_name = CriteriaTypeEnum.KEYWORD.name
+    criteria_field = "keyword"
+    type_id = CriteriaTypeEnum.KEYWORD.value
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="keyword")
-    criteria = CharField(source="keyword")
+    criteria = CharField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = KeywordStatistic
-        group_by = ("ad_group__id", "keyword")
+        group_by = ("ad_group_id", "keyword")
 
 
 class TopicTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.VERTICAL.value)
-    type_name = CharField(default=CriteriaTypeEnum.VERTICAL.name)
+    report_name = CriteriaTypeEnum.VERTICAL.name
+    criteria_field = "topic__id"
+    type_id = CriteriaTypeEnum.VERTICAL.value
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="topic__name")
     topic_id = IntegerField(source="topic__id")
-    criteria = IntegerField(source="topic__id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = TopicStatistic
@@ -93,43 +112,59 @@ class TopicTargetingSerializer(BaseSerializer):
 
 
 class PlacementChannelTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.value)
-    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_CHANNEL.name)
+    report_name = f"{CriteriaTypeEnum.PLACEMENT.name}_CHANNEL"
+    type_id = CriteriaTypeEnum.PLACEMENT.value
+    criteria_field = "yt_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="yt_id")
-    criteria = CharField(source="yt_id")
+    criteria = CharField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = YTChannelStatistic
-        group_by = ("ad_group__id", "yt_id")
+        group_by = ("ad_group_id", "yt_id")
 
 
 class PlacementVideoTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.value)
-    type_name = CharField(default=CriteriaTypeEnum.YOUTUBE_VIDEO.name)
+    report_name = f"{CriteriaTypeEnum.PLACEMENT.name}_VIDEO"
+    type_id = CriteriaTypeEnum.PLACEMENT.value
+    criteria_field = "yt_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="yt_id")
-    criteria = CharField(source="yt_id")
+    criteria = CharField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = YTVideoStatistic
-        group_by = ("ad_group__id", "yt_id")
+        group_by = ("ad_group_id", "yt_id")
 
 
 class AudienceTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.USER_INTEREST.value)
-    type_name = CharField(default=CriteriaTypeEnum.USER_INTEREST.name)
+    report_name = CriteriaTypeEnum.USER_INTEREST.name
+    type_id = CriteriaTypeEnum.USER_INTEREST.value
+    criteria_field = "audience_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="audience__name")
-    criteria = IntegerField(source="audience_id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = AudienceStatistic
-        group_by = ("ad_group__id", "audience_id", "audience__name", "audience__type")
+        group_by = ("ad_group_id", "audience_id", "audience__name", "audience__type")
 
 
 class RemarketTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.USER_LIST.value)
-    type_name = CharField(default=CriteriaTypeEnum.USER_LIST.name)
+    report_name = CriteriaTypeEnum.USER_LIST.name
+    type_id = CriteriaTypeEnum.USER_LIST.value
+    criteria_field = "remark_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = CharField(source="remark__name")
-    criteria = IntegerField(source="remark_id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = RemarkStatistic
@@ -137,10 +172,14 @@ class RemarketTargetingSerializer(BaseSerializer):
 
 
 class ParentTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.PARENT.value)
+    report_name = CriteriaTypeEnum.PARENT.name
+    type_id = CriteriaTypeEnum.PARENT.value
+    criteria_field = "parent_status_id"
+
+    type = IntegerField(default=type_id)
     type_name = CharField(default=CriteriaTypeEnum.PARENT.name)
     target_name = SerializerMethodField()
-    criteria = IntegerField(source="parent_status_id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = ParentStatistic
@@ -152,10 +191,14 @@ class ParentTargetingSerializer(BaseSerializer):
 
 
 class DeviceTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.DEVICE.value)
-    type_name = CharField(default=CriteriaTypeEnum.DEVICE.name)
+    report_name = CriteriaTypeEnum.DEVICE.name
+    type_id = CriteriaTypeEnum.DEVICE.value
+    criteria_field = "device_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
     target_name = SerializerMethodField()
-    criteria = IntegerField(source="device_id")
+    criteria = IntegerField(source=criteria_field)
 
     class Meta(BaseSerializer.Meta):
         model = AdGroupStatistic
@@ -167,9 +210,13 @@ class DeviceTargetingSerializer(BaseSerializer):
 
 
 class VideoCreativeTargetingSerializer(BaseSerializer):
-    type = IntegerField(default=CriteriaTypeEnum.VIDEO_CREATIVE.value)
-    type_name = CharField(default=CriteriaTypeEnum.VIDEO_CREATIVE.name)
-    criteria = CharField(source="creative_id")
+    report_name = CriteriaTypeEnum.VIDEO_CREATIVE.name
+    type_id = CriteriaTypeEnum.VIDEO_CREATIVE.value
+    criteria_field = "creative_id"
+
+    type = IntegerField(default=type_id)
+    type_name = CharField(default=report_name)
+    criteria = CharField(source=criteria_field)
     target_name = CharField(source="creative_id")
 
     class Meta(BaseSerializer.Meta):

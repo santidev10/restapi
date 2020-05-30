@@ -24,7 +24,7 @@ MONETIZATION_SORT = {f"{Sections.MONETIZATION}.is_monetizable": "desc"}
 logger = logging.getLogger(__name__)
 
 
-def generate_segment(segment, query, size, sort=None, options=None, add_uuid=True, s3_key=None):
+def generate_segment(segment, query, size, sort=None, options=None, add_uuid=False, s3_key=None):
     """
     Helper method to create segments
         Options determine additional filters to apply sequentially when retrieving items
@@ -68,10 +68,11 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                                      batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
                 # Retrieve Postgres vetting data for vetting exports
                 # no longer need to check if vetted for this, as this data is being used on all exports
-                item_ids = [item.main.id for item in batch]
+                batch_item_ids = [item.main.id for item in batch]
+                item_ids.extend(batch_item_ids)
                 try:
                     vetting = AuditUtils.get_vetting_data(
-                        segment.audit_utils.vetting_model, segment.audit_id, item_ids, segment.data_field
+                        segment.audit_utils.vetting_model, segment.audit_id, batch_item_ids, segment.data_field
                     )
                 except Exception as e:
                     logger.warning(f"Error getting segment extra data: {e}")
@@ -97,7 +98,6 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Tru
                                 "image_url": item.general_data.thumbnail_image_url
                             })
 
-                        item_ids.append(item.main.id)
                         row = segment.serializer(item, context=context).data
                         writer.writerow(row)
 

@@ -1,32 +1,30 @@
-from distutils.util import strtobool
-import csv
-import requests
-import os
-from uuid import uuid4
-from datetime import timedelta
-from collections import defaultdict
-
 from audit_tool.models import AuditCategory
+from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditCountry
 from audit_tool.models import AuditExporter
 from audit_tool.models import AuditLanguage
-from audit_tool.models import AuditVideoProcessor
-from audit_tool.models import AuditChannelProcessor
 from audit_tool.models import AuditProcessor
-from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
-# from es_components.managers import ChannelManager
-# from es_components.constants import Sections
-
-from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
-
-from rest_framework.response import Response
-from django.conf import settings
-from utils.aws.s3_exporter import S3Exporter
-import boto3
+from audit_tool.models import AuditVideoProcessor
 from botocore.client import Config
-from utils.permissions import user_has_permission
+from brand_safety.auditors.brand_safety_audit import BrandSafetyAudit
+from collections import defaultdict
+from datetime import timedelta
+from distutils.util import strtobool
+from django.conf import settings
+from es_components.constants import Sections
+from es_components.models import Channel
+from es_components.query_builder import QueryBuilder
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from utils.aws.s3_exporter import S3Exporter
 from utils.brand_safety import map_brand_safety_score
+from utils.permissions import user_has_permission
+from uuid import uuid4
+import boto3
+import csv
+import os
+import requests
 
 
 class AuditExportApiView(APIView):
@@ -397,6 +395,26 @@ class AuditExportApiView(APIView):
                 except Exception as e:
                     pass
 
+    def get_scores_for_channels(self, channel_ids, chunk_size=10000):
+        """
+        Given a list of Channel ids, return a Channel id -> brand safety score map. Works in chunks of chunk_size
+        """
+        channel_scores = {}
+        search = Channel.search()
+        search.source((f"{Sections.MAIN}.id", f"{Sections.BRAND_SAFETY}.overall_score"))
+        while True:
+            chunk = channel_ids[:chunk_size]
+            channel_ids = channel_ids[chunk_size:]
+            search.query = QueryBuilder().build().must().terms().field('main.id').value(chunk).get()
+            search = search[0:chunk_size]
+            results = search.execute()
+            for channel in results.hits:
+                channel_scores[channel.main.id] = getattr(channel.brand_safety, "overall_score", None)
+            if not len(channel_ids):
+                break
+
+        return channel_scores
+
     def export_channels(self, audit, audit_id=None, clean=None, export=None):
         if not audit_id:
             audit_id = audit.id
@@ -458,7 +476,7 @@ class AuditExportApiView(APIView):
             if "" in bad_word_categories:
                 bad_word_categories.remove("")
             if len(bad_word_categories) > 0:
-                cols.extend(bad_word_categories)
+                cols.extend(sorted(bad_word_categories))
                 for i in range(len(audit.params['exclusion'])):
                     bad_word = audit.params['exclusion'][i][0]
                     category = audit.params['exclusion_category'][i]
@@ -473,12 +491,14 @@ class AuditExportApiView(APIView):
         kid_videos_count = {}
         age_restricted_videos_count = {}
         video_count = {}
+        channel_ids = []
         self.check_legacy(audit)
         channels = AuditChannelProcessor.objects.filter(audit_id=audit_id)
         if clean is not None:
             channels = channels.filter(clean=clean)
         for cid in channels:
             full_channel_id = cid.channel.channel_id
+            channel_ids.append(full_channel_id)
             if audit.params.get('do_videos'):
                 try:
                     video_count[full_channel_id] = len(cid.word_hits.get('processed_video_ids'))
@@ -516,12 +536,11 @@ class AuditExportApiView(APIView):
                         bad_video_hit_words[full_channel_id] = set(e_v)
                 except Exception as e:
                     pass
-        auditor = BrandSafetyAudit(score_only=True)
+        channel_scores = self.get_scores_for_channels(channel_ids)
         rows = [cols]
         count = channels.count()
         num_done = 0
         #sections = (Sections.MONETIZATION,)
-        #channel_manager = ChannelManager(sections)
         for db_channel in channels:
             channel = db_channel.channel
             v = channel.auditchannelmeta
@@ -537,21 +556,7 @@ class AuditExportApiView(APIView):
                 last_category = self.get_category(v.last_uploaded_category_id)
             except Exception as e:
                 last_category = ""
-            # mapped_score = None
-            try:
-                channel_brand_safety_score = auditor.audit_channel(channel.channel_id, rescore=False)
-                mapped_score = map_brand_safety_score(channel_brand_safety_score)
-            except Exception as e:
-                mapped_score = None
-            # if not v.monetised:
-            #     try:
-            #         cid = channel.channel_id
-            #         cm_channel = channel_manager.get([cid])[0]
-            #         if 'monetization' in cm_channel and cm_channel.monetization.is_monetizable:
-            #             v.monetised = True
-            #             v.save(update_fields=['monetised'])
-            #     except Exception as e:
-            #         pass
+            mapped_score = channel_scores.get(channel.channel_id, None)
             try:
                 error_str = db_channel.word_hits.get('error')
                 if not error_str:
@@ -601,7 +606,7 @@ class AuditExportApiView(APIView):
                             bad_word_category_dict[word_category].append(word)
                         except Exception as e:
                             pass
-                    for category in bad_word_categories:
+                    for category in sorted(bad_word_categories):
                         if category in bad_word_category_dict:
                             data.append(len(bad_word_category_dict[category]))
                         else:

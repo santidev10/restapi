@@ -310,7 +310,8 @@ def keywords_performance_report(client, dates, fields=None, predicates=None):
 
 def topics_performance_report(client, dates, fields=None, predicates=None):
     return _daily_statistic_performance_report(
-        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields, predicates=None
+        client, "DISPLAY_TOPICS_PERFORMANCE_REPORT", dates, fields=fields, predicates=None,
+        additional_fields=("VerticalId",)
     )
 
 
