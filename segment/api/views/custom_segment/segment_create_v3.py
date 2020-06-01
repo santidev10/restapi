@@ -31,8 +31,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
         """
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
         """
+        self._extract_source_list(request)
+
+        return
         try:
-            validated_data = self._validate_data(request.user.id, request.data)
+            validated_data = self._validate_data(request)
         except SegmentCreationOptionsError as error:
             raise ValidationError(f"Exception trying to create segments: {error}")
         segment_type = validated_data["segment_type"]
@@ -41,6 +44,10 @@ class SegmentCreateApiViewV3(CreateAPIView):
         err = None
         try:
             if segment_type == 2:
+                # Unable to create both channel and video lists for single upload
+                if request.FILES:
+                    raise ValidationError("Select either channel or video when uploading a source list.")
+
                 # Creation type will be 0-2, inclusive. Serializer expects segment_type of 0 or 1
                 for i in range(segment_type):
                     options = validated_data.copy()
@@ -68,21 +75,20 @@ class SegmentCreateApiViewV3(CreateAPIView):
             response.append(res)
         return Response(status=HTTP_201_CREATED, data=response)
 
-    def _validate_data(self, user_id, data):
+    def _validate_data(self, request):
         """
         Validate request data
         Raise ValidationError on invalid parameters
-        :param user_id: int
-        :param data: dict
-        :return: dict
         """
+        data = request.data
         try:
             validated = self.validate_options(data)
             validated["segment_type"] = self.validate_segment_type(int(data["segment_type"]))
-            validated["owner"] = user_id
+            validated["owner"] = request.user.id
             validated["title_hash"] = get_hash_name(data["title"].lower().strip())
         except (ValueError, TypeError, AttributeError, KeyError) as error:
             raise SegmentCreationOptionsError(f"{type(error).__name__}: {error}")
+        self._extract_source_list(request)
         return validated
 
     @staticmethod
@@ -157,6 +163,9 @@ class SegmentCreateApiViewV3(CreateAPIView):
         res["pending"] = True
         res["statistics"] = {}
         return res
+
+    def _extract_source_list(self, request):
+        pass
 
 
 class SegmentCreationOptionsError(Exception):

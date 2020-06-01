@@ -3,6 +3,7 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import URLField
 import uuid
 
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
@@ -19,6 +20,7 @@ class CustomSegmentSerializer(ModelSerializer):
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
     is_vetting_complete = BooleanField(required=False)
+    source_list = URLField(required=False)
 
     class Meta:
         model = CustomSegment

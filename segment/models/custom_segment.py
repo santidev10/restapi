@@ -13,6 +13,7 @@ from django.db.models import F
 from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import CASCADE
+from django.db.models import URLField
 from django.db.models import UUIDField
 from django.utils import timezone
 
@@ -110,12 +111,13 @@ class CustomSegment(SegmentMixin, Timestampable):
     audit_id = IntegerField(null=True, default=None, db_index=True)
     uuid = UUIDField(unique=True)
     statistics = JSONField(default=dict)
-    list_type = IntegerField(choices=LIST_TYPE_CHOICES)
+    list_type = IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=CASCADE)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
     is_vetting_complete = BooleanField(default=False, db_index=True)
+    # source_list = URLField()
 
     @property
     def data_type(self):
