@@ -91,7 +91,7 @@ services:
       retries: 5
 
   es:
-    image: elasticsearch:7.1.0
+    image: elasticsearch:7.4.0
     environment:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
@@ -125,19 +125,19 @@ services:
       CELERY_BROKER_URL: amqp://rabbitmq/restapi
 
   kibana:
-    image: kibana:7.1.0
+    image: kibana:7.4.0
     environment:
       ELASTICSEARCH_HOSTS: http://es:9200
 
   # APM
   apm-es:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${APM_STACK_VERSION:-7.7.0}
     environment:
       - cluster.name=docker-cluster
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-7.6.0}
+      - path.data=/usr/share/elasticsearch/data/${APM_STACK_VERSION:-7.7.0}
       - discovery.type=single-node
     ulimits:
       memlock:
@@ -149,7 +149,7 @@ services:
       interval: 20s
 
   apm-server:
-    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/apm/apm-server:${APM_STACK_VERSION:-7.7.0}
     command: >
       apm-server -e
         -E apm-server.frontend.enabled=true
@@ -177,7 +177,7 @@ services:
       retries: 10
       interval: 10s
   apm-kibana:
-    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-7.6.0}
+    image: docker.elastic.co/kibana/kibana:${APM_STACK_VERSION:-7.7.0}
     environment:
       SERVER_NAME: kibana.example.org
       ELASTICSEARCH_HOSTS: http://apm-es:9200

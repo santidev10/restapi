@@ -1,9 +1,9 @@
 from functools import wraps
 
+import redis
 from celery import chord
 from celery import group
 from django.conf import settings
-import redis
 
 from saas import celery_app
 
@@ -35,7 +35,7 @@ def unlock(lock_name, fail_silently=False):
     try:
         token = REDIS_CLIENT.get(lock_name)
         REDIS_CLIENT.lock(lock_name).do_release(token)
-    except Exception as e:
+    except BaseException as e:
         if not fail_silently:
             raise e
 
@@ -45,9 +45,9 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
         @wraps(func)
         def _caller(task, *args, **kwargs):
             is_acquired = False
-            lock = REDIS_CLIENT.lock(lock_key, expire)
+            redis_lock = REDIS_CLIENT.lock(lock_key, expire)
             try:
-                is_acquired = lock.acquire(blocking=False)
+                is_acquired = redis_lock.acquire(blocking=False)
 
                 if max_retries > 0 and not is_acquired:
                     raise task.retry(countdown=countdown, max_retries=max_retries)
@@ -57,8 +57,10 @@ def celery_lock(lock_key, expire=DEFAULT_REDIS_LOCK_EXPIRE, countdown=60, max_re
                 else:
                     result = None
             finally:
-                if is_acquired and lock.owned():
-                    lock.release()
+                if is_acquired and redis_lock.owned():
+                    redis_lock.release()
             return result
+
         return _caller
+
     return _dec

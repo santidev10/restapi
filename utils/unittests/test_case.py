@@ -40,7 +40,7 @@ class TestUserMixin:
         return self.create_test_user(is_staff=True, is_superuser=True, **kwargs)
 
     def fill_all_groups(self, user):
-        all_perm_groups = Group.objects.values_list('name', flat=True)
+        all_perm_groups = Group.objects.values_list("name", flat=True)
         for perm_group in all_perm_groups:
             user.add_custom_user_group(perm_group)
 
@@ -53,7 +53,7 @@ def with_authorized(create_user_fn):
             device_token = UserDeviceToken.objects.create(user=user)
             test_case_instance.request_user = user
             test_case_instance.client.credentials(
-                HTTP_AUTHORIZATION='Token {}'.format(device_token.key)
+                HTTP_AUTHORIZATION="Token {}".format(device_token.key)
             )
         return user
 

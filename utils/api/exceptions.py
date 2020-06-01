@@ -6,8 +6,8 @@ from rest_framework.exceptions import APIException
 
 class PayloadTooLarge(APIException):
     status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
-    default_detail = _('Payload is too large {payload_size} bytes ({limit_size} bytes limited).')
-    default_code = 'payload_too_large'
+    default_detail = _("Payload is too large {payload_size} bytes ({limit_size} bytes limited).")
+    default_code = "payload_too_large"
 
     def __init__(self, limit_size, payload_size, detail=None, code=None):
         if detail is None:

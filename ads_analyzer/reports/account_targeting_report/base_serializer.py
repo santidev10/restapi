@@ -20,6 +20,7 @@ from .constants import COST_SHARE
 from .constants import IMPRESSIONS_SHARE
 from .constants import STATISTICS_ANNOTATIONS
 from .constants import VIDEO_VIEWS_SHARE
+from .constants import VIDEO_VIEW_RATE
 from ads_analyzer.reports.account_targeting_report.annotations import ANNOTATIONS
 from aw_reporting.models import AdGroupTargeting
 from aw_reporting.models import TargetingStatusEnum
@@ -176,28 +177,16 @@ class BaseSerializer(ModelSerializer):
         Format annotations that may have irregular values
         """
         clean_annotations = {}
-        if IMPRESSIONS_SHARE in annotations:
-            condition = {f"{IMPRESSIONS_SHARE}__gt": 1.0}
-            # When(impressions_share__gt=1.0, ...)
-            clean_annotations[IMPRESSIONS_SHARE] = Case(
-                When(**condition, then=Value('1.0')),
-                default=F(IMPRESSIONS_SHARE),
-                output_field=DBFloatField()
-            )
-        if VIDEO_VIEWS_SHARE in annotations:
-            condition = {f"{VIDEO_VIEWS_SHARE}__gt": 1.0}
-            clean_annotations[VIDEO_VIEWS_SHARE] = Case(
-                When(**condition, then=Value('1.0')),
-                default=F(VIDEO_VIEWS_SHARE),
-                output_field=DBFloatField()
-            )
-        if COST_SHARE in annotations:
-            condition = {f"{COST_SHARE}__gt": 1.0}
-            clean_annotations[COST_SHARE] = Case(
-                When(**condition, then=Value('1.0')),
-                default=F(COST_SHARE),
-                output_field=DBFloatField()
-            )
+        to_clean = [IMPRESSIONS_SHARE, VIDEO_VIEWS_SHARE, COST_SHARE, VIDEO_VIEW_RATE]
+        for annotation in to_clean:
+            if annotation in annotations:
+                # When(impressions_share__gt=1.0, ...)
+                condition = {f"{annotation}__gt": 1.0}
+                clean_annotations[annotation] = Case(
+                    When(**condition, then=Value('1.0')),
+                    default=F(annotation),
+                    output_field=DBFloatField()
+                )
         queryset = queryset.annotate(**clean_annotations)
         return queryset
 

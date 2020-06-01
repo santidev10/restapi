@@ -10,21 +10,24 @@ from utils.utils import chunks_generator
 default_logger = logging.getLogger(__name__)
 
 
+# pylint: disable=abstract-method
 class TruncQuarter(TruncBase):
-    kind = 'quarter'
+    kind = "quarter"
+# pylint: enable=abstract-method
 
 
 # todo: use the same class from django (since Django 2.1)
+# pylint: disable=abstract-method
 class TruncWeek(TruncBase):
-    kind = 'week'
+    kind = "week"
 
     def as_sql(self, compiler, connection):
         if isinstance(self.output_field, DateField):
             inner_sql, inner_params = compiler.compile(self.lhs)
             sql = connection.ops.date_trunc_sql(self.kind, inner_sql)
             return sql, inner_params
-        else:
-            return super(TruncWeek, self).as_sql(compiler, connection)
+        return super(TruncWeek, self).as_sql(compiler, connection)
+# pylint: enable=abstract-method
 
 
 def safe_bulk_create(model, objs, batch_size=10000, logger=None):

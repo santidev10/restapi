@@ -1,7 +1,7 @@
-import pytz
 from datetime import datetime
 from datetime import timedelta
 
+import pytz
 from django.test import TestCase
 
 from utils.datetime import from_local_to_utc
@@ -23,7 +23,7 @@ class FromLocalToUtcCase(TestCase):
 
                 tz = pytz.timezone(timezone_name)
                 exec_time = from_local_to_utc(self.utc_now, timezone_name, self.local_time, future=False)
-                self.assertEqual(exec_time.astimezone(tz).hour, 6,)
+                self.assertEqual(exec_time.astimezone(tz).hour, 6, )
                 self.assertTrue(-1 <= (exec_time - self.utc_now).days <= 0)
 
     def test_future_time(self):
@@ -32,5 +32,5 @@ class FromLocalToUtcCase(TestCase):
 
                 tz = pytz.timezone(timezone_name)
                 exec_time = from_local_to_utc(self.utc_now, timezone_name, self.local_time)
-                self.assertEqual(exec_time.astimezone(tz).hour, 6,)
+                self.assertEqual(exec_time.astimezone(tz).hour, 6, )
                 self.assertTrue(timedelta() <= (exec_time - self.utc_now) < timedelta(days=1))
