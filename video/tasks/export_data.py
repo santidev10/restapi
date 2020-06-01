@@ -50,7 +50,7 @@ def export_videos_data(query_params, export_name, user_emails, export_url):
     subject = "Export Videos"
     body = f"Export is ready to download.\n" \
            f"Please click <a href='{export_url}'>here</a> to download the report.\n" \
-           f"NOTE: Link will expire in 2 weeks.\n"
+           f"NOTE: Link will expire in 24 hours.\n"
 
     # E-mail
     from_email = settings.EXPORTS_EMAIL_ADDRESS
