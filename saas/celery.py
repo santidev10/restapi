@@ -2,10 +2,14 @@ import json
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "saas.settings")
+# pylint: disable=wrong-import-position
 from celery import Celery
+from kombu import serialization
+
 from utils.celery.logging import init_celery_logging
 
-from kombu import serialization
+
+# pylint: enable=wrong-import-position
 
 
 def serialize(item):

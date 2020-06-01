@@ -13,6 +13,7 @@ class ESRetrieveAdapter:
         self.search_id = search_id
         return self
 
+    # pylint: disable=all
     def fields(self, fields=()):
         fields = [
             field
@@ -22,6 +23,7 @@ class ESRetrieveAdapter:
 
         self.fields_to_load = fields or self.manager.sections
         return self
+    # pylint: enable=all
 
     def get_data(self):
         item = self.manager.model.get(self.search_id, _source=self.fields_to_load)
