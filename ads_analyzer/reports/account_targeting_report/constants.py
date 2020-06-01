@@ -67,7 +67,7 @@ AGGREGATION_COLUMN_NAME_MAP = {
 KPI_FILTER_NAME_MAP = {
     AVERAGE_CPV: "Avg. CPV ($)",
     AVERAGE_CPM: "Avg. CPM ($)",
-    MARGIN: "Margin ($)",
+    MARGIN: "Margin (%)",
     COST_SHARE: "Cost Share (%)",
     COST: "Cost ($)",
     VIDEO_VIEWS_SHARE: "Views SOV (%)", # Percentage of video_views of total

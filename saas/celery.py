@@ -23,8 +23,8 @@ def deserialize(item):
 
 
 serialization.register(
-    'celery_result', serialize, deserialize,
-    content_type='application/celery-result',
+    "celery_result", serialize, deserialize,
+    content_type="application/celery-result",
 )
 
 app = Celery("saas", task_cls="utils.celery.termination_proof_task:TerminationProofTask")
