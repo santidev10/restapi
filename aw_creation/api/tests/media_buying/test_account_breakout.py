@@ -66,8 +66,8 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         pl_2 = OpPlacement.objects.create(id=f"id_{next(int_iterator)}", name=f"pl_{next(int_iterator)}", opportunity=op, goal_type_id=SalesForceGoalType.CPV)
         campaign_1 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, salesforce_placement=pl_1, budget=12.1, type="video")
         campaign_2 = Campaign.objects.create(name=f"c_{next(int_iterator)}", account=account, salesforce_placement=pl_2, budget=30.4, type="display")
-        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=5)
-        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=1)
+        ad_group_1 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_1, cpm_bid=5000000)
+        ad_group_2 = AdGroup.objects.create(name=f"a_{next(int_iterator)}", campaign=campaign_2, cpv_bid=1000000)
         query_prams = QueryDict(f"ad_group_ids={ad_group_1.id},{ad_group_2.id}").urlencode()
         url = f"{self._get_url(account.account_creation.id)}?{query_prams}"
         user_settings = {
@@ -81,12 +81,12 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(data[0]["name"], campaign_1.name)
         self.assertEqual(data[0]["type"], campaign_1.type)
         self.assertEqual(data[0]["budget"], campaign_1.budget)
-        self.assertEqual(data[0]["max_bid"], ad_group_1.cpm_bid)
+        self.assertEqual(data[0]["max_bid"], ad_group_1.cpm_bid / 1000000)
 
         self.assertEqual(data[1]["name"], campaign_2.name)
         self.assertEqual(data[1]["type"], campaign_2.type)
         self.assertEqual(data[1]["budget"], campaign_2.budget)
-        self.assertEqual(data[1]["max_bid"], ad_group_2.cpv_bid)
+        self.assertEqual(data[1]["max_bid"], ad_group_2.cpv_bid / 1000000)
 
     def test_create_fail_mixed_ad_group_types(self):
         """ Should not be able to create breakout with mixed AdGroup types """
@@ -213,8 +213,10 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(str(campaign_breakout.end), payload["end"])
 
         # Assert related campaign creations exists for updated_campaign_budget
-        campaign_creation_3 = campaign_3.campaign_creation.first()
-        self.assertEqual(campaign_creation_3.budget, payload["updated_campaign_budget"])
+        campaign_1_creation = campaign_1.campaign_creation.first()
+        campaign_2_creation = campaign_1.campaign_creation.first()
+        self.assertEqual(campaign_1_creation.budget, payload["updated_campaign_budget"])
+        self.assertEqual(campaign_2_creation.budget, payload["updated_campaign_budget"])
 
         ag_creation_1 = ad_group_1.ad_group_creation.first()
         ag_creation_2 = ad_group_2.ad_group_creation.first()
@@ -319,10 +321,10 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         self.assertEqual(ag_creation_1.status, 0)
         self.assertEqual(ag_creation_2.status, 0)
 
-        campaign_creation_3 = campaign_3.campaign_creation.first()
-        campaign_creation_4 = campaign_4.campaign_creation.first()
-        self.assertEqual(campaign_creation_3.budget, payload["updated_campaign_budget"])
-        self.assertEqual(campaign_creation_4.budget, payload["updated_campaign_budget"])
+        campaign_1 = campaign_1.campaign_creation.first()
+        campaign_2 = campaign_2.campaign_creation.first()
+        self.assertEqual(campaign_1.budget, payload["updated_campaign_budget"])
+        self.assertEqual(campaign_2.budget, payload["updated_campaign_budget"])
 
     def test_create_success_discovery(self):
         self.create_admin_user()
@@ -417,3 +419,7 @@ class MediaBuyingAccountBreakoutTestCase(ExtendedAPITestCase):
         ag_creation_2 = ad_group_2.ad_group_creation.first()
         self.assertEqual(ag_creation_1.max_rate, payload["max_rate"])
         self.assertEqual(ag_creation_2.max_rate, payload["max_rate"])
+
+    def test_update_campaign_budget(self):
+        """ Should have entries to update source campaign budgets """
+        pass

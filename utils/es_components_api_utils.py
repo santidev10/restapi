@@ -5,9 +5,11 @@ from urllib.parse import unquote
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
+from elasticsearch_dsl import Q
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.serializers import Serializer
 
+import brand_safety.constants as constants
 from es_components.query_builder import QueryBuilder
 from utils.api.filters import FreeFieldOrderingFilter
 from utils.api_paginator import CustomPageNumberPaginator
@@ -16,9 +18,6 @@ from utils.es_components_cache import cached_method
 from utils.percentiles import get_percentiles
 from utils.utils import prune_iab_categories
 from utils.utils import slice_generator
-from elasticsearch_dsl import Q
-
-import brand_safety.constants as constants
 
 DEFAULT_PAGE_SIZE = 50
 UI_STATS_HISTORY_FIELD_LIMIT = 30
@@ -65,6 +64,7 @@ def get_sort_rule(query_params):
     if sort_params:
         key, direction = sort_params.split(":")
         return [{key: {"order": direction}}]
+    return None
 
 
 def get_fields(query_params, allowed_sections_to_load):
@@ -97,28 +97,28 @@ class QueryGenerator:
         if ranges is None:
             return
         queries = []
-        for range in ranges:
-            if range:
-                min, max = range.split(",")
+        for query_range in ranges:
+            if query_range:
+                range_min, range_max = query_range.split(",")
 
-                if not (min or max):
+                if not (range_min or range_max):
                     continue
 
                 query = QueryBuilder().build().should().range().field(field)
-                if min:
+                if range_min:
                     try:
-                        min = float(min)
+                        range_min = float(range_min)
                     except ValueError:
                         # in case of filtering by date
                         pass
-                    query = query.gte(min)
-                if max:
+                    query = query.gte(range_min)
+                if range_max:
                     try:
-                        max = float(max)
+                        range_max = float(range_max)
                     except ValueError:
                         # in case of filtering by date
                         pass
-                    query = query.lte(max)
+                    query = query.lte(range_max)
                 queries.append(query)
         combined_query = None
         for query in queries:
@@ -129,38 +129,39 @@ class QueryGenerator:
                 combined_query |= query_obj
         filters.append(combined_query)
 
+    # pylint: disable=too-many-nested-blocks
     def __get_filter_range(self):
         filters = []
-
         for field in self.range_filter:
             if field == "brand_safety.overall_score":
                 self.add_should_filters(self.query_params.get(field, None), filters, field)
             else:
-                range = self.query_params.get(field, None)
-                if range:
-                    min, max = range.split(",")
+                query_range = self.query_params.get(field, None)
+                if query_range:
+                    range_min, range_max = query_range.split(",")
 
-                    if not (min or max):
+                    if not (range_min or range_max):
                         continue
 
                     query = QueryBuilder().build().must().range().field(field)
-                    if min:
+                    if range_min:
                         try:
-                            min = float(min)
+                            range_min = float(range_min)
                         except ValueError:
                             # in case of filtering by date
                             pass
-                        query = query.gte(min)
-                    if max:
+                        query = query.gte(range_min)
+                    if range_max:
                         try:
-                            max = float(max)
+                            range_max = float(range_max)
                         except ValueError:
                             # in case of filtering by date
                             pass
-                        query = query.lte(max)
+                        query = query.lte(range_max)
                     filters.append(query.get())
 
         return filters
+    # pylint: enable=too-many-nested-blocks
 
     def __get_filters_term(self):
         filters = []
@@ -257,7 +258,6 @@ class QueryGenerator:
             query_params = adapter().adapt(query_params)
         return query_params
 
-
     def get_search_filters(self):
         filters_term = self.__get_filters_term()
         filters_range = self.__get_filter_range()
@@ -272,6 +272,7 @@ class QueryGenerator:
         return filters
 
 
+# pylint: disable=abstract-method
 class ESDictSerializer(Serializer):
     def to_representation(self, instance):
         extra_data = super(ESDictSerializer, self).to_representation(instance)
@@ -288,10 +289,11 @@ class ESDictSerializer(Serializer):
             **data,
             **extra_data,
         }
+# pylint: enable=abstract-method
 
 
 class ESQuerysetAdapter:
-    def __init__(self, manager, cached_aggregations=None, *args, **kwargs):
+    def __init__(self, manager, *_, cached_aggregations=None, **__):
         self.manager = manager
         self.sort = None
         self.filter_query = None
@@ -414,7 +416,6 @@ class ESFilterBackend(BaseFilterBackend):
     def _get_query_params(self, request):
         return request.query_params.dict()
 
-
     def _get_query_generator(self, request, queryset, view):
         dynamic_generator_class = type(
             "DynamicGenerator",
@@ -431,6 +432,7 @@ class ESFilterBackend(BaseFilterBackend):
         query_params = self._get_query_params(request)
         return dynamic_generator_class(query_params)
 
+    # pylint: disable=unused-argument
     def _get_aggregations(self, request, queryset, view):
         query_params = self._get_query_params(request)
         aggregations = unquote(query_params.get("aggregations", "")).split(",")
@@ -449,7 +451,9 @@ class ESFilterBackend(BaseFilterBackend):
                             for agg in aggregations
                             if agg in view.allowed_aggregations]
         return aggregations
+    # pylint: enable=unused-argument
 
+    # pylint: disable=unused-argument
     def _get_percentiles(self, request, queryset, view):
         query_params = self._get_query_params(request)
         percentiles = unquote(query_params.get("aggregations", "")).split(",")
@@ -458,6 +462,7 @@ class ESFilterBackend(BaseFilterBackend):
                            for agg in percentiles
                            if agg in view.allowed_percentiles]
         return percentiles
+    # pylint: enable=unused-argument
 
     def _get_fields(self, request):
         query_params = self._get_query_params(request)
@@ -465,10 +470,6 @@ class ESFilterBackend(BaseFilterBackend):
         return fields
 
     def filter_queryset(self, request, queryset, view):
-        from utils.api.research import ESEmptyResponseAdapter
-
-        if isinstance(queryset, ESEmptyResponseAdapter):
-            return []
         if not isinstance(queryset, ESQuerysetAdapter):
             raise BrokenPipeError
         query_generator = self._get_query_generator(request, queryset, view)
@@ -509,8 +510,8 @@ class PaginatorWithAggregationMixin:
     def _get_response_data(self: CustomPageNumberPaginator, data):
         for item in data:
             try:
-                item['general_data']['iab_categories'] = prune_iab_categories(item['general_data']['iab_categories'])
-            except Exception:
+                item["general_data"]["iab_categories"] = prune_iab_categories(item["general_data"]["iab_categories"])
+            except BaseException:
                 continue
         response_data = super(PaginatorWithAggregationMixin, self)._get_response_data(data)
         object_list = self.page.paginator.object_list
@@ -522,7 +523,6 @@ class PaginatorWithAggregationMixin:
         else:
             logger.warning("Can't get aggregation from %s", str(type(object_list)))
         return response_data
-
 
 
 class ExportDataGenerator:

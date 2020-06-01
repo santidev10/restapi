@@ -113,7 +113,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
                     self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
-                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_category_segment.uuid, category_id=category_id)
             except Exception:
@@ -144,7 +144,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
                     self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
-                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE)
+                results = generate_segment(new_category_segment, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_category_segment, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_category_segment.uuid, category_id=category_id)
             except Exception:
@@ -172,7 +172,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
                     self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
-                results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE)
+                results = generate_segment(new_master_video_whitelist, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_video_whitelist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
@@ -201,7 +201,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
                     self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
-                results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE)
+                results = generate_segment(new_master_video_blacklist, query, self.BLACKLIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_video_blacklist, results)
                 self._clean_old_segments(PersistentSegmentVideo, new_master_video_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)
@@ -229,7 +229,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").gte(
                     self.WHITELIST_MINIMUM_BRAND_SAFETY_SCORE).get()
 
-                results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE)
+                results = generate_segment(new_master_channel_whitelist, query, self.WHITELIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_channel_whitelist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_whitelist.uuid, is_master=True,
                                          master_list_type=constants.WHITELIST)
@@ -257,7 +257,7 @@ class SegmentListGenerator(object):
                         & QueryBuilder().build().must().range().field(f"{Sections.BRAND_SAFETY}.overall_score").lte(
                     self.BLACKLIST_BRAND_SAFETY_SCORE_THRESHOLD).get()
 
-                results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE)
+                results = generate_segment(new_master_channel_blacklist, query, self.BLACKLIST_SIZE, add_uuid=True)
                 self.persistent_segment_finalizer(new_master_channel_blacklist, results)
                 self._clean_old_segments(PersistentSegmentChannel, new_master_channel_blacklist.uuid, is_master=True,
                                          master_list_type=constants.BLACKLIST)

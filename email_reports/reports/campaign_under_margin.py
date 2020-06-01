@@ -1,6 +1,4 @@
-import boto
 import logging
-
 from datetime import timedelta
 
 from django.conf import settings
@@ -9,7 +7,6 @@ from django.core.mail import EmailMultiAlternatives
 from aw_reporting.models import Opportunity
 from aw_reporting.reports.pacing_report import PacingReport
 from email_reports.reports.base_campaign_pacing_report import BaseCampaignEmailReport
-from utils.datetime import now_in_default_tz
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +48,7 @@ class CampaignUnderMargin(BaseCampaignEmailReport):
                 ad_ops_manager = (opp['ad_ops_manager__name'], opp["ad_ops_manager__email"])
 
                 messages[ad_ops_manager] = messages.get(ad_ops_manager, "") + \
-                                     "{} is under margin at {:.2f}%.\n".format(opp["name"], margin * 100)
-
+                                           "{} is under margin at {:.2f}%.\n".format(opp["name"], margin * 100)
 
         for ad_ops_manager, message in messages.items():
             name, to_email = ad_ops_manager

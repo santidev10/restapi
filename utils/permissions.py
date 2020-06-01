@@ -1,4 +1,5 @@
 from rest_framework import permissions
+
 from userprofile.models import UserDeviceToken
 from userprofile.permissions import PermissionGroupNames
 
@@ -14,7 +15,7 @@ class MediaBuyingAddOnPermission(permissions.IsAuthenticated):
 
 class OnlyAdminUserCanCreateUpdateDelete(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.method in ['POST', 'PUT', 'UPDATE', 'DELETE']:
+        if request.method in ["POST", "PUT", "UPDATE", "DELETE"]:
             return request.user.is_staff
         return True
 
@@ -91,13 +92,12 @@ def user_has_permission(perm):
 class ExportDataAllowed(permissions.BasePermission):
 
     def has_permission(self, request, view):
-        if request.method == 'GET':
-            return True
+        return request.method == "GET"
 
 
 class BrandSafetyDataVisible(permissions.BasePermission):
 
-    def has_permission(self, request, *args):
+    def has_permission(self, request, *_):
         return request.user.is_staff or request.user.has_perm("userprofile.scoring_brand_safety") or \
                request.user.has_custom_user_group(PermissionGroupNames.BRAND_SAFETY_SCORING)
 
