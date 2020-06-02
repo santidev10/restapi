@@ -9,3 +9,4 @@ from .audit_pause import AuditPauseApiView
 from .audit_vet_retrieve_update import AuditVetRetrieveUpdateAPIView
 from .audit_vetting_options import AuditVettingOptionsAPIView
 from .audit_admin import AuditAdminAPIView
+from .audit_item import AuditItemRetrieveUpdateAPIView
