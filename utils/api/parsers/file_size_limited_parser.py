@@ -13,11 +13,11 @@ class FileSizeLimitedParser(FileUploadParser):
             else None
 
     def _validate_by_header(self, parser_context):
-        request = parser_context['request']
+        request = parser_context["request"]
         meta = request.META
         try:
-            content_length = int(meta.get('HTTP_CONTENT_LENGTH',
-                                          meta.get('CONTENT_LENGTH', 0)))
+            content_length = int(meta.get("HTTP_CONTENT_LENGTH",
+                                          meta.get("CONTENT_LENGTH", 0)))
         except (ValueError, TypeError):
             content_length = None
 

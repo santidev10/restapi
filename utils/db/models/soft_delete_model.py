@@ -1,6 +1,7 @@
 from django.db import models
 
-from utils.lang import pick_dict, merge_dicts
+from utils.lang import merge_dicts
+from utils.lang import pick_dict
 
 
 class SoftDeleteManager(models.Manager):

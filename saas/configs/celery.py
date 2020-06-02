@@ -5,8 +5,8 @@ from datetime import timedelta
 from celery.schedules import crontab
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", 15672)
-RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", 5672)
+RABBITMQ_API_PORT = os.getenv("RABBITMQ_API_PORT", "15672")
+RABBITMQ_AMQP_PORT = os.getenv("RABBITMQ_AMQP_PORT", "5672")
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
@@ -20,10 +20,14 @@ DEFAULT_CELERY_BROKER_URL = "amqp://{user}:{password}@{host}:{port}".format(
 CELERY_BROKER_URL = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://es:9200/celery/task_result")
 CELERY_RESULT_EXTENDED = True
+CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("CELERY_ELASTICSEARCH_TIMEOUT", "600"))
 
 DMP_CELERY_BROKER_URL = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEND)
 DMP_CELERY_RESULT_EXTENDED = True
+DMP_CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("DMP_CELERY_ELASTICSEARCH_TIMEOUT", "600"))
+DMP_CELERY_ACCEPT_CONTENT = ["celery_result", "json"]
+DMP_CELERY_RESULT_SERIALIZER = "celery_result"
 
 CELERY_TIMEZONE = "UTC"
 
@@ -109,15 +113,15 @@ CELERY_BEAT_SCHEDULE = {
     },
     "cache_pricing_tool_filters": {
         "task": "cache.tasks.cache_pricing_tool_filters.cache_pricing_tool_filters",
-        "schedule": crontab(minute=0, hour='*/6'),
+        "schedule": crontab(minute=0, hour="*/6"),
     },
     "cache_global_trends_filters": {
         "task": "cache.tasks.cache_global_trends_filters.cache_global_trends_filters",
-        "schedule": crontab(minute=0, hour='*/6'),
+        "schedule": crontab(minute=0, hour="*/6"),
     },
     "cache_forecast_tool_filters": {
         "task": "cache.tasks.cache_forecast_tool_filters.cache_forecast_tool_filters",
-        "schedule": crontab(minute=0, hour='*/6'),
+        "schedule": crontab(minute=0, hour="*/6"),
     },
     "generate_persistent_segments": {
         "task": "segment.tasks.generate_persistent_segments.generate_persistent_segments",
@@ -146,7 +150,12 @@ CELERY_BEAT_SCHEDULE = {
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
         "schedule": crontab(minute="*/10"),
-    }
+    },
+    # TODO add after CustomSegment.is_regenerating and is_featured are added
+    # "regenerate_custom_segments": {
+    #     "task": "segment.tasks.regenerate_custom_segments.regenerate_custom_segments_with_lock",
+    #     "schedule": crontab(minute="*/10"),
+    # }
 }
 
 
@@ -180,7 +189,9 @@ CELERY_ROUTES_PREPARED = [
     ("*", {"queue": Queue.DEFAULT}),
 ]
 # dirty fix for celery. fixes AttributeError
+# pylint: disable=protected-access
 re._pattern_type = re.Pattern
+# pylint: enable=protected-access
 
 CELERY_TASK_ROUTES = (CELERY_ROUTES_PREPARED,)
 

@@ -34,7 +34,9 @@ def cached_method(timeout):
 
 def flush_cache():
     if settings.ES_CACHE_ENABLED:
+        # pylint: disable=redefined-outer-name
         redis = get_redis_client()
+        # pylint: enable=redefined-outer-name
         keys = redis.keys(f"{CACHE_KEY_PREFIX}.*")
         if keys:
             redis.delete(*keys)

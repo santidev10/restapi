@@ -12,6 +12,7 @@ from aw_creation.api.serializers.media_buying.account_serializer import AccountM
 from aw_creation.models import AccountCreation
 from aw_creation.api.views.media_buying.utils import get_account_creation
 from utils.api.cache import cache_method
+from utils.permissions import MediaBuyingAddOnPermission
 
 
 class AccountDetailAPIView(APIView):
@@ -21,6 +22,7 @@ class AccountDetailAPIView(APIView):
     """
     CACHE_KEY_PREFIX = "restapi.aw_creation.views.media_buying.account_detail"
     serializer_class = AnalyticsAccountCreationDetailsSerializer
+    permission_classes = (MediaBuyingAddOnPermission,)
 
     def get(self, request, *args, **kwargs):
         pk = kwargs["pk"]

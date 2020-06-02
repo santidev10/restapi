@@ -316,6 +316,10 @@ class AuditProcessor(models.Model):
                 res['machine'] = e[0].machine
                 res['thread'] = e[0].thread
                 try:
+                    res['owner'] = str(e[0].owner)
+                except Exception as e:
+                    res['owner'] = ""
+                try:
                     res['elapsed_time'] = str(timezone.now() - e[0].started).replace(",", "").split(".")[0]
                 except Exception as e:
                     pass
