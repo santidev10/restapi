@@ -13,6 +13,7 @@ from audit_tool.models import AuditProcessor
 from audit_tool.models import AuditVideo
 from audit_tool.models import AuditVideoMeta
 from audit_tool.models import AuditVideoProcessor
+from audit_tool.models import AuditVideoVet
 from brand_safety.languages import LANGUAGES
 from brand_safety.models import BadWordCategory
 from cache.models import CacheItem
@@ -25,7 +26,7 @@ class AuditUtils(object):
     video_config = {
         "audit_model": AuditVideo,
         "meta_model": AuditVideoMeta,
-        "vetting_model": None, # Tech debt 4.8
+        "vetting_model": AuditVideoVet,
     }
     channel_config = {
         "audit_model": AuditChannel,
