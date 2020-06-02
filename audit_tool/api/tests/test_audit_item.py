@@ -48,6 +48,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_manager.upsert([channel])
         response = self.client.get(self._get_url(channel.main.id))
         data = response.data
+        self.assertEqual(channel.main.id, data["YT_id"])
         self.assertEqual(channel.task_us_data.iab_categories, data["iab_categories"])
         self.assertEqual(channel.task_us_data.lang_code, data["language"])
         self.assertEqual(channel.task_us_data.age_group, data["age_group"])
@@ -70,6 +71,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.video_manager.upsert([video])
         response = self.client.get(self._get_url(video.main.id))
         data = response.data
+        self.assertEqual(video.main.id, data["YT_id"])
         self.assertEqual(video.task_us_data.iab_categories, data["iab_categories"])
         self.assertEqual(video.task_us_data.lang_code, data["language"])
         self.assertEqual(video.task_us_data.age_group, data["age_group"])
