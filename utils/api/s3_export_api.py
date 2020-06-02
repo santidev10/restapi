@@ -31,8 +31,7 @@ class S3ExportApiView(APIViewMixin):
                 }
             )
 
-        url_exporter = self._get_url_to_export
-        self.generate_export_task.delay(query_params, export_name, [request.user.email], url_exporter)
+        self.generate_export_task.delay(query_params, export_name, [request.user.email])
 
         return Response(
             data={

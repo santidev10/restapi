@@ -32,14 +32,14 @@ class KeywordListDataGenerator(ExportDataGenerator):
 
 
 @celery_app.task
-def export_keywords_data(query_params, export_name, user_emails, url_exporter):
+def export_keywords_data(query_params, export_name, user_emails):
     content_exporter = ExportContextManager(
         KeywordListDataGenerator(query_params),
         KEYWORD_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
 
-    export_url = url_exporter(export_name)
+    export_url = ESDataS3Exporter.generate_temporary_url(ESDataS3Exporter.get_s3_key(export_name), time_limit=86400)
 
     # prepare E-mail
     subject = "Export Keywords"
