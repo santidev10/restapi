@@ -39,12 +39,14 @@ class VideoListDataGenerator(ExportDataGenerator):
 
 
 @celery_app.task
-def export_videos_data(query_params, export_name, user_emails, export_url):
+def export_videos_data(query_params, export_name, user_emails, url_exporter):
     content_exporter = ExportContextManager(
         VideoListDataGenerator(query_params),
         VIDEO_CSV_HEADERS
     )
     ESDataS3Exporter.export_to_s3(content_exporter, export_name)
+
+    export_url = url_exporter(export_name)
 
     # prepare E-mail
     subject = "Export Videos"
