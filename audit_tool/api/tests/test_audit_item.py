@@ -1,6 +1,7 @@
 import json
 
 from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
 
 from audit_tool.api.urls.names import AuditPathName
@@ -53,6 +54,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(channel.task_us_data.content_type, data["content_type"])
         self.assertEqual(channel.task_us_data.gender, data["gender"])
         self.assertEqual(channel.monetization.is_monetizable, data["is_monetizable"])
+        self.assertIsNotNone(data.get("vetting_history"))
 
     def test_get_video(self):
         self.create_admin_user()
@@ -74,6 +76,17 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(video.task_us_data.content_type, data["content_type"])
         self.assertEqual(video.task_us_data.gender, data["gender"])
         self.assertEqual(video.monetization.is_monetizable, data["is_monetizable"])
+        self.assertIsNotNone(data.get("vetting_history"))
+
+    def test_requried_fields(self):
+        """ Test required files for patch request """
+        self.create_admin_user()
+        payload = dict(
+            language="en"
+        )
+        response = self.client.patch(self._get_url("test"), data=json.dumps(payload),
+                                     content_type="application/json")
+        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
     def test_patch_channel(self):
         self.create_admin_user()
@@ -98,6 +111,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             content_type="1",
             gender="1",
             is_monetizable=False,
+            brand_safety=[],
         )
         response = self.client.patch(self._get_url(channel.main.id), data=json.dumps(payload), content_type="application/json")
         updated = self.channel_manager.get([channel.main.id])[0]
@@ -132,6 +146,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             content_type="1",
             gender="1",
             is_monetizable=True,
+            brand_safety=[],
         )
         response = self.client.patch(self._get_url(video.main.id), data=json.dumps(payload), content_type="application/json")
         updated = self.video_manager.get([video.main.id])[0]

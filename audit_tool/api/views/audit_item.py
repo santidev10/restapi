@@ -13,11 +13,13 @@ from es_components.managers import ChannelManager
 from es_components.managers import VideoManager
 from utils.permissions import user_has_permission
 from utils.permissions import or_permission_classes
+from utils.views import validate_fields
 
 
 class AuditItemRetrieveUpdateAPIView(APIView):
     ES_SECTIONS = (Sections.TASK_US_DATA, Sections.GENERAL_DATA, Sections.MONETIZATION)
-    TASK_US_FIELDS = ()
+    REQUIRED_FIELDS = ("age_group", "brand_safety", "content_type", "gender", "iab_categories",
+                       "is_monetizable", "language")
 
     permission_classes = (
         or_permission_classes(
@@ -42,6 +44,7 @@ class AuditItemRetrieveUpdateAPIView(APIView):
     def patch(self, request, *args, **kwargs):
         doc_id = kwargs["pk"]
         data = request.data
+        validate_fields(self.REQUIRED_FIELDS, list(data.keys()))
         data["lang_code"] = data["language"]
         es_manager, serializer = self._get_config(doc_id, sections=[Sections.TASK_US_DATA])
         serializer = serializer(data=data)
