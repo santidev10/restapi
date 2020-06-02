@@ -222,7 +222,7 @@ class AuditVetBaseSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories):
+    def save_elasticsearch(self, item_id, blacklist_categories, es_manager):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -258,5 +258,5 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         doc.populate_general_data(**general_data)
-        self.segment.es_manager.upsert_sections = self.SECTIONS
-        self.segment.es_manager.upsert([doc])
+        es_manager.upsert_sections = self.SECTIONS
+        es_manager.upsert([doc])

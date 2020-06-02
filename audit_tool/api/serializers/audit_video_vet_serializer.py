@@ -65,7 +65,7 @@ class AuditVideoVetSerializer(AuditVetBaseSerializer):
             channel_id = self.instance.video.channel.channel_id
         except (AttributeError, AuditChannel.DoesNotExist):
             channel_id = None
-        self.save_elasticsearch(video_id, blacklist_categories)
+        self.save_elasticsearch(video_id, blacklist_categories, self.segment.es_manager)
         if channel_id:
             self._update_channel(channel_id)
 
