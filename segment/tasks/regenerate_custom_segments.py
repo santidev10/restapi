@@ -33,7 +33,11 @@ def regenerate_custom_segments_with_lock():
 def regenerate_custom_segments():
     """
     regenerate export for segments flagged as `is_regenerating` and last
-    updated at least DAYS_THRESHOLD ago
+    updated at least DAYS_THRESHOLD ago. These custom segments are the new
+    persistent segments. Typically, an is_featured segment is also an
+    is_regenerating segment, but we're separating the functionality just
+    in case. These are the new Brand Safety Target Lists. All non-featured
+    segments are Custom Target Lists.
     """
     date_threshold = timezone.now() - timedelta(days=DAYS_THRESHOLD)
     for segment in CustomSegment.objects.filter(
@@ -41,7 +45,7 @@ def regenerate_custom_segments():
     ):
         logger.debug(f"Processing regenerating segment titled: {segment.title}")
         export = segment.export
-        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=False)
+        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=True)
         segment.statistics = results["statistics"]
         segment.save()
         export.download_url = results["download_url"]
