@@ -60,24 +60,15 @@ class SegmentListGenerator(object):
 
     def run(self):
         handlers = {
-            0: self.generate_brand_suitable_lists,
+            0: self.generate_master_brand_suitable_target_lists,
         }
         handler = handlers[self.type]
         handler()
 
-    def generate_brand_suitable_lists(self):
+    def generate_master_brand_suitable_target_lists(self):
         """
-        Generate brand suitable target lists with Youtube categories
+        Generate brand suitable target lists for all master video/channel white/black lists
         """
-        # TODO remove after regenerating custom segments have been added and
-        #  endpoint is ready
-        for category in AuditCategory.objects.all():
-            logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display_iab}")
-            if category.category_display_iab not in self.processed_categories:
-                self._generate_channel_whitelist(category)
-                self._generate_video_whitelist(category)
-                self.processed_categories.add(category.category_display_iab)
-
         logger.debug("Processing master whitelists and blacklists")
         self._generate_master_channel_blacklist()
         self._generate_master_channel_whitelist()
