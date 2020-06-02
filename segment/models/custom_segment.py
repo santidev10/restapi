@@ -117,7 +117,8 @@ class CustomSegment(SegmentMixin, Timestampable):
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
     is_vetting_complete = BooleanField(default=False, db_index=True)
-    # source_list = URLField()
+    is_featured = BooleanField(default=False, db_index=True)
+    is_regenerating = BooleanField(default=False, db_index=True)
 
     @property
     def data_type(self):

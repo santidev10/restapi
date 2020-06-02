@@ -10,7 +10,7 @@ try:
 
     if is_running_under_teamcity():
         TEST_RUNNER = "teamcity.django.TeamcityDjangoRunner"
-except:
+except BaseException:
     pass
 MIGRATION_MODULES = {
     "administration": None,

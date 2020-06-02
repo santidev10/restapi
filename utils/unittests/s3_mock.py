@@ -29,12 +29,12 @@ def mock_s3(fn):
 
 
 class S3TestCaseMetaclass(type):
-    def __new__(cls, name, bases, attrs):
+    def __new__(mcs, name, bases, attrs):
         for attr in attrs:
             value = attrs[attr]
             if callable(value) and attr.startswith("test_"):
                 attrs[attr] = mock_s3(value)
-        return type.__new__(cls, name, bases, attrs)
+        return type.__new__(mcs, name, bases, attrs)
 
 
 class S3TestCase(TestCase, metaclass=S3TestCaseMetaclass):

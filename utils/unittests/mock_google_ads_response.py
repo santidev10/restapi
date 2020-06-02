@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 
-class MockGoogleAdsAPIResponse(object):
+class MockGoogleAdsAPIResponse:
     def __init__(self):
         self.rows = []
         self.curr_row = SimpleNamespace()

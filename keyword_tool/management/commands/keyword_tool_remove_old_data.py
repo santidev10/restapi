@@ -5,7 +5,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils import timezone
 
-from keyword_tool.models import Query, KeyWord
+from keyword_tool.models import KeyWord
+from keyword_tool.models import Query
 
 logger = logging.getLogger(__name__)
 

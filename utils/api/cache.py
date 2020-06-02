@@ -9,7 +9,7 @@ def cache_method(timeout):
             part = method.__name__
             try:
                 data = get_from_cache(obj, part=part, options=options)
-            except Exception:
+            except BaseException:
                 data = None
             if data is None:
                 data = method(obj, *args, **kwargs)

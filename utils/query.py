@@ -1,6 +1,8 @@
 from functools import reduce
 
-from django.db.models import Q, When, QuerySet
+from django.db.models import Q
+from django.db.models import QuerySet
+from django.db.models import When
 
 
 class Operator:
@@ -12,7 +14,7 @@ def build_query(expressions, condition):
     condition_upper = condition.upper()
     if condition_upper == Operator.AND:
         return AND(*expressions)
-    elif condition_upper == Operator.OR:
+    if condition_upper == Operator.OR:
         return OR(*expressions)
     return Q()
 

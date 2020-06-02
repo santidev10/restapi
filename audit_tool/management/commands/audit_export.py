@@ -52,6 +52,7 @@ class Command(BaseCommand):
             self.process_export()
 
     def process_export(self):
+        audit = self.export.audit
         self.export.started = timezone.now()
         self.export.machine = self.machine_number
         self.export.thread = self.thread_id
@@ -101,7 +102,11 @@ class Command(BaseCommand):
             if self.export.clean is not None:
                 count = count.filter(clean=self.export.clean)
             count = count.count()
-        self.send_audit_email(file_name, settings.AUDIT_TOOL_EMAIL_RECIPIENTS, count)
+        try:
+            emails = [audit.owner.email] if audit.owner else settings.AUDIT_TOOL_EMAIL_RECIPIENTS
+        except Exception as e:
+            emails = settings.AUDIT_TOOL_EMAIL_RECIPIENTS
+        self.send_audit_email(file_name, emails, count)
         self.export.completed = timezone.now()
         self.export.file_name = file_name
         if self.audit.completed:

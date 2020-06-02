@@ -1,14 +1,13 @@
+from django.test import RequestFactory
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_403_FORBIDDEN
-from saas.urls.namespaces import Namespace
 
+from saas.urls.namespaces import Namespace
 from utils.documentation import PathName
 from utils.documentation import schema_view
 from utils.unittests.generic_test import generic_test
 from utils.unittests.reverse import reverse
 from utils.unittests.test_case import ExtendedAPITestCase
-
-from django.test import RequestFactory
 
 
 class SchemaFormat:

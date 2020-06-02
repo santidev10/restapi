@@ -4,6 +4,7 @@ from enum import Enum
 from functools import reduce
 from types import GeneratorType
 from typing import Sequence
+
 import langid
 from fasttext.FastText import _FastText as FastText
 
@@ -73,19 +74,25 @@ def almost_equal(value_1, value_2, delta=1e-6):
 
 # Remove @mentions from string
 def remove_mentions(s):
+    # pylint: disable=anomalous-backslash-in-string
     mentions_regex = re.compile("(@[^\s]+)")
+    # pylint: enable=anomalous-backslash-in-string
     return mentions_regex.sub("", s)
 
 
 # Remove #hashtags from string
 def remove_hashtags(s):
+    # pylint: disable=anomalous-backslash-in-string
     hashtag_regex = re.compile("(@#[^\s]+)")
+    # pylint: enable=anomalous-backslash-in-string
     return hashtag_regex.sub("", s)
 
 
 # Remove http links from string
 def remove_links(s):
+    # pylint: disable=anomalous-backslash-in-string
     links_regex = re.compile("(http[^\s]+)")
+    # pylint: enable=anomalous-backslash-in-string
     return links_regex.sub("", s)
 
 
@@ -107,25 +114,25 @@ def fasttext_lang(string):
     string = remove_mentions_hashes_urls(string)
     string = string.replace("\n", " ")
     if FAST_TEXT_MODEL is None:
-        FAST_TEXT_MODEL = FastText('lid.176.bin')
+        FAST_TEXT_MODEL = FastText("lid.176.bin")
     fast_text_result = FAST_TEXT_MODEL.predict(string)
     try:
         if fast_text_result[1][0] < .5:
             return langid.classify(string)[0].lower()
-        else:
-            return fast_text_result[0][0].split('__')[-1].lower()
+        return fast_text_result[0][0].split("__")[-1].lower()
     # pylint: disable=broad-except
-    except Exception as something_bad:
+    except Exception:
         return ""
     # pylint: enable=broad-except
 
 
 def is_english(s):
     try:
-        s.encode(encoding='utf-8').decode('ascii')
+        s.encode(encoding="utf-8").decode("ascii")
         return True
     except UnicodeDecodeError:
         return False
+
 
 def merge_sort(generators, key=None):
     """

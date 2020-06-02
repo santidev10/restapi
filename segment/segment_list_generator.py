@@ -69,6 +69,8 @@ class SegmentListGenerator(object):
         """
         Generate brand suitable target lists with Youtube categories
         """
+        # TODO remove after regenerating custom segments have been added and
+        #  endpoint is ready
         for category in AuditCategory.objects.all():
             logger.debug(f"Processing audit category: id: {category.id}, name: {category.category_display_iab}")
             if category.category_display_iab not in self.processed_categories:
