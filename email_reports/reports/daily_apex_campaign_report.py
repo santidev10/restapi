@@ -81,17 +81,15 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             .values_list("id", flat=True)
         campaigns_ids = list(campaigns)
 
-        campaigns_statistics = self.__get_campaign_statistics(campaigns_ids)
         video_creative_statistics = self.__get_video_creative_statistics(campaigns_ids)
 
-        if not campaigns_statistics.exists() and not video_creative_statistics.exists():
+        if not video_creative_statistics.exists():
             return None
 
         csv_file = StringIO()
         writer = csv.writer(csv_file)
         writer.writerow(CSV_HEADER)
 
-        writer.writerows(self.__get_campaign_statistics_rows(campaigns_statistics))
         writer.writerows(self.__get_creative_statistics_rows(video_creative_statistics))
 
         return csv_file.getvalue()
@@ -164,7 +162,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             rows.append([
                 stats.date.strftime(DATE_FORMAT),
                 stats.ad_group__campaign__account__currency_code,
-                None,
+                "Cross Device",
                 stats.ad_group__campaign__id,
                 ias_campaign_name or self.get_campaign_name(stats.ad_group__campaign__account__name),
                 stats.creative_id,
