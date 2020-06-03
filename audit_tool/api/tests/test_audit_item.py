@@ -21,8 +21,9 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         return url
 
     def setUp(self):
-        self.channel_manager = ChannelManager(sections=[Sections.TASK_US_DATA, Sections.MONETIZATION])
-        self.video_manager = VideoManager(sections=[Sections.TASK_US_DATA, Sections.MONETIZATION])
+        sections = [Sections.TASK_US_DATA, Sections.MONETIZATION, Sections.GENERAL_DATA]
+        self.channel_manager = ChannelManager(sections=sections)
+        self.video_manager = VideoManager(sections=sections)
 
     def test_unauthorized_get(self):
         self.create_test_user()
@@ -37,6 +38,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
     def test_get_channel(self):
         self.create_admin_user()
         channel = self.channel_manager.model(f"test_youtube_channel_{next(int_iterator)}")
+        channel.populate_general_data(title="test_channel")
         channel.populate_monetization(is_monetizable=False)
         channel.populate_task_us_data(
             iab_categories=["Hobbies & Interests"],
@@ -55,11 +57,13 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(channel.task_us_data.content_type, data["content_type"])
         self.assertEqual(channel.task_us_data.gender, data["gender"])
         self.assertEqual(channel.monetization.is_monetizable, data["is_monetizable"])
+        self.assertEqual(channel.general_data.title, data["title"])
         self.assertIsNotNone(data.get("vetting_history"))
 
     def test_get_video(self):
         self.create_admin_user()
         video = self.video_manager.model(f"video_{next(int_iterator)}")
+        video.populate_general_data(title="test_video")
         video.populate_monetization(is_monetizable=True)
         video.populate_task_us_data(
             iab_categories=["Automobiles"],
@@ -78,6 +82,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(video.task_us_data.content_type, data["content_type"])
         self.assertEqual(video.task_us_data.gender, data["gender"])
         self.assertEqual(video.monetization.is_monetizable, data["is_monetizable"])
+        self.assertEqual(video.general_data.title, data["title"])
         self.assertIsNotNone(data.get("vetting_history"))
 
     def test_requried_fields(self):
