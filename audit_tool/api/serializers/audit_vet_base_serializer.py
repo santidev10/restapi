@@ -33,6 +33,7 @@ class AuditVetBaseSerializer(Serializer):
     gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    YT_id = CharField(source="main.id", default=None)
     brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
