@@ -142,8 +142,11 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
         except Exception:
             pass
 
-        if result['stats'].get('hidden_subscriber_count'):
-            result['stats']['last_30day_subscribers'] = None
+        try:
+            if result['stats'].get('hidden_subscriber_count'):
+                result['stats']['last_30day_subscribers'] = None
+        except Exception:
+            pass
 
         return Response(result)
 
