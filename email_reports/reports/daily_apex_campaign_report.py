@@ -73,8 +73,7 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 bcc=self.get_bcc(),
         )
 
-        # old filename 'daily_campaign_report.csv'
-        msg.attach(self.get_report_filename(), csv_context, 'text/csv')
+        msg.attach('daily_campaign_report.csv', csv_context, 'text/csv')
         msg.send(fail_silently=False)
 
     def _get_subject(self):
@@ -86,11 +85,6 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
         if self.is_historical:
             return f"Historical Campaign Report for {self.today}. \nPlease see attached file."
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
-
-    def get_report_filename(self):
-        if self.is_historical:
-            return f"historical_campaign_report_{str(self.today).replace('-', '_')}.csv"
-        return f"daily_campaign_report_{str(self.yesterday).replace('-', '_')}.csv"
 
     def _get_csv_file_context(self, user):
         account_ids = user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
