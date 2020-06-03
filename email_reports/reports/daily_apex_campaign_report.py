@@ -40,11 +40,17 @@ YOUTUBE_LINK_TEMPLATE = "https://www.youtube.com/watch?v={}"
 
 
 class DailyApexCampaignEmailReport(BaseEmailReport):
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, *args, is_historical=False, **kwargs):
+        """
+        is_historical: Bool: If True, fetches ALL VideoCreativeStatistic records
+        for the given Accounts ids, rather than just the previous day's
+        """
         super(DailyApexCampaignEmailReport, self).__init__(*args, **kwargs)
 
         self.today = now_in_default_tz().date()
         self.yesterday = self.today - timedelta(days=1)
+        self.is_historical = is_historical
 
     def send(self):
         user = get_user_model().objects.filter(email=settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR)
@@ -67,21 +73,32 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
                 bcc=self.get_bcc(),
         )
 
-        msg.attach('daily_campaign_report.csv', csv_context, 'text/csv')
+        # old filename 'daily_campaign_report.csv'
+        msg.attach(self.get_report_filename(), csv_context, 'text/csv')
         msg.send(fail_silently=False)
 
     def _get_subject(self):
+        if self.is_historical:
+            return f"Historical Campaign Report for {self.today}"
         return f"Daily Campaign Report for {self.yesterday}"
 
     def _get_body(self):
+        if self.is_historical:
+            return f"Historical Campaign Report for {self.today}. \nPlease see attached file."
         return f"Daily Campaign Report for {self.yesterday}. \nPlease see attached file."
 
+    def get_report_filename(self):
+        if self.is_historical:
+            return f"historical_campaign_report_{str(self.today).replace('-', '_')}.csv"
+        return f"daily_campaign_report_{str(self.yesterday).replace('-', '_')}.csv"
+
     def _get_csv_file_context(self, user):
-        campaigns = Campaign.objects.filter(account_id__in=user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS))\
+        account_ids = user.aw_settings.get(UserSettingsKey.VISIBLE_ACCOUNTS)
+        campaigns = Campaign.objects.filter(account_id__in=account_ids) \
             .values_list("id", flat=True)
         campaigns_ids = list(campaigns)
 
-        video_creative_statistics = self.__get_video_creative_statistics(campaigns_ids)
+        video_creative_statistics = self.get_video_creative_daily_statistics(campaigns_ids)
 
         if not video_creative_statistics.exists():
             return None
@@ -134,8 +151,26 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
             ])
         return rows
 
+    def get_video_creative_daily_statistics(self, campaign_ids):
+        """
+        get stats day-by-day, instead of a summed "running total". If
+        is_historical is set, then results are not constrained to only
+        yesterday's.
+        """
+        filter_kwargs = {"ad_group__campaign__id__in": campaign_ids,}
+        if not self.is_historical:
+            filter_kwargs['date'] = self.yesterday
+
+        return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
+            .filter(**filter_kwargs) \
+            .order_by("date") \
+            .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS),
+                         "creative_id", named=True)
 
     def __get_video_creative_statistics(self, campaign_ids):
+        """
+        get summed statistics, and only for the latest dates
+        """
         return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
             .filter(ad_group__campaign__id__in=campaign_ids, date=self.yesterday) \
             .annotate(impressions=Sum("impressions"), clicks=Sum("clicks"), video_views=Sum("video_views"),
