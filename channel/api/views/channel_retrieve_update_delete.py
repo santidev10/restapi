@@ -143,7 +143,7 @@ class ChannelRetrieveUpdateDeleteApiView(APIView, PermissionRequiredMixin, Chann
             pass
 
         if result['stats'].get('hidden_subscriber_count'):
-            result['stats']['last_30day_subscribers'] = "N/A"
+            result['stats']['last_30day_subscribers'] = None
 
         return Response(result)
 
