@@ -1,24 +1,13 @@
-from enum import Enum
-
-from audit_tool.models import AuditAgeGroup
-from audit_tool.models import AuditContentType
-from audit_tool.models import AuditGender
-from audit_tool.utils.audit_utils import AuditUtils
-from brand_safety.models import BadWordCategory
 from collections import defaultdict
-from django.conf import settings
-from es_components.constants import SUBSCRIBERS_FIELD
-from es_components.constants import Sections
-from es_components.constants import VIEWS_FIELD
-from es_components.query_builder import QueryBuilder
-from segment.models.persistent.constants import YT_GENRE_CHANNELS
-from segment.utils.bulk_search import bulk_search
-from segment.utils.write_file import write_file
-from utils.brand_safety import map_brand_safety_score
-import csv
 import logging
 import os
 import tempfile
+
+from django.conf import settings
+
+from es_components.constants import Sections
+from segment.utils.bulk_search import bulk_search
+from segment.models.constants import SourceListType
 from segment.utils.generate_segment_utils import GenerateSegmentUtils
 
 BATCH_SIZE = 5000
@@ -38,13 +27,22 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     :param size: int
     :param sort: list -> Additional sort fields
     :param add_uuid: Add uuid to document segments section
-    :param get_exists_params: dict -> Parameters to pass to get_exists util method
+    :param s3_key: Optional s3 key for file upload
     :return:
     """
     generate_utils = GenerateSegmentUtils()
-
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.get_default_serialization_context()
+    try:
+        source_list = generate_utils.get_source_list(segment)
+        source_type = segment.source.source_type
+    except Exception as e:
+        logger.exception(f"Error trying to retrieve source list for "
+                         f"segment: {segment.title}, segment_type: {segment.segment_type}")
+        source_list = None
+        source_type = None
+    print('source')
+    print(source_list)
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0
@@ -58,12 +56,17 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
         try:
             for batch in bulk_search(segment.es_manager.model, query, sort, default_search_config["cursor_field"],
                                      options=options, batch_size=5000, source=segment.SOURCE_FIELDS, include_cursor_exclusions=True):
+                if source_list:
+                    if source_type == SourceListType.INCLUSION.value:
+                        batch = [item for item in batch if item.main.id in source_list]
+                    else:
+                        batch = [item for item in batch if item.main.id not in source_list]
                 batch = batch[:size - seen]
                 batch_item_ids = [item.main.id for item in batch]
                 item_ids.extend(batch_item_ids)
                 vetting = generate_utils.get_vetting_data(segment, batch_item_ids)
                 context["vetting"] = vetting
-                write_file(batch, filename, segment, context, aggregations, write_header=seen == 0)
+                generate_utils.write_to_file(batch, filename, segment, context, aggregations, write_header=seen == 0)
                 generate_utils.add_aggregations(aggregations, batch, segment.segment_type)
                 seen += len(batch_item_ids)
                 if seen >= size:

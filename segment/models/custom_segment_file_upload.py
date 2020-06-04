@@ -3,6 +3,7 @@ from urllib.parse import unquote
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CASCADE
 from django.db.models import DateTimeField
+from django.db.models import IntegerField
 from django.db.models import OneToOneField
 from django.db.models import Model
 from django.db.models import TextField
@@ -10,6 +11,7 @@ from elasticsearch_dsl import Q
 
 from es_components.config import CHANNEL_INDEX_NAME
 from es_components.config import VIDEO_INDEX_NAME
+from segment.models.constants import SourceListType
 from segment.models.custom_segment import CustomSegment
 
 
@@ -87,9 +89,15 @@ class CustomSegmentVettedFileUpload(Model):
     download_url = TextField(null=True)
     segment = OneToOneField(CustomSegment, related_name="vetted_export", on_delete=CASCADE)
 
-    def get_ids_query(self):
-        # Get the ids of vetted items in segment
-        pass
+
+class CustomSegmentSourceFileUpload(Model):
+    SOURCE_TYPE_CHOICES = (
+        [SourceListType.INCLUSION, "inclusion"],
+        [SourceListType.EXCLUSION, "exclusion"],
+    )
+    source_type = IntegerField(choices=SOURCE_TYPE_CHOICES)
+    segment = OneToOneField(CustomSegment, related_name="source", on_delete=CASCADE)
+    key = TextField()
 
 
 class CustomSegmentFileUploadQueueEmptyException(Exception):

@@ -13,7 +13,6 @@ from es_components.constants import VIEWS_FIELD
 from es_components.query_builder import QueryBuilder
 from segment.models.persistent.constants import YT_GENRE_CHANNELS
 from segment.utils.bulk_search import bulk_search
-from segment.utils.write_file import write_file
 from utils.brand_safety import map_brand_safety_score
 import csv
 import logging
@@ -141,3 +140,11 @@ class GenerateSegmentUtils:
 
     def add_segment_uuid(self, segment, ids):
         segment.es_manager.add_to_segment_by_ids(ids, segment.uuid)
+
+    def get_source_list(self, segment):
+        """ Create set of source list urls """
+        source_ids = {
+            row for row in segment.get_extract_export_ids(segment.source.key)
+
+        }
+        return source_ids

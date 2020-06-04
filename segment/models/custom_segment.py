@@ -13,9 +13,9 @@ from django.db.models import F
 from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import CASCADE
-from django.db.models import URLField
 from django.db.models import UUIDField
 from django.utils import timezone
+from uuid import uuid4
 
 from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
@@ -109,7 +109,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     }
 
     audit_id = IntegerField(null=True, default=None, db_index=True)
-    uuid = UUIDField(unique=True)
+    uuid = UUIDField(unique=True, default=uuid4)
     statistics = JSONField(default=dict)
     list_type = IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=CASCADE)
@@ -192,7 +192,10 @@ class CustomSegment(SegmentMixin, Timestampable):
         for byte in export_content["Body"].iter_lines():
             row = (byte.decode("utf-8")).split(",")
             if url_index is None:
-                url_index = row.index("URL")
+                try:
+                    url_index = row.index("URL")
+                except ValueError:
+                    url_index = 0
                 continue
             item_id = self.parse_url(row[url_index], self.segment_type)
             yield item_id
