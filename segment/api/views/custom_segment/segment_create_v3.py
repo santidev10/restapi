@@ -3,6 +3,7 @@ import json
 from django.db import transaction
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from rest_framework.generics import CreateAPIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
@@ -10,6 +11,7 @@ from uuid import uuid4
 
 from audit_tool.models import get_hash_name
 from brand_safety.utils import BrandSafetyQueryBuilder
+from es_components.iab_categories import IAB_TIER2_SET
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.models.constants import SourceListType
 from segment.models.custom_segment import CustomSegment
@@ -20,9 +22,6 @@ from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
 from utils.permissions import user_has_permission
-from es_components.iab_categories import IAB_TIER2_SET
-
-from rest_framework.parsers import MultiPartParser
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
