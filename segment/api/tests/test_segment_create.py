@@ -208,7 +208,6 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             payload["segment_type"] = 2
             form = dict(data=json.dumps(payload))
             response = self.client.post(self._get_url(), form)
-            print(response.data)
             self.assertEqual(response.status_code, HTTP_201_CREATED)
             self.assertEqual(CustomSegment.objects.filter(title=payload["title"], list_type=0).count(), 2)
             self.assertEqual(mock_generate.delay.call_count, 2)
