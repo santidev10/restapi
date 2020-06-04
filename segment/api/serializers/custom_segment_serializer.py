@@ -109,4 +109,3 @@ class CustomSegmentSerializer(ModelSerializer):
         }
         to_id = config[item_type][value]
         return to_id
-
