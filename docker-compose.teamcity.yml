@@ -7,6 +7,14 @@ services:
       service: dev
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+  prod:
+    image: viewiq/restapi-prod:${BUILD_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    environment:
+      TEAMCITY_VERSION: ${TEAMCITY_VERSION}
   pylint:
     command: bash -c "pylint * --output-format=teamcity.pylint_reporter.TeamCityReporter"
     extends:
