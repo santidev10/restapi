@@ -94,9 +94,7 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
         populate_video_custom_captions(vid_obj, transcript_texts, lang_codes, source="timedtext")
         return transcripts_counter
     vid_id = vid_obj.main.id
-    top_5_lang_codes = get_top_5_lang_codes(lang_codes_soups_dict, vid_obj.general_data.lang_code)
-    top_5_transcripts = {lang_code: lang_codes_soups_dict[lang_code] for lang_code in lang_codes_soups_dict
-                         if lang_code in top_5_lang_codes}
+    top_5_transcripts = get_top_5_transcripts(lang_codes_soups_dict, vid_obj.general_data.lang_code)
     for vid_lang_code, transcript_soup in top_5_transcripts.items():
         transcript_text = replace_apostrophes(transcript_soup.text).strip() if transcript_soup else ""
         transcript_text = transcript_text.replace(".", ". ").replace("?", "? ").replace("!", "! ")
@@ -111,17 +109,25 @@ def parse_and_store_transcript_soups(vid_obj, lang_codes_soups_dict, transcripts
     return transcripts_counter
 
 
-def get_top_5_lang_codes(transcripts_dict, video_lang_code):
-    available_lang_codes = set(transcripts_dict.keys())
+def get_top_5_transcripts(transcripts_dict, video_lang_code):
+    available_lang_codes = {key.split("-")[0].lower(): key for key in transcripts_dict}
     language_priorities = TRANSCRIPTS_LANGUAGE_PRIORITY
     if video_lang_code not in language_priorities:
         language_priorities.insert(0, video_lang_code)
     top_5_transcripts = {}
     for lang_code in language_priorities:
         if len(top_5_transcripts) >= 5:
-            break
+            return top_5_transcripts
         if lang_code in available_lang_codes:
-            top_5_transcripts[lang_code] = transcripts_dict[lang_code]
+            lang_code_key = available_lang_codes[lang_code]
+            top_5_transcripts[lang_code] = transcripts_dict.pop(lang_code_key)
+    for lang_code, transcript in transcripts_dict.items():
+        if len(top_5_transcripts) >= 5:
+            return top_5_transcripts
+        cleaned_lang_code = lang_code.split("-")[0].lower()
+        if cleaned_lang_code in top_5_transcripts:
+            pass
+        top_5_transcripts[cleaned_lang_code] = transcript
     return top_5_transcripts
 
 
