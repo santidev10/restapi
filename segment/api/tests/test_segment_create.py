@@ -193,11 +193,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             mock_generate.delay.assert_called_once()
 
         with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
-            payload["title"] = "channel"
+            payload["title"] = f"test_segment_creation_channel_{next(int_iterator)}"
             payload["segment_type"] = 1
-            form = {
-                "data": json.dumps(payload)
-            }
+            form = dict(data=json.dumps(payload))
             response = self.client.post(self._get_url(), form)
             self.assertEqual(response.status_code, HTTP_201_CREATED)
             self.assertTrue(CustomSegment.objects.filter(
@@ -208,7 +206,9 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
             payload["title"] = "multiple"
             payload["segment_type"] = 2
+            form = dict(data=json.dumps(payload))
             response = self.client.post(self._get_url(), form)
+            print(response.data)
             self.assertEqual(response.status_code, HTTP_201_CREATED)
             self.assertEqual(CustomSegment.objects.filter(title=payload["title"], list_type=0).count(), 2)
             self.assertEqual(mock_generate.delay.call_count, 2)

@@ -61,3 +61,46 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertIn(included.main.id, rows)
         for excluded in exclusion:
             self.assertNotIn(excluded.main.id, rows)
+
+    @mock_s3
+    def test_generate_channel_source_inclusion(self):
+        conn = boto3.resource('s3', region_name='us-east-1')
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        # Prepare docs to build segment
+        docs = []
+        for i in range(10):
+            _id = next(int_iterator)
+            doc = ChannelManager.model(f"channel_id_{_id}")
+            doc.populate_general_data(title=f"channel_title_{_id}")
+            if i % 2 == 0:
+                doc.populate_monetization(is_monetizable=True)
+            else:
+                doc.populate_monetization(is_monetizable=False)
+            docs.append(doc)
+        # Prepare inclusion source list of urls
+        source_file = io.BytesIO()
+        source_key = f"source_{next(int_iterator)}"
+        half = len(docs)//2
+        inclusion = docs[:half]
+        exclusion = docs[half:]
+        inclusion_urls = [f"https://www.youtube.com/channel/{doc.main.id}".encode("utf-8") for doc in inclusion]
+        source_file.write(b'URL\n')
+        source_file.write(b"\n".join(inclusion_urls))
+        source_file.seek(0)
+        conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, source_key).put(Body=source_file)
+        self.channel_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=1, uuid=uuid4(), list_type=0
+        )
+        CustomSegmentSourceFileUpload.objects.create(
+            segment=segment, source_type=SourceListType.INCLUSION.value, key=source_key,
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()['Body']
+        rows = ",".join([row.decode("utf-8") for row in body])
+        for included in inclusion:
+            self.assertIn(included.main.id, rows)
+        for excluded in exclusion:
+            self.assertNotIn(excluded.main.id, rows)
