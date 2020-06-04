@@ -1,18 +1,27 @@
-from audit_tool.models import get_hash_name
-from brand_safety.utils import BrandSafetyQueryBuilder
+import json
+
+from django.db import transaction
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
 from rest_framework.generics import CreateAPIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.status import HTTP_201_CREATED
+from uuid import uuid4
+
+from audit_tool.models import get_hash_name
+from brand_safety.utils import BrandSafetyQueryBuilder
+from es_components.iab_categories import IAB_TIER2_SET
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
+from segment.models.constants import SourceListType
 from segment.models.custom_segment import CustomSegment
 from segment.models.custom_segment_file_upload import CustomSegmentFileUpload
+from segment.models.custom_segment_file_upload import CustomSegmentSourceFileUpload
 from segment.tasks.generate_custom_segment import generate_custom_segment
 from segment.utils.utils import validate_boolean
 from segment.utils.utils import validate_date
 from segment.utils.utils import validate_numeric
 from utils.permissions import user_has_permission
-from es_components.iab_categories import IAB_TIER2_SET
 
 
 class SegmentCreateApiViewV3(CreateAPIView):
@@ -26,13 +35,16 @@ class SegmentCreateApiViewV3(CreateAPIView):
     permission_classes = (
         user_has_permission("userprofile.vet_audit_admin"),
     )
+    parser_classes = [MultiPartParser]
 
     def post(self, request, *args, **kwargs):
         """
         Create CustomSegment, CustomSegmentFileUpload, and execute generate_custom_segment
         """
+        request.upload_handlers = [TemporaryFileUploadHandler(request)]
+        data = json.loads(request.data["data"])
         try:
-            validated_data = self._validate_data(request.user.id, request.data)
+            validated_data = self._validate_data(request.user.id, data)
         except SegmentCreationOptionsError as error:
             raise ValidationError(f"Exception trying to create segments: {error}")
         segment_type = validated_data["segment_type"]
@@ -41,6 +53,8 @@ class SegmentCreateApiViewV3(CreateAPIView):
         err = None
         try:
             if segment_type == 2:
+                if request.FILES:
+                    raise ValidationError("You may only upload a source for one list.")
                 # Creation type will be 0-2, inclusive. Serializer expects segment_type of 0 or 1
                 for i in range(segment_type):
                     options = validated_data.copy()
@@ -48,8 +62,11 @@ class SegmentCreateApiViewV3(CreateAPIView):
                     segment = self._create(options)
                     created.append((options, segment))
             else:
-                segment = self._create(validated_data)
-                created.append((validated_data, segment))
+                with transaction.atomic():
+                    segment = self._create(validated_data)
+                    if request.FILES:
+                        self._create_source(segment, request)
+                    created.append((validated_data, segment))
         except Exception as error:
             CustomSegment.objects.filter(id__in=[item[1].id for item in created]).delete()
             err = error
@@ -112,7 +129,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
             unique_content_categories = set(opts.get("content_categories"))
             bad_content_categories = list(unique_content_categories - IAB_TIER2_SET)
             if bad_content_categories:
-                comma_separated = ", ".join(bad_content_categories)
+                comma_separated = ", ".join(str(item) for item in bad_content_categories)
                 raise(ValidationError(detail=f"The following content_categories are invalid: '{comma_separated}'"))
         opts["languages"] = opts.get("languages", []) or []
         opts["countries"] = opts.get("countries", []) or []
@@ -157,6 +174,26 @@ class SegmentCreateApiViewV3(CreateAPIView):
         res["pending"] = True
         res["statistics"] = {}
         return res
+
+    def _create_source(self, segment, request):
+        try:
+            source_type = request.query_params.get("source_type", SourceListType.INCLUSION)
+            source_type = SourceListType(source_type).value
+        except ValueError:
+            raise ValidationError(f"Invalid source_type. "
+                                  f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
+        source = request.FILES["file"]
+        try:
+            header = source.readline()
+            header.decode('utf-8').index("URL")
+        except ValueError:
+            raise ValidationError("Source must include a URL header.")
+        else:
+            source.seek(0)
+        key = f"{segment.title}_source_type_{source_type}_{uuid4()}.csv"
+        segment.s3_exporter.export_object_to_s3(source, key)
+        source_upload = CustomSegmentSourceFileUpload.objects.create(segment=segment, source_type=source_type, key=key)
+        return source_upload
 
 
 class SegmentCreationOptionsError(Exception):
