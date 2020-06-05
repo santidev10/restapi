@@ -1,12 +1,78 @@
 version: "2.4"
 
 services:
-  api:
+  dev:
+    extends:
+      file: docker-compose.yml
+      service: dev
     environment:
       TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+  prod:
+    image: viewiq/restapi-prod:${BUILD_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    environment:
+      TEAMCITY_VERSION: ${TEAMCITY_VERSION}
+  pylint:
+    command: bash -c "pylint * --output-format=teamcity.pylint_reporter.TeamCityReporter"
+    extends:
+      service: dev
+  unittests:
+    command: >
+      bash -c "
+        set -ex
+        coverage run --source='.' ./manage.py test --settings=saas.test_settings --no-input --parallel
+        coverage xml -o ./dist/coverage.xml
+        python utils/unittests/tc_coverage_output.py -f ./dist/coverage.xml
+      "
+    extends:
+      service: dev
+    environment:
+      CELERY_ALWAYS_EAGER: 1
     volumes:
-      - code:/app
       - ./dist:/app/dist:rw
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      pg:
+        condition: service_healthy
+      pg_audit:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  migraions:
+    command: ["./manage.py", "migrate"]
+    extends:
+      service: dev
+    environment:
+      CELERY_ALWAYS_EAGER: 1
+    depends_on:
+      pg:
+        condition: service_healthy
+      pg_audit:
+        condition: service_healthy
 
-volumes:
-  code: {}
+  rabbitmq:
+    extends:
+      file: docker-compose.yml
+      service: rabbitmq
+  pg:
+    extends:
+      file: docker-compose.yml
+      service: pg
+  pg_audit:
+    extends:
+      file: docker-compose.yml
+      service: pg_audit
+  es:
+    extends:
+      file: docker-compose.yml
+      service: es
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
