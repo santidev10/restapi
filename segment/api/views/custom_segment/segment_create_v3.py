@@ -145,7 +145,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos", "gender"]:
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
-
+        opts["vetted_after"] = opts.get("vetted_after", None)
         return opts
 
     def _create(self, data: dict):
