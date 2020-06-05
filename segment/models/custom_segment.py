@@ -14,6 +14,7 @@ from django.db.models import ForeignKey
 from django.db.models import Model
 from django.db.models import CASCADE
 from django.db.models import UUIDField
+from django.db.models import TextField
 from django.utils import timezone
 from uuid import uuid4
 
@@ -119,6 +120,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_vetting_complete = BooleanField(default=False, db_index=True)
     is_featured = BooleanField(default=False, db_index=True)
     is_regenerating = BooleanField(default=False, db_index=True)
+    featured_image_url = TextField(default='')
 
     @property
     def data_type(self):
