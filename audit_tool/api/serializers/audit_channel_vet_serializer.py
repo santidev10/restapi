@@ -69,7 +69,7 @@ class AuditChannelVetSerializer(AuditVetBaseSerializer):
             channel_meta = None
         self._save_vetting_item(channel_meta, channel_id)
         blacklist_categories = self.save_brand_safety(channel_id)
-        self.save_elasticsearch(channel_id, blacklist_categories)
+        self.save_elasticsearch(channel_id, blacklist_categories, self.segment.es_manager)
         self._update_videos(channel_id)
 
     def _save_vetting_item(self, channel_meta, channel_id):

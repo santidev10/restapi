@@ -36,7 +36,7 @@ class TopicUpdater(UpdateMixin):
 
         saved_max_date = stats_queryset.aggregate(max_date=Max("date")).get("max_date")
 
-        topics = dict(Topic.objects.values_list("name", "id"))
+        topic_ids = set(Topic.objects.values_list("id", flat=True))
 
         if saved_max_date is None or saved_max_date < max_acc_date:
             min_date = saved_max_date + timedelta(days=1) if saved_max_date else min_acc_date
@@ -49,17 +49,18 @@ class TopicUpdater(UpdateMixin):
 
             click_type_data = format_click_types_report(
                 click_type_report, DAILY_STATISTICS_CLICK_TYPE_REPORT_UNIQUE_FIELD_NAME)
-            generator = self._generate_stat_instances(TopicStatistic, topics, report, click_type_data)
+            generator = self._generate_stat_instances(TopicStatistic, topic_ids, report, click_type_data)
             TopicStatistic.objects.safe_bulk_create(generator)
 
     def _generate_stat_instances(self, model, topics, report, click_type_data):
         for row_obj in report:
             topic_name = row_obj.Criteria
-            if topic_name not in topics:
-                logger.warning("topic not found: {}".format(topic_name))
+            topic_id = int(row_obj.VerticalId)
+            if topic_id not in topics:
+                logger.warning(f"topic not found: id={topic_id}, name={topic_name}")
                 continue
             stats = {
-                "topic_id": topics[topic_name],
+                "topic_id": topic_id,
                 "date": row_obj.Date,
                 "ad_group_id": int(row_obj.AdGroupId),
             }

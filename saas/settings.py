@@ -385,6 +385,7 @@ DAILY_APEX_REPORT_CC_EMAIL_ADDRESSES = [
     "bryan.ngo@channelfactory.com",
     "sean.maguire@channelfactory.com",
     "alex.peace@channelfactory.com",
+    "andrew.wong@channelfactory.com",
 ]
 
 DAILY_APEX_CAMPAIGN_REPORT_CREATOR = "apexemail@channelfactory.com"
@@ -521,7 +522,6 @@ if APM_ENABLED:
     MIDDLEWARE = ["elasticapm.contrib.django.middleware.TracingMiddleware"] + MIDDLEWARE
     INSTALLED_APPS = INSTALLED_APPS + ("elasticapm.contrib.django",)
 
-
 APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
     "VISA Spain APEX UK Contactless Q1'20 OP004244":
         "MK~ES_CN~Contactless_MN~VCM_YQ~20Q1Q2_CP~P20020_SP~NA_AC~CC",
@@ -540,6 +540,11 @@ APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
 }
 
 DOMAIN_MANAGEMENT_PERMISSIONS = ()
+try:
+    from .configs.settings_from_s3 import *
+except BaseException as ex:
+    print(ex)
+    pass
 
 try:
     from .local_settings import *

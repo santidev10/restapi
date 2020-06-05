@@ -1,3 +1,5 @@
+import enum
+
 VETTED_MAPPING = {
     0: "Skipped: Unavailable",
     1: "Skipped: Region",
@@ -5,3 +7,8 @@ VETTED_MAPPING = {
     3: "Suitable",
     4: None # Item has not been vetted
 }
+
+
+class SourceListType(enum.Enum):
+    INCLUSION = 0
+    EXCLUSION = 1

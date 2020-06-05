@@ -7,17 +7,12 @@ from utils.brand_safety import map_brand_safety_score
 
 
 class SegmentExportSerializerMixin:
-    def get_language(self, obj):
-        try:
-            lang_code = getattr(obj.general_data, "lang_code", "")
-        except Exception:
-            lang_code = None
-        language = LANGUAGES.get(lang_code, lang_code)
-        return language
 
     def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", []) or []
-        joined = ", ".join(categories)
+        categories = getattr(obj.task_us_data, "iab_categories", [])
+        if not categories:
+            categories = getattr(obj.general_data, "iab_categories", [])
+        joined = ", ".join([category for category in categories if type(category) == str])
         return joined
 
     def get_brand_safety(self,  obj):
@@ -78,15 +73,30 @@ class SegmentExportSerializerMixin:
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
-    def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", [])
-        if not categories:
-            categories = getattr(obj.general_data, "iab_categories", [])
-        joined = ", ".join(categories)
-        return joined
+
+class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "lang_code", "")
+        except Exception:
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
+
+    def get_url(self, obj):
+        return f"https://www.youtube.com/watch?v={obj.main.id}"
 
 
-class SegmentChannelExportSerializerMixin:
+class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
+
+    def get_language(self, obj):
+        try:
+            lang_code = getattr(obj.general_data, "top_lang_code", "")
+        except Exception:
+            lang_code = None
+        language = LANGUAGES.get(lang_code, lang_code)
+        return language
 
     def get_url(self, obj):
         return f"https://www.youtube.com/channel/{obj.main.id}"

@@ -33,6 +33,8 @@ class AuditVetBaseSerializer(Serializer):
     gender = IntegerField(source="task_us_data.gender", default=None)
     iab_categories = ListField(source="task_us_data.iab_categories", default=[])
     is_monetizable = BooleanField(source="monetization.is_monetizable", default=None)
+    YT_id = CharField(source="main.id", default=None)
+    title = CharField(source="general_data.title", default=None)
     brand_safety = SerializerMethodField()
     language = SerializerMethodField()
 
@@ -135,6 +137,7 @@ class AuditVetBaseSerializer(Serializer):
         :param values: list
         :return: AuditCategory
         """
+        values = list(set(values))
         iab_categories = AuditToolValidator.validate_iab_categories(values)
         return iab_categories
 
@@ -190,7 +193,7 @@ class AuditVetBaseSerializer(Serializer):
                 for item in BadWordCategory.objects.all()
             }
             try:
-                categories = [mapping[val] for val in values]
+                categories = [mapping[val] for val in set(values)]
             except KeyError as e:
                 raise ValidationError(f"Brand safety category not found: {e}")
         return categories
@@ -221,7 +224,7 @@ class AuditVetBaseSerializer(Serializer):
         data = list(blacklist_item.blacklist_category.keys())
         return data
 
-    def save_elasticsearch(self, item_id, blacklist_categories):
+    def save_elasticsearch(self, item_id, blacklist_categories, es_manager):
         """
         Save vetting data to Elasticsearch
         :param item_id: str -> video id, channel id
@@ -257,5 +260,5 @@ class AuditVetBaseSerializer(Serializer):
         doc.populate_task_us_data(**task_us_data)
         doc.populate_brand_safety(categories=brand_safety_category_overall_scores)
         doc.populate_general_data(**general_data)
-        self.segment.es_manager.upsert_sections = self.SECTIONS
-        self.segment.es_manager.upsert([doc])
+        es_manager.upsert_sections = self.SECTIONS
+        es_manager.upsert([doc])

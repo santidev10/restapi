@@ -1,29 +1,28 @@
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import patch
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core import mail
-
 from aw_reporting.models import Account
+from aw_reporting.models import AdGroup
 from aw_reporting.models import Campaign
 from aw_reporting.models import CampaignStatistic
-from aw_reporting.models import AdGroup
-from aw_reporting.models import VideoCreative
-from aw_reporting.models import VideoCreativeStatistic
 from aw_reporting.models import OpPlacement
 from aw_reporting.models import Opportunity
 from aw_reporting.models import SalesForceGoalType
+from aw_reporting.models import VideoCreative
+from aw_reporting.models import VideoCreativeStatistic
+from datetime import datetime
+from datetime import timedelta
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core import mail
+from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
+from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
+from email_reports.tasks import send_daily_email_reports
 from es_components.constants import Sections
 from es_components.managers import VideoManager
 from es_components.models import Video
-from email_reports.tasks import send_daily_email_reports
-from email_reports.reports.daily_apex_campaign_report import DATE_FORMAT
-from email_reports.reports.daily_apex_campaign_report import YOUTUBE_LINK_TEMPLATE
-from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
-from utils.unittests.patch_now import patch_now
+from unittest.mock import patch
 from userprofile.constants import UserSettingsKey
+from utils.unittests.int_iterator import int_iterator
+from utils.unittests.patch_now import patch_now
+from utils.unittests.test_case import ExtendedAPITestCase as APITestCase
 
 TEST_DAILY_APEX_REPORT_EMAIL_ADDRESSES = ["test@test.test", "test2@test.test"]
 
@@ -36,24 +35,28 @@ TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS = {
 
 class SendDailyApexCampaignEmailsTestCase(APITestCase):
 
-    def create_campaign(self, account, today):
+    def create_campaign(self, account, today, ias_campaign_name=None):
+        opportunity_id = next(int_iterator)
         opportunity = Opportunity.objects.create(
-            id="solo", name="Opportunity",
+            id=opportunity_id, name=f"Opportunity_{opportunity_id}",
             start=today - timedelta(days=2),
             end=today + timedelta(days=2),
             probability=100,
+            ias_campaign_name=ias_campaign_name,
         )
+        placement_id = next(int_iterator)
         placement = OpPlacement.objects.create(
-            id=1,
-            name="Placement",
+            id=placement_id,
+            name=f"Placement_{placement_id}",
             start=today - timedelta(days=2),
             end=today + timedelta(days=2),
             opportunity=opportunity,
             goal_type_id=SalesForceGoalType.CPV,
             ordered_rate=2.5
         )
+        campaign_id = next(int_iterator)
         campaign = Campaign.objects.create(
-            id=TEST_CAMP_ID, account=account, name=f"campaign_{TEST_CAMP_ID}",
+            id=campaign_id, account=account, name=f"campaign_{campaign_id}",
             salesforce_placement=placement
         )
         return campaign
@@ -77,29 +80,48 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         yesterday = today - timedelta(days=1)
         account = Account.objects.create(id=1, name=TEST_ACCOUNT_NAME, currency_code="USD")
 
-        campaign = self.create_campaign(account, today)
-        CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
+        campaign_1 = self.create_campaign(account, today)
+        ias_campaign_name = "ias campaign 2"
+        campaign_1_id = campaign_1.id
+        campaign_2 = self.create_campaign(account, today, ias_campaign_name=ias_campaign_name)
+        campaign_2_id = campaign_2.id
+
+        CampaignStatistic.objects.create(date=yesterday, campaign=campaign_1, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
-        CampaignStatistic.objects.create(date=today, campaign=campaign, video_views=102,
+        CampaignStatistic.objects.create(date=today, campaign=campaign_1, video_views=102,
+                                         video_views_100_quartile=50, video_views_50_quartile=100)
+        CampaignStatistic.objects.create(date=yesterday, campaign=campaign_2, video_views=102,
+                                         video_views_100_quartile=50, video_views_50_quartile=100)
+        CampaignStatistic.objects.create(date=today, campaign=campaign_2, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
-        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign)
-        ad_group_2 = AdGroup.objects.create(id=2, campaign=campaign)
+        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign_1)
+        ad_group_2 = AdGroup.objects.create(id=2, campaign=campaign_1)
+        ad_group_3 = AdGroup.objects.create(id=3, campaign=campaign_2)
+        ad_group_4 = AdGroup.objects.create(id=4, campaign=campaign_2)
 
         creative = VideoCreative.objects.create(id=1)
 
         video = Video("1")
-        video.populate_general_data(title="video_creative_1")
+        video_title = "video_creative_1"
+        video.populate_general_data(title=video_title)
         VideoManager(Sections.GENERAL_DATA).upsert([video])
 
         VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_1, creative=creative, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
                                               video_views_100_quartile=50, video_views_50_quartile=100)
-
         VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_2, creative=creative, video_views=25,
                                               video_views_100_quartile=5, video_views_50_quartile=20)
         VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_2, creative=creative, video_views=30,
+                                              video_views_100_quartile=15, video_views_50_quartile=25)
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_3, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_3, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_4, creative=creative, video_views=25,
+                                              video_views_100_quartile=5, video_views_50_quartile=20)
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_4, creative=creative, video_views=30,
                                               video_views_100_quartile=15, video_views_50_quartile=25)
 
         with patch_now(now):
@@ -115,11 +137,13 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count(str(TEST_CAMP_ID)), 2)
-        self.assertEqual(csv_context.count("video_creative_1"), 1)
+        self.assertEqual(csv_context.count(str(campaign_1_id)), 2)
+        self.assertEqual(csv_context.count(str(campaign_2_id)), 2)
+        self.assertEqual(csv_context.count(video_title), 4)
         self.assertEqual(csv_context.count(TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(TEST_ACCOUNT_NAME)), 2)
-        self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 1)
-        self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 2)
+        self.assertEqual(csv_context.count(ias_campaign_name), 2)
+        self.assertEqual(csv_context.count(YOUTUBE_LINK_TEMPLATE.format(video.main.id)), 4)
+        self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 4)
         self.assertEqual(csv_context.count(today.strftime(DATE_FORMAT)), 0)
 
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
@@ -141,10 +165,22 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         today = now.date()
         yesterday = today - timedelta(days=1)
 
-        campaign = self.create_campaign(account, today)
+        ias_campaign_name = 'ias campaign name'
+        campaign = self.create_campaign(account, today, ias_campaign_name=ias_campaign_name)
+        campaign_id = campaign.id
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
+        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign)
+        creative = VideoCreative.objects.create(id=1)
+        video = Video("1")
+        video_title = "video_creative_1"
+        video.populate_general_data(title=video_title)
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_1, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
 
@@ -158,8 +194,9 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         self.assertEqual(attachment[0][0], "daily_campaign_report.csv")
 
         csv_context = attachment[0][1]
-        self.assertEqual(csv_context.count(str(TEST_CAMP_ID)), 1)
-        self.assertEqual(csv_context.count(TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(TEST_ACCOUNT_NAME)), 1)
+        self.assertEqual(csv_context.count(str(campaign_id)), 1)
+        self.assertEqual(csv_context.count(ias_campaign_name), 1)
+        self.assertEqual(csv_context.count(TEST_APEX_CAMPAIGN_NAME_SUBSTITUTIONS.get(TEST_ACCOUNT_NAME)), 0)
         self.assertEqual(csv_context.count(yesterday.strftime(DATE_FORMAT)), 1)
 
     @patch("email_reports.reports.daily_apex_campaign_report.settings.DAILY_APEX_CAMPAIGN_REPORT_CREATOR",
@@ -184,6 +221,16 @@ class SendDailyApexCampaignEmailsTestCase(APITestCase):
         CampaignStatistic.objects.create(date=yesterday, campaign=campaign, video_views=102,
                                          video_views_100_quartile=50, video_views_50_quartile=100)
 
+        ad_group_1 = AdGroup.objects.create(id=1, campaign=campaign)
+        creative = VideoCreative.objects.create(id=1)
+        video = Video("1")
+        video_title = "video_creative_1"
+        video.populate_general_data(title=video_title)
+        VideoManager(Sections.GENERAL_DATA).upsert([video])
+        VideoCreativeStatistic.objects.create(date=yesterday, ad_group=ad_group_1, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
+        VideoCreativeStatistic.objects.create(date=today, ad_group=ad_group_1, creative=creative, video_views=102,
+                                              video_views_100_quartile=50, video_views_50_quartile=100)
         with patch_now(now):
             send_daily_email_reports(reports=["DailyApexCampaignEmailReport"], debug=False)
         self.assertEqual(len(mail.outbox), 0)

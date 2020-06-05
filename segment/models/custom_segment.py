@@ -15,6 +15,7 @@ from django.db.models import Model
 from django.db.models import CASCADE
 from django.db.models import UUIDField
 from django.utils import timezone
+from uuid import uuid4
 
 from audit_tool.models import AuditProcessor
 from aw_reporting.models import YTChannelStatistic
@@ -108,14 +109,16 @@ class CustomSegment(SegmentMixin, Timestampable):
     }
 
     audit_id = IntegerField(null=True, default=None, db_index=True)
-    uuid = UUIDField(unique=True)
+    uuid = UUIDField(unique=True, default=uuid4)
     statistics = JSONField(default=dict)
-    list_type = IntegerField(choices=LIST_TYPE_CHOICES)
+    list_type = IntegerField(choices=LIST_TYPE_CHOICES, null=True, default=None)
     owner = ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=CASCADE)
     segment_type = IntegerField(choices=SEGMENT_TYPE_CHOICES, db_index=True)
     title = CharField(max_length=255, db_index=True)
     title_hash = BigIntegerField(default=0, db_index=True)
     is_vetting_complete = BooleanField(default=False, db_index=True)
+    is_featured = BooleanField(default=False, db_index=True)
+    is_regenerating = BooleanField(default=False, db_index=True)
 
     @property
     def data_type(self):
@@ -189,7 +192,10 @@ class CustomSegment(SegmentMixin, Timestampable):
         for byte in export_content["Body"].iter_lines():
             row = (byte.decode("utf-8")).split(",")
             if url_index is None:
-                url_index = row.index("URL")
+                try:
+                    url_index = row.index("URL")
+                except ValueError:
+                    url_index = 0
                 continue
             item_id = self.parse_url(row[url_index], self.segment_type)
             yield item_id

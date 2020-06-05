@@ -20,10 +20,14 @@ DEFAULT_CELERY_BROKER_URL = "amqp://{user}:{password}@{host}:{port}".format(
 CELERY_BROKER_URL = "{broker_url}/restapi".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "elasticsearch://es:9200/celery/task_result")
 CELERY_RESULT_EXTENDED = True
+CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("CELERY_ELASTICSEARCH_TIMEOUT", "600"))
 
 DMP_CELERY_BROKER_URL = "{broker_url}/dmp".format(broker_url=DEFAULT_CELERY_BROKER_URL)
 DMP_CELERY_RESULT_BACKEND = os.getenv("DMP_RESULT_BACKEND", CELERY_RESULT_BACKEND)
 DMP_CELERY_RESULT_EXTENDED = True
+DMP_CELERY_ELASTICSEARCH_TIMEOUT = int(os.getenv("DMP_CELERY_ELASTICSEARCH_TIMEOUT", "600"))
+DMP_CELERY_ACCEPT_CONTENT = ["celery_result", "json"]
+DMP_CELERY_RESULT_SERIALIZER = "celery_result"
 
 CELERY_TIMEZONE = "UTC"
 
@@ -146,7 +150,11 @@ CELERY_BEAT_SCHEDULE = {
     "segment_update_statistics": {
         "task": "segment.tasks.update_segment_statistics.update_segment_statistics",
         "schedule": crontab(minute="*/10"),
-    }
+    },
+    "regenerate_custom_segments": {
+        "task": "segment.tasks.regenerate_custom_segments.regenerate_custom_segments_with_lock",
+        "schedule": crontab(minute="*/10"),
+    },
 }
 
 
