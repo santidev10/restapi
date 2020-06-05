@@ -49,16 +49,16 @@ ALLOWED_CHANNEL_AGGREGATIONS = (
     "stats.subscribers:max",
     "stats.subscribers:min",
     "stats.views_per_video:max",
-    "stats.views_per_video:min","task_us_data.age_group",
-        "task_us_data.content_type",
-        "task_us_data.gender",
-        "task_us_data:exists",
-        "task_us_data:missing",
+    "stats.views_per_video:min", "task_us_data.age_group",
+    "task_us_data.content_type",
+    "task_us_data.gender",
+    "task_us_data:exists",
+    "task_us_data:missing",
     "brand_safety",
     "stats.channel_group",
     "monetization.is_monetizable:exists",
-"custom_properties.is_tracked"
-    )
+    "custom_properties.is_tracked"
+)
 
 ALLOWED_VIDEO_AGGREGATIONS = (
     "ads_stats.average_cpv:max",
@@ -90,11 +90,11 @@ ALLOWED_VIDEO_AGGREGATIONS = (
     "captions:exists",
     "captions:missing",
     "stats.sentiment:max",
-    "stats.sentiment:min","task_us_data.age_group",
-        "task_us_data.content_type",
-        "task_us_data.gender",
-        "task_us_data:exists",
-        "task_us_data:missing",
+    "stats.sentiment:min", "task_us_data.age_group",
+    "task_us_data.content_type",
+    "task_us_data.gender",
+    "task_us_data:exists",
+    "task_us_data:missing",
     "transcripts:exists",
     "transcripts:missing",
     "flags",

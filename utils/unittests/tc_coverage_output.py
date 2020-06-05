@@ -1,3 +1,5 @@
+import argparse
+
 from lxml import etree
 from teamcity.messages import TeamcityServiceMessages
 
@@ -16,9 +18,18 @@ class MessageService(TeamcityServiceMessages):
         self.message("buildStatisticValue", key="CodeCoverageB", value=str(branchesRate))
 
 
+def get_file_path_from_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file_path", type=str, help="Path to XML report file")
+
+    args = parser.parse_args()
+
+    return args.file_path
+
+
 def parse():
     msg_service = MessageService()
-    tree = etree.parse("coverage.xml")
+    tree = etree.parse(get_file_path_from_args())
     node = tree.xpath("//coverage")[0]
     msg_service.buildStatisticLinesCovered(node.get("lines-covered"))
     msg_service.buildStatisticTotalLines(node.get("lines-valid"))
