@@ -213,7 +213,7 @@ class BrandSafetyQueryBuilder(object):
         queries = Q("bool")
         if getattr(self, flag_name):
             if flag_name == "minimum_subscribers_include_na":
-                queries |= QueryBuilder().build().should().exists().field("stats.hidden_subscriber_count").get()
+                queries |= QueryBuilder().build().should().term().field("stats.hidden_subscriber_count").value(True).get()
             else:
                 queries |= QueryBuilder().build().should().term().field(field_name).value(0).get()
         queries |= QueryBuilder().build().should().range().field(field_name) \
