@@ -544,7 +544,6 @@ try:
     from .configs.settings_from_s3 import *
 except BaseException as ex:
     print(ex)
-    pass
 
 try:
     from .local_settings import *
