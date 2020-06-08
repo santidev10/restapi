@@ -1,5 +1,6 @@
 from utils.api_paginator import CustomPageNumberPaginator
 from utils.es_components_api_utils import PaginatorWithAggregationMixin
+from utils.es_components_api_utils import ESQuerysetAdapter
 
 
 # todo: merge with ESQuerysetAdapter
@@ -30,7 +31,7 @@ class ESRetrieveAdapter:
         return item
 
 
-class ESEmptyResponseAdapter(ESRetrieveAdapter):
+class ESEmptyResponseAdapter(ESQuerysetAdapter):
     def get_data(self, *args, **kwargs):
         return []
 
