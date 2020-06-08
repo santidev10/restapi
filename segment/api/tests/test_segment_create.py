@@ -266,25 +266,6 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
         response = self.client.post(self._get_url(), form)
         self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
 
-    def test_source_includes_url_header_fail(self, mock_generate):
-        """ Source list must contain URL header """
-        self.create_admin_user()
-        payload = {
-            "title": "test_source_includes_url_header_fail",
-            "score_threshold": 0,
-            "content_categories": [],
-            "languages": [],
-            "severity_counts": {},
-            "segment_type": 1
-        }
-        file = BytesIO()
-        form = dict(
-            file=file,
-            data=json.dumps(payload)
-        )
-        response = self.client.post(self._get_url(), form)
-        self.assertEqual(response.status_code, HTTP_400_BAD_REQUEST)
-
     def test_create_with_source_success(self, mock_generate):
         self.create_admin_user()
         payload = {
@@ -295,7 +276,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "severity_counts": {},
             "segment_type": 0
         }
-        file = BytesIO(b'URL')
+        file = BytesIO()
         form = dict(
             file=file,
             data=json.dumps(payload)
