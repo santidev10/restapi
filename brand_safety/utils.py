@@ -43,6 +43,7 @@ class BrandSafetyQueryBuilder(object):
         self.age_groups_include_na = data.get("age_groups_include_na", None)
         self.gender = data.get("gender", None)
         self.is_vetted = data.get("is_vetted", None)
+        self.vetted_after = data.get("vetted_after", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
@@ -193,6 +194,11 @@ class BrandSafetyQueryBuilder(object):
                 if self.is_vetted \
                 else QueryBuilder().build().must_not().exists().field("task_us_data").get()
             must_queries.append(vetted_query)
+
+        if self.vetted_after is not None:
+            vetted_after_query = QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.created_at")\
+                .gte(self.vetted_after).get()
+            must_queries.append(vetted_after_query)
 
         query = Q("bool", must=must_queries)
 
