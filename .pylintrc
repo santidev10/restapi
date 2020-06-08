@@ -14,7 +14,7 @@ ignore=lid.176.bin,README.md,Dockerfile,dist,static,administration,ads_analyzer,
 
 # Add files or directories matching the regex patterns to the blacklist. The
 # regex matches against base names, not paths.
-ignore-patterns=docker-compose.*,.*\.sh,.*\.ini,requirements.*\.txt
+ignore-patterns=docker-compose.*,.*\.sh,.*\.ini,.*\.txt
 
 # Pickle collected data for later comparisons.
 persistent=no
