@@ -4,7 +4,6 @@ from rest_framework import serializers
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.custom_segment import CustomSegment
-from segment.utils.custom_segment_featured_image_s3_exporter import CustomSegmentFeaturedImageS3Exporter
 from utils.file_storage.s3_connector import upload_file
 import io
 
@@ -16,10 +15,7 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
 
     IMAGE_FIELD_NAME = 'image'
     FEATURED_IMAGE_URL_FIELD_NAME = 'featured_image_url'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.s3_exporter = CustomSegmentFeaturedImageS3Exporter()
+    S3_BUCKET = settings.AMAZON_S3_BUCKET_NAME
 
     def get_featured_image_url(self, object):
         """
@@ -48,7 +44,7 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
             filename=s3_key,
             data=bytes,
             content_type=pil_image.content_type,
-            bucket=settings.AMAZON_S3_BUCKET_NAME
+            bucket=self.S3_BUCKET
         )
         return featured_image_url
 
