@@ -1,4 +1,3 @@
-from mock import patch
 from datetime import timedelta
 
 from django.test.testcases import TestCase
@@ -28,17 +27,15 @@ class BrandSafetyQueryBuilderTestCase(TestCase, ESTestCase):
         for i in range(10):
             doc = self.video_manager.model(f"video_{next(int_iterator)}")
             doc.populate_general_data(lang_code="en")
-            doc.populate_task_us_data(lang_code="en")
             if i % 2 == 0:
+                doc.populate_task_us_data(lang_code="en", last_vetted_at=before)
                 vetted_before.append(doc)
             else:
+                doc.populate_task_us_data(lang_code="en", last_vetted_at=after)
+                doc.populate_task_us_data(lang_code="en")
                 vetted_after.append(doc)
-        with patch("es_components.managers.base.datetime_service") as mock_date:
-            mock_date.now.return_value = before
-            self.video_manager.upsert(vetted_before)
-        with patch("es_components.managers.base.datetime_service") as mock_date:
-            mock_date.now.return_value = after
-            self.video_manager.upsert(vetted_after)
+        self.video_manager.upsert(vetted_before)
+        self.video_manager.upsert(vetted_after)
 
         data = dict(vetted_after=today.strftime("%Y-%m-%d"), segment_type=0)
         query_builder = BrandSafetyQueryBuilder(data, with_forced_filters=False)
@@ -59,17 +56,15 @@ class BrandSafetyQueryBuilderTestCase(TestCase, ESTestCase):
         for i in range(10):
             doc = self.channel_manager.model(f"channel_{next(int_iterator)}")
             doc.populate_general_data(top_lang_code="en")
-            doc.populate_task_us_data(lang_code="en")
             if i % 2 == 0:
+                doc.populate_task_us_data(lang_code="en", last_vetted_at=before)
                 vetted_before.append(doc)
             else:
+                doc.populate_task_us_data(lang_code="en", last_vetted_at=after)
                 vetted_after.append(doc)
-        with patch("es_components.managers.base.datetime_service") as mock_date:
-            mock_date.now.return_value = before
-            self.channel_manager.upsert(vetted_before)
-        with patch("es_components.managers.base.datetime_service") as mock_date:
-            mock_date.now.return_value = after
-            self.channel_manager.upsert(vetted_after)
+
+        self.channel_manager.upsert(vetted_before)
+        self.channel_manager.upsert(vetted_after)
 
         data = dict(vetted_after=today.strftime("%Y-%m-%d"), segment_type=1)
         query_builder = BrandSafetyQueryBuilder(data, with_forced_filters=False)
