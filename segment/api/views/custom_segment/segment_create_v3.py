@@ -145,7 +145,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         for field_name in ["minimum_views", "minimum_subscribers", "minimum_videos", "gender"]:
             value = opts.get(field_name, None)
             opts[field_name] = validate_numeric(value) if value is not None else None
-
+        opts["vetted_after"] = opts.get("vetted_after", None)
         return opts
 
     def _create(self, data: dict):
@@ -183,13 +183,6 @@ class SegmentCreateApiViewV3(CreateAPIView):
             raise ValidationError(f"Invalid source_type. "
                                   f"Valid values: {SourceListType.INCLUSION.value}, {SourceListType.EXCLUSION.value}")
         source = request.FILES["file"]
-        try:
-            header = source.readline()
-            header.decode('utf-8').index("URL")
-        except ValueError:
-            raise ValidationError("Source must include a URL header.")
-        else:
-            source.seek(0)
         key = f"{segment.title}_source_type_{source_type}_{uuid4()}.csv"
         segment.s3_exporter.export_object_to_s3(source, key)
         source_upload = CustomSegmentSourceFileUpload.objects.create(segment=segment, source_type=source_type, key=key)

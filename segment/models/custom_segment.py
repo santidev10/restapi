@@ -196,9 +196,9 @@ class CustomSegment(SegmentMixin, Timestampable):
             if url_index is None:
                 try:
                     url_index = row.index("URL")
+                    continue
                 except ValueError:
                     url_index = 0
-                continue
             item_id = self.parse_url(row[url_index], self.segment_type)
             yield item_id
 

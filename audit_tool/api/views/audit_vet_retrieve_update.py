@@ -54,10 +54,11 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             data = {
                 "message": "Vetting for this list is complete. Please move on to the next list."
             }
-        except MissingItemException:
+        except MissingItemException as e:
             data = {
                 "message": 'The item you requested has been deleted. ' \
-                   'Please save the item as "skipped" with option: "Doesn\'t Exist'
+                   'Please save the item as "skipped" with option: "Doesn\'t Exist',
+                "vetting_id": e.vetting_id,
             }
         return Response(status=HTTP_200_OK, data=data)
 
@@ -134,9 +135,9 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             try:
                 item_id = attrgetter(id_key)(next_item)
             except AttributeError:
-                raise MissingItemException
+                raise MissingItemException(next_item.id)
             segment.es_manager.sections = self.ES_SECTIONS
-            response = self._get_document(segment.es_manager, item_id)
+            response = self._get_document(segment.es_manager, item_id, next_item.id)
             data = segment.audit_utils.serializer(response, segment=segment).data
             data["vetting_id"] = next_item.id
             if response:
@@ -192,7 +193,7 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             raise ValidationError(f"Invalid skip type. Must be 0-1, inclusive.")
         vetting_item.save()
 
-    def _get_document(self, es_manager, item_id):
+    def _get_document(self, es_manager, item_id, vetting_id):
         """
         Handle retrieving Elasticsearch document
         In some cases an item was available during list creation was deleted before vetting could take place or
@@ -207,12 +208,14 @@ class AuditVetRetrieveUpdateAPIView(APIView):
             if not document:
                 raise NotFoundError
         except (IndexError, NotFoundError, RequestError):
-            raise MissingItemException
+            raise MissingItemException(vetting_id)
         return document
 
 
 class MissingItemException(Exception):
-    pass
+    def __init__(self, vetting_id):
+        super().__init__()
+        self.vetting_id = vetting_id
 
 
 class VettingCompleteException(Exception):
