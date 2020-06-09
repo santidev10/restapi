@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
@@ -231,7 +232,10 @@ class AuditVetBaseSerializer(Serializer):
         :param blacklist_categories: list -> [int, ...]
         :return: None
         """
-        task_us_data = self.validated_data["task_us_data"]
+        task_us_data = {
+            "last_vetted_at": timezone.now(),
+            **self.validated_data["task_us_data"],
+        }
         # Brand safety categories that are not sent with vetting data are implicitly brand safe categories
         reset_brand_safety = set(self.all_brand_safety_category_ids) - set([int(category) for category in blacklist_categories])
         brand_safety_category_overall_scores = {

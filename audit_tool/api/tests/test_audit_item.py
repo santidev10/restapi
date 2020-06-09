@@ -1,5 +1,6 @@
 import json
 
+from django.utils import timezone
 from rest_framework.status import HTTP_200_OK
 from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.status import HTTP_403_FORBIDDEN
@@ -105,6 +106,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             age_group=2,
             content_type=2,
             gender=2,
+            last_vetted_at=timezone.now(),
         )
         channel.populate_general_data(
             top_lang_code="en",
@@ -129,6 +131,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated.task_us_data.content_type, payload["content_type"])
         self.assertEqual(updated.task_us_data.gender, payload["gender"])
         self.assertEqual(updated.monetization.is_monetizable, payload["is_monetizable"])
+        self.assertTrue(updated.task_us_data.last_vetted_at > channel.task_us_data.last_vetted_at)
 
     def test_patch_video(self):
         self.create_admin_user()
@@ -140,6 +143,7 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
             age_group=3,
             content_type=3,
             gender=3,
+            last_vetted_at=timezone.now(),
         )
         video.populate_general_data(
             lang_code="es",
@@ -164,3 +168,4 @@ class AuditItemTestCase(ExtendedAPITestCase, ESTestCase):
         self.assertEqual(updated.task_us_data.content_type, payload["content_type"])
         self.assertEqual(updated.task_us_data.gender, payload["gender"])
         self.assertEqual(updated.monetization.is_monetizable, payload["is_monetizable"])
+        self.assertTrue(updated.task_us_data.last_vetted_at > video.task_us_data.last_vetted_at)
