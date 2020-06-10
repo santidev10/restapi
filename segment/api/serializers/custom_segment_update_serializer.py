@@ -10,10 +10,10 @@ import io
 class CustomSegmentUpdateSerializer(serializers.Serializer):
     is_featured = serializers.BooleanField()
     is_regenerating = serializers.BooleanField()
-    image = serializers.ImageField(write_only=True)
+    featured_image = serializers.ImageField(write_only=True)
     featured_image_url = serializers.SerializerMethodField(read_only=True)
 
-    IMAGE_FIELD_NAME = 'image'
+    FEATURED_IMAGE_FIELD_NAME = 'featured_image'
     FEATURED_IMAGE_URL_FIELD_NAME = 'featured_image_url'
     S3_BUCKET = settings.AMAZON_S3_BUCKET_NAME
 
@@ -54,10 +54,10 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
         and set the featured_image_url if an image is passed
         """
         # upload image field and save featured_image_url
-        image = validated_data.get(self.IMAGE_FIELD_NAME, None)
-        if image:
-            validated_data[self.FEATURED_IMAGE_URL_FIELD_NAME] = self.upload_featured_image(instance, image)
-            validated_data.pop(self.IMAGE_FIELD_NAME, None)
+        featured_image = validated_data.get(self.FEATURED_IMAGE_FIELD_NAME, None)
+        if featured_image:
+            validated_data[self.FEATURED_IMAGE_URL_FIELD_NAME] = self.upload_featured_image(instance, featured_image)
+            validated_data.pop(self.FEATURED_IMAGE_FIELD_NAME, None)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)

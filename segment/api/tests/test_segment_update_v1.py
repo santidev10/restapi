@@ -39,7 +39,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         for key, value in payload.items():
-            if key.lower() == CustomSegmentUpdateSerializer.IMAGE_FIELD_NAME:
+            if key.lower() == CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME:
                 continue # this is a write-only field
             self.assertEqual(getattr(segment, key, None), value)
         self.assertEqual(
@@ -54,7 +54,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             b'\x02\x4c\x01\x00\x3b'
         )
         image = SimpleUploadedFile("small_gif.gif", small_gif, content_type="image/gif")
-        image_payload = {'image': image,}
+        image_payload = {CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
         image_response = self.client.patch(
             self._get_url(reverse_args=[segment.id]),
             image_payload
