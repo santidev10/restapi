@@ -27,7 +27,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         return an update serializer based on user's permissions
         """
-        if user_has_permission('userprofile.vet_audit_admin'):
+        if user_has_permission('userprofile.download_audit'):
             return CustomSegmentAdminUpdateSerializer
         if self.request.user != instance.owner:
             raise ValidationError("You do not have sufficient privileges to modify this resource.")
