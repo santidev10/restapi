@@ -2,10 +2,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework.status import HTTP_200_OK
 from saas.urls.namespaces import Namespace
-from segment.api.serializers.custom_segment_update_serializer import CustomSegmentUpdateSerializer
+from segment.api.serializers.custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
-from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.custom_segment import CustomSegment
 from utils.unittests.s3_mock import mock_s3
 from utils.unittests.test_case import ExtendedAPITestCase
@@ -30,6 +29,7 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         user = self.create_test_user()
         segment = self._create_custom_segment(owner=user)
         payload = {
+            "title": "new title",
             "is_featured": True,
             "is_regenerating": True,
         }
@@ -39,16 +39,14 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
         segment.refresh_from_db()
         self.assertEqual(response.status_code, HTTP_200_OK)
         for key, value in payload.items():
-            if key.lower() == CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME:
-                continue # this is a write-only field
             self.assertEqual(getattr(segment, key, None), value)
         self.assertEqual(
-            response.data[CustomSegmentUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME],
+            response.data[CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME],
             CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
         )
 
     @mock_s3
-    def test_image_upload(self):
+    def test_featured_image_upload(self):
         user = self.create_test_user()
         segment = self._create_custom_segment(owner=user)
         small_gif = (
@@ -57,10 +55,10 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             b'\x02\x4c\x01\x00\x3b'
         )
         image = SimpleUploadedFile("small_gif.gif", small_gif, content_type="image/gif")
-        payload = {CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
+        payload = {CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
         response = self.client.patch(self._get_url(reverse_args=[segment.id]), payload)
         segment.refresh_from_db()
-        res_featured_image_url = response.data[CustomSegmentUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME]
+        res_featured_image_url = response.data[CustomSegmentAdminUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME]
         self.assertNotEqual(res_featured_image_url, CUSTOM_SEGMENT_DEFAULT_IMAGE_URL)
         self.assertIn(str(segment.uuid), res_featured_image_url)
         self.assertEqual(segment.featured_image_url, res_featured_image_url)
