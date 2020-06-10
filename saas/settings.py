@@ -429,9 +429,6 @@ AMAZON_S3_SECRET_ACCESS_KEY = None
 AMAZON_S3_LOGO_STORAGE_URL_FORMAT = "https://s3.amazonaws.com/viewiq-prod/logos/{}.png"
 AMAZON_S3_UI_ASSETS_BUCKET_NAME = "viewiq-ui-assets"
 
-AWS_ACCESS_KEY_ID = "AKIAQAXC7TSIY3Y2WHGF"
-AWS_SECRET_ACCESS_KEY = "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"
-
 MAX_AVATAR_SIZE_MB = 10.
 
 DASHBOARD_PERFORMANCE_REPORT_LIMIT = 1048575  # excel row limit minus one row for footer
