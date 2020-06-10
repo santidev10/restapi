@@ -1,14 +1,14 @@
-from utils.unittests.test_case import ExtendedAPITestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from segment.api.urls.names import Name
-from saas.urls.namespaces import Namespace
-from segment.models.custom_segment import CustomSegment
 from rest_framework.status import HTTP_200_OK
+from saas.urls.namespaces import Namespace
 from segment.api.serializers.custom_segment_update_serializer import CustomSegmentUpdateSerializer
+from segment.api.urls.names import Name
 from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
-from django.core.files.uploadedfile import SimpleUploadedFile
-from utils.file_storage.s3_connector import delete_file
+from segment.models.custom_segment import CustomSegment
+from utils.unittests.s3_mock import mock_s3
+from utils.unittests.test_case import ExtendedAPITestCase
 import json
 import uuid
 
@@ -47,27 +47,20 @@ class CustomSegmentUpdateApiViewV1TestCase(ExtendedAPITestCase):
             CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
         )
 
-        # test gif upload
+    @mock_s3
+    def test_image_upload(self):
+        user = self.create_test_user()
+        segment = self._create_custom_segment(owner=user)
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x00\x00\x00\x21\xf9\x04'
             b'\x01\x0a\x00\x01\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02'
             b'\x02\x4c\x01\x00\x3b'
         )
         image = SimpleUploadedFile("small_gif.gif", small_gif, content_type="image/gif")
-        image_payload = {CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
-        image_response = self.client.patch(
-            self._get_url(reverse_args=[segment.id]),
-            image_payload
-        )
+        payload = {CustomSegmentUpdateSerializer.FEATURED_IMAGE_FIELD_NAME: image,}
+        response = self.client.patch(self._get_url(reverse_args=[segment.id]), payload)
         segment.refresh_from_db()
-        res_featured_image_url = image_response.data[CustomSegmentUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME]
+        res_featured_image_url = response.data[CustomSegmentUpdateSerializer.FEATURED_IMAGE_URL_FIELD_NAME]
         self.assertNotEqual(res_featured_image_url, CUSTOM_SEGMENT_DEFAULT_IMAGE_URL)
         self.assertIn(str(segment.uuid), res_featured_image_url)
         self.assertEqual(segment.featured_image_url, res_featured_image_url)
-
-        # remove test image from s3
-        s3_key = CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY.format(
-            filename=segment.uuid,
-            extension='gif'
-        )
-        delete_file(s3_key, CustomSegmentUpdateSerializer.S3_BUCKET)
