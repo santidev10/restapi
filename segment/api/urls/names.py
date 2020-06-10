@@ -11,6 +11,7 @@ class Name:
     SEGMENT_CREATE = "segment_create"
     SEGMENT_EXPORT = "segment_export"
     SEGMENT_SOURCE = "segment_source"
+    SEGMENT_UPDATE = "segment_update"
 
     SEGMENT_PREVIEW = "segment_preview"
 
