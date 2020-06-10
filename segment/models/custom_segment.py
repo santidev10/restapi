@@ -82,7 +82,9 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-            if not self.owner or (self.owner and not self.owner.has_perm("userprofile.monetization_filter")):
+            if ("owner" not in self.__dict__) or \
+               (not self.owner) or \
+               (self.owner and not self.owner.has_perm("userprofile.monetization_filter")):
                 self.serializer = CustomSegmentChannelExportSerializer
             else:
                 self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
