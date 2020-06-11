@@ -2,7 +2,7 @@ from PIL import Image
 from audit_tool.models import get_hash_name
 from django.conf import settings
 from rest_framework import serializers
-from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
+from segment.api.serializers.custom_segment_serializer import FeaturedImageUrlMixin
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.custom_segment import CustomSegment
 from utils.file_storage.s3_connector import upload_file
@@ -28,7 +28,7 @@ class CustomSegmentUpdateSerializer(serializers.Serializer):
         return instance
 
 
-class CustomSegmentAdminUpdateSerializer(CustomSegmentUpdateSerializer):
+class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpdateSerializer):
     title = serializers.CharField(max_length=255)
     is_featured = serializers.BooleanField()
     is_regenerating = serializers.BooleanField()
@@ -38,12 +38,6 @@ class CustomSegmentAdminUpdateSerializer(CustomSegmentUpdateSerializer):
     FEATURED_IMAGE_FIELD_NAME = 'featured_image'
     FEATURED_IMAGE_URL_FIELD_NAME = 'featured_image_url'
     S3_BUCKET = settings.AMAZON_S3_BUCKET_NAME
-
-    def get_featured_image_url(self, instance):
-        """
-        serializer method field
-        """
-        return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
     def upload_featured_image(self, instance: CustomSegment, pil_image):
         """

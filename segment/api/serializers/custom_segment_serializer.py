@@ -6,6 +6,7 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework.serializers import SerializerMethodField
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.models import UserProfile
 import uuid
@@ -15,8 +16,7 @@ class FeaturedImageUrlMixin:
     Returns a default image if not set
     """
     def get_featured_image_url(self, instance):
-        # TODO needs to be updated to constant once this (VIQ2-208) VIQ2-207 is merged
-        return instance.featured_image_url or "https://viewiq-ui-assets.s3.amazonaws.com/common/default_audit_image.png"
+        return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
 
 class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
