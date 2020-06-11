@@ -101,7 +101,7 @@ class VideoListApiView(APIViewMixin, ListAPIView):
 
     def get_serializer_class(self):
         if self.request and self.request.user and (
-                self.request.user.is_staff or self.request.user.has_perm("userprofile.flag_audit")):
+                self.request.user.is_staff):
             return VideoWithBlackListSerializer
         return VideoSerializer
 
