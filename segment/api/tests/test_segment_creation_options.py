@@ -101,7 +101,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
         payload = {
             "languages": ["es"],
             "score_threshold": 1,
-            "segment_type": 1
+            "segment_type": 1,
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"
@@ -129,6 +129,7 @@ class SegmentCreationOptionsApiViewTestCase(ExtendedAPITestCase):
             "sentiment": None,
             "content_categories": None,
             "last_upload_date": None,
+            "vetted_after": None,
         }
         response = self.client.post(
             self._get_url(), json.dumps(payload), content_type="application/json"

@@ -10,3 +10,4 @@ from .custom_segment.segment_export import SegmentExport
 from .custom_segment.segment_list_create_v2 import SegmentListCreateApiViewV2
 from .custom_segment.segment_preview import SegmentPreviewAPIView
 from .brand_safety.brand_safety_list import CustomSegmentListApiView
+from .custom_segment.segment_update_v1 import CustomSegmentUpdateApiView
