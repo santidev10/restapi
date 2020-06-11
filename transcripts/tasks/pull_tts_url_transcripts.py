@@ -50,7 +50,7 @@ def pull_tts_url_transcripts():
         no_transcripts_query = get_no_transcripts_vids_query(lang_codes=lang_codes, country_codes=country_codes,
                                          iab_categories=iab_categories, brand_safety_score=brand_safety_score,
                                          num_vids=num_vids)
-        sort = [{"stats.views": {"order": "desc"}}]
+        sort = [{"stats.views": {"order": "desc"}}, {"brand_safety.overall_score": {"order": "desc"}}]
         video_manager = VideoManager(sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY),
                                      upsert_sections=(Sections.CUSTOM_CAPTIONS, Sections.BRAND_SAFETY))
         retrieval_start = time.perf_counter()
@@ -100,7 +100,7 @@ def pull_tts_url_transcripts():
                         unlock(LOCK_NAME)
                         lock(lock_name=LOCK_NAME, max_retries=1, expire=timedelta(minutes=5).total_seconds())
                         raise Exception("No more proxies available. Locking pull_tts_url_transcripts task for 5 mins.")
-                    if isinstance(failure, ConnectionError) or str(failure) == "Exceeded 5 connection attempts to URL.":
+                    if isinstance(failure, ConnectionError) or str(failure) == "Exceeded connection attempts to URL.":
                         continue
                     else:
                         vid_obj.populate_custom_captions(transcripts_checked_tts_url=True)

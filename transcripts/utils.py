@@ -22,7 +22,7 @@ from utils.lang import replace_apostrophes
 class YTTranscriptsScraper(object):
     EMAILER_LOCK_NAME = "transcripts_alert_emailer"
     NUM_PORTS = 65535
-    NUM_RETRIES = 4
+    NUM_RETRIES = 3
     NUM_THREADS = settings.TRANSCRIPTS_NUM_THREADS
     TIMEOUT = settings.TRANSCRIPTS_TIMEOUT
     PROXY_OFFSET = settings.PROXY_OFFSET
@@ -375,7 +375,7 @@ class YTVideo(object):
             self.host = None
             self.port = None
             self.headers = None
-            raise Exception("Exceeded 5 connection attempts to URL.")
+            raise Exception("Exceeded connection attempts to URL.")
         if response.status_code == 200:
             self.proxy = proxy
             self.host = host
