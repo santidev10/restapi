@@ -46,6 +46,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         rows = ",".join([row.decode("utf-8") for row in body])
         for doc in docs:
             self.assertIn(doc.main.id, rows)
+        self.video_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
     def test_generate_video_source_inclusion(self):
@@ -84,6 +85,7 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertIn(included.main.id, rows)
         for excluded in exclusion:
             self.assertNotIn(excluded.main.id, rows)
+        self.video_manager.delete([doc.main.id for doc in docs])
 
     @mock_s3
     def test_generate_channel_source_inclusion(self):
@@ -127,3 +129,4 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
             self.assertIn(included.main.id, rows)
         for excluded in exclusion:
             self.assertNotIn(excluded.main.id, rows)
+        self.channel_manager.delete([doc.main.id for doc in docs])
