@@ -34,12 +34,13 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     generate_utils = GenerateSegmentUtils()
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.get_default_serialization_context()
+    source_list = None
+    source_type = None
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
     except CustomSegmentSourceFileUpload.DoesNotExist:
-        source_list = None
-        source_type = None
+        pass
     except Exception:
         logger.exception(f"Error trying to retrieve source list for "
                          f"segment: {segment.title}, segment_type: {segment.segment_type}")
