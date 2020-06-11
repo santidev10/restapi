@@ -57,6 +57,7 @@ class CustomSegmentVideoExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
+        "Mismatched_Language"
     )
 
     URL = SerializerMethodField("get_url")
@@ -70,3 +71,4 @@ class CustomSegmentVideoExportSerializer(
     Age_Group = SerializerMethodField("get_age_group")
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
+    Mismatched_Language = SerializerMethodField("get_mismatched_language")

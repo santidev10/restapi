@@ -87,6 +87,14 @@ class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
     def get_url(self, obj):
         return f"https://www.youtube.com/watch?v={obj.main.id}"
 
+    def get_mismatched_language(self, obj):
+        try:
+            mismatched_language = getattr(obj.task_us_data, "mismatched_language", False)
+        except Exception:
+            mismatched_language = False
+        mismatched_language = "Y" if mismatched_language else "N"
+        return mismatched_language
+
 
 class SegmentChannelExportSerializerMixin(SegmentExportSerializerMixin):
 
