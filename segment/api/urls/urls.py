@@ -15,7 +15,6 @@ from segment.api.views import PersistentSegmentRetrieveApiView
 from segment.api.views import PersistentSegmentPreviewAPIView
 from segment.api.views import SegmentPreviewAPIView
 from segment.api.views import SegmentCreateApiViewV3
-from segment.api.views import SegmentUpdateAPIView
 from segment.models.persistent.constants import PersistentSegmentType
 
 
@@ -64,7 +63,4 @@ urlpatterns_v3 = [
     url(r'^segments/options/$',
         SegmentCreationOptionsApiView.as_view(),
         name=Name.SEGMENT_CREATION_OPTIONS),
-    url(r'^segments/(?P<pk>.+)/$',
-        SegmentUpdateAPIView.as_view(),
-        name=Name.SEGMENT_UPDATE)
 ]
