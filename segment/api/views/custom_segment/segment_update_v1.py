@@ -30,7 +30,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         return an update serializer based on user's permissions
         """
-        if self.request.user.is_superuser:
+        if self.request.user.is_staff:
             return CustomSegmentAdminUpdateSerializer
         if self.request.user.id != instance.owner_id:
             raise PermissionDenied("You do not have sufficient privileges to modify this resource.")
