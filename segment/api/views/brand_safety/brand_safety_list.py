@@ -1,16 +1,10 @@
-from django.db.models import Q
-from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from segment.api.mixins import DynamicPersistentModelViewMixin
-from segment.api.paginator import SegmentPaginator
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
 from segment.api.serializers.persistent_segment_serializer import PersistentSegmentSerializer
 from segment.models import CustomSegment
 from segment.models.persistent.constants import PersistentSegmentCategory
-from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from segment.utils.utils import get_persistent_segment_model_by_type
-from userprofile.utils import is_correct_apex_domain
 from utils.permissions import user_has_permission
 
 MINIMUM_ITEMS_COUNT = 100
