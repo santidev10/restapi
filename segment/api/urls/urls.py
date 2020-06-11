@@ -2,19 +2,18 @@
 Segment api urls endpoint
 """
 from django.conf.urls import url
-
 from segment.api.urls.names import Name
+from segment.api.views import CustomSegmentListApiView
+from segment.api.views import PersistentMasterSegmentsListApiView
+from segment.api.views import PersistentSegmentExportApiView
+from segment.api.views import PersistentSegmentPreviewAPIView
+from segment.api.views import PersistentSegmentRetrieveApiView
+from segment.api.views import SegmentCreateApiViewV3
+from segment.api.views import SegmentCreationOptionsApiView
 from segment.api.views import SegmentDeleteApiViewV2
 from segment.api.views import SegmentExport
 from segment.api.views import SegmentListCreateApiViewV2
-from segment.api.views import SegmentCreationOptionsApiView
-from segment.api.views import PersistentMasterSegmentsListApiView
-from segment.api.views import PersistentSegmentExportApiView
-from segment.api.views import PersistentSegmentListApiView
-from segment.api.views import PersistentSegmentRetrieveApiView
-from segment.api.views import PersistentSegmentPreviewAPIView
 from segment.api.views import SegmentPreviewAPIView
-from segment.api.views import SegmentCreateApiViewV3
 from segment.models.persistent.constants import PersistentSegmentType
 
 
@@ -23,7 +22,7 @@ segment_types = f"{PersistentSegmentType.CHANNEL}|{PersistentSegmentType.VIDEO}"
 urlpatterns = [
     # persistent_segments
     url(r'^persistent_segments/(?P<segment_type>{})/$'.format(segment_types),
-        PersistentSegmentListApiView.as_view(),
+        CustomSegmentListApiView.as_view(),
         name=Name.PERSISTENT_SEGMENT_LIST),
     url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/$'.format(segment_types),
         PersistentSegmentRetrieveApiView.as_view(),
