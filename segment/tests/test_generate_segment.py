@@ -25,6 +25,29 @@ class GenerateSegmentTestCase(ExtendedAPITestCase, ESTestCase):
         self.channel_manager = ChannelManager(sections=sections)
 
     @mock_s3
+    def test_generate_without_source(self):
+        conn = boto3.resource('s3', region_name='us-east-1')
+        conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
+        # Prepare docs to build segment
+        docs = []
+        for _ in range(5):
+            _id = next(int_iterator)
+            doc = VideoManager.model(f"id_{_id}")
+            doc.populate_general_data(title=f"title_{_id}", age_restricted=False)
+            docs.append(doc)
+        self.video_manager.upsert(docs)
+        segment = CustomSegment.objects.create(
+            title=f"title_{next(int_iterator)}",
+            segment_type=0, uuid=uuid4(), list_type=0
+        )
+        generate_segment(segment, Q(), len(docs))
+        export_key = segment.get_s3_key()
+        body = conn.Object(settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME, export_key).get()['Body']
+        rows = ",".join([row.decode("utf-8") for row in body])
+        for doc in docs:
+            self.assertIn(doc.main.id, rows)
+
+    @mock_s3
     def test_generate_video_source_inclusion(self):
         conn = boto3.resource('s3', region_name='us-east-1')
         conn.create_bucket(Bucket=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
