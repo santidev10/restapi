@@ -10,14 +10,10 @@ from brand_safety.tasks.channel_update import channel_update
 from brand_safety.constants import BRAND_SAFETY_SCORE
 from brand_safety.models import BadWordCategory
 from saas.configs.celery import Queue
-from utils.permissions import user_has_permission
 from utils.brand_safety import get_brand_safety_data
 
 
 class AuditFlagApiView(APIView):
-    permission_classes = (
-        user_has_permission("userprofile.flag_audit"),
-    )
 
     def get(self, request):
         valid_types = [BlacklistItem.VIDEO_ITEM, BlacklistItem.CHANNEL_ITEM]
