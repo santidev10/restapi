@@ -20,3 +20,5 @@ class Name:
     PERSISTENT_SEGMENT_PREVIEW = "persistent_segment_preview"
 
     PERSISTENT_MASTER_SEGMENTS_LIST = "persistent_master_segments_list"
+
+    CUSTOM_SEGMENT_UPDATE = "custom_segment_update"

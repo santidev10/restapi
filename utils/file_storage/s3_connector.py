@@ -13,3 +13,12 @@ def upload_file(filename, data, content_type, bucket=settings.AMAZON_S3_BUCKET_N
         **extra or {}
     )
     return "https://{bucket}.s3.amazonaws.com/{filename}".format(bucket=bucket, filename=filename)
+
+def delete_file(filename, bucket=settings.AMAZON_S3_BUCKET_NAME, extra=None):
+    client = get_s3_client()
+    response = client.delete_object(
+        Bucket=bucket,
+        Key=filename,
+        ** extra or {}
+    )
+    return response
