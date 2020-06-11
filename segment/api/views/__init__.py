@@ -1,5 +1,4 @@
 from .brand_safety.brand_safety_export import PersistentSegmentExportApiView
-from .brand_safety.brand_safety_list import PersistentSegmentListApiView
 from .brand_safety.brand_safety_master_list import PersistentMasterSegmentsListApiView
 from .brand_safety.brand_safety_export import PersistentSegmentExportApiView
 from .brand_safety.brand_safety_preview import PersistentSegmentPreviewAPIView
