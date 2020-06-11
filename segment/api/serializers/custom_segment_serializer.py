@@ -3,15 +3,23 @@ from rest_framework.serializers import CharField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import JSONField
 from rest_framework.serializers import ModelSerializer
-import uuid
-
-from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
+from rest_framework.serializers import SerializerMethodField
 from segment.models import CustomSegment
 from segment.models import CustomSegmentFileUpload
+from segment.models.constants import CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
+from segment.models.persistent.constants import S3_PERSISTENT_SEGMENT_DEFAULT_THUMBNAIL_URL
 from userprofile.models import UserProfile
+import uuid
+
+class FeaturedImageUrlMixin:
+    """
+    Returns a default image if not set
+    """
+    def get_featured_image_url(self, instance):
+        return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
 
-class CustomSegmentSerializer(ModelSerializer):
+class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
     owner = CharField(max_length=50, required=False)
@@ -19,6 +27,9 @@ class CustomSegmentSerializer(ModelSerializer):
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
     is_vetting_complete = BooleanField(required=False)
+    is_featured = BooleanField(read_only=True)
+    is_regenerating = BooleanField(read_only=True)
+    featured_image_url = SerializerMethodField(read_only=True)
 
     class Meta:
         model = CustomSegment
@@ -33,7 +44,10 @@ class CustomSegmentSerializer(ModelSerializer):
             "statistics",
             "title",
             "title_hash",
-            "is_vetting_complete"
+            "is_vetting_complete",
+            "is_featured",
+            "is_regenerating",
+            "featured_image_url",
         )
 
     def create(self, validated_data):
