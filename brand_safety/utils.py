@@ -203,7 +203,7 @@ class BrandSafetyQueryBuilder(object):
             must_queries.append(vetted_after_query)
 
         if self.mismatched_language is not None:
-            mismatched_language_queries = QueryBuilder().build().must_not().term().field(
+            mismatched_language_queries = QueryBuilder().build().must().term().field(
                 "tasks_us_data.mismatched_language").value(self.mismatched_language).get()
             mismatched_language_queries |= QueryBuilder().build().must_not().exists().field(
                 "tasks_us_data.mismatched_language").get()
