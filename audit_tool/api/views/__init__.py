@@ -3,7 +3,6 @@ from .audit_save import AuditSaveApiView
 from .audit_export import AuditExportApiView
 from .audit_resume import AuditResumeApiView
 from .audit_stop import AuditStopApiView
-from .audit_flag import AuditFlagApiView
 from .audit_history import AuditHistoryApiView
 from .audit_pause import AuditPauseApiView
 from .audit_vet_retrieve_update import AuditVetRetrieveUpdateAPIView
