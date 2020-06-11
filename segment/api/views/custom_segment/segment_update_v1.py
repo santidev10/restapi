@@ -1,4 +1,4 @@
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -32,6 +32,6 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         if self.request.user.is_superuser:
             return CustomSegmentAdminUpdateSerializer
-        if self.request.user != instance.owner:
-            raise ValidationError("You do not have sufficient privileges to modify this resource.")
+        if self.request.user.id != instance.owner_id:
+            raise PermissionDenied("You do not have sufficient privileges to modify this resource.")
         return CustomSegmentUpdateSerializer
