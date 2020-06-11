@@ -180,6 +180,7 @@ class SegmentCreateApiViewV3TestCase(ExtendedAPITestCase):
             "score_threshold": 1,
             "content_categories": [],
             "minimum_option": 0,
+            "vetted_after": "2020-01-01",
         }
         with patch("segment.api.views.custom_segment.segment_create_v3.generate_custom_segment") as mock_generate:
             payload["title"] = "video"
