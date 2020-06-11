@@ -197,7 +197,7 @@ class BrandSafetyQueryBuilder(object):
                 else QueryBuilder().build().must_not().exists().field("task_us_data").get()
             must_queries.append(vetted_query)
 
-        if self.vetted_after is not None:
+        if self.vetted_after:
             vetted_after_query = QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
                 .gte(self.vetted_after).get()
             must_queries.append(vetted_after_query)
