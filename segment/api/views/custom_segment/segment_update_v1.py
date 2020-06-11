@@ -1,12 +1,15 @@
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import UpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentAdminUpdateSerializer
 from segment.api.serializers.custom_segment_update_serializers import CustomSegmentUpdateSerializer
 from segment.models import CustomSegment
-from utils.permissions import user_has_permission
 
 
 class CustomSegmentUpdateApiView(UpdateAPIView):
+
+    permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         pk = self.kwargs.get('pk', None)
@@ -27,7 +30,7 @@ class CustomSegmentUpdateApiView(UpdateAPIView):
         """
         return an update serializer based on user's permissions
         """
-        if user_has_permission('userprofile.download_audit'):
+        if self.request.user.is_superuser:
             return CustomSegmentAdminUpdateSerializer
         if self.request.user != instance.owner:
             raise ValidationError("You do not have sufficient privileges to modify this resource.")
