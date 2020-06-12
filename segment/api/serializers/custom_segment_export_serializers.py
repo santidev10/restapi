@@ -18,7 +18,7 @@ class CustomSegmentChannelExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Num_Videos",
+        "Num_Videos", "Mismatched_Language"
     )
 
     URL = SerializerMethodField("get_url")
@@ -33,6 +33,7 @@ class CustomSegmentChannelExportSerializer(
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
     Num_Videos = IntegerField(source="stats.total_videos_count")
+    Mismatched_Language = SerializerMethodField("get_mismatched_language")
 
 
 class CustomSegmentChannelWithMonetizationExportSerializer(
