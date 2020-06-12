@@ -123,5 +123,6 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         )
 
         response = self.client.get(self._get_url("channel"))
+        self.assertIn('items', response.data)
         self.assertEqual(len(response.data['items']), 1)
         self.assertNotIn('download_url', response.data["items"][0])
