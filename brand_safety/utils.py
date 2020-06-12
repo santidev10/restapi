@@ -44,6 +44,7 @@ class BrandSafetyQueryBuilder(object):
         self.gender = data.get("gender", None)
         self.is_vetted = data.get("is_vetted", None)
         self.vetted_after = data.get("vetted_after", None)
+        self.mismatched_language = data.get("mismatched_language", None)
 
         self.options = self._get_segment_options()
         self.es_manager = VideoManager(sections=self.SECTIONS) if self.segment_type == 0 else ChannelManager(sections=self.SECTIONS)
@@ -73,6 +74,7 @@ class BrandSafetyQueryBuilder(object):
             "age_groups_include_na": self.age_groups_include_na,
             "gender": self.gender,
             "is_vetted": self.is_vetted,
+            "mismatched_language": self.mismatched_language
         }
         return query_params
 
@@ -195,10 +197,17 @@ class BrandSafetyQueryBuilder(object):
                 else QueryBuilder().build().must_not().exists().field("task_us_data").get()
             must_queries.append(vetted_query)
 
-        if self.vetted_after is not None:
+        if self.vetted_after:
             vetted_after_query = QueryBuilder().build().must().range().field(f"{Sections.TASK_US_DATA}.last_vetted_at")\
                 .gte(self.vetted_after).get()
             must_queries.append(vetted_after_query)
+
+        if self.mismatched_language is not None:
+            mismatched_language_queries = QueryBuilder().build().must().term().field(
+                "task_us_data.mismatched_language").value(self.mismatched_language).get()
+            mismatched_language_queries |= QueryBuilder().build().must_not().exists().field(
+                "task_us_data.mismatched_language").get()
+            must_queries.append(mismatched_language_queries)
 
         query = Q("bool", must=must_queries)
 

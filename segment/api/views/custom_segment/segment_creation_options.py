@@ -21,7 +21,7 @@ class SegmentCreationOptionsApiView(APIView):
                        "minimum_views", "minimum_subscribers", "sentiment", "segment_type", "score_threshold",
                        "content_categories", "age_groups", "gender", "minimum_videos", "is_vetted",
                        "age_groups_include_na", "minimum_views_include_na", "minimum_subscribers_include_na",
-                       "minimum_videos_include_na"]
+                       "minimum_videos_include_na", "vetted_after", "mismatched_language"]
 
     def post(self, request, *args, **kwargs):
         """

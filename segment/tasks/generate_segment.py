@@ -8,6 +8,7 @@ from django.conf import settings
 from es_components.constants import Sections
 from segment.utils.bulk_search import bulk_search
 from segment.models.constants import SourceListType
+from segment.models import CustomSegmentSourceFileUpload
 from segment.utils.generate_segment_utils import GenerateSegmentUtils
 
 BATCH_SIZE = 5000
@@ -33,14 +34,16 @@ def generate_segment(segment, query, size, sort=None, options=None, add_uuid=Fal
     generate_utils = GenerateSegmentUtils()
     filename = tempfile.mkstemp(dir=settings.TEMPDIR)[1]
     context = generate_utils.get_default_serialization_context()
+    source_list = None
+    source_type = None
     try:
         source_list = generate_utils.get_source_list(segment)
         source_type = segment.source.source_type
+    except CustomSegmentSourceFileUpload.DoesNotExist:
+        pass
     except Exception:
         logger.exception(f"Error trying to retrieve source list for "
                          f"segment: {segment.title}, segment_type: {segment.segment_type}")
-        source_list = None
-        source_type = None
     try:
         sort = sort or [segment.SORT_KEY]
         seen = 0

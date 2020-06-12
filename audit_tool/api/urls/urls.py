@@ -8,7 +8,6 @@ from audit_tool.api.views import AuditListApiView
 from audit_tool.api.views import AuditResumeApiView
 from audit_tool.api.views import AuditSaveApiView
 from audit_tool.api.views import AuditStopApiView
-from audit_tool.api.views import AuditFlagApiView
 from audit_tool.api.views import AuditHistoryApiView
 from audit_tool.api.views import AuditPauseApiView
 from audit_tool.api.views import AuditVetRetrieveUpdateAPIView
@@ -24,7 +23,6 @@ urlpatterns = [
     url(r"^audit_tool/audits/export/$", AuditExportApiView.as_view(), name=AuditPathName.AUDIT_EXPORT),
     url(r"^audit_tool/audits/resume/$", AuditResumeApiView.as_view(), name=AuditPathName.AUDIT_RESUME),
     url(r"^audit_tool/audits/stop/$", AuditStopApiView.as_view(), name=AuditPathName.AUDIT_STOP),
-    url(r"^audit_tool/audits/flag/$", AuditFlagApiView.as_view(), name=AuditPathName.AUDIT_FLAG),
     url(r"^audit_tool/audits/history/$", AuditHistoryApiView.as_view(), name=AuditPathName.AUDIT_HISTORY),
     url(r"^audit_tool/audits/pause/$", AuditPauseApiView.as_view(), name=AuditPathName.AUDIT_PAUSE),
     url(r"^audit_tool/audits/vet/(?P<pk>\d+)/$", AuditVetRetrieveUpdateAPIView.as_view(), name=AuditPathName.AUDIT_VET),

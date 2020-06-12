@@ -73,6 +73,16 @@ class SegmentExportSerializerMixin:
         score = map_brand_safety_score(obj.brand_safety.overall_score)
         return score
 
+    def get_mismatched_language(self, obj):
+        mismatched_language = getattr(obj.task_us_data, "mismatched_language", None)
+        if mismatched_language:
+            mismatched_language = "Y"
+        elif mismatched_language is False:
+            mismatched_language = "N"
+        else:
+            mismatched_language = None
+        return mismatched_language
+
 
 class SegmentVideoExportSerializerMixin(SegmentExportSerializerMixin):
 
