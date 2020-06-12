@@ -123,3 +123,14 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
         }
         to_id = config[item_type][value]
         return to_id
+
+
+class CustomSegmentWithoutDownloadUrlSerializer(CustomSegmentSerializer):
+    def to_representation(self, instance):
+        """
+        overrides CustomSegmentSerializer. Users without certain permissions
+        shouldn't be able to see download_url
+        """
+        data = super().to_representation(instance)
+        data.pop('download_url', None)
+        return data
