@@ -38,6 +38,7 @@ from segment.api.serializers.custom_segment_export_serializers import CustomSegm
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
 from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
+from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
 from segment.models.persistent.constants import VIDEO_SOURCE_FIELDS
@@ -168,6 +169,13 @@ class CustomSegment(SegmentMixin, Timestampable):
     def get_s3_key(self, *args, **kwargs):
         segment_type = CustomSegment.SEGMENT_TYPE_CHOICES[self.segment_type][1]
         return f"custom_segments/{self.owner_id}/{segment_type}/{self.title}.csv"
+
+    @staticmethod
+    def get_featured_image_s3_key(uuid, extension):
+        return CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY.format(
+            uuid=uuid,
+            extension=extension
+        )
 
     def get_vetted_s3_key(self, suffix=None):
         suffix = suffix if suffix is not None else ""
