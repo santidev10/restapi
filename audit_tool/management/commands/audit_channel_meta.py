@@ -35,7 +35,7 @@ class Command(BaseCommand):
     keywords = []
     inclusion_list = None
     exclusion_list = None
-    max_pages = 10
+    max_pages = 200
     MAX_SOURCE_CHANNELS = 100000
     audit = None
     num_clones = 0
