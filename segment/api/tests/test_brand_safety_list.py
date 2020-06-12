@@ -3,8 +3,10 @@ from saas.urls.namespaces import Namespace
 from segment.api.urls.names import Name
 from segment.api.views.brand_safety.brand_safety_list import MINIMUM_ITEMS_COUNT
 from segment.models import CustomSegment
+from segment.models import CustomSegmentFileUpload
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
+from userprofile.permissions import PermissionGroupNames
 from utils.unittests.test_case import ExtendedAPITestCase
 import uuid
 
@@ -102,3 +104,24 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         response = self.client.get(self._get_url("channel"))
         data = response.data["items"][0]
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
+
+    def test_custom_segment_download_url_permission(self):
+        user = self.create_test_user()
+        user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_AUDIT)
+        user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY)
+        segment = CustomSegment.objects.create(
+            segment_type=1,
+            uuid=uuid.uuid4(),
+            title="test custom segment download url permission",
+            is_featured=True,
+            statistics={"items_count": self.THRESHOLD,}
+        )
+        CustomSegmentFileUpload.objects.create(
+            segment=segment,
+            query={"params": {"some": "params"}},
+            download_url="https://www.somedownloadurl.com/path/to/some/export.csv",
+        )
+
+        response = self.client.get(self._get_url("channel"))
+        self.assertEqual(len(response.data['items']), 1)
+        self.assertNotIn('download_url', response.data["items"][0])
