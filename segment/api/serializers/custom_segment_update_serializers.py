@@ -1,12 +1,14 @@
+import io
+
 from PIL import Image
-from audit_tool.models import get_hash_name
 from django.conf import settings
 from rest_framework import serializers
+
+from audit_tool.models import get_hash_name
 from segment.api.serializers.custom_segment_serializer import FeaturedImageUrlMixin
-from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.custom_segment import CustomSegment
 from utils.file_storage.s3_connector import upload_file
-import io
+from utils.file_storage.s3_connector import delete_file
 
 
 class CustomSegmentUpdateSerializer(serializers.Serializer):
@@ -48,10 +50,7 @@ class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpd
         image if a set image gets replaced.
         """
         extension = pil_image.name.split('.')[-1]
-        s3_key = CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY.format(
-            filename=instance.uuid,
-            extension=extension
-        )
+        s3_key = CustomSegment.get_featured_image_s3_key(uuid=instance.uuid, extension=extension)
         image = Image.open(pil_image)
         file = io.BytesIO()
         image.save(file, format=pil_image.image.format)
@@ -64,6 +63,13 @@ class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpd
         )
         return featured_image_url
 
+    def delete_featured_image(self, instance: CustomSegment, extension):
+        """
+        deletes the featured image from S3
+        """
+        s3_key = CustomSegment.get_featured_image_s3_key(uuid=instance.uuid, extension=extension)
+        delete_file(filename=s3_key, bucket=self.S3_BUCKET)
+
     def update(self, instance, validated_data):
         """
         update the CustomSegment instance with validated data, upload the image
@@ -72,7 +78,12 @@ class CustomSegmentAdminUpdateSerializer(FeaturedImageUrlMixin, CustomSegmentUpd
         # upload image field and save featured_image_url
         featured_image = validated_data.get(self.FEATURED_IMAGE_FIELD_NAME, None)
         if featured_image:
-            validated_data[self.FEATURED_IMAGE_URL_FIELD_NAME] = self.upload_featured_image(instance, featured_image)
+            existing_featured_image_url = getattr(instance, self.FEATURED_IMAGE_URL_FIELD_NAME, None)
+            if existing_featured_image_url:
+                extension = existing_featured_image_url.split('.')[-1]
+                self.delete_featured_image(instance, extension)
+            validated_data[self.FEATURED_IMAGE_URL_FIELD_NAME] \
+                = self.upload_featured_image(instance, featured_image)
             validated_data.pop(self.FEATURED_IMAGE_FIELD_NAME, None)
 
         for field, value in validated_data.items():
