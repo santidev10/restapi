@@ -72,9 +72,7 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.LIST_SIZE = 100000
             self.SOURCE_FIELDS = VIDEO_SOURCE_FIELDS
             self.related_aw_statistics_model = YTVideoStatistic
-            self.serializer = CustomSegmentVideoExportSerializer
             self.es_manager = VideoManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-
         else:
             self.data_field = "channel"
             self.audit_type = 2
@@ -83,13 +81,6 @@ class CustomSegment(SegmentMixin, Timestampable):
             self.SOURCE_FIELDS = CHANNEL_SOURCE_FIELDS
             self.related_aw_statistics_model = YTChannelStatistic
             self.es_manager = ChannelManager(sections=self.SECTIONS, upsert_sections=(Sections.SEGMENTS,))
-            if ("owner" not in self.__dict__) or \
-               (not self.owner) or \
-               (self.owner and not self.owner.has_perm("userprofile.monetization_filter")):
-                self.serializer = CustomSegmentChannelExportSerializer
-            else:
-                self.serializer = CustomSegmentChannelWithMonetizationExportSerializer
-                self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
 
     LIST_TYPE_CHOICES = (
         (0, WHITELIST),
@@ -124,6 +115,17 @@ class CustomSegment(SegmentMixin, Timestampable):
     is_featured = BooleanField(default=False, db_index=True)
     is_regenerating = BooleanField(default=False, db_index=True)
     featured_image_url = TextField(default='')
+
+    @property
+    def serializer(self):
+        if self.segment_type == 0:
+            serializer = CustomSegmentVideoExportSerializer
+        elif self.owner and self.owner.has_perm("userprofile.monetization_filter"):
+            serializer = CustomSegmentChannelWithMonetizationExportSerializer
+            self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
+        else:
+            serializer = CustomSegmentChannelExportSerializer
+        return serializer
 
     @property
     def data_type(self):
