@@ -74,7 +74,8 @@ class BrandSafetyQueryBuilder(object):
             "age_groups_include_na": self.age_groups_include_na,
             "gender": self.gender,
             "is_vetted": self.is_vetted,
-            "mismatched_language": self.mismatched_language
+            "mismatched_language": self.mismatched_language,
+            "vetted_after": self.vetted_after,
         }
         return query_params
 
