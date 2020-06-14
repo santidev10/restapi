@@ -29,7 +29,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
-        "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language",
+        "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
