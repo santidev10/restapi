@@ -18,6 +18,12 @@ class FeaturedImageUrlMixin:
     def get_featured_image_url(self, instance):
         return instance.featured_image_url or CUSTOM_SEGMENT_DEFAULT_IMAGE_URL
 
+    def get_thumbnail_image_url(self, instance):
+        """
+        for backwards compatibility with frontend that expects this field
+        """
+        return self.get_featured_image_url(instance)
+
 
 class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     segment_type = CharField(max_length=10)
@@ -29,7 +35,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     is_vetting_complete = BooleanField(required=False)
     is_featured = BooleanField(read_only=True)
     is_regenerating = BooleanField(read_only=True)
-    featured_image_url = SerializerMethodField(read_only=True)
+    thumbnail_image_url = SerializerMethodField(read_only=True)
 
     class Meta:
         model = CustomSegment
@@ -47,7 +53,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
             "is_vetting_complete",
             "is_featured",
             "is_regenerating",
-            "featured_image_url",
+            "thumbnail_image_url",
         )
 
     def create(self, validated_data):
