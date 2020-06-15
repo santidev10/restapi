@@ -62,6 +62,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         self.audit_utils = SegmentAuditUtils(self.segment_type)
+        self._serializer = None
 
         if self.segment_type == 0:
             self.data_field = "video"

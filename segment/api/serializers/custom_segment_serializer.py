@@ -84,7 +84,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def validate_title(self, title):
         hashed = self.initial_data["title_hash"]
-        owner_id = self.initial_data["owner"]
+        owner_id = self.initial_data["owner_id"]
         segment_type = self.validate_segment_type(self.initial_data["segment_type"])
         segments = CustomSegment.objects.filter(owner_id=owner_id, title_hash=hashed, segment_type=segment_type)
         if any(segment.title.lower() == title.lower().strip() for segment in segments):
