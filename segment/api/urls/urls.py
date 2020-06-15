@@ -38,7 +38,7 @@ urlpatterns = [
     url(r'^persistent_master_segments/$', PersistentMasterSegmentsListApiView.as_view(),
         name=Name.PERSISTENT_MASTER_SEGMENTS_LIST),
     url(r'^persistent_segments/(?P<segment_type>{})/(?P<pk>\d+)/preview/$'.format(segment_types),
-        PersistentSegmentPreviewAPIView.as_view(),
+        SegmentPreviewAPIView.as_view(),
         name=Name.PERSISTENT_SEGMENT_PREVIEW),
     url(r'custom_segments/(?P<pk>\d+)/$',
         CustomSegmentUpdateApiView.as_view(),
