@@ -28,7 +28,7 @@ class FeaturedImageUrlMixin:
 class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
     segment_type = CharField(max_length=10)
     list_type = CharField(max_length=10)
-    owner = CharField(max_length=50, required=False)
+    owner_id = CharField(max_length=50, required=False)
     statistics = JSONField(required=False)
     title = CharField(max_length=255, required=True)
     title_hash = IntegerField()
@@ -45,7 +45,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
             "created_at",
             "updated_at",
             "list_type",
-            "owner",
+            "owner_id",
             "segment_type",
             "statistics",
             "title",
@@ -93,8 +93,7 @@ class CustomSegmentSerializer(FeaturedImageUrlMixin, ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data.pop("owner")
-        data.pop("title_hash")
+        data.pop("title_hash", None)
         data["segment_type"] = self.map_to_str(data["segment_type"], item_type="segment")
         data["pending"] = False if data["statistics"] else True
         if not data["statistics"]:
