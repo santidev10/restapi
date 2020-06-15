@@ -1,30 +1,32 @@
-from administration.api.serializers import UserActionCreateSerializer
-from administration.api.serializers import UserActionRetrieveSerializer
-from administration.models import UserAction
+import operator
+from functools import reduce
+
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from functools import reduce
 from rest_framework import permissions
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAdminUser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED
+
+from administration.api.serializers import UserActionCreateSerializer
+from administration.api.serializers import UserActionRetrieveSerializer
+from administration.models import UserAction
 from userprofile.api.views.user_finalize_response import UserFinalizeResponse
 from utils.api_paginator import CustomPageNumberPaginator
-import operator
 
 
 class UserActionPermission(permissions.BasePermission):
     """
-    require admin access for GET requests (to see who's taken what actions)
-    and authenticated access for POST requests (to tell us what actions they've taken)
+    require admin access for GET requests (to see who"s taken what actions)
+    and authenticated access for POST requests (to tell us what actions they"ve taken)
     """
+
     def has_permission(self, request, view):
-        if request.method == 'GET':
+        if request.method == "GET":
             return IsAdminUser.has_permission(self, request, view)
-        else:
-            return IsAuthenticated.has_permission(self, request, view)
+        return IsAuthenticated.has_permission(self, request, view)
 
 
 class UserActionPaginator(CustomPageNumberPaginator):
@@ -52,7 +54,7 @@ class UserActionListCreateApiView(UserFinalizeResponse, ListCreateAPIView):
         data["user"] = request.user.id
         # serialization procedure
         serializer_class = self.create_serializer_class
-        kwargs['context'] = self.get_serializer_context()
+        kwargs["context"] = self.get_serializer_context()
         serializer = serializer_class(data=data, *args, **kwargs)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -60,13 +62,6 @@ class UserActionListCreateApiView(UserFinalizeResponse, ListCreateAPIView):
         return Response(
             self.serializer_class(instance).data,
             status=HTTP_201_CREATED, headers=headers)
-
-    def get(self, request, *args, **kwargs):
-        """
-        Check admin permission
-        """
-        return super(UserActionListCreateApiView, self).get(
-            request, *args, **kwargs)
 
     def do_filters(self, queryset):
         """
@@ -128,7 +123,7 @@ class UserActionListCreateApiView(UserFinalizeResponse, ListCreateAPIView):
         }
         if order_by in available_sorts:
             return queryset.order_by("{}".format(order_by))
-        elif order_by in available_reverse_sorts:
+        if order_by in available_reverse_sorts:
             return queryset.order_by("-{}".format(order_by))
         return queryset
 

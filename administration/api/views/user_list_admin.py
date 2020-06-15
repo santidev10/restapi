@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Value, Q
+from django.db.models import Q
+from django.db.models import Value
 from django.db.models.functions import Concat
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAdminUser
@@ -52,7 +53,7 @@ class UserListAdminApiView(ListAPIView):
     def get(self, request, *args, **kwargs):
         try:
             self.validate_query_params()
-        except Exception as e:
+        except BaseException as e:
             return Response(data={"query_param_value_invalid": str(e)}, status=HTTP_400_BAD_REQUEST)
         return super(UserListAdminApiView, self).get(request, *args, **kwargs)
 
