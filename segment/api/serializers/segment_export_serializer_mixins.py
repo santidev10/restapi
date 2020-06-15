@@ -9,9 +9,7 @@ from utils.brand_safety import map_brand_safety_score
 class SegmentExportSerializerMixin:
 
     def get_category(self, obj):
-        categories = getattr(obj.task_us_data, "iab_categories", [])
-        if not categories:
-            categories = getattr(obj.general_data, "iab_categories", [])
+        categories = getattr(obj.general_data, "iab_categories", [])
         joined = ", ".join([category for category in categories if type(category) == str])
         return joined
 
