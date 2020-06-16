@@ -45,7 +45,7 @@ def regenerate_custom_segments():
     ):
         logger.debug(f"Processing regenerating segment titled: {segment.title}")
         export = segment.export
-        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=True)
+        results = generate_segment(segment, export.query["body"], segment.LIST_SIZE, add_uuid=False)
         segment.statistics = results["statistics"]
         segment.save()
         export.download_url = results["download_url"]
