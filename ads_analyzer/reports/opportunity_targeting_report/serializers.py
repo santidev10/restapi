@@ -20,8 +20,8 @@ from rest_framework.serializers import ModelSerializer
 from aw_reporting.models import AdGroupStatistic
 from aw_reporting.models import AdStatistic
 from aw_reporting.models import AgeRangeStatistic
-from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import Audience
+from aw_reporting.models import AudienceStatistic
 from aw_reporting.models import GenderStatistic
 from aw_reporting.models import KeywordStatistic
 from aw_reporting.models import TopicStatistic
@@ -72,6 +72,7 @@ class TransformField(CharField):
     def to_representation(self, value):
         value = self.transform_function(value)
         return super().to_representation(value)
+
 
 class AdsFloatField(FloatField):
     def to_representation(self, value):
