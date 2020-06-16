@@ -1,3 +1,4 @@
+import operator
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from segment.api.serializers.custom_segment_serializer import CustomSegmentSerializer
@@ -32,8 +33,21 @@ class CustomSegmentListApiView(APIView):
             segment_type=self.get_segment_type_id(segment_type)
         )
         self.add_master_list_nodes(master_lists)
+        featured_segments = self.sort_featured_segments(featured_segments)
         self.add_featured_segments_node(featured_segments)
         return Response(data=self.data, status=200)
+
+    def sort_featured_segments(self, featured_segments):
+        """
+        sort the featured_segments query without using the ORM, for efficiency
+        """
+        get_key = operator.attrgetter('title')
+        sorted_segments = sorted(
+            featured_segments,
+            key=lambda s: get_key(s).lower(),
+            reverse=False
+        )
+        return sorted_segments
 
     def add_featured_segments_node(self, featured_segments):
         """

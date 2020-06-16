@@ -29,7 +29,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         "id", "title", "minimum_views", "minimum_subscribers", "segment_type", "severity_filters", "last_upload_date",
         "content_categories", "languages", "countries", "score_threshold", "sentiment", "pending", "minimum_videos",
         "age_groups", "gender", "is_vetted", "age_groups_include_na", "minimum_views_include_na",
-        "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language",
+        "minimum_subscribers_include_na", "minimum_videos_include_na", "mismatched_language", "vetted_after",
     )
     serializer_class = CustomSegmentSerializer
     permission_classes = (
@@ -96,7 +96,7 @@ class SegmentCreateApiViewV3(CreateAPIView):
         try:
             validated = self.validate_options(data)
             validated["segment_type"] = self.validate_segment_type(int(data["segment_type"]))
-            validated["owner"] = user_id
+            validated["owner_id"] = user_id
             validated["title_hash"] = get_hash_name(data["title"].lower().strip())
         except (ValueError, TypeError, AttributeError, KeyError) as error:
             raise SegmentCreationOptionsError(f"{type(error).__name__}: {error}")

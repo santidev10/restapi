@@ -1,5 +1,6 @@
 from rest_framework.serializers import BooleanField
 from rest_framework.serializers import CharField
+from rest_framework.serializers import DateTimeField
 from rest_framework.serializers import IntegerField
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import SerializerMethodField
@@ -18,7 +19,7 @@ class CustomSegmentChannelExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Num_Videos", "Mismatched_Language"
+        "Num_Videos", "Mismatched_Language", "Last_Vetted"
     )
 
     URL = SerializerMethodField("get_url")
@@ -34,6 +35,7 @@ class CustomSegmentChannelExportSerializer(
     Content_Type = SerializerMethodField("get_content_type")
     Num_Videos = IntegerField(source="stats.total_videos_count")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
+    Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
 
 
 class CustomSegmentChannelWithMonetizationExportSerializer(
@@ -42,7 +44,7 @@ class CustomSegmentChannelWithMonetizationExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Subscribers", "Overall_Score",
         "Vetted", "Monetizable", "Brand_Safety", "Age_Group", "Gender",
-        "Content_Type", "Num_Videos",
+        "Content_Type", "Num_Videos", "Mismatched_Language", "Last_Vetted",
     )
 
     Monetizable = BooleanField(source="monetization.is_monetizable", default=None)
@@ -58,7 +60,7 @@ class CustomSegmentVideoExportSerializer(
     columns = (
         "URL", "Title", "Language", "Category", "Views", "Overall_Score",
         "Vetted", "Brand_Safety", "Age_Group", "Gender", "Content_Type",
-        "Mismatched_Language"
+        "Mismatched_Language", "Last_Vetted",
     )
 
     URL = SerializerMethodField("get_url")
@@ -73,3 +75,4 @@ class CustomSegmentVideoExportSerializer(
     Gender = SerializerMethodField("get_gender")
     Content_Type = SerializerMethodField("get_content_type")
     Mismatched_Language = SerializerMethodField("get_mismatched_language")
+    Last_Vetted = DateTimeField(source="task_us_data.last_vetted_at", format="%Y-%m-%d", default="")
