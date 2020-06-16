@@ -157,6 +157,21 @@ class DailyApexCampaignEmailReport(BaseEmailReport):
 
         return VideoCreativeStatistic.objects.values("ad_group__campaign__id", "creative_id") \
             .filter(**filter_kwargs) \
+            .annotate(
+                impressions=Sum("impressions"),
+                clicks=Sum("clicks"),
+                video_views=Sum("video_views"),
+                video_views_50_quartile=Sum("video_views_50_quartile"),
+                video_views_100_quartile=Sum("video_views_100_quartile"),
+                ad_group__campaign__salesforce_placement__goal_type_id=Max(
+                    "ad_group__campaign__salesforce_placement__goal_type_id"
+                ),
+                ad_group__campaign__salesforce_placement__ordered_rate=Max(
+                    "ad_group__campaign__salesforce_placement__ordered_rate"
+                ),
+                ad_group__campaign__account__name=Max("ad_group__campaign__account__name"),
+                ad_group__campaign__account__currency_code=Max("ad_group__campaign__account__currency_code")
+            ) \
             .order_by("date") \
             .values_list(*[f"ad_group__campaign__{field}" for field in CAMPAIGNS_FIELDS] + list(STATS_FIELDS),
                          "creative_id", named=True)
