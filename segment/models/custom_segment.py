@@ -36,8 +36,6 @@ from es_components.query_builder import QueryBuilder
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentChannelWithMonetizationExportSerializer
 from segment.api.serializers.custom_segment_export_serializers import CustomSegmentVideoExportSerializer
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentChannelVettedExportSerializer
-from segment.api.serializers.custom_segment_vetted_export_serializers import CustomSegmentVideoVettedExportSerializer
 from segment.models.constants import CUSTOM_SEGMENT_FEATURED_IMAGE_URL_KEY
 from segment.models.segment_mixin import SegmentMixin
 from segment.models.persistent.constants import CHANNEL_SOURCE_FIELDS
@@ -53,6 +51,7 @@ class CustomSegment(SegmentMixin, Timestampable):
     """
     Base segment model
     """
+    export_content_type = "application/CSV"
     SECTIONS = (Sections.MAIN, Sections.GENERAL_DATA, Sections.STATS, Sections.BRAND_SAFETY, Sections.SEGMENTS)
     REMOVE_FROM_SEGMENT_RETRY = 15
     RETRY_SLEEP_COEFF = 1
@@ -63,6 +62,7 @@ class CustomSegment(SegmentMixin, Timestampable):
         super().__init__(*args, **kwargs)
         self.s3_exporter = SegmentExporter(bucket_name=settings.AMAZON_S3_CUSTOM_SEGMENTS_BUCKET_NAME)
         self.audit_utils = SegmentAuditUtils(self.segment_type)
+        self._serializer = None
 
         if self.segment_type == 0:
             self.data_field = "video"
@@ -117,26 +117,27 @@ class CustomSegment(SegmentMixin, Timestampable):
     featured_image_url = TextField(default='')
 
     @property
-    def serializer(self):
-        if self.segment_type == 0:
-            serializer = CustomSegmentVideoExportSerializer
-        elif self.owner and self.owner.has_perm("userprofile.monetization_filter"):
-            serializer = CustomSegmentChannelWithMonetizationExportSerializer
-            self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
-        else:
-            serializer = CustomSegmentChannelExportSerializer
-        return serializer
-
-    @property
     def data_type(self):
         data_type = self.segment_id_to_type[self.segment_type]
         return data_type
 
-    def set_vetting(self):
+    @property
+    def serializer(self):
+        if self._serializer:
+            return self._serializer
+
         if self.segment_type == 0:
-            self.serializer = CustomSegmentVideoVettedExportSerializer
+            self._serializer = CustomSegmentVideoExportSerializer
+        elif self.owner and self.owner.has_perm("userprofile.monetization_filter"):
+            self._serializer = CustomSegmentChannelWithMonetizationExportSerializer
+            self.SOURCE_FIELDS += (f"{Sections.MONETIZATION}.is_monetizable",)
         else:
-            self.serializer = CustomSegmentChannelVettedExportSerializer
+            self._serializer = CustomSegmentChannelExportSerializer
+        return self._serializer
+
+    @serializer.setter
+    def serializer(self, serializer):
+        self._serializer = serializer
 
     def set_es_sections(self, sections, upsert_sections):
         self.es_manager.sections = sections
