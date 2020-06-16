@@ -7,6 +7,7 @@ from segment.models import CustomSegmentFileUpload
 from segment.models.persistent import PersistentSegmentChannel
 from segment.models.persistent.constants import PersistentSegmentCategory
 from userprofile.permissions import PermissionGroupNames
+from userprofile.permissions import Permissions
 from utils.unittests.test_case import ExtendedAPITestCase
 import uuid
 
@@ -106,6 +107,7 @@ class PersistentSegmentApiViewTestCase(ExtendedAPITestCase):
         self.assertEqual(set(data["statistics"].keys()), set(GOOGLE_ADS_STATISTICS + STATISTICS_FIELDS_CHANNEL))
 
     def test_custom_segment_download_url_permission(self):
+        Permissions.sync_groups()
         user = self.create_test_user()
         user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_AUDIT)
         user.add_custom_user_group(PermissionGroupNames.MEDIA_PLANNING_BRAND_SAFETY)
